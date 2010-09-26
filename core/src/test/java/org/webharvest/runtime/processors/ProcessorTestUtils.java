@@ -39,9 +39,7 @@
 package org.webharvest.runtime.processors;
 
 import org.webharvest.definition.DefinitionResolver;
-import org.webharvest.definition.ScraperConfiguration;
 import org.webharvest.definition.XmlNode;
-import org.webharvest.runtime.Scraper;
 import org.xml.sax.InputSource;
 
 import java.io.StringReader;
@@ -55,11 +53,10 @@ import java.io.StringReader;
 public final class ProcessorTestUtils {
 
     @SuppressWarnings({"unchecked"})
-    public static <T extends BaseProcessor> T processor(String xml, Object... args) {
+    public static <T extends BaseProcessor> T processor(String xml) {
         return (T) ProcessorResolver.createProcessor(
-                DefinitionResolver.createElementDefinition(XmlNode.getInstance(new InputSource(new StringReader(xml)))),
-                (ScraperConfiguration) (args.length > 0 ? args[0] : null),
-                (Scraper) (args.length > 1 ? args[1] : null));
+                DefinitionResolver.createElementDefinition(
+                        XmlNode.getInstance(new InputSource(new StringReader(xml)))));
     }
 
 }
