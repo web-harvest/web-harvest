@@ -38,51 +38,25 @@
 
 package org.webharvest.runtime.processors.plugins;
 
-import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
-import org.webharvest.runtime.processors.WebHarvestPlugin;
-import org.webharvest.runtime.templaters.BaseTemplater;
-import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
  * Support for database operations.
  */
-public class SetVarPlugin extends WebHarvestPlugin {
+public class SetVarPlugin extends AbstractValiableHandlerPlugin {
 
-    private static final String ATTR_VAR = "var";
-    private static final String ATTR_VALUE = "value";
-
-    public String getName() {
-        return "set";
+    public SetVarPlugin() {
+        super("set");
     }
 
-    public Variable executePlugin(Scraper scraper, ScraperContext context) {
-        final String varName = evaluateAttribute(ATTR_VAR, scraper);
-
-        Variable value = BaseTemplater.executeToVariable(getAttributes().get(ATTR_VALUE), null, scraper);
-
-        if (value.isEmpty()) {
-            value = executeBody(scraper, context);
-        }
-
+    @Override
+    protected void doExecute(ScraperContext context, String varName, Variable value) {
         if (context.containsVar(varName)) {
             context.replaceExistingVar(varName, value);
         } else {
             context.setLocalVar(varName, value);
         }
-
-        this.setProperty("\"" + varName + "\"", value);
-
-        return EmptyVariable.INSTANCE;
     }
 
-    public String[] getValidAttributes() {
-        return new String[]{ATTR_VAR, ATTR_VALUE};
-    }
-
-    @Override
-    public String[] getRequiredAttributes() {
-        return new String[]{ATTR_VAR};
-    }
 }

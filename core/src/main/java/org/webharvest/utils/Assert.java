@@ -67,13 +67,13 @@ public class Assert {
 
     public static void isTrue(boolean bool, String messagePattern, Object... args) {
         if (!bool) {
-            throw new AssertionError(MessageFormat.format(messagePattern, args));
+            throw new IllegalArgumentException(MessageFormat.format(messagePattern, args));
         }
     }
 
     public static void isFalse(boolean bool, String messagePattern, Object... args) {
         if (bool) {
-            throw new AssertionError(MessageFormat.format(messagePattern, args));
+            throw new IllegalArgumentException(MessageFormat.format(messagePattern, args));
         }
     }
 
