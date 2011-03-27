@@ -48,7 +48,7 @@ import org.webharvest.runtime.variables.Variable;
  * Template processor. Responsible for replacing marked portions of the
  * text with evaluated expressions.
  */
-public class TemplateProcessor extends BaseProcessor<TemplateDef> {
+public class TemplateProcessor extends AbstractProcessor<TemplateDef> {
 
     public TemplateProcessor(TemplateDef templateDef) {
         super(templateDef);

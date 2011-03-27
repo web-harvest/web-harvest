@@ -51,7 +51,7 @@ import java.util.concurrent.Callable;
 /**
  * Function call processor.
  */
-public class CallProcessor extends BaseProcessor<CallDef> {
+public class CallProcessor extends AbstractProcessor<CallDef> {
 
     private Variable functionResult = new NodeVariable("");
 
