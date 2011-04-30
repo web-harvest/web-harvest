@@ -61,6 +61,6 @@ public class SetContextVar {
         scraper.getLogger().warn("SetContextVar is DEPRECATED! No need to use it anymore. " +
                 "All variables defined on the top level of the script block are propagated to the scraper context automatically.");
 
-        scraper.getContext().setVar_compat2b1(name, CommonUtil.createVariable(value));
+        scraper.getContext().setLocalVar(name, CommonUtil.createVariable(value));
     }
 }

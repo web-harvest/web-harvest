@@ -55,7 +55,7 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
 
     void setLocalVar(String key, Variable value);
 
-    <R> R executeWithinNewContext(Callable<R> callable, boolean loopBody_compat2b1) throws InterruptedException;
+    <R> R executeWithinNewContext(Callable<R> callable) throws InterruptedException;
 
     Variable replaceExistingVar(String name, Variable variable);
 
