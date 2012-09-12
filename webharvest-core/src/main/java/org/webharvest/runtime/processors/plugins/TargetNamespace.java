@@ -45,7 +45,7 @@ import java.lang.annotation.Target;
  * under consideration during plugin registration process.
  *
  * @author Piotr Dyraga
- * @since 2.1.-RELEASE
+ * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%
  */
 @Retention(RetentionPolicy.RUNTIME)
