@@ -33,6 +33,7 @@
 
 package org.webharvest.ioc;
 
+import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 
 /**
@@ -57,5 +58,6 @@ public interface ContextFactory {
      *            namespace URI of configuration being executed
      * @return brand new instance of {@link DynamicScopeContext}
      */
-    DynamicScopeContext create(String namespaceUri);
+    DynamicScopeContext create(Config config);
+
 }
