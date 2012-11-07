@@ -33,6 +33,8 @@
 
 package org.webharvest.definition;
 
+import java.io.IOException;
+
 import org.webharvest.utils.HasReader;
 
 /**
@@ -50,7 +52,8 @@ public interface ConfigSource extends HasReader {
     /**
      * Configuration source undefined location.
      */
-    Location UNDEFINED_LOCATION = new Location() { };
+    Location UNDEFINED_LOCATION = new Location() {
+    };
 
     /**
      * Gets the reference to physical location of configuration. (eg. URL or
@@ -59,6 +62,27 @@ public interface ConfigSource extends HasReader {
      * @return location of configuration.
      */
     Location getLocation();
+
+    /**
+     * Includes specified {@link Location} from current configuration if
+     * possible.
+     * Included configuration is not merged but instead returned as a
+     * reference to new {@link ConfigSource}.
+     * Inclusion is smart enough to decide if the current configuration
+     * source points to a file system or remote web server location
+     * to determine the base for always contextual location that has
+     * been specified to include.
+     *
+     * @param location
+     *            reference to {@link Location} to include.
+     * @return Included instance of {@link ConfigSource} or throws
+     *         {@link IllegalStateException} in case of unrecognized
+     *         {@link Location} type.
+     * @throws IOException
+     *             In case of any problems with instantiation of included
+     *             {@link ConfigSource}
+     */
+    ConfigSource include(Location location) throws IOException;
 
     /**
      * Just a marker interface to indicate the actual type of location eg. file,
