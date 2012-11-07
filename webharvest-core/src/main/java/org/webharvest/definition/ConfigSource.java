@@ -33,33 +33,43 @@
 
 package org.webharvest.definition;
 
-import java.io.IOException;
-import java.io.Reader;
+import org.webharvest.utils.HasReader;
 
 /**
- * Represents source of XML configuration object. The configuration
- * can be loaded from different sources like database, remote web
- * server or just plain old file system.
+ * Represents source of XML configuration object. The configuration can be
+ * loaded from different sources like database, remote web server or just plain
+ * old file system.
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%
+ * @see HasReader
  */
-public interface ConfigSource {
+public interface ConfigSource extends HasReader {
 
     /**
-     * Gets the content {@link Reader} for physical location.
-     *
-     * @return XML configuration {@link Reader}.
+     * Configuration source undefined location.
      */
-    Reader getReader() throws IOException;
+    Location UNDEFINED_LOCATION = new Location() { };
 
     /**
-     * Gets the reference to physical location of configuration.
-     * (eg. URL or file path).
+     * Gets the reference to physical location of configuration. (eg. URL or
+     * file path).
      *
      * @return location of configuration.
      */
-    String getLocation();
+    Location getLocation();
+
+    /**
+     * Just a marker interface to indicate the actual type of location eg. file,
+     * url or any other
+     *
+     * @author Robert Bala
+     * @since 2.1.0-SNAPSHOT
+     * @version %I%, %G%
+     */
+    interface Location {
+
+    }
 
 }
