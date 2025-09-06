@@ -5,7 +5,7 @@ import static org.easymock.EasyMock.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import org.apache.tools.ant.filters.StringInputStream;
+import java.io.ByteArrayInputStream;
 import org.slf4j.Logger;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -65,7 +65,7 @@ public class SchemaResourcesPostProcessorTest extends UnitilsTestNG {
     @Test
     public void testProcessIfFirstResourceIsIncorrect() throws Exception {
         final SchemaSource source =
-            new SchemaSource(new StringInputStream(RESOURCE2), RESOURCE2);
+            new SchemaSource(new ByteArrayInputStream(RESOURCE2.getBytes()), RESOURCE2);
         postProcessor = new SchemaResourcesPostProcessor<String>(
                 mockTransformer, INCORRECT_RESOURCE, RESOURCE2);
 
@@ -86,9 +86,9 @@ public class SchemaResourcesPostProcessorTest extends UnitilsTestNG {
     @Test
     public void testProcess() throws Exception {
         final SchemaSource source1 =
-            new SchemaSource(new StringInputStream(RESOURCE1), RESOURCE1);
+            new SchemaSource(new ByteArrayInputStream(RESOURCE1.getBytes()), RESOURCE1);
         final SchemaSource source2 =
-            new SchemaSource(new StringInputStream(RESOURCE2), RESOURCE2);
+            new SchemaSource(new ByteArrayInputStream(RESOURCE2.getBytes()), RESOURCE2);
 
         expect(mockTransformer.transform(same(RESOURCE1))).andReturn(source1);
         mockResolver.registerSchemaSource(same(source1));

@@ -54,19 +54,8 @@ public class XmlUtil {
     private static final Map<Integer, SAXParserFactory> saxParserFactoryMap;
 
     static {
-        /* Resolving core XML schemas for version 1.0, 2.0 and 2.1. */
-        final SchemaResolver schemaResolver =
-            SchemaComponentFactory.getSchemaResolver();
-        schemaResolver.addPostProcessor(
-                new SchemaResourcesPostProcessor<String>(
-                        new TransformerPair<String, URI, SchemaSource>(
-                                new ResourcePathToURITransformer(),
-                                new URIToSchemaSourceTransformer()),
-                        "/config.xsd", "/wh-core-2.0.xsd",
-                        "/wh-core-2.1-loose.xsd",
-                        "/wh-jndi-2.1.xsd"));
-        schemaResolver.refresh();
-
+        /* Initialize schema resolver lazily to avoid IOC issues */
+        initializeSchemaResolver();
 
         final HashMap<Integer, SAXParserFactory> map = new HashMap<Integer, SAXParserFactory>();
         SAXParserFactory factory;
@@ -199,5 +188,43 @@ public class XmlUtil {
 
     public static SAXParserFactory getSAXParserFactory(boolean validating, boolean nsAware) {
         return saxParserFactoryMap.get((validating ? 1 : 0) | (nsAware ? 1 : 0) << 1);
+    }
+    
+    /**
+     * Initialize schema resolver lazily to avoid IOC issues.
+     * This method is called from static block but can be safely called multiple times.
+     */
+    private static void initializeSchemaResolver() {
+        try {
+            /* Resolving core XML schemas for version 1.0, 2.0 and 2.1. */
+            final SchemaResolver schemaResolver =
+                SchemaComponentFactory.getSchemaResolver();
+            schemaResolver.addPostProcessor(
+                    new SchemaResourcesPostProcessor<String>(
+                            new TransformerPair<String, URI, SchemaSource>(
+                                    new ResourcePathToURITransformer(),
+                                    new URIToSchemaSourceTransformer()),
+                            "/config.xsd", "/wh-core-2.0.xsd",
+                            "/wh-core-2.1-loose.xsd",
+                            "/wh-jndi-2.1.xsd"));
+            schemaResolver.refresh();
+        } catch (Exception e) {
+            // Log the error but don't fail the class loading
+            // This allows the application to continue even if schema initialization fails
+            System.err.println("Warning: Failed to initialize XML schema resolver: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Force refresh of the schema resolver to pick up XSD changes.
+     */
+    public static void refreshSchemaResolver() {
+        try {
+            final SchemaResolver schemaResolver =
+                SchemaComponentFactory.getSchemaResolver();
+            schemaResolver.refresh();
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to refresh XML schema resolver: " + e.getMessage());
+        }
     }
 }

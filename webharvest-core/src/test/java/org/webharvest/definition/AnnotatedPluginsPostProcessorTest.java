@@ -37,9 +37,10 @@ public class AnnotatedPluginsPostProcessorTest extends UnitilsTestNG {
     @Test
     public void testPostProcess() {
         postProcessor.postProcess(mockConfigurbleResolver.getMock());
-        mockConfigurbleResolver.assertInvoked().registerPlugin(notNull(ElementInfo.class), TARGET_NAMESPACE);
-        mockConfigurbleResolver.assertNotInvoked().registerPlugin((ElementInfo) null, null);
+        mockConfigurbleResolver.assertInvoked().registerPlugin(notNull(Class.class), TARGET_NAMESPACE);
+        mockConfigurbleResolver.assertNotInvoked().registerPlugin((Class) null, null);
     }
+
 
     @Autoscanned
     @TargetNamespace(TARGET_NAMESPACE)

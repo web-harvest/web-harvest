@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"
            xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           targetNamespace="http://web-harvest.sourceforge.net/schema/2.1/core">
-
+           targetNamespace="http://web-harvest.sourceforge.net/schema/2.1/core"
+           elementFormDefault="unqualified"
+           attributeFormDefault="unqualified">
     <xs:import namespace="http://www.w3.org/XML/1998/namespace"/>
-
     <xs:element name="list" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -12,7 +12,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="body" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -20,7 +19,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="regexp-pattern" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -28,7 +26,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="regexp-source" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -36,7 +33,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="regexp-result" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -44,7 +40,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xq-param" type="xqParamElementType">
         <xs:annotation>
             <xs:documentation>
@@ -52,7 +47,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xq-expression" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -60,7 +54,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xml" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -68,7 +61,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="stylesheet" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -76,7 +68,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="if" type="ifElementType">
         <xs:annotation>
             <xs:documentation>
@@ -84,7 +75,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="else" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -92,7 +82,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="call-param" type="callParamElementType">
         <xs:annotation>
             <xs:documentation>
@@ -100,7 +89,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="catch" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -108,7 +96,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="zip-entry" type="zipEntryElementType">
         <xs:annotation>
             <xs:documentation>
@@ -116,7 +103,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="db-param" type="dbParamElementType">
         <xs:annotation>
             <xs:documentation>
@@ -124,7 +110,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="config">
         <xs:annotation>
             <xs:documentation>
@@ -160,7 +145,6 @@
             </xs:complexContent>
         </xs:complexType>
     </xs:element>
-
     <xs:element name="empty" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -170,7 +154,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="text" type="textElementType">
         <xs:annotation>
             <xs:documentation>
@@ -178,7 +161,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="def" type="defElementType">
         <xs:annotation>
             <xs:documentation>
@@ -186,7 +168,20 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
+    <xs:element name="var-def" type="defElementType">
+        <xs:annotation>
+            <xs:documentation>
+                Defines a new local scoped variable (version 1.0 compatibility).
+            </xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    <xs:element name="var" type="getElementType">
+        <xs:annotation>
+            <xs:documentation>
+                Returns value of the variable (version 1.0 compatibility).
+            </xs:documentation>
+        </xs:annotation>
+    </xs:element>
     <xs:element name="set" type="defElementType">
         <xs:annotation>
             <xs:documentation>
@@ -194,7 +189,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="get" type="getElementType">
         <xs:annotation>
             <xs:documentation>
@@ -203,7 +197,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="value-of" type="valueOfElementType">
         <xs:annotation>
             <xs:documentation>
@@ -212,7 +205,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="sleep" type="sleepElementType">
         <xs:annotation>
             <xs:documentation>
@@ -220,7 +212,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="file" type="fileElementType">
         <xs:annotation>
             <xs:documentation>
@@ -229,7 +220,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="http" type="httpElementType">
         <xs:annotation>
             <xs:documentation>
@@ -241,7 +231,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="http-param" type="http-paramElementType">
         <xs:annotation>
             <xs:documentation>
@@ -251,7 +240,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="http-header" type="http-headerElementType">
         <xs:annotation>
             <xs:documentation>
@@ -261,7 +249,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="html-to-xml" type="html-to-xmlElementType">
         <xs:annotation>
             <xs:documentation>
@@ -276,7 +263,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="regexp" type="regexpElementType">
         <xs:annotation>
             <xs:documentation>
@@ -291,7 +277,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xpath" type="xpathElementType">
         <xs:annotation>
             <xs:documentation>
@@ -299,7 +284,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xquery" type="xqueryElementType">
         <xs:annotation>
             <xs:documentation>
@@ -324,7 +308,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xslt" type="xsltElementType">
         <xs:annotation>
             <xs:documentation>
@@ -377,7 +360,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="template" type="templateElementType">
         <xs:annotation>
             <xs:documentation>
@@ -389,7 +371,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="case" type="caseElementType">
         <xs:annotation>
             <xs:documentation>
@@ -402,7 +383,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="loop" type="loopElementType">
         <xs:annotation>
             <xs:documentation>
@@ -412,7 +392,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="while" type="whileElementType">
         <xs:annotation>
             <xs:documentation>
@@ -429,7 +408,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="return" type="bodyType">
         <xs:annotation>
             <xs:documentation>
@@ -437,7 +415,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="call" type="callElementType">
         <xs:annotation>
             <xs:documentation>
@@ -445,7 +422,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="include" type="includeElementType">
         <xs:annotation>
             <xs:documentation>
@@ -456,7 +432,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="try" type="tryElementType">
         <xs:annotation>
             <xs:documentation>
@@ -466,8 +441,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
-
     <xs:element name="exit" type="exitElementType">
         <xs:annotation>
             <xs:documentation>
@@ -475,7 +448,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="database" type="databaseType">
         <xs:annotation>
             <xs:documentation>Execute query against database. JDBC driver
@@ -493,7 +465,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:complexType name="databaseType" mixed="true">
         <xs:choice minOccurs="1" maxOccurs="unbounded">
             <xs:element ref="db-param"/>
@@ -536,7 +507,6 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="dbParamElementType">
         <xs:complexContent>
             <xs:extension base="templateElementType">
@@ -550,7 +520,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="templaeElementType">
         <xs:complexContent>
             <xs:extension base="templateElementType">
@@ -564,7 +533,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:element name="mail" type="mailElementType">
         <xs:annotation>
             <xs:documentation>
@@ -572,7 +540,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="mail-attach" type="mailAttachElementType">
         <xs:annotation>
             <xs:documentation>
@@ -580,7 +547,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="web-browser" type="webBrowserElementType">
         <xs:annotation>
             <xs:documentation>
@@ -588,7 +554,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="web-browser-load" type="webBrowserLoadElementType">
         <xs:annotation>
             <xs:documentation>
@@ -596,7 +561,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="web-browser-javascript" type="webBrowserJavascriptElementType">
         <xs:annotation>
             <xs:documentation>
@@ -604,7 +568,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="web-browser-render" type="webBrowserRenderElementType">
         <xs:annotation>
             <xs:documentation>
@@ -612,7 +575,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="zip" type="zipElementType">
         <xs:annotation>
             <xs:documentation>
@@ -621,7 +583,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="ftp" type="ftpElementType">
         <xs:annotation>
             <xs:documentation>
@@ -629,7 +590,6 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="tokenize" type="tokenizeElementType">
         <xs:annotation>
             <xs:documentation>
@@ -637,19 +597,16 @@
             </xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="json-to-xml" type="jsonToXmlElementType">
         <xs:annotation>
             <xs:documentation>Converts given JSON content to XML.</xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:element name="xml-to-json" type="xmlToJsonElementType">
         <xs:annotation>
             <xs:documentation>Converts given XML content to JSON.</xs:documentation>
         </xs:annotation>
     </xs:element>
-
     <xs:group name="bodyElements">
         <xs:sequence>
             <!-- TODO Change minOccurs="0" to minOccurs="1" and get rid of mixed="true" -->
@@ -657,8 +614,10 @@
                 <xs:element ref="empty"/>
                 <xs:element ref="text"/>
                 <xs:element ref="def"/>
+                <xs:element ref="var-def"/>
                 <xs:element ref="set"/>
                 <xs:element ref="get"/>
+                <xs:element ref="var"/>
                 <xs:element ref="value-of"/>
                 <xs:element ref="sleep"/>
                 <xs:element ref="file"/>
@@ -675,6 +634,7 @@
                 <xs:element ref="case"/>
                 <xs:element ref="loop"/>
                 <xs:element ref="while"/>
+                <xs:element ref="if"/>
                 <xs:element ref="function"/>
                 <xs:element ref="return"/>
                 <xs:element ref="call"/>
@@ -698,11 +658,9 @@
             </xs:choice>
         </xs:sequence>
     </xs:group>
-
     <xs:complexType name="bodyType" mixed="true">
         <!-- TODO Change minOccurs="0" to minOccurs="1" and get rid of mixed="true" -->
         <xs:group ref="bodyElements"/>
-
         <xs:attribute name="id" use="optional" type="xs:string">
             <xs:annotation>
                 <xs:documentation>
@@ -714,7 +672,6 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="textElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -738,7 +695,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="defElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -767,7 +723,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="getElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -781,7 +736,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="valueOfElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -795,7 +749,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="sleepElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -809,7 +762,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="fileElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -880,7 +832,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="httpElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1006,7 +957,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="http-paramElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1047,7 +997,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="http-headerElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1061,7 +1010,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="html-to-xmlElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1243,7 +1191,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="regexpElementType">
         <xs:sequence>
             <xs:element ref="regexp-pattern"/>
@@ -1311,7 +1258,6 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="xpathElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1326,14 +1272,12 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="xqueryElementType">
         <xs:sequence>
             <xs:element ref="xq-param" maxOccurs="unbounded"/>
             <xs:element ref="xq-expression"/>
         </xs:sequence>
     </xs:complexType>
-
     <xs:complexType name="xqParamElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1358,14 +1302,12 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="xsltElementType">
         <xs:sequence>
             <xs:element ref="xml"/>
             <xs:element ref="stylesheet"/>
         </xs:sequence>
     </xs:complexType>
-
     <xs:complexType name="scriptElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1389,7 +1331,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="templateElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1405,14 +1346,12 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="caseElementType">
         <xs:sequence>
             <xs:element ref="if" minOccurs="1" maxOccurs="unbounded"/>
             <xs:element ref="else" minOccurs="0"/>
         </xs:sequence>
     </xs:complexType>
-
     <xs:complexType name="ifElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1426,7 +1365,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="loopElementType">
         <xs:sequence>
             <xs:element ref="list"/>
@@ -1486,7 +1424,6 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="whileElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1527,7 +1464,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="functionElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1541,7 +1477,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="callElementType">
         <xs:sequence>
             <xs:element ref="call-param" minOccurs="0" maxOccurs="unbounded"/>
@@ -1554,7 +1489,6 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="callParamElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1568,7 +1502,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="includeElementType">
         <xs:attribute name="path" use="required" type="xs:string">
             <xs:annotation>
@@ -1580,14 +1513,12 @@
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
-
     <xs:complexType name="tryElementType">
         <xs:sequence>
             <xs:element ref="body"/>
             <xs:element ref="catch"/>
         </xs:sequence>
     </xs:complexType>
-
     <xs:complexType name="exitElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1613,7 +1544,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="mailElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1711,7 +1641,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="mailAttachElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1739,7 +1668,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="webBrowserElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1760,7 +1688,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="webBrowserLoadElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1858,7 +1785,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="webBrowserJavascriptElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1886,7 +1812,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="webBrowserRenderElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1907,13 +1832,11 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="zipElementType">
         <xs:complexContent>
             <xs:extension base="bodyType"/>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="zipEntryElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -1935,19 +1858,16 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="jsonToXmlElementType">
         <xs:complexContent>
             <xs:extension base="bodyType"/>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="xmlToJsonElementType">
         <xs:complexContent>
             <xs:extension base="bodyType"/>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="ftpElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -2031,7 +1951,6 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
     <xs:complexType name="tokenizeElementType">
         <xs:complexContent>
             <xs:extension base="bodyType">
@@ -2064,5 +1983,4 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
-
 </xs:schema>

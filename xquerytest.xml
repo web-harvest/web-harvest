@@ -1,0 +1,22 @@
+<test>
+   <logictest>1,
+false</logictest>
+   <doubletest>34,
+false,
+12</doubletest>
+   <stringtest>ABCDEFGH123456true12</stringtest>
+   <numberseqtest>
+      <value>2.732050807568877</value>
+      <value>3.6457513110645907</value>
+      <value>4.741657386773941</value>
+      <value>5.242640687119285</value>
+      <value>6.196152422706632</value>3mama</numberseqtest>
+   <doctest>
+      <td>one</td>
+      <td>two</td>
+      <td>tree</td>
+      <td>four</td>
+      <td>five</td>
+      <td>six</td>
+   </doctest>
+</test>

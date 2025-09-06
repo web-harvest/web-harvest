@@ -11,12 +11,12 @@ import java.io.InputStream;
 
 import javax.xml.transform.Source;
 
-import org.apache.tools.ant.filters.StringInputStream;
+import java.io.ByteArrayInputStream;
 
 public class SchemaSourceTest {
 
     private static final InputStream INPUT_STREAM =
-        new StringInputStream("dummy content");
+        new ByteArrayInputStream("dummy content".getBytes());
     private static final String SYSTEM_ID = "dummy id";
 
     private SchemaSource schemaSource;

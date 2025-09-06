@@ -71,57 +71,99 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
 
     protected TDef elementDef;
 
-    private Map<String, Object> properties = new LinkedHashMap<String, Object>();
-
+    private final Map<String, Object> properties = new LinkedHashMap<String, Object>();
     private Processor parentProcessor;
+    private ProcessorExecutionStrategy executionStrategy;
 
     @Inject
     private EventBus eventBus;
 
     protected AbstractProcessor() {
+        this.executionStrategy = new DefaultProcessorExecutionStrategy();
+    }
+    
+    /**
+     * Constructor with custom execution strategy (for testing).
+     */
+    protected AbstractProcessor(ProcessorExecutionStrategy executionStrategy) {
+        this.executionStrategy = executionStrategy;
     }
 
     /**
-     * Wrapper for the execute method. Adds controlling and logging logic.
+     * Template method that defines the execution flow.
+     * Uses Template Method pattern to separate common logic from specific implementation.
      */
     @Override
     public Variable run(DynamicScopeContext context) throws InterruptedException {
-
+        // Pre-execution setup
+        ProcessorExecutionContext executionContext = prepareExecution(context);
+        
+        // Execute the processor
+        Variable result = executeProcessor(executionContext);
+        
+        // Post-execution cleanup
+        finalizeExecution(executionContext, result);
+        
+        return result;
+    }
+    
+    /**
+     * Prepares the execution context and performs pre-execution setup.
+     */
+    private ProcessorExecutionContext prepareExecution(DynamicScopeContext context) throws InterruptedException {
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException();
         }
 
         final long startTime = System.currentTimeMillis();
-
-        final String id = (this.elementDef != null) ? BaseTemplater.evaluateToString(this.elementDef.getId(), null, context) : null;
+        final String id = (this.elementDef != null) ? 
+            BaseTemplater.evaluateToString(this.elementDef.getId(), null, context) : null;
 
         setProperty("ID", id);
+        
+        logProcessorStart(id);
+        eventBus.post(new ProcessorStartEvent(this));
+        
+        return new ProcessorExecutionContext(this, context, properties, startTime, id);
+    }
+    
+    /**
+     * Executes the processor using the configured strategy.
+     */
+    private Variable executeProcessor(ProcessorExecutionContext executionContext) throws InterruptedException {
+        return executionStrategy.execute(this, executionContext.getContext());
+    }
+    
+    /**
+     * Finalizes execution and performs cleanup.
+     */
+    private void finalizeExecution(ProcessorExecutionContext executionContext, Variable result) {
+        final long executionTime = executionContext.getExecutionTime();
+        
+        setProperty(WHConstants.EXECUTION_TIME_PROPERTY_NAME, executionTime);
+        setProperty(WHConstants.VALUE_PROPERTY_NAME, result);
 
-        //TODO: mczapiewski Information about beginning and finishing of
-        //processing should not be logged for BodyProcessor, because it only
-        //delegates processing to other processors.
+        eventBus.post(new ProcessorStopEvent(this, properties));
+        writeDebugFile(executionContext.getProcessorId(), result);
+        logProcessorEnd(executionContext.getProcessorId(), executionTime);
+    }
+    
+    /**
+     * Logs processor start information.
+     */
+    private void logProcessorStart(String id) {
         if (LOG.isInfoEnabled()) {
             LOG.info("{}{} starts processing...{}", new Object[]{
                     CommonUtil.indent(getRunningLevel()),
                     getClass().getSimpleName(),
                     id != null ? "[ID=" + id + "] " : ""});
         }
-
-        eventBus.post(new ProcessorStartEvent(this));
-
-        final Variable result = execute(context);
-        final long executionTime = System.currentTimeMillis() - startTime;
-
-        setProperty(WHConstants.EXECUTION_TIME_PROPERTY_NAME, executionTime);
-        setProperty(WHConstants.VALUE_PROPERTY_NAME, result);
-
-        eventBus.post(new ProcessorStopEvent(this, properties));
-
-        writeDebugFile(id, result);
-
-        //TODO: mczapiewski Information about beginning and finishing of
-        //processing should not be logged for BodyProcessor, because it only
-        //delegates processing to other processors.
+    }
+    
+    /**
+     * Logs processor end information.
+     */
+    private void logProcessorEnd(String id, long executionTime) {
         if (LOG.isInfoEnabled()) {
             LOG.info("{}{} processor executed in {}ms. {}", new Object[]{
                     CommonUtil.indent(getRunningLevel()),
@@ -129,8 +171,6 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
                     executionTime,
                     id != null ? "[ID=" + id + "] " : ""});
         }
-
-        return result;
     }
 
     /**

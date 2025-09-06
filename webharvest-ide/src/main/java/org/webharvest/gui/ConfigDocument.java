@@ -98,12 +98,8 @@ public class ConfigDocument implements DocumentListener {
     void load(File file) throws IOException {
         this.file = file;
         this.name = file.getName();
-        String fileCharset = ide.getSettings().getFileCharset();
-        //load( new InputStreamReader(new FileInputStream(file), fileCharset) );
-        String fileContent = IOUtils.toString(new FileInputStream(file), fileCharset);
-        // TODO rbala We need charset as well!!!
-//        load(new FileConfigSource(file));
-        load(fileContent);
+        // Use FileConfigSource directly to support includes properly
+        load(new FileConfigSource(file));
         ide.getSettings().addRecentFile( file.getAbsolutePath() );
     }
 

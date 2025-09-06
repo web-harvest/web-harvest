@@ -63,6 +63,9 @@ public abstract class AbstractRefreshableResolver implements
 
     public AbstractRefreshableResolver(Provider<ElementsRegistry> registryProvider) {
         this.registryProvider = registryProvider;
+        if (registryProvider != null) {
+            refresh();
+        }
     }
 
     /**
@@ -80,8 +83,10 @@ public abstract class AbstractRefreshableResolver implements
     @Override
     public final void refresh() {
         synchronized (this.refreshMonitor) {
-            this.elementsRegistry = registryProvider.get();
-            invokePostProcessors();
+            if (registryProvider != null) {
+                this.elementsRegistry = registryProvider.get();
+                invokePostProcessors();
+            }
         }
     }
 

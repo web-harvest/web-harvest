@@ -3,7 +3,7 @@
 <config charset="UTF-8">
 
     <!-- set initial page -->
-    <def var="home" value="http://web-harvest.sourceforge.net/index.php"/>
+    <var-def name="home">http://web-harvest.sourceforge.net/index.php</var-def>
 
     <!-- define script functions and variables -->
     <script><![CDATA[
@@ -21,21 +21,21 @@
     <while condition="${unvisited.size() != 0}">
         <loop item="currUrl">
             <list>
-                <get var="unvisited"/>
+                <script>unvisited</script>
             </list>
             <body>
                 <empty>
-                    <def var="content">
+                    <var-def name="content">
                         <html-to-xml>
                             <http url="${currUrl}"/>
                         </html-to-xml>
-                    </def>
+                    </var-def>
 
                     <script>currentFullUrl = sys.fullUrl(home, currUrl)</script>
 
                     <!--  saves downloaded page -->
                     <file action="write" path='spider/${currentFullUrl.replaceAll("http://|https://|file://", "")}.html'>
-                        <get var="content"/>
+                        <var name="content"/>
                     </file>
 
                     <!-- adds current URL to the list of visited -->
@@ -49,7 +49,7 @@
                     <loop item="currLink">
                         <list>
                             <xpath expression="//a/@href">
-                                <get var="content"/>
+                                <var name="content"/>
                             </xpath>
                         </list>
                         <body>

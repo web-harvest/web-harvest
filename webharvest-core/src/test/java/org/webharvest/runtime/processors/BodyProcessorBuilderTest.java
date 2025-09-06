@@ -38,7 +38,7 @@ public class BodyProcessorBuilderTest extends UnitilsTestNGExtension {
 
             public MockElementDef() {
                 super(XmlNodeTestUtils.createXmlNode("<empty/>",
-                        XmlNodeTestUtils.NAMESPACE_21), null);
+                        XmlNodeTestUtils.NAMESPACE_21), BodyProcessor.class);
             }
 
         }

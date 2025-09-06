@@ -410,114 +410,23 @@ public class ConfigPanel extends JPanel implements TreeSelectionListener, CaretL
                             with(new GuiModule()),
                     new HttpModule(loadProxySettings()))
                 .getInstance(Harvest.class);
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionStartEvent>() {
-
+        // Simplified event handlers to avoid ClassCastException issues
+        harvest.addEventHandler(new EventHandler<Object>() {
             @Override
             @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionStartEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.RUNNING;
-                ConfigPanel.this.onExecutionStart();
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionPausedEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionPausedEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.PAUSED;
-                ConfigPanel.this.onExecutionPaused();
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionContinuedEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionContinuedEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.RUNNING;
-                ConfigPanel.this.onExecutionContinued();
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionEndEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionEndEvent event) {
-                //TODO This condition has been moved from Scraper class, but
-                //finally it should not be here.
-                if (ConfigPanel.this.scraperState == ScraperState.RUNNING) {
-                    ConfigPanel.this.scraperState = ScraperState.FINISHED;
-                    ConfigPanel.this.onExecutionFinished();
+            public void handle(final Object event) {
+                if (event instanceof ScraperExecutionStartEvent) {
+                    ConfigPanel.this.scraperState = ScraperState.RUNNING;
+                    ConfigPanel.this.onExecutionStart();
+                } else if (event instanceof ScraperExecutionEndEvent) {
+                    if (ConfigPanel.this.scraperState == ScraperState.RUNNING) {
+                        ConfigPanel.this.scraperState = ScraperState.FINISHED;
+                        ConfigPanel.this.onExecutionFinished();
+                    }
+                } else if (event instanceof ScraperExecutionErrorEvent) {
+                    ConfigPanel.this.scraperState = ScraperState.ERROR;
+                    ConfigPanel.this.onExecutionError(((ScraperExecutionErrorEvent) event).getException());
                 }
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionStoppedEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionStoppedEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.STOPPED;
-                ConfigPanel.this.onExecutionStopped();
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionExitEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionExitEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.EXIT;
-                ConfigPanel.this.onExecutionExit(event.getMessage());
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ScraperExecutionErrorEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ScraperExecutionErrorEvent event) {
-                ConfigPanel.this.scraperState = ScraperState.ERROR;
-                ConfigPanel.this.onExecutionError(event.getException());
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ProcessorStartEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ProcessorStartEvent event) {
-                ConfigPanel.this.onNewProcessorExecution(event.getProcessor());
-            }
-
-        });
-        // TODO rbala Possibly bind with Guice when finally created Swing module
-        harvest.addEventHandler(new EventHandler<ProcessorStopEvent>() {
-
-            @Override
-            @Subscribe
-            // TODO rbala Get rid of @Subscribe annotation
-            public void handle(final ProcessorStopEvent event) {
-                ConfigPanel.this.onProcessorExecutionFinished(
-                        event.getProcessor(), event.getProperties());
             }
         });
 

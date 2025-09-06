@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<config charset="UTF-8">
-
+<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config" charset="UTF-8">
     <file action="write" path="xquerytest.xml">
         <xquery>
             <xq-param name="logicvalue" type="boolean">true</xq-param>
@@ -14,7 +12,8 @@
                 27
             </xq-param>
             <xq-param name="stringvalue" type="string">ABCDEFGH123456</xq-param>
-            <xq-param name="doc"><![CDATA[
+            <xq-param name="doc">
+                <![CDATA[
                <table>
                     <tr>
                         <td>one</td>
@@ -27,9 +26,10 @@
                         <td>six</td>
                     </tr>
                </table>
-            ]]></xq-param>
-
-            <xq-expression><![CDATA[
+            ]]>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
                 (: example of external namespace and usage of Java function library inside the XQuery :)
                 declare namespace math ="java:java.lang.Math";
 
@@ -73,8 +73,8 @@
                         { for $td in $doc//td return $td }
                     </doctest>
                 </test>
-            ]]></xq-expression>
+            ]]>
+            </xq-expression>
         </xquery>
     </file>
-
 </config>

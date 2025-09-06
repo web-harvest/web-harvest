@@ -50,17 +50,24 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 
-// TODO Add javadoc
-// TODO Add unit test
+/**
+ * Guice module for Web-Harvest configuration.
+ * Refactored to use smaller, focused methods for better maintainability.
+ * 
+ * @author Robert Bala
+ * @since 2.1.0-SNAPSHOT
+ */
 public final class ScraperModule extends AbstractModule {
 
     private static final ScraperScope SCRAPER_SCOPE = new ScraperScope();
 
     private final String workingDir;
 
-    // TODO Add documentation
-    // TODO Add unit test
-    // FIXME rbala I'm not convinced this is good idea
+    /**
+     * Creates a ScraperModule with default configuration.
+     * 
+     * @param workingDir the working directory
+     */
     public ScraperModule(final String workingDir) {
         this.workingDir = workingDir;
     }
@@ -70,69 +77,86 @@ public final class ScraperModule extends AbstractModule {
      */
     @Override
     protected void configure() {
-        // TODO use multibinding instead
+        // Core bindings
+        bindCoreServices();
+        bindScopes();
+        bindFactories();
+        bindInterceptors();
+        bindAdvancedFeatures();
+        
+        // Static injections
+        requestStaticInjection(InjectorHelper.class);
+        requestStaticInjection(DefinitionResolver.class);
+    }
+    
+    private void bindCoreServices() {
+        // Resolver post processors
         bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
-                .annotatedWith(Names.named("resolverPostProcessors")).toInstance(Arrays.asList(new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors"), new AnnotatedPluginsPostProcessor( "org.webharvest.runtime.processors")));
+                .annotatedWith(Names.named("resolverPostProcessors"))
+                .toInstance(Arrays.asList(
+                    new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors"),
+                    new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
+                ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
         bindListener(Matchers.any(), new PostConstructListener());
-
         bind(ElementsRegistry.class).to(ElementsRegistryImpl.class);
-
-        // FIXME rbala AbstractRegistry is actually not an abstract (no abstract methods)
-        bind(new TypeLiteral<Registry<Harvester, EventBus>>() {}).
-                toInstance(new LockedRegistry<Harvester, EventBus>(
+        
+        // Registry bindings
+        bind(new TypeLiteral<Registry<Harvester, EventBus>>() {})
+                .toInstance(new LockedRegistry<Harvester, EventBus>(
                         new AbstractRegistry<Harvester, EventBus>() { }));
-
-        bindConstant().annotatedWith(WorkingDir.class).to(workingDir);
-
+        
+        bind(AttributeHolder.class).to(ScopeAttributeHolder.class);
+        bind(Harvest.class).to(DefaultHarvest.class).in(Singleton.class);
+        bind(HandlerHolder.class).to(DefaultHandlerHolder.class).in(Singleton.class);
+    }
+    
+    private void bindScopes() {
         bindScope(ScrapingScope.class, SCRAPER_SCOPE);
-        // Make our scope instance injectable
         bind(ScraperScope.class).toInstance(SCRAPER_SCOPE);
-
+        
         bindListener(TypeMatchers.subclassesOf(ScrapingAware.class),
                 new ScrapingAwareTypeListener());
-
-        bind(EventBus.class).in(ScrapingScope.class);
         bindListener(Matchers.any(), new EventBusTypeListener());
+        
+        bind(EventBus.class).in(ScrapingScope.class);
         bind(EventSink.class).to(HarvesterEventSink.class).in(Singleton.class);
-
-        requestStaticInjection(InjectorHelper.class);
-
-        bind(ConnectionFactory.class).to(StandaloneConnectionPool.class).in(
-                ScrapingScope.class);
-        bind(WebScraper.class).to(Scraper.class).in(ScrapingScope.class);
-
-        bind(AttributeHolder.class).to(ScopeAttributeHolder.class);
-
-        bind(Harvest.class).to(DefaultHarvest.class).in(Singleton.class);
-        bind(HandlerHolder.class).to(DefaultHandlerHolder.class).in(
-                Singleton.class);
-
-        install(new FactoryModuleBuilder().implement(Config.class,
-                XMLConfig.class).build(ConfigFactory.class));
-
-        install(new FactoryModuleBuilder().implement(Harvester.class,
-                ScrapingHarvester.class).build(HarvesterFactory.class));
-
+    }
+    
+    private void bindFactories() {
+        install(new FactoryModuleBuilder()
+                .implement(Config.class, XMLConfig.class)
+                .build(ConfigFactory.class));
+        
+        install(new FactoryModuleBuilder()
+                .implement(Harvester.class, ScrapingHarvester.class)
+                .build(HarvesterFactory.class));
+    }
+    
+    private void bindInterceptors() {
         bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
                 new ScrapingInterceptor());
-
+    }
+    
+    private void bindAdvancedFeatures() {
         bindDBConnectionFactory();
         bindScraperContext();
         bindDebugFileLogger();
         bindStatusHolder();
         bindConfigParser();
-
-        bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
-
-        // FIXME rbala Moved from ConfigModule
-        bind(ScriptEngineFactory.class).to(JSRScriptEngineFactory.class).in(
-                Singleton.class);
+        
+        bind(ConnectionFactory.class).to(StandaloneConnectionPool.class).in(ScrapingScope.class);
+        bind(WebScraper.class).to(Scraper.class).in(ScrapingScope.class);
+        
+        // Scripting
+        bind(ScriptEngineFactory.class).to(JSRScriptEngineFactory.class).in(Singleton.class);
         requestStaticInjection(BaseTemplater.class);
         bind(RuntimeConfig.class).in(Singleton.class);
-
-        requestStaticInjection(DefinitionResolver.class);
+        
+        // Configuration
+        bindConstant().annotatedWith(WorkingDir.class).to(workingDir);
+        bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
     }
 
     protected void bindDBConnectionFactory() {

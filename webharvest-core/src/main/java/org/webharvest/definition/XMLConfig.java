@@ -60,10 +60,10 @@ public final class XMLConfig implements Config {
     private IElementDef elementDef;
 
     /**
-     * Default class constructor specifying {@link ConfigSource} object
-     * as configuration resource (from which it will be obtained).
-     *
+     * Constructor for both Guice and non-Guice usage.
+     * 
      * @param configSource reference to configuration resource.
+     * @param configParser reference to configuration parser.
      */
     @Inject
     public XMLConfig(@Assisted final ConfigSource configSource, ConfigParser configParser) {

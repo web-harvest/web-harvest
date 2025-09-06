@@ -3,21 +3,31 @@ package org.webharvest.definition;
 import java.util.Map;
 
 import org.webharvest.exception.PluginException;
-import org.webharvest.ioc.InjectorHelper;
 import org.webharvest.runtime.processors.Processor;
 
 /**
  * Definition of all plugin processors.
+ * Uses composition and delegation to separate concerns.
  */
 public class WebHarvestPluginDef extends AbstractElementDef {
 
-
-    private Class<? extends Processor> pluginClass;
+    private final Class<? extends Processor> pluginClass;
+    private final PluginFactory pluginFactory;
 
     public WebHarvestPluginDef(final XmlNode xmlNode,
             Class<? extends Processor> pluginClass) {
+        this(xmlNode, pluginClass, new PluginFactory());
+    }
+    
+    /**
+     * Constructor with dependency injection for testing.
+     */
+    WebHarvestPluginDef(final XmlNode xmlNode,
+                       Class<? extends Processor> pluginClass,
+                       PluginFactory pluginFactory) {
         super(xmlNode);
         this.pluginClass = pluginClass;
+        this.pluginFactory = pluginFactory;
     }
 
     public String getUri() {
@@ -37,24 +47,7 @@ public class WebHarvestPluginDef extends AbstractElementDef {
      */
     @Override
     public Processor createPlugin() {
-        if (pluginClass != null) {
-            try {
-                Processor plugin = pluginClass.newInstance();
-                plugin.setElementDef(this);
-
-                //FIXME: This a temporary solution which is not neat, but
-                //helps with plugin's dependency injection (using Guice).
-                InjectorHelper.getInjector().injectMembers(plugin);
-
-                return plugin;
-            } catch (InstantiationException e) {
-                throw new PluginException(e);
-            } catch (IllegalAccessException e) {
-                throw new PluginException(e);
-            }
-        }
-
-        throw new PluginException("Cannot create plugin!");
+        return pluginFactory.createPlugin(pluginClass, this);
     }
 
     @Override

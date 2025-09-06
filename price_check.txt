@@ -1,0 +1,2 @@
+Price Check: $89.99 (threshold: $100.00)
+Status: Price is below threshold - ALERT!

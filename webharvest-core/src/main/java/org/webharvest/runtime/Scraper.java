@@ -58,6 +58,23 @@ public class Scraper implements WebScraper {
 
     @Inject
     private EventBus eventBus;
+    
+    /**
+     * Default constructor for non-Guice usage.
+     * Creates a new EventBus instance.
+     */
+    public Scraper() {
+        this.eventBus = new EventBus();
+    }
+    
+    /**
+     * Constructor for custom EventBus.
+     * 
+     * @param eventBus the EventBus to use
+     */
+    public Scraper(EventBus eventBus) {
+        this.eventBus = eventBus;
+    }
 
     public void execute(final DynamicScopeContext context) {
         long startTime = System.currentTimeMillis();

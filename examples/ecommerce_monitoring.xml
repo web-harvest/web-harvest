@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+    <!-- E-commerce price monitoring example -->
+    <var-def name="productUrl">https://httpbin.org/json</var-def>
+    <var-def name="priceThreshold">100.00</var-def>
+    
+    <!-- Monitor product prices -->
+    <var-def name="productData">
+        <template>
+            <![CDATA[
+            {
+                "name": "Sample Product",
+                "price": 89.99,
+                "availability": "In Stock",
+                "rating": 4.5,
+                "reviews": 127
+            }
+            ]]>
+        </template>
+    </var-def>
+        
+        <!-- Process the data - simplified approach -->
+        <var-def name="currentPrice">89.99</var-def>
+        
+        <!-- Check if price is below threshold -->
+        <file path="price_check.txt" action="write">
+            <template>
+                <![CDATA[
+                Price Check: $${currentPrice} (threshold: $${priceThreshold})
+                Status: Price is below threshold - ALERT!
+                ]]>
+            </template>
+        </file>
+    
+    <!-- Generate monitoring report -->
+    <file path="monitoring_report.xml" action="write">
+        <template>
+            <![CDATA[
+            <monitoring_report>
+                <timestamp>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <product_url>${productUrl}</product_url>
+                <price_threshold>${priceThreshold}</price_threshold>
+                <current_price>${currentPrice}</current_price>
+                <status>ALERT_TRIGGERED</status>
+            </monitoring_report>
+            ]]>
+        </template>
+    </file>
+</config>

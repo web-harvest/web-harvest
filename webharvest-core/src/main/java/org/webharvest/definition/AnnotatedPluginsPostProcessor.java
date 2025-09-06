@@ -49,6 +49,7 @@ import org.webharvest.runtime.processors.plugins.Autoscanned;
 import org.webharvest.runtime.processors.plugins.TargetNamespace;
 import org.webharvest.utils.ClassPathScanner;
 import org.webharvest.utils.ClassPathScannerImpl;
+import org.webharvest.exception.PluginException;
 
 /**
  * {@link ResolverPostProcessor} implementation capable of scanning
@@ -67,6 +68,7 @@ public final class AnnotatedPluginsPostProcessor implements
             AnnotatedPluginsPostProcessor.class);
 
     private final ClassPathScanner scanner;
+    private final PluginRegistrationStrategy registrationStrategy;
 
     /**
      * Constructs {@link AnnotatedPluginsPostProcessor} accepting name of java
@@ -78,7 +80,21 @@ public final class AnnotatedPluginsPostProcessor implements
      *            name of package to be scanned
      */
     public AnnotatedPluginsPostProcessor(final String packageName) {
+        this(packageName, new DefaultPluginRegistrationStrategy());
+    }
+
+    /**
+     * Constructs {@link AnnotatedPluginsPostProcessor} with custom registration strategy.
+     *
+     * @param packageName
+     *            name of package to be scanned
+     * @param registrationStrategy
+     *            strategy to use for plugin registration
+     */
+    public AnnotatedPluginsPostProcessor(final String packageName, 
+                                        final PluginRegistrationStrategy registrationStrategy) {
         this.scanner = new ClassPathScannerImpl(packageName);
+        this.registrationStrategy = registrationStrategy;
     }
 
     /**
@@ -93,31 +109,15 @@ public final class AnnotatedPluginsPostProcessor implements
     @Override
     public void postProcess(final ConfigurableResolver resolver) {
         for (Class< ? extends WebHarvestPlugin > plugin : scanPlugins()) {
-            registerPlugin(plugin, resolver);
+            try {
+                registrationStrategy.registerPlugin(plugin, resolver);
+            } catch (PluginException e) {
+                LOGGER.error("Failed to register plugin {}: {}", 
+                           plugin.getCanonicalName(), e.getMessage());
+            }
         }
     }
 
-    /**
-     * Registers web harvest plugin in the resolver under namespace declared in
-     * the {@link TargetNamespace} annotation.
-     *
-     * @param plugin
-     *            plugin which is going to be registered
-     * @param resolver
-     *            resolver in which plugin is going to be registered
-     */
-    private void registerPlugin(
-            final Class< ? extends WebHarvestPlugin > plugin,
-            final ConfigurableResolver resolver) {
-        final TargetNamespace targetNamespace = plugin.getAnnotation(
-                TargetNamespace.class);
-
-        for (String namespace : targetNamespace.value()) {
-            LOGGER.info("Registering plugin {} under namespace {}",
-                    plugin.getCanonicalName(), namespace);
-            resolver.registerPlugin(plugin, namespace);
-        }
-    }
 
     /**
      * Scans class path looking for plugins annotated with {@link Autoscanned}.

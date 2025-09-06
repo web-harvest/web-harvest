@@ -80,18 +80,11 @@ public final class ClassPathScannerImpl implements ClassPathScanner {
     @Override
     public Set<Class< ? >> getTypesAnnotatedWith(
             final Class< ? extends Annotation> annotation) {
-        final Predicate<String> packageFilter =
-            new FilterBuilder().include(FilterBuilder.prefix(packageName));
-        final Predicate<String> annotationFilter =
-            new FilterBuilder().include(annotation.getCanonicalName());
-        final Scanner annotationScanner =
-            new TypeAnnotationsScanner().filterResultsBy(annotationFilter);
-
         final ConfigurationBuilder builder = new ConfigurationBuilder()
             .setUrls(ClasspathHelper.forPackage(packageName,
                     ClasspathHelper.classLoaders()))
-            .filterInputsBy(packageFilter)
-            .setScanners(annotationScanner);
+            .filterInputsBy(input -> input.startsWith(packageName))
+            .setScanners(new TypeAnnotationsScanner());
 
         final Reflections reflections = new Reflections(builder);
         return reflections.getTypesAnnotatedWith(annotation);

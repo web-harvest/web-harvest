@@ -20,6 +20,16 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
+import org.webharvest.definition.ConfigurableResolver;
+import org.webharvest.definition.ElementsRegistry;
+import org.webharvest.definition.ElementsRegistryImpl;
+import org.webharvest.definition.ResolverPostProcessor;
+import org.webharvest.definition.AnnotatedPluginsPostProcessor;
+import org.webharvest.ioc.DefinitionResolverProvider;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Extension of {@link UnitilsTestNG} which before each test method inject
@@ -106,6 +116,16 @@ public abstract class UnitilsTestNGExtension extends UnitilsTestNG {
             // Processor's decorators dependencies
             bind(Monitor.class).in(Singleton.class);
             bind(StatusHolder.class).toInstance(holderMock.getMock());
+            
+            // ConfigurableResolver dependencies
+            bind(ElementsRegistry.class).to(ElementsRegistryImpl.class);
+            bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
+                    .annotatedWith(Names.named("resolverPostProcessors"))
+                    .toInstance(Arrays.<ResolverPostProcessor>asList(
+                        new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors"),
+                        new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
+                    ));
+            bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
         }
 
         @Inject

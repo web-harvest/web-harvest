@@ -52,7 +52,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * @see ScriptEngine
  * @see ScriptEngineFactory
  *
- * @author Michał Amerek
+ * @author Michal Amerek
  * @author Piotr Dyraga
  * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%

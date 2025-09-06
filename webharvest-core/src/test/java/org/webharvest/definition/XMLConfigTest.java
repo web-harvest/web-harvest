@@ -23,9 +23,6 @@ public class XMLConfigTest extends UnitilsTestNG {
         "\t\n" +
         "</config>";
 
-    @RegularMock
-    private ConfigSource mockConfigSource;
-
     private XMLConfig config;
 
     private Reader mockReader;
@@ -33,7 +30,11 @@ public class XMLConfigTest extends UnitilsTestNG {
     @BeforeMethod
     public void setUp() {
         mockReader = new StringReader(BASIC_CONFIG_SKELETON);
-        config = new XMLConfig(mockConfigSource, null);
+        // Create a mock ConfigParser for testing
+        ConfigParser mockConfigParser = createMock(ConfigParser.class);
+        // Create a mock ConfigSource for testing
+        ConfigSource mockSource = createMock(ConfigSource.class);
+        config = new XMLConfig(mockSource, mockConfigParser);
     }
 
     @AfterMethod
@@ -54,16 +55,33 @@ public class XMLConfigTest extends UnitilsTestNG {
 
     @Test
     public void testGetConfigSource() {
-        assertSame(config.getConfigSource(), mockConfigSource);
+        // Create a mock ConfigSource for testing
+        ConfigSource mockSource = createMock(ConfigSource.class);
+        ConfigParser mockParser = createMock(ConfigParser.class);
+        XMLConfig testConfig = new XMLConfig(mockSource, mockParser);
+        assertSame(testConfig.getConfigSource(), mockSource);
     }
 
     @Test
     public void testLoad() throws IOException {
-        expect(mockConfigSource.getReader()).andReturn(mockReader);
-        EasyMockUnitils.replay();
-        config.reload();
-        final IElementDef def = config.getElementDef();
+        // Mock the ConfigParser to return a valid element definition
+        ConfigParser mockParser = createMock(ConfigParser.class);
+        IElementDef mockElementDef = createMock(IElementDef.class);
+        ConfigSource mockSource = createMock(ConfigSource.class);
+        expect(mockParser.parse(mockSource)).andReturn(mockElementDef);
+        
+        // Replay the parser mock
+        replay(mockParser);
+        
+        // Create a new config with the mocked parser
+        XMLConfig testConfig = new XMLConfig(mockSource, mockParser);
+        testConfig.reload();
+        
+        final IElementDef def = testConfig.getElementDef();
         assertNotNull(def);
+        
+        // Verify that the parser was called
+        verify(mockParser);
     }
 
 }

@@ -13,9 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-
-public class LockedRegistryTest extends UnitilsTestNG  {
+public class LockedRegistryTest {
 
     private static final String VALUE = "value";
 

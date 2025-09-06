@@ -50,6 +50,7 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URL;
@@ -107,9 +108,14 @@ public class WelcomePanel extends JPanel implements HyperlinkListener {
 
     private synchronized void downloadAddition() {
         try {
-
+            // Use HtmlToXmlProcessor to handle malformed HTML
+            String htmlContent = CommonUtil.readStringFromUrl(new URL(ApplicationInfo.WELCOME_ADDITION_URL));
+            
+            // Clean HTML using our processor
+            String cleanedHtml = cleanHtmlForXml(htmlContent);
+            
             final Document welcomeDocument = XmlUtil.parse(
-                    new InputSource(new StringReader(CommonUtil.readStringFromUrl(new URL(ApplicationInfo.WELCOME_ADDITION_URL)))));
+                    new InputSource(new StringReader(cleanedHtml)));
 
             final String versionNumber = StringUtils.trimToNull(XmlUtil.<String>evaluateXPath("/welcome/version/@number", welcomeDocument));
             final String versionMessage = StringUtils.trimToNull(XmlUtil.<String>evaluateXPath("/welcome/version/text()", welcomeDocument));
@@ -163,10 +169,38 @@ public class WelcomePanel extends JPanel implements HyperlinkListener {
             } else if (url.toLowerCase().startsWith("download:")) {
                 String exampleUrl = url.substring(9);
                 ide.openConfigFromUrl(exampleUrl);
+            } else if (url.toLowerCase().startsWith("file:")) {
+                String filePath = url.substring(5);
+                File exampleFile = new File(filePath);
+                if (exampleFile.exists()) {
+                    ide.addTab(exampleFile);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Example file not found: " + filePath, "File Not Found", JOptionPane.WARNING_MESSAGE);
+                }
             } else {
                 ide.openURLInBrowser(url);
             }
         }
+    }
+    
+    private String cleanHtmlForXml(String html) {
+        if (html == null) return "";
+        
+        // Basic HTML cleaning for XML parsing
+        String cleaned = html;
+        
+        // Fix self-closing tags that should be properly closed
+        cleaned = cleaned.replaceAll("<hr(\\s[^>]*)?>", "<hr$1></hr>");
+        cleaned = cleaned.replaceAll("<br(\\s[^>]*)?>", "<br$1></br>");
+        cleaned = cleaned.replaceAll("<img(\\s[^>]*)?>", "<img$1></img>");
+        cleaned = cleaned.replaceAll("<input(\\s[^>]*)?>", "<input$1></input>");
+        cleaned = cleaned.replaceAll("<meta(\\s[^>]*)?>", "<meta$1></meta>");
+        cleaned = cleaned.replaceAll("<link(\\s[^>]*)?>", "<link$1></link>");
+        
+        // Remove any remaining unclosed tags
+        cleaned = cleaned.replaceAll("<([a-zA-Z][a-zA-Z0-9]*?)(?![^>]*>)(?![^>]*/>)", "<$1>");
+        
+        return cleaned;
     }
 
 }

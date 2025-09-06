@@ -52,7 +52,7 @@ public final class SchemaFactoryImpl implements SchemaFactory, SchemaResolver {
     /** Synchronization monitor for the "refresh" operation */
     private final Object refreshMonitor = new Object();
 
-    private Set<SchemaSource> schemaSources;
+    private Set<SchemaSource> schemaSources = new HashSet<SchemaSource>();
     private Schema schema;
 
     /**
@@ -60,6 +60,7 @@ public final class SchemaFactoryImpl implements SchemaFactory, SchemaResolver {
      * pattern.
      */
     private SchemaFactoryImpl() {
+        refresh();
     }
 
     /**

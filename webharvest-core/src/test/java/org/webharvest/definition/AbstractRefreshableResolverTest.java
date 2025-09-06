@@ -2,6 +2,7 @@ package org.webharvest.definition;
 
 import static org.testng.AssertJUnit.assertFalse;
 
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.unitils.UnitilsTestNG;
 import org.unitils.mock.Mock;
@@ -13,9 +14,18 @@ import java.util.Set;
 public class AbstractRefreshableResolverTest extends UnitilsTestNG {
 
     private Mock<ResolverPostProcessor> postProcessor;
+    private Mock<ElementsRegistry> elementsRegistry;
+    private AbstractRefreshableResolver resolver;
 
-    private AbstractRefreshableResolver resolver =
-        new MockAbstractConfigurableResolver(null);
+    @BeforeMethod
+    public void setUp() {
+        resolver = new MockAbstractConfigurableResolver(new Provider<ElementsRegistry>() {
+            @Override
+            public ElementsRegistry get() {
+                return new ElementsRegistryImpl();
+            }
+        });
+    }
 
     @Test
     public void postProcessorExecutedOnRefresh() {
