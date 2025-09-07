@@ -171,16 +171,78 @@ public class WelcomePanel extends JPanel implements HyperlinkListener {
                 ide.openConfigFromUrl(exampleUrl);
             } else if (url.toLowerCase().startsWith("file:")) {
                 String filePath = url.substring(5);
-                File exampleFile = new File(filePath);
+                File exampleFile = resolveExampleFile(filePath);
                 if (exampleFile.exists()) {
                     ide.addTab(exampleFile);
                 } else {
-                    JOptionPane.showMessageDialog(this, "Example file not found: " + filePath, "File Not Found", JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Example file not found: " + exampleFile.getAbsolutePath(), "File Not Found", JOptionPane.WARNING_MESSAGE);
                 }
             } else {
                 ide.openURLInBrowser(url);
             }
         }
+    }
+    
+    /**
+     * Resolves example file path to absolute path.
+     * First tries relative to current working directory, then relative to project root.
+     */
+    private File resolveExampleFile(String relativePath) {
+        // First try relative to current working directory
+        File file = new File(relativePath);
+        if (file.exists()) {
+            return file;
+        }
+        
+        // Try relative to project root (where examples/ directory should be)
+        String projectRoot = findProjectRoot();
+        if (projectRoot != null) {
+            file = new File(projectRoot, relativePath);
+            if (file.exists()) {
+                return file;
+            }
+        }
+        
+        // Return original path if not found
+        return new File(relativePath);
+    }
+    
+    /**
+     * Attempts to find the project root directory where examples/ folder is located.
+     */
+    private String findProjectRoot() {
+        try {
+            // Try to get the location of the current class
+            String classPath = WelcomePanel.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+            File classFile = new File(classPath);
+            
+            // If it's a JAR file, get the parent directory
+            if (classFile.getName().endsWith(".jar")) {
+                classFile = classFile.getParentFile();
+            }
+            
+            // Look for examples directory in current directory and parent directories
+            File currentDir = classFile;
+            while (currentDir != null) {
+                File examplesDir = new File(currentDir, "examples");
+                if (examplesDir.exists() && examplesDir.isDirectory()) {
+                    return currentDir.getAbsolutePath();
+                }
+                currentDir = currentDir.getParentFile();
+            }
+            
+            // Fallback: try current working directory
+            File workingDir = new File(System.getProperty("user.dir"));
+            File examplesDir = new File(workingDir, "examples");
+            if (examplesDir.exists() && examplesDir.isDirectory()) {
+                return workingDir.getAbsolutePath();
+            }
+            
+        } catch (Exception e) {
+            // Ignore exceptions and return null
+        }
+        
+        return null;
     }
     
     private String cleanHtmlForXml(String html) {

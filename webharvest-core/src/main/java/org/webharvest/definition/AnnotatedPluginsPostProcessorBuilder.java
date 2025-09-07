@@ -65,3 +65,4 @@ public final class AnnotatedPluginsPostProcessorBuilder {
         return new AnnotatedPluginsPostProcessor(packageName, registrationStrategy);
     }
 }
+

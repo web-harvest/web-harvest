@@ -120,23 +120,21 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
     private Map<ElementName, Class[]> externalPluginDependencies =
         new HashMap<ElementName, Class[]>();
 
-    private void registerPlugin(final Class pluginClass,
-            final Class<? extends IElementDef> definitionClass,
-            final boolean isInternalPlugin, final String... uris) {
+    private void registerPlugin(final Class pluginClass, final String... uris) {
         Assert.notNull(pluginClass);
         try {
             final Object pluginObj = pluginClass.newInstance();
             if (!(pluginObj instanceof WebHarvestPlugin)) {
                 throw new PluginException("Plugin class \"" + pluginClass.getName() + "\" does not extend WebHarvestPlugin class!");
             }
-            final WebHarvestPlugin plugin = (WebHarvestPlugin) pluginObj;
-            for (String uri : uris) {
-                registerPlugin(ElementInfoFactory.getElementInfo(pluginClass), uri);
-            }
         } catch (InstantiationException e) {
             throw new PluginException("Error instantiating plugin class \"" + pluginClass.getName() + "\": " + e.getMessage(), e);
         } catch (IllegalAccessException e) {
             throw new PluginException("Error instantiating plugin class \"" + pluginClass.getName() + "\": " + e.getMessage(), e);
+        }
+        
+        for (String uri : uris) {
+            registerPlugin(ElementInfoFactory.getElementInfo(pluginClass), uri);
         }
     }
 
@@ -180,7 +178,7 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
     @Deprecated
     @Override
     public void registerPlugin(String className, String uri) throws PluginException {
-        registerPlugin(ClassLoaderUtil.getPluginClass(className), WebHarvestPluginDef.class, false, uri);
+        registerPlugin(ClassLoaderUtil.getPluginClass(className), uri);
     }
 
     private void unregisterPlugin(Class pluginClass, String uri) {

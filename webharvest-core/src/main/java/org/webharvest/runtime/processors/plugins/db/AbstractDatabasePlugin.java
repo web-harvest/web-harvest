@@ -150,7 +150,6 @@ public abstract class AbstractDatabasePlugin extends WebHarvestPlugin {
                     colDescs[i - 1] = new DbColumnDescription(colName, colType);
                 }
 
-                int rowCount = 0;
                 while (resultSet.next()) {
                     Object[] rowData = new Object[columnCount];
                     for (int i = 0; i < columnCount; i++) {
@@ -192,7 +191,6 @@ public abstract class AbstractDatabasePlugin extends WebHarvestPlugin {
 
                     queryResult
                             .addVariable(new DbRowVariable(colDescs, rowData));
-                    rowCount++;
                 }
                 return queryResult;
             } else {

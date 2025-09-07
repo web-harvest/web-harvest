@@ -34,8 +34,6 @@ package org.webharvest.definition;
 
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
 
 /**
@@ -50,8 +48,6 @@ import org.webharvest.WHConstants;
  * @see IElementDef
  */
 public final class XMLConfig implements Config {
-
-    private static final Logger log = LoggerFactory.getLogger(XMLConfig.class);
 
     private final ConfigSource configSource;
 

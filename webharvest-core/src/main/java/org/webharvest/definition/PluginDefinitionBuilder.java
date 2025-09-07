@@ -57,3 +57,4 @@ public final class PluginDefinitionBuilder {
         return new WebHarvestPluginDef(xmlNode, pluginClass);
     }
 }
+

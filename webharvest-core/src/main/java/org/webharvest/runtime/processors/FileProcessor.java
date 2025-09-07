@@ -159,22 +159,6 @@ public class FileProcessor extends AbstractProcessor<FileDef> {
                 }));
     }
 
-    private Collection<File> listFiles(File directory, FilenameFilter filter,
-            boolean recurse) {
-        List<File> files = new ArrayList<File>();
-        File[] entries = directory.listFiles();
-        if (entries != null) {
-            for (File entry : entries) {
-                if (filter == null || filter.accept(directory, entry.getName())) {
-                    files.add(entry);
-                }
-                if (recurse && entry.isDirectory()) {
-                    files.addAll(listFiles(entry, filter, recurse));
-                }
-            }
-        }
-        return files;
-    }
 
     /**
      * Writing content to the specified file. If parameter "append" is true,

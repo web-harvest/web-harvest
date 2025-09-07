@@ -1,10 +1,10 @@
 # Web-Harvest Plugins & Extensions Guide
 
-## 🔌 **Plugins and Extensions Guide**
+## 🔌 **Przewodnik po pluginach i rozszerzeniach**
 
-Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy extension of functionality.
+Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala na łatwe rozszerzanie funkcjonalności.
 
-## 📋 **Available processors**
+## 📋 **Dostępne procesory**
 
 ### **🌐 HTTP & Web Processing**
 
@@ -16,11 +16,11 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
 </http>
 ```
 
-**Attributes:**
-- `url` (required) - URL to fetch
+**Atrybuty:**
+- `url` (wymagany) - URL do pobrania
 - `method` - HTTP method (get, post, put, delete)
-- `timeout` - timeout in milliseconds
-- `followRedirects` - whether to follow redirects (true/false)
+- `timeout` - timeout w milisekundach
+- `followRedirects` - czy podążać za przekierowaniami (true/false)
 
 #### **html-to-xml** - HTML to XML Converter
 ```xml
@@ -39,17 +39,17 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
 </html-to-xml>
 ```
 
-**Attributes:**
-- `advancedxmlescape` - advanced XML character escaping
-- `specialentities` - support for special HTML entities
-- `unicodechars` - Unicode character support
-- `allowmultiwordattributes` - allows multi-word attributes
-- `omitunknowntags` - omits unknown tags
-- `treatunknowntagsascontent` - treats unknown tags as content
-- `omitdeprtags` - omits deprecated tags
-- `treatdeprtagsascontent` - treats deprecated tags as content
-- `omitcomments` - omits HTML comments
-- `omittermlenvelope` - omits XML envelope
+**Atrybuty:**
+- `advancedxmlescape` - zaawansowane escapowanie znaków XML
+- `specialentities` - obsługa specjalnych encji HTML
+- `unicodechars` - obsługa znaków Unicode
+- `allowmultiwordattributes` - pozwala na atrybuty z wieloma słowami
+- `omitunknowntags` - pomija nieznane tagi
+- `treatunknowntagsascontent` - traktuje nieznane tagi jako zawartość
+- `omitdeprtags` - pomija tagi deprecated
+- `treatdeprtagsascontent` - traktuje tagi deprecated jako zawartość
+- `omitcomments` - pomija komentarze HTML
+- `omittermlenvelope` - pomija envelope XML
 
 ### **🔍 Data Extraction**
 
@@ -62,9 +62,9 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
 </xpath>
 ```
 
-**Attributes:**
-- `expression` (required) - XPath expression
-- `namespaces` - namespace definitions
+**Atrybuty:**
+- `expression` (wymagany) - wyrażenie XPath
+- `namespaces` - definicje namespace'ów
 
 #### **regexp** - Regular Expression Processor
 ```xml
@@ -73,9 +73,9 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
 </regexp>
 ```
 
-**Attributes:**
-- `pattern` (required) - regex pattern
-- `flags` - regex flags (i, m, s, x)
+**Atrybuty:**
+- `pattern` (wymagany) - wzorzec regex
+- `flags` - flagi regex (i, m, s, x)
 
 #### **xquery** - XQuery Processor
 ```xml
@@ -101,7 +101,7 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
 
 #### **file** - File Processor
 ```xml
-<!-- Writing -->
+<!-- Zapisywanie -->
 <file path="output.xml" action="write">
     <template>
         <![CDATA[
@@ -112,21 +112,21 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
     </template>
 </file>
 
-<!-- Reading -->
+<!-- Odczytywanie -->
 <file path="input.xml" action="read"/>
 
-<!-- Listing -->
+<!-- Listowanie -->
 <file path="directory/" action="list" listfiles="true" listdirs="true"/>
 ```
 
-**Attributes:**
-- `path` (required) - path to file/directory
-- `action` - action (read, write, append, list)
-- `type` - file type (text, binary)
-- `charset` - character encoding
-- `listfiles` - whether to list files (true/false)
-- `listdirs` - whether to list directories (true/false)
-- `listrecursive` - whether recursively (true/false)
+**Atrybuty:**
+- `path` (wymagany) - ścieżka do pliku/katalogu
+- `action` - akcja (read, write, append, list)
+- `type` - typ pliku (text, binary)
+- `charset` - kodowanie znaków
+- `listfiles` - czy listować pliki (true/false)
+- `listdirs` - czy listować katalogi (true/false)
+- `listrecursive` - czy rekurencyjnie (true/false)
 
 ### **🔄 Data Processing**
 
@@ -290,9 +290,9 @@ Web-Harvest 2.1.0-SNAPSHOT offers an extensive plugin system that allows easy ex
     localFile="local.txt"/>
 ```
 
-## 🔧 **Creating custom plugins**
+## 🔧 **Tworzenie własnych pluginów**
 
-### **1. Plugin structure**
+### **1. Struktura pluginu**
 
 ```java
 package com.example.webharvest.plugin;
@@ -320,20 +320,20 @@ public class MyPluginProcessor extends AbstractProcessor<MyPluginDefinition> {
         String attr1 = BaseTemplater.evaluateToString(
             elementDef.getAttr1(), null, context);
         
-        // Plugin logic
+        // Logika pluginu
         String result = processData(attr1);
         
         return new NodeVariable(result);
     }
     
     private String processData(String input) {
-        // Logic implementation
+        // Implementacja logiki
         return "Processed: " + input;
     }
 }
 ```
 
-### **2. Plugin definition**
+### **2. Definicja pluginu**
 
 ```java
 package com.example.webharvest.plugin;
@@ -345,7 +345,7 @@ public class MyPluginDefinition extends ProcessorDefinition {
     private String attr1;
     private String attr2;
     
-    // Getters and setters
+    // Getters i setters
     public String getAttr1() { return attr1; }
     public void setAttr1(String attr1) { this.attr1 = attr1; }
     
@@ -354,16 +354,16 @@ public class MyPluginDefinition extends ProcessorDefinition {
 }
 ```
 
-### **3. Plugin registration**
+### **3. Rejestracja pluginu**
 
-Plugin is automatically registered thanks to `@Autoscanned` annotation. Make sure that:
+Plugin jest automatycznie rejestrowany dzięki adnotacji `@Autoscanned`. Upewnij się, że:
 
-1. Class is in classpath
-2. Has `@Autoscanned` annotation
-3. Has `@Definition` annotation with correct parameters
-4. Has `@TargetNamespace` annotation
+1. Klasa znajduje się w classpath
+2. Ma adnotację `@Autoscanned`
+3. Ma adnotację `@Definition` z poprawnymi parametrami
+4. Ma adnotację `@TargetNamespace`
 
-### **4. Plugin testing**
+### **4. Testowanie pluginu**
 
 ```java
 package com.example.webharvest.plugin;
@@ -390,9 +390,9 @@ public class MyPluginProcessorTest {
 }
 ```
 
-## 📚 **Advanced plugin examples**
+## 📚 **Przykłady zaawansowanych pluginów**
 
-### **1. Sentiment analysis plugin**
+### **1. Plugin do analizy sentymentu**
 
 ```java
 @Autoscanned
@@ -411,7 +411,7 @@ public class SentimentAnalyzerProcessor extends AbstractProcessor<SentimentAnaly
     }
     
     private String analyzeSentiment(String text) {
-        // Simple sentiment analysis
+        // Prosta analiza sentymentu
         String lowerText = text.toLowerCase();
         
         if (lowerText.contains("good") || lowerText.contains("great") || lowerText.contains("excellent")) {
@@ -425,14 +425,14 @@ public class SentimentAnalyzerProcessor extends AbstractProcessor<SentimentAnaly
 }
 ```
 
-**Usage:**
+**Użycie:**
 ```xml
 <sentiment-analyzer>
     <template>This is a great product!</template>
 </sentiment-analyzer>
 ```
 
-### **2. Report generation plugin**
+### **2. Plugin do generowania raportów**
 
 ```java
 @Autoscanned
@@ -457,7 +457,7 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
     }
     
     private String generateReport(String format, String template, DynamicScopeContext context) {
-        // Report generation implementation
+        // Implementacja generowania raportu
         StringBuilder report = new StringBuilder();
         
         if ("html".equals(format)) {
@@ -475,7 +475,7 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 }
 ```
 
-**Usage:**
+**Użycie:**
 ```xml
 <report-generator format="html" template="report.html">
     <template>
@@ -488,36 +488,36 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 </report-generator>
 ```
 
-## 🚀 **Best practices**
+## 🚀 **Najlepsze praktyki**
 
-### **1. Performance**
-- Use `@Autoscanned` only when you need automatic registration
-- Implement `InterruptedException` in long-running operations
-- Use `BaseTemplater` for expression evaluation
+### **1. Wydajność**
+- Używaj `@Autoscanned` tylko gdy potrzebujesz automatycznej rejestracji
+- Implementuj `InterruptedException` w długotrwałych operacjach
+- Używaj `BaseTemplater` do ewaluacji wyrażeń
 
-### **2. Error handling**
-- Always handle exceptions
-- Return meaningful error messages
-- Use `NodeVariable` for results
+### **2. Obsługa błędów**
+- Zawsze obsługuj wyjątki
+- Zwracaj sensowne komunikaty błędów
+- Używaj `NodeVariable` dla wyników
 
-### **3. Documentation**
-- Add Javadoc to all public methods
-- Describe all attributes in `@Definition`
-- Create usage examples
+### **3. Dokumentacja**
+- Dodaj Javadoc do wszystkich publicznych metod
+- Opisz wszystkie atrybuty w `@Definition`
+- Stwórz przykłady użycia
 
-### **4. Testing**
-- Write unit tests
-- Test different scenarios
-- Test error handling
+### **4. Testowanie**
+- Napisz testy jednostkowe
+- Testuj różne scenariusze
+- Testuj obsługę błędów
 
-## 📖 **Additional resources**
+## 📖 **Dodatkowe zasoby**
 
 - **API Documentation:** `webharvest-ide/target/apidocs/index.html`
-- **Examples:** `examples/` directory
-- **Tests:** `src/test/java/` directory
+- **Przykłady:** Katalog `examples/`
+- **Testy:** Katalog `src/test/java/`
 - **GitHub:** [web-harvest/web-harvest](https://github.com/web-harvest/web-harvest)
 
 ---
 
-**Web-Harvest Plugins Guide** - Extend Web-Harvest capabilities! 🔌
+**Web-Harvest Plugins Guide** - Rozszerzaj możliwości Web-Harvest! 🔌
 
