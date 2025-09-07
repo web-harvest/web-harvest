@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - Web-Harvest 2.1.0</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/prism.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-spider"></i>
+                <span>Web-Harvest 2.1.0</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../index.html" class="nav-link">Home</a></li>
+                <li><a href="../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../processors/" class="nav-link">Processors</a></li>
+                <li><a href="index.html" class="nav-link active">Examples</a></li>
+                <li><a href="../api/" class="nav-link">API</a></li>
+                <li><a href="../index.html#download" class="nav-link">Download</a></li>
+            </ul>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>Example Configurations</h1>
+                <p>Real-world examples demonstrating Web-Harvest capabilities and best practices</p>
+            </div>
+
+            <!-- Filter and Search -->
+            <div class="examples-controls">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search examples...">
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-button active" data-category="all">All</button>
+                    <button class="filter-button" data-category="business">Business</button>
+                    <button class="filter-button" data-category="ecommerce">E-commerce</button>
+                    <button class="filter-button" data-category="analytics">Analytics</button>
+                    <button class="filter-button" data-category="automation">Automation</button>
+                    <button class="filter-button" data-category="data">Data Processing</button>
+                </div>
+            </div>
+
+            <!-- Examples Grid -->
+            <div class="examples-grid">
+                <!-- E-commerce Price Monitoring -->
+                <div class="example-card" data-category="ecommerce business">
+                    <div class="example-header">
+                        <h3>E-commerce Price Monitoring</h3>
+                        <div class="example-tags">
+                            <span class="tag ecommerce">E-commerce</span>
+                            <span class="tag business">Business</span>
+                        </div>
+                    </div>
+                    <p>Monitor product prices across multiple e-commerce sites and get alerts when prices drop below threshold.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>Multi-site price monitoring</li>
+                            <li>Price threshold alerts</li>
+                            <li>Data persistence</li>
+                            <li>Error handling</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;!-- Configuration for price monitoring --&gt;
+  &lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
+  &lt;def var="priceThreshold"&gt;100.00&lt;/def&gt;
+  
+  &lt;!-- Fetch product data --&gt;
+  &lt;def var="productData"&gt;
+    &lt;html-to-xml advancedxmlescape="true" specialentities="true"&gt;
+      &lt;http url="${productUrl}" timeout="30000"&gt;
+        &lt;http-header name="User-Agent"&gt;Web-Harvest Bot&lt;/http-header&gt;
+      &lt;/http&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract current price --&gt;
+  &lt;def var="currentPrice"&gt;
+    &lt;xpath expression="//span[@class='price']"&gt;
+      &lt;get var="productData"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Check if price is below threshold --&gt;
+  &lt;if condition="${currentPrice &lt; priceThreshold}"&gt;
+    &lt;then&gt;
+      &lt;file path="price_alert.txt" action="write"&gt;
+        &lt;template&gt;
+          &lt;![CDATA[
+          PRICE ALERT! 
+          Product: ${productUrl}
+          Current Price: $${currentPrice}
+          Threshold: $${priceThreshold}
+          Date: ${sys.currentTime()}
+          ]]&gt;
+        &lt;/template&gt;
+      &lt;/file&gt;
+    &lt;/then&gt;
+  &lt;/if&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('ecommerce-monitoring')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('ecommerce-monitoring.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Social Media Analytics -->
+                <div class="example-card" data-category="analytics business">
+                    <div class="example-header">
+                        <h3>Social Media Analytics</h3>
+                        <div class="example-tags">
+                            <span class="tag analytics">Analytics</span>
+                            <span class="tag business">Business</span>
+                        </div>
+                    </div>
+                    <p>Extract and analyze social media posts for sentiment analysis and engagement metrics.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>API integration</li>
+                            <li>JSON to XML conversion</li>
+                            <li>XQuery data processing</li>
+                            <li>Sentiment analysis</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="hashtag"&gt;#technology&lt;/def&gt;
+  
+  &lt;!-- Get data from social media API --&gt;
+  &lt;def var="socialData"&gt;
+    &lt;http url="https://api.social.com/posts?hashtag=${hashtag}"&gt;
+      &lt;http-header name="Authorization"&gt;Bearer YOUR_API_KEY&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Convert JSON to XML --&gt;
+  &lt;def var="postsXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="socialData"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Analyze sentiment using XQuery --&gt;
+  &lt;def var="sentimentAnalysis"&gt;
+    &lt;xquery&gt;
+      &lt;xq-param name="posts"&gt;
+        &lt;get var="postsXml"/&gt;
+      &lt;/xq-param&gt;
+      &lt;xq-expression&gt;
+        &lt;![CDATA[
+        declare variable $posts as node() external;
+        
+        let $positive := count($posts//post[sentiment = "positive"])
+        let $negative := count($posts//post[sentiment = "negative"])
+        let $neutral := count($posts//post[sentiment = "neutral"])
+        let $total := count($posts//post)
+        
+        return
+        &lt;sentiment_analysis&gt;
+          &lt;total_posts&gt;{$total}&lt;/total_posts&gt;
+          &lt;positive_posts&gt;{$positive}&lt;/positive_posts&gt;
+          &lt;negative_posts&gt;{$negative}&lt;/negative_posts&gt;
+          &lt;neutral_posts&gt;{$neutral}&lt;/neutral_posts&gt;
+          &lt;positive_percentage&gt;{if ($total &gt; 0) then round($positive div $total * 100) else 0}&lt;/positive_percentage&gt;
+          &lt;negative_percentage&gt;{if ($total &gt; 0) then round($negative div $total * 100) else 0}&lt;/negative_percentage&gt;
+          &lt;neutral_percentage&gt;{if ($total &gt; 0) then round($neutral div $total * 100) else 0}&lt;/neutral_percentage&gt;
+        &lt;/sentiment_analysis&gt;
+        ]]&gt;
+      &lt;/xq-expression&gt;
+    &lt;/xquery&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Save results --&gt;
+  &lt;file path="sentiment_report.xml" action="write"&gt;
+    &lt;get var="sentimentAnalysis"/&gt;
+  &lt;/file&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('social-media-analytics')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('social-media-analytics.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Data Processing Pipeline -->
+                <div class="example-card" data-category="data automation">
+                    <div class="example-header">
+                        <h3>Data Processing Pipeline</h3>
+                        <div class="example-tags">
+                            <span class="tag data">Data Processing</span>
+                            <span class="tag automation">Automation</span>
+                        </div>
+                    </div>
+                    <p>Complete data processing pipeline with validation, transformation, and reporting.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>CSV data processing</li>
+                            <li>Data validation</li>
+                            <li>Error handling</li>
+                            <li>Report generation</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;!-- Read input data --&gt;
+  &lt;def var="rawData"&gt;
+    &lt;file path="input.csv" action="read" charset="UTF-8"/&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each row --&gt;
+  &lt;def var="processedData"&gt;
+    &lt;loop item="row"&gt;
+      &lt;tokenize delimiters="," trimtokens="true"&gt;
+        &lt;get var="rawData"/&gt;
+      &lt;/tokenize&gt;
+      &lt;body&gt;
+        &lt;!-- Validate row data --&gt;
+        &lt;def var="validatedRow"&gt;
+          &lt;script&gt;
+            // Data validation logic
+            if (row.length() &gt;= 3) {
+              return row;
+            } else {
+              return null;
+            }
+          &lt;/script&gt;
+        &lt;/def&gt;
+        
+        &lt;!-- Only process valid rows --&gt;
+        &lt;if condition="${validatedRow != null}"&gt;
+          &lt;then&gt;
+            &lt;def var="processedRow"&gt;
+              &lt;template&gt;
+                &lt;![CDATA[
+                &lt;item&gt;
+                  &lt;id&gt;${row[0]}&lt;/id&gt;
+                  &lt;name&gt;${row[1]}&lt;/name&gt;
+                  &lt;price&gt;${row[2]}&lt;/price&gt;
+                  &lt;processed_at&gt;${sys.currentTime()}&lt;/processed_at&gt;
+                &lt;/item&gt;
+                ]]&gt;
+              &lt;/template&gt;
+            &lt;/def&gt;
+          &lt;/then&gt;
+        &lt;/if&gt;
+      &lt;/body&gt;
+    &lt;/loop&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Generate report --&gt;
+  &lt;file path="processed_data.xml" action="write"&gt;
+    &lt;template&gt;
+      &lt;![CDATA[
+      &lt;report&gt;
+        &lt;timestamp&gt;${sys.currentTime()}&lt;/timestamp&gt;
+        &lt;total_records&gt;${sys.recordCount()}&lt;/total_records&gt;
+        &lt;data&gt;
+          &lt;get var="processedData"/&gt;
+        &lt;/data&gt;
+      &lt;/report&gt;
+      ]]&gt;
+    &lt;/template&gt;
+  &lt;/file&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('data-processing-pipeline')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('data-processing-pipeline.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Web Crawler -->
+                <div class="example-card" data-category="automation data">
+                    <div class="example-header">
+                        <h3>Web Crawler</h3>
+                        <div class="example-tags">
+                            <span class="tag automation">Automation</span>
+                            <span class="tag data">Data</span>
+                        </div>
+                    </div>
+                    <p>Intelligent web crawler that follows links and extracts content from multiple pages.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>Link following</li>
+                            <li>Content extraction</li>
+                            <li>Duplicate prevention</li>
+                            <li>Error handling</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="home"&gt;http://web-harvest.sourceforge.net/&lt;/def&gt;
+  &lt;def var="unvisited"&gt;
+    &lt;list&gt;
+      &lt;template&gt;${home}&lt;/template&gt;
+    &lt;/list&gt;
+  &lt;/def&gt;
+  &lt;def var="visited"&gt;
+    &lt;list&gt;&lt;/list&gt;
+  &lt;/def&gt;
+  &lt;def var="newLinks"&gt;
+    &lt;list&gt;&lt;/list&gt;
+  &lt;/def&gt;
+  
+  &lt;while condition="${unvisited.toString().length() &gt; 0}"&gt;
+    &lt;def var="currUrl"&gt;
+      &lt;get var="unvisited"/&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="visitedUpdate"&gt;
+      &lt;script&gt;
+        print("Visiting: " + currUrl);
+      &lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="linkCheck"&gt;
+      &lt;script&gt;
+        boolean isValidUrl(String url) {
+          String urlSmall = url.toLowerCase();
+          return urlSmall.startsWith("http://web-harvest.sourceforge.net/") 
+                 &amp;&amp; urlSmall.endsWith(".php");
+        }
+        String fullLink = sys.fullUrl(home, currLink);
+        if (isValidUrl(fullLink.toString())) {
+          print("Found valid link: " + fullLink);
+        }
+      &lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="unvisited"&gt;
+      &lt;list&gt;&lt;/list&gt;
+    &lt;/def&gt;
+  &lt;/while&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('web-crawler')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('crawler.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API Integration -->
+                <div class="example-card" data-category="automation business">
+                    <div class="example-header">
+                        <h3>API Integration</h3>
+                        <div class="example-tags">
+                            <span class="tag automation">Automation</span>
+                            <span class="tag business">Business</span>
+                        </div>
+                    </div>
+                    <p>Integrate with REST APIs to fetch, process, and store data from external services.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>REST API calls</li>
+                            <li>Authentication</li>
+                            <li>Data transformation</li>
+                            <li>Database storage</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="apiKey"&gt;YOUR_API_KEY&lt;/def&gt;
+  &lt;def var="baseUrl"&gt;https://api.example.com/v1&lt;/def&gt;
+  
+  &lt;!-- Fetch data from API --&gt;
+  &lt;def var="apiData"&gt;
+    &lt;http url="${baseUrl}/products" method="GET"&gt;
+      &lt;http-header name="Authorization"&gt;Bearer ${apiKey}&lt;/http-header&gt;
+      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Convert to XML --&gt;
+  &lt;def var="xmlData"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="apiData"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process and store data --&gt;
+  &lt;loop item="product"&gt;
+    &lt;xpath expression="//product"&gt;
+      &lt;get var="xmlData"/&gt;
+    &lt;/xpath&gt;
+    &lt;body&gt;
+      &lt;def var="productId"&gt;
+        &lt;xpath expression=".//id"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+      &lt;def var="productName"&gt;
+        &lt;xpath expression=".//name"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+      
+      &lt;!-- Store in database --&gt;
+      &lt;database 
+        driver="com.mysql.cj.jdbc.Driver"
+        url="jdbc:mysql://localhost:3306/products"
+        username="user"
+        password="pass"
+        query="INSERT INTO products (id, name) VALUES (?, ?)"&gt;
+        &lt;db-param&gt;${productId}&lt;/db-param&gt;
+        &lt;db-param&gt;${productName}&lt;/db-param&gt;
+      &lt;/database&gt;
+    &lt;/body&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('api-integration')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('api_integration.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Email Automation -->
+                <div class="example-card" data-category="automation business">
+                    <div class="example-header">
+                        <h3>Email Automation</h3>
+                        <div class="example-tags">
+                            <span class="tag automation">Automation</span>
+                            <span class="tag business">Business</span>
+                        </div>
+                    </div>
+                    <p>Automated email notifications based on scraped data and business rules.</p>
+                    <div class="example-features">
+                        <h4>Features:</h4>
+                        <ul>
+                            <li>Email sending</li>
+                            <li>Template processing</li>
+                            <li>Conditional logic</li>
+                            <li>Error handling</li>
+                        </ul>
+                    </div>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;!-- Check for price alerts --&gt;
+  &lt;def var="alertData"&gt;
+    &lt;file path="price_alerts.xml" action="read"/&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="hasAlerts"&gt;
+    &lt;xpath expression="count(//alert) &gt; 0"&gt;
+      &lt;get var="alertData"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;if condition="${hasAlerts}"&gt;
+    &lt;then&gt;
+      &lt;def var="emailContent"&gt;
+        &lt;template&gt;
+          &lt;![CDATA[
+          &lt;html&gt;
+            &lt;body&gt;
+              &lt;h2&gt;Price Alert Summary&lt;/h2&gt;
+              &lt;p&gt;The following products have price alerts:&lt;/p&gt;
+              &lt;ul&gt;
+                &lt;li&gt;Product: ${productName} - Price: $${price}&lt;/li&gt;
+              &lt;/ul&gt;
+              &lt;p&gt;Generated at: ${sys.currentTime()}&lt;/p&gt;
+            &lt;/body&gt;
+          &lt;/html&gt;
+          ]]&gt;
+        &lt;/template&gt;
+      &lt;/def&gt;
+      
+      &lt;mail 
+        to="admin@example.com"
+        from="scraper@example.com"
+        subject="Price Alert Notification"
+        smtphost="smtp.example.com"
+        smtpport="587"&gt;
+        &lt;get var="emailContent"/&gt;
+      &lt;/mail&gt;
+    &lt;/then&gt;
+  &lt;/if&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                    <div class="example-actions">
+                        <button class="btn btn-primary" onclick="runExample('email-automation')">
+                            <i class="fas fa-play"></i> Run Example
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExample('email-automation.xml')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Results Message -->
+            <div class="no-results" style="display: none;">
+                <i class="fas fa-search"></i>
+                <h3>No examples found</h3>
+                <p>Try adjusting your search or filter criteria.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Web-Harvest</h3>
+                    <p>Advanced web scraping and data extraction tool for Java applications.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="../processors/">Processors</a></li>
+                        <li><a href="../api/">API</a></li>
+                        <li><a href="index.html">Examples</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="../index.html#download">Download</a></li>
+                        <li><a href="index.html">Examples</a></li>
+                        <li><a href="#">Tutorials</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Web-Harvest. All rights reserved. Version 2.1.0-SNAPSHOT</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/script.js"></script>
+    <script src="../js/prism.js"></script>
+    <script>
+        // Example-specific JavaScript
+        function runExample(exampleName) {
+            console.log(`Running example: ${exampleName}`);
+            // Implementation for running examples
+            alert(`Running example: ${exampleName}`);
+        }
+
+        function downloadExample(fileName) {
+            console.log(`Downloading example: ${fileName}`);
+            // Implementation for downloading examples
+            const link = document.createElement('a');
+            link.href = `../examples/${fileName}`;
+            link.download = fileName;
+            link.click();
+        }
+
+        // Search and filter functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const filterButtons = document.querySelectorAll('.filter-button');
+            const exampleCards = document.querySelectorAll('.example-card');
+            const noResults = document.querySelector('.no-results');
+
+            function filterExamples() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const activeCategory = document.querySelector('.filter-button.active').dataset.category;
+                let visibleCount = 0;
+
+                exampleCards.forEach(card => {
+                    const cardText = card.textContent.toLowerCase();
+                    const cardCategory = card.dataset.category;
+                    const matchesSearch = searchTerm === '' || cardText.includes(searchTerm);
+                    const matchesCategory = activeCategory === 'all' || cardCategory.includes(activeCategory);
+
+                    if (matchesSearch && matchesCategory) {
+                        card.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+
+            searchInput.addEventListener('input', filterExamples);
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    filterExamples();
+                });
+            });
+        });
+    </script>
+</body>
+</html>

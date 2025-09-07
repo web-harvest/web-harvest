@@ -75,6 +75,7 @@
         <module>webharvest-core</module>
         <module>webharvest-cli</module>
         <module>webharvest-ide</module>
+        <module>docs</module>
     </modules>
     <distributionManagement>
         <snapshotRepository>

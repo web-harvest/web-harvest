@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.webharvest</groupId>
+    <artifactId>webharvest-docs</artifactId>
+    <version>2.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Web-Harvest Documentation</name>
+    <description>Complete documentation for Web-Harvest 2.1.0</description>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.site.version>3.12.1</maven.site.version>
+        <maven.surefire.version>3.0.0</maven.surefire.version>
+        <maven.failsafe.version>3.0.0</maven.failsafe.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Maven Site Plugin for documentation generation -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>${maven.site.version}</version>
+                <configuration>
+                    <reportPlugins>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-project-info-reports-plugin</artifactId>
+                            <version>3.4.5</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-surefire-report-plugin</artifactId>
+                            <version>${maven.surefire.version}</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-jxr-plugin</artifactId>
+                            <version>3.3.0</version>
+                        </plugin>
+                    </reportPlugins>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Resources Plugin for copying web documentation -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-web-docs</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/site</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>web</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Antrun Plugin for additional documentation tasks -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-api-docs</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- Copy API documentation from parent modules -->
+                                <copy todir="${project.build.directory}/site/api">
+                                    <fileset dir="../webharvest-core/target/site/apidocs" includes="**/*"/>
+                                </copy>
+                                <copy todir="${project.build.directory}/site/api">
+                                    <fileset dir="../webharvest-cli/target/site/apidocs" includes="**/*"/>
+                                </copy>
+                                <copy todir="${project.build.directory}/site/api">
+                                    <fileset dir="../webharvest-ide/target/site/apidocs" includes="**/*"/>
+                                </copy>
+                                
+                                <!-- Generate processor reference from source code -->
+                                <mkdir dir="${project.build.directory}/site/processors"/>
+                                <java classname="org.webharvest.docs.ProcessorReferenceGenerator" fork="true">
+                                    <classpath>
+                                        <path refid="maven.compile.classpath"/>
+                                        <path refid="maven.runtime.classpath"/>
+                                    </classpath>
+                                    <arg value="${project.build.directory}/site/processors"/>
+                                </java>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Clean Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.build.directory}</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Assembly Plugin for creating documentation package -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/docs.xml</descriptor>
+                    </descriptors>
+                    <finalName>webharvest-docs-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Profile for generating complete documentation -->
+        <profile>
+            <id>full-docs</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-site-plugin</artifactId>
+                        <version>${maven.site.version}</version>
+                        <executions>
+                            <execution>
+                                <id>generate-site</id>
+                                <phase>site</phase>
+                                <goals>
+                                    <goal>site</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Profile for deploying documentation to FTP -->
+        <profile>
+            <id>deploy-ftp</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>deploy-to-ftp</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <ftp action="put" server="${ftp.server}" userid="${ftp.username}" password="${ftp.password}" remotedir="${ftp.remotedir}">
+                                            <fileset dir="${project.build.directory}/site">
+                                                <include name="**/*"/>
+                                            </fileset>
+                                        </ftp>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <dependencies>
+        <!-- Web-Harvest Core for processor reference generation -->
+        <dependency>
+            <groupId>org.webharvest</groupId>
+            <artifactId>webharvest-core</artifactId>
+            <version>2.1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Web-Harvest CLI for CLI documentation -->
+        <dependency>
+            <groupId>org.webharvest</groupId>
+            <artifactId>webharvest-cli</artifactId>
+            <version>2.1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Web-Harvest IDE for IDE documentation -->
+        <dependency>
+            <groupId>org.webharvest</groupId>
+            <artifactId>webharvest-ide</artifactId>
+            <version>2.1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- Apache Commons for utilities -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+
+        <!-- Jackson for JSON processing -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.2</version>
+        </dependency>
+
+        <!-- JUnit for testing -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <reporting>
+        <plugins>
+            <!-- Project Info Reports -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>3.4.5</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>dependencies</report>
+                            <report>dependency-info</report>
+                            <report>dependency-management</report>
+                            <report>distribution-management</report>
+                            <report>index</report>
+                            <report>issue-management</report>
+                            <report>license</report>
+                            <report>modules</report>
+                            <report>plugin-management</report>
+                            <report>plugins</report>
+                            <report>scm</report>
+                            <report>summary</report>
+                            <report>team</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!-- Surefire Report -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>${maven.surefire.version}</version>
+            </plugin>
+
+            <!-- JXR Plugin for source code browsing -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jxr-plugin</artifactId>
+                <version>3.3.0</version>
+            </plugin>
+        </plugins>
+    </reporting>
+</project>
