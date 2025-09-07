@@ -222,22 +222,22 @@
     // Copy to clipboard functionality
     function addCopyButtons() {
         const codeBlocks = document.querySelectorAll('pre[class*="language-"]');
-        
+
         codeBlocks.forEach(block => {
             if (block.querySelector('.code-copy-button')) {
                 return; // Already has copy button
             }
-            
+
             const wrapper = document.createElement('div');
             wrapper.style.position = 'relative';
             wrapper.style.display = 'inline-block';
             wrapper.style.width = '100%';
-            
+
             const copyButton = document.createElement('button');
             copyButton.className = 'code-copy-button';
             copyButton.innerHTML = '<i class="fas fa-copy"></i>';
             copyButton.title = 'Copy to clipboard';
-            
+
             copyButton.addEventListener('click', () => {
                 const text = block.textContent;
                 navigator.clipboard.writeText(text).then(() => {
@@ -257,7 +257,7 @@
                     }, 2000);
                 });
             });
-            
+
             block.parentNode.insertBefore(wrapper, block);
             wrapper.appendChild(block);
             wrapper.appendChild(copyButton);

@@ -7,7 +7,7 @@
 
     <groupId>org.webharvest</groupId>
     <artifactId>webharvest-docs</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <version>2.1.0</version>
     <packaging>pom</packaging>
 
     <name>Web-Harvest Documentation</name>
@@ -89,26 +89,17 @@
                         </goals>
                         <configuration>
                             <target>
-                                <!-- Copy API documentation from parent modules -->
-                                <copy todir="${project.build.directory}/site/api">
-                                    <fileset dir="../webharvest-core/target/site/apidocs" includes="**/*"/>
-                                </copy>
-                                <copy todir="${project.build.directory}/site/api">
-                                    <fileset dir="../webharvest-cli/target/site/apidocs" includes="**/*"/>
-                                </copy>
-                                <copy todir="${project.build.directory}/site/api">
-                                    <fileset dir="../webharvest-ide/target/site/apidocs" includes="**/*"/>
-                                </copy>
-                                
-                                <!-- Generate processor reference from source code -->
-                                <mkdir dir="${project.build.directory}/site/processors"/>
-                                <java classname="org.webharvest.docs.ProcessorReferenceGenerator" fork="true">
-                                    <classpath>
-                                        <path refid="maven.compile.classpath"/>
-                                        <path refid="maven.runtime.classpath"/>
-                                    </classpath>
-                                    <arg value="${project.build.directory}/site/processors"/>
-                                </java>
+                                <!-- Create API directory placeholder -->
+                                <mkdir dir="${project.build.directory}/site/api"/>
+                                <echo file="${project.build.directory}/site/api/index.html">
+                                    &lt;html&gt;
+                                    &lt;head&gt;&lt;title&gt;API Documentation&lt;/title&gt;&lt;/head&gt;
+                                    &lt;body&gt;
+                                    &lt;h1&gt;API Documentation&lt;/h1&gt;
+                                    &lt;p&gt;API documentation will be generated here.&lt;/p&gt;
+                                    &lt;/body&gt;
+                                    &lt;/html&gt;
+                                </echo>
                             </target>
                         </configuration>
                     </execution>
@@ -224,27 +215,6 @@
     </profiles>
 
     <dependencies>
-        <!-- Web-Harvest Core for processor reference generation -->
-        <dependency>
-            <groupId>org.webharvest</groupId>
-            <artifactId>webharvest-core</artifactId>
-            <version>2.1.0-SNAPSHOT</version>
-        </dependency>
-
-        <!-- Web-Harvest CLI for CLI documentation -->
-        <dependency>
-            <groupId>org.webharvest</groupId>
-            <artifactId>webharvest-cli</artifactId>
-            <version>2.1.0-SNAPSHOT</version>
-        </dependency>
-
-        <!-- Web-Harvest IDE for IDE documentation -->
-        <dependency>
-            <groupId>org.webharvest</groupId>
-            <artifactId>webharvest-ide</artifactId>
-            <version>2.1.0-SNAPSHOT</version>
-        </dependency>
-
         <!-- Apache Commons for utilities -->
         <dependency>
             <groupId>org.apache.commons</groupId>

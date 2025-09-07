@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-Harvest 2.1.0 - Advanced Web Scraping & Data Extraction</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/prism.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-spider"></i>
+                <span>Web-Harvest 2.1.0</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link">Home</a></li>
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#processors" class="nav-link">Processors</a></li>
+                <li><a href="#examples" class="nav-link">Examples</a></li>
+                <li><a href="#api" class="nav-link">API</a></li>
+                <li><a href="#download" class="nav-link">Download</a></li>
+            </ul>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Advanced Web Scraping &
+                    <span class="gradient-text">Data Extraction</span>
+                </h1>
+                <p class="hero-description">
+                    Web-Harvest 2.1.0 is a powerful, enterprise-grade web scraping and data extraction tool
+                    with advanced HTML parsing, XQuery support, and comprehensive processor ecosystem.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#download" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Now
+                    </a>
+                    <a href="#examples" class="btn btn-secondary">
+                        <i class="fas fa-play"></i>
+                        View Examples
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number">50+</span>
+                        <span class="stat-label">Processors</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">100%</span>
+                        <span class="stat-label">Java</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">2.1.0</span>
+                        <span class="stat-label">Latest Version</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">web-scraper.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="products"&gt;
+    &lt;html-to-xml advancedxmlescape="true"&gt;
+      &lt;http url="https://shop.example.com/products"/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;loop item="product"&gt;
+    &lt;xpath expression="//div[@class='product']"&gt;
+      &lt;get var="products"/&gt;
+    &lt;/xpath&gt;
+    &lt;body&gt;
+      &lt;def var="name"&gt;
+        &lt;xpath expression=".//h3"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+      &lt;def var="price"&gt;
+        &lt;xpath expression=".//span[@class='price']"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+    &lt;/body&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Powerful Features</h2>
+                <p class="section-description">
+                    Everything you need for professional web scraping and data extraction
+                </p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Advanced HTML Parsing</h3>
+                    <p>Multi-strategy HTML parsing with JSoup, TagSoup, and Apache Tika for maximum compatibility and
+                        reliability.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>XQuery & XPath Support</h3>
+                    <p>Powerful querying capabilities with full XQuery 3.1 and XPath 3.1 support for complex data
+                        extraction.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>50+ Processors</h3>
+                    <p>Comprehensive set of processors for HTTP requests, file operations, database connections, and
+                        more.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Error Handling</h3>
+                    <p>Robust error handling with try-catch blocks, retry mechanisms, and comprehensive logging.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>High Performance</h3>
+                    <p>Optimized for speed and memory efficiency with streaming processing and parallel execution.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <h3>Extensible Architecture</h3>
+                    <p>Plugin-based architecture allows easy extension with custom processors and functionality.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Processors Section -->
+    <section id="processors" class="processors">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Processor Categories</h2>
+                <p class="section-description">
+                    Comprehensive set of processors organized by functionality
+                </p>
+            </div>
+            <div class="processors-grid">
+                <div class="processor-category">
+                    <h3><i class="fas fa-globe"></i> Web & HTTP</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;http&gt;</code> - HTTP requests</li>
+                        <li><code>&lt;http-header&gt;</code> - HTTP headers</li>
+                        <li><code>&lt;http-param&gt;</code> - HTTP parameters</li>
+                        <li><code>&lt;html-to-xml&gt;</code> - HTML parsing</li>
+                        <li><code>&lt;web-browser&gt;</code> - Headless browser</li>
+                    </ul>
+                </div>
+                <div class="processor-category">
+                    <h3><i class="fas fa-database"></i> Data Processing</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;xpath&gt;</code> - XPath extraction</li>
+                        <li><code>&lt;xquery&gt;</code> - XQuery processing</li>
+                        <li><code>&lt;regexp&gt;</code> - Regular expressions</li>
+                        <li><code>&lt;json-to-xml&gt;</code> - JSON conversion</li>
+                        <li><code>&lt;xml-to-json&gt;</code> - XML conversion</li>
+                    </ul>
+                </div>
+                <div class="processor-category">
+                    <h3><i class="fas fa-file"></i> File Operations</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;file&gt;</code> - File read/write</li>
+                        <li><code>&lt;include&gt;</code> - Include files</li>
+                        <li><code>&lt;template&gt;</code> - Template processing</li>
+                        <li><code>&lt;text&gt;</code> - Text processing</li>
+                        <li><code>&lt;xml&gt;</code> - XML processing</li>
+                    </ul>
+                </div>
+                <div class="processor-category">
+                    <h3><i class="fas fa-code-branch"></i> Control Flow</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;loop&gt;</code> - Loops</li>
+                        <li><code>&lt;while&gt;</code> - While loops</li>
+                        <li><code>&lt;if&gt;</code> - Conditional execution</li>
+                        <li><code>&lt;try&gt;</code> - Error handling</li>
+                        <li><code>&lt;case&gt;</code> - Switch statements</li>
+                    </ul>
+                </div>
+                <div class="processor-category">
+                    <h3><i class="fas fa-variable"></i> Variables</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;def var&gt;</code> - Variable definition</li>
+                        <li><code>&lt;get var&gt;</code> - Variable access</li>
+                        <li><code>&lt;set var&gt;</code> - Variable assignment</li>
+                        <li><code>&lt;list&gt;</code> - List creation</li>
+                        <li><code>&lt;script&gt;</code> - Script execution</li>
+                    </ul>
+                </div>
+                <div class="processor-category">
+                    <h3><i class="fas fa-plug"></i> Extensions</h3>
+                    <ul class="processor-list">
+                        <li><code>&lt;database&gt;</code> - Database operations</li>
+                        <li><code>&lt;mail&gt;</code> - Email sending</li>
+                        <li><code>&lt;ftp&gt;</code> - FTP operations</li>
+                        <li><code>&lt;zip&gt;</code> - Archive operations</li>
+                        <li><code>&lt;tokenize&gt;</code> - Text tokenization</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples Section -->
+    <section id="examples" class="examples">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Example Configurations</h2>
+                <p class="section-description">
+                    Real-world examples demonstrating Web-Harvest capabilities
+                </p>
+            </div>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header">
+                        <h3>E-commerce Monitoring</h3>
+                        <span class="example-tag">Business</span>
+                    </div>
+                    <p>Monitor product prices and availability across multiple e-commerce sites.</p>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
+  &lt;def var="productData"&gt;
+    &lt;html-to-xml advancedxmlescape="true"&gt;
+      &lt;http url="${productUrl}"/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  &lt;def var="currentPrice"&gt;
+    &lt;xpath expression="//span[@class='price']"&gt;
+      &lt;get var="productData"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="example-header">
+                        <h3>Social Media Analytics</h3>
+                        <span class="example-tag">Analytics</span>
+                    </div>
+                    <p>Extract and analyze social media posts for sentiment analysis.</p>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="socialData"&gt;
+    &lt;http url="https://api.social.com/posts?hashtag=#technology"/&gt;
+  &lt;/def&gt;
+  &lt;def var="postsXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="socialData"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  &lt;def var="sentimentAnalysis"&gt;
+    &lt;xquery&gt;
+      &lt;xq-param name="posts"&gt;
+        &lt;get var="postsXml"/&gt;
+      &lt;/xq-param&gt;
+      &lt;xq-expression&gt;
+        &lt;![CDATA[
+        declare variable $posts as node() external;
+        let $positive := count($posts//post[sentiment = "positive"])
+        let $negative := count($posts//post[sentiment = "negative"])
+        return &lt;sentiment_analysis&gt;
+          &lt;positive_posts&gt;{$positive}&lt;/positive_posts&gt;
+          &lt;negative_posts&gt;{$negative}&lt;/negative_posts&gt;
+        &lt;/sentiment_analysis&gt;
+        ]]&gt;
+      &lt;/xq-expression&gt;
+    &lt;/xquery&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="example-header">
+                        <h3>Data Pipeline</h3>
+                        <span class="example-tag">Processing</span>
+                    </div>
+                    <p>Complete data processing pipeline with validation and transformation.</p>
+                    <div class="example-code">
+                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+  &lt;def var="rawData"&gt;
+    &lt;file path="input.csv" action="read"/&gt;
+  &lt;/def&gt;
+  &lt;def var="processedData"&gt;
+    &lt;loop item="row"&gt;
+      &lt;tokenize delimiters=","&gt;
+        &lt;get var="rawData"/&gt;
+      &lt;/tokenize&gt;
+      &lt;body&gt;
+        &lt;def var="validatedRow"&gt;
+          &lt;script&gt;
+            // Data validation logic
+            if (row.length() >= 3) {
+              return row;
+            }
+          &lt;/script&gt;
+        &lt;/def&gt;
+      &lt;/body&gt;
+    &lt;/loop&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Section -->
+    <section id="api" class="api">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">API Documentation</h2>
+                <p class="section-description">
+                    Complete API reference for developers
+                </p>
+            </div>
+            <div class="api-content">
+                <div class="api-nav">
+                    <h3>Quick Navigation</h3>
+                    <ul class="api-nav-list">
+                        <li><a href="api/processors.html">Processors</a></li>
+                        <li><a href="api/configuration.html">Configuration</a></li>
+                        <li><a href="api/variables.html">Variables</a></li>
+                        <li><a href="api/scripting.html">Scripting</a></li>
+                        <li><a href="api/error-handling.html">Error Handling</a></li>
+                    </ul>
+                </div>
+                <div class="api-main">
+                    <h3>Getting Started</h3>
+                    <p>Web-Harvest uses XML-based configuration files to define scraping workflows. Each configuration
+                        consists of processors that perform specific tasks.</p>
+
+                    <h4>Basic Configuration Structure</h4>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"
+        charset="UTF-8"
+        scriptlang="beanshell"&gt;
+  &lt;!-- Your processors here --&gt;
+&lt;/config&gt;</code></pre>
+
+                    <h4>Configuration Attributes</h4>
+                    <table class="api-table">
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>charset</code></td>
+                                <td>Character encoding for the configuration</td>
+                                <td>UTF-8</td>
+                            </tr>
+                            <tr>
+                                <td><code>scriptlang</code></td>
+                                <td>Scripting language (beanshell, javascript, groovy)</td>
+                                <td>beanshell</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="download">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Download & Installation</h2>
+                <p class="section-description">
+                    Get started with Web-Harvest in minutes
+                </p>
+            </div>
+            <div class="download-content">
+                <div class="download-options">
+                    <div class="download-option">
+                        <h3><i class="fas fa-terminal"></i> Command Line Interface</h3>
+                        <p>Run Web-Harvest from the command line for automation and scripting.</p>
+                        <div class="download-code">
+                            <pre><code class="language-bash"># Download and run
+java -jar webharvest-cli-2.1.0.jar config=examples/simple_test.xml
+
+# With custom output
+java -jar webharvest-cli-2.1.0.jar config=my-config.xml output=results.xml</code></pre>
+                        </div>
+                        <a href="#" class="btn btn-primary">Download CLI</a>
+                    </div>
+                    <div class="download-option">
+                        <h3><i class="fas fa-desktop"></i> Graphical Interface</h3>
+                        <p>Use the intuitive GUI for visual configuration and testing.</p>
+                        <div class="download-code">
+                            <pre><code class="language-bash"># Run the IDE
+java -jar webharvest-ide-2.1.0.jar</code></pre>
+                        </div>
+                        <a href="#" class="btn btn-primary">Download IDE</a>
+                    </div>
+                </div>
+                <div class="installation-steps">
+                    <h3>Installation Steps</h3>
+                    <ol class="steps-list">
+                        <li>
+                            <strong>Download</strong> the appropriate JAR file for your needs
+                        </li>
+                        <li>
+                            <strong>Install Java</strong> 8 or higher if not already installed
+                        </li>
+                        <li>
+                            <strong>Run</strong> the JAR file using the command line or double-click
+                        </li>
+                        <li>
+                            <strong>Configure</strong> your scraping workflow using XML configuration
+                        </li>
+                        <li>
+                            <strong>Execute</strong> and monitor your scraping jobs
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Web-Harvest</h3>
+                    <p>Advanced web scraping and data extraction tool for Java applications.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="api/processors.html">Processors</a></li>
+                        <li><a href="api/configuration.html">Configuration</a></li>
+                        <li><a href="examples/">Examples</a></li>
+                        <li><a href="api/error-handling.html">Error Handling</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#download">Download</a></li>
+                        <li><a href="#examples">Examples</a></li>
+                        <li><a href="#">Tutorials</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">License</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Web-Harvest. All rights reserved. Version 2.1.0-SNAPSHOT</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/prism.js"></script>
+</body>
+
+</html>

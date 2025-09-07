@@ -1,0 +1,3 @@
+cd /home/project-web/web-harvest/htdocs
+put -r web-harvest-docs-upload/* .
+quit

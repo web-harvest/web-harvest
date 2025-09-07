@@ -58,7 +58,7 @@ const observer = new IntersectionObserver((entries) => {
 // Observe elements for animation
 document.addEventListener('DOMContentLoaded', () => {
     const animatedElements = document.querySelectorAll('.feature-card, .processor-category, .example-card, .download-option');
-    
+
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -70,13 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Code copy functionality
 function addCopyButtons() {
     const codeBlocks = document.querySelectorAll('pre code');
-    
+
     codeBlocks.forEach(block => {
         const wrapper = document.createElement('div');
         wrapper.style.position = 'relative';
         wrapper.style.display = 'inline-block';
         wrapper.style.width = '100%';
-        
+
         const copyButton = document.createElement('button');
         copyButton.innerHTML = '<i class="fas fa-copy"></i>';
         copyButton.style.position = 'absolute';
@@ -90,15 +90,15 @@ function addCopyButtons() {
         copyButton.style.cursor = 'pointer';
         copyButton.style.fontSize = '12px';
         copyButton.style.transition = 'background 0.2s ease';
-        
+
         copyButton.addEventListener('mouseenter', () => {
             copyButton.style.background = 'rgba(255, 255, 255, 0.3)';
         });
-        
+
         copyButton.addEventListener('mouseleave', () => {
             copyButton.style.background = 'rgba(255, 255, 255, 0.2)';
         });
-        
+
         copyButton.addEventListener('click', () => {
             navigator.clipboard.writeText(block.textContent).then(() => {
                 copyButton.innerHTML = '<i class="fas fa-check"></i>';
@@ -107,7 +107,7 @@ function addCopyButtons() {
                 }, 2000);
             });
         });
-        
+
         block.parentNode.parentNode.insertBefore(wrapper, block.parentNode);
         wrapper.appendChild(block.parentNode);
         wrapper.appendChild(copyButton);
@@ -124,7 +124,7 @@ function initializeSearch() {
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const searchableElements = document.querySelectorAll('.feature-card, .processor-category, .example-card');
-            
+
             searchableElements.forEach(element => {
                 const text = element.textContent.toLowerCase();
                 if (text.includes(query)) {
@@ -145,7 +145,7 @@ function initializeThemeToggle() {
             document.body.classList.toggle('dark-theme');
             localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
         });
-        
+
         // Load saved theme
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
@@ -157,7 +157,7 @@ function initializeThemeToggle() {
 // Lazy loading for images
 function initializeLazyLoading() {
     const images = document.querySelectorAll('img[data-src]');
-    
+
     const imageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -168,7 +168,7 @@ function initializeLazyLoading() {
             }
         });
     });
-    
+
     images.forEach(img => imageObserver.observe(img));
 }
 
@@ -179,7 +179,7 @@ function initializePerformanceMonitoring() {
         const loadTime = performance.now();
         console.log(`Page loaded in ${loadTime.toFixed(2)}ms`);
     });
-    
+
     // Monitor scroll performance
     let scrollTimeout;
     window.addEventListener('scroll', () => {
@@ -203,17 +203,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeThemeToggle();
     initializeLazyLoading();
     initializePerformanceMonitoring();
-    
+
     // Add loading states to buttons
     document.querySelectorAll('.btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', function (e) {
             if (this.href && this.href.startsWith('#')) {
                 return; // Don't add loading state for anchor links
             }
-            
+
             this.classList.add('loading');
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-            
+
             // Remove loading state after 2 seconds (adjust as needed)
             setTimeout(() => {
                 this.classList.remove('loading');
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
         });
     });
-    
+
     // Store original button text
     document.querySelectorAll('.btn').forEach(btn => {
         btn.dataset.originalText = btn.innerHTML;
@@ -242,11 +242,11 @@ const utils = {
             timeout = setTimeout(later, wait);
         };
     },
-    
+
     // Throttle function
     throttle: (func, limit) => {
         let inThrottle;
-        return function() {
+        return function () {
             const args = arguments;
             const context = this;
             if (!inThrottle) {
@@ -256,7 +256,7 @@ const utils = {
             }
         };
     },
-    
+
     // Format bytes
     formatBytes: (bytes, decimals = 2) => {
         if (bytes === 0) return '0 Bytes';
@@ -266,13 +266,13 @@ const utils = {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     },
-    
+
     // Get query parameter
     getQueryParam: (name) => {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
     },
-    
+
     // Set query parameter
     setQueryParam: (name, value) => {
         const url = new URL(window.location);

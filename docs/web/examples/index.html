@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -68,7 +70,8 @@
                             <span class="tag business">Business</span>
                         </div>
                     </div>
-                    <p>Monitor product prices across multiple e-commerce sites and get alerts when prices drop below threshold.</p>
+                    <p>Monitor product prices across multiple e-commerce sites and get alerts when prices drop below
+                        threshold.</p>
                     <div class="example-features">
                         <h4>Features:</h4>
                         <ul>
@@ -592,7 +595,7 @@
         }
 
         // Search and filter functionality
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const searchInput = document.getElementById('search-input');
             const filterButtons = document.querySelectorAll('.filter-button');
             const exampleCards = document.querySelectorAll('.example-card');
@@ -623,7 +626,7 @@
             searchInput.addEventListener('input', filterExamples);
 
             filterButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function () {
                     filterButtons.forEach(btn => btn.classList.remove('active'));
                     this.classList.add('active');
                     filterExamples();
@@ -632,4 +635,5 @@
         });
     </script>
 </body>
+
 </html>
