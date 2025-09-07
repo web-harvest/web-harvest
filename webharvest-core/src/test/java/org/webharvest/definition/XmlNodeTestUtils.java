@@ -3,13 +3,13 @@ package org.webharvest.definition;
 
 public class XmlNodeTestUtils {
 
-    public static final String NAMESPACE_10 = "xmlns='http://web-harvest.sourceforge.net/schema/1.0/config' " +
+    public static final String NAMESPACE_10 = "xmlns='http://org.webharvest/schema/1.0/config' " +
             "xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +
-            "xsi:schemaLocation='http://web-harvest.sourceforge.net/schema/1.0/config config.xsd'";
+            "xsi:schemaLocation='http://org.webharvest/schema/1.0/config config.xsd'";
 
-    public static final String NAMESPACE_21 = "xmlns='http://web-harvest.sourceforge.net/schema/2.1/core' " +
+    public static final String NAMESPACE_21 = "xmlns='http://org.webharvest/schema/2.1/core' " +
             "xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' " +
-            "xsi:schemaLocation='http://web-harvest.sourceforge.net/schema/2.1/core wh-core-2.1-loose.xsd'";
+            "xsi:schemaLocation='http://org.webharvest/schema/2.1/core wh-core-2.1-loose.xsd'";
 
     /**
      * Instantiates {@link XmlNode} for given part of XML file and namespace. It

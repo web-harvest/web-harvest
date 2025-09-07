@@ -38,6 +38,7 @@
 package org.webharvest.deprecated.runtime.processors;
 
 import static org.webharvest.WHConstants.XMLNS_CORE_10;
+import static org.webharvest.WHConstants.XMLNS_CORE;
 
 import java.util.concurrent.Callable;
 

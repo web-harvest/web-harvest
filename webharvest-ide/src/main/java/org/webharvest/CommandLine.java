@@ -107,7 +107,7 @@ public class CommandLine {
         System.out.println("For command line usage, please use the webharvest-cli module:");
         System.out.println("   java -jar webharvest-cli-XX.jar <arguments>");
         System.out.println("");
-        System.out.println("For more information, visit: http://web-harvest.sourceforge.net/");
+        System.out.println("For more information, visit: https://github.com/org/webharvest");
     }
 
 }

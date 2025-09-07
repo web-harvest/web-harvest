@@ -304,6 +304,11 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
                 new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");
             currentProcessor.postProcess(tempResolver);
             
+            // Register deprecated processors for backward compatibility
+            AnnotatedPluginsPostProcessor deprecatedProcessor = 
+                new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors");
+            deprecatedProcessor.postProcess(tempResolver);
+            
         } catch (Exception e) {
             // If initialization fails, we'll still return the registry
             // This allows tests to continue even if some plugins fail to load

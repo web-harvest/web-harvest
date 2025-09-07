@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
+<config xmlns="http://org.webharvest/schema/2.1/core">
     <!-- E-commerce price monitoring example -->
     <def var="productUrl">https://httpbin.org/json</def>
     <def var="priceThreshold">100.00</def>

@@ -37,6 +37,7 @@
 package org.webharvest.deprecated.runtime.processors;
 
 import static org.webharvest.WHConstants.XMLNS_CORE_10;
+import static org.webharvest.WHConstants.XMLNS_CORE;
 
 import org.webharvest.annotation.Definition;
 import org.webharvest.definition.VarDef;

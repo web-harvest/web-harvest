@@ -472,13 +472,15 @@ public class WHConstants {
     // size of splitter pane dividers
     public static final int SPLITTER_WIDTH = 7;
     // uris to identify xml namespaces of the Web-Harvest language
-    public static final String XMLNS_CORE = "http://web-harvest.sourceforge.net/schema/2.1/core";
-    public static final String XMLNS_VAR = "http://web-harvest.sourceforge.net/schema/2.1/var";
-    public static final String XMLNS_PARAM = "http://web-harvest.sourceforge.net/schema/2.1/param";
+    public static final String XMLNS_CORE = "http://org.webharvest/schema/2.1/core";
+    public static final String XMLNS_VAR = "http://org.webharvest/schema/2.1/var";
+    public static final String XMLNS_PARAM = "http://org.webharvest/schema/2.1/param";
     // Legacy namespaces (aka WH-1.0)
-    public static final String XMLNS_CORE_10 = "http://web-harvest.sourceforge.net/schema/1.0/config";
+    public static final String XMLNS_CORE_10 = "http://org.webharvest/schema/1.0/config";
     public static final Set<String> XMLNS_CORE_10_ALIASES = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
-            "http://web-harvest.sourceforge.net/wh-core.xsd"
+            "http://org.webharvest/wh-core.xsd",
+            "http://web-harvest.sourceforge.net/schema/1.0/config", // Backward compatibility
+            "http://web-harvest.sourceforge.net/schema/2.1/core"    // Backward compatibility
             // what other URIs might people have used?
     )));
 }

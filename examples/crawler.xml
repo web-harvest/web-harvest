@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
 
     <!-- set initial page -->
     <def var="home">http://web-harvest.sourceforge.net/index.php</def>

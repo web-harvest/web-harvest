@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns="http://web-harvest.sourceforge.net/schema/2.1/jndi"
-  xmlns:core="http://web-harvest.sourceforge.net/schema/2.1/core"
+  xmlns="http://org.webharvest/schema/2.1/jndi"
+  xmlns:core="http://org.webharvest/schema/2.1/core"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  targetNamespace="http://web-harvest.sourceforge.net/schema/2.1/jndi"
+  targetNamespace="http://org.webharvest/schema/2.1/jndi"
   elementFormDefault="unqualified" attributeFormDefault="unqualified">
-    <xs:import namespace="http://web-harvest.sourceforge.net/schema/2.1/core"
+    <xs:import namespace="http://org.webharvest/schema/2.1/core"
     schemaLocation="wh-core-2.1-loose.xsd" />
     <xs:element name="database" type="databaseType">
         <xs:annotation>

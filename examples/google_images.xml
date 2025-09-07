@@ -3,7 +3,7 @@
 	Expects following initial variable: 
 		search - search expression
 -->
-<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
     <include path="functions.xml"/>
     <!-- defines search keyword and start URL -->
     <def var="search" overwrite="false">platon</def>

@@ -4,7 +4,7 @@
 		tags - tags for saerch on flickr - separated with blanks
 		num - number of pages with results
 -->
-<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
+<config xmlns="http://org.webharvest/schema/2.1/core">
     <include path="functions.xml"/>
     <def var="tags" overwrite="false">art</def>
     <def var="num" overwrite="false">1</def>

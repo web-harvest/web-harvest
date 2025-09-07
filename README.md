@@ -95,7 +95,7 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 #### **1. XML Configuration**
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://org.webharvest/schema/1.0/config">
     <!-- Your configuration here -->
 </config>
 ```
@@ -218,7 +218,7 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 
 ### **1. E-commerce price monitoring**
 ```xml
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://org.webharvest/schema/1.0/config">
     <var-def name="productUrl">https://shop.example.com/product/123</var-def>
     <var-def name="priceThreshold">100.00</var-def>
     
@@ -253,7 +253,7 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 
 ### **2. Social media sentiment analysis**
 ```xml
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://org.webharvest/schema/1.0/config">
     <var-def name="hashtag">#technology</var-def>
     
     <!-- Get data from API -->
@@ -332,7 +332,7 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 
 **Solution:** Add namespace to `<config>` element:
 ```xml
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://org.webharvest/schema/1.0/config">
     <!-- Your configuration -->
 </config>
 ```

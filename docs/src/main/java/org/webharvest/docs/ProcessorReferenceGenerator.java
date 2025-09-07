@@ -105,7 +105,7 @@ public class ProcessorReferenceGenerator {
         httpProcessor.put("displayName", "HTTP Request");
         httpProcessor.put("category", "web");
         httpProcessor.put("description", "Performs HTTP requests to fetch web content");
-        httpProcessor.put("namespace", "http://web-harvest.sourceforge.net/schema/2.1/core");
+        httpProcessor.put("namespace", "http://org.webharvest/schema/2.1/core");
         
         ArrayNode httpAttributes = mapper.createArrayNode();
         addAttribute(httpAttributes, "url", "Target URL", true, "string");
@@ -128,7 +128,7 @@ public class ProcessorReferenceGenerator {
         htmlProcessor.put("displayName", "HTML to XML");
         htmlProcessor.put("category", "web");
         htmlProcessor.put("description", "Converts HTML content to well-formed XML using advanced parsing strategies");
-        htmlProcessor.put("namespace", "http://web-harvest.sourceforge.net/schema/2.1/core");
+        htmlProcessor.put("namespace", "http://org.webharvest/schema/2.1/core");
         
         ArrayNode htmlAttributes = mapper.createArrayNode();
         addAttribute(htmlAttributes, "advancedxmlescape", "Advanced XML character escaping", false, "boolean", "false");
@@ -148,7 +148,7 @@ public class ProcessorReferenceGenerator {
         xpathProcessor.put("displayName", "XPath");
         xpathProcessor.put("category", "data");
         xpathProcessor.put("description", "Extracts data using XPath expressions");
-        xpathProcessor.put("namespace", "http://web-harvest.sourceforge.net/schema/2.1/core");
+        xpathProcessor.put("namespace", "http://org.webharvest/schema/2.1/core");
         
         ArrayNode xpathAttributes = mapper.createArrayNode();
         addAttribute(xpathAttributes, "expression", "XPath expression", true, "string");
@@ -229,3 +229,4 @@ public class ProcessorReferenceGenerator {
         }
     }
 }
+

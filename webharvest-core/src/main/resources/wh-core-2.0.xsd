@@ -897,7 +897,7 @@
                         </xs:documentation>
                     </xs:annotation>
                 </xs:attribute>
-                <xs:anyAttribute namespace="http://web-harvest.sourceforge.net/schema/2.1/var"/>
+                <xs:anyAttribute namespace="http://org.webharvest/schema/2.1/var"/>
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>

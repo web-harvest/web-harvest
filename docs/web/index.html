@@ -22,7 +22,7 @@
             <ul class="nav-menu">
                 <li><a href="#home" class="nav-link">Home</a></li>
                 <li><a href="#features" class="nav-link">Features</a></li>
-                <li><a href="#processors" class="nav-link">Processors</a></li>
+                <li><a href="processors/" class="nav-link">Processors</a></li>
                 <li><a href="#examples" class="nav-link">Examples</a></li>
                 <li><a href="#api" class="nav-link">API</a></li>
                 <li><a href="#download" class="nav-link">Download</a></li>
@@ -83,7 +83,7 @@
                         <span class="window-title">web-scraper.xml</span>
                     </div>
                     <div class="window-content">
-                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;def var="products"&gt;
     &lt;html-to-xml advancedxmlescape="true"&gt;
       &lt;http url="https://shop.example.com/products"/&gt;
@@ -264,7 +264,7 @@
                     </div>
                     <p>Monitor product prices and availability across multiple e-commerce sites.</p>
                     <div class="example-code">
-                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
   &lt;def var="productData"&gt;
     &lt;html-to-xml advancedxmlescape="true"&gt;
@@ -286,7 +286,7 @@
                     </div>
                     <p>Extract and analyze social media posts for sentiment analysis.</p>
                     <div class="example-code">
-                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;def var="socialData"&gt;
     &lt;http url="https://api.social.com/posts?hashtag=#technology"/&gt;
   &lt;/def&gt;
@@ -323,7 +323,7 @@
                     </div>
                     <p>Complete data processing pipeline with validation and transformation.</p>
                     <div class="example-code">
-                        <pre><code class="language-xml">&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"&gt;
+                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;def var="rawData"&gt;
     &lt;file path="input.csv" action="read"/&gt;
   &lt;/def&gt;
@@ -364,11 +364,11 @@
                 <div class="api-nav">
                     <h3>Quick Navigation</h3>
                     <ul class="api-nav-list">
-                        <li><a href="api/processors.html">Processors</a></li>
-                        <li><a href="api/configuration.html">Configuration</a></li>
-                        <li><a href="api/variables.html">Variables</a></li>
-                        <li><a href="api/scripting.html">Scripting</a></li>
-                        <li><a href="api/error-handling.html">Error Handling</a></li>
+                        <li><a href="api/org/webharvest/runtime/processors/package-summary.html">Processors</a></li>
+                        <li><a href="api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
+                        <li><a href="api/org/webharvest/runtime/variables/package-summary.html">Variables</a></li>
+                        <li><a href="api/org/webharvest/runtime/scripting/package-summary.html">Scripting</a></li>
+                        <li><a href="api/org/webharvest/exception/package-summary.html">Error Handling</a></li>
                     </ul>
                 </div>
                 <div class="api-main">
@@ -378,7 +378,7 @@
 
                     <h4>Basic Configuration Structure</h4>
                     <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core"
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"
         charset="UTF-8"
         scriptlang="beanshell"&gt;
   &lt;!-- Your processors here --&gt;
@@ -484,10 +484,10 @@ java -jar webharvest-ide-2.1.0.jar</code></pre>
                 <div class="footer-section">
                     <h4>Documentation</h4>
                     <ul>
-                        <li><a href="api/processors.html">Processors</a></li>
-                        <li><a href="api/configuration.html">Configuration</a></li>
+                        <li><a href="api/org/webharvest/runtime/processors/package-summary.html">Processors</a></li>
+                        <li><a href="api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
                         <li><a href="examples/">Examples</a></li>
-                        <li><a href="api/error-handling.html">Error Handling</a></li>
+                        <li><a href="api/org/webharvest/exception/package-summary.html">Error Handling</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">

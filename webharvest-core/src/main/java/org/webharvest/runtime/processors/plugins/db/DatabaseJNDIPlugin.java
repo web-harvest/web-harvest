@@ -60,7 +60,7 @@ import com.google.inject.name.Named;
  * @version %I%, %G%
  */
 @Autoscanned
-@TargetNamespace({ "http://web-harvest.sourceforge.net/schema/2.1/jndi" })
+@TargetNamespace({ "http://org.webharvest/schema/2.1/jndi" })
 @Definition(value = "database", validAttributes = {
         DatabaseJNDIPlugin.JNDI_NAME_ATTRIBUTE })
 public final class DatabaseJNDIPlugin extends AbstractDatabasePlugin {

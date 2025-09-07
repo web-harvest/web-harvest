@@ -839,11 +839,11 @@ public class Ide extends JFrame implements ActionListener, ChangeListener {
         } else if ( COMMAND_ABOUT.equals(cmd) ) {
             this.aboutWindow.open();
         } else if ( COMMAND_HOMEPAGE.equals(cmd) ) {
-            openURLInBrowser("http://web-harvest.sourceforge.net");
+            openURLInBrowser("https://web-harvest.sourceforge.net/");
         } else if ( COMMAND_EXIT.equals(cmd) ) {
             exitApplication();
         } else if ( COMMAND_HELP.equals(cmd) ) {
-            openURLInBrowser("http://web-harvest.sourceforge.net/manual.php");
+            openURLInBrowser("https://web-harvest.sourceforge.net/");
         } else if ( COMMAND_UNDO.equals(cmd) ) {
             ConfigPanel activeConfigPanel = getActiveConfigPanel();
             if (activeConfigPanel != null) {

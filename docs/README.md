@@ -175,3 +175,4 @@ This documentation is part of Web-Harvest and is licensed under the Apache Licen
 ---
 
 For more information about Web-Harvest, visit the main project repository or the official website.
+

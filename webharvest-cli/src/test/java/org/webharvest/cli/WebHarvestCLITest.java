@@ -149,3 +149,4 @@ public class WebHarvestCLITest {
         System.setErr(originalErr);
     }
 }
+
