@@ -73,6 +73,7 @@
     </properties>
     <modules>
         <module>webharvest-core</module>
+        <module>webharvest-cli</module>
         <module>webharvest-ide</module>
     </modules>
     <distributionManagement>

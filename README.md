@@ -11,6 +11,13 @@ Web-Harvest is a powerful web scraping and data extraction tool that has been si
 - ✅ **Enhanced HTML parsing** - added advanced options for `html-to-xml` processor
 - ✅ **Backward compatibility** - examples without namespace work correctly
 - ✅ **Fixed IOC issues** - hybrid approach to Inversion of Control
+- ✅ **Code cleanup** - removed unused code identified by PMD and SpotBugs analysis
+- ✅ **Fixed examples loading** - examples now load correctly in IDE
+
+### 🆕 **New modules**
+- ✅ **Web-Harvest CLI** - dedicated command line interface module
+- ✅ **Modular architecture** - separated GUI and CLI functionality
+- ✅ **Fat JARs** - both CLI and IDE generate standalone JARs with all dependencies
 
 ### 🌟 **New business examples**
 - **`modern_web_scraping.xml`** - advanced scraping techniques with better HTML parsing
@@ -68,7 +75,10 @@ java -jar webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar
 
 ### **Command line execution**
 ```bash
-# Run example
+# Run example with CLI (recommended)
+java -jar webharvest-cli-2.1.0.jar config=examples/modern_web_scraping.xml
+
+# Run example with IDE (legacy)
 java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharvest.CommandLine config=examples/modern_web_scraping.xml
 ```
 

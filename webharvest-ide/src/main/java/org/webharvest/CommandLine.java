@@ -36,39 +36,13 @@
 */
 package org.webharvest;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.swing.SwingUtilities;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-import org.apache.log4j.PropertyConfigurator;
-import org.webharvest.definition.ConfigSource;
-import org.webharvest.definition.ConfigSourceFactory;
-import org.webharvest.definition.DefinitionResolver;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.exception.PluginException;
 import org.webharvest.gui.Ide;
-import org.webharvest.ioc.DebugFileLogger;
-import org.webharvest.ioc.HttpModule;
-import org.webharvest.ioc.ScraperModule;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.database.DefaultDriverManager;
-import org.webharvest.runtime.database.DriverManager;
-import org.webharvest.runtime.web.HttpClientManager.ProxySettings;
-import org.webharvest.utils.CommonUtil;
-
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 
 /**
  * Startup class  for Web-Harvest.
@@ -110,183 +84,30 @@ public class CommandLine {
             printHelp();
             System.exit(0);
         } else {
-            String configFilePath = params.get("config");
-            if (configFilePath == null || "".equals(configFilePath)) {
-                System.err.println("You must specify configuration file path using config=<path> argument!");
-                printHelp();
-                System.exit(1);
-            }
-
-            String workingDir = params.get("workdir");
-            if (workingDir == null || "".equals(workingDir)) {
-                workingDir = ".";
-            }
-
-            parseLoggingSettings(params);
-
-            final ProxySettings proxySettings = parseProxySettings(params);
-
-            final Injector injector = Guice.createInjector(
-                    new ScraperModule(workingDir),
-                    new HttpModule(proxySettings));
-
-            parseDebugModeSettings(params, workingDir);
-
-            parseDatabaseDrivers(params);
-
-            final String configLowercase = configFilePath.toLowerCase();
-
-            final HarvestLoadCallback callback = new HarvestLoadCallback() {
-                @Override
-                public void onSuccess(final List<IElementDef> elements) {
-                    // TODO Auto-generated method stub
-
-                }
-            };
-
-            final ConfigSourceFactory configSourceFactory =
-                    injector.getInstance(ConfigSourceFactory.class);
-            final Harvest harvest = injector.getInstance(Harvest.class);
-            final ConfigSource configSource = (configLowercase.startsWith("http://") || configLowercase.startsWith("https://"))
-                    ? configSourceFactory.create(new URL(configFilePath))
-                    : configSourceFactory.create(new File(configFilePath));
-            // FIXME rbala although temporary solution it is duplicated (ConfigPanel)
-            final Harvester harvester = harvest.getHarvester(configSource, callback);
-
-            harvester.execute(new Harvester.ContextInitCallback() {
-                @Override
-                public void onSuccess(DynamicScopeContext context) {
-                    // adds initial variables to the scraper's content, if any
-                    final Map<String, String> vars =
-                        getArgValue(getVariables(params), true);
-                    for (Map.Entry<String, String> var : vars.entrySet()) {
-                        final String varName = var.getKey();
-                        if (varName.length() > 0) {
-                            context.setLocalVar(varName, var.getValue());
-                        }
-                    }
-                }
-
-            });
-
+            // CLI functionality has been moved to webharvest-cli module
+            System.err.println("Command line functionality has been moved to webharvest-cli module.");
+            System.err.println("Please use: java -jar webharvest-cli-XX.jar <arguments>");
+            System.err.println("");
+            System.err.println("To open Web-Harvest GUI, run without arguments:");
+            System.err.println("   java -jar webharvest-ide-XX.jar");
+            System.exit(1);
         }
     }
 
-    private static void parseDebugModeSettings(final Map<String, String> params,
-            final String workingDir) throws IOException {
-        if (CommonUtil.isBooleanTrue(params.get("debug"))) {
-            final Logger logger = LogManager.getLogger(DebugFileLogger.NAME);
-            logger.setLevel(Level.TRACE);
-            logger.addAppender(new FileAppender(
-                    new PatternLayout(DebugFileLogger.LAYOUT),
-                    new File(workingDir, "_DEBUG").getPath(),
-                    false));
-        }
-    }
-
-    private static void parseLoggingSettings(final Map<String, String> params) {
-        final String logPropsFile = params.get("logpropsfile");
-        final String logLevel = params.get("loglevel");
-        if (logPropsFile != null && !"".equals(logPropsFile)) {
-            PropertyConfigurator.configure(logPropsFile);
-        } else if (logLevel != null && !"".equals(logLevel)) {
-            LogManager.getRootLogger().setLevel(Level.toLevel(logLevel));
-        }
-    }
-
-    private static ProxySettings parseProxySettings(
-            final Map<String, String> params) {
-         final String proxyHost = params.get("proxyhost");
-         if (proxyHost == null || "".equals(proxyHost)) {
-             return ProxySettings.NO_PROXY_SET;
-         }
-
-         final ProxySettings.Builder proxySettingsBuilder =
-             new ProxySettings.Builder(proxyHost);
-
-         String proxyPort = params.get("proxyport");
-         if (proxyPort != null && !"".equals(proxyPort)) {
-             proxySettingsBuilder.setProxyPort(
-                     Integer.parseInt(proxyPort));
-         }
-
-         String proxyUser = params.get("proxyuser");
-         if (proxyUser != null && !"".equals(proxyUser)) {
-
-             proxySettingsBuilder.setProxyCredentialsUsername(proxyUser);
-             proxySettingsBuilder.setProxyCredentialsPassword(
-                     params.get("proxypassword"));
-             proxySettingsBuilder.setProxyCredentialsNTHost(
-                     params.get("proxynthost"));
-             proxySettingsBuilder.setProxyCredentialsNTDomain(
-                     params.get("proxyntdomain"));
-         }
-
-         return proxySettingsBuilder.build();
-    }
-
-    private static void parseDatabaseDrivers(final Map<String, String> params) {
-        final String drivers = params.get("dbdrivers");
-        final DriverManager driverManager = DefaultDriverManager.INSTANCE;
-
-        if (!CommonUtil.isEmpty(drivers)) {
-            for (String driverLocation : CommonUtil.tokenize(drivers, ",")) {
-                driverManager.addDriverResource(
-                        new File(driverLocation).toURI());
-            }
-        }
-    }
-
-    /**
-     * Returns {@link String} array with value of 'vars' parameter if it exists,
-     * otherwise it returns empty array. The value of 'vars' parameter is split
-     * using ';' delimiter.
-     *
-     * @param params
-     *            parameters specified in the command line
-     * @return array of configuration's variables
-     */
-    private static String[] getVariables(final Map<String, String> params) {
-        final String vars = params.get("vars");
-        if (vars != null) {
-            return vars.split(";");
-        }
-        return new String[]{};
-    }
 
     private static void printHelp() {
         System.out.println("");
+        System.out.println("Web-Harvest IDE");
+        System.out.println("===============");
+        System.out.println("");
         System.out.println("To open Web-Harvest GUI:");
-        System.out.println("   java -jar webharvestXX.jar");
-        System.out.println("or just double-click webharvestXX.jar from the file manager.");
+        System.out.println("   java -jar webharvest-ide-XX.jar");
+        System.out.println("or just double-click webharvest-ide-XX.jar from the file manager.");
         System.out.println("");
-        System.out.println("Command line use:");
-        System.out.println("   java -jar webharvestXX.jar [-h] config=<path> [workdir=<path>] [debug=yes|no]");
-        System.out.println("             [proxyhost=<proxy server> [proxyport=<proxy server port>]]");
-        System.out.println("             [proxyuser=<proxy username> [proxypassword=<proxy password>]]");
-        System.out.println("             [proxynthost=<NT host name>]");
-        System.out.println("             [proxyntdomain=<NT domain name>]");
-        System.out.println("             [loglevel=<level>]");
-        System.out.println("             [logpropsfile=<path>]");
-        System.out.println("             [plugins=<plugin-class1>[:<uri1>][,<plugin-class2>[:<uri2>]]...]");
-        System.out.println("             [dbdrivers=<jar-uri1>[,<jar-uri2>]...]");
-        System.out.println("             [vars=<name1>=<value1>[;<name2>=<value2>...]]");
+        System.out.println("For command line usage, please use the webharvest-cli module:");
+        System.out.println("   java -jar webharvest-cli-XX.jar <arguments>");
         System.out.println("");
-        System.out.println("   -h            - shows this help.");
-        System.out.println("   config        - path or URL of configuration (URL must begin with \"http://\" or \"https://\").");
-        System.out.println("   workdir       - path of the working directory (default is current directory).");
-        System.out.println("   debug         - specify if Web-Harvest generates debugging output (default is no).");
-        System.out.println("   proxyhost     - specify proxy server.");
-        System.out.println("   proxyport     - specify port for proxy server.");
-        System.out.println("   proxyuser     - specify proxy server username.");
-        System.out.println("   proxypassword - specify proxy server password.");
-        System.out.println("   proxynthost   - NTLM authentication scheme - the host the request is originating from.");
-        System.out.println("   proxyntdomain - NTLM authentication scheme - the domain to authenticate within.");
-        System.out.println("   loglevel      - specify level of logging for Log4J (trace,info,debug,warn,error,fatal).");
-        System.out.println("   logpropsfile  - file path to custom Log4J properties. If specified, loglevel is ignored.");
-        System.out.println("   dbdrivers     - comma-separated list of JAR locations containing database drivers");
-        System.out.println("   vars	         - semicolon-separated list of pairs <name>=<value>, where <name> is a name of initial variable " +
-                "of the Web-Harvest context and <value> is its value");
+        System.out.println("For more information, visit: http://web-harvest.sourceforge.net/");
     }
 
 }
