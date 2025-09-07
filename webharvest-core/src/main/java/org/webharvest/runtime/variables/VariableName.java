@@ -7,7 +7,7 @@ import org.webharvest.exception.VariableException;
 
 /**
  * Represents name of the {@link org.webharvest.runtime.variables.Variable}
- * that is set on {@link org.webharvest.deprecated.runtime.DynamicScopeContext}.
+ * that is set on {@link org.webharvest.runtime.DynamicScopeContext}.
  * The variable name must conform the general rules that apply
  * to variable names of programming languages.
  *

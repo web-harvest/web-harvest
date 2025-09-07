@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- E-commerce price monitoring example -->
-    <var-def name="productUrl">https://httpbin.org/json</var-def>
-    <var-def name="priceThreshold">100.00</var-def>
-    
+    <def var="productUrl">https://httpbin.org/json</def>
+    <def var="priceThreshold">100.00</def>
     <!-- Monitor product prices -->
-    <var-def name="productData">
+    <def var="productData">
         <template>
             <![CDATA[
             {
@@ -17,21 +16,18 @@
             }
             ]]>
         </template>
-    </var-def>
-        
-        <!-- Process the data - simplified approach -->
-        <var-def name="currentPrice">89.99</var-def>
-        
-        <!-- Check if price is below threshold -->
-        <file path="price_check.txt" action="write">
-            <template>
-                <![CDATA[
+    </def>
+    <!-- Process the data - simplified approach -->
+    <def var="currentPrice">89.99</def>
+    <!-- Check if price is below threshold -->
+    <file path="price_check.txt" action="write">
+        <template>
+            <![CDATA[
                 Price Check: $${currentPrice} (threshold: $${priceThreshold})
                 Status: Price is below threshold - ALERT!
                 ]]>
-            </template>
-        </file>
-    
+        </template>
+    </file>
     <!-- Generate monitoring report -->
     <file path="monitoring_report.xml" action="write">
         <template>

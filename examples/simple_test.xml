@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config" charset="UTF-8">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
     <!-- Simple test example -->
-    <var-def name="content">
+    <def var="content">
         <html-to-xml>
             <http url="https://httpbin.org/html"/>
         </html-to-xml>
-    </var-def>
+    </def>
     <!-- Extract title -->
-    <var-def name="title">
+    <def var="title">
         <xpath expression="//h1">
-            <var name="content"/>
+            <get var="content"/>
         </xpath>
-    </var-def>
+    </def>
     <!-- Save result -->
     <file action="write" path="test_result.html" charset="UTF-8">
-        <var name="content"/>
+        <get var="content"/>
     </file>
     <!-- Print title -->
     <file action="write" path="title.txt" charset="UTF-8">
-        <var name="title"/>
+        <get var="title"/>
     </file>
 </config>

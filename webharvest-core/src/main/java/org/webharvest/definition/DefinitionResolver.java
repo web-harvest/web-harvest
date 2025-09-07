@@ -299,11 +299,6 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
             // Create a temporary DefinitionResolver to handle plugin registration
             DefinitionResolver tempResolver = new DefinitionResolver(registry);
             
-            // Register deprecated processors
-            AnnotatedPluginsPostProcessor deprecatedProcessor = 
-                new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors");
-            deprecatedProcessor.postProcess(tempResolver);
-            
             // Register current processors
             AnnotatedPluginsPostProcessor currentProcessor = 
                 new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");

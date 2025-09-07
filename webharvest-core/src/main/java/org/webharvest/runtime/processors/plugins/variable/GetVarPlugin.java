@@ -39,6 +39,7 @@
 package org.webharvest.runtime.processors.plugins.variable;
 
 import static org.webharvest.WHConstants.XMLNS_CORE;
+import static org.webharvest.WHConstants.XMLNS_CORE_10;
 
 import java.text.MessageFormat;
 
@@ -51,7 +52,7 @@ import org.webharvest.runtime.processors.plugins.TargetNamespace;
 import org.webharvest.runtime.variables.Variable;
 
 @Autoscanned
-@TargetNamespace(XMLNS_CORE)
+@TargetNamespace({XMLNS_CORE, XMLNS_CORE_10})
 @Definition(value="get", validAttributes={"var"},
         requiredAttributes="var", body=false)
 public class GetVarPlugin extends WebHarvestPlugin {

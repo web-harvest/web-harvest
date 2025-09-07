@@ -13,6 +13,12 @@ Web-Harvest is a powerful web scraping and data extraction tool that has been si
 - ✅ **Fixed IOC issues** - hybrid approach to Inversion of Control
 - ✅ **Code cleanup** - removed unused code identified by PMD and SpotBugs analysis
 - ✅ **Fixed examples loading** - examples now load correctly in IDE
+- ✅ **Fixed runtime errors** - resolved all example execution errors:
+  - Fixed `sys.recordCount()` method missing in `SystemUtilities`
+  - Fixed "Integer division by zero" errors in XQuery expressions
+  - Fixed variable scoping issues in `functions.xml`
+  - Fixed variable definition problems in `crawler.xml` and `yahoomail.xml`
+  - Updated all examples to Web-Harvest 2.1 namespace and syntax
 
 ### 🆕 **New modules**
 - ✅ **Web-Harvest CLI** - dedicated command line interface module
@@ -390,7 +396,7 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 
 ## 📝 **Changelog**
 
-### **v2.1.0-SNAPSHOT (2025-09-06)**
+### **v2.1.0-SNAPSHOT (2025-01-15)**
 - ✅ Fixed EventBus bugs in IDE
 - ✅ Added advanced options for html-to-xml processor
 - ✅ Implemented backward compatibility
@@ -398,6 +404,11 @@ java -cp "webharvest-ide/target/webharvest-ide-2.1.0-SNAPSHOT.jar" org.webharves
 - ✅ Fixed IOC issues
 - ✅ Enhanced error handling
 - ✅ Added comprehensive documentation
+- ✅ Fixed all runtime errors in examples
+- ✅ Updated examples to Web-Harvest 2.1 namespace
+- ✅ Resolved variable scoping and definition issues
+- ✅ Added missing system utility methods
+- ✅ Fixed XQuery division by zero errors
 
 ## 📄 **License**
 

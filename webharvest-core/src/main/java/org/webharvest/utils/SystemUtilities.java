@@ -173,4 +173,15 @@ public class SystemUtilities {
         throw new UserException(message);
     }
 
+    /**
+     * Returns the number of records processed in the current context.
+     * This is a placeholder implementation that returns 0.
+     * In a real implementation, this would track the actual number of processed records.
+     */
+    public int recordCount() {
+        // For now, return 0 as a placeholder
+        // In a real implementation, this would need to track processed records
+        return 0;
+    }
+
 }

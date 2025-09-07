@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
-    <var-def name="searchTerm">artificial intelligence</var-def>
-    <var-def name="maxResults">5</var-def>
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
+    <def var="searchTerm">artificial intelligence</def>
+    <def var="maxResults">5</def>
     
     <!-- Modern web scraping using improved html-to-xml -->
-    <var-def name="searchResults">
+    <def var="searchResults">
         <html-to-xml 
             advancedxmlescape="true" 
             specialentities="true" 
@@ -14,20 +14,20 @@
             treatunknowntagsascontent="true">
             <http url="https://httpbin.org/html"/>
         </html-to-xml>
-    </var-def>
+    </def>
     
     <!-- Extract content using XPath -->
-    <var-def name="pageTitle">
+    <def var="pageTitle">
         <xpath expression="//title">
             <script>searchResults</script>
         </xpath>
-    </var-def>
+    </def>
     
-    <var-def name="pageContent">
+    <def var="pageContent">
         <xpath expression="//body">
             <script>searchResults</script>
         </xpath>
-    </var-def>
+    </def>
     
     <!-- Save results to file -->
     <file path="modern_search_results.xml" action="write">

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config" charset="UTF-8">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
     <file action="write" path="xquerytest.xml">
         <xquery>
             <xq-param name="logicvalue" type="boolean">true</xq-param>

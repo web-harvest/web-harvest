@@ -3,32 +3,32 @@
 	Expects following initial variable: 
 		search - search expression
 -->
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config" charset="UTF-8">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
     <include path="functions.xml"/>
     <!-- defines search keyword and start URL -->
-    <var-def name="search" overwrite="false">platon</var-def>
-    <var-def name="url">
+    <def var="search" overwrite="false">platon</def>
+    <def var="url">
         <xpath expression="//noscript//a/@href[1]">
             <html-to-xml advancedxmlescape="true" specialentities="true">
                 <http url="http://images.google.com/images?q=${search}&amp;hl=en&amp;btnG=Search+Images"/>
             </html-to-xml>
         </xpath>
-    </var-def>
+    </def>
     <!-- collects all image URLs -->
-    <var-def name="imgLinks">
+    <def var="imgLinks">
         <call name="download-multipage-list">
             <call-param name="pageUrl">
-                <var name="url"/>
+                <get var="url"/>
             </call-param>
             <call-param name="nextXPath">//td[.='Next']/a/@href</call-param>
             <call-param name="itemXPath">//img[contains(@src, 'images?q=tbn')]/@src</call-param>
             <call-param name="maxloops">5</call-param>
         </call>
-    </var-def>
+    </def>
     <!-- download images and saves them to the files -->
     <loop item="link" index="i" filter="unique">
         <list>
-            <var name="imgLinks"/>
+            <get var="imgLinks"/>
         </list>
         <body>
             <file action="write" type="binary" path="google_images/${search}_${i}.gif">

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config" charset="UTF-8">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core" charset="UTF-8">
     <file action="write" path="expekt/odds.xml">
         <template>
             <![CDATA[ <odds time="${sys.datetime("dd.MM.yyyy, HH:mm:ss")}"> ]]>
@@ -19,16 +19,16 @@
             -->
             <body>
                 <empty>
-                    <var-def name="clazz">
+                    <def var="clazz">
                         <xpath expression="/tr/@class">
-                            <var name="row"/>
+                            <get var="row"/>
                         </xpath>
-                    </var-def>
+                    </def>
                     <case>
                         <if condition='${ "t".equals(clazz.toString()) }'>
-                            <var-def name="currDate">
-                                <var name="row"/>
-                            </var-def>
+                            <def var="currDate">
+                                <get var="row"/>
+                            </def>
                         </if>
                     </case>
                 </empty>
@@ -36,10 +36,10 @@
                     <if condition='${ "oddsRow1".equals(clazz.toString()) || "oddsRow2".equals(clazz.toString()) }'>
                         <xquery>
                             <xq-param name="doc">
-                                <var name="row"/>
+                                <get var="row"/>
                             </xq-param>
                             <xq-param name="currDate">
-                                <var name="currDate"/>
+                                <get var="currDate"/>
                             </xq-param>
                             <xq-expression>
                                 <![CDATA[

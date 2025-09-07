@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- Improved New York Times scraper with better HTML handling -->
-    <var-def name="startUrl">https://httpbin.org/html</var-def>
+    <def var="startUrl">https://httpbin.org/html</def>
     
     <!-- Use improved html-to-xml for better HTML parsing -->
-    <var-def name="pageContent">
+    <def var="pageContent">
         <html-to-xml 
             advancedxmlescape="true" 
             specialentities="true" 
@@ -18,35 +18,35 @@
             omittermlenvelope="true">
             <http url="${startUrl}"/>
         </html-to-xml>
-    </var-def>
+    </def>
     
     <!-- Extract content using XPath -->
-    <var-def name="pageTitle">
+    <def var="pageTitle">
         <xpath expression="//title">
             <script>pageContent</script>
         </xpath>
-    </var-def>
+    </def>
     
-    <var-def name="headings">
+    <def var="headings">
         <xpath expression="//h1 | //h2 | //h3 | //h4 | //h5 | //h6">
             <script>pageContent</script>
         </xpath>
-    </var-def>
+    </def>
     
-    <var-def name="paragraphs">
+    <def var="paragraphs">
         <xpath expression="//p">
             <script>pageContent</script>
         </xpath>
-    </var-def>
+    </def>
     
-    <var-def name="links">
+    <def var="links">
         <xpath expression="//a[@href]">
             <script>pageContent</script>
         </xpath>
-    </var-def>
+    </def>
     
     <!-- Process the content -->
-    <var-def name="processedContent">
+    <def var="processedContent">
         <template>
             <![CDATA[
             <news_article>
@@ -64,7 +64,7 @@
             </news_article>
             ]]>
         </template>
-    </var-def>
+    </def>
     
     <!-- Save the processed content -->
     <file path="improved_news_article.xml" action="write">
@@ -72,7 +72,7 @@
     </file>
     
     <!-- Alternative approach using improved html-to-xml -->
-    <var-def name="alternativeContent">
+    <def var="alternativeContent">
         <html-to-xml 
             advancedxmlescape="true" 
             specialentities="true" 
@@ -86,14 +86,14 @@
             omittermlenvelope="true">
             <http url="${startUrl}"/>
         </html-to-xml>
-    </var-def>
+    </def>
     
     <!-- Extract content using XPath -->
-    <var-def name="extractedContent">
+    <def var="extractedContent">
         <xpath expression="//body">
             <script>alternativeContent</script>
         </xpath>
-    </var-def>
+    </def>
     
     <!-- Save alternative content -->
     <file path="alternative_content.xml" action="write">

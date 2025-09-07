@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- API integration and data processing example -->
-    <var-def name="apiKey">demo_key_12345</var-def>
-    <var-def name="baseUrl">https://httpbin.org</var-def>
+    <def var="apiKey">demo_key_12345</def>
+    <def var="baseUrl">https://httpbin.org</def>
     
     <!-- Fetch data from REST API -->
-    <var-def name="userData">
+    <def var="userData">
         <http url="${baseUrl}/json">
             <http-header name="Authorization">Bearer ${apiKey}</http-header>
             <http-header name="Content-Type">application/json</http-header>
         </http>
-    </var-def>
+    </def>
     
     <!-- Process JSON response -->
-    <var-def name="processedData">
+    <def var="processedData">
         <json-to-xml tag="api_response">
             <script>userData</script>
         </json-to-xml>
-    </var-def>
+    </def>
     
     <!-- Extract specific fields -->
-    <var-def name="userName">
+    <def var="userName">
         <xpath expression="//slideshow/title">
             <script>processedData</script>
         </xpath>
-    </var-def>
+    </def>
     
-    <var-def name="userEmail">
+    <def var="userEmail">
         <xpath expression="//slideshow/date">
             <script>processedData</script>
         </xpath>
-    </var-def>
+    </def>
     
     <!-- Transform data using XSLT -->
-    <var-def name="transformedData">
+    <def var="transformedData">
         <xslt>
             <xml>
                 <script>processedData</script>
@@ -56,24 +56,24 @@
                 ]]>
             </stylesheet>
         </xslt>
-    </var-def>
+    </def>
     
     <!-- Send data to another API endpoint -->
-    <var-def name="apiResponse">
+    <def var="apiResponse">
         <http method="post" url="${baseUrl}/post">
             <http-header name="Content-Type">application/json</http-header>
             <http-param name="data">
                 <script>transformedData</script>
             </http-param>
         </http>
-    </var-def>
+    </def>
     
     <!-- Process API response -->
-    <var-def name="responseData">
+    <def var="responseData">
         <json-to-xml tag="response">
             <script>apiResponse</script>
         </json-to-xml>
-    </var-def>
+    </def>
     
     <!-- Generate integration report -->
     <file path="api_integration_report.xml" action="write">
@@ -100,11 +100,11 @@
     <try>
         <body>
             <!-- Simulate API call that might fail -->
-            <var-def name="riskyApiCall">
+            <def var="riskyApiCall">
                 <http url="${baseUrl}/status/500">
                     <http-header name="Authorization">Bearer ${apiKey}</http-header>
                 </http>
-            </var-def>
+            </def>
         </body>
         <catch>
             <file path="api_error_log.txt" action="write">

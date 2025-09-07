@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- Social media analytics and sentiment analysis -->
-    <var-def name="hashtag">#technology</var-def>
-    <var-def name="maxPosts">10</var-def>
+    <def var="hashtag">#technology</def>
+    <def var="maxPosts">10</def>
     
     <!-- Simulate social media data extraction -->
-    <var-def name="socialData">
+    <def var="socialData">
         <template>
             <![CDATA[
             [
@@ -17,17 +17,17 @@
             ]
             ]]>
         </template>
-    </var-def>
+    </def>
     
     <!-- Convert JSON to XML for processing -->
-    <var-def name="postsXml">
+    <def var="postsXml">
         <json-to-xml>
             <script>socialData</script>
         </json-to-xml>
-    </var-def>
+    </def>
     
     <!-- Analyze sentiment -->
-    <var-def name="sentimentAnalysis">
+    <def var="sentimentAnalysis">
         <xquery>
             <xq-param name="posts">
                 <script>postsXml</script>
@@ -47,17 +47,17 @@
                     <positive_posts>{$positive}</positive_posts>
                     <negative_posts>{$negative}</negative_posts>
                     <neutral_posts>{$neutral}</neutral_posts>
-                    <positive_percentage>{round($positive div $total * 100)}</positive_percentage>
-                    <negative_percentage>{round($negative div $total * 100)}</negative_percentage>
-                    <neutral_percentage>{round($neutral div $total * 100)}</neutral_percentage>
+                    <positive_percentage>{if ($total > 0) then round($positive div $total * 100) else 0}</positive_percentage>
+                    <negative_percentage>{if ($total > 0) then round($negative div $total * 100) else 0}</negative_percentage>
+                    <neutral_percentage>{if ($total > 0) then round($neutral div $total * 100) else 0}</neutral_percentage>
                 </sentiment_analysis>
                 ]]>
             </xq-expression>
         </xquery>
-    </var-def>
+    </def>
     
     <!-- Calculate engagement metrics -->
-    <var-def name="engagementMetrics">
+    <def var="engagementMetrics">
         <xquery>
             <xq-param name="posts">
                 <script>postsXml</script>
@@ -68,8 +68,8 @@
                 
                 let $totalLikes := sum($posts//item/likes)
                 let $totalRetweets := sum($posts//item/retweets)
-                let $avgLikes := round($totalLikes div count($posts//item))
-                let $avgRetweets := round($totalRetweets div count($posts//item))
+                let $avgLikes := if (count($posts//item) > 0) then round($totalLikes div count($posts//item)) else 0
+                let $avgRetweets := if (count($posts//item) > 0) then round($totalRetweets div count($posts//item)) else 0
                 
                 return
                 <engagement_metrics>
@@ -81,7 +81,7 @@
                 ]]>
             </xq-expression>
         </xquery>
-    </var-def>
+    </def>
     
     <!-- Generate analytics report -->
     <file path="social_analytics_report.xml" action="write">

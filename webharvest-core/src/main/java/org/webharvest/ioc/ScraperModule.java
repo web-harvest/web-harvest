@@ -14,7 +14,6 @@ import org.webharvest.LockedRegistry;
 import org.webharvest.Registry;
 import org.webharvest.ScrapingAware;
 import org.webharvest.definition.*;
-import org.webharvest.deprecated.runtime.ScraperContext10;
 import org.webharvest.events.DefaultHandlerHolder;
 import org.webharvest.events.EventSink;
 import org.webharvest.events.HandlerHolder;
@@ -94,7 +93,6 @@ public final class ScraperModule extends AbstractModule {
         bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
                 .annotatedWith(Names.named("resolverPostProcessors"))
                 .toInstance(Arrays.asList(
-                    new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors"),
                     new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
                 ));
 
@@ -170,12 +168,10 @@ public final class ScraperModule extends AbstractModule {
         bind(ContextFactory.class).toInstance(new ContextFactory() {
 
             @Inject private Provider<ScraperContext> newProvider;
-            @Inject private Provider<ScraperContext10> oldProvider;
 
             @Override
             public DynamicScopeContext create(final Config config) {
-                final DynamicScopeContext context = Config.Version.v1 == config.getVersion()
-                    ? oldProvider.get() : newProvider.get();
+                final DynamicScopeContext context = newProvider.get();
                 // TODO rbala So far this should be enough. Find better option to pass configuration when instantiating context
                 context.setConfig(config);
 

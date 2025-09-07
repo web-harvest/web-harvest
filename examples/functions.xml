@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- 
         Download multi-page list of items.
         
@@ -13,23 +13,21 @@
     <function name="download-multipage-list">
         <return>
             <while condition="${pageUrl.toString().length() != 0}" maxloops="${maxloops}" index="i">
-                <empty>
-                    <var-def name="content">
-                        <html-to-xml advancedxmlescape="true" specialentities="true" unicodechars="true" allowmultiwordattributes="true" omitunknowntags="true">
-                            <http url="${pageUrl}"/>
-                        </html-to-xml>
-                    </var-def>
-                    <var-def name="nextLinkUrl">
-                        <xpath expression="${nextXPath}">
-                            <var name="content"/>
-                        </xpath>
-                    </var-def>
-                    <var-def name="pageUrl">
-                        <template>${sys.fullUrl(pageUrl.toString(), nextLinkUrl.toString())}</template>
-                    </var-def>
-                </empty>
+                <def var="content">
+                    <html-to-xml advancedxmlescape="true" specialentities="true" unicodechars="true" allowmultiwordattributes="true" omitunknowntags="true">
+                        <http url="${pageUrl}"/>
+                    </html-to-xml>
+                </def>
+                <def var="nextLinkUrl">
+                    <xpath expression="${nextXPath}">
+                        <get var="content"/>
+                    </xpath>
+                </def>
+                <def var="pageUrl">
+                    <template>${sys.fullUrl(pageUrl.toString(), nextLinkUrl.toString())}</template>
+                </def>
                 <xpath expression="${itemXPath}">
-                    <var name="content"/>
+                    <get var="content"/>
                 </xpath>
             </while>
         </return>

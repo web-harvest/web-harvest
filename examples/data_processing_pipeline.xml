@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://web-harvest.sourceforge.net/schema/1.0/config">
+<config xmlns="http://web-harvest.sourceforge.net/schema/2.1/core">
     <!-- Advanced data processing pipeline example -->
-    <var-def name="inputFile">data_input.csv</var-def>
-    <var-def name="outputFile">processed_data.xml</var-def>
+    <def var="inputFile">data_input.csv</def>
+    <def var="outputFile">processed_data.xml</def>
     <!-- Create sample input data -->
     <file path="${inputFile}" action="write">
         <template>
@@ -18,11 +18,11 @@
         </template>
     </file>
     <!-- Read and parse CSV data -->
-    <var-def name="csvData">
+    <def var="csvData">
         <file path="${inputFile}"/>
-    </var-def>
+    </def>
     <!-- Convert CSV to XML -->
-    <var-def name="xmlData">
+    <def var="xmlData">
         <template>
             <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
 <employees>
@@ -70,16 +70,16 @@
 </employee>
 </employees>]]>
         </template>
-    </var-def>
+    </def>
     <!-- Debug: Save xmlData to file -->
     <file path="debug_xmlData.xml" action="write">
-        <var name="xmlData"/>
+        <get var="xmlData"/>
     </file>
     <!-- Process and analyze data -->
-    <var-def name="analysisResults">
+    <def var="analysisResults">
         <xquery>
             <xq-param name="employees">
-                <var name="xmlData"/>
+                <get var="xmlData"/>
             </xq-param>
             <xq-expression>
                 <![CDATA[
@@ -116,7 +116,7 @@
                 ]]>
             </xq-expression>
         </xquery>
-    </var-def>
+    </def>
     <!-- Generate reports for different departments -->
     <loop item="department" index="i">
         <list>
@@ -125,7 +125,7 @@
             <text>Sales</text>
         </list>
         <body>
-            <var-def name="departmentReport">
+            <def var="departmentReport">
                 <template>
                     <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
 <department_report>
@@ -135,9 +135,9 @@
     </employees>
 </department_report>]]>
                 </template>
-            </var-def>
+            </def>
             <file path="report_${department}.xml" action="write">
-                <var name="departmentReport"/>
+                <get var="departmentReport"/>
             </file>
         </body>
     </loop>
@@ -149,7 +149,7 @@
             <executive_summary>
                 <generated_at>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</generated_at>
                 <analysis_results>
-                    <var name="analysisResults"/>
+                    <get var="analysisResults"/>
                 </analysis_results>
                 <recommendations>
                     <recommendation>
@@ -168,10 +168,10 @@
         </template>
     </file>
     <!-- Generate data quality report -->
-    <var-def name="dataQualityReport">
+    <def var="dataQualityReport">
         <xquery>
             <xq-param name="employees">
-                <var name="xmlData"/>
+                <get var="xmlData"/>
             </xq-param>
             <xq-expression>
                 <![CDATA[
@@ -200,9 +200,9 @@
                 ]]>
             </xq-expression>
         </xquery>
-    </var-def>
+    </def>
     <file path="data_quality_report.xml" action="write">
-        <var name="dataQualityReport"/>
+        <get var="dataQualityReport"/>
     </file>
     <!-- Generate final output -->
     <file path="${outputFile}" action="write">
@@ -216,13 +216,13 @@
                     <records_processed>${sys.recordCount()}</records_processed>
                 </metadata>
                 <raw_data>
-                    <var name="cleanXmlData"/>
+                    <get var="cleanXmlData"/>
                 </raw_data>
                 <analysis>
-                    <var name="analysisResults"/>
+                    <get var="analysisResults"/>
                 </analysis>
                 <data_quality>
-                    <var name="dataQualityReport"/>
+                    <get var="dataQualityReport"/>
                 </data_quality>
             </processed_data>
             ]]>

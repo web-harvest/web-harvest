@@ -50,7 +50,7 @@ import java.io.StringReader;
  * If one strategy fails, the next one in the chain is tried.
  */
 @Autoscanned
-@TargetNamespace({"http://web-harvest.sourceforge.net/schema/1.0/config"})
+@TargetNamespace({XMLNS_CORE, XMLNS_CORE_10})
 @Definition(value = "html-to-xml", definitionClass = HtmlToXmlDef.class)
 public class HtmlToXmlProcessor extends AbstractProcessor<HtmlToXmlDef> {
 
