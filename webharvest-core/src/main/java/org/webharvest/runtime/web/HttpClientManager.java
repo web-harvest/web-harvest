@@ -101,17 +101,28 @@ public class HttpClientManager {
 
     private final HttpClient client;
     private final HttpInfo httpInfo;
+    private HttpSslConfig sslConfig;
+
+    public HttpClientManager(final ProxySettings proxySettings) {
+        this(proxySettings, null);
+    }
 
     @Inject
-    public HttpClientManager(final ProxySettings proxySettings) {
+    public HttpClientManager(final ProxySettings proxySettings, final HttpSslConfig sslConfig) {
         this.client = new HttpClient();
         this.httpInfo = new HttpInfo(client);
+        this.sslConfig = sslConfig;
 
         final HttpClientParams clientParams = new HttpClientParams();
         clientParams.setBooleanParameter("http.protocol.allow-circular-redirects", true);
         this.client.setParams(clientParams);
 
         proxySettings.apply(this.client);
+        
+        // Configure SSL if provided
+        if (sslConfig != null) {
+            configureSSL();
+        }
     }
 
     public void setCookiePolicy(String cookiePolicy) {
@@ -402,6 +413,56 @@ public class HttpClientManager {
 
     public HttpClient getHttpClient() {
         return client;
+    }
+
+    /**
+     * Configures SSL settings for the HTTP client
+     */
+    private void configureSSL() {
+        if (sslConfig == null) {
+            return;
+        }
+        
+        try {
+            sslConfig.registerHttpsProtocol();
+            LOG.info("SSL configuration applied: mode={}, protocol={}", 
+                    sslConfig.getSslMode(), sslConfig.getSslProtocol());
+        } catch (Exception e) {
+            LOG.error("Failed to configure SSL", e);
+            throw new RuntimeException("Failed to configure SSL", e);
+        }
+    }
+
+    /**
+     * Sets SSL configuration for this HTTP client manager
+     * 
+     * @param sslConfig SSL configuration to use
+     */
+    public void setSslConfig(HttpSslConfig sslConfig) {
+        this.sslConfig = sslConfig;
+        if (sslConfig != null) {
+            configureSSL();
+        }
+    }
+
+    /**
+     * Gets current SSL configuration
+     * 
+     * @return current SSL configuration or null if not set
+     */
+    public HttpSslConfig getSslConfig() {
+        return sslConfig;
+    }
+
+    /**
+     * Creates a new HTTP client manager with SSL configuration
+     * 
+     * @param proxySettings proxy settings
+     * @param sslConfig SSL configuration
+     * @return new HttpClientManager instance
+     */
+    public static HttpClientManager createWithSsl(ProxySettings proxySettings, HttpSslConfig sslConfig) {
+        return new HttpClientManager(proxySettings, sslConfig);
     }
 
     // ProxySettings class and its inner Builder class encapsulates logic
