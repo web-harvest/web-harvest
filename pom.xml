@@ -137,6 +137,14 @@
                     <target>11</target>
                     <encoding>UTF-8</encoding>
                     <optimize>true</optimize>
+                    <compilerArgs>
+                        <arg>--add-modules</arg>
+                        <arg>java.base</arg>
+                        <arg>--add-modules</arg>
+                        <arg>java.net</arg>
+                        <arg>--add-modules</arg>
+                        <arg>java.security</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -483,22 +491,22 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>13.0.1</version>
+                <version>30.1.1-jre</version>
             </dependency>
             <dependency>
                 <groupId>com.google.inject</groupId>
                 <artifactId>guice</artifactId>
-                <version>3.0</version>
+                <version>4.2.3</version>
             </dependency>
             <dependency>
                 <groupId>com.google.inject.extensions</groupId>
                 <artifactId>guice-assistedinject</artifactId>
-                <version>3.0</version>
+                <version>4.2.3</version>
             </dependency>
             <dependency>
                 <groupId>com.google.inject.extensions</groupId>
                 <artifactId>guice-multibindings</artifactId>
-                <version>3.0</version>
+                <version>4.2.3</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
