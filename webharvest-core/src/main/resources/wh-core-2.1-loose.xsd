@@ -954,6 +954,102 @@
                         </xs:documentation>
                     </xs:annotation>
                 </xs:attribute>
+                <xs:attribute name="ssl-mode" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Specifies the SSL/TLS security mode for HTTPS connections.
+                            Possible values are:
+                            <em>strict</em> - Only trusted certificates (default),
+                            <em>easy</em> - Accepts self-signed certificates,
+                            <em>custom</em> - Uses custom keystore/truststore,
+                            <em>disabled</em> - No SSL/TLS encryption
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="ssl-protocol" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Specifies the SSL/TLS protocol version to use.
+                            Common values: TLS, TLSv1.2, TLSv1.3, SSL, SSLv3
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="keystore-path" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Path to the keystore file for client authentication.
+                            Can be a file path or classpath resource (prefix with 'classpath:').
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="keystore-password" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Password for the keystore file.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="keystore-type" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Type of the keystore file. Common values: JKS, PKCS12, PKCS11
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="truststore-path" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Path to the truststore file for server certificate validation.
+                            Can be a file path or classpath resource (prefix with 'classpath:').
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="truststore-password" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Password for the truststore file.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="truststore-type" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Type of the truststore file. Common values: JKS, PKCS12, PKCS11
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="verify-hostname" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Whether to verify that the server's hostname matches the certificate.
+                            Set to 'false' to disable hostname verification (less secure).
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="allow-self-signed" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Whether to allow self-signed certificates.
+                            Set to 'true' to accept self-signed certificates (less secure).
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="allow-expired" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Whether to allow expired certificates.
+                            Set to 'true' to accept expired certificates (less secure).
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="allow-invalid-hostname" use="optional" type="xs:string">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Whether to allow certificates with invalid hostnames.
+                            Set to 'true' to accept certificates with hostname mismatches (less secure).
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
