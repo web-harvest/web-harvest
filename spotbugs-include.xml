@@ -25,3 +25,4 @@
         <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD_OF_ANONYMOUS_CLASS" />
     </Match>
 </FindBugsFilter>
+

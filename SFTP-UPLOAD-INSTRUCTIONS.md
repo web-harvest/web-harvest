@@ -87,3 +87,4 @@ W przypadku problemów:
 2. Zweryfikuj uprawnienia do katalogu
 3. Skontaktuj się z zespołem Web-Harvest
 
+
