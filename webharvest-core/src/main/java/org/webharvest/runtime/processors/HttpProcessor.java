@@ -63,6 +63,7 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.web.HttpClientManager;
 import org.webharvest.runtime.web.HttpParamInfo;
 import org.webharvest.runtime.web.HttpResponseWrapper;
+import org.webharvest.runtime.web.HttpSslConfig;
 import org.webharvest.utils.CommonUtil;
 import org.webharvest.utils.KeyValuePair;
 
@@ -78,7 +79,11 @@ import com.google.inject.Inject;
 @Definition(value = "http", validAttributes = { "id", "url", "method(get;post)",
         "follow-redirects(true;false)", "ignore-response-body(true;false)", "retry-attempts",
         "retry-delay", "retry-delay-factor", "content-type(*mime)", "charset(*charset)",
-        "username", "password", "cookie-policy(default;browser;ignore;netscape;rfc_2109)" },
+        "username", "password", "cookie-policy(default;browser;ignore;netscape;rfc_2109)",
+        "ssl-mode(strict;easy;custom;disabled)", "ssl-protocol", "keystore-path", 
+        "keystore-password", "keystore-type", "truststore-path", "truststore-password", 
+        "truststore-type", "verify-hostname(true;false)", "allow-self-signed(true;false)",
+        "allow-expired(true;false)", "allow-invalid-hostname(true;false)" },
         requiredAttributes="url", definitionClass = HttpDef.class)
 public class HttpProcessor extends AbstractProcessor<HttpDef> {
 
@@ -115,6 +120,32 @@ public class HttpProcessor extends AbstractProcessor<HttpDef> {
                         elementDef.getIgnoreResponseBody(), null, context),
                 false);
 
+        // SSL configuration
+        final String sslMode = BaseTemplater.evaluateToString(
+                elementDef.getSslMode(), null, context);
+        final String sslProtocol = BaseTemplater.evaluateToString(
+                elementDef.getSslProtocol(), null, context);
+        final String keystorePath = BaseTemplater.evaluateToString(
+                elementDef.getKeystorePath(), null, context);
+        final String keystorePassword = BaseTemplater.evaluateToString(
+                elementDef.getKeystorePassword(), null, context);
+        final String keystoreType = BaseTemplater.evaluateToString(
+                elementDef.getKeystoreType(), null, context);
+        final String truststorePath = BaseTemplater.evaluateToString(
+                elementDef.getTruststorePath(), null, context);
+        final String truststorePassword = BaseTemplater.evaluateToString(
+                elementDef.getTruststorePassword(), null, context);
+        final String truststoreType = BaseTemplater.evaluateToString(
+                elementDef.getTruststoreType(), null, context);
+        final Boolean verifyHostname = getBooleanValue(
+                BaseTemplater.evaluateToString(elementDef.getVerifyHostname(), null, context), true);
+        final Boolean allowSelfSigned = getBooleanValue(
+                BaseTemplater.evaluateToString(elementDef.getAllowSelfSigned(), null, context), false);
+        final Boolean allowExpired = getBooleanValue(
+                BaseTemplater.evaluateToString(elementDef.getAllowExpired(), null, context), false);
+        final Boolean allowInvalidHostname = getBooleanValue(
+                BaseTemplater.evaluateToString(elementDef.getAllowInvalidHostname(), null, context), false);
+
         final int retryAttempts = BaseTemplater.evaluateToVariable(
                 elementDef.getRetryAttempts(), null, context).toInt();
         final long retryDelay = BaseTemplater.evaluateToVariable(
@@ -135,6 +166,13 @@ public class HttpProcessor extends AbstractProcessor<HttpDef> {
             setParentProcessor(this).build().execute(context);
 
         httpClientManager.setCookiePolicy(cookiePolicy);
+
+        // Configure SSL if specified
+        if (sslMode != null && !sslMode.isEmpty()) {
+            configureSSL(sslMode, sslProtocol, keystorePath, keystorePassword, keystoreType,
+                        truststorePath, truststorePassword, truststoreType, verifyHostname,
+                        allowSelfSigned, allowExpired, allowInvalidHostname);
+        }
 
         LOG.info("Executing method {}...", method);
 
@@ -258,6 +296,56 @@ public class HttpProcessor extends AbstractProcessor<HttpDef> {
         // todo: it's a temporary fix. Think better about handling mime-types.
         return mimeType.startsWith("text/") || mimeType.endsWith("/xml")
                 || mimeType.contains("javascript");
+    }
+
+    /**
+     * Configures SSL settings for the HTTP client based on processor attributes
+     */
+    private void configureSSL(String sslMode, String sslProtocol, String keystorePath, 
+                             String keystorePassword, String keystoreType, String truststorePath,
+                             String truststorePassword, String truststoreType, Boolean verifyHostname,
+                             Boolean allowSelfSigned, Boolean allowExpired, Boolean allowInvalidHostname) {
+        
+        try {
+            HttpSslConfig.SslMode mode;
+            try {
+                mode = HttpSslConfig.SslMode.valueOf(sslMode.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                LOG.warn("Invalid SSL mode '{}', using EASY mode", sslMode);
+                mode = HttpSslConfig.SslMode.EASY;
+            }
+
+            HttpSslConfig sslConfig = new HttpSslConfig.Builder(mode)
+                    .setSslProtocol(sslProtocol != null ? sslProtocol : "TLS")
+                    .setVerifyHostname(verifyHostname != null ? verifyHostname : true)
+                    .setAllowSelfSigned(allowSelfSigned != null ? allowSelfSigned : false)
+                    .setAllowAllHostnames(allowInvalidHostname != null ? allowInvalidHostname : false)
+                    .build();
+
+            // Configure custom keystore/truststore if provided
+            if (mode == HttpSslConfig.SslMode.CUSTOM) {
+                if (keystorePath != null && !keystorePath.isEmpty()) {
+                    sslConfig.setKeystorePath(keystorePath);
+                    sslConfig.setKeystorePassword(keystorePassword);
+                    sslConfig.setKeystoreType(keystoreType != null ? keystoreType : "JKS");
+                }
+                if (truststorePath != null && !truststorePath.isEmpty()) {
+                    sslConfig.setTruststorePath(truststorePath);
+                    sslConfig.setTruststorePassword(truststorePassword);
+                    sslConfig.setTruststoreType(truststoreType != null ? truststoreType : "JKS");
+                }
+            }
+
+            // Apply SSL configuration to HTTP client manager
+            httpClientManager.setSslConfig(sslConfig);
+            
+            LOG.info("SSL configuration applied: mode=" + mode + ", protocol=" + sslConfig.getSslProtocol() + 
+                    ", verifyHostname=" + sslConfig.isVerifyHostname() + ", allowSelfSigned=" + sslConfig.isAllowSelfSigned());
+            
+        } catch (Exception e) {
+            LOG.error("Failed to configure SSL settings", e);
+            throw new HttpException("Failed to configure SSL settings: " + e.getMessage(), e);
+        }
     }
 
     protected void addHttpParam(String name, boolean isFile, String fileName,
