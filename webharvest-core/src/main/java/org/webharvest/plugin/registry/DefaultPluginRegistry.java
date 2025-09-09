@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
  * Default implementation of PluginRegistry.
  * Provides thread-safe plugin registration and discovery functionality.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class DefaultPluginRegistry implements PluginRegistry {

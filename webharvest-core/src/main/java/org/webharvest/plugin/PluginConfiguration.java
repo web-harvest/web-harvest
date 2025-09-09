@@ -43,7 +43,7 @@ import java.util.Properties;
  * Configuration for a plugin.
  * Contains all configuration parameters needed to initialize and configure a plugin.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface PluginConfiguration {

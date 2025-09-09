@@ -44,7 +44,7 @@ import java.util.Properties;
  * Default implementation of PluginConfiguration.
  * Provides functionality to store and retrieve plugin configuration properties.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class DefaultPluginConfiguration implements PluginConfiguration {

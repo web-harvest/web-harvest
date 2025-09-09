@@ -44,7 +44,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * Schema definition for plugin configuration.
  * Defines the structure, validation rules, and constraints for plugin configuration.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface PluginConfigurationSchema {
@@ -52,9 +52,9 @@ public interface PluginConfigurationSchema {
     /**
      * Gets all defined attributes.
      * 
-     * @return list of attribute definitions
+     * @return array of attribute definitions
      */
-    List<AttributeDefinition> getAttributes();
+    AttributeDefinition[] getAttributeDefinitions();
 
     /**
      * Gets attribute definition by name.
@@ -67,30 +67,30 @@ public interface PluginConfigurationSchema {
     /**
      * Gets required attributes.
      * 
-     * @return list of required attribute names
+     * @return array of required attribute names
      */
-    List<String> getRequiredAttributes();
+    String[] getRequiredAttributes();
 
     /**
      * Gets optional attributes.
      * 
-     * @return list of optional attribute names
+     * @return array of optional attribute names
      */
-    List<String> getOptionalAttributes();
+    String[] getOptionalAttributes();
 
     /**
      * Gets allowed sub-elements.
      * 
-     * @return list of allowed sub-element names
+     * @return array of allowed sub-element names
      */
-    List<String> getAllowedSubElements();
+    String[] getAllowedSubElements();
 
     /**
      * Gets required sub-elements.
      * 
-     * @return list of required sub-element names
+     * @return array of required sub-element names
      */
-    List<String> getRequiredSubElements();
+    String[] getRequiredSubElements();
 
     /**
      * Checks if the schema allows body content.
@@ -156,9 +156,9 @@ public interface PluginConfigurationSchema {
         /**
          * Gets the allowed values (for enum types).
          * 
-         * @return list of allowed values, or null if not applicable
+         * @return array of allowed values, or null if not applicable
          */
-        List<String> getAllowedValues();
+        String[] getAllowedValues();
 
         /**
          * Gets the minimum value (for numeric types).

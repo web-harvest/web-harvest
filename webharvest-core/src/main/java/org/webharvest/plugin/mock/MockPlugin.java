@@ -40,6 +40,7 @@ import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.plugin.exceptions.PluginException;
@@ -52,7 +53,7 @@ import java.util.function.Function;
  * Mock implementation of Plugin for testing purposes.
  * Allows setting up expected behavior and verifying interactions.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class MockPlugin implements Plugin {
@@ -270,13 +271,53 @@ public class MockPlugin implements Plugin {
         public String getDescription() { return description; }
         public String getAuthor() { return "Mock Author"; }
         public String getCategory() { return category; }
-        public java.util.List<String> getTags() { return java.util.Arrays.asList("mock", "test"); }
-        public java.util.Map<String, String> getDependencies() { return java.util.Collections.emptyMap(); }
+        public String[] getTags() { return new String[]{"mock", "test"}; }
+        public String[] getDependencies() { return new String[0]; }
         public PluginConfigurationSchema getConfigurationSchema() { return null; }
         public String getNamespace() { return namespace; }
         public String getElementName() { return elementName; }
         public boolean isCorePlugin() { return false; }
         public String getClassName() { return MockPlugin.class.getName(); }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IElementDef getElementDef() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setElementDef(IElementDef elementDef) {
+        // Mock implementation - no-op
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Plugin getParentPlugin() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setParentPlugin(Plugin parentPlugin) {
+        // Mock implementation - no-op
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getRunningLevel() {
+        return 1;
     }
 
     /**

@@ -40,6 +40,7 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
+import org.webharvest.definition.IElementDef;
 
 /**
  * Core interface for all Web-Harvest plugins.
@@ -52,7 +53,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * that can be used in Web-Harvest configurations.
  * </p>
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface Plugin {
@@ -102,4 +103,42 @@ public interface Plugin {
      * This method is called when the plugin is unloaded.
      */
     void cleanup();
+
+    /**
+     * Gets the element definition for this plugin.
+     * This method provides compatibility with the existing processor system.
+     * 
+     * @return the element definition
+     */
+    IElementDef getElementDef();
+
+    /**
+     * Sets the element definition for this plugin.
+     * This method provides compatibility with the existing processor system.
+     * 
+     * @param elementDef the element definition to set
+     */
+    void setElementDef(IElementDef elementDef);
+
+    /**
+     * Gets the parent plugin in the execution hierarchy.
+     * 
+     * @return the parent plugin, or null if this is a root plugin
+     */
+    Plugin getParentPlugin();
+
+    /**
+     * Sets the parent plugin in the execution hierarchy.
+     * 
+     * @param parentPlugin the parent plugin
+     */
+    void setParentPlugin(Plugin parentPlugin);
+
+    /**
+     * Gets the running level in the plugin hierarchy.
+     * Value of the lowest level is 1.
+     * 
+     * @return the running level
+     */
+    int getRunningLevel();
 }

@@ -39,7 +39,7 @@ package org.webharvest.plugin.exceptions;
 /**
  * Base exception for all plugin-related errors.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class PluginException extends Exception {

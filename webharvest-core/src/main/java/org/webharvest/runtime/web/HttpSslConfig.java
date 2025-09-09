@@ -59,6 +59,8 @@ import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.webharvest.runtime.web.ssl.WebHarvestSSLContextFactory;
+import org.webharvest.runtime.web.ssl.WebHarvestProtocolSocketFactory;
 
 import com.google.inject.Inject;
 
@@ -67,7 +69,7 @@ import com.google.inject.Inject;
  * Provides comprehensive SSL configuration including support for self-signed certificates,
  * custom keystores, truststores, and various SSL protocols.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class HttpSslConfig {
@@ -129,11 +131,15 @@ public class HttpSslConfig {
     public SSLContext createSSLContext() throws Exception {
         switch (sslMode) {
             case STRICT:
-                return createStrictSSLContext();
+                return WebHarvestSSLContextFactory.createStrictSSLContext();
             case EASY:
-                return createEasySSLContext();
+                return WebHarvestSSLContextFactory.createEasySSLContext();
             case CUSTOM:
-                return createCustomSSLContext();
+                return WebHarvestSSLContextFactory.createSSLContext(
+                    WebHarvestSSLContextFactory.SslMode.CUSTOM,
+                    keystorePath, keystorePassword, keystoreType,
+                    truststorePath, truststorePassword, truststoreType,
+                    sslProtocol);
             case DISABLED:
                 return null;
             default:
@@ -150,15 +156,12 @@ public class HttpSslConfig {
     public ProtocolSocketFactory createProtocolSocketFactory() throws Exception {
         switch (sslMode) {
             case STRICT:
-                return new org.apache.commons.httpclient.contrib.ssl.StrictSSLProtocolSocketFactory(verifyHostname);
+                return new WebHarvestProtocolSocketFactory(false, verifyHostname);
             case EASY:
-                return new org.apache.commons.httpclient.contrib.ssl.EasySSLProtocolSocketFactory();
+                return new WebHarvestProtocolSocketFactory(true, verifyHostname);
             case CUSTOM:
-                return new org.apache.commons.httpclient.contrib.ssl.AuthSSLProtocolSocketFactory(
-                    keystorePath != null ? new java.net.URL("file://" + keystorePath) : null,
-                    keystorePassword,
-                    truststorePath != null ? new java.net.URL("file://" + truststorePath) : null,
-                    truststorePassword);
+                SSLContext context = createSSLContext();
+                return new WebHarvestProtocolSocketFactory(context, verifyHostname);
             case DISABLED:
                 return null;
             default:
@@ -191,78 +194,6 @@ public class HttpSslConfig {
         registerHttpsProtocol(443);
     }
 
-    private SSLContext createStrictSSLContext() throws Exception {
-        SSLContext context = SSLContext.getInstance(sslProtocol);
-        context.init(null, null, null);
-        return context;
-    }
-
-    private SSLContext createEasySSLContext() throws Exception {
-        SSLContext context = SSLContext.getInstance(sslProtocol);
-        context.init(null, new TrustManager[]{new EasyX509TrustManager(null)}, null);
-        return context;
-    }
-
-    private SSLContext createCustomSSLContext() throws Exception {
-        KeyManager[] keyManagers = createKeyManagers();
-        TrustManager[] trustManagers = createTrustManagers();
-        
-        SSLContext context = SSLContext.getInstance(sslProtocol);
-        context.init(keyManagers, trustManagers, null);
-        return context;
-    }
-
-    private KeyManager[] createKeyManagers() throws Exception {
-        if (StringUtils.isBlank(keystorePath)) {
-            return null;
-        }
-
-        KeyStore keystore = loadKeyStore(keystorePath, keystorePassword, keystoreType);
-        KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keystore, keystorePassword != null ? keystorePassword.toCharArray() : null);
-        return kmf.getKeyManagers();
-    }
-
-    private TrustManager[] createTrustManagers() throws Exception {
-        if (StringUtils.isBlank(truststorePath)) {
-            return new TrustManager[]{new EasyX509TrustManager(null)};
-        }
-
-        KeyStore truststore = loadKeyStore(truststorePath, truststorePassword, truststoreType);
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(truststore);
-        return tmf.getTrustManagers();
-    }
-
-    private KeyStore loadKeyStore(String path, String password, String type) throws Exception {
-        KeyStore keystore = KeyStore.getInstance(type);
-        InputStream is = null;
-        
-        try {
-            if (path.startsWith("classpath:")) {
-                String resourcePath = path.substring("classpath:".length());
-                is = getClass().getClassLoader().getResourceAsStream(resourcePath);
-                if (is == null) {
-                    throw new IOException("Keystore resource not found: " + resourcePath);
-                }
-            } else if (path.startsWith("file:")) {
-                is = new FileInputStream(new File(new URL(path).getFile()));
-            } else {
-                is = new FileInputStream(new File(path));
-            }
-            
-            keystore.load(is, password != null ? password.toCharArray() : null);
-            return keystore;
-        } finally {
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    LOG.warn("Failed to close keystore input stream", e);
-                }
-            }
-        }
-    }
 
     // Getters and setters
     public SslMode getSslMode() {

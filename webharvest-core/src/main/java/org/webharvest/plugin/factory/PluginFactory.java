@@ -44,7 +44,7 @@ import org.webharvest.plugin.exceptions.PluginException;
  * Factory for creating plugin instances.
  * Provides functionality to instantiate plugins with proper configuration and dependency injection.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface PluginFactory {

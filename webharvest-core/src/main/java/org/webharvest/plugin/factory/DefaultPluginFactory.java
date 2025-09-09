@@ -52,7 +52,7 @@ import java.util.Map;
  * Default implementation of PluginFactory.
  * Provides functionality to create plugin instances with proper configuration and dependency injection.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class DefaultPluginFactory implements PluginFactory {
@@ -291,8 +291,8 @@ public class DefaultPluginFactory implements PluginFactory {
         
         return new DefaultPluginMetadata(pluginId, pluginName, "1.0.0", description, 
                                        "Web-Harvest Team", category, 
-                                       java.util.Arrays.asList("plugin"), 
-                                       java.util.Collections.emptyMap(), 
+                                       new String[]{"plugin"}, 
+                                       new String[0], 
                                        null, namespace, elementName, false, className);
     }
 
@@ -306,8 +306,8 @@ public class DefaultPluginFactory implements PluginFactory {
         private final String description;
         private final String author;
         private final String category;
-        private final java.util.List<String> tags;
-        private final java.util.Map<String, String> dependencies;
+        private final String[] tags;
+        private final String[] dependencies;
         private final PluginConfigurationSchema configurationSchema;
         private final String namespace;
         private final String elementName;
@@ -315,8 +315,8 @@ public class DefaultPluginFactory implements PluginFactory {
         private final String className;
 
         public DefaultPluginMetadata(String id, String name, String version, String description,
-                                   String author, String category, java.util.List<String> tags,
-                                   java.util.Map<String, String> dependencies,
+                                   String author, String category, String[] tags,
+                                   String[] dependencies,
                                    PluginConfigurationSchema configurationSchema,
                                    String namespace, String elementName, boolean corePlugin,
                                    String className) {
@@ -341,8 +341,8 @@ public class DefaultPluginFactory implements PluginFactory {
         public String getDescription() { return description; }
         public String getAuthor() { return author; }
         public String getCategory() { return category; }
-        public java.util.List<String> getTags() { return tags; }
-        public java.util.Map<String, String> getDependencies() { return dependencies; }
+        public String[] getTags() { return tags; }
+        public String[] getDependencies() { return dependencies; }
         public PluginConfigurationSchema getConfigurationSchema() { return configurationSchema; }
         public String getNamespace() { return namespace; }
         public String getElementName() { return elementName; }

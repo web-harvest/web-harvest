@@ -61,7 +61,7 @@ import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.ProxyHost;
 import org.apache.commons.httpclient.UsernamePasswordCredentials;
 import org.apache.commons.httpclient.auth.AuthScope;
-import org.apache.commons.httpclient.contrib.ssl.EasySSLProtocolSocketFactory;
+import org.webharvest.runtime.web.ssl.WebHarvestProtocolSocketFactory;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
@@ -95,8 +95,8 @@ public class HttpClientManager {
     public static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.0.1) Gecko/20060111 Firefox/1.5.0.1";
 
     static {
-        // registers default handling for https
-        Protocol.registerProtocol("https", new Protocol("https", (ProtocolSocketFactory) new EasySSLProtocolSocketFactory(), 443));
+        // registers default handling for https with easy SSL mode (accepts self-signed certificates)
+        Protocol.registerProtocol("https", new Protocol("https", new WebHarvestProtocolSocketFactory(), 443));
     }
 
     private final HttpClient client;

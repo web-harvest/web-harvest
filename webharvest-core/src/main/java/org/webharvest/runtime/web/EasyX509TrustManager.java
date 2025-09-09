@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
  * self-signed certificates.
  * </p>
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class EasyX509TrustManager implements X509TrustManager {

@@ -1,3 +1,36 @@
+/*
+ Copyright (c) 2006-2025 the original author or authors.
+
+ Redistribution and use of this software in source and binary forms,
+ with or without modification, are permitted provided that the following
+ conditions are met:
+
+ * Redistributions of source code must retain the above
+   copyright notice, this list of conditions and the
+   following disclaimer.
+
+ * Redistributions in binary form must reproduce the above
+   copyright notice, this list of conditions and the
+   following disclaimer in the documentation and/or other
+   materials provided with the distribution.
+
+ * The name of Web-Harvest may not be used to endorse or promote
+   products derived from this software without specific prior
+   written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package org.webharvest.utils;
 
 import java.io.IOException;
@@ -40,6 +73,8 @@ import org.webharvest.definition.validation.SchemaResourcesPostProcessor;
 import org.webharvest.definition.validation.SchemaSource;
 import org.webharvest.definition.validation.TransformerPair;
 import org.webharvest.definition.validation.URIToSchemaSourceTransformer;
+import org.webharvest.plugin.registry.PluginRegistryHolder;
+import org.webharvest.plugin.schema.PluginSchemaPostProcessor;
 import org.webharvest.runtime.RuntimeConfig;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -199,6 +234,8 @@ public class XmlUtil {
             /* Resolving core XML schemas for version 1.0, 2.0 and 2.1. */
             final SchemaResolver schemaResolver =
                 SchemaComponentFactory.getSchemaResolver();
+            
+            // Add static schema post-processor for core schemas
             schemaResolver.addPostProcessor(
                     new SchemaResourcesPostProcessor<String>(
                             new TransformerPair<String, URI, SchemaSource>(
@@ -207,6 +244,11 @@ public class XmlUtil {
                             "/config.xsd", "/wh-core-2.0.xsd",
                             "/wh-core-2.1-loose.xsd",
                             "/wh-jndi-2.1.xsd"));
+            
+            // Add dynamic plugin schema post-processor
+            schemaResolver.addPostProcessor(
+                    new PluginSchemaPostProcessor(PluginRegistryHolder.getInstance()));
+            
             schemaResolver.refresh();
         } catch (Exception e) {
             // Log the error but don't fail the class loading

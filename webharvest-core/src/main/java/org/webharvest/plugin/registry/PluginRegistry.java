@@ -48,7 +48,7 @@ import java.util.Map;
  * Registry for managing Web-Harvest plugins.
  * Provides functionality to register, discover, and manage plugins.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface PluginRegistry {

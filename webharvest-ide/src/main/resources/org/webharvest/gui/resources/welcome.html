@@ -5,58 +5,55 @@
                 body {
                         font-family: Arial, sans-serif;
                         margin: 0;
-                        padding: 0;
-                        background: #f5f7fa;
+                        padding: 10px;
+                        background-color: #e8f4fd;
                         color: #333;
                 }
 
                 .welcome-container {
-                        background: white;
-                        margin: 15px;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                        background-color: #ffffff;
+                        border: 2px solid #3b82f6;
+                        padding: 15px;
+                        margin: 10px;
                 }
 
                 .welcome-header {
-                        background: #3b82f6;
+                        background-color: #3b82f6;
                         color: white;
-                        padding: 20px;
+                        padding: 15px;
                         text-align: center;
+                        margin: -15px -15px 15px -15px;
                 }
 
                 .welcome-logo {
-                        font-size: 24px;
+                        font-size: 20px;
                         font-weight: bold;
                         margin-bottom: 5px;
                 }
 
                 .welcome-version {
                         font-size: 14px;
-                        opacity: 0.9;
                 }
 
-                .welcome-content {
-                        padding: 20px;
+                .welcome-description {
+                        font-size: 12px;
+                        margin-top: 8px;
                 }
 
                 .quick-actions {
                         text-align: center;
-                        margin: 20px 0;
+                        margin: 15px 0;
                 }
 
                 .action-button {
-                        display: inline-block;
-                        padding: 10px 20px;
                         background-color: #3b82f6;
                         color: white;
+                        padding: 8px 16px;
                         text-decoration: none;
-                        border-radius: 4px;
+                        margin: 3px;
+                        font-size: 12px;
                         font-weight: bold;
-                        margin: 5px;
-                }
-
-                .action-button:hover {
-                        background-color: #1e40af;
+                        border: 1px solid #1e40af;
                 }
 
                 .section-title {
@@ -64,52 +61,149 @@
                         color: #3b82f6;
                         font-weight: bold;
                         margin: 20px 0 10px 0;
-                        border-bottom: 1px solid #e0e0e0;
+                        border-bottom: 1px solid #ddd;
                         padding-bottom: 5px;
                 }
 
-                .example-list {
-                        list-style: none;
-                        padding: 0;
-                        margin: 0;
+                .examples-grid {
+                        margin: 10px 0;
                 }
 
-                .example-item {
-                        margin-bottom: 8px;
+                .example-card {
+                        background-color: #f8f9fa;
+                        border: 1px solid #e9ecef;
                         padding: 10px;
-                        background: #f8fbfc;
+                        margin: 8px 0;
                         border-left: 3px solid #06b6d4;
                 }
 
-                .example-link {
+                .example-header {
+                        margin-bottom: 5px;
+                }
+
+                .example-title {
+                        font-size: 14px;
+                        font-weight: bold;
                         color: #1e40af;
+                        margin: 0;
+                }
+
+                .example-tag {
+                        background-color: #06b6d4;
+                        color: white;
+                        padding: 2px 6px;
+                        font-size: 10px;
+                        font-weight: bold;
+                        border: 1px solid #0891b2;
+                }
+
+                .example-description {
+                        color: #666;
+                        font-size: 12px;
+                        margin: 5px 0;
+                }
+
+                .example-link {
+                        color: #3b82f6;
                         text-decoration: none;
-                        font-weight: 500;
+                        font-size: 12px;
+                        font-weight: bold;
                 }
 
                 .example-link:hover {
+                        color: #1e40af;
+                        text-decoration: underline;
+                }
+
+                .stats-section {
+                        background-color: #e3f2fd;
+                        border: 1px solid #90caf9;
+                        padding: 15px;
+                        margin: 15px 0;
+                        text-align: center;
+                }
+
+                .stats-grid {
+                        margin-top: 10px;
+                }
+
+                .stat-item {
+                        display: inline-block;
+                        margin: 5px 15px;
+                        text-align: center;
+                }
+
+                .stat-number {
+                        display: block;
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #3b82f6;
+                }
+
+                .stat-label {
+                        display: block;
+                        font-size: 10px;
+                        color: #666;
+                        text-transform: uppercase;
+                }
+
+                .category-title {
+                        font-size: 14px;
+                        color: #8b5cf6;
+                        font-weight: bold;
+                        margin: 15px 0 8px 0;
+                        border-bottom: 1px solid #ddd;
+                        padding-bottom: 3px;
+                }
+
+                .example-list {
+                        margin: 8px 0;
+                }
+
+                .example-item {
+                        background-color: #f8f9fa;
+                        border: 1px solid #e9ecef;
+                        padding: 8px;
+                        margin: 5px 0;
+                        border-left: 3px solid #06b6d4;
+                }
+
+                .example-link-simple {
+                        color: #1e40af;
+                        text-decoration: none;
+                        font-size: 12px;
+                        font-weight: bold;
+                }
+
+                .example-link-simple:hover {
                         color: #3b82f6;
                         text-decoration: underline;
+                }
+
+                .example-description-small {
+                        color: #666;
+                        font-size: 10px;
+                        margin-top: 2px;
                 }
 
                 .start-scraping-section {
                         background-color: #e3f2fd;
                         border: 1px solid #90caf9;
-                        border-radius: 6px;
                         padding: 15px;
-                        margin-top: 20px;
+                        margin: 15px 0;
                         text-align: center;
                 }
 
                 .start-scraping-section h3 {
                         color: #1976d2;
                         margin-top: 0;
-                        font-size: 18px;
+                        font-size: 16px;
                 }
 
                 .start-scraping-section p {
                         color: #424242;
-                        margin-bottom: 15px;
+                        margin-bottom: 10px;
+                        font-size: 12px;
                 }
         </style>
 </head>
@@ -119,53 +213,227 @@
                 <div class="welcome-header">
                         <div class="welcome-logo">🕷️ Web-Harvest IDE</div>
                         <div class="welcome-version">Version #program.version#</div>
+                        <div class="welcome-description">
+                                Advanced web scraping and data extraction tool
+                        </div>
                 </div>
 
-                <div class="welcome-content">
-                        <div class="quick-actions">
-                                <a href="#new" class="action-button">🆕 Create New Configuration</a>
-                                <a href="#open" class="action-button">📂 Open Configuration</a>
-                                <a href="#settings" class="action-button">⚙️ Settings</a>
+                <div class="quick-actions">
+                        <a href="#new" class="action-button">🆕 New Config</a>
+                        <a href="#open" class="action-button">📂 Open Config</a>
+                        <a href="#settings" class="action-button">⚙️ Settings</a>
+                        <a href="https://web-harvest.sourceforge.net/manual.php" class="action-button">📚 Docs</a>
+                </div>
+
+                <div class="stats-section">
+                        <h3 style="margin-top: 0; color: #1976d2;">Web-Harvest Statistics</h3>
+                        <div class="stats-grid">
+                                <div class="stat-item">
+                                        <span class="stat-number">50+</span>
+                                        <span class="stat-label">Processors</span>
+                                </div>
+                                <div class="stat-item">
+                                        <span class="stat-number">20</span>
+                                        <span class="stat-label">Examples</span>
+                                </div>
+                                <div class="stat-item">
+                                        <span class="stat-number">100%</span>
+                                        <span class="stat-label">Java</span>
+                                </div>
+                                <div class="stat-item">
+                                        <span class="stat-number">2.1.0</span>
+                                        <span class="stat-label">Version</span>
+                                </div>
                         </div>
+                </div>
 
-                        <div class="section-title">🚀 Quick Start Examples</div>
-                        <ul class="example-list">
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/simple_test.xml">🧪
-                                                Simple Test - Basic functionality test</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/ecommerce_monitoring.xml">🛒
-                                                E-commerce Monitoring - Track prices and availability</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/social_media_analytics.xml">📈
-                                                Social Media Analytics - Extract and analyze posts</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/data_processing_pipeline.xml">⚙️
-                                                Data Processing Pipeline - Validation and transformation</a></li>
-                        </ul>
-
-                        <div class="section-title">💼 Modern Business Examples</div>
-                        <ul class="example-list">
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/modern_web_scraping.xml">🌐
-                                                Modern Web Scraping - JavaScript-heavy sites</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/api_integration.xml">🔌
-                                                API Integration - Combine web data with APIs</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/functions.xml">🧮
-                                                Advanced Functions - Custom logic and data manipulation</a></li>
-                                <li class="example-item"><a class="example-link"
-                                                href="download:https://web-harvest.sourceforge.net/examples/xquery.xml">🔍
-                                                XQuery Power - Complex XML data extraction</a></li>
-                        </ul>
-
-                        <div class="start-scraping-section">
-                                <h3>Ready to Start Scraping?</h3>
-                                <p>Explore our comprehensive documentation and tutorials to master Web-Harvest.</p>
-                                <a href="https://web-harvest.sourceforge.net/manual.php" class="action-button">📚 View
-                                        Documentation</a>
+                <div class="section-title">🚀 Quick Start Examples</div>
+                <div class="examples-grid">
+                        <div class="example-card">
+                                <div class="example-header">
+                                        <h3 class="example-title">Simple Test</h3>
+                                        <span class="example-tag">Basic</span>
+                                </div>
+                                <p class="example-description">Basic functionality test with HTTP request and HTML
+                                        parsing</p>
+                                <a class="example-link"
+                                        href="download:https://web-harvest.sourceforge.net/examples/simple_test.xml">
+                                        📥 Download Example
+                                </a>
                         </div>
+                        <div class="example-card">
+                                <div class="example-header">
+                                        <h3 class="example-title">E-commerce Monitoring</h3>
+                                        <span class="example-tag">Business</span>
+                                </div>
+                                <p class="example-description">Monitor product prices and availability across e-commerce
+                                        sites</p>
+                                <a class="example-link"
+                                        href="download:https://web-harvest.sourceforge.net/examples/ecommerce_monitoring.xml">
+                                        📥 Download Example
+                                </a>
+                        </div>
+                        <div class="example-card">
+                                <div class="example-header">
+                                        <h3 class="example-title">Social Media Analytics</h3>
+                                        <span class="example-tag">Analytics</span>
+                                </div>
+                                <p class="example-description">Extract and analyze social media posts for sentiment
+                                        analysis</p>
+                                <a class="example-link"
+                                        href="download:https://web-harvest.sourceforge.net/examples/social_media_analytics.xml">
+                                        📥 Download Example
+                                </a>
+                        </div>
+                </div>
+
+                <div class="category-title">💼 Business Examples</div>
+                <div class="example-list">
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/data_processing_pipeline.xml">
+                                        ⚙️ Data Processing Pipeline
+                                </a>
+                                <div class="example-description-small">Complete data processing with validation and
+                                        transformation</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/product_catalog.xml">
+                                        🛍️ Product Catalog Scraping
+                                </a>
+                                <div class="example-description-small">Extract product information from e-commerce sites
+                                </div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/amazon_test.xml">
+                                        🛒 Amazon Product Monitoring
+                                </a>
+                                <div class="example-description-small">Monitor Amazon product prices and availability
+                                </div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/expekt.xml">
+                                        🎰 Expekt Sports Betting
+                                </a>
+                                <div class="example-description-small">Sports betting data extraction and analysis</div>
+                        </div>
+                </div>
+
+                <div class="category-title">🌐 Web Scraping Examples</div>
+                <div class="example-list">
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/modern_web_scraping.xml">
+                                        🌐 Modern Web Scraping
+                                </a>
+                                <div class="example-description-small">JavaScript-heavy sites with advanced parsing
+                                </div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/crawler.xml">
+                                        🕷️ Web Crawler
+                                </a>
+                                <div class="example-description-small">Multi-page crawling with link following</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/nytimes.xml">
+                                        📰 New York Times
+                                </a>
+                                <div class="example-description-small">News article extraction and processing</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/improved_nytimes.xml">
+                                        📰 Enhanced NY Times
+                                </a>
+                                <div class="example-description-small">Improved news extraction with better parsing
+                                </div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/google_images.xml">
+                                        🖼️ Google Images
+                                </a>
+                                <div class="example-description-small">Image search and metadata extraction</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/flickr.xml">
+                                        📸 Flickr Photos
+                                </a>
+                                <div class="example-description-small">Photo metadata and gallery extraction</div>
+                        </div>
+                </div>
+
+                <div class="category-title">🔧 Technical Examples</div>
+                <div class="example-list">
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/api_integration.xml">
+                                        🔌 API Integration
+                                </a>
+                                <div class="example-description-small">Combine web data with REST APIs</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/functions.xml">
+                                        🧮 Advanced Functions
+                                </a>
+                                <div class="example-description-small">Custom logic and data manipulation</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/xquery.xml">
+                                        🔍 XQuery Power
+                                </a>
+                                <div class="example-description-small">Complex XML data extraction and processing</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/ssl_http_example.xml">
+                                        🔒 SSL HTTP Example
+                                </a>
+                                <div class="example-description-small">Secure HTTPS connections with SSL/TLS</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/canon.xml">
+                                        📄 Canon XML
+                                </a>
+                                <div class="example-description-small">XML canonicalization and processing</div>
+                        </div>
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/canon_with_namespace.xml">
+                                        📄 Canon with Namespace
+                                </a>
+                                <div class="example-description-small">XML processing with namespace handling</div>
+                        </div>
+                </div>
+
+                <div class="category-title">📧 Communication Examples</div>
+                <div class="example-list">
+                        <div class="example-item">
+                                <a class="example-link-simple"
+                                        href="download:https://web-harvest.sourceforge.net/examples/yahoomail.xml">
+                                        📧 Yahoo Mail
+                                </a>
+                                <div class="example-description-small">Email data extraction and processing</div>
+                        </div>
+                </div>
+
+                <div class="start-scraping-section">
+                        <h3>Ready to Start Scraping?</h3>
+                        <p>Explore our comprehensive documentation and tutorials to master Web-Harvest. All examples are
+                                available for download and can be run immediately.</p>
+                        <a href="https://web-harvest.sourceforge.net/manual.php" class="action-button">📚 View
+                                Documentation</a>
+                        <a href="https://web-harvest.sourceforge.net/" class="action-button">🌐 Visit Website</a>
                 </div>
         </div>
 </body>

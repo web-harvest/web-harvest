@@ -43,7 +43,7 @@ import java.util.Map;
  * Metadata information about a plugin.
  * Contains all necessary information to identify, load, and configure a plugin.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public interface PluginMetadata {
@@ -93,16 +93,16 @@ public interface PluginMetadata {
     /**
      * Gets the plugin tags.
      * 
-     * @return list of plugin tags
+     * @return array of plugin tags
      */
-    List<String> getTags();
+    String[] getTags();
 
     /**
      * Gets the plugin dependencies.
      * 
-     * @return map of dependency ID to version requirement
+     * @return array of dependency IDs
      */
-    Map<String, String> getDependencies();
+    String[] getDependencies();
 
     /**
      * Gets the plugin configuration schema.

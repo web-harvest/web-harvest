@@ -41,7 +41,7 @@ import java.util.List;
 /**
  * Exception thrown when plugin configuration validation fails.
  * 
- * @author Web-Harvest Team
+ * @author Robert Bala
  * @since 2.1.0
  */
 public class PluginValidationException extends PluginException {
