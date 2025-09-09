@@ -67,6 +67,20 @@ public class HttpDef extends WebHarvestPluginDef {
     private String retryDelay;
     private String retryDelayFactor;
 
+    // SSL configuration attributes
+    private String sslMode;
+    private String sslProtocol;
+    private String keystorePath;
+    private String keystorePassword;
+    private String keystoreType;
+    private String truststorePath;
+    private String truststorePassword;
+    private String truststoreType;
+    private String verifyHostname;
+    private String allowSelfSigned;
+    private String allowExpired;
+    private String allowInvalidHostname;
+
     @Deprecated
     public HttpDef(XmlNode xmlNode, Class<? extends Processor> processorClass) {
         super(xmlNode, processorClass);
@@ -84,6 +98,20 @@ public class HttpDef extends WebHarvestPluginDef {
         this.retryAttempts = CommonUtil.nvl(xmlNode.getAttribute("retry-attempts"), DEFAULT_RETRY_ATTEMPTS);
         this.retryDelay = CommonUtil.nvl(xmlNode.getAttribute("retry-delay"), DEFAULT_RETRY_DELAY);
         this.retryDelayFactor = CommonUtil.nvl(xmlNode.getAttribute("retry-delay-factor"), DEFAULT_RETRY_DELAY_FACTOR);
+
+        // SSL configuration
+        this.sslMode = xmlNode.getAttribute("ssl-mode");
+        this.sslProtocol = xmlNode.getAttribute("ssl-protocol");
+        this.keystorePath = xmlNode.getAttribute("keystore-path");
+        this.keystorePassword = xmlNode.getAttribute("keystore-password");
+        this.keystoreType = xmlNode.getAttribute("keystore-type");
+        this.truststorePath = xmlNode.getAttribute("truststore-path");
+        this.truststorePassword = xmlNode.getAttribute("truststore-password");
+        this.truststoreType = xmlNode.getAttribute("truststore-type");
+        this.verifyHostname = xmlNode.getAttribute("verify-hostname");
+        this.allowSelfSigned = xmlNode.getAttribute("allow-self-signed");
+        this.allowExpired = xmlNode.getAttribute("allow-expired");
+        this.allowInvalidHostname = xmlNode.getAttribute("allow-invalid-hostname");
     }
 
     public String getMethod() {
@@ -184,6 +212,103 @@ public class HttpDef extends WebHarvestPluginDef {
 
     public void setRetryDelayFactor(String retryDelayFactor) {
         this.retryDelayFactor = retryDelayFactor;
+    }
+
+    // SSL configuration getters and setters
+    public String getSslMode() {
+        return sslMode;
+    }
+
+    public void setSslMode(String sslMode) {
+        this.sslMode = sslMode;
+    }
+
+    public String getSslProtocol() {
+        return sslProtocol;
+    }
+
+    public void setSslProtocol(String sslProtocol) {
+        this.sslProtocol = sslProtocol;
+    }
+
+    public String getKeystorePath() {
+        return keystorePath;
+    }
+
+    public void setKeystorePath(String keystorePath) {
+        this.keystorePath = keystorePath;
+    }
+
+    public String getKeystorePassword() {
+        return keystorePassword;
+    }
+
+    public void setKeystorePassword(String keystorePassword) {
+        this.keystorePassword = keystorePassword;
+    }
+
+    public String getKeystoreType() {
+        return keystoreType;
+    }
+
+    public void setKeystoreType(String keystoreType) {
+        this.keystoreType = keystoreType;
+    }
+
+    public String getTruststorePath() {
+        return truststorePath;
+    }
+
+    public void setTruststorePath(String truststorePath) {
+        this.truststorePath = truststorePath;
+    }
+
+    public String getTruststorePassword() {
+        return truststorePassword;
+    }
+
+    public void setTruststorePassword(String truststorePassword) {
+        this.truststorePassword = truststorePassword;
+    }
+
+    public String getTruststoreType() {
+        return truststoreType;
+    }
+
+    public void setTruststoreType(String truststoreType) {
+        this.truststoreType = truststoreType;
+    }
+
+    public String getVerifyHostname() {
+        return verifyHostname;
+    }
+
+    public void setVerifyHostname(String verifyHostname) {
+        this.verifyHostname = verifyHostname;
+    }
+
+    public String getAllowSelfSigned() {
+        return allowSelfSigned;
+    }
+
+    public void setAllowSelfSigned(String allowSelfSigned) {
+        this.allowSelfSigned = allowSelfSigned;
+    }
+
+    public String getAllowExpired() {
+        return allowExpired;
+    }
+
+    public void setAllowExpired(String allowExpired) {
+        this.allowExpired = allowExpired;
+    }
+
+    public String getAllowInvalidHostname() {
+        return allowInvalidHostname;
+    }
+
+    public void setAllowInvalidHostname(String allowInvalidHostname) {
+        this.allowInvalidHostname = allowInvalidHostname;
     }
 
 }

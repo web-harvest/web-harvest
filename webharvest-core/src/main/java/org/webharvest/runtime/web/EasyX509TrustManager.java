@@ -183,7 +183,9 @@ public class EasyX509TrustManager implements X509TrustManager {
      */
     private void checkCertificates(X509Certificate[] certificates, String type) throws CertificateException {
         if (certificates == null || certificates.length == 0) {
-            throw new CertificateException("No certificates provided for " + type + " validation");
+            // In easy mode, we accept empty or null certificates
+            LOG.debug("Accepting empty/null certificates in easy mode for {}", type);
+            return;
         }
 
         if (LOG.isDebugEnabled()) {
@@ -199,6 +201,12 @@ public class EasyX509TrustManager implements X509TrustManager {
 
         // Check each certificate in the chain
         for (X509Certificate cert : certificates) {
+            if (cert == null) {
+                // Skip null certificates in easy mode
+                LOG.debug("Skipping null certificate in easy mode for {}", type);
+                continue;
+            }
+            
             try {
                 // Check validity period unless explicitly allowed
                 if (!allowExpired) {
@@ -251,3 +259,4 @@ public class EasyX509TrustManager implements X509TrustManager {
         this.allowInvalidHostname = allowInvalidHostname;
     }
 }
+

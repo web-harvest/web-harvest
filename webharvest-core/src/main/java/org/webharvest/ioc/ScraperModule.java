@@ -93,8 +93,7 @@ public final class ScraperModule extends AbstractModule {
         bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
                 .annotatedWith(Names.named("resolverPostProcessors"))
                 .toInstance(Arrays.asList(
-                    new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors"),
-                    new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors")
+                    new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
                 ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());

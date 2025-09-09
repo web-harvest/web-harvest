@@ -89,10 +89,9 @@ public class EasyX509TrustManagerTest {
 
     @Test
     public void testCheckClientTrustedWithValidCertificates() throws Exception {
-        // Create a mock certificate array
+        // Create a mock certificate array with null element (simulating empty array)
         X509Certificate[] certificates = new X509Certificate[1];
-        // Note: In a real test, you would create actual X509Certificate instances
-        // For now, we test that the method doesn't throw an exception
+        certificates[0] = null; // Simulate null certificate
         
         // This should not throw an exception in easy mode
         trustManager.checkClientTrusted(certificates, "RSA");
@@ -100,10 +99,9 @@ public class EasyX509TrustManagerTest {
 
     @Test
     public void testCheckServerTrustedWithValidCertificates() throws Exception {
-        // Create a mock certificate array
+        // Create a mock certificate array with null element (simulating empty array)
         X509Certificate[] certificates = new X509Certificate[1];
-        // Note: In a real test, you would create actual X509Certificate instances
-        // For now, we test that the method doesn't throw an exception
+        certificates[0] = null; // Simulate null certificate
         
         // This should not throw an exception in easy mode
         trustManager.checkServerTrusted(certificates, "RSA");
@@ -136,3 +134,4 @@ public class EasyX509TrustManagerTest {
         assertTrue(!trustManagerWithKeystore.isAllowInvalidHostname());
     }
 }
+

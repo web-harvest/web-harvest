@@ -122,8 +122,7 @@ public abstract class UnitilsTestNGExtension extends UnitilsTestNG {
             bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
                     .annotatedWith(Names.named("resolverPostProcessors"))
                     .toInstance(Arrays.<ResolverPostProcessor>asList(
-                        new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors"),
-                        new AnnotatedPluginsPostProcessor("org.webharvest.deprecated.runtime.processors")
+                        new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
                     ));
             bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
         }
