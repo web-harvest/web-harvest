@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="testVar">Hello from CallParam Plugin!</def>
+    
+    <call-param id="mainCallParam" name="testParam">
+        <template>CallParam content: ${testVar}</template>
+    </call-param>
+    
+    <file action="write" path="target/test-output/callparam_output.txt">
+        <template>CallParam plugin test completed</template>
+    </file>
+</config>

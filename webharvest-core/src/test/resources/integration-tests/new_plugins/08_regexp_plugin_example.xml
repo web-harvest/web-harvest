@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="textContent">Hello World! This is a test string.</def>
+    <file action="write" path="target/test-output/regexp_output.txt">
+        <regexp pattern="Hello (.*?)!" flags="i">
+            <get var="textContent"/>
+        </regexp>
+    </file>
+</config>
+
+
+
+

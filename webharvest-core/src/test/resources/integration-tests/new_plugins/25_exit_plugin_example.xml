@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <template>Before exit</template>
+    <exit/>
+    <template>After exit - this should not appear</template>
+</config>
+

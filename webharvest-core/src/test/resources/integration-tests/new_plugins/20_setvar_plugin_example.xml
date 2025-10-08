@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <set-var var="testVar" value="Hello World"/>
+    <set-var var="numberVar" value="42"/>
+    <set-var var="expressionVar" value="${1 + 2}"/>
+    
+    <template>
+        Variable testVar: ${testVar}
+        Variable numberVar: ${numberVar}
+        Variable expressionVar: ${expressionVar}
+    </template>
+</config>

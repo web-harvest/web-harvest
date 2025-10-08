@@ -1,0 +1,167 @@
+/*
+ Copyright (c) 2006-2025 the original author or authors.
+ */
+
+package org.webharvest.plugin.core;
+
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+import org.webharvest.definition.CorePluginDef;
+import org.webharvest.definition.IElementDef;
+import org.webharvest.definition.XmlNode;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.PluginConfigurationSchema;
+import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.PluginValidationException;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.variables.Variable;
+
+import static org.mockito.Mockito.*;
+import static org.testng.Assert.*;
+
+/**
+ * Test for ElsePlugin
+ */
+public class ElsePluginTest {
+
+    @Mock
+    private CorePluginDef elementDef;
+    
+    @Mock
+    private XmlNode xmlNode;
+    
+    @Mock
+    private DynamicScopeContext context;
+    
+    @Mock
+    private PluginConfiguration configuration;
+    
+    private ElsePlugin plugin;
+
+    @BeforeMethod
+    public void setUp() throws PluginException {
+        MockitoAnnotations.openMocks(this);
+        plugin = new ElsePlugin();
+        
+        plugin.setElementDef(elementDef);
+        
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(xmlNode.getText()).thenReturn("Test else content");
+        when(elementDef.hasOperations()).thenReturn(false);
+        
+        when(configuration.getProperty("id")).thenReturn(null);
+        
+        plugin.initialize(configuration);
+    }
+
+    @Test
+    public void testGetMetadata() {
+        PluginMetadata metadata = plugin.getMetadata();
+        assertNotNull(metadata);
+        assertEquals(metadata.getName(), "Else Plugin");
+        assertEquals(metadata.getDescription(), "Else plugin that provides the else branch for conditional execution");
+        assertTrue(metadata.isCorePlugin());
+        assertEquals(metadata.getElementName(), "else");
+        assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
+    }
+
+    @Test
+    public void testGetConfigurationSchema() {
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        assertNotNull(schema);
+        assertNotNull(schema.getAttributeDefinitions());
+        assertEquals(schema.getAttributeDefinitions().length, 1);
+        
+        PluginConfigurationSchema.AttributeDefinition idAttr = schema.getAttributeDefinitions()[0];
+        assertNotNull(idAttr);
+        assertEquals(idAttr.getName(), "id");
+        assertFalse(idAttr.isRequired());
+        
+        assertTrue(schema.allowsBody());
+        assertEquals(schema.getVersion(), "2.1.0");
+    }
+
+    @Test
+    public void testElsePluginInitialize() throws PluginException {
+        ElsePlugin newPlugin = new ElsePlugin();
+        newPlugin.setElementDef(elementDef);
+        
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(config.getProperty("id")).thenReturn("elseId");
+        
+        newPlugin.initialize(config);
+        
+        assertNotNull(newPlugin);
+    }
+
+    @Test(expectedExceptions = PluginException.class)
+    public void testElsePluginInitializeWithNullConfiguration() throws PluginException {
+        ElsePlugin newPlugin = new ElsePlugin();
+        newPlugin.setElementDef(elementDef);
+        
+        newPlugin.initialize(null);
+    }
+
+    @Test
+    public void testElsePluginExecute() throws InterruptedException {
+        when(context.getCharset()).thenReturn("UTF-8");
+        
+        Variable result = plugin.execute(context);
+        
+        assertNotNull(result);
+        assertTrue(result instanceof EmptyVariable);
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testElsePluginExecuteWithInterruptedException() throws InterruptedException, PluginException {
+        when(context.getCharset()).thenReturn("UTF-8");
+        
+        ElsePlugin testPlugin = new ElsePlugin() {
+            @Override
+            protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+                throw new InterruptedException("Test interruption");
+            }
+        };
+        testPlugin.setElementDef(elementDef);
+        
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        testPlugin.initialize(config);
+        
+        testPlugin.execute(context);
+    }
+
+    @Test
+    public void testElsePluginValidateConfiguration() throws PluginValidationException {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(config.getProperty("id")).thenReturn("elseId");
+        plugin.validateConfiguration(config);
+    }
+
+    @Test(expectedExceptions = PluginValidationException.class)
+    public void testElsePluginValidateConfigurationWithNull() throws PluginValidationException {
+        plugin.validateConfiguration(null);
+    }
+
+    @Test
+    public void testElsePluginExecuteMultipleTimes() throws InterruptedException {
+        when(context.getCharset()).thenReturn("UTF-8");
+        
+        Variable result1 = plugin.execute(context);
+        Variable result2 = plugin.execute(context);
+        Variable result3 = plugin.execute(context);
+        
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+        assertTrue(result1 instanceof EmptyVariable);
+        assertTrue(result2 instanceof EmptyVariable);
+        assertTrue(result3 instanceof EmptyVariable);
+    }
+}
+
+

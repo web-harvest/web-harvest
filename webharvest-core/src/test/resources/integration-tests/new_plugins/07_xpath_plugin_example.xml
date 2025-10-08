@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="xmlContent">&lt;root&gt;&lt;item&gt;Test Item&lt;/item&gt;&lt;item&gt;Another Item&lt;/item&gt;&lt;/root&gt;</def>
+    <file action="write" path="target/test-output/xpath_output.txt">
+        <xpath expression="//item/text()">
+            <get var="xmlContent"/>
+        </xpath>
+    </file>
+</config>
+
+
+
+
+
+

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="jsonContent">{"name": "John", "age": 30, "city": "New York"}</def>
+    <file action="write" path="target/test-output/json_to_xml_output.xml">
+        <json-to-xml>
+            <get var="jsonContent"/>
+        </json-to-xml>
+    </file>
+</config>
+
+
+
+
+
+

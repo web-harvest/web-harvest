@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Test XQuery transformation -->
+    <def var="xmlData">&lt;root&gt;&lt;item&gt;Test Item&lt;/item&gt;&lt;item&gt;Another Item&lt;/item&gt;&lt;/root&gt;</def>
+    <def var="xqueryExpression">for $item in //item return &lt;result&gt;{$item/text()}&lt;/result&gt;</def>
+    
+    <file action="write" path="target/test-output/xquery_output.xml">
+        <xquery>
+            <xq-expression>
+                <get var="xqueryExpression"/>
+            </xq-expression>
+            <xml>
+                <get var="xmlData"/>
+            </xml>
+        </xquery>
+    </file>
+</config>
+
+

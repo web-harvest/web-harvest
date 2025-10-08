@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <xslt>
+        <template>&lt;root&gt;&lt;item&gt;Test&lt;/item&gt;&lt;/root&gt;</template>
+        <template>&lt;?xml version="1.0"?&gt;&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"&gt;&lt;xsl:template match="/"&gt;&lt;result&gt;&lt;xsl:value-of select="//item"/&gt;&lt;/result&gt;&lt;/xsl:template&gt;&lt;/xsl:stylesheet&gt;</template>
+    </xslt>
+</config>
+

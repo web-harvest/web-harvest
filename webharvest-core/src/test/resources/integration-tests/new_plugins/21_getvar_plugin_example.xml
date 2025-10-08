@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <set-var var="testVar" value="Hello World"/>
+    <set-var var="numberVar" value="42"/>
+    
+    <get var="testVar"/>
+    <get var="numberVar"/>
+</config>

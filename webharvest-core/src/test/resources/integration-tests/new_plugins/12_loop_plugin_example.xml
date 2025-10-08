@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="items">item1,item2,item3</def>
+    <file action="write" path="target/test-output/loop_output.txt">
+        <loop items="${items}" delimiter=",">
+            <template>Item: ${item}</template>
+        </loop>
+    </file>
+</config>
+
+
+
+
