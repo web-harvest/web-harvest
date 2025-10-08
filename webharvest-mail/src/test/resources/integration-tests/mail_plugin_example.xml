@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <!-- Test Mail plugin -->
+  <def var="smtpHost">localhost</def>
+  <def var="smtpPort">587</def>
+  <def var="smtpUser">test@example.com</def>
+  <def var="smtpPassword">testpass</def>
+  <mail smtp-host="${smtpHost}" smtp-port="${smtpPort}" from="${smtpUser}" to="recipient@example.com" subject="Test Email from Web-Harvest">
+    <template>This is a test email sent from Web-Harvest MailPlugin.</template>
+  </mail>
+  <file action="write" path="target/test-output/mail_output.txt">
+    <template>Mail sent successfully</template>
+  </file>
+  <config>
+    <template>Mail plugin test completed</template>
+  </config>
+</config>
