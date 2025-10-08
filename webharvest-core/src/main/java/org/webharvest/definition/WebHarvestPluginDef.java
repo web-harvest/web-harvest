@@ -35,7 +35,6 @@ package org.webharvest.definition;
 
 import java.util.Map;
 
-import org.webharvest.exception.PluginException;
 import org.webharvest.runtime.processors.Processor;
 
 /**
@@ -44,23 +43,12 @@ import org.webharvest.runtime.processors.Processor;
  */
 public class WebHarvestPluginDef extends AbstractElementDef {
 
-    private final Class<? extends Processor> pluginClass;
-    private final PluginFactory pluginFactory;
+    private final Class<? extends Processor> processorClass;
 
     public WebHarvestPluginDef(final XmlNode xmlNode,
-            Class<? extends Processor> pluginClass) {
-        this(xmlNode, pluginClass, new PluginFactory());
-    }
-    
-    /**
-     * Constructor with dependency injection for testing.
-     */
-    WebHarvestPluginDef(final XmlNode xmlNode,
-                       Class<? extends Processor> pluginClass,
-                       PluginFactory pluginFactory) {
+            Class<? extends Processor> processorClass) {
         super(xmlNode);
-        this.pluginClass = pluginClass;
-        this.pluginFactory = pluginFactory;
+        this.processorClass = processorClass;
     }
 
     public String getUri() {
@@ -80,7 +68,13 @@ public class WebHarvestPluginDef extends AbstractElementDef {
      */
     @Override
     public Processor createPlugin() {
-        return pluginFactory.createPlugin(pluginClass, this);
+        try {
+            return processorClass.newInstance();
+        } catch (InstantiationException e) {
+            throw new RuntimeException("Error instantiating processor class \"" + processorClass.getName() + "\": " + e.getMessage(), e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Error instantiating processor class \"" + processorClass.getName() + "\": " + e.getMessage(), e);
+        }
     }
 
     @Override

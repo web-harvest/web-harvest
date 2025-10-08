@@ -36,8 +36,12 @@ package org.webharvest.plugin;
 import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
+import org.webharvest.plugin.ExecutableBodyContentProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract base class for all Web-Harvest plugins.
@@ -52,6 +56,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * @since 2.1.0
  */
 public abstract class AbstractPlugin implements Plugin {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPlugin.class);
 
     private boolean initialized = false;
     private PluginConfiguration configuration;
@@ -222,5 +228,46 @@ public abstract class AbstractPlugin implements Plugin {
      */
     protected void doCleanup() {
         // Default implementation does nothing
+    }
+
+    /**
+     * Executes the body content of this plugin.
+     * This method delegates to ExecutableBodyContentProvider to execute child elements.
+     * 
+     * @param context the execution context
+     * @return the result of executing the body content
+     * @throws InterruptedException if execution is interrupted
+     */
+    protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+        System.out.println("AbstractPlugin.executeBody() called for plugin: " + getClass().getSimpleName());
+        if (elementDef == null) {
+            System.out.println("AbstractPlugin.executeBody(): No element definition available");
+            LOGGER.debug("No element definition available for body execution");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        System.out.println("AbstractPlugin.executeBody(): elementDef = " + elementDef);
+        System.out.println("AbstractPlugin.executeBody(): elementDef.hasOperations() = " + elementDef.hasOperations());
+        LOGGER.debug("Executing body content for plugin: {}", getClass().getSimpleName());
+        
+        try {
+            // Create ExecutableBodyContentProvider to execute child elements
+            ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
+            Variable result = bodyProvider.executeBody(context);
+            LOGGER.debug("Body execution completed with result: {}", result);
+            return result;
+        } catch (Exception e) {
+            LOGGER.warn("Body execution failed: {}", e.getMessage());
+            // Fallback to text content if body execution fails
+            try {
+                ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
+                Variable fallbackResult = bodyProvider.getBodyTextContent(context);
+                LOGGER.debug("Fallback to text content completed with result: {}", fallbackResult);
+                return fallbackResult;
+            } catch (Exception fallbackException) {
+                LOGGER.error("Both body execution and text content extraction failed", fallbackException);
+                return EmptyVariable.INSTANCE;
+            }
+        }
     }
 }

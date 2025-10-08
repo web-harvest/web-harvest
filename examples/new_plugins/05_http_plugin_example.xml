@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="url">https://httpbin.org/get</def>
+    <def var="response">
+        <http url="${url}"/>
+    </def>
+    <file action="write" path="http_output.txt">
+        <get var="response"/>
+    </file>
+</config>
+
+
+
+
+
+

@@ -35,15 +35,23 @@ package org.webharvest.events;
 
 import static org.testng.AssertJUnit.assertSame;
 import static org.testng.AssertJUnit.assertNotNull;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+import static org.mockito.Mockito.*;
+
 import org.webharvest.Harvester;
 
-public class ScraperExecutionStoppedEventTest extends UnitilsTestNG {
+public class ScraperExecutionStoppedEventTest {
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private Harvester mockHarvester;
+
+    @BeforeMethod
+    public void setUp() {
+        mockHarvester = mock(Harvester.class);
+    }
 
     @Test(expectedExceptions=IllegalArgumentException.class)
     public void constructorIfNullHarvester() {

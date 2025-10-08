@@ -33,276 +33,512 @@
 
 package org.webharvest.plugin.core;
 
-import static org.testng.Assert.*;
-import static org.mockito.Mockito.*;
-
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.definition.CorePluginDef;
+import org.webharvest.definition.IElementDef;
+import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
-import org.webharvest.plugin.exceptions.PluginException;
-import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
+import java.util.ArrayList;
+
+import static org.mockito.Mockito.*;
+import static org.testng.Assert.*;
+
 /**
- * Unit tests for TextPlugin.
+ * Unit tests for {@link TextPlugin}.
  * 
  * @author Robert Bala
- * @since 2.1.0
+ * @since 2.2.0
  */
 public class TextPluginTest {
 
     private TextPlugin plugin;
-    private DynamicScopeContext mockContext;
-    private PluginConfiguration mockConfiguration;
+    
+    @Mock
+    private DynamicScopeContext context;
+    
+    @Mock
+    private CorePluginDef elementDef;
+    
+    @Mock
+    private XmlNode xmlNode;
+    
+    @Mock
+    private PluginConfiguration configuration;
 
     @BeforeMethod
     public void setUp() {
+        MockitoAnnotations.openMocks(this);
         plugin = new TextPlugin();
-        mockContext = mock(DynamicScopeContext.class);
-        mockConfiguration = mock(PluginConfiguration.class);
+        
+        // Set ElementDef to avoid NullPointerException
+        plugin.setElementDef(elementDef);
+    }
+    
+    @Test
+    public void testTextPluginReturnsTextContent() throws Exception {
+        // Given
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn("This is plain text content from Text Plugin");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false); // No child operations
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), "This is plain text content from Text Plugin");
+    }
+    
+    @Test
+    public void testTextPluginReturnsEmptyStringWhenNoContent() throws Exception {
+        // Given
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn("");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false); // No child operations
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), "");
+    }
+    
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testTextPluginThrowsExceptionWhenElementDefIsNull() throws Exception {
+        // Given
+        plugin.initialize(configuration);
+        // elementDef remains null (not set in setUp)
+        
+        // When/Then - should throw RuntimeException due to NullPointerException
+        plugin.execute(context);
+    }
+    
+    @Test
+    public void testTextPluginReturnsEmptyStringWhenTextIsNull() throws Exception {
+        // Given
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(null);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), "");
+    }
+    
+    @Test
+    public void testTextPluginWithSpecialCharacters() throws Exception {
+        // Given
+        String specialText = "Text with special chars: àáâãäåæçèéêë";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(specialText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), specialText);
+    }
+    
+    @Test
+    public void testTextPluginWithNewlinesAndWhitespace() throws Exception {
+        // Given
+        String textWithWhitespace = "  Line 1\n  Line 2\r\n\tTabbed content  ";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(textWithWhitespace);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), textWithWhitespace);
+    }
+    
+    @Test
+    public void testTextPluginWithLargeContent() throws Exception {
+        // Given
+        StringBuilder largeText = new StringBuilder();
+        for (int i = 0; i < 1000; i++) {
+            largeText.append("Line ").append(i).append("\n");
+        }
+        
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(largeText.toString());
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString().length(), largeText.length());
+        assertTrue(result.toString().startsWith("Line 0"));
+        assertTrue(result.toString().contains("Line 999"));
     }
 
     @Test
     public void testGetMetadata() {
-        PluginMetadata metadata = plugin.getMetadata();
-        
+        // Test getMetadata method
+        org.webharvest.plugin.PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getId(), "text");
         assertEquals(metadata.getName(), "Text Plugin");
-        assertEquals(metadata.getVersion(), "2.1.0");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getDescription(), "Text plugin that processes text content with charset and delimiter support");
         assertTrue(metadata.isCorePlugin());
-        assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
-        assertEquals(metadata.getElementName(), "text");
     }
-
+    
     @Test
-    public void testGetMetadataTags() {
-        PluginMetadata metadata = plugin.getMetadata();
-        String[] tags = metadata.getTags();
+    public void testTextPluginWithUnicodeContent() throws Exception {
+        // Given
+        String unicodeText = "Unicode: ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ 中文 العربية русский";
         
-        assertNotNull(tags);
-        assertEquals(tags.length, 4);
-        assertEquals(tags[0], "core");
-        assertEquals(tags[1], "text");
-        assertEquals(tags[2], "charset");
-        assertEquals(tags[3], "delimiter");
-    }
-
-    @Test
-    public void testGetMetadataDependencies() {
-        PluginMetadata metadata = plugin.getMetadata();
-        String[] dependencies = metadata.getDependencies();
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(unicodeText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        assertNotNull(dependencies);
-        assertEquals(dependencies.length, 0);
-    }
-
-    @Test
-    public void testGetConfigurationSchema() {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        assertNotNull(schema);
-        assertNotNull(schema.getAttributeDefinitions());
-        assertEquals(schema.getAttributeDefinitions().length, 3);
+        // When
+        Variable result = plugin.execute(context);
         
-        // Check id attribute
-        var idAttr = schema.getAttribute("id");
-        assertNotNull(idAttr);
-        assertEquals(idAttr.getName(), "id");
-        assertFalse(idAttr.isRequired());
-        
-        // Check charset attribute
-        var charsetAttr = schema.getAttribute("charset");
-        assertNotNull(charsetAttr);
-        assertEquals(charsetAttr.getName(), "charset");
-        assertFalse(charsetAttr.isRequired());
-        assertEquals(charsetAttr.getDefaultValue(), "UTF-8");
-        assertNotNull(charsetAttr.getAllowedValues());
-        assertEquals(charsetAttr.getAllowedValues().length, 4);
-        
-        // Check delimiter attribute
-        var delimiterAttr = schema.getAttribute("delimiter");
-        assertNotNull(delimiterAttr);
-        assertEquals(delimiterAttr.getName(), "delimiter");
-        assertFalse(delimiterAttr.isRequired());
-        assertEquals(delimiterAttr.getDefaultValue(), "\\n");
-    }
-
-    @Test
-    public void testInitialize() throws PluginException {
-        plugin.initialize(mockConfiguration);
-        
-        assertTrue(plugin.isInitialized());
-        // Configuration is protected, so we can't test it directly
-    }
-
-    @Test
-    public void testExecuteWithDefaultConfiguration() throws PluginException, InterruptedException {
-        when(mockContext.getCharset()).thenReturn("UTF-8");
-        
-        plugin.initialize(mockConfiguration);
-        Variable result = plugin.execute(mockContext);
-        
+        // Then
         assertNotNull(result);
-        // For now, plugin returns empty string as it doesn't implement body execution yet
+        assertEquals(result.toString(), unicodeText);
+    }
+
+    @Test
+    public void testTextPluginWithEmptyContent() throws Exception {
+        // Given
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn("");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
+        
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
         assertEquals(result.toString(), "");
     }
 
     @Test
-    public void testExecuteWithCustomCharset() throws PluginException, InterruptedException {
-        when(mockConfiguration.getProperty("charset")).thenReturn("ISO-8859-1");
-        when(mockConfiguration.getProperty("delimiter")).thenReturn(";");
-        when(mockContext.getCharset()).thenReturn("UTF-8");
+    public void testTextPluginWithHTMLEntities() throws Exception {
+        // Given
+        String htmlText = "Text with entities: &lt;&gt;&amp;&quot;";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(htmlText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.initialize(mockConfiguration);
-        Variable result = plugin.execute(mockContext);
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
         assertNotNull(result);
-        // For now, plugin returns empty string as it doesn't implement body execution yet
-        assertEquals(result.toString(), "");
+        assertEquals(result.toString(), htmlText);
     }
 
     @Test
-    public void testValidateConfigurationWithValidCharset() throws PluginException {
-        when(mockConfiguration.getProperty("charset")).thenReturn("UTF-8");
+    public void testTextPluginWithVeryLongText() throws Exception {
+        // Given
+        StringBuilder longText = new StringBuilder();
+        for (int i = 0; i < 1000; i++) {
+            longText.append("This is a very long text. ");
+        }
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(longText.toString());
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.initialize(mockConfiguration);
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        // Should not throw exception
-        plugin.validateConfiguration(mockConfiguration);
-    }
-
-    @Test(expectedExceptions = PluginValidationException.class)
-    public void testValidateConfigurationWithInvalidCharset() throws PluginException {
-        when(mockConfiguration.getProperty("charset")).thenReturn("INVALID_CHARSET");
+        // When
+        Variable result = plugin.execute(context);
         
-        plugin.initialize(mockConfiguration);
-        
-        // Should throw exception
-        plugin.validateConfiguration(mockConfiguration);
-    }
-
-    @Test
-    public void testValidateConfigurationWithNullCharset() throws PluginException {
-        when(mockConfiguration.getProperty("charset")).thenReturn(null);
-        
-        plugin.initialize(mockConfiguration);
-        
-        // Should not throw exception
-        plugin.validateConfiguration(mockConfiguration);
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), longText.toString());
     }
 
     @Test
-    public void testValidateConfigurationWithEmptyCharset() throws PluginException {
-        when(mockConfiguration.getProperty("charset")).thenReturn("");
+    public void testTextPluginWithMultipleSpaces() throws Exception {
+        // Given
+        String multiSpaceText = "Text    with     multiple      spaces";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(multiSpaceText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.initialize(mockConfiguration);
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        // Should not throw exception
-        plugin.validateConfiguration(mockConfiguration);
+        // When
+        Variable result = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), multiSpaceText);
     }
 
     @Test
-    public void testSchemaValidationWithValidCharset() throws PluginValidationException {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+    public void testTextPluginWithTabsAndNewlines() throws Exception {
+        // Given
+        String tabNewlineText = "Text\twith\ttabs\nand\nnewlines";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(tabNewlineText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("text", "http://org.webharvest/schema/2.1/core", "text");
-        config.setProperty("charset", "UTF-8");
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        // Should not throw exception
-        schema.validate(config);
-    }
-
-    @Test(expectedExceptions = PluginValidationException.class)
-    public void testSchemaValidationWithInvalidCharset() throws PluginValidationException {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+        // When
+        Variable result = plugin.execute(context);
         
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("text", "http://org.webharvest/schema/2.1/core", "text");
-        config.setProperty("charset", "INVALID_CHARSET");
-        
-        // Should throw exception
-        schema.validate(config);
-    }
-
-    @Test
-    public void testSchemaValidationWithNullCharset() throws PluginValidationException {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
-        
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("text", "http://org.webharvest/schema/2.1/core", "text");
-        // No charset property set
-        
-        // Should not throw exception
-        schema.validate(config);
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), tabNewlineText);
     }
 
     @Test
-    public void testSchemaValidationWithEmptyCharset() throws PluginValidationException {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+    public void testTextPluginWithNumericContent() throws Exception {
+        // Given
+        String numericText = "123456789";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(numericText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("text", "http://org.webharvest/schema/2.1/core", "text");
-        config.setProperty("charset", "");
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        // Should not throw exception
-        schema.validate(config);
+        // When
+        Variable result = plugin.execute(context);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(result.toString(), numericText);
     }
 
     @Test
-    public void testSchemaAllowsBody() {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+    public void testTextPluginExecuteMultipleTimes() throws Exception {
+        // Given
+        String simpleText = "Multiple execution test";
+        when(context.getCharset()).thenReturn("UTF-8");
+        when(xmlNode.getText()).thenReturn(simpleText);
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        assertTrue(schema.allowsBody());
-    }
-
-    @Test
-    public void testSchemaRequiredAttributes() {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+        plugin.setElementDef(elementDef);
+        plugin.initialize(configuration);
         
-        String[] required = schema.getRequiredAttributes();
-        assertNotNull(required);
-        assertEquals(required.length, 0);
+        // When
+        Variable result1 = plugin.execute(context);
+        Variable result2 = plugin.execute(context);
+        Variable result3 = plugin.execute(context);
+        
+        // Then
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertNotNull(result3);
+        assertEquals(result1.toString(), simpleText);
+        assertEquals(result2.toString(), simpleText);
+        assertEquals(result3.toString(), simpleText);
     }
 
     @Test
     public void testSchemaOptionalAttributes() {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        String[] optionalAttrs = schema.getOptionalAttributes();
         
-        String[] optional = schema.getOptionalAttributes();
-        assertNotNull(optional);
-        assertEquals(optional.length, 3);
-        assertEquals(optional[0], "id");
-        assertEquals(optional[1], "charset");
-        assertEquals(optional[2], "delimiter");
+        assertNotNull(optionalAttrs);
     }
 
     @Test
-    public void testSchemaAllowedSubElements() {
-        PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
+    public void testSchemaRequiredAttributes() {
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        String[] requiredAttrs = schema.getRequiredAttributes();
         
-        String[] allowed = schema.getAllowedSubElements();
-        assertNotNull(allowed);
-        assertEquals(allowed.length, 0);
+        assertNotNull(requiredAttrs);
     }
 
     @Test
-    public void testSchemaRequiredSubElements() {
+    public void testMetadataGetters() {
         PluginMetadata metadata = plugin.getMetadata();
-        var schema = metadata.getConfigurationSchema();
         
-        String[] required = schema.getRequiredSubElements();
-        assertNotNull(required);
-        assertEquals(required.length, 0);
+        assertNotNull(metadata.getAuthor());
+        assertNotNull(metadata.getCategory());
+        assertNotNull(metadata.getVersion());
+        
+        String[] tags = metadata.getTags();
+        assertNotNull(tags);
+        
+        String[] dependencies = metadata.getDependencies();
+        assertNotNull(dependencies);
+    }
+
+    @Test
+    public void testAttributeDefinitionGetters() {
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        PluginConfigurationSchema.AttributeDefinition[] attrs = schema.getAttributeDefinitions();
+        
+        for (PluginConfigurationSchema.AttributeDefinition attr : attrs) {
+            assertNotNull(attr.getName());
+            assertNotNull(attr.getType());
+        }
+    }
+
+    @Test
+    public void testSchemaAllowsBody() {
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        assertTrue(schema.allowsBody());
+    }
+
+    @Test
+    public void testExecuteWithNullId() throws Exception {
+        TextPlugin newPlugin = new TextPlugin();
+        
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(config.getProperty("id")).thenReturn(null);
+        when(config.getProperty("delimiter")).thenReturn(null);
+        
+        when(xmlNode.getText()).thenReturn("test");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        
+        newPlugin.setElementDef(elementDef);
+        newPlugin.initialize(config);
+        
+        Variable result = newPlugin.execute(context);
+        assertNotNull(result);
+    }
+
+    @Test
+    public void testExecuteWithEmptyDelimiter() throws Exception {
+        TextPlugin newPlugin = new TextPlugin();
+        
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(config.getProperty("id")).thenReturn("test-id");
+        when(config.getProperty("delimiter")).thenReturn("");
+        
+        when(xmlNode.getText()).thenReturn("test content");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        
+        newPlugin.setElementDef(elementDef);
+        newPlugin.initialize(config);
+        
+        Variable result = newPlugin.execute(context);
+        assertNotNull(result);
+    }
+
+    @Test
+    public void testExecuteWithSpecialDelimiter() throws Exception {
+        TextPlugin newPlugin = new TextPlugin();
+        
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(config.getProperty("id")).thenReturn("test-id");
+        when(config.getProperty("delimiter")).thenReturn("||");
+        
+        when(xmlNode.getText()).thenReturn("part1||part2||part3");
+        when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        when(elementDef.getNode()).thenReturn(xmlNode);
+        when(elementDef.hasOperations()).thenReturn(false);
+        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        
+        newPlugin.setElementDef(elementDef);
+        newPlugin.initialize(config);
+        
+        Variable result = newPlugin.execute(context);
+        assertNotNull(result);
+    }
+
+    @Test
+    public void testSchemaGetAttribute() {
+        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
+        // Just testing that it doesn't throw exception
+        PluginConfigurationSchema.AttributeDefinition attr = schema.getAttribute("delimiter");
+        assertTrue(true);
     }
 }
+

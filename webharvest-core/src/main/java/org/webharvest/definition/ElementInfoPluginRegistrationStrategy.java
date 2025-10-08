@@ -35,8 +35,7 @@ package org.webharvest.definition;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webharvest.runtime.processors.WebHarvestPlugin;
-import org.webharvest.runtime.processors.plugins.TargetNamespace;
+import org.webharvest.runtime.processors.Processor;
 import org.webharvest.annotation.Definition;
 import org.webharvest.exception.PluginException;
 
@@ -52,36 +51,27 @@ public class ElementInfoPluginRegistrationStrategy implements PluginRegistration
     private static final Logger LOGGER = LoggerFactory.getLogger(ElementInfoPluginRegistrationStrategy.class);
     
     @Override
-    public void registerPlugin(Class<? extends WebHarvestPlugin> plugin, 
+    public void registerPlugin(Class<? extends Processor> plugin, 
                               ConfigurableResolver resolver) throws PluginException {
-        final TargetNamespace targetNamespace = plugin.getAnnotation(TargetNamespace.class);
         final Definition definition = plugin.getAnnotation(Definition.class);
         
-        if (targetNamespace == null) {
+        if (definition == null) {
             throw new PluginException("Plugin " + plugin.getCanonicalName() + 
-                                    " does not have @TargetNamespace annotation");
+                                    " does not have @Definition annotation");
         }
         
-        if (definition != null) {
-            final ElementInfo elementInfo = new ElementInfo(
-                    definition.value(), 
-                    WebHarvestPluginDef.class, 
-                    plugin, 
-                    null, 
-                    null, 
-                    false, 
-                    null);
+        final ElementInfo elementInfo = new ElementInfo(
+                definition.value(), 
+                WebHarvestPluginDef.class, 
+                plugin, 
+                null, 
+                null, 
+                false, 
+                null);
 
-            for (String namespace : targetNamespace.value()) {
-                LOGGER.info("Registering plugin {} under namespace {}",
-                        plugin.getCanonicalName(), namespace);
-                resolver.registerPlugin(elementInfo, namespace);
-            }
-        } else {
-            // Fallback to default strategy if no @Definition annotation
-            LOGGER.warn("Plugin {} does not have @Definition annotation, using default registration", 
-                       plugin.getCanonicalName());
-            new DefaultPluginRegistrationStrategy().registerPlugin(plugin, resolver);
-        }
+        // Register plugin under default namespace
+        LOGGER.info("Registering plugin {} under default namespace",
+                plugin.getCanonicalName());
+        resolver.registerPlugin(elementInfo, "http://org.webharvest/schema/2.1/core");
     }
 }

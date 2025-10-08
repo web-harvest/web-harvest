@@ -35,32 +35,29 @@ package org.webharvest.runtime;
 
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
-import static org.easymock.EasyMock.*;
+import static org.mockito.Mockito.*;
 
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
-import org.unitils.util.ReflectionUtils;
 
 import com.google.common.util.concurrent.Monitor;
 
-public class RunningStatusGuardTest extends UnitilsTestNG {
+public class RunningStatusGuardTest {
 
-    @RegularMock
     private StatusHolder mockHolder;
 
     private RunningStatusGuard guard;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        mockHolder = mock(StatusHolder.class);
         guard = new RunningStatusGuard(new Monitor());
 
-        ReflectionUtils.setFieldValue(guard,
-                RunningStatusGuard.class.getDeclaredField("statusHolder"),
-                mockHolder);
+        // Use reflection to set the private field
+        java.lang.reflect.Field field = RunningStatusGuard.class.getDeclaredField("statusHolder");
+        field.setAccessible(true);
+        field.set(guard, mockHolder);
     }
 
     @AfterMethod
@@ -70,9 +67,7 @@ public class RunningStatusGuardTest extends UnitilsTestNG {
 
     @Test
     public void isSatisfiedIfRunningStatus() throws Exception {
-        expect(mockHolder.getStatus()).andReturn(ScraperState.RUNNING);
-
-        EasyMockUnitils.replay();
+        when(mockHolder.getStatus()).thenReturn(ScraperState.RUNNING);
 
         final boolean result = guard.isSatisfied();
         assertTrue("Unexpected result.", result);
@@ -80,9 +75,7 @@ public class RunningStatusGuardTest extends UnitilsTestNG {
 
     @Test
     public void isSatisfiedIfOtherStatus() throws Exception {
-        expect(mockHolder.getStatus()).andReturn(ScraperState.PAUSED);
-
-        EasyMockUnitils.replay();
+        when(mockHolder.getStatus()).thenReturn(ScraperState.PAUSED);
 
         final boolean result = guard.isSatisfied();
         assertFalse("Unexpected result.", result);

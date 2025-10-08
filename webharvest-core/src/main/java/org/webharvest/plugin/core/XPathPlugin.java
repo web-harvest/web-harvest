@@ -1,0 +1,452 @@
+/*
+ * Copyright (c) 2006-2025 the original author or authors.
+ *
+ * Redistribution and use of this software in source and binary forms,
+ * with or without modification, are permitted provided that the following
+ * conditions are met:
+ *
+ * * Redistributions of source code must retain the above
+ *   copyright notice, this list of conditions and the
+ *   following disclaimer.
+ *
+ * * Redistributions in binary form must reproduce the above
+ *   copyright notice, this list of conditions and the
+ *   following disclaimer in the documentation and/or other
+ *   materials provided with the distribution.
+ *
+ * * The name of Web-Harvest may not be used to endorse or promote
+ *   products derived from this software without specific prior
+ *   written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+package org.webharvest.plugin.core;
+
+import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.PluginConfigurationSchema;
+import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.annotations.CorePlugin;
+import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.PluginValidationException;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.variables.ListVariable;
+import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.Variable;
+
+import net.sf.saxon.Configuration;
+import net.sf.saxon.query.DynamicQueryContext;
+import net.sf.saxon.query.StaticQueryContext;
+import net.sf.saxon.query.XQueryExpression;
+import net.sf.saxon.trans.XPathException;
+import org.webharvest.utils.XmlUtil;
+import org.webharvest.exception.ScraperXPathException;
+import org.webharvest.runtime.RuntimeConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.StringReader;
+import java.util.HashMap;
+import java.util.Map;
+import javax.xml.transform.stream.StreamSource;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+
+/**
+ * XPath plugin that provides XPath expression evaluation functionality.
+ * This is a core plugin migrated from the original XPathProcessor.
+ * 
+ * <p>
+ * The XPath plugin evaluates XPath expressions against XML content.
+ * It requires both XML content and XPath expression as sub-elements.
+ * </p>
+ * 
+ * @core This is a core plugin
+ * @author Web-Harvest Team
+ * @since 2.1.0
+ */
+@CorePlugin(
+    elementName = "xpath",
+    description = "XPath plugin that provides XPath processing functionality",
+    version = "2.1.0"
+)
+public class XPathPlugin extends AbstractPlugin {
+
+    private static final PluginMetadata METADATA = new PluginMetadata() {
+        @Override
+        public String getId() {
+            return "xpath";
+        }
+
+        @Override
+        public String getName() {
+            return "XPath Plugin";
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.1.0";
+        }
+
+        @Override
+        public String getDescription() {
+            return "XPath plugin that provides XPath processing functionality";
+        }
+
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
+
+        @Override
+        public String getCategory() {
+            return "core";
+        }
+
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "xpath", "xml", "expression", "evaluation", "query"};
+        }
+
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
+
+        @Override
+        public String getClassName() {
+            return XPathPlugin.class.getName();
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getElementName() {
+            return "xpath";
+        }
+
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new PluginConfigurationSchema() {
+                @Override
+                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+                    return new PluginConfigurationSchema.AttributeDefinition[]{
+                        new PluginConfigurationSchema.AttributeDefinition() {
+                            @Override
+                            public String getName() {
+                                return "id";
+                            }
+
+                            @Override
+                            public PluginConfigurationSchema.AttributeType getType() {
+                                return PluginConfigurationSchema.AttributeType.STRING;
+                            }
+
+                            @Override
+                            public boolean isRequired() {
+                                return false;
+                            }
+
+                            @Override
+                            public String getDefaultValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public String getDescription() {
+                                return "Optional identifier for the xpath element";
+                            }
+
+                            @Override
+                            public String[] getAllowedValues() {
+                                return null;
+                            }
+
+                            @Override
+                            public Number getMinValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public Number getMaxValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public String getPattern() {
+                                return null;
+                            }
+                        },
+                        new PluginConfigurationSchema.AttributeDefinition() {
+                            @Override
+                            public String getName() {
+                                return "expression";
+                            }
+
+                            @Override
+                            public PluginConfigurationSchema.AttributeType getType() {
+                                return PluginConfigurationSchema.AttributeType.STRING;
+                            }
+
+                            @Override
+                            public boolean isRequired() {
+                                return false;
+                            }
+
+                            @Override
+                            public String getDefaultValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public String getDescription() {
+                                return "XPath expression to evaluate";
+                            }
+
+                            @Override
+                            public String[] getAllowedValues() {
+                                return null;
+                            }
+
+                            @Override
+                            public Number getMinValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public Number getMaxValue() {
+                                return null;
+                            }
+
+                            @Override
+                            public String getPattern() {
+                                return null;
+                            }
+                        }
+                    };
+                }
+                
+                @Override
+                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                        if (attr.getName().equals(name)) {
+                            return attr;
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                public String getVersion() {
+                    return "2.1.0";
+                }
+
+                @Override
+                public boolean allowsBody() {
+                    return true;
+                }
+
+                @Override
+                public String[] getRequiredSubElements() {
+                    return new String[0];
+                }
+
+                @Override
+                public String[] getAllowedSubElements() {
+                    return new String[0];
+                }
+
+                @Override
+                public String[] getOptionalAttributes() {
+                    return new String[]{"id", "expression"};
+                }
+
+                @Override
+                public String[] getRequiredAttributes() {
+                    return new String[0];
+                }
+
+                @Override
+                public void validate(PluginConfiguration configuration) throws PluginValidationException {
+                    if (configuration == null) {
+                        throw new PluginValidationException("Configuration cannot be null");
+                    }
+                    
+                    // Check if expression is provided
+                    String expression = configuration.getProperty("expression");
+                    if (expression != null && !expression.trim().isEmpty()) {
+                        return; // Valid - has expression
+                    }
+                    
+                    // Check if any variable-based attributes are provided
+                    for (String key : configuration.getAllProperties().keySet()) {
+                        if (key.startsWith("v:")) {
+                            return; // Valid - has variable-based attribute
+                        }
+                    }
+                    
+                    // Invalid - no expression and no variables
+                    throw new PluginValidationException("XPath requires \"expression\" or at least one variable-based attribute!");
+                }
+            };
+        }
+    };
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return METADATA;
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return METADATA.getConfigurationSchema();
+    }
+
+    @Override
+    protected void doInitialize(PluginConfiguration configuration) throws PluginException {
+        // Validate configuration first
+        doValidateConfiguration(configuration);
+        // Initialize plugin with configuration
+    }
+
+    @Override
+    protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
+        if (configuration == null) {
+            throw new PluginValidationException("Configuration cannot be null");
+        }
+        // Validate using schema
+        getConfigurationSchema().validate(configuration);
+    }
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.XPathPlugin");
+
+    @Override
+    protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+        PluginConfiguration config = getConfiguration();
+        String expression = config.getProperty("expression");
+        
+        if (expression == null || expression.trim().isEmpty()) {
+            LOGGER.warn("No XPath expression provided");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        // Get XML content from context - using the same logic as original XPathProcessor
+        Variable xml = getXmlContent(context);
+        if (xml == null || xml instanceof EmptyVariable) {
+            LOGGER.warn("No XML content provided for XPath evaluation");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        LOGGER.debug("Evaluating XPath expression: {} on XML content", expression);
+        
+        try {
+            // Use Saxon for XPath evaluation - same as original XPathProcessor
+            StaticQueryContext sqc = getRuntimeConfig(context).getStaticQueryContext();
+            Configuration saxonConfig = sqc.getConfiguration();
+            
+            DynamicQueryContext dynamicContext = new DynamicQueryContext(saxonConfig);
+            StringReader reader = new StringReader(xml.toString());
+            
+            dynamicContext.setContextItem(sqc.buildDocument(new StreamSource(reader)));
+            
+            // Process XPath variables if any
+            Map<String, String> varMap = getVariableMap(config);
+            Map<String, String> evaluatedVarMap = new HashMap<String, String>();
+            for (Map.Entry<String, String> attEntry : varMap.entrySet()) {
+                String varName = attEntry.getKey();
+                String varValue = attEntry.getValue();
+                evaluatedVarMap.put(varName, varValue);
+                // Log debug information instead of setting properties
+                LOGGER.debug("XPathPlugin: variable {} = {}", varName, varValue);
+            }
+            
+            // Process XPath variables
+            String xpathExpression = null;
+            for (Map.Entry<String, String> attEntry : evaluatedVarMap.entrySet()) {
+                String varName = attEntry.getKey();
+                xpathExpression = attEntry.getValue();
+                XQueryExpression exp = getRuntimeConfig(context).getXQueryExpressionPool().getCompiledExpression(xpathExpression);
+                ListVariable xpathResult = XmlUtil.createListOfXmlNodes(exp, dynamicContext);
+                context.setLocalVar(varName, xpathResult);
+            }
+            
+            // Evaluate main XPath expression
+            if (expression != null) {
+                xpathExpression = expression;
+                XQueryExpression exp = getRuntimeConfig(context).getXQueryExpressionPool().getCompiledExpression(xpathExpression);
+                return XmlUtil.createListOfXmlNodes(exp, dynamicContext);
+            } else {
+                return EmptyVariable.INSTANCE;
+            }
+            
+        } catch (XPathException e) {
+            LOGGER.error("Failed to evaluate XPath expression: {}", e.getMessage(), e);
+            throw new ScraperXPathException("Error parsing XPath expression (XPath = [" + expression + "])!", e);
+        } catch (Exception e) {
+            LOGGER.error("Failed to evaluate XPath expression: {}", e.getMessage(), e);
+            throw new ScraperXPathException("Error parsing XPath expression (XPath = [" + expression + "])!", e);
+        }
+    }
+    
+    /**
+     * Get XML content from context - using the same logic as original XPathProcessor
+     */
+    protected Variable getXmlContent(DynamicScopeContext context) {
+        try {
+            // Execute body content to get XML
+            Variable bodyContent = executeBody(context);
+            
+            if (bodyContent == null || bodyContent instanceof EmptyVariable) {
+                LOGGER.warn("No body content available for XPath evaluation");
+                return EmptyVariable.INSTANCE;
+            }
+            
+            System.out.println("Retrieved XML content for XPath evaluation");
+            return bodyContent;
+            
+        } catch (Exception e) {
+            LOGGER.error("Error getting body content for XPath evaluation", e);
+            return EmptyVariable.INSTANCE;
+        }
+    }
+    
+    /**
+     * Get RuntimeConfig from context - placeholder for now
+     * TODO: Implement proper RuntimeConfig access in new plugin architecture
+     */
+    private RuntimeConfig getRuntimeConfig(DynamicScopeContext context) {
+        // For now, create a new RuntimeConfig
+        // In a real implementation, this would be injected or accessed through context
+        return new RuntimeConfig();
+    }
+    
+    /**
+     * Get variable map from configuration - placeholder for now
+     * TODO: Implement proper variable map handling in new plugin architecture
+     */
+    private Map<String, String> getVariableMap(PluginConfiguration config) {
+        // For now, return empty map
+        // In a real implementation, this would extract variables from configuration
+        return new HashMap<String, String>();
+    }
+    
+}

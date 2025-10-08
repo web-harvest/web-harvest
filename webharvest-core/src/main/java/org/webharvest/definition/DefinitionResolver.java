@@ -43,11 +43,8 @@ import org.webharvest.definition.AnnotatedPluginsPostProcessor;
 
 import com.google.inject.Singleton;
 import org.webharvest.AlreadyBoundException;
-import org.webharvest.annotation.ElementInfoFactory;
 import org.webharvest.exception.ConfigurationException;
 import org.webharvest.exception.PluginException;
-import org.webharvest.runtime.processors.ConstantProcessor;
-import org.webharvest.runtime.processors.WebHarvestPlugin;
 import org.webharvest.utils.Assert;
 import org.webharvest.utils.ClassLoaderUtil;
 
@@ -120,23 +117,6 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
     private Map<ElementName, Class[]> externalPluginDependencies =
         new HashMap<ElementName, Class[]>();
 
-    private void registerPlugin(final Class pluginClass, final String... uris) {
-        Assert.notNull(pluginClass);
-        try {
-            final Object pluginObj = pluginClass.newInstance();
-            if (!(pluginObj instanceof WebHarvestPlugin)) {
-                throw new PluginException("Plugin class \"" + pluginClass.getName() + "\" does not extend WebHarvestPlugin class!");
-            }
-        } catch (InstantiationException e) {
-            throw new PluginException("Error instantiating plugin class \"" + pluginClass.getName() + "\": " + e.getMessage(), e);
-        } catch (IllegalAccessException e) {
-            throw new PluginException("Error instantiating plugin class \"" + pluginClass.getName() + "\": " + e.getMessage(), e);
-        }
-        
-        for (String uri : uris) {
-            registerPlugin(ElementInfoFactory.getElementInfo(pluginClass), uri);
-        }
-    }
 
     /**
      * {@inheritDoc}
@@ -157,9 +137,6 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
             throw new PluginException("Plugin \"" + pluginElementName + "\" is already registered!");
         }
 
-        for (final Class subClass : elementInfo.getDependantProcessors()) {
-            registerPlugin(subClass, namespace);
-        }
 
         if (!elementInfo.isInternal()) {
             externalPlugins.put(new PluginClassKey(elementInfo.getProcessorClass().getName(), namespace), pluginElementName);
@@ -167,54 +144,8 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
         externalPluginDependencies.put(pluginElementName, elementInfo.getDependantProcessors());
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void registerPlugin(Class pluginClass, String uri) {
-        registerPlugin(ElementInfoFactory.getElementInfo(pluginClass), uri);
-    }
 
-    @Deprecated
-    @Override
-    public void registerPlugin(String className, String uri) throws PluginException {
-        registerPlugin(ClassLoaderUtil.getPluginClass(className), uri);
-    }
 
-    private void unregisterPlugin(Class pluginClass, String uri) {
-        if (pluginClass != null) {
-            unregisterPlugin(pluginClass.getName(), uri);
-        }
-    }
-
-    public void unregisterPlugin(String className, String uri) {
-        final PluginClassKey key = new PluginClassKey(className, uri);
-        // only external plugins can be unregistered
-        if (externalPlugins.containsKey(key)) {
-            final ElementName pluginElementName = externalPlugins.get(key);
-            getElementsRegistry().unbind(pluginElementName);
-            externalPlugins.remove(key);
-
-            // unregister dependant classes as well
-            Class[] dependantClasses = externalPluginDependencies.get(pluginElementName);
-            externalPluginDependencies.remove(pluginElementName);
-            if (dependantClasses != null) {
-                for (Class c : dependantClasses) {
-                    unregisterPlugin(c, uri);
-                }
-            }
-        }
-    }
-
-    public boolean isPluginRegistered(String className, String uri) {
-        return externalPlugins.containsKey(new PluginClassKey(className, uri));
-    }
-
-    @Deprecated
-
-    public boolean isPluginRegistered(Class pluginClass, String uri) {
-        return pluginClass != null && isPluginRegistered(pluginClass.getName(), uri);
-    }
 
     /**
      * Returns names of all known elements.
@@ -241,6 +172,17 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
         final String nodeName = node.getName();
         final String nodeUri = node.getUri();
 
+        System.out.println("DefinitionResolver.createElementDefinition: nodeName=" + nodeName + ", nodeUri=" + nodeUri);
+
+        // Use new CoreDefinitionResolver for 2.1/core namespace
+        if ("http://org.webharvest/schema/2.1/core".equals(nodeUri)) {
+            System.out.println("DefinitionResolver.createElementDefinition: Using CoreDefinitionResolver for " + nodeName);
+            CoreDefinitionResolver coreResolver = new CoreDefinitionResolver();
+            return coreResolver.createElementDefinition(node);
+        }
+
+        System.out.println("DefinitionResolver.createElementDefinition: Using old system for " + nodeName);
+        // Use old system for other namespaces
         final ElementInfo elementInfo = getElementInfo(nodeName, nodeUri);
         if (elementInfo == null || elementInfo.getDefinitionClass() == null) {
             throw new ConfigurationException("Unexpected configuration element (URI, name): (" + nodeUri + "," + nodeName + ")!");
@@ -282,7 +224,8 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
             return createElementDefinition((XmlNode) subject);
         } else {
             // TODO Use a proxy instead of real definition
-            return new ConstantDef(subject.toString(), ConstantProcessor.class);
+            // For now, return null - this needs to be implemented properly
+            return null;
         }
     }
 
@@ -332,6 +275,26 @@ public class DefinitionResolver extends AbstractRefreshableResolver {
         public T get() {
             return instance;
         }
+    }
+
+    @Override
+    public boolean isPluginRegistered(String className, String namespace) {
+        // Check if plugin with given className is registered
+        return externalPlugins.keySet().stream()
+            .anyMatch(key -> key.className.equals(className));
+    }
+
+    @Override
+    public void unregisterPlugin(String className, String namespace) {
+        // Remove plugin from externalPlugins
+        externalPlugins.entrySet().removeIf(entry -> 
+            entry.getKey().className.equals(className)
+        );
+        // Also remove from dependencies
+        externalPluginDependencies.entrySet().removeIf(entry ->
+            entry.getKey() != null && 
+            externalPlugins.values().stream().noneMatch(name -> name.equals(entry.getKey()))
+        );
     }
 
 }

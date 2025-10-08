@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Test Try-Catch plugin -->
+    <file action="write" path="try_catch_output.txt">
+        <try>
+            <template>This should execute successfully</template>
+            <script language="javascript">
+                // This should fail
+                throw new Error("Test error");
+            </script>
+        </try>
+        <catch>
+            <template>Caught error!</template>
+        </catch>
+    </file>
+</config>
+
+

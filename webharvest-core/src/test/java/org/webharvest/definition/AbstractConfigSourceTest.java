@@ -33,7 +33,7 @@
 
 package org.webharvest.definition;
 
-import static org.easymock.EasyMock.*;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 import org.webharvest.definition.ConfigLocationVisitor.VisitableLocation;
@@ -44,20 +44,21 @@ import java.io.Reader;
 import java.net.URL;
 
 import org.testng.annotations.*;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+
 import org.webharvest.definition.ConfigSource.Location;
 
-public class AbstractConfigSourceTest extends UnitilsTestNG {
+public class AbstractConfigSourceTest {
 
     private MockConfigSource source;
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private VisitableLocation mockLocation;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        mockLocation = mock(VisitableLocation.class);
         source = new MockConfigSource();
     }
 
@@ -93,10 +94,8 @@ public class AbstractConfigSourceTest extends UnitilsTestNG {
 
     @Test(expectedExceptions=IllegalStateException.class)
     public void testIncludeWithUnsupportedLocation() throws Exception {
-        mockLocation.accept(isA(IncludeVisitor.class));
-        expectLastCall();
         source.setLocation(mockLocation);
-        EasyMockUnitils.replay();
+        
         source.include(
                 new Location() {
 

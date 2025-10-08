@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="testVar" value="Hello World"/>
+    <template>Variable value: ${testVar}</template>
+</config>
+

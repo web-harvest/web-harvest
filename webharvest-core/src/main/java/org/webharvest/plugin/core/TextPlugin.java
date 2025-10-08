@@ -40,12 +40,18 @@ import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
+import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.webharvest.utils.CommonUtil;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Text plugin that processes text content with charset and delimiter support.
@@ -58,14 +64,16 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * 
  * @core This is a core plugin
  * @author Robert Bala
- * @since 2.1.0
+ * @since 2.2.0
  */
 @CorePlugin(
     elementName = "text",
     description = "Text plugin that processes text content with charset and delimiter support",
-    version = "2.1.0"
+    version = "2.2.0"
 )
 public class TextPlugin extends AbstractPlugin {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.TextPlugin");
 
     private static final PluginMetadata METADATA = new PluginMetadata() {
         @Override
@@ -80,7 +88,7 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.2.0";
         }
 
         @Override
@@ -100,7 +108,7 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "text", "charset", "delimiter"};
+            return new String[]{"core", "text", "processing", "charset", "delimiter", "content"};
         }
 
         @Override
@@ -188,7 +196,7 @@ public class TextPlugin extends AbstractPlugin {
 
                             @Override
                             public String[] getAllowedValues() {
-                                return new String[]{"UTF-8", "ISO-8859-1", "Windows-1252", "US-ASCII"};
+                                return new String[]{"UTF-8", "ISO-8859-1", "Windows-1252", "US-ASCII", "UTF-16", "UTF-32"};
                             }
 
                             @Override
@@ -292,7 +300,7 @@ public class TextPlugin extends AbstractPlugin {
 
                 @Override
                 public String getVersion() {
-                    return "2.1.0";
+                    return "2.2.0";
                 }
 
                 @Override
@@ -344,37 +352,36 @@ public class TextPlugin extends AbstractPlugin {
      */
     @Override
     protected void doInitialize(PluginConfiguration configuration) throws PluginException {
+        LOGGER.debug("TextPlugin.doInitialize: START");
         // Text plugin doesn't need complex initialization
+        LOGGER.debug("TextPlugin.doInitialize: END");
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
+    protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+        // TextPlugin should return the child element value directly, not use BodyProcessor
+        return doExecute(context);
+    }
+
+    @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // Get charset from configuration or context
-        String charset = null;
-        if (getConfiguration() != null) {
-            charset = getConfiguration().getProperty("charset");
-        }
-        if (CommonUtil.isEmptyString(charset)) {
-            charset = context.getCharset();
-        }
-
-        // Get delimiter from configuration
-        String delimiter = null;
-        if (getConfiguration() != null) {
-            delimiter = getConfiguration().getProperty("delimiter");
-        }
-        if (delimiter == null) {
-            delimiter = "\n";
-        }
-
-        // TODO: Implement body execution
-        // This would need to be implemented to execute child plugins
-        // For now, we return an empty variable
+        LOGGER.debug("TextPlugin.doExecute: START");
         
-        return new NodeVariable("");
+        try {
+            // Get text content directly from XmlNode (like original TextProcessor)
+            String textContent = getElementDef().getNode().getText();
+            LOGGER.debug("TextPlugin: textContent = '{}'", textContent);
+            
+            // Return as NodeVariable (like original TextProcessor)
+            return new NodeVariable(textContent != null ? textContent : "");
+            
+        } catch (Exception e) {
+            LOGGER.error("TextPlugin.doExecute: Exception during execution: {}", e.getMessage(), e);
+            throw new RuntimeException("TextPlugin execution failed: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -391,5 +398,25 @@ public class TextPlugin extends AbstractPlugin {
                 throw new PluginValidationException("Invalid charset: " + charset);
             }
         }
+    }
+
+    /**
+     * Execute child elements directly in the same context (not using BodyProcessor)
+     * to avoid context isolation issues and return actual results instead of raw XML.
+     */
+    private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
+        final List<Object> resultList = new ArrayList<Object>();
+        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
+        
+        for (org.webharvest.definition.IElementDef def : defs) {
+            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
+            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
+            final Variable variable = processor.run(context);
+            if (!variable.isEmpty()) {
+                resultList.addAll(variable.toList());
+            }
+        }
+        
+        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
     }
 }

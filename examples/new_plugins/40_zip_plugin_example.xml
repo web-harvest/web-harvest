@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <!-- Test Zip plugin -->
+  <def var="zipFile">test_archive.zip</def>
+  <zip file="${zipFile}">
+    <!-- Add file to zip -->
+    <zip-entry name="test1.txt">
+      <template>This is test file 1</template>
+    </zip-entry>
+    <!-- Add another file to zip -->
+    <zip-entry name="test2.txt">
+      <template>This is test file 2</template>
+    </zip-entry>
+    <!-- Add directory structure -->
+    <zip-entry name="subdir/test3.txt">
+      <template>This is test file 3 in subdirectory</template>
+    </zip-entry>
+  </zip>
+  <file action="write" path="zip_output.txt">
+    <template>Zip operations completed successfully</template>
+  </file>
+  <config>
+    <template>Zip plugin test completed</template>
+  </config>
+</config>

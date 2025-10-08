@@ -40,7 +40,11 @@ import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 
@@ -55,12 +59,12 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * 
  * @core This is a core plugin
  * @author Robert Bala
- * @since 2.1.0
+ * @since 2.2.0
  */
 @CorePlugin(
     elementName = "return",
     description = "Return plugin that sets the return value for function calls",
-    version = "2.1.0"
+    version = "2.2.0"
 )
 public class ReturnPlugin extends AbstractPlugin {
 
@@ -77,7 +81,7 @@ public class ReturnPlugin extends AbstractPlugin {
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.2.0";
         }
 
         @Override
@@ -97,7 +101,7 @@ public class ReturnPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "return", "function", "control"};
+            return new String[]{"core", "return", "function", "control-flow"};
         }
 
         @Override
@@ -197,7 +201,7 @@ public class ReturnPlugin extends AbstractPlugin {
 
                 @Override
                 public String getVersion() {
-                    return "2.1.0";
+                    return "2.2.0";
                 }
 
                 @Override
@@ -248,14 +252,40 @@ public class ReturnPlugin extends AbstractPlugin {
      * {@inheritDoc}
      */
     @Override
+    protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+        // ReturnPlugin should return the child element value directly, not use BodyProcessor
+        return doExecute(context);
+    }
+
+    @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // TODO: Implement body execution and function result setting
-        // This would need to be implemented to:
-        // 1. Execute child plugins (body)
-        // 2. Find the parent call processor
-        // 3. Set the function result
+        // Execute child elements to get return value
+        Variable returnValue = executeChildElementsDirectly(context);
+        
+        // Set the return value in context for CallPlugin to pick up
+        context.setLocalVar("functionResult", returnValue);
         
         return EmptyVariable.INSTANCE;
+    }
+
+    /**
+     * Execute child elements directly in the same context (not using BodyProcessor)
+     * to avoid context isolation issues and return actual results instead of raw XML.
+     */
+    private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
+        final List<Object> resultList = new ArrayList<Object>();
+        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
+        
+        for (org.webharvest.definition.IElementDef def : defs) {
+            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
+            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
+            final Variable variable = processor.run(context);
+            if (!variable.isEmpty()) {
+                resultList.addAll(variable.toList());
+            }
+        }
+        
+        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
     }
 
     /**

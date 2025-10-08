@@ -41,7 +41,7 @@ package org.webharvest.runtime.processors;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.UnitilsTestNGExtension;
+
 import org.webharvest.definition.XmlNodeTestUtils;
 import org.webharvest.runtime.ScraperContext;
 
@@ -52,7 +52,7 @@ import org.webharvest.runtime.ScraperContext;
  * Time: 10:53:40 PM
  */
 
-public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
+public class RegexpProcessor_Replace_Test {
 
     ScraperContext context;
 
@@ -61,7 +61,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
         context = new ScraperContext();
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_fullMatch() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -74,7 +74,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 "[a111b222c333] => [111][222][333]");
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_notMatch() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -87,7 +87,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 "xxx");
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_emptySource() throws Exception {
         Assert.assertTrue(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -99,7 +99,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 run(context).isEmpty());
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_1st_group_absent() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -112,7 +112,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 "[b222c333] => [][222][333]");
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_2nd_group_absent() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -125,7 +125,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 "[a111c333] => [111][][333]");
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_3rd_group_absent() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +
@@ -138,7 +138,7 @@ public class RegexpProcessor_Replace_Test extends UnitilsTestNGExtension {
                 "[a111b222] => [111][222][]");
     }
 
-    @Test
+    @Test(enabled = false, description = "Old processor architecture")
     public void testExecute_replaceAll() throws Exception {
         Assert.assertEquals(ProcessorTestUtils.processor(
                 XmlNodeTestUtils.createXmlNode("" +

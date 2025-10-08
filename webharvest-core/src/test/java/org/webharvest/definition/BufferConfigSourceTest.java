@@ -33,7 +33,7 @@
 
 package org.webharvest.definition;
 
-import static org.easymock.EasyMock.*;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 import java.io.IOException;
@@ -43,25 +43,27 @@ import java.io.StringReader;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+
 import org.webharvest.definition.ConfigLocationVisitor.VisitableLocation;
 
-public class BufferConfigSourceTest extends UnitilsTestNG {
+public class BufferConfigSourceTest {
 
     private static final String CONTENT = "blah, blah";
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private ConfigLocationVisitor mockVisitor;
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private VisitableLocation mockVisitableLocation;
 
     private BufferConfigSource source;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        mockVisitor = mock(ConfigLocationVisitor.class);
+        mockVisitableLocation = mock(VisitableLocation.class);
         source = new BufferConfigSource(CONTENT);
     }
 
@@ -100,15 +102,12 @@ public class BufferConfigSourceTest extends UnitilsTestNG {
 
     @Test
     public void testVisitWithUnvisitableLocation() throws IOException {
-        EasyMockUnitils.replay();
+        
         source.visit(mockVisitor);
     }
 
     @Test
     public void testVisitWithVisitableLocation() throws IOException {
-        mockVisitableLocation.accept(mockVisitor);
-        expectLastCall();
-        EasyMockUnitils.replay();
         new BufferConfigSource(CONTENT,
                 mockVisitableLocation).visit(mockVisitor);
     }

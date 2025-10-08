@@ -1,91 +1,124 @@
-# 📤 Instrukcje wgrania dokumentacji na SourceForge
+# 📤 SourceForge Documentation Upload Instructions
 
-## 🚀 Szybkie wgranie (automatyczne)
+## 🚀 Quick Upload (Automated)
 
 ```bash
 ./upload-docs.sh
 ```
 
-## 🔧 Ręczne wgranie przez SFTP
+## 🔧 Manual Upload via SFTP
 
-### 1. Połącz się z serwerem SFTP
+### 1. Connect to SFTP Server
 ```bash
 sftp rbala@web.sourceforge.net
 ```
 
-### 2. Przejdź do katalogu docelowego
+### 2. Navigate to Target Directory
 ```bash
 cd /home/project-web/web-harvest/htdocs
 ```
 
-### 3. Wgraj pliki
+### 3. Upload Files
 ```bash
-# Wgraj wszystkie pliki z katalogu web-harvest-docs-upload/
+# Upload all files from web-harvest-docs-upload/ directory
 put -r web-harvest-docs-upload/* .
 ```
 
-### 4. Sprawdź czy pliki zostały wgrane
+### 4. Verify Files Were Uploaded
 ```bash
 ls -la
 ```
 
-### 5. Zakończ połączenie
+### 5. Exit Connection
 ```bash
 quit
 ```
 
-## 📁 Struktura plików do wgrania
+## 📁 Files to Upload Structure
 
 ```
 web-harvest-docs-upload/
-├── index.html              # Strona główna
-├── css/                    # Style CSS
-│   ├── style.css
-│   ├── processors.css
-│   └── prism.css
-├── js/                     # JavaScript
-│   ├── script.js
-│   └── prism.js
-├── processors/             # Referencja procesorów
-│   └── index.html
-├── examples/               # Przykłady
-│   └── index.html
-└── api/                    # API dokumentacja
-    └── index.html
+├── index.html           # Homepage
+├── api/                 # Javadoc API documentation
+├── css/                 # Stylesheets
+├── js/                  # JavaScript files
+├── images/              # Images
+└── examples/            # Code examples (now in module test resources)
 ```
 
-## 🌐 Dostęp do dokumentacji
+## ✅ Post-Upload Verification
 
-Po wgraniu dokumentacja będzie dostępna pod adresem:
-**https://web-harvest.sourceforge.net/**
+### 1. Access Website
+Visit: https://web-harvest.sourceforge.io/
 
-## ✅ Weryfikacja
+### 2. Verify All Pages Load
+- Homepage
+- API documentation
+- Examples
 
-1. Otwórz https://web-harvest.sourceforge.net/ w przeglądarce
-2. Sprawdź czy wszystkie strony się ładują
-3. Przetestuj funkcje wyszukiwania i filtrowania
-4. Sprawdź czy przykłady kodu się kopiują
+### 3. Test Navigation
+- Menu links
+- Internal page links
+- API cross-references
 
-## 🔧 Rozwiązywanie problemów
+### 4. Verify Code Examples Display Correctly
+- Syntax highlighting
+- Code formatting
+- Download links
 
-### Problem: "Permission denied"
-- Sprawdź czy masz uprawnienia do katalogu `/home/project-web/web-harvest/htdocs`
-- Skontaktuj się z administratorem SourceForge
+## 🚨 Troubleshooting
 
-### Problem: "No such file or directory"
-- Upewnij się, że katalog `web-harvest-docs-upload` istnieje
-- Sprawdź czy wszystkie pliki zostały skopiowane
+### Permission Issues
+- Verify you have permissions to `/home/project-web/web-harvest/htdocs` directory
+- Check if you're a member of the web-harvest project team
+- Contact SourceForge support if needed
 
-### Problem: Strona się nie ładuje
-- Sprawdź czy wszystkie pliki CSS i JS zostały wgrane
-- Sprawdź uprawnienia do plików (powinny być 644)
+### Upload Failures
+- Check network connectivity
+- Verify SFTP credentials
+- Try uploading smaller batches
+- Check available disk space
 
-## 📞 Wsparcie
+### Missing Files
+- Verify all files were copied
+- Check directory structure
+- Ensure all CSS and JS files were uploaded
+- Verify file permissions (should be 644)
 
-W przypadku problemów:
-1. Sprawdź logi SFTP
-2. Zweryfikuj uprawnienia do katalogu
-3. Skontaktuj się z zespołem Web-Harvest
+## 📊 Upload Checklist
 
+- [ ] Generated fresh documentation (`mvn site`)
+- [ ] Verified local documentation looks correct
+- [ ] Connected to SourceForge SFTP
+- [ ] Uploaded all files
+- [ ] Verified upload completed
+- [ ] Tested website accessibility
+- [ ] Checked all links work
+- [ ] Verified examples display correctly
 
+## 🔍 Debugging
 
+### 1. Check SFTP Logs
+```bash
+sftp -v rbala@web.sourceforge.net
+```
+
+### 2. List Remote Files
+```bash
+sftp> ls -la /home/project-web/web-harvest/htdocs
+```
+
+### 3. Compare Local vs Remote
+```bash
+# Local
+find web-harvest-docs-upload -type f | wc -l
+
+# Remote (via SFTP)
+sftp> cd /home/project-web/web-harvest/htdocs
+sftp> ls -laR | grep "^-" | wc -l
+```
+
+---
+
+**Last Updated**: October 8, 2025  
+**SourceForge Project**: https://sourceforge.net/projects/web-harvest/

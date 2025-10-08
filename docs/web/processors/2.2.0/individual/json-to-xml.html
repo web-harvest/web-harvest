@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON-to-XML Processor - Web-Harvest</title>
+  <link rel="stylesheet" href="../../../css/style.css">
+  <link rel="stylesheet" href="../../../css/prism.css">
+  <link rel="stylesheet" href="../../../css/processors.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="../../../index.html" class="nav-logo">
+        <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
+        <span>Web-Harvest</span>
+      </a>
+      <ul class="nav-menu">
+        <li><a href="../../../index.html" class="nav-link">Home</a></li>
+        <li><a href="../../../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html" class="nav-link">Processors</a></li>
+        <li><a href="../../../examples/" class="nav-link">Examples</a></li>
+        <li><a href="../../../api/" class="nav-link">API</a></li>
+        <li><a href="../../../index.html#download" class="nav-link">Download</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        </a>
+        </a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="../../../index.html">Home</a>
+        <i class="fas fa-chevron-right"></i>
+        <a href="../../index.html">Processors</a>
+        <i class="fas fa-chevron-right"></i>
+        <span>JSON-to-XML</span>
+      </nav>
+
+      <!-- Processor Header -->
+      <div class="processor-header">
+        <div class="processor-icon">
+          <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="processor-info">
+          <h1>&lt;json-to-xml&gt;</h1>
+          <p class="processor-description">Converts JSON data to XML format for further processing</p>
+          <div class="processor-meta">
+            <span class="category-tag data">Data Processing</span>
+            <span class="version-badge">2.2.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Processor Content -->
+      <div class="processor-content">
+        <!-- Overview -->
+        <section class="processor-section">
+          <h2><i class="fas fa-info-circle"></i> Overview</h2>
+          <p>The <code>&lt;json-to-xml&gt;</code> processor converts JSON data into XML format, making it
+            compatible with XML-based processors like XPath and XQuery. This is essential when working with
+            REST APIs that return JSON data but you need to process it using XML tools.</p>
+
+          <div class="feature-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Converts JSON objects, arrays, and primitives to XML</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Preserves JSON structure and data types</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Handles nested objects and arrays</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Compatible with all XML processors</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Attributes -->
+        <section class="processor-section">
+          <h2><i class="fas fa-cogs"></i> Attributes</h2>
+          <div class="attributes-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Attribute</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>id</code></td>
+                  <td>string</td>
+                  <td>No</td>
+                  <td>-</td>
+                  <td>Unique identifier for the processor</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Examples -->
+        <section class="processor-section">
+          <h2><i class="fas fa-code"></i> Examples</h2>
+
+          <div class="example-tabs">
+            <div class="tab-buttons">
+              <button class="tab-button active" data-tab="basic">Basic Conversion</button>
+              <button class="tab-button" data-tab="api">API Data</button>
+              <button class="tab-button" data-tab="nested">Nested Objects</button>
+              <button class="tab-button" data-tab="arrays">Arrays</button>
+            </div>
+
+            <div class="tab-content">
+              <div class="tab-pane active" id="basic">
+                <h3>Basic JSON to XML Conversion</h3>
+                <p>Simple conversion of JSON data to XML format:</p>
+                <div class="code-window">
+                  <div class="window-header">
+                    <div class="window-controls">
+                      <span class="control red"></span>
+                      <span class="control yellow"></span>
+                      <span class="control green"></span>
+                    </div>
+                    <span class="window-title">json-to-xml-basic-example.xml</span>
+                  </div>
+                  <div class="window-content">
+                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="jsonData"&gt;
+    &lt;http url="https://api.example.com/user/123"&gt;
+      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="xmlData"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="jsonData"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Now you can use XPath on the XML data --&gt;
+  &lt;def var="userName"&gt;
+    &lt;xpath expression="//name"&gt;
+      &lt;get var="xmlData"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane" id="api">
+                <h3>API Data Processing</h3>
+                <p>Processing REST API responses with JSON-to-XML conversion:</p>
+                <div class="code-window">
+                  <div class="window-header">
+                    <div class="window-controls">
+                      <span class="control red"></span>
+                      <span class="control yellow"></span>
+                      <span class="control green"></span>
+                    </div>
+                    <span class="window-title">json-to-xml-api-example.xml</span>
+                  </div>
+                  <div class="window-content">
+                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="apiResponse"&gt;
+    &lt;http url="https://api.github.com/repos/microsoft/vscode"&gt;
+      &lt;http-header name="Accept"&gt;application/vnd.github.v3+json&lt;/http-header&gt;
+      &lt;http-header name="User-Agent"&gt;WebHarvest/2.2.0&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="repoXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="apiResponse"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract repository information --&gt;
+  &lt;def var="repoName"&gt;
+    &lt;xpath expression="//name"&gt;
+      &lt;get var="repoXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="repoStars"&gt;
+    &lt;xpath expression="//stargazers_count"&gt;
+      &lt;get var="repoXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="repoDescription"&gt;
+    &lt;xpath expression="//description"&gt;
+      &lt;get var="repoXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane" id="nested">
+                <h3>Nested Objects</h3>
+                <p>Handling complex nested JSON structures:</p>
+                <div class="code-window">
+                  <div class="window-header">
+                    <div class="window-controls">
+                      <span class="control red"></span>
+                      <span class="control yellow"></span>
+                      <span class="control green"></span>
+                    </div>
+                    <span class="window-title">json-to-xml-nested-example.xml</span>
+                  </div>
+                  <div class="window-content">
+                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="complexJson"&gt;
+    &lt;http url="https://api.example.com/orders/12345"&gt;
+      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="orderXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="complexJson"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract nested customer information --&gt;
+  &lt;def var="customerName"&gt;
+    &lt;xpath expression="//customer/name"&gt;
+      &lt;get var="orderXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="customerEmail"&gt;
+    &lt;xpath expression="//customer/email"&gt;
+      &lt;get var="orderXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="shippingAddress"&gt;
+    &lt;xpath expression="//customer/address"&gt;
+      &lt;get var="orderXml"/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane" id="arrays">
+                <h3>JSON Arrays</h3>
+                <p>Processing JSON arrays and converting them to XML:</p>
+                <div class="code-window">
+                  <div class="window-header">
+                    <div class="window-controls">
+                      <span class="control red"></span>
+                      <span class="control yellow"></span>
+                      <span class="control green"></span>
+                    </div>
+                    <span class="window-title">json-to-xml-arrays-example.xml</span>
+                  </div>
+                  <div class="window-content">
+                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="productsJson"&gt;
+    &lt;http url="https://api.example.com/products"&gt;
+      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="productsXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="productsJson"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each product in the array --&gt;
+  &lt;loop item="product" index="i"&gt;
+    &lt;get var="productsXml"//item&gt;
+    
+    &lt;def var="productName"&gt;
+      &lt;xpath expression="name"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="productPrice"&gt;
+      &lt;xpath expression="price"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="productCategory"&gt;
+      &lt;xpath expression="category"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Save each product --&gt;
+    &lt;file path="products/product_${i}.xml" action="write"&gt;
+      &lt;template&gt;&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;product&gt;
+  &lt;name&gt;${productName}&lt;/name&gt;
+  &lt;price&gt;${productPrice}&lt;/price&gt;
+  &lt;category&gt;${productCategory}&lt;/category&gt;
+&lt;/product&gt;&lt;/template&gt;
+    &lt;/file&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Related Processors -->
+        <section class="processor-section">
+          <h2><i class="fas fa-link"></i> Related Processors</h2>
+          <div class="related-processors">
+            <a href="xml-to-json.html" class="related-processor">
+              <i class="fas fa-exchange-alt"></i>
+              <span>&lt;xml-to-json&gt;</span>
+              <small>Convert XML to JSON</small>
+            </a>
+            <a href="xpath.html" class="related-processor">
+              <i class="fas fa-search"></i>
+              <span>&lt;xpath&gt;</span>
+              <small>Query XML data</small>
+            </a>
+            <a href="xquery.html" class="related-processor">
+              <i class="fas fa-database"></i>
+              <span>&lt;xquery&gt;</span>
+              <small>Advanced XML processing</small>
+            </a>
+            <a href="http.html" class="related-processor">
+              <i class="fas fa-globe"></i>
+              <span>&lt;http&gt;</span>
+              <small>Fetch API data</small>
+            </a>
+            </a>
+        </section>
+        </a>
+        </a>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h3>Web-Harvest</h3>
+          <p>Advanced web scraping and data extraction tool for Java applications.</p>
+          <div class="social-links">
+            <a href="https://github.com/webharvest" target="_blank" rel="noopener"><i class="fab fa-github"></i></a>
+            <a href="https://twitter.com/webharvest" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
+            <a href="https://www.linkedin.com/in/rbala/" target="_blank" rel="noopener"><i
+                class="fab fa-linkedin"></i></a>
+          </div>
+        </div>
+        <div class="footer-section">
+          <h4>Documentation</h4>
+          <ul>
+            <li><a href="../../../api/org/webharvest/runtime/processors/package-summary.html">Processors</a></li>
+            <li><a href="../../../api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
+            <li><a href="../../../examples/">Examples</a></li>
+            <li><a href="../../../api/org/webharvest/exception/package-summary.html">Error Handling</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h4>Downloads</h4>
+          <ul>
+            <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.1.0/" target="_blank"
+                rel="noopener">Version 2.1.0 (Latest)</a></li>
+            <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/v1.0/" target="_blank"
+                rel="noopener">Version 1.0</a></li>
+            <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/" target="_blank"
+                rel="noopener">All Versions</a></li>
+            <li><a href="https://sourceforge.net/projects/web-harvest/" target="_blank" rel="noopener">SourceForge
+                Project</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="../../../index.html#download">Quick Download</a></li>
+            <li><a href="../../../examples/">Examples</a></li>
+            <li><a href="#">Tutorials</a></li>
+            <li><a href="#">Support</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">License</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 Web-Harvest. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../../../js/script.js"></script>
+  <script src="../../../js/prism.js"></script>
+  <script>
+    // Tab functionality
+    document.addEventListener('DOMContentLoaded', function () {
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabPanes = document.querySelectorAll('.tab-pane');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function () {
+          const targetTab = this.getAttribute('data-tab');
+
+          // Remove active class from all buttons and panes
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabPanes.forEach(pane => pane.classList.remove('active'));
+
+          // Add active class to clicked button and corresponding pane
+          this.classList.add('active');
+          document.getElementById(targetTab).classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

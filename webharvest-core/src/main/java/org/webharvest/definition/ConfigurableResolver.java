@@ -34,7 +34,6 @@
 package org.webharvest.definition;
 
 import org.webharvest.exception.PluginException;
-import org.webharvest.runtime.processors.WebHarvestPlugin;
 import org.webharvest.utils.ClassLoaderUtil;
 
 import java.util.Set;
@@ -69,7 +68,7 @@ public interface ConfigurableResolver {
     void refresh();
 
     /**
-     * Register provided {@link WebHarvestPlugin} based on information provided
+     * Register provided plugin based on information provided
      * by specified {@link ElementInfo}.
      *
      * @param elementInfo
@@ -79,17 +78,6 @@ public interface ConfigurableResolver {
      */
     void registerPlugin(ElementInfo elementInfo, String namespace);
 
-    @Deprecated
-    void registerPlugin(Class pluginClass, String uri);
-
-    @Deprecated
-    void registerPlugin(String className, String uri) throws PluginException;
-
-    @Deprecated
-    void unregisterPlugin(String className, String uri);
-
-    @Deprecated
-    boolean isPluginRegistered(String className, String uri);
 
     /**
      * Creates proper element definition instance based on given xml node
@@ -102,18 +90,36 @@ public interface ConfigurableResolver {
     IElementDef createElementDefinition(XmlNode node);
 
     /**
-     * Returns names of all known elements.
+     * Returns set of all registered element names.
+     *
+     * @return Set of ElementName objects
      */
-    @Deprecated
     Set<ElementName> getElementNames();
 
     /**
-     * @param name Name of the element
-     * @param uri  URI of the element
-     * @return Instance of ElementInfo class for the specified element name,
-     *         or null if no element is defined.
+     * Returns element information for given element name and namespace.
+     *
+     * @param localName local name of the element
+     * @param namespaceURI namespace URI
+     * @return ElementInfo or null if not found
      */
-    @Deprecated
-    ElementInfo getElementInfo(String name, String uri) ;
+    ElementInfo getElementInfo(String localName, String namespaceURI);
+
+    /**
+     * Checks if plugin is already registered.
+     *
+     * @param className fully qualified class name
+     * @param namespace XML namespace
+     * @return true if plugin is registered
+     */
+    boolean isPluginRegistered(String className, String namespace);
+
+    /**
+     * Unregisters plugin from the resolver.
+     *
+     * @param className fully qualified class name
+     * @param namespace XML namespace
+     */
+    void unregisterPlugin(String className, String namespace);
 
 }

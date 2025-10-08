@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Browser Processor - Web-Harvest</title>
+    <link rel="stylesheet" href="../../../css/style.css">
+    <link rel="stylesheet" href="../../../css/prism.css">
+    <link rel="stylesheet" href="../../../css/processors.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../../../index.html" class="nav-logo">
+                <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
+                <span>Web-Harvest</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../../../index.html" class="nav-link">Home</a></li>
+                <li><a href="../../../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html" class="nav-link">Processors</a></li>
+                <li><a href="../../../examples/" class="nav-link">Examples</a></li>
+                <li><a href="../../../api/" class="nav-link">API</a></li>
+                <li><a href="../../../index.html#download" class="nav-link">Download</a></li>
+            </ul>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <a href="../../../index.html">Home</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="../../index.html">Processors</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Web Browser</span>
+            </nav>
+
+            <!-- Processor Header -->
+            <div class="processor-header">
+                <div class="processor-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div class="processor-info">
+                    <h1>&lt;web-browser&gt;</h1>
+                    <p class="processor-description">Headless web browser for JavaScript-heavy sites using PhantomJS</p>
+                    <div class="processor-meta">
+                        <span class="category-tag web">Web Processing</span>
+                        <span class="version-badge">2.2.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processor Content -->
+            <div class="processor-content">
+                <!-- Overview -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-info-circle"></i> Overview</h2>
+                    <p>The <code>&lt;web-browser&gt;</code> processor provides headless browser capabilities using
+                        PhantomJS to handle JavaScript-heavy websites that cannot be processed with standard HTTP
+                        requests. It's essential for modern web applications that rely heavily on client-side rendering.
+                    </p>
+
+                    <div class="feature-highlights">
+                        <div class="highlight-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Full JavaScript execution support</span>
+                            </a>
+                            <div class="highlight-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Handles dynamic content loading</span>
+                                </a>
+                                <div class="highlight-item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Customizable browser settings</span>
+                                    </a>
+                                    <div class="highlight-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Wait for specific elements or conditions</span>
+                                        </a>
+                                        </a>
+                </section>
+
+                <!-- Attributes -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-cogs"></i> Attributes</h2>
+                    <div class="attributes-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Attribute</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Default</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>path</code></td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>-</td>
+                                    <td>Path to PhantomJS executable</td>
+                                </tr>
+                                <tr>
+                                    <td><code>port</code></td>
+                                    <td>integer</td>
+                                    <td>No</td>
+                                    <td>12345</td>
+                                    <td>Port for browser communication</td>
+                                </tr>
+                                <tr>
+                                    <td><code>timeout</code></td>
+                                    <td>integer</td>
+                                    <td>No</td>
+                                    <td>30000</td>
+                                    <td>Timeout in milliseconds</td>
+                                </tr>
+                                <tr>
+                                    <td><code>waitfor</code></td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>-</td>
+                                    <td>CSS selector to wait for before processing</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </a>
+                </section>
+
+                <!-- Examples -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-code"></i> Examples</h2>
+
+                    <div class="example-tabs">
+                        <div class="tab-buttons">
+                            <button class="tab-button active" data-tab="basic">Basic Usage</button>
+                            <button class="tab-button" data-tab="wait">Wait for Elements</button>
+                            <button class="tab-button" data-tab="interaction">User Interaction</button>
+                            <button class="tab-button" data-tab="advanced">Advanced Configuration</button>
+                        </div>
+
+                        <div class="tab-content">
+                            <div class="tab-pane active" id="basic">
+                                <h3>Basic Web Browser Usage</h3>
+                                <p>Simple JavaScript-heavy page processing:</p>
+                                <div class="code-window">
+                                    <div class="window-header">
+                                        <div class="window-controls">
+                                            <span class="control red"></span>
+                                            <span class="control yellow"></span>
+                                            <span class="control green"></span>
+                                        </div>
+                                        <span class="window-title">web-browser-basic-example.xml</span>
+                                    </div>
+                                    <div class="window-content">
+                                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="spaContent"&gt;
+    &lt;web-browser 
+      path="/usr/local/bin/phantomjs"
+      port="12345"
+      timeout="60000"&gt;
+      &lt;http url="https://spa-example.com/dashboard"&gt;
+      &lt;/http&gt;
+    &lt;/web-browser&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process the rendered content --&gt;
+  &lt;def var="processedData"&gt;
+    &lt;html-to-xml&gt;
+      &lt;get var="spaContent"/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane" id="wait">
+                                <h3>Wait for Specific Elements</h3>
+                                <p>Wait for dynamic content to load before processing:</p>
+                                <div class="code-window">
+                                    <div class="window-header">
+                                        <div class="window-controls">
+                                            <span class="control red"></span>
+                                            <span class="control yellow"></span>
+                                            <span class="control green"></span>
+                                        </div>
+                                        <span class="window-title">web-browser-wait-example.xml</span>
+                                    </div>
+                                    <div class="window-content">
+                                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="dynamicContent"&gt;
+    &lt;web-browser 
+      path="/usr/local/bin/phantomjs"
+      waitfor=".product-list"
+      timeout="30000"&gt;
+      &lt;http url="https://ecommerce-site.com/products"&gt;
+      &lt;/http&gt;
+    &lt;/web-browser&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract product data after it loads --&gt;
+  &lt;def var="products"&gt;
+    &lt;xpath expression="//div[@class='product-item']"&gt;
+      &lt;html-to-xml&gt;
+        &lt;get var="dynamicContent"/&gt;
+      &lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                        </a>
+                                        </a>
+                                        </a>
+
+                                        <div class="tab-pane" id="interaction">
+                                            <h3>User Interaction Simulation</h3>
+                                            <p>Simulate user interactions like clicking
+                                                and form filling:</p>
+                                            <div class="code-window">
+                                                <div class="window-header">
+                                                    <div class="window-controls">
+                                                        <span class="control red"></span>
+                                                        <span class="control yellow"></span>
+                                                        <span class="control green"></span>
+                                                        </a>
+                                                        <span
+                                                            class="window-title">web-browser-interaction-example.xml</span>
+                                                        </a>
+                                                        <div class="window-content">
+                                                            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="interactedContent"&gt;
+    &lt;web-browser 
+      path="/usr/local/bin/phantomjs"
+      timeout="60000"&gt;
+      &lt;http url="https://interactive-site.com/login"&gt;
+        &lt;http-header name="User-Agent"&gt;Mozilla/5.0 (compatible; WebHarvest/2.2.0)&lt;/http-header&gt;
+      &lt;/http&gt;
+      &lt;!-- Custom JavaScript for interaction --&gt;
+      &lt;script&gt;
+        // Wait for page to load
+        var page = this.getContext().getWebBrowser().getPage();
+        page.evaluateJavaScript("
+          // Fill login form
+          document.getElementById('username').value = 'testuser';
+          document.getElementById('password').value = 'testpass';
+          
+          // Click login button
+          document.getElementById('login-btn').click();
+          
+          // Wait for dashboard to load
+          setTimeout(function() {
+            return true;
+          }, 3000);
+        ");
+      &lt;/script&gt;
+    &lt;/web-browser&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                                            </a>
+                                                            </a>
+                                                            </a>
+
+                                                            <div class="tab-pane" id="advanced">
+                                                                <h3>Advanced
+                                                                    Configuration</h3>
+                                                                <p>Advanced browser
+                                                                    settings and custom
+                                                                    JavaScript
+                                                                    execution:</p>
+                                                                <div class="code-window">
+                                                                    <div class="window-header">
+                                                                        <div class="window-controls">
+                                                                            <span class="control red"></span>
+                                                                            <span class="control yellow"></span>
+                                                                            <span class="control green"></span>
+                                                                            </a>
+                                                                            <span
+                                                                                class="window-title">web-browser-advanced-example.xml</span>
+                                                                            </a>
+                                                                            <div class="window-content">
+                                                                                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="advancedScraping"&gt;
+    &lt;web-browser 
+      path="/opt/phantomjs/bin/phantomjs"
+      port="54321"
+      timeout="120000"
+      waitfor=".data-loaded"&gt;
+      &lt;http url="https://complex-spa.com/analytics"&gt;
+        &lt;http-header name="Accept"&gt;text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8&lt;/http-header&gt;
+        &lt;http-header name="Accept-Language"&gt;en-US,en;q=0.5&lt;/http-header&gt;
+        &lt;http-header name="Accept-Encoding"&gt;gzip, deflate&lt;/http-header&gt;
+        &lt;http-header name="User-Agent"&gt;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36&lt;/http-header&gt;
+      &lt;/http&gt;
+      &lt;script&gt;
+        // Advanced JavaScript execution
+        var page = this.getContext().getWebBrowser().getPage();
+        
+        // Set viewport size
+        page.evaluateJavaScript("
+          document.body.style.width = '1920px';
+          document.body.style.height = '1080px';
+        ");
+        
+        // Execute custom data extraction
+        var result = page.evaluateJavaScript("
+          var data = [];
+          var elements = document.querySelectorAll('.data-item');
+          for (var i = 0; i &lt; elements.length; i++) {
+            data.push({
+              id: elements[i].getAttribute('data-id'),
+              value: elements[i].textContent.trim(),
+              timestamp: new Date().toISOString()
+            });
+          }
+          return JSON.stringify(data);
+        ");
+        
+        // Store the result
+        this.getContext().setVariable('extractedData', result);
+      &lt;/script&gt;
+    &lt;/web-browser&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                                                                </a>
+                                                                                </a>
+                                                                                </a>
+                                                                                </a>
+                                                                                </a>
+                </section>
+
+                <!-- Installation -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-download"></i> PhantomJS Installation</h2>
+                    <p>To use the web-browser processor, you need to install PhantomJS:</p>
+
+                    <div class="installation-steps">
+                        <div class="step">
+                            <h3>1. Download PhantomJS</h3>
+                            <p>Download the appropriate version for your operating system from the <a
+                                    href="http://phantomjs.org/download.html" target="_blank">official website</a>.</p>
+                            </a>
+
+                            <div class="step">
+                                <h3>2. Install PhantomJS</h3>
+                                <div class="code-window">
+                                    <div class="window-header">
+                                        <div class="window-controls">
+                                            <span class="control red"></span>
+                                            <span class="control yellow"></span>
+                                            <span class="control green"></span>
+                                            </a>
+                                            <span class="window-title">Installation Commands</span>
+                                            </a>
+                                            <div class="window-content">
+                                                <pre><code class="language-bash"># macOS (using Homebrew)
+brew install phantomjs
+
+# Ubuntu/Debian
+sudo apt-get install phantomjs
+
+# Windows
+# Download and extract to a directory, then add to PATH
+
+# Verify installation
+phantomjs --version</code></pre>
+                                                </a>
+                                                </a>
+                                                </a>
+
+                                                <div class="step">
+                                                    <h3>3. Configure Path</h3>
+                                                    <p>Either set the <code>path</code> attribute in your configuration
+                                                        or add PhantomJS to your
+                                                        system PATH.</p>
+                                                    </a>
+                                                    </a>
+                </section>
+
+                <!-- Related Processors -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-link"></i> Related Processors</h2>
+                    <div class="related-processors">
+                        <a href="http.html" class="related-processor">
+                            <i class="fas fa-globe"></i>
+                            <span>&lt;http&gt;</span>
+                            <small>Standard HTTP requests</small>
+                        </a>
+                        <a href="html-to-xml.html" class="related-processor">
+                            <i class="fas fa-code"></i>
+                            <span>&lt;html-to-xml&gt;</span>
+                            <small>Parse HTML content</small>
+                        </a>
+                        <a href="xpath.html" class="related-processor">
+                            <i class="fas fa-search"></i>
+                            <span>&lt;xpath&gt;</span>
+                            <small>Extract data from XML</small>
+                        </a>
+                        <a href="script.html" class="related-processor">
+                            <i class="fas fa-code"></i>
+                            <span>&lt;script&gt;</span>
+                            <small>Execute custom JavaScript</small>
+                        </a>
+                        </a>
+                </section>
+                </a>
+                </a>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Web-Harvest</h3>
+                    <p>Advanced web scraping and data extraction tool for Java applications.</p>
+                    <div class="social-links">
+                        <a href="https://github.com/webharvest" target="_blank" rel="noopener"><i
+                                class="fab fa-github"></i></a>
+                        <a href="https://twitter.com/webharvest" target="_blank" rel="noopener"><i
+                                class="fab fa-twitter"></i></a>
+                        <a href="https://www.linkedin.com/in/rbala/" target="_blank" rel="noopener"><i
+                                class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="../../../api/org/webharvest/runtime/processors/package-summary.html">Processors</a>
+                        </li>
+                        <li><a href="../../../api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
+                        <li><a href="../../../examples/">Examples</a></li>
+                        <li><a href="../../../api/org/webharvest/exception/package-summary.html">Error Handling</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Downloads</h4>
+                    <ul>
+                        <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.1.0/"
+                                target="_blank" rel="noopener">Version 2.1.0 (Latest)</a></li>
+                        <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/v1.0/"
+                                target="_blank" rel="noopener">Version 1.0</a></li>
+                        <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/" target="_blank"
+                                rel="noopener">All Versions</a></li>
+                        <li><a href="https://sourceforge.net/projects/web-harvest/" target="_blank"
+                                rel="noopener">SourceForge Project</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="../../../index.html#download">Quick Download</a></li>
+                        <li><a href="../../../examples/">Examples</a></li>
+                        <li><a href="#">Tutorials</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">License</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Web-Harvest. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../../../js/script.js"></script>
+    <script src="../../../js/prism.js"></script>
+    <script>
+        // Tab functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const targetTab = this.getAttribute('data-tab');
+
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+
+                    // Add active class to clicked button and corresponding pane
+                    this.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

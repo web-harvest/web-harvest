@@ -42,8 +42,6 @@ import static org.webharvest.WHConstants.XMLNS_CORE_10;
 import org.webharvest.annotation.Definition;
 import org.webharvest.definition.EmptyDef;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.processors.plugins.Autoscanned;
-import org.webharvest.runtime.processors.plugins.TargetNamespace;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
@@ -53,8 +51,6 @@ import org.webharvest.runtime.variables.Variable;
 // TODO Add unit test
 // TODO Add javadoc
 
-@Autoscanned
-@TargetNamespace({ XMLNS_CORE, XMLNS_CORE_10 })
 @Definition(value = "empty", validAttributes = "id",
         definitionClass = EmptyDef.class)
 public class EmptyProcessor extends AbstractProcessor<EmptyDef> {

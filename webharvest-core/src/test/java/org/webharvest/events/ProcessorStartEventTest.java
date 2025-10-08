@@ -35,15 +35,23 @@ package org.webharvest.events;
 
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertSame;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+import static org.mockito.Mockito.*;
+
 import org.webharvest.runtime.processors.Processor;
 
-public class ProcessorStartEventTest extends UnitilsTestNG {
+public class ProcessorStartEventTest {
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private Processor mockProcessor;
+
+    @BeforeMethod
+    public void setUp() {
+        mockProcessor = mock(Processor.class);
+    }
 
     @Test(expectedExceptions=IllegalArgumentException.class)
     public void constructorIfNullProcessor() {

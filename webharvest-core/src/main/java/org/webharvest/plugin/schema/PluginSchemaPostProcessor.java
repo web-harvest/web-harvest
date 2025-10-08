@@ -85,7 +85,14 @@ public class PluginSchemaPostProcessor implements SchemaResolverPostProcessor {
                 return;
             }
             
-            Collection<Plugin> allPlugins = pluginRegistry.getAllPlugins();
+            Collection<Plugin> allPlugins;
+            try {
+                allPlugins = pluginRegistry.getAllPlugins();
+            } catch (Exception e) {
+                LOG.error("Failed to get plugins from registry", e);
+                return;
+            }
+            
             if (allPlugins.isEmpty()) {
                 LOG.debug("No plugins registered, skipping dynamic schema generation");
                 return;

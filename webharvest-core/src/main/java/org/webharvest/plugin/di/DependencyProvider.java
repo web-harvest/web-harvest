@@ -56,3 +56,5 @@ public interface DependencyProvider<T> {
      */
     T provide() throws PluginDependencyInjectionException;
 }
+
+

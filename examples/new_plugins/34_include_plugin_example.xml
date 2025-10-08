@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <include path="examples/new_plugins/30_text_plugin_example.xml"/>
+</config>

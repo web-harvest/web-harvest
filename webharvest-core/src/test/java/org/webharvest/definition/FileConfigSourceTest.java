@@ -35,6 +35,8 @@ package org.webharvest.definition;
 
 import static org.testng.Assert.*;
 
+import static org.mockito.Mockito.*;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -42,22 +44,23 @@ import java.io.Reader;
 import org.webharvest.definition.FileConfigSource.FileLocation;
 
 import org.testng.annotations.*;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+
 import org.webharvest.definition.ConfigSource.Location;
 
-public class FileConfigSourceTest extends UnitilsTestNG {
+public class FileConfigSourceTest {
 
     private File configFile;
 
     private FileConfigSource source;
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private ConfigLocationVisitor mockVisitor;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        mockVisitor = mock(ConfigLocationVisitor.class);
         configFile = File.createTempFile("foo", "tmp");
         source = new FileConfigSource(configFile);
     }
@@ -97,7 +100,7 @@ public class FileConfigSourceTest extends UnitilsTestNG {
     public void testVisitWithVisitableLocation() throws IOException {
         final FileLocation mockLocation = new FileLocation(configFile);
         mockVisitor.visit(mockLocation);
-        EasyMockUnitils.replay();
+        
         new FileConfigSource(mockLocation).visit(mockVisitor);
     }
 

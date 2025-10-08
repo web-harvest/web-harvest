@@ -36,19 +36,21 @@ package org.webharvest.events;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertSame;
 
+import static org.mockito.Mockito.*;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.annotation.RegularMock;
+
+
 import org.webharvest.runtime.processors.Processor;
 
-public class ProcessorStopEventTest extends UnitilsTestNG {
+public class ProcessorStopEventTest {
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private Processor mockProcessor;
     private Map mockProperties;
 
@@ -56,6 +58,7 @@ public class ProcessorStopEventTest extends UnitilsTestNG {
 
     @BeforeMethod
     public void setUp() {
+        mockProcessor = mock(Processor.class);
         mockProperties = new HashMap();
 
         event = new ProcessorStopEvent(mockProcessor, mockProperties);

@@ -479,8 +479,7 @@ public class WHConstants {
     public static final String XMLNS_CORE_10 = "http://org.webharvest/schema/1.0/config";
     public static final Set<String> XMLNS_CORE_10_ALIASES = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
             "http://org.webharvest/wh-core.xsd",
-            "http://web-harvest.sourceforge.net/schema/1.0/config", // Backward compatibility
-            "http://web-harvest.sourceforge.net/schema/2.1/core"    // Backward compatibility
-            // what other URIs might people have used?
+            "http://web-harvest.sourceforge.net/schema/1.0/config" // Backward compatibility
+            // NOTE: "http://org.webharvest/schema/2.1/core" is NOT an alias - it's the NEW namespace!
     )));
 }

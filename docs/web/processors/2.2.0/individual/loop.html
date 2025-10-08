@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loop Processor - Web-Harvest</title>
+  <link rel="stylesheet" href="../../../css/style.css">
+  <link rel="stylesheet" href="../../../css/prism.css">
+  <link rel="stylesheet" href="../../../css/processors.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="../../../index.html" class="nav-logo">
+        <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
+        <span>Web-Harvest</span>
+      </a>
+      <ul class="nav-menu">
+        <li><a href="../../../index.html" class="nav-link">Home</a></li>
+        <li><a href="../../../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html" class="nav-link">Processors</a></li>
+        <li><a href="../../../examples/" class="nav-link">Examples</a></li>
+        <li><a href="../../../api/" class="nav-link">API</a></li>
+        <li><a href="../../../index.html#download" class="nav-link">Download</a></li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        </a>
+        </a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="../../../index.html">Home</a>
+        <i class="fas fa-chevron-right"></i>
+        <a href="../../index.html">Processors</a>
+        <i class="fas fa-chevron-right"></i>
+        <span>Loop</span>
+      </nav>
+
+      <!-- Processor Header -->
+      <div class="processor-header">
+        <div class="processor-icon">
+          <i class="fas fa-redo"></i>
+        </div>
+        <div class="processor-info">
+          <h1>&lt;loop&gt;</h1>
+          <p class="processor-description">Iterates over a collection of items for repetitive processing</p>
+          <div class="processor-meta">
+            <span class="category-tag control">Control Flow</span>
+            <span class="version-badge">2.2.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Processor Content -->
+      <div class="processor-content">
+        <!-- Overview -->
+        <section class="processor-section">
+          <h2><i class="fas fa-info-circle"></i> Overview</h2>
+          <p>The <code>&lt;loop&gt;</code> processor provides iteration capabilities over collections of data.
+            It's essential for processing multiple items, such as lists of products, search results, or any
+            repetitive data structure. The processor automatically handles the iteration and provides access
+            to current item and index variables.</p>
+
+          <div class="feature-highlights">
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Iterate over XML collections and arrays</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Access to current item and index variables</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Nested loop support for complex data structures</span>
+            </div>
+            <div class="highlight-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Conditional processing within loops</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Attributes -->
+        <section class="processor-section">
+          <h2><i class="fas fa-cogs"></i> Attributes</h2>
+          <div class="attributes-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Attribute</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>item</code></td>
+                  <td>string</td>
+                  <td>No</td>
+                  <td>item</td>
+                  <td>Variable name for current item</td>
+                </tr>
+                <tr>
+                  <td><code>index</code></td>
+                  <td>string</td>
+                  <td>No</td>
+                  <td>index</td>
+                  <td>Variable name for current index</td>
+                </tr>
+                <tr>
+                  <td><code>maxloops</code></td>
+                  <td>integer</td>
+                  <td>No</td>
+                  <td>-</td>
+                  <td>Maximum number of iterations</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Examples -->
+        <section class="processor-section">
+          <h2><i class="fas fa-code"></i> Examples</h2>
+
+          <div class="example-tabs">
+            <div class="tab-buttons">
+              <button class="tab-button active" data-tab="basic">Basic Loop</button>
+              <button class="tab-button" data-tab="products">Product Processing</button>
+              <button class="tab-button" data-tab="nested">Nested Loops</button>
+              <button class="tab-button" data-tab="advanced">Advanced Usage</button>
+            </div>
+
+            <div class="tab-content">
+              <div class="tab-pane active" id="basic">
+                <h3>Basic Loop Processing</h3>
+                <p>Simple iteration over a collection of items:</p>
+                <div class="code-window">
+                  <div class="window-header">
+                    <div class="window-controls">
+                      <span class="control red"></span>
+                      <span class="control yellow"></span>
+                      <span class="control green"></span>
+                    </div>
+                    <span class="window-title">loop-basic-example.xml</span>
+                  </div>
+                  <div class="window-content">
+                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="searchResults"&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url="https://example.com/search?q=products"&gt;
+      &lt;/http&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each search result --&gt;
+  &lt;loop item="result" index="i"&gt;
+    &lt;get var="searchResults"//div[@class='search-result']&gt;
+    &lt;def var="resultTitle"&gt;
+      &lt;xpath expression=".//h3"&gt;
+        &lt;get var="result"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    &lt;def var="resultUrl"&gt;
+      &lt;xpath expression=".//a/@href"&gt;
+        &lt;get var="result"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Process each result (index: ${i}) --&gt;
+    &lt;template&gt;Processing result ${i}: ${resultTitle} - ${resultUrl}
+&lt;/template&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                    </a>
+                    </a>
+                    </a>
+
+                    <div class="tab-pane" id="products">
+                      <h3>Product Data Processing</h3>
+                      <p>Process a list of products with detailed information extraction:</p>
+                      <div class="code-window">
+                        <div class="window-header">
+                          <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                            </a>
+                            <span class="window-title">loop-products-example.xml</span>
+                            </a>
+                            <div class="window-content">
+                              <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="productPage"&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url="https://ecommerce-site.com/products"&gt;
+      &lt;/http&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each product --&gt;
+  &lt;loop item="product" index="productIndex"&gt;
+    &lt;get var="productPage"//div[@class='product-item']&gt;
+    
+    &lt;!-- Extract product details --&gt;
+    &lt;def var="productName"&gt;
+      &lt;xpath expression=".//h2[@class='product-name']"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="productPrice"&gt;
+      &lt;xpath expression=".//span[@class='price']"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="productImage"&gt;
+      &lt;xpath expression=".//img/@src"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="productUrl"&gt;
+      &lt;xpath expression=".//a[@class='product-link']/@href"&gt;
+        &lt;get var="product"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Save product data to file --&gt;
+    &lt;file path="products/product_${productIndex}.xml" action="write"&gt;
+      &lt;template&gt;&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;product&gt;
+  &lt;index&gt;${productIndex}&lt;/index&gt;
+  &lt;name&gt;${productName}&lt;/name&gt;
+  &lt;price&gt;${productPrice}&lt;/price&gt;
+  &lt;image&gt;${productImage}&lt;/image&gt;
+  &lt;url&gt;${productUrl}&lt;/url&gt;
+  &lt;scraped_at&gt;${new java.util.Date()}&lt;/scraped_at&gt;
+&lt;/product&gt;&lt;/template&gt;
+    &lt;/file&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                              </a>
+                              </a>
+                              </a>
+
+                              <div class="tab-pane" id="nested">
+                                <h3>Nested Loops</h3>
+                                <p>Process hierarchical data with nested loop structures:</p>
+                                <div class="code-window">
+                                  <div class="window-header">
+                                    <div class="window-controls">
+                                      <span class="control red"></span>
+                                      <span class="control yellow"></span>
+                                      <span class="control green"></span>
+                                      </a>
+                                      <span class="window-title">loop-nested-example.xml</span>
+                                      </a>
+                                      <div class="window-content">
+                                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="categoryData"&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url="https://store.com/categories"&gt;
+      &lt;/http&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each category --&gt;
+  &lt;loop item="category" index="catIndex"&gt;
+    &lt;get var="categoryData"//div[@class='category']&gt;
+    
+    &lt;def var="categoryName"&gt;
+      &lt;xpath expression=".//h2"&gt;
+        &lt;get var="category"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="categoryUrl"&gt;
+      &lt;xpath expression=".//a/@href"&gt;
+        &lt;get var="category"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Process products in this category --&gt;
+    &lt;loop item="product" index="prodIndex"&gt;
+      &lt;get var="category"//div[@class='product']&gt;
+      
+      &lt;def var="productName"&gt;
+        &lt;xpath expression=".//h3"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+      
+      &lt;def var="productPrice"&gt;
+        &lt;xpath expression=".//span[@class='price']"&gt;
+          &lt;get var="product"/&gt;
+        &lt;/xpath&gt;
+      &lt;/def&gt;
+      
+      &lt;!-- Output: Category ${catIndex}, Product ${prodIndex} --&gt;
+      &lt;template&gt;Category: ${categoryName} | Product: ${productName} | Price: ${productPrice}
+&lt;/template&gt;
+    &lt;/loop&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                                        </a>
+                                        </a>
+                                        </a>
+
+                                        <div class="tab-pane" id="advanced">
+                                          <h3>Advanced Loop Usage</h3>
+                                          <p>Complex loop processing with conditions and limits:</p>
+                                          <div class="code-window">
+                                            <div class="window-header">
+                                              <div class="window-controls">
+                                                <span class="control red"></span>
+                                                <span class="control yellow"></span>
+                                                <span class="control green"></span>
+                                                </a>
+                                                <span class="window-title">loop-advanced-example.xml</span>
+                                                </a>
+                                                <div class="window-content">
+                                                  <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="apiData"&gt;
+    &lt;http url="https://api.example.com/data"&gt;
+      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;def var="jsonXml"&gt;
+    &lt;json-to-xml&gt;
+      &lt;get var="apiData"/&gt;
+    &lt;/json-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process with maximum limit and conditions --&gt;
+  &lt;loop item="item" index="i" maxloops="100"&gt;
+    &lt;get var="jsonXml"//item&gt;
+    
+    &lt;def var="itemId"&gt;
+      &lt;xpath expression="id"&gt;
+        &lt;get var="item"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="itemValue"&gt;
+      &lt;xpath expression="value"&gt;
+        &lt;get var="item"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="itemStatus"&gt;
+      &lt;xpath expression="status"&gt;
+        &lt;get var="item"/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Only process active items --&gt;
+    &lt;if condition="${itemStatus} == 'active'"&gt;
+      &lt;def var="processedValue"&gt;
+        &lt;script&gt;
+          var value = this.getContext().getVariable("itemValue");
+          var index = this.getContext().getVariable("i");
+          return "Item " + index + ": " + value.toUpperCase();
+        &lt;/script&gt;
+      &lt;/def&gt;
+      
+      &lt;!-- Log processing --&gt;
+      &lt;template&gt;Processing item ${i}: ${itemId} - ${processedValue}
+&lt;/template&gt;
+      
+      &lt;!-- Save to database or file --&gt;
+      &lt;file path="processed/active_item_${i}.txt" action="write"&gt;
+        &lt;template&gt;ID: ${itemId}
+Value: ${processedValue}
+Processed at: ${new java.util.Date()}&lt;/template&gt;
+      &lt;/file&gt;
+    &lt;/if&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                                                  </a>
+                                                  </a>
+                                                  </a>
+                                                  </a>
+                                                  </a>
+        </section>
+
+        <!-- Related Processors -->
+        <section class="processor-section">
+          <h2><i class="fas fa-link"></i> Related Processors</h2>
+          <div class="related-processors">
+            <a href="while.html" class="related-processor">
+              <i class="fas fa-sync"></i>
+              <span>&lt;while&gt;</span>
+              <small>Conditional loops</small>
+            </a>
+            <a href="if.html" class="related-processor">
+              <i class="fas fa-question-circle"></i>
+              <span>&lt;if&gt;</span>
+              <small>Conditional processing</small>
+            </a>
+            <a href="xpath.html" class="related-processor">
+              <i class="fas fa-search"></i>
+              <span>&lt;xpath&gt;</span>
+              <small>Data extraction</small>
+            </a>
+            <a href="file.html" class="related-processor">
+              <i class="fas fa-file"></i>
+              <span>&lt;file&gt;</span>
+              <small>File operations</small>
+            </a>
+            </a>
+        </section>
+        </a>
+        </a>
+  </main>
+
+  <!-- Footer -->
+
+  <script src="../../../js/script.js"></script>
+  <script src="../../../js/prism.js"></script>
+  <script>
+    // Tab functionality
+    document.addEventListener('DOMContentLoaded', function () {
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabPanes = document.querySelectorAll('.tab-pane');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function () {
+          const targetTab = this.getAttribute('data-tab');
+
+          // Remove active class from all buttons and panes
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabPanes.forEach(pane => pane.classList.remove('active'));
+
+          // Add active class to clicked button and corresponding pane
+          this.classList.add('active');
+          document.getElementById(targetTab).classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Web-Harvest</h3>
+        <p>Advanced web scraping and data extraction tool for Java applications.</p>
+        <div class="social-links">
+          <a href="https://github.com/webharvest" target="_blank" rel="noopener"><i class="fab fa-github"></i></a>
+          <a href="https://twitter.com/webharvest" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
+          <a href="https://www.linkedin.com/in/rbala/" target="_blank" rel="noopener"><i
+              class="fab fa-linkedin"></i></a>
+        </div>
+      </div>
+      <div class="footer-section">
+        <h4>Documentation</h4>
+        <ul>
+          <li><a href="../../../api/org/webharvest/runtime/processors/package-summary.html">Processors</a></li>
+          <li><a href="../../../api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
+          <li><a href="../../../examples/">Examples</a></li>
+          <li><a href="../../../api/org/webharvest/exception/package-summary.html">Error Handling</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Downloads</h4>
+        <ul>
+          <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.1.0/" target="_blank"
+              rel="noopener">Version 2.1.0 (Latest)</a></li>
+          <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/v1.0/" target="_blank"
+              rel="noopener">Version 1.0</a></li>
+          <li><a href="https://sourceforge.net/projects/web-harvest/files/webhervest/" target="_blank"
+              rel="noopener">All Versions</a></li>
+          <li><a href="https://sourceforge.net/projects/web-harvest/" target="_blank" rel="noopener">SourceForge
+              Project</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="../../../index.html#download">Quick Download</a></li>
+          <li><a href="../../../examples/">Examples</a></li>
+          <li><a href="#">Tutorials</a></li>
+          <li><a href="#">Support</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">License</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 Web-Harvest. All rights reserved.</p>
+    </div>
+  </div>
+</footer>

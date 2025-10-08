@@ -64,8 +64,12 @@ public class BaseTemplater {
     public static String VAR_END = "}";
 
     public static String evaluateToString(String source, ScriptingLanguage language, DynamicScopeContext context) {
+        System.out.println("BaseTemplater.evaluateToString: source='" + source + "', language=" + language);
+        System.out.println("BaseTemplater.evaluateToString: scriptEngineFactory=" + scriptEngineFactory);
         final Variable result = evaluateToVariable(source, language, context);
-        return result.isEmpty() ? null : result.toString();
+        String resultStr = result.isEmpty() ? null : result.toString();
+        System.out.println("BaseTemplater.evaluateToString: result='" + resultStr + "'");
+        return resultStr;
     }
 
     public static Variable evaluateToVariable(final String source,
@@ -86,6 +90,11 @@ public class BaseTemplater {
           int startIndex = source.indexOf(VAR_START);
 
           if (startIndex < 0) {
+              return new NodeVariable(source);
+          }
+
+          // If scripting language is null, return the source as-is (no evaluation)
+          if (language == null) {
               return new NodeVariable(source);
           }
 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <file action="write" path="text_output.txt">
+        <text>This is plain text content from Text Plugin</text>
+    </file>
+</config>
+
+
+
+
+
+

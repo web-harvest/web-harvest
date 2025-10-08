@@ -33,22 +33,17 @@
 
 package org.webharvest.runtime;
 
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.same;
+import static org.mockito.Mockito.*;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
 
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 
-public class NestedContextFactoryTest extends UnitilsTestNG {
+public class NestedContextFactoryTest {
 
-    @RegularMock
     private DynamicScopeContext mockDelegate;
 
     // instance obtained from factory (under the test)
@@ -56,6 +51,7 @@ public class NestedContextFactoryTest extends UnitilsTestNG {
 
     @BeforeMethod
     public void setUp() {
+        mockDelegate = mock(DynamicScopeContext.class);
         this.nestedContext = NestedContextFactory.create(mockDelegate);
     }
 
@@ -74,17 +70,12 @@ public class NestedContextFactoryTest extends UnitilsTestNG {
         final String varName = "varName";
         final String varValue = "var Value 123";
 
-        mockDelegate.setLocalVar(same(varName), same(varValue));
-        expectLastCall();
-
-        EasyMockUnitils.replay();
         nestedContext.setLocalVar(varName, varValue);
+        verify(mockDelegate).setLocalVar(varName, varValue);
     }
 
     @Test
     public void shadowCharsetOperations() {
-        EasyMockUnitils.replay();
-
         assertNull("Expected null for not set charset",
                 nestedContext.getCharset());
         nestedContext.setCharset("UTF-8");
@@ -93,8 +84,6 @@ public class NestedContextFactoryTest extends UnitilsTestNG {
 
     @Test
     public void shadowScriptingLanguageOperations() {
-        EasyMockUnitils.replay();
-
         assertNull("Expected null for not set scripting language",
                 nestedContext.getScriptingLanguage());
         nestedContext.setScriptingLanguage(ScriptingLanguage.JAVASCRIPT);

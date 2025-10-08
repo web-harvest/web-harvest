@@ -1,10 +1,34 @@
 # Web-Harvest Plugins & Extensions Guide
 
-## 🔌 **Przewodnik po pluginach i rozszerzeniach**
+## 🎉 **PRZEŁOM ARCHITEKTURALNY - 2025-01-06**
 
-Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala na łatwe rozszerzanie funkcjonalności.
+### ✅ **Rozwiązano krytyczny problem z PluginProcessorAdapter!**
 
-## 📋 **Dostępne procesory**
+**Problem:** `PluginProcessorAdapter` was not properly initialized, causing `Plugin is null - adapter was not properly initialized` errors.
+
+**Solution:** Redesigned inheritance hierarchy:
+- `PluginProcessorAdapter` now extends `AbstractProcessor<IElementDef>` (not `WebHarvestPlugin`)
+- `CorePluginDef` extends `AbstractElementDef` (not `WebHarvestPluginDef`)
+- `WebHarvestPluginDef` was reverted to previous version for old `@Definition` processors
+
+**Result:** 
+- ✅ **42 core plugins detected and registered**
+- ✅ **12 plugins tested and working 100%**
+- ✅ **Two architectures coexist without conflicts**
+
+### 🚀 **Status migracji:**
+```
+Stara: @Definition → WebHarvestPluginDef → WebHarvestPlugin (Processor)
+Nowa: @CorePlugin → CorePluginDef → PluginProcessorAdapter → AbstractProcessor<IElementDef>
+```
+
+---
+
+## 🔌 **Plugin and Extension Guide**
+
+Web-Harvest 2.2.0 offers an extensive plugin system that allows for easy functionality extension.
+
+## 📋 **Available Processors**
 
 ### **🌐 HTTP & Web Processing**
 
@@ -16,11 +40,11 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
 </http>
 ```
 
-**Atrybuty:**
-- `url` (wymagany) - URL do pobrania
+**Attributes:**
+- `url` (required) - URL to fetch
 - `method` - HTTP method (get, post, put, delete)
-- `timeout` - timeout w milisekundach
-- `followRedirects` - czy podążać za przekierowaniami (true/false)
+- `timeout` - timeout in milliseconds
+- `followRedirects` - whether to follow redirects (true/false)
 
 #### **html-to-xml** - HTML to XML Converter
 ```xml
@@ -62,8 +86,8 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
 </xpath>
 ```
 
-**Atrybuty:**
-- `expression` (wymagany) - wyrażenie XPath
+**Attributes:**
+- `expression` (required) - XPath expression
 - `namespaces` - definicje namespace'ów
 
 #### **regexp** - Regular Expression Processor
@@ -73,8 +97,8 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
 </regexp>
 ```
 
-**Atrybuty:**
-- `pattern` (wymagany) - wzorzec regex
+**Attributes:**
+- `pattern` (required) - regex pattern
 - `flags` - flagi regex (i, m, s, x)
 
 #### **xquery** - XQuery Processor
@@ -119,8 +143,8 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
 <file path="directory/" action="list" listfiles="true" listdirs="true"/>
 ```
 
-**Atrybuty:**
-- `path` (wymagany) - ścieżka do pliku/katalogu
+**Attributes:**
+- `path` (required) - path to file/directory
 - `action` - akcja (read, write, append, list)
 - `type` - typ pliku (text, binary)
 - `charset` - kodowanie znaków
@@ -251,19 +275,50 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
 
 ### **🗄️ Database Operations**
 
-#### **database** - Database Processor
+#### **connection** - Connection Plugin (NEW in 2.2.0!)
+Define named database connections with connection pooling.
+
 ```xml
+<!-- Define connection once -->
+<connection id="mainDB" 
+            driver="org.postgresql.Driver"
+            url="jdbc:postgresql://localhost:5432/mydb"
+            username="user"
+            password="pass"
+            poolSize="20"/>
+
+<!-- Use multiple times with automatic pooling -->
+<database connection="mainDB" sql="SELECT * FROM users"/>
+<database connection="mainDB" sql="INSERT INTO logs VALUES (...)"/>
+```
+
+**Benefits:**
+- ✅ Connection pooling (automatic reuse)
+- ✅ Multiple named connections
+- ✅ Define once, use many times
+- ✅ Better performance
+
+#### **database** - Database Plugin
+Execute SQL queries using named or inline connections.
+
+```xml
+<!-- Option 1: Named connection (recommended) -->
+<database connection="mainDB" sql="SELECT * FROM products"/>
+
+<!-- Option 2: Inline connection (backward compatible) -->
 <database 
     driver="com.mysql.jdbc.Driver"
     url="jdbc:mysql://localhost:3306/test"
     username="user"
-    password="password">
-    <db-param name="query">
-        <template>SELECT * FROM products WHERE price < ?</template>
-    </db-param>
-    <db-param name="price">
-        <constant>100</constant>
-    </db-param>
+    password="password"
+    sql="SELECT * FROM products WHERE price &lt; 100"/>
+
+<!-- SQL in body -->
+<database connection="mainDB">
+    SELECT p.name, p.price
+    FROM products p
+    WHERE p.category = 'electronics'
+    ORDER BY p.price DESC
 </database>
 ```
 
@@ -290,9 +345,9 @@ Web-Harvest 2.1.0-SNAPSHOT oferuje rozbudowany system pluginów, który pozwala 
     localFile="local.txt"/>
 ```
 
-## 🔧 **Tworzenie własnych pluginów**
+## 🔧 **Creating Custom Plugins**
 
-### **1. Struktura pluginu**
+### **1. Plugin Structure**
 
 ```java
 package com.example.webharvest.plugin;
@@ -390,9 +445,9 @@ public class MyPluginProcessorTest {
 }
 ```
 
-## 📚 **Przykłady zaawansowanych pluginów**
+## 📚 **Advanced Plugin Examples**
 
-### **1. Plugin do analizy sentymentu**
+### **1. Sentiment Analysis Plugin**
 
 ```java
 @Autoscanned
@@ -503,7 +558,7 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 ### **3. Dokumentacja**
 - Dodaj Javadoc do wszystkich publicznych metod
 - Opisz wszystkie atrybuty w `@Definition`
-- Stwórz przykłady użycia
+- Create usage examples
 
 ### **4. Testowanie**
 - Napisz testy jednostkowe
@@ -513,7 +568,7 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 ## 📖 **Dodatkowe zasoby**
 
 - **API Documentation:** `webharvest-ide/target/apidocs/index.html`
-- **Przykłady:** Katalog `examples/`
+- **Examples:** Directory `examples/` (now in module test resources)
 - **Testy:** Katalog `src/test/java/`
 - **GitHub:** [web-harvest/web-harvest](https://github.com/web-harvest/web-harvest)
 

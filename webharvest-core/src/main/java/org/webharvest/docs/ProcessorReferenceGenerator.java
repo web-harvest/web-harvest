@@ -38,7 +38,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.webharvest.annotation.Definition;
-import org.webharvest.runtime.processors.plugins.TargetNamespace;
 
 import java.io.File;
 import java.io.FileWriter;

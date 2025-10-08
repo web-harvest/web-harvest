@@ -33,11 +33,16 @@
 
 package org.webharvest.events;
 
+import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.WebScraper;
 
 /**
  * Event informing that the execution of {@link WebScraper} has been
  * successfully completed.
+ * 
+ * IMPORTANT: This event is posted BEFORE scope cleanup, so the context
+ * still contains all variables created during execution. This allows
+ * listeners to extract results before they are cleaned up.
  *
  * @author Piotr Dyraga
  * @since 2.1.0-SNAPSHOT
@@ -48,6 +53,8 @@ public final class ScraperExecutionEndEvent {
     private final WebScraper scraper;
 
     private final long executionTime;
+    
+    private final DynamicScopeContext context;
 
     /**
      * Constructs {@link ScraperExecutionEndEvent} accepting reference to
@@ -57,11 +64,14 @@ public final class ScraperExecutionEndEvent {
      *            {@link WebScraper} which execution has been completed
      * @param executionTime
      *            how long the execution took in milliseconds
+     * @param context
+     *            the execution context containing all variables (BEFORE cleanup)
      */
     public ScraperExecutionEndEvent(final WebScraper scraper,
-            final long executionTime) {
+            final long executionTime, final DynamicScopeContext context) {
         this.scraper = scraper;
         this.executionTime = executionTime;
+        this.context = context;
     }
 
     /**
@@ -81,5 +91,15 @@ public final class ScraperExecutionEndEvent {
      */
     public long getExecutionTime() {
         return this.executionTime;
+    }
+    
+    /**
+     * Returns the execution context containing all variables.
+     * This context is still valid (variables have not been cleaned up yet).
+     * 
+     * @return the execution context with all variables
+     */
+    public DynamicScopeContext getContext() {
+        return this.context;
     }
 }

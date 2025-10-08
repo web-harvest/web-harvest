@@ -41,13 +41,17 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
-import org.webharvest.plugin.annotations.InjectDependency;
 import org.webharvest.plugin.services.HttpResponse;
+import com.google.inject.Inject;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.variables.NodeVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.webharvest.runtime.templaters.BaseTemplater;
+import org.webharvest.runtime.scripting.ScriptingLanguage;
 
 /**
  * HTTP plugin that demonstrates dependency injection.
@@ -62,8 +66,10 @@ import org.webharvest.runtime.variables.NodeVariable;
  */
 @CorePlugin(elementName = "http")
 public class HttpPlugin extends AbstractPlugin {
-    
-    @InjectDependency
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.HttpPlugin");
+
+    @Inject
     private HttpService httpService;
     
     @Override
@@ -72,30 +78,53 @@ public class HttpPlugin extends AbstractPlugin {
     }
     
     @Override
-    protected Variable doExecute(DynamicScopeContext context) throws RuntimeException {
+    protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+        LOGGER.debug("HttpPlugin.doExecute: START - Method entered!");
+        LOGGER.debug("HttpPlugin: context = {}", context);
+        LOGGER.debug("HttpPlugin: httpService = {}", httpService);
+        LOGGER.debug("HttpPlugin: httpService.getClass() = {}", (httpService != null ? httpService.getClass().getName() : "NULL"));
+        
+        // Check if HttpService is properly injected
+        if (httpService == null) {
+            throw new IllegalStateException("HttpService is not properly injected. Check Guice configuration.");
+        }
+        
         try {
-            String url = getConfiguration().getProperty("url");
-            String method = getConfiguration().getProperty("method", "GET");
-            
-            if (url == null || url.trim().isEmpty()) {
+            String urlTemplate = getConfiguration().getProperty("url");
+            String methodTemplate = getConfiguration().getProperty("method", "GET");
+
+            if (urlTemplate == null || urlTemplate.trim().isEmpty()) {
                 throw new RuntimeException("URL is required");
             }
+
+            // Resolve templates for URL and method
+            Variable urlVar = BaseTemplater.evaluateToVariable(urlTemplate, ScriptingLanguage.BEANSHELL, context);
+            Variable methodVar = BaseTemplater.evaluateToVariable(methodTemplate, ScriptingLanguage.BEANSHELL, context);
+
+            String url = urlVar != null ? urlVar.toString() : urlTemplate;
+            String method = methodVar != null ? methodVar.toString() : methodTemplate;
             
             Map<String, String> headers = new HashMap<>();
             // Add any custom headers from configuration
             
             HttpResponse response;
             if ("POST".equalsIgnoreCase(method)) {
-                String body = getConfiguration().getProperty("body", "");
+                String bodyTemplate = getConfiguration().getProperty("body", "");
+                Variable bodyVar = BaseTemplater.evaluateToVariable(bodyTemplate, ScriptingLanguage.BEANSHELL, context);
+                String body = bodyVar != null ? bodyVar.toString() : bodyTemplate;
                 response = httpService.post(url, body, headers);
             } else {
                 response = httpService.get(url, headers);
             }
             
-            return new NodeVariable(response.getBody());
+            String responseBody = response.getBody();
+            LOGGER.debug("HttpPlugin: Response body length = {}", responseBody.length());
+            LOGGER.debug("HttpPlugin: First 200 chars = '{}'", responseBody.substring(0, Math.min(responseBody.length(), 200)));
             
-        } catch (HttpServiceException e) {
-            throw new RuntimeException("HTTP request failed: " + e.getMessage(), e);
+            return new NodeVariable(responseBody);
+            
+        } catch (Exception e) {
+            throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
         }
     }
     

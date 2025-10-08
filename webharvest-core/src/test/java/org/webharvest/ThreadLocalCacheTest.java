@@ -40,9 +40,8 @@ import static org.testng.AssertJUnit.assertTrue;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
 
-public class ThreadLocalCacheTest extends UnitilsTestNG {
+public class ThreadLocalCacheTest {
 
     private ThreadLocalCache<String, Object> cache;
 

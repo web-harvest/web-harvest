@@ -52,6 +52,11 @@ public class DefaultProcessorExecutionStrategy implements ProcessorExecutionStra
             throw new InterruptedException();
         }
         
+        // Check for null context
+        if (context == null) {
+            throw new IllegalArgumentException("Context cannot be null");
+        }
+        
         // Execute the processor's main logic
         if (processor instanceof AbstractProcessor) {
             return ((AbstractProcessor<?>) processor).execute(context);

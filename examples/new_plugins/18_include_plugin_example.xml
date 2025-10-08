@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Test Include plugin -->
+    <def var="includePath">examples/new_plugins/01_constant_plugin_example.xml</def>
+    
+    <file action="write" path="include_output.txt">
+        <template>Before include</template>
+        <include path="${includePath}"/>
+        <template>After include</template>
+    </file>
+</config>
+
+

@@ -36,6 +36,7 @@ package org.webharvest.definition;
 import org.webharvest.exception.PluginException;
 import org.webharvest.ioc.InjectorHelper;
 import org.webharvest.runtime.processors.Processor;
+import org.webharvest.runtime.processors.PluginProcessorAdapter;
 
 /**
  * Factory for creating plugin instances.
@@ -70,6 +71,16 @@ public final class PluginFactory {
             
             // Inject dependencies using Guice
             InjectorHelper.getInjector().injectMembers(plugin);
+            
+            // Initialize plugin with configuration if it's a PluginProcessorAdapter
+            if (plugin instanceof PluginProcessorAdapter) {
+                PluginProcessorAdapter adapter = (PluginProcessorAdapter) plugin;
+                // Call the public method to update configuration
+                adapter.updatePluginConfiguration();
+                if (!adapter.isInitialized()) {
+                    adapter.initialize(adapter.getPluginConfiguration());
+                }
+            }
             
             return plugin;
         } catch (Exception e) {

@@ -97,8 +97,11 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
     }
 
     private void copyVariables(final DynamicScopeContext context) {
+        System.out.println("JSRScriptEngineAdapter.copyVariables: Starting to copy variables from context");
+        int count = 0;
         for (KeyValuePair<Variable> pair : context) {
             final Variable value = pair.getValue();
+            System.out.println("JSRScriptEngineAdapter.copyVariables: Copying variable '" + pair.getKey() + "' = " + value);
 
             // FIXME: The inline condition below has been moved from the
             // first web harvest implementation of script engines
@@ -109,6 +112,8 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
             // directly instead of manually unwrapping them...
             adaptee.put(pair.getKey(), (value instanceof ScriptingVariable)
                             ? value.getWrappedObject() : value);
+            count++;
         }
+        System.out.println("JSRScriptEngineAdapter.copyVariables: Copied " + count + " variables");
     }
 }

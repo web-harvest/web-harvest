@@ -37,9 +37,9 @@ import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertSame;
 
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
 
-public class SchemaComponentFactoryTest extends UnitilsTestNG {
+
+public class SchemaComponentFactoryTest {
 
     @Test
     public void testGetSchemaResolver() {

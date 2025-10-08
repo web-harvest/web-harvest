@@ -55,8 +55,8 @@ import org.webharvest.definition.ConfigSourceFactory;
 import org.webharvest.definition.IElementDef;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.ioc.DebugFileLogger;
-import org.webharvest.ioc.HttpModule;
 import org.webharvest.ioc.ScraperModule;
+import org.webharvest.ioc.HttpModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.Harvest;
 import org.webharvest.Harvester;
@@ -120,11 +120,12 @@ public class WebHarvestCLI {
 
             parseLoggingSettings(params);
 
-            final ProxySettings proxySettings = parseProxySettings(params);
+            // TODO: Replace with new HTTP Client 4.x implementation
+            // final ProxySettings proxySettings = parseProxySettings(params);
 
             final Injector injector = Guice.createInjector(
                     new ScraperModule(workingDir),
-                    new HttpModule(proxySettings));
+                    new HttpModule(ProxySettings.NO_PROXY_SET));
 
             parseDebugModeSettings(params, workingDir);
 
@@ -190,36 +191,37 @@ public class WebHarvestCLI {
         }
     }
 
-    private static ProxySettings parseProxySettings(
-            final Map<String, String> params) {
-         final String proxyHost = params.get("proxyhost");
-         if (proxyHost == null || "".equals(proxyHost)) {
-             return ProxySettings.NO_PROXY_SET;
-         }
-
-         final ProxySettings.Builder proxySettingsBuilder =
-             new ProxySettings.Builder(proxyHost);
-
-         String proxyPort = params.get("proxyport");
-         if (proxyPort != null && !"".equals(proxyPort)) {
-             proxySettingsBuilder.setProxyPort(
-                     Integer.parseInt(proxyPort));
-         }
-
-         String proxyUser = params.get("proxyuser");
-         if (proxyUser != null && !"".equals(proxyUser)) {
-
-             proxySettingsBuilder.setProxyCredentialsUsername(proxyUser);
-             proxySettingsBuilder.setProxyCredentialsPassword(
-                     params.get("proxypassword"));
-             proxySettingsBuilder.setProxyCredentialsNTHost(
-                     params.get("proxynthost"));
-             proxySettingsBuilder.setProxyCredentialsNTDomain(
-                     params.get("proxyntdomain"));
-         }
-
-         return proxySettingsBuilder.build();
-    }
+    // TODO: Replace with new HTTP Client 4.x implementation
+    // private static ProxySettings parseProxySettings(
+    //         final Map<String, String> params) {
+    //      final String proxyHost = params.get("proxyhost");
+    //      if (proxyHost == null || "".equals(proxyHost)) {
+    //          return ProxySettings.NO_PROXY_SET;
+    //      }
+    //
+    //      final ProxySettings.Builder proxySettingsBuilder =
+    //          new ProxySettings.Builder(proxyHost);
+    //
+    //      String proxyPort = params.get("proxyport");
+    //      if (proxyPort != null && !"".equals(proxyPort)) {
+    //          proxySettingsBuilder.setProxyPort(
+    //                  Integer.parseInt(proxyPort));
+    //      }
+    //
+    //      String proxyUser = params.get("proxyuser");
+    //      if (proxyUser != null && !"".equals(proxyUser)) {
+    //
+    //          proxySettingsBuilder.setProxyCredentialsUsername(proxyUser);
+    //          proxySettingsBuilder.setProxyCredentialsPassword(
+    //                  params.get("proxypassword"));
+    //          proxySettingsBuilder.setProxyCredentialsNTHost(
+    //                  params.get("proxynthost"));
+    //          proxySettingsBuilder.setProxyCredentialsNTDomain(
+    //                  params.get("proxyntdomain"));
+    //      }
+    //
+    //      return proxySettingsBuilder.build();
+    // }
 
     private static void parseDatabaseDrivers(final Map<String, String> params) {
         final String drivers = params.get("dbdrivers");

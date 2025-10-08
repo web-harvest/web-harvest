@@ -44,18 +44,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.annotation.Definition;
 import org.webharvest.runtime.processors.AbstractProcessor;
-import org.webharvest.runtime.processors.WebHarvestPlugin;
-import org.webharvest.runtime.processors.plugins.Autoscanned;
-import org.webharvest.runtime.processors.plugins.TargetNamespace;
+import org.webharvest.runtime.processors.Processor;
 import org.webharvest.utils.ClassPathScanner;
 import org.webharvest.utils.ClassPathScannerImpl;
 import org.webharvest.exception.PluginException;
 
 /**
  * {@link ResolverPostProcessor} implementation capable of scanning
- * Java class path looking for {@link Autoscanned} web harvest plugins.
- * Found {@link Autoscanned} plugins declaring {@link TargetNamespace} are
- * registered in the post processed {@link ConfigurableResolver}.
+ * Java class path looking for web harvest plugins.
+ * Found plugins are registered in the post processed {@link ConfigurableResolver}.
  *
  * @author Piotr Dyraga
  * @since 2.1.0-SNAPSHOT
@@ -73,8 +70,7 @@ public final class AnnotatedPluginsPostProcessor implements
     /**
      * Constructs {@link AnnotatedPluginsPostProcessor} accepting name of java
      * package which is going to be scanned for the web harvest plugins.
-     * Provided package and all its subpackages are scanned for plugins
-     * annotated with {@link Autoscanned}.
+     * Provided package and all its subpackages are scanned for plugins.
      *
      * @param packageName
      *            name of package to be scanned
@@ -99,7 +95,7 @@ public final class AnnotatedPluginsPostProcessor implements
 
     /**
      * Post process provided {@link ConfigurableResolver} by registering all
-     * {@link Autoscanned} web harvest plugins available on classpath under
+     * web harvest plugins available on classpath under
      * package (and its subpackages) declared in the post processor's
      * constructor.
      *
@@ -108,7 +104,7 @@ public final class AnnotatedPluginsPostProcessor implements
      */
     @Override
     public void postProcess(final ConfigurableResolver resolver) {
-        for (Class< ? extends WebHarvestPlugin > plugin : scanPlugins()) {
+        for (Class< ? extends Processor > plugin : scanPlugins()) {
             try {
                 registrationStrategy.registerPlugin(plugin, resolver);
             } catch (PluginException e) {
@@ -120,15 +116,14 @@ public final class AnnotatedPluginsPostProcessor implements
 
 
     /**
-     * Scans class path looking for plugins annotated with {@link Autoscanned}.
-     * Candidate plugins must also declare target namespace using
-     * {@link TargetNamespace} annotation.
+     * Scans class path looking for plugins annotated with {@link Definition}.
+     * Candidate plugins must also declare target namespace.
      *
      * @return web harvest plugins eligible for registration
      */
-    private Set<Class< ? extends WebHarvestPlugin >> scanPlugins() {
+    private Set<Class< ? extends Processor >> scanPlugins() {
         final Set<Class< ? >> candidates = scanner
-                .getTypesAnnotatedWith(Autoscanned.class);
+                .getTypesAnnotatedWith(Definition.class);
         return filterCandidates(candidates);
     }
 
@@ -136,8 +131,7 @@ public final class AnnotatedPluginsPostProcessor implements
      * Filters provided {@link Set} of candidates according to the following
      * criteria:
      * <ul>
-     * <li>type must declare {@link TargetNamespace} annotation</li>
-     * <li>type must be a subtype of {@link WebHarvestPlugin}</li>
+     * <li>type must be a subtype of {@link Processor}</li>
      * </ul>
      * Only candidates matching criteria are returned.
      *
@@ -145,17 +139,15 @@ public final class AnnotatedPluginsPostProcessor implements
      *            {@link Set} of candidates to be filtered
      * @return {@link Set} of candidates matching filtering criteria
      */
-    private Set<Class< ? extends WebHarvestPlugin >> filterCandidates(
+    private Set<Class< ? extends Processor >> filterCandidates(
             final Set<Class< ? >> candidates) {
         final Predicate validCandidatePredicate = PredicateUtils.andPredicate(
                 // TODO Use Processor interface instead
                 new SubtypePredicate(AbstractProcessor.class),
-                PredicateUtils.andPredicate(
-                        new AnnotatedTypePredicate(TargetNamespace.class),
-                        new AnnotatedTypePredicate(Definition.class)));
+                new AnnotatedTypePredicate(Definition.class));
 
-        final Set<Class< ? extends WebHarvestPlugin >> validCandidates =
-            new HashSet<Class < ? extends WebHarvestPlugin >>();
+        final Set<Class< ? extends Processor >> validCandidates =
+            new HashSet<Class < ? extends Processor >>();
         final Set<Class< ? >> rejectedCandidates = new HashSet<Class < ? >>();
 
         CollectionUtils.select(candidates, new Predicate() {

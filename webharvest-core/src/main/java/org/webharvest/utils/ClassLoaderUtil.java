@@ -109,6 +109,9 @@ public final class ClassLoaderUtil {
 
     public static Class< ? > getPluginClass(String fullClassName)
             throws PluginException {
+        if (fullClassName == null) {
+            throw new PluginException("Plugin class name cannot be null");
+        }
         if (rootClassLoader == null) {
             defineRootLoader();
         }

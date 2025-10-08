@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Simple API Test - httpbin.org -->
+    
+    <!-- Get JSON data -->
+    <def var="jsonData">
+        <http url="https://httpbin.org/json"/>
+    </def>
+    
+    <!-- Parse JSON to XML -->
+    <def var="xmlData">
+        <json-to-xml>
+            <get var="jsonData"/>
+        </json-to-xml>
+    </def>
+    
+    <!-- Extract value -->
+    <def var="slideshow">
+        <xpath expression="//slideshow/author">
+            <get var="xmlData"/>
+        </xpath>
+    </def>
+    
+    <!-- Save result -->
+    <file action="write" path="target/test-output/api_result.txt">
+        <template>Slideshow Author: ${slideshow}</template>
+    </file>
+</config>
+

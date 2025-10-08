@@ -122,7 +122,9 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
         setProperty("ID", id);
         
         logProcessorStart(id);
-        eventBus.post(new ProcessorStartEvent(this));
+        if (eventBus != null) {
+            eventBus.post(new ProcessorStartEvent(this));
+        }
         
         return new ProcessorExecutionContext(this, context, properties, startTime, id);
     }
@@ -143,7 +145,9 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
         setProperty(WHConstants.EXECUTION_TIME_PROPERTY_NAME, executionTime);
         setProperty(WHConstants.VALUE_PROPERTY_NAME, result);
 
-        eventBus.post(new ProcessorStopEvent(this, properties));
+        if (eventBus != null) {
+            eventBus.post(new ProcessorStopEvent(this, properties));
+        }
         writeDebugFile(executionContext.getProcessorId(), result);
         logProcessorEnd(executionContext.getProcessorId(), executionTime);
     }
@@ -238,7 +242,8 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
 
     private void writeDebugFile(final String processorId, final Variable var) {
         if (processorId != null && var != null) {
-            debugFileLogger.trace("[{}]\n{}\n\n", processorId, var.toString());
+            // Use standard logger instead of debugFileLogger to avoid injection issues
+            LOG.debug("[{}]\n{}\n\n", processorId, var.toString());
         }
     }
 

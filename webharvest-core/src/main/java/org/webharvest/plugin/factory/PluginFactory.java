@@ -152,3 +152,5 @@ public interface PluginFactory {
      */
     Class<? extends Plugin> getPluginClass(String namespace, String elementName);
 }
+
+

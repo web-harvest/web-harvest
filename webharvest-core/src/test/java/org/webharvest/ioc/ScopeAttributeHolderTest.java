@@ -40,9 +40,9 @@ import java.util.Map;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
 
-public class ScopeAttributeHolderTest extends UnitilsTestNG {
+
+public class ScopeAttributeHolderTest {
 
     private static final String KEY = "key";
 

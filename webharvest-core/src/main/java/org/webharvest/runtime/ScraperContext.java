@@ -120,6 +120,7 @@ public class ScraperContext implements DynamicScopeContext {
             localVariableNames.add(name);
         }
         variableValueStack.push((Variable) ObjectUtils.defaultIfNull(variable, EmptyVariable.INSTANCE));
+        System.out.println("ScraperContext.setLocalVar('" + name + "', " + variable + ") - stack size: " + variableValueStack.size());
     }
 
     @Override
@@ -137,7 +138,9 @@ public class ScraperContext implements DynamicScopeContext {
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         final Stack<Variable> stack = centralReferenceTable.get(name);
-        return (stack == null) ? null : stack.peek();
+        Variable result = (stack == null) ? null : stack.peek();
+        System.out.println("ScraperContext.getVar('" + name + "') = " + result);
+        return result;
     }
 
     @Override

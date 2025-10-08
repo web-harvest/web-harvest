@@ -1,107 +1,131 @@
 {
-  "processors" : [ {
-    "name" : "http",
-    "displayName" : "HTTP Request",
-    "category" : "web",
-    "description" : "Performs HTTP requests to fetch web content",
-    "namespace" : "http://org.webharvest/schema/2.1/core",
-    "attributes" : [ {
-      "name" : "url",
-      "description" : "Target URL",
-      "required" : true,
-      "type" : "string"
-    }, {
-      "name" : "method",
-      "description" : "HTTP method",
-      "required" : false,
-      "type" : "string",
-      "defaultValue" : "GET"
-    }, {
-      "name" : "timeout",
-      "description" : "Request timeout in milliseconds",
-      "required" : false,
-      "type" : "integer",
-      "defaultValue" : "30000"
-    }, {
-      "name" : "followredirects",
-      "description" : "Follow HTTP redirects",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "true"
-    }, {
-      "name" : "useragent",
-      "description" : "Custom User-Agent string",
-      "required" : false,
-      "type" : "string"
-    } ],
-    "subprocessors" : [ "http-header", "http-param" ]
-  }, {
-    "name" : "html-to-xml",
-    "displayName" : "HTML to XML",
-    "category" : "web",
-    "description" : "Converts HTML content to well-formed XML using advanced parsing strategies",
-    "namespace" : "http://org.webharvest/schema/2.1/core",
-    "attributes" : [ {
-      "name" : "advancedxmlescape",
-      "description" : "Advanced XML character escaping",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "specialentities",
-      "description" : "Support for special HTML entities",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "unicodechars",
-      "description" : "Unicode character support",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "allowmultiwordattributes",
-      "description" : "Allow multi-word attributes",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "omitunknowntags",
-      "description" : "Omit unknown HTML tags",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "omitcomments",
-      "description" : "Omit HTML comments",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    }, {
-      "name" : "omittermlenvelope",
-      "description" : "Omit XML envelope",
-      "required" : false,
-      "type" : "boolean",
-      "defaultValue" : "false"
-    } ]
-  }, {
-    "name" : "xpath",
-    "displayName" : "XPath",
-    "category" : "data",
-    "description" : "Extracts data using XPath expressions",
-    "namespace" : "http://org.webharvest/schema/2.1/core",
-    "attributes" : [ {
-      "name" : "expression",
-      "description" : "XPath expression",
-      "required" : true,
-      "type" : "string"
-    }, {
-      "name" : "id",
-      "description" : "Unique identifier",
-      "required" : false,
-      "type" : "string"
-    } ]
-  } ],
-  "generatedAt" : "Sun Sep 07 23:01:42 CEST 2025",
-  "version" : "2.1.0-SNAPSHOT"
+  "processors": [
+    {
+      "name": "http",
+      "displayName": "HTTP Request",
+      "category": "web",
+      "description": "Performs HTTP requests to fetch web content",
+      "namespace": "http://org.webharvest/schema/2.1/core",
+      "attributes": [
+        {
+          "name": "url",
+          "description": "Target URL",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "method",
+          "description": "HTTP method",
+          "required": false,
+          "type": "string",
+          "defaultValue": "GET"
+        },
+        {
+          "name": "timeout",
+          "description": "Request timeout in milliseconds",
+          "required": false,
+          "type": "integer",
+          "defaultValue": "30000"
+        },
+        {
+          "name": "followredirects",
+          "description": "Follow HTTP redirects",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "true"
+        },
+        {
+          "name": "useragent",
+          "description": "Custom User-Agent string",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "subprocessors": [
+        "http-header",
+        "http-param"
+      ]
+    },
+    {
+      "name": "html-to-xml",
+      "displayName": "HTML to XML",
+      "category": "web",
+      "description": "Converts HTML content to well-formed XML using advanced parsing strategies",
+      "namespace": "http://org.webharvest/schema/2.1/core",
+      "attributes": [
+        {
+          "name": "advancedxmlescape",
+          "description": "Advanced XML character escaping",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "specialentities",
+          "description": "Support for special HTML entities",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "unicodechars",
+          "description": "Unicode character support",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "allowmultiwordattributes",
+          "description": "Allow multi-word attributes",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "omitunknowntags",
+          "description": "Omit unknown HTML tags",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "omitcomments",
+          "description": "Omit HTML comments",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        },
+        {
+          "name": "omittermlenvelope",
+          "description": "Omit XML envelope",
+          "required": false,
+          "type": "boolean",
+          "defaultValue": "false"
+        }
+      ]
+    },
+    {
+      "name": "xpath",
+      "displayName": "XPath",
+      "category": "data",
+      "description": "Extracts data using XPath expressions",
+      "namespace": "http://org.webharvest/schema/2.1/core",
+      "attributes": [
+        {
+          "name": "expression",
+          "description": "XPath expression",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "id",
+          "description": "Unique identifier",
+          "required": false,
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "generatedAt": "Sun Sep 07 23:01:42 CEST 2025",
+  "version": "2.2.0"
 }

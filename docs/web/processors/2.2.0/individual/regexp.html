@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regexp Processor - Web-Harvest</title>
+    <link rel="stylesheet" href="../../../css/style.css">
+    <link rel="stylesheet" href="../../../css/prism.css">
+    <link rel="stylesheet" href="../../../css/processors.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../../../index.html" class="nav-logo">
+                <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
+                <span>Web-Harvest</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="../../../index.html" class="nav-link">Home</a></li>
+                <li><a href="../../../index.html#features" class="nav-link">Features</a></li>
+                <li><a href="../index.html" class="nav-link">Processors</a></li>
+                <li><a href="../../../examples/" class="nav-link">Examples</a></li>
+                <li><a href="../../../api/" class="nav-link">API</a></li>
+                <li><a href="../../../index.html#download" class="nav-link">Download</a></li>
+            </ul>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+                </a>
+                </a>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb">
+                <a href="../../../index.html">Home</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="../../index.html">Processors</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Regexp</span>
+            </nav>
+
+            <!-- Processor Header -->
+            <div class="processor-header">
+                <div class="processor-icon">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <div class="processor-info">
+                    <h1>&lt;regexp&gt;</h1>
+                    <p class="processor-description">Pattern matching and text extraction using regular expressions</p>
+                    <div class="processor-meta">
+                        <span class="category-tag data">Data Processing</span>
+                        <span class="version-badge">2.2.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processor Content -->
+            <div class="processor-content">
+                <!-- Overview -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-info-circle"></i> Overview</h2>
+                    <p>The <code>&lt;regexp&gt;</code> processor provides powerful pattern matching
+                        capabilities using
+                        regular expressions. It allows you to extract, replace, or find specific patterns in
+                        text data
+                        with support for advanced regex features including groups, quantifiers, and
+                        character classes.
+                    </p>
+
+                    <div class="feature-highlights">
+                        <div class="highlight-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Full regular expression support with groups and quantifiers</span>
+                        </div>
+                        <div class="highlight-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Multiple actions: match, replace, find</span>
+                        </div>
+                        <div class="highlight-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Configurable flags for case sensitivity and multiline</span>
+                        </div>
+                        <div class="highlight-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Group capture and replacement support</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Attributes -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-cogs"></i> Attributes</h2>
+                    <div class="attributes-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Attribute</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Default</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="required">
+                                    <td><code>pattern</code></td>
+                                    <td>string</td>
+                                    <td><span class="required-badge">Yes</span></td>
+                                    <td>-</td>
+                                    <td>Regular expression pattern to match</td>
+                                </tr>
+                                <tr>
+                                    <td><code>action</code></td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>match</td>
+                                    <td>Action to perform (match, replace, find)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>replacement</code></td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>-</td>
+                                    <td>Replacement text for replace action</td>
+                                </tr>
+                                <tr>
+                                    <td><code>flags</code></td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>-</td>
+                                    <td>Regex flags (i, m, s, etc.)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Examples -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-code"></i> Examples</h2>
+
+                    <div class="example-tabs">
+                        <div class="tab-buttons">
+                            <button class="tab-button active" data-tab="basic">Basic Matching</button>
+                            <button class="tab-button" data-tab="replace">Text Replacement</button>
+                            <button class="tab-button" data-tab="groups">Group Capture</button>
+                            <button class="tab-button" data-tab="advanced">Advanced Patterns</button>
+                        </div>
+
+                        <div class="tab-content">
+                            <div class="tab-pane active" id="basic">
+                                <h3>Basic Pattern Matching</h3>
+                                <p>Extract specific patterns from text:</p>
+                                <div class="code-window">
+                                    <div class="window-header">
+                                        <div class="window-controls">
+                                            <span class="control red"></span>
+                                            <span class="control yellow"></span>
+                                            <span class="control green"></span>
+                                        </div>
+                                        <span class="window-title">regexp-basic-example.xml</span>
+                                    </div>
+                                    <div class="window-content">
+                                        <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="pageContent"&gt;
+    &lt;http url="https://example.com"&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract all email addresses --&gt;
+  &lt;def var="emails"&gt;
+    &lt;regexp pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" action="match"&gt;
+      &lt;get var="pageContent"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract all phone numbers --&gt;
+  &lt;def var="phones"&gt;
+    &lt;regexp pattern="\b\d{3}[-.]?\d{3}[-.]?\d{4}\b" action="match"&gt;
+      &lt;get var="pageContent"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                        </a>
+                                        </a>
+                                        </a>
+
+                                        <div class="tab-pane" id="replace">
+                                            <h3>Text Replacement</h3>
+                                            <p>Replace patterns in text with new content:</p>
+                                            <div class="code-window">
+                                                <div class="window-header">
+                                                    <div class="window-controls">
+                                                        <span class="control red"></span>
+                                                        <span class="control yellow"></span>
+                                                        <span class="control green"></span>
+                                                        </a>
+                                                        <span class="window-title">regexp-replace-example.xml</span>
+                                                        </a>
+                                                        <div class="window-content">
+                                                            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="rawText"&gt;
+    &lt;file path="input.txt" action="read"/&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Clean up phone numbers --&gt;
+  &lt;def var="cleanedPhones"&gt;
+    &lt;regexp 
+      pattern="\b(\d{3})[-.]?(\d{3})[-.]?(\d{4})\b"
+      action="replace"
+      replacement="($1) $2-$3"&gt;
+      &lt;get var="rawText"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Remove HTML tags --&gt;
+  &lt;def var="plainText"&gt;
+    &lt;regexp 
+      pattern="&lt;[^&gt;]+&gt;"
+      action="replace"
+      replacement=""&gt;
+      &lt;get var="rawText"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                                            </a>
+                                                            </a>
+                                                            </a>
+
+                                                            <div class="tab-pane" id="groups">
+                                                                <h3>Group Capture</h3>
+                                                                <p>Extract specific parts of
+                                                                    matched patterns using
+                                                                    groups:</p>
+                                                                <div class="code-window">
+                                                                    <div class="window-header">
+                                                                        <div class="window-controls">
+                                                                            <span class="control red"></span>
+                                                                            <span class="control yellow"></span>
+                                                                            <span class="control green"></span>
+                                                                            </a>
+                                                                            <span
+                                                                                class="window-title">regexp-groups-example.xml</span>
+                                                                            </a>
+                                                                            <div class="window-content">
+                                                                                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="logData"&gt;
+    &lt;file path="access.log" action="read"/&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract IP addresses and timestamps --&gt;
+  &lt;def var="accessLogs"&gt;
+    &lt;regexp 
+      pattern="(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - - \[([^\]]+)\]"
+      action="match"&gt;
+      &lt;get var="logData"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract product information --&gt;
+  &lt;def var="products"&gt;
+    &lt;regexp 
+      pattern="Product: ([^,]+), Price: \$([0-9.]+), Stock: (\d+)"
+      action="match"&gt;
+      &lt;get var="productData"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                                                                </a>
+                                                                                </a>
+                                                                                </a>
+
+                                                                                <div class="tab-pane" id="advanced">
+                                                                                    <h3>Advanced
+                                                                                        Patterns
+                                                                                    </h3>
+                                                                                    <p>Complex
+                                                                                        regular
+                                                                                        expressions
+                                                                                        with
+                                                                                        flags
+                                                                                        and
+                                                                                        advanced
+                                                                                        features:
+                                                                                    </p>
+                                                                                    <div class="code-window">
+                                                                                        <div class="window-header">
+                                                                                            <div
+                                                                                                class="window-controls">
+                                                                                                <span
+                                                                                                    class="control red"></span>
+                                                                                                <span
+                                                                                                    class="control yellow"></span>
+                                                                                                <span
+                                                                                                    class="control green"></span>
+                                                                                                </a>
+                                                                                                <span
+                                                                                                    class="window-title">regexp-advanced-example.xml</span>
+                                                                                                </a>
+                                                                                                <div
+                                                                                                    class="window-content">
+                                                                                                    <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+  &lt;def var="htmlContent"&gt;
+    &lt;http url="https://example.com"&gt;
+    &lt;/http&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract URLs with case-insensitive matching --&gt;
+  &lt;def var="urls"&gt;
+    &lt;regexp 
+      pattern="https?://[^\s\"'&gt;&lt;]+"
+      action="match"
+      flags="i"&gt;
+      &lt;get var="htmlContent"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Extract multiline content between tags --&gt;
+  &lt;def var="articleContent"&gt;
+    &lt;regexp 
+      pattern="&lt;article[^&gt;]*&gt;(.*?)&lt;/article&gt;"
+      action="match"
+      flags="ims"&gt;
+      &lt;get var="htmlContent"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Validate and format credit card numbers --&gt;
+  &lt;def var="formattedCards"&gt;
+    &lt;regexp 
+      pattern="\b(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})[-\s]?(\d{4})\b"
+      action="replace"
+      replacement="$1-$2-$3-$4"&gt;
+      &lt;get var="cardData"/&gt;
+    &lt;/regexp&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                                                                                                    </a>
+                                                                                                    </a>
+                                                                                                    </a>
+                                                                                                    </a>
+                                                                                                    </a>
+                </section>
+
+                <!-- Regex Reference -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-book"></i> Regular Expression Reference</h2>
+                    <div class="xpath-reference">
+                        <div class="reference-grid">
+                            <div class="reference-card">
+                                <h3>Basic Patterns</h3>
+                                <ul>
+                                    <li><code>.</code> - Any character</li>
+                                    <li><code>\d</code> - Digit (0-9)</li>
+                                    <li><code>\w</code> - Word character (a-z, A-Z, 0-9, _)</li>
+                                    <li><code>\s</code> - Whitespace</li>
+                                    <li><code>[abc]</code> - Character class</li>
+                                </ul>
+                                </a>
+
+                                <div class="reference-card">
+                                    <h3>Quantifiers</h3>
+                                    <ul>
+                                        <li><code>*</code> - Zero or more</li>
+                                        <li><code>+</code> - One or more</li>
+                                        <li><code>?</code> - Zero or one</li>
+                                        <li><code>{n}</code> - Exactly n times</li>
+                                        <li><code>{n,m}</code> - Between n and m times</li>
+                                    </ul>
+                                    </a>
+
+                                    <div class="reference-card">
+                                        <h3>Anchors</h3>
+                                        <ul>
+                                            <li><code>^</code> - Start of string</li>
+                                            <li><code>$</code> - End of string</li>
+                                            <li><code>\b</code> - Word boundary</li>
+                                            <li><code>\B</code> - Non-word boundary</li>
+                                        </ul>
+                                        </a>
+
+                                        <div class="reference-card">
+                                            <h3>Groups</h3>
+                                            <ul>
+                                                <li><code>(...)</code> - Capturing group</li>
+                                                <li><code>(?:...)</code> - Non-capturing group</li>
+                                                <li><code>\1</code> - Backreference to group 1</li>
+                                                <li><code>$1</code> - Replacement reference</li>
+                                            </ul>
+                                            </a>
+                                            </a>
+                                            </a>
+                </section>
+
+                <!-- Related Processors -->
+                <section class="processor-section">
+                    <h2><i class="fas fa-link"></i> Related Processors</h2>
+                    <div class="related-processors">
+                        <a href="xpath.html" class="related-processor">
+                            <i class="fas fa-search"></i>
+                            <span>&lt;xpath&gt;</span>
+                            <small>XML data extraction</small>
+                        </a>
+                        <a href="html-to-xml.html" class="related-processor">
+                            <i class="fas fa-code"></i>
+                            <span>&lt;html-to-xml&gt;</span>
+                            <small>Parse HTML content</small>
+                        </a>
+                        <a href="http.html" class="related-processor">
+                            <i class="fas fa-globe"></i>
+                            <span>&lt;http&gt;</span>
+                            <small>Fetch web content</small>
+                        </a>
+                        <a href="tokenize.html" class="related-processor">
+                            <i class="fas fa-cut"></i>
+                            <span>&lt;tokenize&gt;</span>
+                            <small>Split text into tokens</small>
+                        </a>
+                        </a>
+                </section>
+                </a>
+                </a>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Web-Harvest</h3>
+                    <p>Advanced web scraping and data extraction tool for Java applications.</p>
+                    </a>
+                    <div class="footer-section">
+                        <h4>Documentation</h4>
+                        <ul>
+                            <li><a
+                                    href="../../../api/org/webharvest/runtime/processors/package-summary.html">Processors</a>
+                            </li>
+                            <li><a href="../../../api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
+                            <li><a href="../../../examples/">Examples</a></li>
+                        </ul>
+                        </a>
+                        <div class="footer-section">
+                            <h4>Resources</h4>
+                            <ul>
+                                <li><a href="../../../index.html#download">Download</a></li>
+                                <li><a href="../../../examples/">Examples</a></li>
+                                <li><a href="#">Tutorials</a></li>
+                            </ul>
+                            </a>
+                            </a>
+                            <div class="footer-bottom">
+                                <p>&copy; 2025 Web-Harvest. All rights reserved. </p>
+                                </a>
+                                </a>
+    </footer>
+
+    <script src="../../../js/script.js"></script>
+    <script src="../../../js/prism.js"></script>
+    <script>
+        // Tab functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const targetTab = this.getAttribute('data-tab');
+
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+
+                    // Add active class to clicked button and corresponding pane
+                    this.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

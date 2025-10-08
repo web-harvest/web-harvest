@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <!-- Test FTP plugin -->
+  <def var="ftpHost">localhost</def>
+  <def var="ftpPort">21</def>
+  <def var="ftpUser">testuser</def>
+  <def var="ftpPassword">testpass</def>
+  <ftp host="${ftpHost}" port="${ftpPort}" username="${ftpUser}" password="${ftpPassword}" action="list">
+    <!-- List files -->
+    <ftp-list path="/"/>
+    <!-- Get file -->
+    <ftp-get remote-path="/test.txt" local-path="downloaded_test.txt"/>
+    <!-- Put file -->
+    <ftp-put local-path="test_upload.txt" remote-path="/uploaded_test.txt">
+      <template>This is a test file for FTP upload</template>
+    </ftp-put>
+  </ftp>
+  <file action="write" path="ftp_output.txt">
+    <template>FTP operations completed successfully</template>
+  </file>
+  <config>
+    <template>FTP plugin test completed</template>
+  </config>
+</config>

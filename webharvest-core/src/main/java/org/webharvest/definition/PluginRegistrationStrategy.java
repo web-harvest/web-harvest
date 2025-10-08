@@ -33,7 +33,7 @@
 
 package org.webharvest.definition;
 
-import org.webharvest.runtime.processors.WebHarvestPlugin;
+import org.webharvest.runtime.processors.Processor;
 import org.webharvest.exception.PluginException;
 
 /**
@@ -53,6 +53,6 @@ public interface PluginRegistrationStrategy {
      * @param resolver the resolver to register the plugin in
      * @throws PluginException if registration fails
      */
-    void registerPlugin(Class<? extends WebHarvestPlugin> plugin, 
+    void registerPlugin(Class<? extends Processor> plugin, 
                        ConfigurableResolver resolver) throws PluginException;
 }

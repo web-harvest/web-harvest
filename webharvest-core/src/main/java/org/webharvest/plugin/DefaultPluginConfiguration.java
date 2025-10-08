@@ -300,3 +300,5 @@ public class DefaultPluginConfiguration implements PluginConfiguration {
                 '}';
     }
 }
+
+

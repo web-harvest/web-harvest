@@ -80,3 +80,5 @@ public @interface CorePlugin {
      */
     String version() default "2.1.0";
 }
+
+

@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
+
 import org.webharvest.Harvest;
 import org.webharvest.Harvester;
 import org.webharvest.Harvester.ContextInitCallback;
@@ -56,7 +56,7 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-public class HandlerHolderIntegrationTest extends UnitilsTestNG {
+public class HandlerHolderIntegrationTest {
 
     private static final Logger LOG =
         LoggerFactory.getLogger(HandlerHolderIntegrationTest.class);

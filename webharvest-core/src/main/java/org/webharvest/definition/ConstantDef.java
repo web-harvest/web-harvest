@@ -36,6 +36,9 @@
 */
 package org.webharvest.definition;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.webharvest.plugin.Plugin;
 import org.webharvest.runtime.processors.Processor;
 
 /**
@@ -43,17 +46,53 @@ import org.webharvest.runtime.processors.Processor;
  * in configuaration xml, but is used internally to define static
  * (text) content.
  */
-public class ConstantDef extends WebHarvestPluginDef {
+public class ConstantDef extends AbstractElementDef {
 
     private String text;
 
-    public ConstantDef(String text, Class<? extends Processor> processorClass) {
-        super(XmlNode.NULL, processorClass);
+    public ConstantDef(String text, Class<? extends Plugin> pluginClass) {
+        super(XmlNode.NULL);
         this.text = text;
     }
 
     public String getText() {
         return text;
+    }
+    
+    @Override
+    public XmlNode getNode() {
+        return xmlNode;
+    }
+    
+    @Override
+    public String getNamespaceURI() {
+        return "";
+    }
+    
+    @Override
+    public List<IElementDef> getElementDefs() {
+        return new ArrayList<>();
+    }
+    
+    @Override
+    public String getId() {
+        return "";
+    }
+    
+    @Override
+    public int getLineNumber() {
+        return 0;
+    }
+    
+    @Override
+    public int getColumnNumber() {
+        return 0;
+    }
+    
+    @Override
+    public Processor createPlugin() {
+        // For ConstantDef, we don't create a processor instance
+        return null;
     }
 
     public String getShortElementName() {

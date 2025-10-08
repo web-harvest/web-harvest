@@ -33,7 +33,7 @@
 
 package org.webharvest.definition;
 
-import static org.easymock.EasyMock.*;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 import java.io.IOException;
@@ -44,22 +44,23 @@ import java.net.URL;
 import org.webharvest.definition.URLConfigSource.URLLocation;
 
 import org.testng.annotations.*;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+
 import org.webharvest.definition.ConfigSource.Location;
 
-public class URLConfigSourceTest extends UnitilsTestNG {
+public class URLConfigSourceTest {
 
      private URL url;
 
      private URLConfigSource source;
 
-     @RegularMock
+     // @RegularMock - converted to mock() in @BeforeMethod
      private ConfigLocationVisitor mockVisitor;
 
      @BeforeMethod
      public void setUp() throws Exception {
+        mockVisitor = mock(ConfigLocationVisitor.class);
          url = new URL("http://sourceforge.net/");
          source = new URLConfigSource(url);
      }
@@ -98,7 +99,7 @@ public class URLConfigSourceTest extends UnitilsTestNG {
      public void testVisitWithVisitableLocation() throws IOException {
          final URLLocation mockLocation = new URLLocation(url);
          mockVisitor.visit(mockLocation);
-         EasyMockUnitils.replay();
+         
          new URLConfigSource(mockLocation).visit(mockVisitor);
      }
 

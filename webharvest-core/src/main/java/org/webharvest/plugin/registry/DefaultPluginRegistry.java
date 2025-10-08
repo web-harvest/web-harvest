@@ -291,3 +291,5 @@ public class DefaultPluginRegistry implements PluginRegistry {
         // Subclasses can override to implement refresh logic
     }
 }
+
+

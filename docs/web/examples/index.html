@@ -4,9 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Examples - Web-Harvest 2.1.0</title>
+  <title>Examples - Web-Harvest</title>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/prism.css">
+  <link rel="stylesheet" href="../css/processors.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -15,10 +16,10 @@
   <!-- Navigation -->
   <nav class="navbar">
     <div class="nav-container">
-      <div class="nav-logo">
-        <i class="fas fa-spider"></i>
-        <span>Web-Harvest 2.1.0</span>
-      </div>
+      <a href="../index.html" class="nav-logo">
+        <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
+        <span>Web-Harvest</span>
+      </a>
       <ul class="nav-menu">
         <li><a href="../index.html" class="nav-link">Home</a></li>
         <li><a href="../index.html#features" class="nav-link">Features</a></li>
@@ -38,6 +39,13 @@
   <!-- Main Content -->
   <main class="main-content">
     <div class="container">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="../index.html">Home</a>
+        <i class="fas fa-chevron-right"></i>
+        <span>Examples</span>
+      </nav>
+
       <div class="page-header">
         <h1>Example Configurations</h1>
         <p>Real-world examples demonstrating Web-Harvest capabilities and best practices</p>
@@ -64,6 +72,39 @@
         <h2>Available Example Files</h2>
         <p>Download and run these real-world example configurations:</p>
         <div class="examples-list">
+          <!-- New Plugin Architecture Examples -->
+          <div class="example-item featured">
+            <h4><a href="basic_variables_example.xml">Basic Variables Example</a></h4>
+            <p>Demonstrates variable usage in Web-Harvest</p>
+            <span class="tag new">New Feature</span>
+          </div>
+          <div class="example-item featured">
+            <h4><a href="advanced_search_example.xml">Advanced Search Example</a></h4>
+            <p>Web scraping and data extraction with modern architecture</p>
+            <span class="tag new">New Feature</span>
+          </div>
+          <div class="example-item featured">
+            <h4><a href="database_plugin_demo.xml">Database Plugin Demo</a></h4>
+            <p>Database operations with new plugin architecture</p>
+            <span class="tag plugin">Plugin Demo</span>
+          </div>
+          <div class="example-item featured">
+            <h4><a href="ftp_plugin_demo.xml">FTP Plugin Demo</a></h4>
+            <p>FTP operations with modern plugin system</p>
+            <span class="tag plugin">Plugin Demo</span>
+          </div>
+          <div class="example-item featured">
+            <h4><a href="mail_plugin_demo.xml">Mail Plugin Demo</a></h4>
+            <p>Email sending with @Plugin annotations</p>
+            <span class="tag plugin">Plugin Demo</span>
+          </div>
+          <div class="example-item featured">
+            <h4><a href="webbrowser_plugin_demo.xml">WebBrowser Plugin Demo</a></h4>
+            <p>Headless browser operations with JavaScript support</p>
+            <span class="tag plugin">Plugin Demo</span>
+          </div>
+
+          <!-- Classic Examples -->
           <div class="example-item">
             <h4><a href="simple_test.xml">Simple Test</a></h4>
             <p>Basic configuration to test Web-Harvest functionality</p>
@@ -130,7 +171,17 @@
             </ul>
           </div>
           <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+            <div class="code-window">
+              <div class="window-header">
+                <div class="window-controls">
+                  <span class="control red"></span>
+                  <span class="control yellow"></span>
+                  <span class="control green"></span>
+                </div>
+                <span class="window-title">ecommerce-monitoring.xml</span>
+              </div>
+              <div class="window-content">
+                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;!-- Configuration for price monitoring --&gt;
   &lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
   &lt;def var="priceThreshold"&gt;100.00&lt;/def&gt;
@@ -168,6 +219,8 @@
     &lt;/then&gt;
   &lt;/if&gt;
 &lt;/config&gt;</code></pre>
+              </div>
+            </div>
           </div>
           <div class="example-actions">
             <button class="btn btn-primary" onclick="runExample('ecommerce-monitoring')">
@@ -199,7 +252,17 @@
             </ul>
           </div>
           <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+            <div class="code-window">
+              <div class="window-header">
+                <div class="window-controls">
+                  <span class="control red"></span>
+                  <span class="control yellow"></span>
+                  <span class="control green"></span>
+                </div>
+                <span class="window-title">social-media-analytics.xml</span>
+              </div>
+              <div class="window-content">
+                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;def var="hashtag"&gt;#technology&lt;/def&gt;
   
   &lt;!-- Get data from social media API --&gt;
@@ -251,6 +314,8 @@
     &lt;get var="sentimentAnalysis"/&gt;
   &lt;/file&gt;
 &lt;/config&gt;</code></pre>
+              </div>
+            </div>
           </div>
           <div class="example-actions">
             <button class="btn btn-primary" onclick="runExample('social-media-analytics')">
@@ -282,7 +347,17 @@
             </ul>
           </div>
           <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+            <div class="code-window">
+              <div class="window-header">
+                <div class="window-controls">
+                  <span class="control red"></span>
+                  <span class="control yellow"></span>
+                  <span class="control green"></span>
+                </div>
+                <span class="window-title">data-processing-pipeline.xml</span>
+              </div>
+              <div class="window-content">
+                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
   &lt;!-- Read input data --&gt;
   &lt;def var="rawData"&gt;
     &lt;file path="input.csv" action="read" charset="UTF-8"/&gt;
@@ -343,6 +418,8 @@
     &lt;/template&gt;
   &lt;/file&gt;
 &lt;/config&gt;</code></pre>
+              </div>
+            </div>
           </div>
           <div class="example-actions">
             <button class="btn btn-primary" onclick="runExample('data-processing-pipeline')">

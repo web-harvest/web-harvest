@@ -35,27 +35,31 @@ package org.webharvest.ioc;
 
 import static org.testng.AssertJUnit.assertSame;
 
+import static org.mockito.Mockito.*;
+
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
+
+
+
 
 import com.google.inject.OutOfScopeException;
 
-public class AttributeHolderScopeTest extends UnitilsTestNG {
+public class AttributeHolderScopeTest {
 
     private AttributeHolderScope<AttributeHolder> scope;
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private AttributeHolder mockHolder;
 
-    @RegularMock
+    // @RegularMock - converted to mock() in @BeforeMethod
     private AttributeHolder mockOtherHolder;
 
     @BeforeMethod
     public void setUp() {
+        mockHolder = mock(AttributeHolder.class);
+        mockOtherHolder = mock(AttributeHolder.class);
         this.scope = new AttributeHolderScope<AttributeHolder>();
     }
 
@@ -81,7 +85,7 @@ public class AttributeHolderScopeTest extends UnitilsTestNG {
 
     @Test
     public void enterScopeOnce() {
-        EasyMockUnitils.replay();
+        
         scope.enter(mockHolder);
         assertSame("Unexpected scope's attribute holder",
                 mockHolder, scope.get());
@@ -90,7 +94,7 @@ public class AttributeHolderScopeTest extends UnitilsTestNG {
 
     @Test
     public void supportsNestedScopes() {
-        EasyMockUnitils.replay();
+        
         scope.enter(mockHolder);
         assertSame("Unexpected scope's attribute holder",
                 mockHolder, scope.get());

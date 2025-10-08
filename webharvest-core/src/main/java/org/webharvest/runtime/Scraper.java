@@ -87,15 +87,17 @@ public class Scraper implements WebScraper {
                     context.getConfig().getElementDef());
             if (processor != null) {
                 processor.run(context);
+                
+                // CRITICAL: Post EndEvent HERE - INSIDE the try block,
+                // BEFORE processor.run() returns and triggers any cleanup!
+                // This ensures listeners can extract variables BEFORE they are cleaned up from nested scopes.
+                eventBus.post(new ScraperExecutionEndEvent(this,
+                        System.currentTimeMillis() - startTime, context));
             }
         } catch (InterruptedException e) {
             informListenersAboutError(e);
             Thread.currentThread().interrupt();
         }
-
-        // inform all listeners that execution is finished
-        eventBus.post(new ScraperExecutionEndEvent(this,
-                System.currentTimeMillis() - startTime));
     }
 
     /**

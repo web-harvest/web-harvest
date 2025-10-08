@@ -36,6 +36,8 @@ package org.webharvest.plugin.core;
 import static org.testng.Assert.*;
 import static org.mockito.Mockito.*;
 
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
@@ -51,19 +53,32 @@ import org.webharvest.runtime.variables.Variable;
  * Unit tests for ReturnPlugin.
  * 
  * @author Robert Bala
- * @since 2.1.0
+ * @since 2.2.0
  */
 public class ReturnPluginTest {
 
-    private ReturnPlugin plugin;
-    private DynamicScopeContext mockContext;
+    @Mock
     private PluginConfiguration mockConfiguration;
+    
+    @Mock
+    private DynamicScopeContext mockContext;
+    
+    @Mock
+    private org.webharvest.definition.IElementDef mockElementDef;
+
+    private ReturnPlugin plugin;
 
     @BeforeMethod
     public void setUp() {
+        MockitoAnnotations.openMocks(this);
         plugin = new ReturnPlugin();
-        mockContext = mock(DynamicScopeContext.class);
-        mockConfiguration = mock(PluginConfiguration.class);
+        
+        // Set ElementDef to avoid NullPointerException
+        plugin.setElementDef(mockElementDef);
+        
+        // Mock ElementDef methods
+        when(mockElementDef.hasOperations()).thenReturn(false);
+        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
     }
 
     @Test
@@ -73,7 +88,7 @@ public class ReturnPluginTest {
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "return");
         assertEquals(metadata.getName(), "Return Plugin");
-        assertEquals(metadata.getVersion(), "2.1.0");
+        assertEquals(metadata.getVersion(), "2.2.0");
         assertEquals(metadata.getCategory(), "core");
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -90,7 +105,7 @@ public class ReturnPluginTest {
         assertEquals(tags[0], "core");
         assertEquals(tags[1], "return");
         assertEquals(tags[2], "function");
-        assertEquals(tags[3], "control");
+        assertEquals(tags[3], "control-flow");
     }
 
     @Test
@@ -223,7 +238,7 @@ public class ReturnPluginTest {
         PluginMetadata metadata = plugin.getMetadata();
         var schema = metadata.getConfigurationSchema();
         
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.2.0");
     }
 
     @Test
@@ -253,3 +268,4 @@ public class ReturnPluginTest {
         assertNull(attr);
     }
 }
+

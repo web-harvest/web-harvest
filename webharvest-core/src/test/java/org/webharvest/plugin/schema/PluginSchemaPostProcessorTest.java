@@ -51,7 +51,7 @@ import org.webharvest.plugin.registry.PluginRegistry;
  * Unit tests for PluginSchemaPostProcessor.
  *
  * @author Robert Bala
- * @since 2.1.0
+ * @since 2.2.0
  */
 public class PluginSchemaPostProcessorTest {
 

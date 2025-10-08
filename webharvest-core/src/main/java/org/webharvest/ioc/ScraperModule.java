@@ -47,6 +47,7 @@ import org.webharvest.LockedRegistry;
 import org.webharvest.Registry;
 import org.webharvest.ScrapingAware;
 import org.webharvest.definition.*;
+import org.webharvest.definition.CorePluginsPostProcessor;
 import org.webharvest.events.DefaultHandlerHolder;
 import org.webharvest.events.EventSink;
 import org.webharvest.events.HandlerHolder;
@@ -62,13 +63,13 @@ import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.ScrapingHarvester;
 import org.webharvest.runtime.StatusHolder;
 import org.webharvest.runtime.WebScraper;
-import org.webharvest.runtime.database.ConnectionFactory;
-import org.webharvest.runtime.database.JNDIConnectionFactory;
-import org.webharvest.runtime.database.StandaloneConnectionPool;
+// Database imports moved to DatabaseModule in webharvest-database
 import org.webharvest.runtime.processors.Processor;
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.jsr.JSRScriptEngineFactory;
 import org.webharvest.runtime.templaters.BaseTemplater;
+import org.webharvest.plugin.services.HttpService;
+import org.webharvest.plugin.services.HttpServiceImpl;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.Monitor;
@@ -123,10 +124,27 @@ public final class ScraperModule extends AbstractModule {
     
     private void bindCoreServices() {
         // Resolver post processors
+        System.out.println("ScraperModule: Creating CorePluginsPostProcessor instances");
+        CorePluginsPostProcessor coreProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.core");
+        CorePluginsPostProcessor dbProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.db");
+        CorePluginsPostProcessor ftpProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.ftp");
+        CorePluginsPostProcessor mailProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.mail");
+        CorePluginsPostProcessor webbrowserProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.webbrowser");
+        CorePluginsPostProcessor zipProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.zip");
+        AnnotatedPluginsPostProcessor annotatedProcessor = new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");
+        
+        System.out.println("ScraperModule: Created " + 6 + " CorePluginsPostProcessor instances");
+        
         bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
                 .annotatedWith(Names.named("resolverPostProcessors"))
                 .toInstance(Arrays.asList(
-                    new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors")
+                    coreProcessor,
+                    dbProcessor,
+                    ftpProcessor,
+                    mailProcessor,
+                    webbrowserProcessor,
+                    zipProcessor,
+                    annotatedProcessor
                 ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
@@ -141,6 +159,9 @@ public final class ScraperModule extends AbstractModule {
         bind(AttributeHolder.class).to(ScopeAttributeHolder.class);
         bind(Harvest.class).to(DefaultHarvest.class).in(Singleton.class);
         bind(HandlerHolder.class).to(DefaultHandlerHolder.class).in(Singleton.class);
+        
+        // Plugin services
+        bind(HttpService.class).to(HttpServiceImpl.class).in(Singleton.class);
     }
     
     private void bindScopes() {
@@ -171,13 +192,12 @@ public final class ScraperModule extends AbstractModule {
     }
     
     private void bindAdvancedFeatures() {
-        bindDBConnectionFactory();
+        // Database bindings moved to DatabaseModule in webharvest-database
         bindScraperContext();
         bindDebugFileLogger();
         bindStatusHolder();
         bindConfigParser();
         
-        bind(ConnectionFactory.class).to(StandaloneConnectionPool.class).in(ScrapingScope.class);
         bind(WebScraper.class).to(Scraper.class).in(ScrapingScope.class);
         
         // Scripting
@@ -190,12 +210,7 @@ public final class ScraperModule extends AbstractModule {
         bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
     }
 
-    protected void bindDBConnectionFactory() {
-        bind(ConnectionFactory.class).annotatedWith(Names.named("standalone"))
-           .to(StandaloneConnectionPool.class).in(ScrapingScope.class);
-        bind(ConnectionFactory.class).annotatedWith(Names.named("jndi"))
-           .to(JNDIConnectionFactory.class).in(Singleton.class);
-    }
+    // bindDBConnectionFactory() method removed - moved to DatabaseModule in webharvest-database
 
     protected void bindScraperContext() {
         bind(ContextFactory.class).toInstance(new ContextFactory() {

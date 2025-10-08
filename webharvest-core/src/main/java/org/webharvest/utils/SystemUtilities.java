@@ -166,7 +166,14 @@ public class SystemUtilities {
      */
     public String getFilename(String path) {
         int index = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
-        return index >= 0 && index < path.length() - 1 ? path.substring(index + 1) : path;
+        if (index >= 0 && index < path.length() - 1) {
+            return path.substring(index + 1);
+        } else if (index >= 0 && index == path.length() - 1) {
+            // Path ends with separator, return empty string
+            return "";
+        } else {
+            return path;
+        }
     }
 
     public void error(String message) {

@@ -62,3 +62,5 @@ public class HttpServiceException extends Exception {
         super(message, cause);
     }
 }
+
+

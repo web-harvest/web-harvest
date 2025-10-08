@@ -1,93 +1,205 @@
-# 🔑 Konfiguracja SourceForge dla wgrania dokumentacji
+# SourceForge Project Setup Guide
 
-## 📋 Krok 1: Dodaj klucz SSH do SourceForge
+## 📋 Step 1: Project Information
 
-### 1.1 Skopiuj klucz publiczny
-```bash
-cat ~/.ssh/sourceforge_rsa.pub
+- **Project Name**: Web-Harvest
+- **Project URL**: https://sourceforge.net/projects/web-harvest/
+- **Web URL**: https://web-harvest.sourceforge.io/
+- **SVN**: https://svn.code.sf.net/p/web-harvest/code/
+
+## 📋 Step 2: Verify Project Permissions
+
+### Required Permissions
+1. Navigate to: https://sourceforge.net/projects/web-harvest/admin/
+2. Verify you are a team member
+3. Check your role (Admin, Developer, etc.)
+
+### Permission Levels
+- **Admin**: Full access to all project areas
+- **Developer**: Code commit, file release, web hosting
+- **Member**: Limited access
+
+## 🌐 Step 3: Web Hosting Setup
+
+### Enable Web Hosting
+
+1. Go to Project Admin → Features
+2. Enable "Web" feature if not already enabled
+3. Configure web hosting settings
+
+### Web Directory Structure
+
+```
+/home/project-web/web-harvest/htdocs/
+├── index.html          # Homepage
+├── api/                # Javadoc
+├── download/           # Downloads
+├── examples/           # Examples
+└── css/, js/, images/  # Assets
 ```
 
-### 1.2 Dodaj klucz do SourceForge
-1. Zaloguj się na https://sourceforge.net/
-2. Przejdź do **Account Settings** → **SSH Keys**
-3. Kliknij **Add Key**
-4. Wklej cały klucz publiczny (zaczyna się od `ssh-rsa`)
-5. Nadaj nazwę kluczowi (np. "Web-Harvest Docs Upload")
-6. Kliknij **Add Key**
+### SFTP Access
 
-## 📋 Krok 2: Sprawdź uprawnienia do projektu
+**Host**: `web.sourceforge.net`  
+**User**: `YOUR_SOURCEFORGE_USERNAME`  
+**Path**: `/home/project-web/web-harvest/htdocs/`
 
-### 2.1 Sprawdź czy masz dostęp do web-harvest
-1. Przejdź do https://sourceforge.net/projects/web-harvest/
-2. Sprawdź czy jesteś członkiem zespołu projektu
-3. Jeśli nie, poproś administratora o dodanie Cię do zespołu
-
-### 2.2 Sprawdź uprawnienia do htdocs
-1. Przejdź do **Project Admin** → **Web Services**
-2. Sprawdź czy masz dostęp do **Project Web**
-3. Jeśli nie, poproś administratora o uprawnienia
-
-## 📋 Krok 3: Przetestuj połączenie
-
-### 3.1 Test połączenia SSH
+**Example**:
 ```bash
-ssh -i ~/.ssh/sourceforge_rsa rbala@web.sourceforge.net
-```
-
-### 3.2 Test katalogu docelowego
-```bash
-sftp -i ~/.ssh/sourceforge_rsa rbala@web.sourceforge.net
+sftp rbala@web.sourceforge.net
 cd /home/project-web/web-harvest/htdocs
-ls -la
-quit
 ```
 
-## 📋 Krok 4: Wgraj dokumentację
+## 📦 Step 4: File Release System
 
-### 4.1 Automatyczne wgranie
+### Creating a Release
+
+1. Build distribution packages:
 ```bash
-./upload-docs.sh
+mvn clean install
 ```
 
-### 4.2 Ręczne wgranie
+2. Navigate to: https://sourceforge.net/projects/web-harvest/files/
+
+3. Create new folder for version (e.g., "2.2.0")
+
+4. Upload files:
+   - `webharvest-2.2.0.zip`
+   - `webharvest-2.2.0.tar.gz`
+   - `webharvest-cli-2.2.0.jar`
+   - `webharvest-ide-2.2.0.jar`
+
+5. Set default download for each platform
+
+6. Add release notes
+
+### Release File Types
+
+- **Binary Distribution**: For end users
+- **Source Distribution**: For developers
+- **CLI JAR**: Command-line tool
+- **IDE JAR**: GUI application
+- **Javadoc**: API documentation
+
+## 🔐 Step 5: SSH Key Setup
+
+### Add SSH Key for SVN+SSH
+
+1. Generate SSH key (if you don't have one):
 ```bash
-sftp -i ~/.ssh/sourceforge_rsa rbala@web.sourceforge.net
-cd /home/project-web/web-harvest/htdocs
-put -r web-harvest-docs-upload/* .
-quit
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 ```
 
-## 🔧 Rozwiązywanie problemów
+2. Add public key to SourceForge:
+   - Go to: https://sourceforge.net/auth/shell_services
+   - Click "Edit SSH Keys for Shell/CVS"
+   - Paste your public key (~/.ssh/id_rsa.pub)
 
-### Problem: "Permission denied (publickey)"
-- **Rozwiązanie**: Sprawdź czy klucz został dodany do SourceForge
-- **Sprawdź**: `ssh -i ~/.ssh/sourceforge_rsa rbala@web.sourceforge.net`
+3. Test connection:
+```bash
+ssh -T USERNAME@shell.sourceforge.net
+```
 
-### Problem: "No such file or directory" dla htdocs
-- **Rozwiązanie**: Sprawdź uprawnienia do projektu web-harvest
-- **Sprawdź**: Czy jesteś członkiem zespołu projektu
+### SVN Access Methods
 
-### Problem: "Permission denied" przy wgrywaniu
-- **Rozwiązanie**: Sprawdź uprawnienia do katalogu htdocs
-- **Sprawdź**: Czy masz uprawnienia do Project Web
+**Read-Only (HTTPS)**:
+```bash
+svn checkout https://svn.code.sf.net/p/web-harvest/code/trunk web-harvest
+```
 
-## 📞 Wsparcie
+**Read-Write (SVN+SSH)** - requires SSH key:
+```bash
+svn checkout svn+ssh://USERNAME@svn.code.sf.net/p/web-harvest/code/trunk web-harvest
+```
 
-Jeśli nadal masz problemy:
-1. Sprawdź logi: `ssh -v -i ~/.ssh/sourceforge_rsa rbala@web.sourceforge.net`
-2. Skontaktuj się z administratorem projektu web-harvest
-3. Sprawdź dokumentację SourceForge: https://sourceforge.net/p/forge/documentation/
+## 📊 Step 6: Project Statistics
 
-## ✅ Weryfikacja po wgraniu
+### Enable Statistics Tracking
 
-1. Otwórz https://web-harvest.sourceforge.net/
-2. Sprawdź czy strona główna się ładuje
-3. Przetestuj nawigację (Processors, Examples, API)
-4. Sprawdź czy wszystkie pliki CSS i JS się ładują
+1. Go to Project Admin → Statistics
+2. Enable download statistics
+3. Enable web statistics
+4. Configure tracking options
+
+### View Statistics
+
+- **Downloads**: https://sourceforge.net/projects/web-harvest/files/stats/timeline
+- **Web Traffic**: Project Admin → Statistics
+- **SVN Activity**: Project Admin → Code → Statistics
+
+## 🔔 Step 7: Communication Channels
+
+### Mailing Lists
+
+1. Create/manage lists at: https://sourceforge.net/p/web-harvest/mailman/
+2. Recommended lists:
+   - `web-harvest-users` - User discussions
+   - `web-harvest-dev` - Developer discussions
+   - `web-harvest-commits` - SVN commit notifications
+
+### Issue Tracker
+
+**URL**: https://sourceforge.net/p/web-harvest/tickets/
+
+**Configuration**:
+1. Go to Project Admin → Tools → Tickets
+2. Configure ticket fields
+3. Set up milestones
+4. Define ticket workflow
+
+## 📝 Step 8: Project Description
+
+### Update Project Info
+
+1. Go to Project Admin → Overview
+2. Update:
+   - Short description
+   - Full description
+   - Project categories
+   - Tags/keywords
+   - License information
+   - Development status
+
+### Recommended Tags
+- web-scraping
+- data-extraction
+- java
+- xml
+- automation
+
+## 🎯 Step 9: Verification Checklist
+
+- [ ] Web hosting enabled and accessible
+- [ ] SFTP access works
+- [ ] SVN repository accessible
+- [ ] SSH key added (for commit access)
+- [ ] File release system configured
+- [ ] Mailing lists created
+- [ ] Issue tracker configured
+- [ ] Project description updated
+- [ ] Statistics enabled
+- [ ] Documentation uploaded
+
+## 🚨 Troubleshooting
+
+### Cannot Access Web Hosting
+- **Solution**: Verify you're a project member with Developer role or higher
+- **Check**: Project Admin → Members
+
+### SFTP Connection Fails
+- **Solution**: Verify username and SSH key
+- **Check**: https://sourceforge.net/auth/shell_services
+
+### SVN Commit Fails
+- **Solution**: Ensure you have commit permissions
+- **Check**: Project Admin → Members → Your permissions
+
+### File Upload Fails
+- **Solution**: Check file size limits and available space
+- **Limit**: 500 MB per file, check quota in Project Admin
 
 ---
 
-**Klucz SSH został wygenerowany i jest gotowy do dodania do SourceForge!** 🔑
-
-
-
+**Last Updated**: October 8, 2025  
+**SourceForge Project**: https://sourceforge.net/projects/web-harvest/  
+**Support**: https://sourceforge.net/support

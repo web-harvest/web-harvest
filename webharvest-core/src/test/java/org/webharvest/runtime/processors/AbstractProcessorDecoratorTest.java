@@ -33,9 +33,7 @@
 
 package org.webharvest.runtime.processors;
 
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.same;
+import static org.mockito.Mockito.*;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertSame;
@@ -43,25 +41,20 @@ import static org.testng.AssertJUnit.assertSame;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.unitils.UnitilsTestNG;
-import org.unitils.easymock.EasyMockUnitils;
-import org.unitils.easymock.annotation.RegularMock;
 import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
-public class AbstractProcessorDecoratorTest extends UnitilsTestNG {
+public class AbstractProcessorDecoratorTest {
 
-    @RegularMock
     private IElementDef mockElement;
-
-    @RegularMock
     private Processor mockProcessor;
-
     private MockDecorator decorator;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        mockElement = mock(IElementDef.class);
+        mockProcessor = mock(Processor.class);
         decorator = new MockDecorator(mockProcessor);
     }
 
@@ -77,19 +70,13 @@ public class AbstractProcessorDecoratorTest extends UnitilsTestNG {
 
     @Test
     public void setElementDef() {
-        mockProcessor.setElementDef(same(mockElement));
-        expectLastCall();
-
-        EasyMockUnitils.replay();
-
         decorator.setElementDef(mockElement);
+        verify(mockProcessor).setElementDef(mockElement);
     }
 
     @Test
     public void getElementDef() {
-        expect(mockProcessor.getElementDef()).andReturn(mockElement);
-
-        EasyMockUnitils.replay();
+        when(mockProcessor.getElementDef()).thenReturn(mockElement);
 
         final IElementDef element = decorator.getElementDef();
         assertNotNull("Returned element is null.", element);
@@ -98,9 +85,7 @@ public class AbstractProcessorDecoratorTest extends UnitilsTestNG {
 
     @Test
     public void getParentProcessor() {
-        expect(mockProcessor.getParentProcessor()).andReturn(mockProcessor);
-
-        EasyMockUnitils.replay();
+        when(mockProcessor.getParentProcessor()).thenReturn(mockProcessor);
 
         final Processor parent = decorator.getParentProcessor();
         assertNotNull("Parent processor is null.", parent);
@@ -109,19 +94,13 @@ public class AbstractProcessorDecoratorTest extends UnitilsTestNG {
 
     @Test
     public void setParentProcessor() {
-        mockProcessor.setParentProcessor(same(mockProcessor));
-        expectLastCall();
-
-        EasyMockUnitils.replay();
-
         decorator.setParentProcessor(mockProcessor);
+        verify(mockProcessor).setParentProcessor(mockProcessor);
     }
 
     @Test
     public void getRunningLevel() {
-        expect(mockProcessor.getRunningLevel()).andReturn(2);
-
-        EasyMockUnitils.replay();
+        when(mockProcessor.getRunningLevel()).thenReturn(2);
 
         final int level = decorator.getRunningLevel();
         assertEquals("Unexpected element.", 2, level);

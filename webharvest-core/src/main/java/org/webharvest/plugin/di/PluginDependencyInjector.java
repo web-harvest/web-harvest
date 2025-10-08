@@ -85,3 +85,5 @@ public interface PluginDependencyInjector {
      */
     <T> T getDependency(Class<T> dependencyType) throws PluginDependencyInjectionException;
 }
+
+
