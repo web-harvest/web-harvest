@@ -40,7 +40,6 @@ import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.templaters.BaseTemplater;
@@ -316,10 +315,6 @@ public class TemplatePlugin extends AbstractPlugin {
         String templateId = config.getProperty("id", "");
         
         LOGGER.info("TemplatePlugin.doExecute: Language: {}, ID: {}", language, templateId);
-        LOGGER.info("TemplatePlugin.doExecute: ElementDef: {}", getElementDef());
-        if (getElementDef() != null) {
-            LOGGER.info("TemplatePlugin.doExecute: ElementDef class: {}", getElementDef().getClass().getName());
-        }
         LOGGER.info("TemplatePlugin.doExecute: Context charset: {}", context.getCharset());
         
             try {
@@ -391,38 +386,24 @@ public class TemplatePlugin extends AbstractPlugin {
     }
     
     /**
-     * Gets child elements as raw text by converting XML structure to text.
-     * This is useful when template has child elements that should be treated as raw text.
+     * Gets child elements as raw text (v2.2.x ULTRA-LEAN).
+     * Uses new architecture: _textContent property from configuration
      */
     private String getChildElementsAsRawText() {
         try {
-            IElementDef def = getElementDef();
-            if (def != null && def instanceof org.webharvest.definition.AbstractElementDef) {
-                org.webharvest.definition.AbstractElementDef abstractDef = (org.webharvest.definition.AbstractElementDef) def;
-                java.lang.reflect.Field field = org.webharvest.definition.AbstractElementDef.class.getDeclaredField("xmlNode");
-                field.setAccessible(true);
-                org.webharvest.definition.XmlNode xmlNode = (org.webharvest.definition.XmlNode) field.get(abstractDef);
-                
-                if (xmlNode != null && xmlNode.getElementList() != null) {
-                    StringBuilder result = new StringBuilder();
-                    for (Object element : xmlNode.getElementList()) {
-                        if (element instanceof org.webharvest.definition.XmlNode) {
-                            org.webharvest.definition.XmlNode childNode = (org.webharvest.definition.XmlNode) element;
-                            result.append("<").append(childNode.getName()).append(">");
-                            String childText = childNode.getText();
-                            if (childText != null) {
-                                result.append(childText);
-                            }
-                            result.append("</").append(childNode.getName()).append(">");
-                        }
-                    }
-                    return result.toString();
-                }
+            // v2.2.x: Use _textContent property from PluginConfiguration
+            // StreamingXmlParser populates this with CDATA and text content
+            String textContent = getConfiguration().getProperty("_textContent");
+            if (textContent != null && !textContent.trim().isEmpty()) {
+                LOGGER.debug("Returning _textContent: {}", textContent);
+                return textContent;
             }
+            LOGGER.debug("No _textContent available in configuration");
+            return "";
         } catch (Exception e) {
             LOGGER.warn("Could not get child elements as raw text: " + e.getMessage());
+            return "";
         }
-        return "";
     }
     
     /**

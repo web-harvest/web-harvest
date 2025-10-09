@@ -35,7 +35,6 @@ package org.webharvest.plugin.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -393,30 +392,13 @@ public class CatchPlugin extends AbstractPlugin {
     }
 
     /**
-     * Execute child elements directly in the same context (not using BodyProcessor)
-     * to avoid context isolation issues.
+     * Execute child elements directly in the same context (v2.2.x ULTRA-LEAN)
+     * Uses new architecture: configuration.getChildren() + Plugin
      */
     private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        final List<Object> resultList = new ArrayList<Object>();
-        
-        // Null safety
-        if (getElementDef() == null) {
-            LOGGER.debug("No elementDef available, returning EmptyVariable");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
-        
-        for (org.webharvest.definition.IElementDef def : defs) {
-            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
-            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
-            final Variable variable = processor.run(context);
-            if (!variable.isEmpty()) {
-                resultList.addAll(variable.toList());
-            }
-        }
-        
-        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
+        // v2.2.x: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
+        // PluginBodyExecutor handles children execution properly
+        return super.executeBody(context);
     }
 }
 

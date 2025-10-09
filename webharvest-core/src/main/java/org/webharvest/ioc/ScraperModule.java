@@ -242,7 +242,9 @@ public final class ScraperModule extends AbstractModule {
     }
 
     protected void bindConfigParser() {
-        bind(ConfigParser.class).to(SAXConfigParser.class);
+        // v2.2.x: Use StreamingXmlParser (ULTRA-LEAN architecture)
+        // SAXConfigParser removed - old architecture eliminated
+        bind(ConfigParser.class).to(org.webharvest.definition.v3.StreamingXmlParser.class);
     }
 
     // FIXME rbala Plain old approach to guice's factory binding. Please consider it as temporary workaround. Can stay longer then actual work on 2.1 version.

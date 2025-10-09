@@ -36,7 +36,6 @@ package org.webharvest.plugin.core;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;

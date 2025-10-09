@@ -122,6 +122,7 @@ public class StreamingXmlParser implements ConfigParser {
      * 
      * @param resolver the definition resolver for looking up plugins
      */
+    @com.google.inject.Inject
     public StreamingXmlParser(org.webharvest.definition.ConfigurableResolver resolver) {
         if (resolver == null) {
             throw new IllegalArgumentException("ConfigurableResolver cannot be null");
@@ -176,12 +177,14 @@ public class StreamingXmlParser implements ConfigParser {
     @Override
     @Deprecated
     public IElementDef parse(ConfigSource source) throws ParserException {
-        // For now, throw UnsupportedOperationException
-        // In full implementation, we would create an adapter: Tree → IElementDef
-        throw new UnsupportedOperationException(
-            "StreamingXmlParser does not support old IElementDef interface. " +
-            "Use parseToTree() instead, or use SAXConfigParser for legacy support."
-        );
+        // v2.2.x ULTRA-LEAN: Implement parse() for backward compatibility
+        // This allows gradual migration from IElementDef to PluginConfigurationTree
+        
+        // First, parse to tree using new architecture
+        PluginConfigurationTree tree = parseToTree(source);
+        
+        // Then convert tree to IElementDef using adapter
+        return new PluginConfigurationTreeElementDefAdapter(tree);
     }
 
     /**

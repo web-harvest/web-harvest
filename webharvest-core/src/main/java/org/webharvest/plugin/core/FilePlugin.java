@@ -51,7 +51,6 @@ import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Types;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -673,23 +672,12 @@ public class FilePlugin extends AbstractPlugin {
     }
 
     /**
-     * Execute child elements directly in the same context (not using BodyProcessor)
-     * to avoid context isolation issues and return actual results instead of raw XML.
+     * Execute child elements directly in the same context (v2.2.x ULTRA-LEAN)
+     * Uses new architecture: PluginBodyExecutor
      */
     private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        final List<Object> resultList = new ArrayList<Object>();
-        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
-        
-        for (org.webharvest.definition.IElementDef def : defs) {
-            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
-            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
-            final Variable variable = processor.run(context);
-            if (!variable.isEmpty()) {
-                resultList.addAll(variable.toList());
-            }
-        }
-        
-        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
+        // v2.2.x: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
+        return super.executeBody(context);
     }
 
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
@@ -1012,45 +1000,14 @@ public class FilePlugin extends AbstractPlugin {
     }
     
     private String getChildElementsAsRawText() {
-        try {
-            IElementDef def = getElementDef();
-            if (def != null && def instanceof org.webharvest.definition.AbstractElementDef) {
-                org.webharvest.definition.AbstractElementDef abstractDef = (org.webharvest.definition.AbstractElementDef) def;
-                java.lang.reflect.Field field = org.webharvest.definition.AbstractElementDef.class.getDeclaredField("xmlNode");
-                field.setAccessible(true);
-                org.webharvest.definition.XmlNode xmlNode = (org.webharvest.definition.XmlNode) field.get(abstractDef);
-                
-                if (xmlNode != null) {
-                    // First try to get direct text content
-                    String directText = xmlNode.getText();
-                    if (directText != null && !directText.trim().isEmpty()) {
-                        LOGGER.info("FilePlugin.getChildElementsAsRawText: Found direct text: [{}]", directText);
-                        return directText;
-                    }
-                    
-                    // If no direct text, try child elements
-                    if (xmlNode.getElementList() != null) {
-                        StringBuilder result = new StringBuilder();
-                        for (Object element : xmlNode.getElementList()) {
-                            if (element instanceof org.webharvest.definition.XmlNode) {
-                                org.webharvest.definition.XmlNode childNode = (org.webharvest.definition.XmlNode) element;
-                                result.append("<").append(childNode.getName()).append(">");
-                                String childText = childNode.getText();
-                                if (childText != null) {
-                                    result.append(childText);
-                                }
-                                result.append("</").append(childNode.getName()).append(">");
-                            }
-                        }
-                        String childElementsText = result.toString();
-                        LOGGER.info("FilePlugin.getChildElementsAsRawText: Found child elements text: [{}]", childElementsText);
-                        return childElementsText;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.warn("FilePlugin.getChildElementsAsRawText: Error getting XML content: " + e.getMessage());
+        // v2.2.x ULTRA-LEAN: Use _textContent property from PluginConfiguration
+        String textContent = getConfiguration().getProperty("_textContent");
+        if (textContent != null && !textContent.trim().isEmpty()) {
+            LOGGER.info("FilePlugin.getChildElementsAsRawText: Found text content: [{}]", textContent);
+            return textContent;
         }
+        
+        LOGGER.debug("FilePlugin.getChildElementsAsRawText: No text content available");
         return "";
     }
 }

@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
 import org.webharvest.definition.CorePluginWebHarvestPluginDef;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
@@ -153,24 +152,29 @@ public class RegexpPlugin extends AbstractPlugin {
         System.out.println("RegexpPlugin.doExecute: START - Method entered");
         LOGGER.debug("RegexpPlugin.doExecute: START - Method entered");
         PluginConfiguration config = getConfiguration();
-        IElementDef elementDef = getElementDef();
         
         String pattern = "";
         String source = "";
         String result = "";
         
-        // Check if we have a CorePluginWebHarvestPluginDef
-        if (elementDef instanceof CorePluginWebHarvestPluginDef) {
-            CorePluginWebHarvestPluginDef coreDef = (CorePluginWebHarvestPluginDef) elementDef;
-            XmlNode xmlNode = coreDef.getXmlNode();
-            
-            // Get data from child elements using XmlNode directly
-            pattern = getChildText(xmlNode, "regexp-pattern");
-            source = getChildText(xmlNode, "regexp-source");
-            result = getChildText(xmlNode, "regexp-result");
+        // v2.2.x ULTRA-LEAN: Get data from child configurations
+        // StreamingXmlParser populates children with PluginConfiguration objects
+        if (config.hasChildren()) {
+            for (PluginConfiguration child : config.getChildren()) {
+                String elementName = child.getElementName();
+                String childText = child.getProperty("_textContent", "");
+                
+                if ("regexp-pattern".equals(elementName)) {
+                    pattern = childText;
+                } else if ("regexp-source".equals(elementName)) {
+                    source = childText;
+                } else if ("regexp-result".equals(elementName)) {
+                    result = childText;
+                }
+            }
         }
         
-        // Fallback to configuration properties for testing or when no XML structure
+        // Fallback to configuration properties for testing or when no children
         if (pattern.isEmpty()) {
             pattern = config.getProperty("pattern", "");
             LOGGER.debug("RegexpPlugin: Pattern from config = '{}'", pattern);
@@ -320,18 +324,23 @@ public class RegexpPlugin extends AbstractPlugin {
         }
 
         try {
-            // Get the regexp-result element from the XML node
-            IElementDef elementDef = getElementDef();
-            if (elementDef instanceof CorePluginWebHarvestPluginDef) {
-                CorePluginWebHarvestPluginDef coreDef = (CorePluginWebHarvestPluginDef) elementDef;
-                XmlNode xmlNode = coreDef.getXmlNode();
-                
-                // Find the regexp-result child element
-                XmlNode resultNode = findChildElement(xmlNode, "regexp-result");
-                if (resultNode != null) {
-                    // Process the result template by executing child elements
-                    return processXmlTemplate(resultNode, context);
+            // v2.2.x ULTRA-LEAN: Find regexp-result child in configuration
+            PluginConfiguration resultConfig = null;
+            if (getConfiguration().hasChildren()) {
+                for (PluginConfiguration child : getConfiguration().getChildren()) {
+                    if ("regexp-result".equals(child.getElementName())) {
+                        resultConfig = child;
+                        break;
+                    }
                 }
+            }
+            
+            if (resultConfig != null && resultConfig.hasChildren()) {
+                // Process the result template by executing child elements
+                // Use PluginBodyExecutor to execute regexp-result children
+                org.webharvest.plugin.PluginBodyExecutor executor = new org.webharvest.plugin.DefaultPluginBodyExecutor();
+                Variable execResult = executor.executeBody(resultConfig, context);
+                return execResult != null ? execResult.toString() : template;
             }
             
             // Fallback to simple regex processing

@@ -33,7 +33,6 @@
 
 package org.webharvest.plugin.core;
 
-import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.BodyContentProvider;
 import org.webharvest.plugin.PluginConfiguration;
@@ -43,8 +42,6 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.processors.Processor;
-import org.webharvest.runtime.processors.ProcessorFactory;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -360,41 +357,9 @@ public class ConfigPlugin extends AbstractPlugin {
         
         LOGGER.debug("ConfigPlugin.executeBody: Executing children in CURRENT scope (no nesting)");
         
-        // Check if elementDef is available
-        if (getElementDef() == null) {
-            LOGGER.debug("ConfigPlugin.executeBody: No element definition available");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        // Execute all child elements directly in current context (no nested scope)
-        final IElementDef[] defs = getElementDef().getOperationDefs();
-        
-        if (defs == null || defs.length == 0) {
-            LOGGER.debug("ConfigPlugin.executeBody: No child elements");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        // Execute each child and collect results
-        final ListVariable resultList = new ListVariable();
-        
-        for (IElementDef def : defs) {
-            final Processor processor = ProcessorFactory.INSTANCE.createProcessor(context, def);
-            if (processor != null) {
-                final Variable childResult = processor.run(context);
-                if (childResult != null && !childResult.isEmpty()) {
-                    resultList.addVariable(childResult);
-                }
-            }
-        }
-        
-        // Return combined results
-        if (resultList.isEmpty()) {
-            return EmptyVariable.INSTANCE;
-        } else if (resultList.getList().size() == 1) {
-            return resultList.get(0);
-        } else {
-            return resultList;
-        }
+        // v2.2.x ULTRA-LEAN: Use AbstractPlugin.executeBody() which now uses PluginBodyExecutor
+        // PluginBodyExecutor executes children in current context (no nested scope) - same behavior!
+        return super.executeBody(context);
     }
 
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {

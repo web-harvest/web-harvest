@@ -44,7 +44,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.definition.CorePluginDef;
 import org.webharvest.definition.XmlNode;
 import org.slf4j.Logger;
@@ -255,39 +254,14 @@ public class DefPlugin extends AbstractPlugin {
     }
 
     /**
-     * Gets the body content directly from the XML node to avoid scope issues.
+     * Gets the body content directly from configuration (v2.2.x ULTRA-LEAN).
+     * Uses _textContent property populated by StreamingXmlParser.
      */
     private Variable getBodyContentFromXmlNode() {
-        IElementDef elementDef = getElementDef();
-        if (elementDef instanceof CorePluginDef) {
-            CorePluginDef coreDef = (CorePluginDef) elementDef;
-            XmlNode xmlNode = coreDef.getNode();
-            
-            // Get text content from the XML node
-            String textContent = xmlNode.getText();
-            if (textContent != null && !textContent.trim().isEmpty()) {
-                return new NodeVariable(textContent);
-            }
-            
-            // If no direct text, try to get text from child elements
-            if (xmlNode.getElementList() != null && xmlNode.getElementList().size() > 0) {
-                StringBuilder childTextContent = new StringBuilder();
-                for (Object element : xmlNode.getElementList()) {
-                    if (element instanceof String) {
-                        childTextContent.append((String) element);
-                    } else if (element instanceof org.webharvest.definition.XmlNode) {
-                        org.webharvest.definition.XmlNode childNode = (org.webharvest.definition.XmlNode) element;
-                        String childText = childNode.getText();
-                        if (childText != null) {
-                            childTextContent.append(childText);
-                        }
-                    }
-                }
-                String result = childTextContent.toString();
-                if (!result.trim().isEmpty()) {
-                    return new NodeVariable(result);
-                }
-            }
+        // v2.2.x: Use _textContent property from PluginConfiguration
+        String textContent = getConfiguration().getProperty("_textContent");
+        if (textContent != null && !textContent.trim().isEmpty()) {
+            return new NodeVariable(textContent);
         }
         
         return EmptyVariable.INSTANCE;

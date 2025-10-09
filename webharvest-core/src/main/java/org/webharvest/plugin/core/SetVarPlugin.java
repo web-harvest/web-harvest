@@ -40,7 +40,6 @@ import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.definition.CorePluginWebHarvestPluginDef;
 import org.webharvest.definition.XmlNode;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -240,90 +239,14 @@ public class SetVarPlugin extends AbstractPlugin {
     }
 
     /**
-     * Gets the body content directly from the XML node to avoid scope issues.
+     * Gets the body content directly from configuration (v2.2.x ULTRA-LEAN).
+     * Uses _textContent property populated by StreamingXmlParser.
      */
     private Variable getBodyContentFromXmlNode() {
-        IElementDef elementDef = getElementDef();
-        System.out.println("SetVarPlugin.getBodyContentFromXmlNode: elementDef=" + elementDef);
-        System.out.println("SetVarPlugin.getBodyContentFromXmlNode: elementDef.class=" + (elementDef != null ? elementDef.getClass().getName() : "null"));
-        if (elementDef == null) {
-            LOGGER.warn("ElementDef is null, returning EmptyVariable");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        // Try WebHarvestPluginDef first (new architecture)
-        if (elementDef instanceof org.webharvest.definition.WebHarvestPluginDef) {
-            org.webharvest.definition.WebHarvestPluginDef webDef = (org.webharvest.definition.WebHarvestPluginDef) elementDef;
-            XmlNode xmlNode = webDef.getNode();
-            System.out.println("SetVarPlugin.getBodyContentFromXmlNode: xmlNode=" + xmlNode);
-            
-            // Get text content from the XML node
-            String textContent = xmlNode.getText();
-            System.out.println("SetVarPlugin.getBodyContentFromXmlNode: textContent='" + textContent + "'");
-            if (textContent != null && !textContent.trim().isEmpty()) {
-                return new NodeVariable(textContent);
-            }
-            
-            // If no direct text, try to get text from child elements
-            if (xmlNode.getElementList() != null && xmlNode.getElementList().size() > 0) {
-                System.out.println("SetVarPlugin.getBodyContentFromXmlNode: elementList.size=" + xmlNode.getElementList().size());
-                StringBuilder childTextContent = new StringBuilder();
-                for (Object element : xmlNode.getElementList()) {
-                    System.out.println("SetVarPlugin.getBodyContentFromXmlNode: element=" + element + ", class=" + element.getClass().getName());
-                    if (element instanceof String) {
-                        childTextContent.append((String) element);
-                    } else if (element instanceof org.webharvest.definition.XmlNode) {
-                        org.webharvest.definition.XmlNode childNode = (org.webharvest.definition.XmlNode) element;
-                        String childText = childNode.getText();
-                        System.out.println("SetVarPlugin.getBodyContentFromXmlNode: childText='" + childText + "'");
-                        if (childText != null) {
-                            childTextContent.append(childText);
-                        }
-                    }
-                }
-                String result = childTextContent.toString();
-                if (!result.trim().isEmpty()) {
-                    return new NodeVariable(result);
-                }
-            }
-            return EmptyVariable.INSTANCE;
-        }
-        
-        // Try CorePluginWebHarvestPluginDef (old architecture)
-        if (elementDef instanceof CorePluginWebHarvestPluginDef) {
-            CorePluginWebHarvestPluginDef coreDef = (CorePluginWebHarvestPluginDef) elementDef;
-            XmlNode xmlNode = coreDef.getXmlNode();
-            System.out.println("SetVarPlugin.getBodyContentFromXmlNode: xmlNode=" + xmlNode);
-            
-            // Get text content from the XML node
-            String textContent = xmlNode.getText();
-            System.out.println("SetVarPlugin.getBodyContentFromXmlNode: textContent='" + textContent + "'");
-            if (textContent != null && !textContent.trim().isEmpty()) {
-                return new NodeVariable(textContent);
-            }
-            
-            // If no direct text, try to get text from child elements
-            if (xmlNode.getElementList() != null && xmlNode.getElementList().size() > 0) {
-                System.out.println("SetVarPlugin.getBodyContentFromXmlNode: elementList.size=" + xmlNode.getElementList().size());
-                StringBuilder childTextContent = new StringBuilder();
-                for (Object element : xmlNode.getElementList()) {
-                    System.out.println("SetVarPlugin.getBodyContentFromXmlNode: element=" + element + ", class=" + element.getClass().getName());
-                    if (element instanceof String) {
-                        childTextContent.append((String) element);
-                    } else if (element instanceof org.webharvest.definition.XmlNode) {
-                        org.webharvest.definition.XmlNode childNode = (org.webharvest.definition.XmlNode) element;
-                        String childText = childNode.getText();
-                        System.out.println("SetVarPlugin.getBodyContentFromXmlNode: childText='" + childText + "'");
-                        if (childText != null) {
-                            childTextContent.append(childText);
-                        }
-                    }
-                }
-                String result = childTextContent.toString();
-                if (!result.trim().isEmpty()) {
-                    return new NodeVariable(result);
-                }
-            }
+        // v2.2.x: Use _textContent property from PluginConfiguration
+        String textContent = getConfiguration().getProperty("_textContent");
+        if (textContent != null && !textContent.trim().isEmpty()) {
+            return new NodeVariable(textContent);
         }
         
         return EmptyVariable.INSTANCE;

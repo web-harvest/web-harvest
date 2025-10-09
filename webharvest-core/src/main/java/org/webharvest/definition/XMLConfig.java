@@ -35,6 +35,8 @@ package org.webharvest.definition;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.assistedinject.Assisted;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
 import org.webharvest.definition.v3.PluginConfigurationTree;
 import org.webharvest.definition.v3.StreamingXmlParser;
@@ -51,6 +53,8 @@ import org.webharvest.definition.v3.StreamingXmlParser;
  * @see IElementDef
  */
 public final class XMLConfig implements Config {
+
+    private static final Logger LOG = LoggerFactory.getLogger(XMLConfig.class);
 
     private final ConfigSource configSource;
 
@@ -146,17 +150,18 @@ public final class XMLConfig implements Config {
      */
     @Override
     public void reload() {
-        // Parse using old parser (for backward compatibility)
+        // Parse using old parser (for backward compatibility during migration)
         this.elementDef = configParser.parse(configSource);
         
-        // Parse using new parser (v2.2.x modernization)
-        // If configParser is StreamingXmlParser, use it
+        // v2.2.x: Parse using new StreamingXmlParser (ULTRA-LEAN architecture)
+        // SAXConfigParser removed - StreamingXmlParser is now the only parser
         if (configParser instanceof StreamingXmlParser) {
             this.configurationTree = ((StreamingXmlParser) configParser).parseToTree(configSource);
         } else {
-            // For POC: New parser not available with old SAXConfigParser
-            // configurationTree remains null (old API only)
-            // TODO v2.3: Replace SAXConfigParser with StreamingXmlParser completely
+            // Fallback: If custom ConfigParser implementation doesn't support tree generation
+            // (should not happen in production - all parsers should be StreamingXmlParser now)
+            LOG.warn("ConfigParser is not StreamingXmlParser: {}. Tree generation not available.", 
+                    configParser.getClass().getName());
             this.configurationTree = null;
         }
     }

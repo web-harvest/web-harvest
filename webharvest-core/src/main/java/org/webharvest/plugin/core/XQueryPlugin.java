@@ -44,7 +44,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.definition.WebHarvestPluginDef;
 import org.webharvest.definition.XmlNode;
 
