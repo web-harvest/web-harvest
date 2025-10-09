@@ -17,6 +17,157 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #41: Cannot Download Binary Files (RAR/ZIP Corrupted)
+
+**Status**: ✅ FIXED  
+**Reported**: GitHub Issue #41 + SourceForge Forum  
+**Fixed in**: v2.2.1  
+**Severity**: High (data corruption - related to Bug #39)  
+**Component**: `webharvest-core` - `FilePlugin` binary write handling
+
+**Note**: Related to Bug #39. Both bugs caused by String conversion of binary data.
+
+#### Description
+User cannot download RAR/ZIP files - they get corrupted and cannot be opened.
+
+**User Report**:
+> "web-harvest can't download this file http://www.oaomoek.ru/upload/File/2011/KD_2798.rar
+> I use this code:
+> ```xml
+> <file action="write" path="c:\temp\1.rar" type="binary">
+>   <http method="get" url="http://www.oaomoek.ru/upload/File/2011/KD_2798.rar"/>
+> </file>
+> ```
+> And i get a bad file. I can not open it. :("
+
+**Forum**: https://sourceforge.net/projects/web-harvest/forums/forum/591299/topic/3959320
+
+#### Root Cause
+**FilePlugin** was using `toString().getBytes()` for binary files:
+
+```java
+// OLD code (Bug #41 - before fix):
+Variable bodyContent = super.executeBody(context);
+String content = bodyContent.toString();  // ← byte[] → String (CORRUPTION!)
+
+if (type.equals("binary")) {
+    byte[] bytes = content.getBytes(charset);  // ← String → byte[] (already corrupted!)
+    fos.write(bytes);
+}
+```
+
+**Double conversion problem**:
+1. HttpPlugin returns `NodeVariable` with byte[] (after Bug #39 fix)
+2. FilePlugin calls `.toString()` → byte[] → String (CORRUPTION!)
+3. Then `.getBytes(charset)` → String → byte[] (already corrupted!)
+
+**Result**: RAR/ZIP/PDF files corrupted and unusable!
+
+#### Fix (v2.2.1)
+**Use `NodeVariable.toBinary()`** instead of `toString().getBytes()`:
+
+```java
+// NEW code (Bug #41 fix):
+Variable bodyContent = super.executeBody(context);
+
+if (type.equals("binary")) {
+    // Bug #41 Fix: Use toBinary() to preserve byte[] without String conversion
+    byte[] bytes;
+    if (bodyContent instanceof NodeVariable) {
+        bytes = ((NodeVariable) bodyContent).toBinary();  // Direct byte[] access!
+    } else {
+        // Fallback for non-NodeVariable
+        String content = bodyContent.toString();
+        bytes = content.getBytes(charset);
+    }
+    
+    fos.write(bytes);
+}
+```
+
+**Benefits**:
+- ✅ No String conversion for binary data
+- ✅ `toBinary()` returns byte[] directly if data is already byte[]
+- ✅ No corruption
+- ✅ RAR/ZIP/PDF files work correctly
+
+#### Tests Added
+**7 comprehensive tests**:
+
+1. ✅ `testBug41_NodeVariable_ToBinaryPreservesByteArray`
+   - toBinary() preserves RAR header without conversion
+
+2. ✅ `testBug41_NodeVariable_ToStringCorruptsBinary`
+   - Demonstrates toString().getBytes() corruption
+
+3. ✅ `testBug41_ZipFileHeaderPreserved`
+   - ZIP header (PK\x03\x04) preserved
+
+4. ✅ `testBug41_PdfFileHeaderPreserved`
+   - PDF header (%PDF-1.) preserved
+
+5. ✅ `testBug41_InvalidUtf8SequencesPreserved`
+   - Invalid UTF-8 bytes preserved exactly
+
+6. ✅ `testBug41_FilePlugin_PreservesBinaryFromNodeVariable`
+   - Integration: HttpPlugin→FilePlugin flow
+
+7. ✅ `testBug41_DocumentationAndFix`
+   - Documents fix summary
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/plugin/core/FilePluginBug41Test.java`
+
+**Test Results**:
+- Bug #41 tests: 7/7 PASS (100%)
+- Full core suite: 2639/2639 PASS [was 2632]
+- Zero regression
+
+#### Files Changed
+- `FilePlugin.java` - Use `toBinary()` for binary writes
+- `FilePluginBug41Test.java` - NEW: 7 tests
+
+#### Relationship to Bug #39
+**Bug #39**: HttpPlugin corrupted binary → FIXED  
+**Bug #41**: FilePlugin corrupted binary → FIXED
+
+**Together they ensure**:
+1. HttpPlugin downloads binary correctly (Bug #39)
+2. FilePlugin saves binary correctly (Bug #41)
+3. **End-to-end binary preservation!**
+
+#### User Impact
+**Before Fix**:
+- ✗ RAR files corrupted (cannot unzip)
+- ✗ ZIP files corrupted (cannot unzip)
+- ✗ PDF files corrupted (cannot open)
+- ✗ Large images corrupted
+
+**After Fix** (v2.2.1+):
+- ✅ RAR files work
+- ✅ ZIP files work
+- ✅ PDF files work
+- ✅ All binary downloads preserved
+
+**Example (now works)**:
+```xml
+<file action="write" path="archive.rar" type="binary">
+  <http url="http://example.com/file.rar"/>
+</file>
+
+<file action="write" path="document.pdf" type="binary">
+  <http url="http://example.com/file.pdf"/>
+</file>
+```
+
+#### References
+- Original report: [GitHub Issue #41]
+- Forum: https://sourceforge.net/projects/web-harvest/forums/forum/591299/topic/3959320
+- Related: Bug #39 (HttpPlugin binary support)
+- Fix: FilePlugin.java, NodeVariable.toBinary()
+
+---
+
 ### Bug #27: Indent / RunningProcessors Broken by Exceptions
 
 **Status**: ✅ FIXED  
@@ -2134,25 +2285,25 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Addressed**: 14 unique bugs (+ 1 duplicate identified)
+- **Total Bugs Addressed**: 15 unique bugs (+ 1 duplicate identified)
   - **v2.1.0**: 2 bugs (Bug #13 by architecture, Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 12 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #27, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
-- **Fixed with Code Changes**: 11 bugs (Bug #7, #27, #29, #33, #39, #47/36, #48, #55, #61, #62, ConfigPlugin)
+  - **v2.2.1**: 13 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #27, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #41 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+- **Fixed with Code Changes**: 12 bugs (Bug #7, #27, #29, #33, #39, #41, #47/36, #48, #55, #61, #62, ConfigPlugin)
 - **Verified Fixed (Already Working)**: 2 (Bug #13 by architecture, Bug #16 - exception handling)
 - **Resolved by Architecture Change**: 1 (Bug #18 - charset detection, Not a Bug per HTTP spec)
 - **Duplicates Identified**: 1 (Bug #36 = Bug #47)
 - **Regressions Fixed**: 1 (Bug #33 - feature lost during refactoring, now restored)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
-  - **High**: 5 (Bug #27 memory leak+CPU, Bug #33 regression, Bug #39 binary corruption, Bug #47/36 charset, Bug #60 variable name)
+  - **High**: 6 (Bug #27 memory leak+CPU, Bug #33 regression, Bug #39 binary corruption, Bug #41 file corruption, Bug #47/36 charset, Bug #60 variable name)
   - **Medium**: 7 (Bug #7, Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 2 (Bug #13 - enhancement by architecture, Bug #18 - user expectation vs. spec)
-- **Total Tests Added** (v2.2.1): 84 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 6 Bug #27 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Total Tests Added** (v2.2.1): 91 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 6 Bug #27 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 7 Bug #41 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Test Suite Size**: 
-  - Core: 2632 tests (100% passing) [was 2626]
+  - Core: 2639 tests (100% passing) [was 2626]
   - WebBrowser: 47 tests (100% passing, **51% coverage**)
-  - **Total**: 2679 tests
+  - **Total**: 2686 tests
 - **Regression Rate**: 0% (zero regressions introduced)
 
 ## Philosophy: Fixing Bugs Prevents New Bugs

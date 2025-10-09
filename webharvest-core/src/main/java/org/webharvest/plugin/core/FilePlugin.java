@@ -73,11 +73,20 @@ import java.util.regex.PatternSyntaxException;
 
 /**
  * File plugin that provides file operations like read, write, append, and list.
+ * 
+ * <h3>Bug #41 Fix (v2.2.1): Binary File Downloads</h3>
+ * <p>
+ * Fixed binary file corruption when downloading files (RAR, ZIP, images, etc.).
+ * Now uses {@link NodeVariable#toBinary()} instead of {@code toString().getBytes()}
+ * to preserve binary data without String conversion corruption.
+ * </p>
+ * 
+ * @version 2.2.1
  */
 @CorePlugin(
     elementName = "file",
     description = "File plugin that provides file operations",
-    version = "2.1.0"
+    version = "2.2.1"
 )
 public class FilePlugin extends AbstractPlugin {
     
@@ -782,33 +791,56 @@ public class FilePlugin extends AbstractPlugin {
                 file.getParentFile().mkdirs();
             }
             
-            // Get content from body by executing child elements
-            String content = "";
+            // Bug #41 Fix: Get content from body, preserving binary data
+            Variable bodyContent = null;
             try {
-                // Execute child elements directly in the same context (not using BodyProcessor)
-                Variable bodyContent = super.executeBody(context);
-                System.out.println("FilePlugin.handleFileWrite: bodyContent type=" + (bodyContent != null ? bodyContent.getClass().getName() : "null"));
-                if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
-                    content = bodyContent.toString();
-                    LOGGER.info("FilePlugin: Content to write: [" + content + "]");
-                    System.out.println("FilePlugin.handleFileWrite: content=" + content);
-                } else {
+                // Execute child elements directly in the same context
+                bodyContent = super.executeBody(context);
+                System.out.println("FilePlugin.handleFileWrite: bodyContent type=" + 
+                    (bodyContent != null ? bodyContent.getClass().getName() : "null"));
+                
+                if (bodyContent == null || bodyContent instanceof EmptyVariable) {
                     LOGGER.warn("FilePlugin: bodyContent is null or EmptyVariable!");
                     System.out.println("FilePlugin.handleFileWrite: bodyContent is null or EmptyVariable");
-                    
+                }
+            } catch (Exception e) {
+                LOGGER.error("FilePlugin.handleFileWrite: Error executing body content: " + e.getMessage(), e);
+                bodyContent = EmptyVariable.INSTANCE;
+            }
+            
+            // Bug #41 Fix: Write binary or text data
+            if (type.equals("binary")) {
+                // Bug #41 Fix: For binary files, use toBinary() to avoid String corruption
+                byte[] bytes;
+                if (bodyContent != null && bodyContent instanceof NodeVariable) {
+                    // Use toBinary() - preserves byte[] without String conversion
+                    bytes = ((NodeVariable) bodyContent).toBinary();
+                    LOGGER.info("FilePlugin: Writing binary data, {} bytes", bytes.length);
+                } else {
+                    // Fallback for non-NodeVariable
+                    String content = bodyContent != null ? bodyContent.toString() : "";
+                    bytes = content.getBytes(charset);
+                }
+                
+                try (FileOutputStream fos = new FileOutputStream(file, append)) {
+                    fos.write(bytes);
+                }
+            } else {
+                // For text files, convert to String first
+                String content = "";
+                if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
+                    content = bodyContent.toString();
+                    LOGGER.info("FilePlugin: Content to write: [{}]", content);
+                    System.out.println("FilePlugin.handleFileWrite: content=" + content);
+                } else {
                     // Try to get raw text from child elements as XML
                     LOGGER.info("FilePlugin.handleFileWrite: Trying XML conversion");
                     content = getChildElementsAsRawText();
                     LOGGER.info("FilePlugin.handleFileWrite: XML conversion result: [{}]", content);
                     System.out.println("FilePlugin.handleFileWrite: XML conversion result=" + content);
                 }
-            } catch (Exception e) {
-                LOGGER.error("FilePlugin.handleFileWrite: Error executing body content: " + e.getMessage(), e);
-                // Return empty on error
-                content = "";
-            }
                 
-                // If the content contains template variables (${...}), process them with BaseTemplater
+                // If the content contains template variables (${...}), process them
                 if (content.contains("${")) {
                     try {
                         Variable processedContent = BaseTemplater.evaluateToVariable(content, null, context);
@@ -819,15 +851,7 @@ public class FilePlugin extends AbstractPlugin {
                         LOGGER.warn("Error processing template content: " + e.getMessage());
                     }
                 }
-            
-            if (type.equals("binary")) {
-                // For binary files, write bytes
-                byte[] bytes = content.getBytes(charset);
-                try (FileOutputStream fos = new FileOutputStream(file, append)) {
-                    fos.write(bytes);
-                }
-            } else {
-                // For text files, write as text
+                
                 try (FileOutputStream fos = new FileOutputStream(file, append)) {
                     fos.write(content.getBytes(charset));
                 }

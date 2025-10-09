@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #41: Cannot Download Binary Files (RAR/ZIP Corrupted)** (r719) - FIXED
+- **Issue**: RAR/ZIP/PDF files corrupted when saved with type="binary"
+- **Problem**: FilePlugin used toString().getBytes() → double conversion → corruption
+- **Fix**: FilePlugin now uses NodeVariable.toBinary() for binary writes
+- **Related**: Bug #39 (HttpPlugin binary) - together ensure end-to-end binary preservation
+- **Impact**: RAR, ZIP, PDF, large images now download correctly
+- **Tests**: 7 tests, 2639/2639 PASS
+
 **Bug #27: Indent/RunningProcessors Broken by Exceptions** (r718) - FIXED
 - **Issue**: Log indent grows, memory leak, 100% CPU when exceptions caught in try/catch
 - **Problem**: AbstractProcessor.run() didn't wrap execution in try-finally
