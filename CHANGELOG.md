@@ -5,6 +5,83 @@ All notable changes to Web-Harvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - October 2025
+
+### 🐛 Bug Fixes
+
+**Bug #55: Character '#' in URL Parameters Not Encoded** (r704)
+- **Issue**: '#' in URL parameter values was not encoded, causing URL truncation
+- **Example**: `?color=#FF0000` became `?color=` (truncated)
+- **Fix**: Removed special case in `CommonUtil.encodeUrlParam()` - '#' now encoded as %23
+- **Impact**: Color codes, hashtags, any '#' in parameters now work correctly
+- **Tests**: 7 comprehensive tests added (4 bug + 3 regression)
+
+**Bug #61: JSONToXML "content" Key Not Correctly Converted** (r702)
+- **Issue**: org.json.XML treats "content" as special text node key, strips it from XML
+- **Example**: `{"a": {"content": "hello"}}` became `<a>hello</a>` (content key lost)
+- **Fix**: Created `JsonXmlConverter` utility - all JSON keys treated equally
+- **Impact**: CMS/blog APIs with "content" field now work correctly
+- **Tests**: 9 comprehensive tests added (4 bug + 5 regression)
+
+**Bug #62: Regexp Group Isolation Issue** (r701)
+- **Issue**: Groups from first `<regexp>` persisted into second regexp execution
+- **Example**: In loops, second regexp's `group1` showed values from first regexp
+- **Fix**: Added `clearAllGroupVariables()` - clears group0-99 before each execution
+- **Impact**: Multiple sequential regexp calls now properly isolated
+- **Tests**: 7 comprehensive tests added (5 unit + 2 integration)
+
+**Bug #60: Invalid Variable Name in try/catch** (r703 - documentation only)
+- **Issue**: Old `TryProcessor` used `_error` (invalid variable name with underscore)
+- **Status**: Already fixed in v2.1.0 during GUI→Plugin migration
+- **Current**: `TryPlugin` uses valid names: `error`, `errorType`, `stacktrace`
+- **Verification**: Existing tests pass, no code changes needed
+
+### 🎨 Web-Based IDE
+
+**Major Features** (r693, r698):
+- Modern web-based IDE with embedded Jetty server
+- Monaco Editor integration (VS Code engine)
+- Real-time execution with WebSocket streaming
+- Multi-tab editing with 5 pre-loaded examples
+- Variable inspector with syntax highlighting
+- WebSocket lifecycle management with disconnect notifications
+- Single executable JAR: `java -jar webharvest-ide-2.2.0.jar`
+
+### 🏗️ Architecture Improvements
+
+**ConfigPlugin Scope Fix** (r693)
+- **Issue**: Variables defined in `<config>` were cleaned up after execution
+- **Fix**: Override `executeBody()` to execute children in root scope (not nested)
+- **Impact**: IDE and tools can now properly extract result variables
+- **Tests**: 4 comprehensive WebSocket integration tests
+
+**Plugin Discovery** (r694, r695)
+- PluginProcessorAdapter for automatic plugin wrapping
+- Integration tests for all 6 plugin modules
+- Core, Database, FTP, Mail, WebBrowser, Zip modules tested
+
+### 📝 Documentation
+
+**Website Updates** (r699, r700):
+- New IDE section on homepage with live preview
+- Plugin Architecture section documenting all 57 plugins
+- Updated all navigation menus across 20+ pages
+- Version 2.2.0→2.2.1 references updated
+- Removed outdated Apache HttpClient JavaDoc
+- Removed old processor pages
+
+**Bug Tracking**:
+- Created BUGS_FIXED.md - comprehensive tracking system
+- Documents all bugs: description, root cause, fix, tests
+- Version tracking for fixes
+
+### ✅ Testing & Quality
+
+- **Test Suite**: 2585 tests (100% passing)
+- **New Tests**: +23 tests for bug fixes (7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Integration Tests**: XML-based tests for all plugin modules
+- **Zero Regression**: All existing functionality maintained
+
 ## [2.2.0] - October 2025
 
 ### 🏗️ Architecture - Database Module Separation

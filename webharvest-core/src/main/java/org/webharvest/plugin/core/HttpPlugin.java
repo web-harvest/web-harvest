@@ -54,15 +54,42 @@ import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 
 /**
- * HTTP plugin that demonstrates dependency injection.
+ * HTTP plugin for making HTTP/HTTPS requests.
  * 
  * <p>
- * This plugin shows how to use dependency injection to access HTTP services
- * in a testable and mockable way.
+ * This plugin performs GET and POST requests with full support for:
+ * headers, parameters, authentication, redirects, and proper URL encoding.
  * </p>
  * 
- * @author Robert Bala
- * @since 2.1.0-SNAPSHOT
+ * <h3>URL Encoding (Bug #55 - Fixed in v2.2.1)</h3>
+ * <p>
+ * <strong>Issue:</strong> Character '#' in URL parameter values was not encoded,
+ * causing URL truncation. Everything after '#' was treated as fragment/anchor.
+ * </p>
+ * <p>
+ * <strong>Example:</strong><br>
+ * Input: {@code http://example.com?color=#FF0000}<br>
+ * Before fix: {@code http://example.com?color=} (truncated!)<br>
+ * After fix: {@code http://example.com?color=%23FF0000} (correct)
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> {@link org.webharvest.utils.CommonUtil#encodeUrl(String, String)} 
+ * now properly encodes '#' as %23 in parameter values.
+ * </p>
+ * 
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * <http url="http://example.com/api?key=value&color=#FF0000"/>
+ * 
+ * <http url="http://example.com" method="POST">
+ *   <http-header name="Content-Type">application/json</http-header>
+ *   <http-param name="data">{"test": "value"}</http-param>
+ * </http>
+ * }</pre>
+ * 
+ * @author Web-Harvest Team
+ * @version 2.2.1
+ * @see org.webharvest.utils.CommonUtil#encodeUrl(String, String)
  */
 @CorePlugin(elementName = "http")
 public class HttpPlugin extends AbstractPlugin {
