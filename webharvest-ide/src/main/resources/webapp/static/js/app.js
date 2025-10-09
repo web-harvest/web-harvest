@@ -293,6 +293,14 @@ const app = {
         this.clearResults();
         this.addLog('info', '▶ Preparing to execute: ' + tabName);
 
+        // IMPORTANT: Close any existing WebSocket before creating new one
+        // This ensures each execution gets a fresh connection
+        if (this.webSocket && this.webSocket.readyState !== WebSocket.CLOSED) {
+            console.log('Closing existing WebSocket before new execution');
+            this.webSocket.close();
+            this.webSocket = null;
+        }
+
         try {
             // FIRST: Create execution to get ID
             const response = await fetch('/api/execute', {
@@ -309,12 +317,12 @@ const app = {
             this.currentExecutionId = result.executionId;
 
             this.addLog('info', '⚙ Execution ID: ' + result.executionId.substring(0, 8) + '...');
-            this.addLog('info', '🔌 Connecting WebSocket...');
+            this.addLog('info', '🔌 Creating new WebSocket connection...');
 
-            // SECOND: Connect WebSocket IMMEDIATELY
+            // SECOND: Create FRESH WebSocket for this execution
             await this.connectWebSocketSync(result.executionId);
 
-            this.addLog('success', '✓ WebSocket connected, execution will start...');
+            this.addLog('success', '✓ WebSocket connected, execution starting...');
             this.setStatus('<i class="fas fa-spinner fa-spin text-warning"></i> Running...', 'running');
             document.getElementById('executionControls').style.display = 'flex';
 
@@ -345,7 +353,7 @@ const app = {
                     const update = JSON.parse(event.data);
                     console.log('📨 WebSocket message received (', event.data.length, 'bytes)');
                     console.log('  Type:', update.type, 'Status:', update.status);
-                    
+
                     // Handle different message types
                     if (update.type === 'log') {
                         // Log message
@@ -354,7 +362,7 @@ const app = {
                     } else {
                         // Status update
                         console.log('  → Status:', update.status);
-                        
+
                         // Use setTimeout to avoid blocking UI
                         setTimeout(() => {
                             try {
@@ -378,8 +386,14 @@ const app = {
                 reject(error);
             };
 
-            this.webSocket.onclose = () => {
-                console.log('🔌 WebSocket closed');
+            this.webSocket.onclose = (event) => {
+                console.log('🔌 WebSocket closed:', event.code, event.reason);
+                
+                // Check if this was unexpected disconnect (not normal closure)
+                if (event.code !== 1000 && event.code !== 1005) {
+                    console.warn('⚠️ Unexpected WebSocket disconnect! Code:', event.code);
+                    this.handleWebSocketDisconnect(executionId, event.code);
+                }
             };
 
             // Timeout after 5 seconds
@@ -435,8 +449,11 @@ const app = {
                     this.addLog('warning', '⚠ No results returned');
                 }
 
+                // Close WebSocket after successful completion
                 if (this.webSocket) {
+                    console.log('Closing WebSocket after successful execution');
                     this.webSocket.close();
+                    this.webSocket = null;
                 }
                 break;
 
@@ -447,8 +464,11 @@ const app = {
                 document.getElementById('executionControls').style.display = 'none';
                 this.hideProgress();
 
+                // Close WebSocket after failure
                 if (this.webSocket) {
+                    console.log('Closing WebSocket after failed execution');
                     this.webSocket.close();
+                    this.webSocket = null;
                 }
                 break;
 
@@ -458,8 +478,11 @@ const app = {
                 document.getElementById('executionControls').style.display = 'none';
                 this.hideProgress();
 
+                // Close WebSocket after stop
                 if (this.webSocket) {
+                    console.log('Closing WebSocket after stopped execution');
                     this.webSocket.close();
+                    this.webSocket = null;
                 }
                 break;
 
@@ -504,67 +527,67 @@ const app = {
         console.log('=== displayResults called ===');
         console.log('Results type:', typeof results);
         console.log('Results keys:', results ? Object.keys(results).length : 0);
-        
+
         try {
             // Show results tabs
             document.getElementById('resultsTabs').style.display = 'flex';
             document.getElementById('statusDisplay').style.display = 'none';
-            
+
             // Display main output (configResult or first significant variable)
             const outputContent = document.getElementById('outputContent');
-            const mainResult = results.configResult || results.html || results.response || 
-                              results.data || Object.values(results)[0] || 'No output';
+            const mainResult = results.configResult || results.html || results.response ||
+                results.data || Object.values(results)[0] || 'No output';
             outputContent.textContent = mainResult;
             console.log('Output tab updated with main result (', mainResult.length, 'chars)');
-            
+
             // Display variables
             const variablesContent = document.getElementById('variablesContent');
             variablesContent.innerHTML = '<p>Loading results...</p>';
-            
+
             // Use setTimeout to avoid UI freeze
             setTimeout(() => {
                 try {
                     variablesContent.innerHTML = '';
-                    
+
                     let varCount = 0;
                     const entries = Object.entries(results || {});
                     console.log('Processing', entries.length, 'variables...');
-                    
+
                     entries.forEach(([name, value]) => {
                         // Truncate if too long (max 300 chars for display)
-                        const displayValue = value.length > 300 
-                            ? value.substring(0, 300) + `...\n(${value.length} total chars, truncated)` 
+                        const displayValue = value.length > 300
+                            ? value.substring(0, 300) + `...\n(${value.length} total chars, truncated)`
                             : value;
-                        
+
                         const card = document.createElement('div');
                         card.className = 'variable-card';
-                        
+
                         const varName = document.createElement('div');
                         varName.className = 'variable-name';
                         varName.textContent = name;
-                        
+
                         const varValue = document.createElement('div');
                         varValue.className = 'variable-value';
                         varValue.textContent = displayValue;
-                        
+
                         card.appendChild(varName);
                         card.appendChild(varValue);
                         variablesContent.appendChild(card);
                         varCount++;
                     });
-                    
+
                     console.log('✓ Created', varCount, 'variable cards');
                     this.addLog('success', `✓ Displayed ${varCount} variables`);
-                    
+
                     // Switch to output tab to show main result
                     this.switchResultTab('output');
-                    
+
                 } catch (err) {
                     console.error('Error creating variable cards:', err);
                     variablesContent.innerHTML = '<p class="error">Error displaying results: ' + err.message + '</p>';
                 }
             }, 100); // Small delay to avoid UI freeze
-            
+
         } catch (err) {
             console.error('Error in displayResults:', err);
             this.addLog('error', 'Failed to display results: ' + err.message);
@@ -604,6 +627,72 @@ const app = {
         document.getElementById('progressBar').style.display = 'none';
     },
 
+    /**
+     * Handle WebSocket disconnect
+     */
+    handleWebSocketDisconnect(executionId, code) {
+        const codeMessages = {
+            1001: 'Server is going away',
+            1006: 'Connection lost abnormally',
+            1008: 'Policy violation',
+            1009: 'Message too large',
+            1011: 'Server error'
+        };
+        
+        const message = codeMessages[code] || `Connection closed (code: ${code})`;
+        
+        // Show notification to user
+        this.showNotification(
+            '⚠️ WebSocket Disconnected',
+            `Connection was lost: ${message}\n\nClick Run again to execute a new configuration.`,
+            'warning'
+        );
+        
+        this.addLog('warning', `⚠️ WebSocket disconnected: ${message}`);
+        this.setStatus('<i class="fas fa-exclamation-triangle text-warning"></i> Connection lost', 'warning');
+        
+        // Hide execution controls
+        document.getElementById('executionControls').style.display = 'none';
+        this.hideProgress();
+    },
+    
+    /**
+     * Show notification to user
+     */
+    showNotification(title, message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-header">
+                <strong>${title}</strong>
+                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="notification-body">${message.replace(/\n/g, '<br>')}</div>
+        `;
+        
+        // Add to page
+        let container = document.getElementById('notificationContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notificationContainer';
+            container.className = 'notification-container';
+            document.body.appendChild(container);
+        }
+        
+        container.appendChild(notification);
+        
+        // Auto-remove after 10 seconds (except errors)
+        if (type !== 'error') {
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 10000);
+        }
+    },
+    
     /**
      * Handle log message from WebSocket
      */
