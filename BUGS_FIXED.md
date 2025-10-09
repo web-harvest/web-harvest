@@ -159,6 +159,52 @@ return new NodeVariable(JsonXmlConverter.toXml(new JSONObject(jsonString), rootT
 
 ---
 
+### Bug #60: Invalid Variable Name in try/catch Processor
+
+**Status**: ✅ ALREADY FIXED (in migration to v2.1+)  
+**Reported**: GitHub Issue #60  
+**Fixed in**: v2.1.0 (during GUI→Plugin migration)  
+**Severity**: High  
+**Component**: `webharvest-core` - Try/Catch processing
+
+#### Description
+Old `TryProcessor` (from Swing GUI era) used invalid variable name `_error` to store exception information. 
+Variable names in Web-Harvest must match regex: `^[a-zA-Z][a-zA-Z0-9]*$` (no underscores allowed).
+
+**Error from old version**:
+```
+org.webharvest.exception.VariableException: Invalid variable name '_error'
+at org.webharvest.runtime.variables.VariableName.<init>(VariableName.java:32)
+at org.webharvest.runtime.ScraperContext.setLocalVar(ScraperContext.java:109)
+at org.webharvest.runtime.processors.TryProcessor$1.call(TryProcessor.java:88)
+```
+
+#### Fix
+Bug was automatically fixed during migration from old `TryProcessor` to new `TryPlugin` (v2.1.0+).
+
+**Current Implementation** (`TryPlugin.java`):
+```java
+// Valid variable names (no underscores):
+context.setLocalVar("error", new NodeVariable(e.getMessage()));
+context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
+context.setLocalVar("stacktrace", new NodeVariable(sw.toString()));
+```
+
+#### Architecture Note
+- `<try>` and `<catch>` are **sibling elements**, not parent-child
+- `<try>` executes its body, catches exceptions, sets error variables
+- `<catch>` (sibling) checks for `error` variable and executes if present
+
+#### Verification
+- ✅ No `_error` variable names in current codebase
+- ✅ All variable names follow regex: `^[a-zA-Z][a-zA-Z0-9]*$`
+- ✅ Existing integration test passes: `testTryCatchPlugin()`
+- ✅ Full test suite: 2571/2571 PASS
+
+**Status**: Bug does not exist in v2.2.x - already fixed in v2.1.0 migration.
+
+---
+
 ### Bug #62: Regexp Group Isolation Issue
 
 **Status**: ✅ FIXED  
@@ -372,12 +418,16 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed**: 2 (in v2.2.1)
-- **Critical**: 1 (ConfigPlugin scope)
-- **High**: 0
-- **Medium**: 2 (Bug #61, Bug #62)
-- **Low**: 0
-- **Total Tests Added**: 16 tests (7 Bug #62 + 9 Bug #61)
+- **Total Bugs Fixed**: 3 total
+  - **v2.1.0**: 1 bug (Bug #60 - during migration)
+  - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
+  - **v2.2.1**: 2 bugs (Bug #61, Bug #62)
+- **By Severity**:
+  - **Critical**: 1 (ConfigPlugin scope)
+  - **High**: 1 (Bug #60 - invalid variable name)
+  - **Medium**: 2 (Bug #61, Bug #62)
+  - **Low**: 0
+- **Total Tests Added** (v2.2.1): 16 tests (7 Bug #62 + 9 Bug #61)
 - **Test Suite Size**: 2571 tests (100% passing)
 
 ---
