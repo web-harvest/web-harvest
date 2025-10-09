@@ -278,4 +278,53 @@ public abstract class AbstractPlugin implements Plugin {
         LOGGER.debug("No body content to execute");
         return EmptyVariable.INSTANCE;
     }
+
+    /**
+     * Executes plugin body and extracts text content only (v2.2.x).
+     * This method uses the new architecture (PluginBodyExecutor) with fallback to old architecture.
+     * 
+     * @param context the execution context
+     * @return the text content from body execution
+     * @throws InterruptedException if execution is interrupted
+     * @since 2.2.0
+     */
+    protected Variable getBodyTextContent(DynamicScopeContext context) throws InterruptedException {
+        LOGGER.debug("AbstractPlugin.getBodyTextContent() called for plugin: {}", getClass().getSimpleName());
+        
+        // Null safety
+        if (context == null) {
+            LOGGER.warn("Context is null in getBodyTextContent()");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        // NEW ARCHITECTURE (v2.2.x): Use PluginBodyExecutor with PluginConfiguration.getChildren()
+        if (configuration != null && Boolean.TRUE.equals(configuration.hasChildren())) {
+            LOGGER.debug("Using NEW architecture: PluginBodyExecutor.getBodyTextContent() with {} children", 
+                        configuration.getChildren().size());
+            try {
+                PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
+                return executor.getBodyTextContent(configuration, context);
+            } catch (Exception e) {
+                LOGGER.warn("PluginBodyExecutor.getBodyTextContent() failed: {}", e.getMessage());
+                // Fall through to old architecture
+            }
+        }
+        
+        // FALLBACK: Old architecture (if elementDef is set but configuration has no children)
+        if (elementDef != null && elementDef.hasOperations()) {
+            LOGGER.debug("Using OLD architecture fallback: ExecutableBodyContentProvider.getBodyTextContent()");
+            try {
+                ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
+                Variable result = bodyProvider.getBodyTextContent(context);
+                LOGGER.debug("Body text content extraction completed with result: {}", result);
+                return result;
+            } catch (Exception e) {
+                LOGGER.warn("Body text content extraction failed: {}", e.getMessage());
+                return EmptyVariable.INSTANCE;
+            }
+        }
+        
+        LOGGER.debug("No body text content to extract");
+        return EmptyVariable.INSTANCE;
+    }
 }

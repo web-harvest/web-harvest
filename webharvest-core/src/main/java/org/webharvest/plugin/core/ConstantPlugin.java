@@ -42,7 +42,6 @@ import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.plugin.ExecutableBodyContentProvider;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -372,8 +371,8 @@ public class ConstantPlugin extends AbstractPlugin {
         if (value == null || value.isEmpty()) {
             LOGGER.info("ConstantPlugin.doExecute: No value attribute, trying body text content");
             try {
-                // Try to get text content directly from XML node
-                Variable bodyContent = getBodyTextContent(context);
+                // Use AbstractPlugin.getBodyTextContent() - new architecture (v2.2.x)
+                Variable bodyContent = super.getBodyTextContent(context);
                 LOGGER.info("ConstantPlugin.doExecute: Body content result: {}", bodyContent);
                 if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                     value = bodyContent.toString();
@@ -400,27 +399,7 @@ public class ConstantPlugin extends AbstractPlugin {
         LOGGER.info("ConstantPlugin.doExecute: Returning result: {}", result);
         return result;
     }
-    /**
-     * Gets text content from XML node for constant value.
-     * 
-     * @param context the execution context
-     * @return the text content variable
-     * @throws InterruptedException if execution is interrupted
-     */
-    private Variable getBodyTextContent(DynamicScopeContext context) throws InterruptedException {
-        if (getElementDef() == null) {
-            LOGGER.debug("No element definition available for text content extraction");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        try {
-            ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(getElementDef());
-            return bodyProvider.getBodyTextContent(context);
-        } catch (Exception e) {
-            LOGGER.warn("Error extracting text content: {}", e.getMessage());
-            return EmptyVariable.INSTANCE;
-        }
-    }
+    // getBodyTextContent() removed - using AbstractPlugin.getBodyTextContent() (v2.2.x new architecture)
 }
 
 

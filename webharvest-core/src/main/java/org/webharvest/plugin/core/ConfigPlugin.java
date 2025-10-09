@@ -36,7 +36,6 @@ package org.webharvest.plugin.core;
 import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.BodyContentProvider;
-import org.webharvest.plugin.ExecutableBodyContentProvider;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;

@@ -38,7 +38,6 @@ import org.webharvest.exception.FileException;
 import org.webharvest.ioc.WorkingDir;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.BodyContentProvider;
-import org.webharvest.plugin.ExecutableBodyContentProvider;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
