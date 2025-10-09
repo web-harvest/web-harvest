@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- 
+    Bug #55: Character '#' in URL parameters
+    
+    Problem: '#' in parameter values is not encoded, causing URL truncation
+    Example: ?b=#tre becomes ?b= (everything after # is lost)
+    
+    Fix: '#' should be encoded as %23 in parameter values
+    -->
+    
+    <!-- Test with httpbin.org which echoes back the URL -->
+    <def var="response">
+        <http url="http://httpbin.org/get?test=before#after&amp;color=#FF0000"/>
+    </def>
+    
+    <!-- Extract the URL that was actually sent -->
+    <def var="responseXml">
+        <html-to-xml>
+            <get var="response"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Get the URL from response -->
+    <def var="actualUrl">
+        <xpath expression="//url/text()">
+            <get var="responseXml"/>
+        </xpath>
+    </def>
+    
+    <!-- Write result for verification -->
+    <file action="write" path="target/test-output/bug55_output.txt">
+        <text>Requested URL query params:
+</text>
+        <get var="actualUrl"/>
+        <text>
+
+Response contains '#' or '%23':
+</text>
+        <regexp replace="false">
+            <regexp-pattern>(%23|#)</regexp-pattern>
+            <regexp-source>
+                <get var="actualUrl"/>
+            </regexp-source>
+        </regexp>
+    </file>
+</config>
+

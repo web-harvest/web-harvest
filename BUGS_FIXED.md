@@ -17,6 +17,111 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #55: Character '#' in URL Parameters Not Encoded
+
+**Status**: ✅ FIXED  
+**Reported**: GitHub Issue #55  
+**Fixed in**: v2.2.1  
+**Severity**: Medium  
+**Component**: `webharvest-core` - `CommonUtil.encodeUrlParam()`
+
+#### Description
+The '#' character in URL parameter values was not being encoded, causing URL truncation. Everything after '#' was treated as a URL fragment (anchor) and stripped.
+
+**Problem Example**:
+```
+Input URL:  http://www.myweb.com/index.php?a=123&b=#tre
+Bug Result: http://www.myweb.com/index.php?a=123&b=
+Expected:   http://www.myweb.com/index.php?a=123&b=%23tre
+```
+
+**Real-World Impact**:
+- Color codes in parameters (e.g., `color=#FF0000`)
+- Social media hashtags (e.g., `tag=#trending`)
+- Any data containing '#' character
+- URLs with fragments were completely truncated after first '#'
+
+#### Root Cause
+In `CommonUtil.encodeUrlParam()` (line 248), '#' was explicitly **not** encoded:
+
+```java
+// OLD CODE (Bug #55):
+result.append((ch == '#') ? "#" : URLEncoder.encode(String.valueOf(ch), charset));
+```
+
+Special case for '#' left it unencoded in parameter values. When HTTP client parsed the URL, '#' was interpreted as fragment separator, truncating the URL.
+
+**Why the special case existed**: Unknown - possibly to preserve URL fragments, but this breaks '#' in parameter values.
+
+#### Fix
+**Strategy**: Remove special case for '#' - encode it like any other character in parameter values.
+
+**Implementation**:
+```java
+// NEW CODE (Fixed):
+// Bug #55 Fix: Encode '#' as %23 (was previously left unencoded)
+result.append(URLEncoder.encode(String.valueOf(ch), charset));
+```
+
+Simple one-line fix: removed the ternary operator that skipped '#' encoding.
+
+**How it works now**:
+1. `encodeUrl()` splits URL into base + parameters
+2. `encodeUrlParam()` encodes each parameter value
+3. '#' in parameter values → `%23` (properly encoded)
+4. URL sent to server has correct encoding
+
+**Benefits**:
+- '#' properly encoded as %23 in parameter values
+- URL truncation eliminated
+- All special characters consistently encoded
+- Maintains backward compatibility for normal URLs
+
+#### Tests Added
+**Comprehensive test suite with 7 tests (all PASS):**
+
+1. ✅ `testHashInParameterValue_IsEncoded()`
+   - Basic case: `?b=#tre` → `?b=%23tre`
+   - Verifies # is encoded, not truncated
+
+2. ✅ `testMultipleHashCharacters_AllEncoded()`
+   - Multiple '#': `?color=#FF0000&tag=#hashtag`
+   - Both # encoded as %23
+
+3. ✅ `testHashAtDifferentPositions()`
+   - Edge cases: # at start, middle, end of value
+   - All positions encoded correctly
+
+4. ✅ `testParameterHashAndFragment_BothHandled()`
+   - Complex: # in param + legitimate fragment
+   - Documents expected behavior
+
+**Regression Tests** (3 tests):
+5. ✅ `testNormalUrl_NoRegression()`
+   - Normal URLs without # still work
+
+6. ✅ `testOtherSpecialChars_StillEncoded()`
+   - Other special chars (space, +) still encoded
+
+7. ✅ `testEmptyParameterValue_NoRegression()`
+   - Empty parameter values handled correctly
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/utils/CommonUtilBug55Test.java`
+- `webharvest-core/src/test/resources/integration-tests/bug55_hash_in_url_params.xml`
+
+**Test Results**:
+- Bug #55 tests: 7/7 PASS (100%)
+- Full core test suite: 2585/2585 PASS (100%)
+- Zero regression
+
+#### References
+- Original report: [GitHub Issue #55]
+- Code: `webharvest-core/src/main/java/org/webharvest/utils/CommonUtil.java` (line 261)
+- Used by: `HttpClientManager.execute()` → `CommonUtil.encodeUrl()` → `encodeUrlParam()`
+
+---
+
 ### Bug #61: JSONToXML "content" Key Not Correctly Converted
 
 **Status**: ✅ FIXED  
@@ -418,17 +523,17 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed**: 3 total
+- **Total Bugs Fixed**: 4 total
   - **v2.1.0**: 1 bug (Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 2 bugs (Bug #61, Bug #62)
+  - **v2.2.1**: 3 bugs (Bug #55, Bug #61, Bug #62)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
   - **High**: 1 (Bug #60 - invalid variable name)
-  - **Medium**: 2 (Bug #61, Bug #62)
+  - **Medium**: 3 (Bug #55, Bug #61, Bug #62)
   - **Low**: 0
-- **Total Tests Added** (v2.2.1): 16 tests (7 Bug #62 + 9 Bug #61)
-- **Test Suite Size**: 2571 tests (100% passing)
+- **Total Tests Added** (v2.2.1): 23 tests (7 Bug #55 + 7 Bug #62 + 9 Bug #61)
+- **Test Suite Size**: 2585 tests (100% passing)
 
 ---
 

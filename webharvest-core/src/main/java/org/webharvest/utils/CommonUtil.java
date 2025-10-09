@@ -234,6 +234,19 @@ public class CommonUtil {
         return blankString.substring(0, level);
     }
 
+    /**
+     * Encode URL parameter value.
+     * 
+     * Bug #55 Fix: '#' character is now properly encoded as %23.
+     * 
+     * Before: '#' was left unencoded, causing URL truncation at fragment separator
+     * After: '#' is encoded as %23 in parameter values
+     * 
+     * @param value Parameter value to encode
+     * @param charset Character encoding
+     * @return Encoded parameter value
+     * @throws UnsupportedEncodingException if charset is not supported
+     */
     private static String encodeUrlParam(String value, String charset) throws UnsupportedEncodingException {
         if (value == null) {
             return "";
@@ -245,7 +258,9 @@ public class CommonUtil {
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < decoded.length(); i++) {
                 char ch = decoded.charAt(i);
-                result.append((ch == '#') ? "#" : URLEncoder.encode(String.valueOf(ch), charset));
+                // Bug #55 Fix: Encode '#' as %23 (was previously left unencoded)
+                // '#' in parameter values must be encoded to prevent URL truncation
+                result.append(URLEncoder.encode(String.valueOf(ch), charset));
             }
 
             return result.toString();
