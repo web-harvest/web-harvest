@@ -33,8 +33,11 @@
 package org.webharvest.definition;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.assistedinject.Assisted;
 import org.webharvest.WHConstants;
+import org.webharvest.definition.v3.PluginConfigurationTree;
+import org.webharvest.definition.v3.StreamingXmlParser;
 
 /**
  * Implementation of {@link ConfigSource} capable to work with XML
@@ -52,17 +55,22 @@ public final class XMLConfig implements Config {
     private final ConfigSource configSource;
 
     private final ConfigParser configParser;
+    
+    private final Injector injector;
 
     private IElementDef elementDef;
+    
+    private PluginConfigurationTree configurationTree;
 
     /**
      * Constructor for both Guice and non-Guice usage.
      * 
      * @param configSource reference to configuration resource.
      * @param configParser reference to configuration parser.
+     * @param injector Guice injector for lazy parser creation
      */
     @Inject
-    public XMLConfig(@Assisted final ConfigSource configSource, ConfigParser configParser) {
+    public XMLConfig(@Assisted final ConfigSource configSource, ConfigParser configParser, Injector injector) {
         if (configSource == null) {
             throw new IllegalArgumentException("ConfigSource is required");
         }
@@ -71,6 +79,7 @@ public final class XMLConfig implements Config {
         }
         this.configSource = configSource;
         this.configParser = configParser;
+        this.injector = injector;
     }
 
     /**
@@ -97,6 +106,7 @@ public final class XMLConfig implements Config {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public IElementDef getElementDef() {
         if (elementDef == null) {
             throw new IllegalStateException("No configuration source provided");
@@ -109,8 +119,46 @@ public final class XMLConfig implements Config {
      * {@inheritDoc}
      */
     @Override
+    public PluginConfigurationTree getConfigurationTree() {
+        // Lazy parsing: If tree not available, try to create it now
+        if (configurationTree == null && elementDef != null) {
+            // Config was loaded with old parser, now parse with new one
+            try {
+                ConfigurableResolver resolver = injector.getInstance(ConfigurableResolver.class);
+                StreamingXmlParser streamingParser = new StreamingXmlParser(resolver);
+                configurationTree = streamingParser.parseToTree(configSource);
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                    "Failed to parse configuration tree. " +
+                    "New parser not available. Use XMLConfig with StreamingXmlParser for v2.2.x API.", e);
+            }
+        }
+        
+        if (configurationTree == null) {
+            throw new IllegalStateException("No configuration loaded. Call reload() first.");
+        }
+
+        return configurationTree;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void reload() {
-       this.elementDef = configParser.parse(configSource);
+        // Parse using old parser (for backward compatibility)
+        this.elementDef = configParser.parse(configSource);
+        
+        // Parse using new parser (v2.2.x modernization)
+        // If configParser is StreamingXmlParser, use it
+        if (configParser instanceof StreamingXmlParser) {
+            this.configurationTree = ((StreamingXmlParser) configParser).parseToTree(configSource);
+        } else {
+            // For POC: New parser not available with old SAXConfigParser
+            // configurationTree remains null (old API only)
+            // TODO v2.3: Replace SAXConfigParser with StreamingXmlParser completely
+            this.configurationTree = null;
+        }
     }
 
 }

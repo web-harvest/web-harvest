@@ -33,17 +33,21 @@
 
 package org.webharvest.definition;
 
+import org.webharvest.definition.v3.PluginConfigurationTree;
+
 /**
  * Represents lazily loaded configuration object that is loaded from associated
  * {@link ConfigSource} on demand with call to {@link #reload()} method. For
  * already loaded configuration it is possible to get reference to a graph of
- * configuration elements with {@link #getElementDef}.
+ * configuration elements with {@link #getElementDef} (deprecated) or new
+ * {@link #getConfigurationTree()}.
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%
  * @see ConfigSource
  * @see IElementDef
+ * @see PluginConfigurationTree
  */
 public interface Config {
 
@@ -71,13 +75,29 @@ public interface Config {
      * @return for loaded configuration gets root element, throws
      *         {@link IllegalStateException} in case the configuration has not
      *         been loaded.
+     * @deprecated Use {@link #getConfigurationTree()} instead. The old *Def architecture
+     *             is being replaced with PluginConfigurationTree in v2.2.x.
+     *             This method will be removed in v2.3.x.
      */
+    @Deprecated
     IElementDef getElementDef();
+
+    /**
+     * Gets reference to configuration tree (new architecture - v2.2.x).
+     * This is the modern replacement for {@link #getElementDef()}.
+     *
+     * @return for loaded configuration gets root configuration tree, throws
+     *         {@link IllegalStateException} in case the configuration has not
+     *         been loaded.
+     * @since 2.2.0
+     */
+    PluginConfigurationTree getConfigurationTree();
 
     /**
      * Loads configuration from resource defined by {@link #getConfigSource()}.
      * Once the configuration is successfully loaded it is possible to get
-     * reference to root configuration element with {@link #getElementDef()}.
+     * reference to root configuration element with {@link #getElementDef()}
+     * (deprecated) or {@link #getConfigurationTree()} (new).
      */
     void reload();
 
