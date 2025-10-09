@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #39: Forcing MIME Type to Binary for Images** (r713) - Documented as Enhancement Request  
+- **Status**: Enhancement request requiring architecture changes
+- **Issue**: No way to force binary mode when server sends wrong Content-Type for images
+- **Problem**: Binary data corrupted when processed as String (0xFF → 0xEF 0xBF 0xBD)
+- **Proposed**: Add `force-binary="yes"` attribute to `<http>` element
+- **Workarounds**: Direct file write, external tools, server config fix
+- **Tests**: 4 concept tests demonstrating problem and proposed solution
+- **Target**: v2.3.0 implementation
+
 **Bug #18: HttpProcessor Charset Detection** (r712) - Resolved  
 - **Status**: Not a Bug - Correct HTTP Behavior
 - **Issue**: User expected meta tag charset, but HTTP header charset was used
@@ -113,8 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2614 tests (100% passing)
-- **New Tests**: +52 tests for bug fixes (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite**: 2618 tests (100% passing)
+- **New Tests**: +56 tests for bug fixes/analysis (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62 + 1 Bug #60 doc)
 - **Integration Tests**: XML-based tests for all plugin modules + JavaScript/Rhino integration
 - **Zero Regression**: All existing functionality maintained
 - **New Testing Guide**: Comprehensive testing methodology in DEVELOPER_GUIDE.md (750+ lines)

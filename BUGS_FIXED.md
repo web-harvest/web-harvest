@@ -17,6 +17,226 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #39: Forcing MIME Type to Binary for Images
+
+**Status**: 📋 DOCUMENTED (Enhancement Request - Requires Architecture Change)  
+**Reported**: GitHub Issue #39  
+**Documented in**: v2.2.1  
+**Severity**: Medium (workaround available)  
+**Component**: `webharvest-core` - `HttpPlugin` binary/text handling
+
+**Note**: This is an enhancement request that requires architectural changes to HttpPlugin.  
+Documented with workarounds for current version.
+
+#### Description
+When downloading an image from a website that references it by number (no file extension) and Content-Type reports it as "text" (server misconfigured), there's no way to force binary mode. The image is processed as String, corrupting binary data.
+
+**User Report**:
+> "When downloading an image which references the image by a number (no extension)
+> and Content-Type is reporting it as text, there is no way of forcing the Mime type
+> to Binary, so the image is processed correctly (not as String)."
+
+**Problem Example**:
+```xml
+<http url="http://example.com/image/12345" />
+<!-- Server returns:
+     Content-Type: text/plain (WRONG! It's actually JPEG)
+     Binary data: 0xFF 0xD8 0xFF... (JPEG header)
+     
+     HttpPlugin processes as String → binary data CORRUPTED
+-->
+```
+
+**Real-World Scenario**:
+- Dynamic image URLs: `/image/12345`, `/photo/get?id=789`
+- No file extension (can't detect from URL)
+- Server misconfigured: sends `text/plain` instead of `image/jpeg`
+- Web-Harvest treats as text → corrupts binary data
+- Can't save image to file
+
+#### Root Cause
+**HttpPlugin.doExecute()** (line 147) **ALWAYS** converts response to String:
+
+```java
+// Current code (Bug #39):
+String responseBody = response.getBody();  // ALWAYS String!
+return new NodeVariable(responseBody);     // Stores as String
+```
+
+**Problems**:
+1. No check for binary MIME types
+2. No attribute to force binary mode
+3. Binary data converted to String → **corruption**
+4. NodeVariable CAN store byte[], but HttpPlugin doesn't use it
+
+**Proof of Corruption**:
+Test shows String conversion destroys binary data:
+```
+Original JPEG:  FF D8 FF E0 80 90 A0 F0
+After String:   EF BF BD EF BF BD EF BF  (corrupted!)
+```
+
+#### Proposed Solution (Enhancement Request)
+
+**Add `force-binary` attribute to `<http>` element**:
+
+```xml
+<!-- Force binary mode regardless of Content-Type -->
+<http url="http://example.com/image/12345" force-binary="yes" />
+```
+
+**Implementation Strategy**:
+
+**1. Add attribute to HttpDef**:
+```java
+private String forceBinary;  // New attribute
+
+public HttpDef(XmlNode xmlNode) {
+    // ...
+    this.forceBinary = xmlNode.getAttribute("force-binary");
+}
+```
+
+**2. Update HttpPlugin.doExecute()**:
+```java
+// Determine if response should be binary
+boolean isBinary = shouldTreatAsBinary(response.getMimeType(), forceBinary);
+
+Variable result;
+if (isBinary) {
+    // Return binary data
+    byte[] binaryData = response.getBodyAsBytes();
+    result = new NodeVariable(binaryData);
+} else {
+    // Return text (current behavior)
+    String textData = response.getBodyAsString();
+    result = new NodeVariable(textData);
+}
+
+return result;
+```
+
+**3. Add MIME type detection**:
+```java
+private boolean shouldTreatAsBinary(String mimeType, String forceBinary) {
+    // Force binary if explicitly requested
+    if ("yes".equalsIgnoreCase(forceBinary) || "true".equalsIgnoreCase(forceBinary)) {
+        return true;
+    }
+    
+    // Auto-detect from MIME type
+    if (mimeType != null) {
+        String mime = mimeType.toLowerCase();
+        return mime.startsWith("image/")
+            || mime.startsWith("video/")
+            || mime.startsWith("audio/")
+            || mime.equals("application/pdf")
+            || mime.equals("application/zip")
+            || mime.equals("application/octet-stream");
+    }
+    
+    return false;
+}
+```
+
+#### Current Workaround
+
+**Option 1: Use charset="binary" as hint** (if supported):
+```xml
+<http url="http://example.com/image/12345" charset="binary" />
+```
+
+**Option 2: Download and save directly to file**:
+```xml
+<!-- Avoid variable corruption by writing directly to file -->
+<http url="http://example.com/image/12345">
+    <file action="write" path="image.jpg" type="binary">
+        ${http}
+    </file>
+</http>
+```
+
+**Option 3: Use external tool**:
+```xml
+<!-- Use wget or curl for binary downloads -->
+<script language="beanshell">
+    Runtime.getRuntime().exec("wget http://example.com/image/12345 -O image.jpg");
+</script>
+```
+
+**Note**: These workarounds may have limitations. Full fix requires HttpPlugin architecture changes.
+
+#### Tests Added
+**Concept and documentation tests** (4):
+
+1. ✅ `testNodeVariable_CanStoreBinaryData()`
+   - Verifies NodeVariable can store byte[]
+   - JPEG header preservation test
+
+2. ✅ `testBinaryData_CorruptedByStringConversion()`
+   - Demonstrates String conversion corruption
+   - Shows hex dump of corrupted data
+   - Proves the problem exists
+
+3. ✅ `testBinaryMimeTypes_ShouldBeDetected()`
+   - Tests MIME type detection logic
+   - 10 binary types, 7 text types
+   - Validates detection algorithm
+
+4. ✅ `testBug39_ForceBinaryMode_Concept()`
+   - Demonstrates force-binary attribute concept
+   - Shows logic: force OR auto-detect
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/plugin/core/HttpPluginBug39Test.java`
+
+**Test Results**:
+- Bug #39 tests: 4/4 PASS (100%)
+- Demonstrates problem and proposed solution
+- Provides foundation for future enhancement
+
+#### Implementation Status
+
+**Status**: DOCUMENTED (not yet implemented)
+
+**Why Not Implemented**:
+- Requires HttpPlugin architecture changes
+- Need to modify HttpDef for new attribute
+- Need to update XSD schema
+- Need to handle byte[] return type
+- Significant change requiring careful testing
+
+**Future Work**:
+- Add `force-binary` attribute to `<http>` element
+- Implement binary mode detection
+- Add integration tests with real images
+- Update documentation
+- Target: v2.3.0 or v2.2.2
+
+#### User Impact
+**Current Limitation**:
+- Binary data from misconfigured servers may be corrupted
+- No direct way to force binary mode
+- Workarounds required
+
+**Workarounds Available**:
+- Direct file write (avoids variable)
+- External tools (wget, curl)
+- Server configuration fix (preferred)
+
+**Future Enhancement**:
+- `force-binary="yes"` attribute
+- Auto-detection of binary MIME types
+- Proper binary data handling
+
+#### References
+- Original report: [GitHub Issue #39]
+- Forum discussion: http://sourceforge.net/projects/web-harvest/forums/forum/591299/topic/3855226
+- Code: `HttpPlugin.java` (line 147) - currently returns String
+- Enhancement target: v2.3.0
+
+---
+
 ### Bug #18: HttpProcessor Does Not Recognize Charset in Some Cases
 
 **Status**: ✅ RESOLVED (By Architecture Change + Not a Bug)  
@@ -1376,20 +1596,22 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed/Verified/Resolved**: 10 unique bugs (+ 1 duplicate identified)
+- **Total Bugs Addressed**: 11 unique bugs (+ 1 duplicate identified)
   - **v2.1.0**: 1 bug (Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 9 bugs (Bug #7, Bug #16 verified, Bug #18 resolved, Bug #29, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
-- **Duplicates Identified**: 1 (Bug #36 = Bug #47)
+  - **v2.2.1**: 10 bugs (Bug #7, Bug #16 verified, Bug #18 resolved, Bug #29, Bug #39 documented, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+- **Fixed with Code Changes**: 8 bugs (Bug #7, #29, #47/36, #48, #55, #61, #62, ConfigPlugin)
 - **Verified Fixed (Already Working)**: 1 (Bug #16 - exception handling chain)
 - **Resolved by Architecture Change**: 1 (Bug #18 - charset detection, Not a Bug per HTTP spec)
+- **Documented as Enhancement Request**: 1 (Bug #39 - force-binary mode, target v2.3.0)
+- **Duplicates Identified**: 1 (Bug #36 = Bug #47)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
   - **High**: 2 (Bug #47/36 charset, Bug #60 variable name)
-  - **Medium**: 7 (Bug #7, Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
+  - **Medium**: 8 (Bug #7, Bug #16 verified, Bug #29, Bug #39 documented, Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 1 (Bug #18 - user expectation vs. spec)
-- **Total Tests Added** (v2.2.1): 51 tests (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
-- **Test Suite Size**: 2614 tests (100% passing)
+- **Total Tests Added** (v2.2.1): 55 tests (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite Size**: 2618 tests (100% passing)
 - **Regression Rate**: 0% (zero regressions introduced)
 
 ## Philosophy: Fixing Bugs Prevents New Bugs
