@@ -62,11 +62,87 @@ import java.util.regex.Pattern;
 /**
  * Regular expression plugin with full regression compatibility.
  * Provides 100% functionality of the old RegexpProcessor.
+ * 
+ * <h3>Group Variables</h3>
+ * <p>
+ * Captured groups from pattern matching are automatically stored as variables in the execution context:
+ * <ul>
+ *   <li><code>group0</code> - Full matched text (entire pattern match)</li>
+ *   <li><code>group1</code> - First capturing group (...)</li>
+ *   <li><code>group2</code> - Second capturing group</li>
+ *   <li><code>groupN</code> - Nth capturing group (up to 100 groups supported)</li>
+ * </ul>
+ * </p>
+ * 
+ * <h3>Group Isolation (Bug #62 - Fixed in v2.2.1)</h3>
+ * <p>
+ * <strong>Issue:</strong> Prior to v2.2.1, when two {@code <regexp>} statements were used sequentially 
+ * (not nested), the second regexp would incorrectly retrieve group values from the FIRST regexp instead 
+ * of its own captured groups.
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> Group variables (group0-group99) are now properly cleared before each regexp 
+ * execution. This ensures complete isolation between independent regexp calls. Each {@code <regexp>} 
+ * execution gets a clean slate for its group variables.
+ * </p>
+ * 
+ * <h3>Example: Multiple Regexp Calls with Proper Isolation</h3>
+ * <pre>{@code
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ *   <!-- First regexp: extract pairs -->
+ *   <def var="pairs">
+ *     <regexp replace="false">
+ *       <regexp-pattern>([^;]+)</regexp-pattern>
+ *       <regexp-source>name:John;age:30</regexp-source>
+ *     </regexp>
+ *   </def>
+ *   
+ *   <loop item="pair">
+ *     <list><get var="pairs"/></list>
+ *     <body>
+ *       <!-- Second regexp: extract key:value -->
+ *       <!-- Groups here are ISOLATED from first regexp -->
+ *       <regexp replace="false">
+ *         <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+ *         <regexp-source><get var="pair"/></regexp-source>
+ *         <regexp-result>
+ *           Key=<get var="group1"/>, Value=<get var="group2"/>
+ *         </regexp-result>
+ *       </regexp>
+ *     </body>
+ *   </loop>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Child Elements</h3>
+ * <ul>
+ *   <li><code>&lt;regexp-pattern&gt;</code> (required) - Regular expression pattern to match</li>
+ *   <li><code>&lt;regexp-source&gt;</code> (required) - Source text to apply regexp to</li>
+ *   <li><code>&lt;regexp-result&gt;</code> (optional) - Template for result formatting (can reference group variables)</li>
+ * </ul>
+ * 
+ * <h3>Attributes</h3>
+ * <ul>
+ *   <li><code>replace</code> (boolean, default=false) - If true, replaces matched text with result template</li>
+ *   <li><code>max</code> (integer, default=1000000) - Maximum number of matches to process</li>
+ *   <li><code>flag-caseinsensitive</code> (boolean, default=false) - Enable case-insensitive matching</li>
+ *   <li><code>flag-multiline</code> (boolean, default=false) - Enable multiline mode (^ and $ match line boundaries)</li>
+ *   <li><code>flag-dotall</code> (boolean, default=true) - Enable dot-all mode (. matches newlines)</li>
+ *   <li><code>flag-unicodecase</code> (boolean, default=true) - Enable Unicode-aware case folding</li>
+ *   <li><code>flag-canoneq</code> (boolean, default=false) - Enable canonical equivalence</li>
+ * </ul>
+ * 
+ * @author Web-Harvest Team
+ * @version 2.2.1
+ * @see java.util.regex.Pattern
+ * @see RegexpPatternPlugin
+ * @see RegexpSourcePlugin
+ * @see RegexpResultPlugin
  */
 @CorePlugin(
     elementName = "regexp",
-    description = "Regular expression plugin with full regression compatibility",
-    version = "2.1.0"
+    description = "Regular expression plugin with group isolation (Bug #62 fixed in v2.2.1)",
+    version = "2.2.1"
 )
 public class RegexpPlugin extends AbstractPlugin {
     
@@ -199,7 +275,11 @@ public class RegexpPlugin extends AbstractPlugin {
                         break;
                     }
 
-                    // Set group variables in context
+                    // BUGFIX #62: Clear ALL previous group variables before setting new ones
+                    // This prevents group values from previous regexp executions from persisting
+                    clearAllGroupVariables(context);
+
+                    // Set group variables in context for THIS regexp execution
                     for (int i = 0; i <= groupCount; i++) {
                         String groupValue = matcher.group(i);
                         context.setLocalVar("group" + i, new NodeVariable(groupValue != null ? groupValue : ""));
@@ -493,5 +573,28 @@ public class RegexpPlugin extends AbstractPlugin {
             }
         }
         return "";
+    }
+
+    /**
+     * Clear all group variables from context (group0, group1, group2, etc.)
+     * This fixes Bug #62: prevents group values from previous regexp executions
+     * from persisting and interfering with subsequent regexp calls.
+     * 
+     * @param context the context to clear group variables from
+     */
+    private void clearAllGroupVariables(DynamicScopeContext context) {
+        // Clear up to 100 group variables (more than enough for any practical regexp)
+        // We don't know how many groups existed before, so clear a reasonable maximum
+        for (int i = 0; i < 100; i++) {
+            String groupVarName = "group" + i;
+            try {
+                // Try to remove the variable if it exists
+                // Note: ScraperContext doesn't have a removeVar method, so we set to empty
+                context.setLocalVar(groupVarName, EmptyVariable.INSTANCE);
+            } catch (Exception e) {
+                // Ignore any exceptions (e.g., if variable doesn't exist)
+                // This is just defensive cleanup
+            }
+        }
     }
 }

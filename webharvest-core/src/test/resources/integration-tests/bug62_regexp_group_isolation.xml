@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- 
+    Bug #62: Regexp group isolation issue
+    
+    When two REGEX statements are used (not nested), the second regex
+    retrieves the first group value from the FIRST regex instead of its own groups.
+    
+    Scenario:
+    1. First regexp splits text "name:John;age:30" and extracts pairs
+    2. Loop processes each pair with a SECOND regexp to extract key/value
+    3. BUG: Second regexp's group1 returns value from FIRST regexp
+    -->
+    
+    <!-- Input data: key-value pairs separated by semicolons -->
+    <def var="input">name:John;age:30;city:NYC</def>
+    
+    <!-- First regexp: Split by semicolon into pairs -->
+    <def var="pairs">
+        <regexp replace="false">
+            <regexp-pattern>([^;]+)</regexp-pattern>
+            <regexp-source>
+                <get var="input"/>
+            </regexp-source>
+        </regexp>
+    </def>
+    
+    <!-- Variable to collect results -->
+    <def var="results"></def>
+    
+    <!-- Loop through each pair -->
+    <loop item="pair" index="i">
+        <list>
+            <get var="pairs"/>
+        </list>
+        <body>
+            <!-- Second regexp: Extract key and value from "key:value" -->
+            <!-- BUG: This should create NEW groups (group0, group1, group2) -->
+            <!-- But it retrieves groups from the FIRST regexp above! -->
+            <regexp replace="false">
+                <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+                <regexp-source>
+                    <get var="pair"/>
+                </regexp-source>
+                <regexp-result>
+                    <!-- group1 should be the KEY (e.g., "name", "age", "city") -->
+                    <!-- group2 should be the VALUE (e.g., "John", "30", "NYC") -->
+                    <text>Key=</text>
+                    <get var="group1"/>
+                    <text>, Value=</text>
+                    <get var="group2"/>
+                    <text>
+</text>
+                </regexp-result>
+            </regexp>
+            
+            <!-- Save result -->
+            <def var="results">
+                <get var="results"/>
+                <text>Pair </text>
+                <get var="i"/>
+                <text>: Key=</text>
+                <get var="group1"/>
+                <text>, Value=</text>
+                <get var="group2"/>
+                <text>
+</text>
+            </def>
+        </body>
+    </loop>
+    
+    <!-- Output results -->
+    <file action="write" path="target/test-output/bug62_output.txt">
+        <get var="results"/>
+    </file>
+</config>
+

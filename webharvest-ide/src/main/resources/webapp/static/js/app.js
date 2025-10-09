@@ -388,7 +388,7 @@ const app = {
 
             this.webSocket.onclose = (event) => {
                 console.log('🔌 WebSocket closed:', event.code, event.reason);
-                
+
                 // Check if this was unexpected disconnect (not normal closure)
                 if (event.code !== 1000 && event.code !== 1005) {
                     console.warn('⚠️ Unexpected WebSocket disconnect! Code:', event.code);
@@ -638,24 +638,24 @@ const app = {
             1009: 'Message too large',
             1011: 'Server error'
         };
-        
+
         const message = codeMessages[code] || `Connection closed (code: ${code})`;
-        
+
         // Show notification to user
         this.showNotification(
             '⚠️ WebSocket Disconnected',
             `Connection was lost: ${message}\n\nClick Run again to execute a new configuration.`,
             'warning'
         );
-        
+
         this.addLog('warning', `⚠️ WebSocket disconnected: ${message}`);
         this.setStatus('<i class="fas fa-exclamation-triangle text-warning"></i> Connection lost', 'warning');
-        
+
         // Hide execution controls
         document.getElementById('executionControls').style.display = 'none';
         this.hideProgress();
     },
-    
+
     /**
      * Show notification to user
      */
@@ -670,7 +670,7 @@ const app = {
             </div>
             <div class="notification-body">${message.replace(/\n/g, '<br>')}</div>
         `;
-        
+
         // Add to page
         let container = document.getElementById('notificationContainer');
         if (!container) {
@@ -679,9 +679,9 @@ const app = {
             container.className = 'notification-container';
             document.body.appendChild(container);
         }
-        
+
         container.appendChild(notification);
-        
+
         // Auto-remove after 10 seconds (except errors)
         if (type !== 'error') {
             setTimeout(() => {
@@ -692,7 +692,7 @@ const app = {
             }, 10000);
         }
     },
-    
+
     /**
      * Handle log message from WebSocket
      */

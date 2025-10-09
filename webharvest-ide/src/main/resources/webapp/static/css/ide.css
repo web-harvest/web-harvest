@@ -35,6 +35,7 @@
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -97,7 +98,8 @@
 .ide-container {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 70px - 30px); /* navbar + status bar */
+    height: calc(100vh - 70px - 30px);
+    /* navbar + status bar */
     margin-top: 70px;
     background: var(--bg-secondary);
 }
@@ -500,11 +502,10 @@
     .ide-content {
         flex-direction: column;
     }
-    
+
     .editor-panel {
         border-right: none;
         border-bottom: 1px solid var(--border-color);
         max-height: 50vh;
     }
 }
-
