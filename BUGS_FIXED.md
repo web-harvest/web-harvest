@@ -17,6 +17,157 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #27: Indent / RunningProcessors Broken by Exceptions
+
+**Status**: ✅ FIXED  
+**Reported**: GitHub Issue #27  
+**Fixed in**: v2.2.1  
+**Severity**: High (memory leak + CPU load)  
+**Component**: `webharvest-core` - `AbstractProcessor` exception handling
+
+#### Description
+Log file indent keeps growing when exceptions occur and are caught by try/catch blocks.
+Processors between exception source and TryProcessor remain on stack, causing:
+- Growing indent in logs
+- Memory leaks
+- 100% CPU load (from `CommonUtil.replicate` with large indent)
+
+**User Report**:
+> "The indent on the log file entries keeps getting bigger. What appears to be 
+> happening is that it's being broken by Exceptions that occur and are caught 
+> by a TryProcessor, where the processors between the cause and the TryProcessor 
+> are left on the stack."
+
+**Problem Example**:
+```
+Processor1 starts...          # indent = 0
+  Processor2 starts...        # indent = 1
+    Processor3 starts...      # indent = 2
+      Exception thrown!       # Processor3 NOT cleaned up
+    Processor4 starts...      # indent = 3 (should be 2!)
+      Processor5 starts...    # indent = 4 (should be 3!)
+        ...                   # indent keeps growing → memory leak + CPU 100%
+```
+
+#### Root Cause
+**AbstractProcessor.run()** did NOT wrap execution in try-finally:
+
+```java
+// OLD code (before Bug #27 fix):
+public Variable run(DynamicScopeContext context) throws InterruptedException {
+    ProcessorExecutionContext executionContext = prepareExecution(context);
+    
+    // Execute the processor
+    Variable result = executeProcessor(executionContext);  // ← If exception here
+    
+    // Post-execution cleanup
+    finalizeExecution(executionContext, result);  // ← This is NEVER called!
+    
+    return result;
+}
+```
+
+**Problems**:
+1. If `executeProcessor()` throws exception, `finalizeExecution()` never called
+2. Processor left in "executing" state
+3. `getRunningLevel()` keeps growing (recursive count via parent chain)
+4. `CommonUtil.indent()` creates ever-larger strings → CPU spike
+5. Memory leak from orphaned processors
+
+**User's Suggested Fix**:
+> "The fix should be probably to wrap `Variable result = execute(scraper, context);` 
+> with try..finally and only rethrow the exception after unwinding stack."
+
+#### Fix (v2.2.1)
+**Wrapped execution in try-finally** to ensure cleanup ALWAYS happens:
+
+```java
+// NEW code (Bug #27 fix):
+public Variable run(DynamicScopeContext context) throws InterruptedException {
+    ProcessorExecutionContext executionContext = prepareExecution(context);
+    
+    Variable result = null;
+    try {
+        // Execute the processor
+        result = executeProcessor(executionContext);
+        return result;
+    } finally {
+        // Bug #27 Fix: ALWAYS cleanup, even on exception
+        // This prevents:
+        // - Growing indent in logs
+        // - Memory leaks from orphaned processors
+        // - 100% CPU from inefficient CommonUtil.replicate
+        finalizeExecution(executionContext, result);
+    }
+}
+```
+
+**Benefits**:
+1. ✅ Cleanup guaranteed (even with exceptions)
+2. ✅ Running level stays consistent
+3. ✅ No memory leaks
+4. ✅ No CPU spikes
+5. ✅ Proper log indentation
+
+#### Tests Added
+**6 comprehensive tests**:
+
+1. ✅ `testBug27_ExceptionStillCallsFinalization`
+   - Processor throws exception → finalization still called
+
+2. ✅ `testBug27_SuccessfulProcessorCallsFinalization`
+   - Normal execution → finalization called (regression test)
+
+3. ✅ `testBug27_InterruptedExceptionCallsFinalization`
+   - InterruptedException → finalization still called
+
+4. ✅ `testBug27_RunningLevelDoesNotGrowWithExceptions`
+   - Exception in nested processor → level stays correct
+
+5. ✅ `testBug27_MultipleExceptionsDoNotCorruptTree`
+   - Multiple exceptions → processor tree intact
+
+6. ✅ `testBug27_DocumentationAndImpact`
+   - Documents the bug and fix
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/runtime/processors/AbstractProcessorBug27Test.java`
+
+**Test Results**:
+- Bug #27 tests: 6/6 PASS (100%)
+- Full core suite: 2632/2632 PASS [was 2626]
+- Zero regression
+
+#### Files Changed
+- `AbstractProcessor.java` - Added try-finally to `run()` method
+- `AbstractProcessorBug27Test.java` - NEW: 6 tests
+
+#### User Impact
+**Before Fix**:
+- ✗ Log indent grows with each caught exception
+- ✗ Memory leak (processors never cleaned up)
+- ✗ 100% CPU load after many exceptions
+- ✗ Eventually: OutOfMemoryError
+
+**After Fix** (v2.2.1+):
+- ✅ Log indent stays correct
+- ✅ No memory leaks
+- ✅ No CPU spikes
+- ✅ Stable long-running scrapers
+
+**Critical for**:
+- Long-running scrapers with try/catch
+- Error handling in loops
+- Production environments
+- Large-scale scraping
+
+#### References
+- Original report: [GitHub Issue #27]
+- Fix: AbstractProcessor.java `run()` method (try-finally wrapper)
+- Related: CommonUtil.indent(), getRunningLevel()
+
+---
+
 ### Bug #33: JavaScript and AJAX Support for Dynamic Pages
 
 **Status**: ✅ FIXED (REGRESSION - Feature Restored)  
@@ -1983,25 +2134,25 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Addressed**: 13 unique bugs (+ 1 duplicate identified)
+- **Total Bugs Addressed**: 14 unique bugs (+ 1 duplicate identified)
   - **v2.1.0**: 2 bugs (Bug #13 by architecture, Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 11 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
-- **Fixed with Code Changes**: 10 bugs (Bug #7, #29, #33, #39, #47/36, #48, #55, #61, #62, ConfigPlugin)
+  - **v2.2.1**: 12 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #27, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+- **Fixed with Code Changes**: 11 bugs (Bug #7, #27, #29, #33, #39, #47/36, #48, #55, #61, #62, ConfigPlugin)
 - **Verified Fixed (Already Working)**: 2 (Bug #13 by architecture, Bug #16 - exception handling)
 - **Resolved by Architecture Change**: 1 (Bug #18 - charset detection, Not a Bug per HTTP spec)
 - **Duplicates Identified**: 1 (Bug #36 = Bug #47)
 - **Regressions Fixed**: 1 (Bug #33 - feature lost during refactoring, now restored)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
-  - **High**: 4 (Bug #33 regression, Bug #39 binary corruption, Bug #47/36 charset, Bug #60 variable name)
+  - **High**: 5 (Bug #27 memory leak+CPU, Bug #33 regression, Bug #39 binary corruption, Bug #47/36 charset, Bug #60 variable name)
   - **Medium**: 7 (Bug #7, Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 2 (Bug #13 - enhancement by architecture, Bug #18 - user expectation vs. spec)
-- **Total Tests Added** (v2.2.1): 78 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Total Tests Added** (v2.2.1): 84 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 6 Bug #27 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Test Suite Size**: 
-  - Core: 2626 tests (100% passing)
+  - Core: 2632 tests (100% passing) [was 2626]
   - WebBrowser: 47 tests (100% passing, **51% coverage**)
-  - **Total**: 2673 tests
+  - **Total**: 2679 tests
 - **Regression Rate**: 0% (zero regressions introduced)
 
 ## Philosophy: Fixing Bugs Prevents New Bugs

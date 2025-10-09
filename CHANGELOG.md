@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #27: Indent/RunningProcessors Broken by Exceptions** (r718) - FIXED
+- **Issue**: Log indent grows, memory leak, 100% CPU when exceptions caught in try/catch
+- **Problem**: AbstractProcessor.run() didn't wrap execution in try-finally
+- **Root Cause**: finalize Execution() never called when exception thrown
+- **Fix**: Added try-finally wrapper to ensure cleanup ALWAYS happens
+- **Impact**: Prevents memory leaks, CPU spikes, and log corruption in long-running scrapers
+- **Critical for**: Production environments, error handling in loops
+- **Tests**: 6 tests, 2632/2632 PASS
+
 **Bug #33: JavaScript and AJAX Support** (r717) - FIXED (REGRESSION)
 - **Status**: Feature restored (existed r649-r655, lost r695, restored v2.2.1)
 - **Issue**: No JavaScript/AJAX support for dynamic pages

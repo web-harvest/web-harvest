@@ -92,19 +92,28 @@ public abstract class AbstractProcessor<TDef extends IElementDef> implements Pro
     /**
      * Template method that defines the execution flow.
      * Uses Template Method pattern to separate common logic from specific implementation.
+     * 
+     * <p>Bug #27 Fix: Wraps execution in try-finally to ensure cleanup happens
+     * even when exceptions occur, preventing indent/stack corruption.</p>
      */
     @Override
     public Variable run(DynamicScopeContext context) throws InterruptedException {
         // Pre-execution setup
         ProcessorExecutionContext executionContext = prepareExecution(context);
         
-        // Execute the processor
-        Variable result = executeProcessor(executionContext);
-        
-        // Post-execution cleanup
-        finalizeExecution(executionContext, result);
-        
-        return result;
+        Variable result = null;
+        try {
+            // Execute the processor
+            result = executeProcessor(executionContext);
+            return result;
+        } finally {
+            // Bug #27 Fix: ALWAYS cleanup, even on exception
+            // This prevents:
+            // - Growing indent in logs
+            // - Memory leaks from orphaned processors
+            // - 100% CPU from inefficient CommonUtil.replicate
+            finalizeExecution(executionContext, result);
+        }
     }
     
     /**
