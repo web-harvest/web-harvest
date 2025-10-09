@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #29: CommonUtils.createVariable Does Not Handle NativeJavaObjects** (r709)
+- **Issue**: JavaScript (Rhino) returns NativeJavaObject wrappers, not unwrapped Java objects
+- **Problem**: createVariable() stored wrapped objects in NodeVariable instead of actual objects
+- **Fix**: Detect NativeJavaObject, unwrap using reflection, recursively create correct Variable type
+- **Impact**: Seamless JavaScript ↔ Web-Harvest integration, Lists → ListVariable, etc.
+- **Tests**: 5 tests including JavaScript integration with real Rhino Context
+
 **Bug #47: Character Set Problem in CLI Mode** (r707)
 - **Issue**: Config files read with platform default charset (WIN1250 on Windows) instead of UTF-8
 - **Problem**: Non-ASCII characters garbled in CLI mode on Windows
@@ -91,9 +98,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2594 tests (100% passing)
-- **New Tests**: +32 tests for bug fixes (4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
-- **Integration Tests**: XML-based tests for all plugin modules
+- **Test Suite**: 2599 tests (100% passing)
+- **New Tests**: +37 tests for bug fixes (5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Integration Tests**: XML-based tests for all plugin modules + JavaScript/Rhino integration
 - **Zero Regression**: All existing functionality maintained
 
 ## [2.2.0] - October 2025

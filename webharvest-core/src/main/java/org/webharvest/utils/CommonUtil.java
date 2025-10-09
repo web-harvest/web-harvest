@@ -572,12 +572,26 @@ public class CommonUtil {
     }
 
     /**
-     * Creates appropriate AbstractVariable instance for the specified object.
+     * Creates appropriate Variable instance from given value.
+     * Handles various types including JavaScript NativeJavaObject.
      * For collections and arrays ListVariable instance is returned,
      * for null it is an EmptyVariable, and for others it is NodeVariable
      * that wraps specified object.
-     *
-     * @param value
+     * 
+     * <h3>Bug #29 Fix (v2.2.1): NativeJavaObject Support</h3>
+     * <p>
+     * <strong>Issue:</strong> Script processor with JavaScript returns NativeJavaObject,
+     * but createVariable didn't unwrap it, causing it to be stored as-is in NodeVariable.
+     * </p>
+     * <p>
+     * <strong>Fix:</strong> Detect NativeJavaObject and unwrap to underlying Java object
+     * before creating NodeVariable.
+     * </p>
+     * 
+     * @param value Object to convert to Variable
+     * @return Appropriate Variable instance
+     * @since 1.0
+     * @version 2.2.1
      */
     public static Variable createVariable(Object value) {
         if (value instanceof Variable) {
@@ -593,6 +607,18 @@ public class CommonUtil {
         } else if (value instanceof SystemUtilities
                 || value instanceof HttpInfo) {
             return new ScriptingVariable(value);
+        } else if (value.getClass().getName().equals("org.mozilla.javascript.NativeJavaObject")) {
+            // Bug #29 Fix: Handle NativeJavaObject from JavaScript/Rhino
+            // Use reflection to avoid compile-time dependency on Rhino
+            try {
+                Object unwrapped = value.getClass().getMethod("unwrap").invoke(value);
+                // Recursively call createVariable to handle the unwrapped object correctly
+                // (e.g., if unwrapped is a List, it should create ListVariable)
+                return createVariable(unwrapped);
+            } catch (Exception e) {
+                // If unwrap fails, fall back to wrapping as-is
+                return new NodeVariable(value);
+            }
         } else {
             return new NodeVariable(value);
         }
