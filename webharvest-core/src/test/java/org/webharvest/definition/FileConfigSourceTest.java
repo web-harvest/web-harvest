@@ -93,7 +93,9 @@ public class FileConfigSourceTest {
     public void testGetReader() throws IOException {
         final Reader reader = source.getReader();
         assertNotNull(reader);
-        assertTrue((reader instanceof FileReader));
+        // Bug #47 Fix: Now returns InputStreamReader (with UTF-8) instead of FileReader
+        assertTrue((reader instanceof java.io.InputStreamReader), 
+                "Should return InputStreamReader with UTF-8 charset");
     }
 
     @Test

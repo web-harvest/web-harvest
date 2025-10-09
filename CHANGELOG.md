@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #47: Character Set Problem in CLI Mode** (r707)
+- **Issue**: Config files read with platform default charset (WIN1250 on Windows) instead of UTF-8
+- **Problem**: Non-ASCII characters garbled in CLI mode on Windows
+- **Fix**: FileConfigSource and URLConfigSource now explicitly use UTF-8
+- **Impact**: Consistent UTF-8 encoding across all platforms (Windows, Linux, Mac)
+- **Tests**: 4 tests including UTF-8 character verification
+
 **Bug #48: Use getResponseBodyAsStream Instead of getResponseBody** (r706)
 - **Issue**: Used deprecated `getResponseBody()` which buffers entire response in memory
 - **Warning**: "Going to buffer response body of large or unknown size"
@@ -84,8 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2590 tests (100% passing)
-- **New Tests**: +28 tests for bug fixes (5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite**: 2594 tests (100% passing)
+- **New Tests**: +32 tests for bug fixes (4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Integration Tests**: XML-based tests for all plugin modules
 - **Zero Regression**: All existing functionality maintained
 

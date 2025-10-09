@@ -17,6 +17,129 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #47: Character Set Problem in CLI Mode
+
+**Status**: ✅ FIXED  
+**Reported**: GitHub Issue #47 (related to ID: 3060466)  
+**Fixed in**: v2.2.1  
+**Severity**: High  
+**Component**: `webharvest-core` - `FileConfigSource`, `URLConfigSource`
+
+#### Description
+Configuration files loaded in CLI mode were read using platform default charset instead of UTF-8, causing encoding problems for non-ASCII characters. On Windows, this meant files were read as WIN1250/ANSI instead of UTF-8.
+
+**Problem Example** (Windows):
+- Config file saved as UTF-8 with Polish characters: `ąćęłńóśźż`
+- CLI reads with platform default: WIN1250
+- Result: Garbled characters or parsing errors
+
+**User Report**:
+> "In 2.0 program saves and loads in character set set up in settings. 
+> But if I'm loading program in console mode, there is no way to select it 
+> and program tries to load document/code in ANSI(WIN1250)."
+
+#### Root Cause
+**FileConfigSource** (line 137):
+```java
+// OLD CODE (Bug #47):
+return new FileReader(file);  // Uses platform default charset!
+```
+
+**URLConfigSource** (line 136):
+```java
+// OLD CODE (Bug #47):
+return new InputStreamReader(url.openStream());  // Uses platform default!
+```
+
+Both used Java I/O classes without explicit charset, causing platform-dependent behavior:
+- Linux/Mac: Often UTF-8 (works by accident)
+- Windows: WIN1250/CP1252 (fails with UTF-8 files)
+- No way for users to override charset in CLI
+
+**Why GUI worked**: GUI allowed users to set charset in settings, which was stored and used.
+
+**Why CLI failed**: No charset parameter → fell back to platform default.
+
+#### Fix
+**Strategy**: Always use UTF-8 for configuration files, regardless of platform.
+
+**Implementation**:
+
+**1. FileConfigSource** - explicit UTF-8:
+```java
+// Bug #47 Fix: Explicit UTF-8 encoding instead of platform default
+return new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
+```
+
+**2. URLConfigSource** - explicit UTF-8:
+```java
+// Bug #47 Fix: Explicit UTF-8 encoding instead of platform default
+return new InputStreamReader(url.openStream(), StandardCharsets.UTF-8);
+```
+
+**Benefits**:
+- Consistent behavior across all platforms (Windows, Linux, Mac)
+- UTF-8 is standard for XML files
+- No CLI parameter needed (simple fix)
+- Backward compatible: UTF-8 is superset of ASCII
+- Follows XML best practices (UTF-8 default)
+
+**Note**: Files must be saved as UTF-8. This is standard practice for XML files.
+
+#### Tests Added
+**Comprehensive test suite with 4 tests (all PASS):**
+
+1. ✅ `testConfigFileReadAsUtf8_NotPlatformDefault()`
+   - Tests UTF-8 characters: Polish ąćęłńóśźż, Chinese 中文, Russian Русский
+   - Verifies all chars preserved correctly
+   - Confirms platform default not used
+
+2. ✅ `testWin1250FileWithUtf8Reader_CharactersHandled()`
+   - Edge case: File written as WIN1250, read as UTF-8
+   - Documents behavior mismatch scenario
+   - No exception thrown (graceful handling)
+
+**Regression Tests** (2):
+3. ✅ `testAsciiConfigFile_NoRegression()`
+   - Pure ASCII content works perfectly
+   - UTF-8 is superset of ASCII
+
+4. ✅ `testEmptyConfigFile_NoException()`
+   - Empty files handled gracefully
+   - No crashes or errors
+
+**Updated Existing Tests**:
+- `FileConfigSourceTest.testGetReader()` - updated to expect InputStreamReader
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/definition/FileConfigSourceBug47Test.java`
+- `webharvest-core/src/test/java/org/webharvest/definition/FileConfigSourceTest.java` (updated)
+
+**Test Results**:
+- Bug #47 tests: 4/4 PASS (100%)
+- Full core test suite: 2594/2594 PASS (100%)
+- Zero regression
+
+#### User Guidance
+**Best Practice**: Always save Web-Harvest configuration files as UTF-8.
+- Most modern editors default to UTF-8
+- XML standard recommends UTF-8
+- Ensures portability across platforms
+
+**Migration**: If you have old config files in WIN1250/ANSI:
+1. Open in text editor
+2. Save as UTF-8 (with BOM if needed)
+3. Or use `iconv` tool: `iconv -f WIN1250 -t UTF-8 config.xml > config_utf8.xml`
+
+#### References
+- Original report: [GitHub Issue #47, ID: 3060466]
+- Code: 
+  - `webharvest-core/src/main/java/org/webharvest/definition/FileConfigSource.java` (line 154)
+  - `webharvest-core/src/main/java/org/webharvest/definition/URLConfigSource.java` (line 149)
+- Used by: CLI, IDE, all config loading
+
+---
+
 ### Bug #48: Use getResponseBodyAsStream Instead of getResponseBody
 
 **Status**: ✅ FIXED  
@@ -661,17 +784,17 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed**: 5 total
+- **Total Bugs Fixed**: 6 total
   - **v2.1.0**: 1 bug (Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 4 bugs (Bug #48, Bug #55, Bug #61, Bug #62)
+  - **v2.2.1**: 5 bugs (Bug #47, Bug #48, Bug #55, Bug #61, Bug #62)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
-  - **High**: 1 (Bug #60 - invalid variable name)
+  - **High**: 2 (Bug #47 charset, Bug #60 variable name)
   - **Medium**: 4 (Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 0
-- **Total Tests Added** (v2.2.1): 28 tests (5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
-- **Test Suite Size**: 2590 tests (100% passing)
+- **Total Tests Added** (v2.2.1): 32 tests (4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite Size**: 2594 tests (100% passing)
 
 ---
 

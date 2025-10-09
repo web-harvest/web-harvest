@@ -34,9 +34,12 @@
 package org.webharvest.definition;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 
 import org.webharvest.definition.ConfigLocationVisitor.VisitableLocation;
 import org.webharvest.utils.HasReader;
@@ -44,10 +47,20 @@ import org.webharvest.utils.HasReader;
 /**
  * Implementation of {@link ConfigSource} that uses a file system as
  * source of XML configurations.
+ * 
+ * <h3>Bug #47 Fix (v2.2.1): Charset Encoding</h3>
+ * <p>
+ * <strong>Issue:</strong> Used {@link FileReader} which relies on platform default charset
+ * (e.g., WIN1250 on Windows instead of UTF-8), causing encoding problems in CLI mode.
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> Changed to {@link InputStreamReader} with explicit UTF-8 charset.
+ * All configuration files are now read as UTF-8 regardless of platform.
+ * </p>
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
- * @version %I%, %G%
+ * @version 2.2.1
  * @see ConfigSource
  * @see File
  * @see Location
@@ -131,10 +144,14 @@ public final class FileConfigSource extends AbstractConfigSource {
 
         /**
          * {@inheritDoc}
+         * 
+         * Bug #47 Fix: Uses InputStreamReader with UTF-8 charset instead of FileReader
+         * which uses platform default charset.
          */
         @Override
         public Reader getReader() throws IOException {
-            return new FileReader(file);
+            // Bug #47 Fix: Explicit UTF-8 encoding instead of platform default
+            return new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
         }
 
         /**

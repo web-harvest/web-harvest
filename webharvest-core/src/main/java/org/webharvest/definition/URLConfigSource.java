@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 import org.webharvest.definition.ConfigLocationVisitor.VisitableLocation;
 import org.webharvest.utils.HasReader;
@@ -44,10 +45,19 @@ import org.webharvest.utils.HasReader;
 /**
  * Implementation of {@link ConfigSource} that uses a HTTP protocol as
  * source of XML configurations.
+ * 
+ * <h3>Bug #47 Fix (v2.2.1): Charset Encoding</h3>
+ * <p>
+ * <strong>Issue:</strong> Used {@link InputStreamReader} without explicit charset,
+ * relying on platform default (e.g., WIN1250 on Windows instead of UTF-8).
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> Changed to use explicit UTF-8 charset for all URL-based configurations.
+ * </p>
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
- * @version %I%, %G%
+ * @version 2.2.1
  * @see ConfigSource
  * @see URL
  */
@@ -130,10 +140,13 @@ public final class URLConfigSource extends AbstractConfigSource {
 
         /**
          * {@inheritDoc}
+         * 
+         * Bug #47 Fix: Uses UTF-8 charset explicitly instead of platform default.
          */
         @Override
         public Reader getReader() throws IOException {
-            return new InputStreamReader(url.openStream());
+            // Bug #47 Fix: Explicit UTF-8 encoding instead of platform default
+            return new InputStreamReader(url.openStream(), StandardCharsets.UTF_8);
         }
 
         /**
