@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #18: HttpProcessor Charset Detection** (r712) - Resolved  
+- **Status**: Not a Bug - Correct HTTP Behavior
+- **Issue**: User expected meta tag charset, but HTTP header charset was used
+- **Analysis**: HTTP Content-Type header has priority over HTML meta tags (per RFC 2616)
+- **Resolution**: Resolved by architecture refactoring, Apache HttpClient follows HTTP spec
+- **Workarounds**: Extract meta tag charset via XPath, or specify charset explicitly
+- **Tests**: 5 documentation tests explaining HTTP behavior and workarounds
+
 **Bug #7: CommonUtils.fullUrl: ".." Is Not Handled Correctly** (r711)
 - **Issue**: Parent directory references ("..") not normalized in URLs
 - **Problem**: IIS servers close connections on URLs with ".." (e.g., `http://example.com/foo/../bar.htm`)
@@ -105,11 +113,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2609 tests (100% passing)
-- **New Tests**: +47 tests for bug fixes (8 Bug #7 + 1 Bug #16 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite**: 2614 tests (100% passing)
+- **New Tests**: +52 tests for bug fixes (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Integration Tests**: XML-based tests for all plugin modules + JavaScript/Rhino integration
 - **Zero Regression**: All existing functionality maintained
-- **New Testing Guide**: Comprehensive testing methodology in DEVELOPER_GUIDE.md
+- **New Testing Guide**: Comprehensive testing methodology in DEVELOPER_GUIDE.md (750+ lines)
 
 ## [2.2.0] - October 2025
 
