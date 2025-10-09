@@ -371,11 +371,11 @@ public class TextPlugin extends AbstractPlugin {
         LOGGER.debug("TextPlugin.doExecute: START");
         
         try {
-            // Get text content directly from XmlNode (like original TextProcessor)
-            String textContent = getElementDef().getNode().getText();
+            // v2.2.x ULTRA-LEAN: Get text content from PluginConfiguration
+            String textContent = getConfiguration().getProperty("_textContent", "");
             LOGGER.debug("TextPlugin: textContent = '{}'", textContent);
             
-            // Return as NodeVariable (like original TextProcessor)
+            // Return as NodeVariable
             return new NodeVariable(textContent != null ? textContent : "");
             
         } catch (Exception e) {
@@ -405,18 +405,7 @@ public class TextPlugin extends AbstractPlugin {
      * to avoid context isolation issues and return actual results instead of raw XML.
      */
     private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        final List<Object> resultList = new ArrayList<Object>();
-        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
-        
-        for (org.webharvest.definition.IElementDef def : defs) {
-            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
-            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
-            final Variable variable = processor.run(context);
-            if (!variable.isEmpty()) {
-                resultList.addAll(variable.toList());
-            }
-        }
-        
-        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
+        // v2.2.x ULTRA-LEAN: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
+        return super.executeBody(context);
     }
 }

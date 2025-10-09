@@ -38,7 +38,7 @@ import org.webharvest.runtime.variables.Variable;
 /**
  * Interface for executing plugin body content in the new architecture (v2.2.x).
  * 
- * This replaces ExecutableBodyContentProvider and uses PluginConfiguration.getChildren()
+ * v2.2.x ULTRA-LEAN: Uses PluginConfiguration.getChildren() directly
  * instead of IElementDef.getOperationDefs().
  * 
  * @author Robert Bala

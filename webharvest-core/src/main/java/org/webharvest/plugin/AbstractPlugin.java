@@ -216,7 +216,7 @@ public abstract class AbstractPlugin implements Plugin {
 
     /**
      * Executes the body content of this plugin.
-     * NEW ARCHITECTURE (v2.2.x): Uses PluginBodyExecutor instead of ExecutableBodyContentProvider.
+     * v2.2.x ULTRA-LEAN: Uses PluginBodyExecutor with PluginConfiguration.getChildren().
      * Falls back to old architecture for backward compatibility.
      * 
      * @param context the execution context
