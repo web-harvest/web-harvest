@@ -50,6 +50,7 @@ import org.webharvest.definition.Config;
 import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.IElementDef;
+import org.webharvest.definition.v3.PluginConfigurationTree;
 import org.webharvest.events.EventHandler;
 import org.webharvest.events.EventSink;
 import org.webharvest.events.HandlerHolder;
@@ -87,6 +88,9 @@ public class DefaultHarvestTest extends UnitilsTestNG {
 
     @RegularMock
     private IElementDef mockElementDef;
+    
+    @RegularMock
+    private PluginConfigurationTree mockConfigTree;
 
     private DefaultHarvest harvest;
 
@@ -103,15 +107,14 @@ public class DefaultHarvestTest extends UnitilsTestNG {
 
     @Test
     public void testGetHarvester() throws IOException {
-        final List<IElementDef> emptyList = Collections.emptyList();
+        // MODERNIZATION v2.2.x: Use new API (PluginConfigurationTree)
         expect(mockConfigFactory.create(mockConfigSource)).andReturn(mockConfig);
         expect(mockFactory.create(mockConfig)).
             andReturn(mockHarvester);
         mockConfig.reload();
         expectLastCall();
-        expect(mockConfig.getElementDef()).andReturn(mockElementDef);
-        expect(mockElementDef.getElementDefs()).andReturn(emptyList);
-        mockLoadCallback.onSuccess(emptyList);
+        expect(mockConfig.getConfigurationTree()).andReturn(mockConfigTree);
+        mockLoadCallback.onSuccess(mockConfigTree);
         expectLastCall();
         EasyMockUnitils.replay();
         final Harvester harvester = harvest.getHarvester(mockConfigSource,

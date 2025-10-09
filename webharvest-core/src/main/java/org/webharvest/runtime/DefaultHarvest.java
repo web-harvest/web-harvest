@@ -101,7 +101,10 @@ public final class DefaultHarvest implements Harvest {
         final Config config = configFactory.create(source);
         final Harvester harvester = harvestFactory.create(config);
         config.reload();
-        callback.onSuccess(config.getElementDef().getElementDefs());
+        
+        // MODERNIZATION v2.2.x: Use new API (PluginConfigurationTree)
+        // Old: callback.onSuccess(config.getElementDef().getElementDefs());
+        callback.onSuccess(config.getConfigurationTree());
 
         return harvester;
     }

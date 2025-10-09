@@ -52,7 +52,6 @@ import org.apache.log4j.PatternLayout;
 import org.apache.log4j.PropertyConfigurator;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.ConfigSourceFactory;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.ioc.DebugFileLogger;
 import org.webharvest.ioc.ScraperModule;
@@ -129,12 +128,9 @@ public class WebHarvestCLI {
 
             final String configLowercase = configFilePath.toLowerCase();
 
+            // MODERNIZATION v2.2.x: Use default callback (no action needed)
             final HarvestLoadCallback callback = new HarvestLoadCallback() {
-                @Override
-                public void onSuccess(final List<IElementDef> elements) {
-                    // TODO Auto-generated method stub
-
-                }
+                // Using default implementation - no custom logic needed
             };
 
             final ConfigSourceFactory configSourceFactory =
