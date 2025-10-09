@@ -46,6 +46,19 @@ import java.io.InputStream;
 
 /**
  * Class defines http server response.
+ * 
+ * <h3>Bug #48 Fix (v2.2.1): Use getResponseBodyAsStream</h3>
+ * <p>
+ * <strong>Issue:</strong> Used {@code getResponseBody()} which buffers entire response in memory,
+ * causing WARNING for large responses and potential OutOfMemoryError.
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> Changed to use {@code getResponseBodyAsStream()} which returns a stream,
+ * allowing efficient processing of large responses without buffering everything in memory.
+ * </p>
+ * 
+ * @author Web-Harvest Team
+ * @version 2.2.1
  */
 public class HttpResponseWrapper {
 
@@ -106,17 +119,58 @@ public class HttpResponseWrapper {
         return readBodyAsArray();
     }
 
+    /**
+     * Read response body as byte array.
+     * 
+     * <p><strong>Warning:</strong> This loads the entire response into memory.
+     * For large responses, use {@link #getBodyAsInputStream()} instead.</p>
+     * 
+     * <p>Bug #48 Fix: Now uses getResponseBodyAsStream() internally to read data,
+     * but still returns byte array for backward compatibility.</p>
+     * 
+     * @return Response body as byte array
+     */
     public byte[] readBodyAsArray() {
         try {
-            return httpMethod.getResponseBody();
+            // Bug #48 Fix: Use stream instead of getResponseBody()
+            InputStream stream = httpMethod.getResponseBodyAsStream();
+            if (stream == null) {
+                return new byte[0];
+            }
+            
+            // Read stream into byte array
+            java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = stream.read(chunk)) != -1) {
+                buffer.write(chunk, 0, bytesRead);
+            }
+            return buffer.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * Get response body as InputStream for efficient large file processing.
+     * 
+     * <p>Bug #48 Fix: Returns the actual response stream instead of buffering
+     * entire response in memory. This prevents OutOfMemoryError for large responses.</p>
+     * 
+     * <p><strong>Important:</strong> The stream should be consumed only once.
+     * For multiple reads, use {@link #readBodyAsArray()} instead.</p>
+     * 
+     * @return InputStream for response body
+     */
     public InputStream getBodyAsInputStream() {
-        // TODO: Fix this so a real stream is returned. DO NOT CACHE THE ENTIRE RESPONSE IN THE MEMORY!
-        return new ByteArrayInputStream(readBodyAsArray());
+        try {
+            // Bug #48 Fix: Return actual stream from HttpMethod
+            // This allows streaming large responses without buffering in memory
+            InputStream stream = httpMethod.getResponseBodyAsStream();
+            return stream != null ? stream : new ByteArrayInputStream(new byte[0]);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void close() {

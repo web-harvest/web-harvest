@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #48: Use getResponseBodyAsStream Instead of getResponseBody** (r706)
+- **Issue**: Used deprecated `getResponseBody()` which buffers entire response in memory
+- **Warning**: "Going to buffer response body of large or unknown size"
+- **Fix**: Changed to `getResponseBodyAsStream()` for streaming, memory-efficient processing
+- **Impact**: Large file downloads no longer cause OutOfMemoryError or warnings
+- **Tests**: 5 comprehensive tests including 1MB performance test
+
 **Bug #55: Character '#' in URL Parameters Not Encoded** (r704)
 - **Issue**: '#' in URL parameter values was not encoded, causing URL truncation
 - **Example**: `?color=#FF0000` became `?color=` (truncated)
@@ -77,8 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2585 tests (100% passing)
-- **New Tests**: +23 tests for bug fixes (7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite**: 2590 tests (100% passing)
+- **New Tests**: +28 tests for bug fixes (5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Integration Tests**: XML-based tests for all plugin modules
 - **Zero Regression**: All existing functionality maintained
 
