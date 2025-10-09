@@ -1,19 +1,13 @@
 package org.webharvest.plugin.core;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.ioc.HttpModule;
-import org.webharvest.ioc.ScraperModule;
-import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.runtime.web.HttpClientManager;
 
 import java.util.HashMap;
 import java.util.Map;

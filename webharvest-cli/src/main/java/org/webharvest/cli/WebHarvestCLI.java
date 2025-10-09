@@ -56,13 +56,11 @@ import org.webharvest.definition.IElementDef;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.ioc.DebugFileLogger;
 import org.webharvest.ioc.ScraperModule;
-import org.webharvest.ioc.HttpModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.Harvest;
 import org.webharvest.Harvester;
 import org.webharvest.runtime.database.DefaultDriverManager;
 import org.webharvest.runtime.database.DriverManager;
-import org.webharvest.runtime.web.HttpClientManager.ProxySettings;
 import org.webharvest.utils.CommonUtil;
 
 import com.google.inject.Guice;
@@ -120,12 +118,10 @@ public class WebHarvestCLI {
 
             parseLoggingSettings(params);
 
-            // TODO: Replace with new HTTP Client 4.x implementation
-            // final ProxySettings proxySettings = parseProxySettings(params);
-
+            // Note: HttpModule removed during HttpComponents 4.x migration
+            // HTTP functionality now integrated in ScraperModule
             final Injector injector = Guice.createInjector(
-                    new ScraperModule(workingDir),
-                    new HttpModule(ProxySettings.NO_PROXY_SET));
+                    new ScraperModule(workingDir));
 
             parseDebugModeSettings(params, workingDir);
 

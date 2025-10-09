@@ -14,9 +14,9 @@ import org.webharvest.Harvester;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.IElementDef;
-import org.webharvest.ioc.HttpModule;
+// HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
-import org.webharvest.runtime.web.HttpClientManager;
+// HttpClientManager removed during HttpComponents 4.x migration
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
@@ -39,9 +39,9 @@ public class ConfigServlet extends HttpServlet {
     
     public ConfigServlet() {
         LOG.info("Initializing ConfigServlet...");
+        // Note: HttpModule removed during HttpComponents 4.x migration
         Injector injector = Guice.createInjector(
-            new ScraperModule("."),
-            new HttpModule(HttpClientManager.ProxySettings.NO_PROXY_SET)
+            new ScraperModule(".")
         );
         this.harvest = injector.getInstance(Harvest.class);
         LOG.info("ConfigServlet initialized successfully");

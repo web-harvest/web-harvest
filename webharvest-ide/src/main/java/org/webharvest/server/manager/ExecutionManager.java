@@ -12,10 +12,10 @@ import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.IElementDef;
 import org.webharvest.events.ScraperExecutionEndEvent;
-import org.webharvest.ioc.HttpModule;
+// HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.web.HttpClientManager;
+// HttpClientManager removed during HttpComponents 4.x migration
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
@@ -53,9 +53,9 @@ public class ExecutionManager {
         LOG.info("Creating Guice injector for Harvest API...");
         
         // Initialize Guice injector
+        // Note: HttpModule removed during HttpComponents 4.x migration
         this.injector = Guice.createInjector(
-            new ScraperModule("."),
-            new HttpModule(HttpClientManager.ProxySettings.NO_PROXY_SET)
+            new ScraperModule(".")
         );
         this.harvest = injector.getInstance(Harvest.class);
         

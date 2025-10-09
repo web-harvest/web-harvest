@@ -61,8 +61,6 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.runtime.web.HttpClientManager;
-import org.webharvest.runtime.web.HttpClientManager.ProxySettings;
 import org.webharvest.utils.KeyValuePair;
 
 
@@ -80,26 +78,14 @@ public class ScraperContextTest extends UnitilsTestNG {
     @Dummy
     private Variable dummyVar;
 
-    @InjectInto(property = "httpClientManager")
-    private HttpClientManager manager;
-
     @BeforeMethod
     public void before() {
         this.context = new ScraperContext();
-        this.manager = new HttpClientManager(ProxySettings.NO_PROXY_SET);
     }
 
     @AfterMethod
     public void after() {
         this.context = null;
-        this.manager = null;
-    }
-
-    @Test
-    public void initializesHttpVar() {
-        context.initContext(); // @PostConstruct annotated
-        assertNotNull("Expected not null 'http' variable",
-                context.getVar("http"));
     }
 
     @Test
@@ -107,6 +93,8 @@ public class ScraperContextTest extends UnitilsTestNG {
         context.initContext(); // @PostConstruct annotated
         assertNotNull("Expected not null 'sys' variable",
                 context.getVar("sys"));
+        // Note: 'http' variable removed during HttpComponents 4.x migration
+        // HTTP functionality now accessed via <http> plugin directly
     }
 
     @Test

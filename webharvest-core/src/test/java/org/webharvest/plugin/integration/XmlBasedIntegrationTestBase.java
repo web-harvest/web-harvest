@@ -43,11 +43,9 @@ import org.webharvest.Harvest;
 import org.webharvest.Harvester;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.FileConfigSource;
-import org.webharvest.ioc.HttpModule;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.runtime.web.HttpClientManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,9 +81,9 @@ public abstract class XmlBasedIntegrationTestBase {
         LOG.info("Setting up XML-based integration test environment");
         
         // Initialize Guice injector with required modules
+        // Note: HttpModule removed during HttpComponents 4.x migration
         injector = Guice.createInjector(
-            new ScraperModule("."),
-            new HttpModule(HttpClientManager.ProxySettings.NO_PROXY_SET)
+            new ScraperModule(".")
         );
         
         harvest = injector.getInstance(Harvest.class);
