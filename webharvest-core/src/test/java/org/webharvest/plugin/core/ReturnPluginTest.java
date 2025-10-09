@@ -63,9 +63,6 @@ public class ReturnPluginTest {
     @Mock
     private DynamicScopeContext mockContext;
     
-    @Mock
-    private org.webharvest.definition.IElementDef mockElementDef;
-
     private ReturnPlugin plugin;
 
     @BeforeMethod
@@ -77,9 +74,7 @@ public class ReturnPluginTest {
         when(mockConfiguration.hasChildren()).thenReturn(false);
         when(mockConfiguration.getChildren()).thenReturn(java.util.Collections.emptyList());
         
-        // Mock ElementDef methods for fallback
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: No elementDef needed, only PluginConfiguration
     }
 
     @Test

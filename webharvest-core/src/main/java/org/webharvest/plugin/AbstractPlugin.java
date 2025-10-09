@@ -33,13 +33,11 @@
 
 package org.webharvest.plugin;
 
-import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.plugin.ExecutableBodyContentProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +59,6 @@ public abstract class AbstractPlugin implements Plugin {
 
     private boolean initialized = false;
     private PluginConfiguration configuration;
-    private IElementDef elementDef;
     private Plugin parentPlugin;
     private int runningLevel = 1;
 
@@ -140,21 +137,8 @@ public abstract class AbstractPlugin implements Plugin {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IElementDef getElementDef() {
-        return elementDef;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setElementDef(IElementDef elementDef) {
-        this.elementDef = elementDef;
-    }
+    // v2.2.x ULTRA-LEAN: Removed getElementDef/setElementDef
+    // Old architecture methods eliminated
 
     /**
      * {@inheritDoc}
@@ -248,34 +232,19 @@ public abstract class AbstractPlugin implements Plugin {
             return EmptyVariable.INSTANCE;
         }
         
-        // NEW ARCHITECTURE (v2.2.x): Use PluginBodyExecutor with PluginConfiguration.getChildren()
+        // v2.2.x ULTRA-LEAN: Use PluginBodyExecutor with PluginConfiguration.getChildren()
         if (configuration != null && Boolean.TRUE.equals(configuration.hasChildren())) {
-            LOGGER.debug("Using NEW architecture: PluginBodyExecutor with {} children", configuration.getChildren().size());
+            LOGGER.debug("Using ULTRA-LEAN architecture: PluginBodyExecutor with {} children", configuration.getChildren().size());
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.executeBody(configuration, context);
             } catch (Exception e) {
-                LOGGER.warn("PluginBodyExecutor failed: {}", e.getMessage());
-                // Fall through to old architecture
-            }
-        }
-        
-        // FALLBACK: Old architecture (if elementDef is set but configuration has no children)
-        // This supports backward compatibility during migration
-        if (elementDef != null && elementDef.hasOperations()) {
-            LOGGER.debug("Using OLD architecture fallback: ExecutableBodyContentProvider");
-            try {
-                ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
-                Variable result = bodyProvider.executeBody(context);
-                LOGGER.debug("Body execution completed with result: {}", result);
-                return result;
-            } catch (Exception e) {
-                LOGGER.warn("Body execution failed: {}", e.getMessage());
+                LOGGER.error("PluginBodyExecutor failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
             }
         }
         
-        LOGGER.debug("No body content to execute");
+        LOGGER.debug("No body content to execute (no children)");
         return EmptyVariable.INSTANCE;
     }
 
@@ -297,34 +266,20 @@ public abstract class AbstractPlugin implements Plugin {
             return EmptyVariable.INSTANCE;
         }
         
-        // NEW ARCHITECTURE (v2.2.x): Use PluginBodyExecutor with PluginConfiguration.getChildren()
+        // v2.2.x ULTRA-LEAN: Use PluginBodyExecutor with PluginConfiguration.getChildren()
         if (configuration != null && Boolean.TRUE.equals(configuration.hasChildren())) {
-            LOGGER.debug("Using NEW architecture: PluginBodyExecutor.getBodyTextContent() with {} children", 
+            LOGGER.debug("Using ULTRA-LEAN architecture: PluginBodyExecutor.getBodyTextContent() with {} children", 
                         configuration.getChildren().size());
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.getBodyTextContent(configuration, context);
             } catch (Exception e) {
-                LOGGER.warn("PluginBodyExecutor.getBodyTextContent() failed: {}", e.getMessage());
-                // Fall through to old architecture
-            }
-        }
-        
-        // FALLBACK: Old architecture (if elementDef is set but configuration has no children)
-        if (elementDef != null && elementDef.hasOperations()) {
-            LOGGER.debug("Using OLD architecture fallback: ExecutableBodyContentProvider.getBodyTextContent()");
-            try {
-                ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
-                Variable result = bodyProvider.getBodyTextContent(context);
-                LOGGER.debug("Body text content extraction completed with result: {}", result);
-                return result;
-            } catch (Exception e) {
-                LOGGER.warn("Body text content extraction failed: {}", e.getMessage());
+                LOGGER.error("PluginBodyExecutor.getBodyTextContent() failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
             }
         }
         
-        LOGGER.debug("No body text content to extract");
+        LOGGER.debug("No body text content to extract (no children)");
         return EmptyVariable.INSTANCE;
     }
 }

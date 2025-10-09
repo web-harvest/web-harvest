@@ -9,7 +9,6 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
 import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.ScraperContext;
@@ -58,7 +57,7 @@ public class ReturnPluginEnhancedTest {
         when(xmlNode.getElementList()).thenReturn(new ArrayList());
         when(elementDef.getNode()).thenReturn(xmlNode);
         when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        when(elementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -81,7 +80,7 @@ public class ReturnPluginEnhancedTest {
         when(xmlNode.getElementList()).thenReturn(new ArrayList());
         when(elementDef.getNode()).thenReturn(xmlNode);
         when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        when(elementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(configuration);
         

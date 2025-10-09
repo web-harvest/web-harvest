@@ -269,30 +269,12 @@ public class ReturnPlugin extends AbstractPlugin {
     }
 
     /**
-     * Execute child elements directly in the same context (not using BodyProcessor)
-     * to avoid context isolation issues and return actual results instead of raw XML.
+     * Execute child elements directly in the same context (v2.2.x ULTRA-LEAN)
+     * Uses new architecture: PluginBodyExecutor
      */
     private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        final List<Object> resultList = new ArrayList<Object>();
-        
-        // Null safety
-        if (getElementDef() == null) {
-            // No logging if LOGGER not available
-            return EmptyVariable.INSTANCE;
-        }
-        
-        final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
-        
-        for (org.webharvest.definition.IElementDef def : defs) {
-            final org.webharvest.runtime.processors.Processor processor = org.webharvest.runtime.processors.ProcessorFactory.INSTANCE.createProcessor(context, def);
-            processor.setParentProcessor(null); // Set parent to null to avoid circular dependency
-            final Variable variable = processor.run(context);
-            if (!variable.isEmpty()) {
-                resultList.addAll(variable.toList());
-            }
-        }
-        
-        return resultList.isEmpty() ? EmptyVariable.INSTANCE : new ListVariable(resultList);
+        // v2.2.x: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
+        return super.executeBody(context);
     }
 
     /**

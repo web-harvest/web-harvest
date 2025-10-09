@@ -40,7 +40,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.definition.IElementDef;
 
 /**
  * Core interface for all Web-Harvest plugins.
@@ -104,21 +103,8 @@ public interface Plugin {
      */
     void cleanup();
 
-    /**
-     * Gets the element definition for this plugin.
-     * This method provides compatibility with the existing processor system.
-     * 
-     * @return the element definition
-     */
-    IElementDef getElementDef();
-
-    /**
-     * Sets the element definition for this plugin.
-     * This method provides compatibility with the existing processor system.
-     * 
-     * @param elementDef the element definition to set
-     */
-    void setElementDef(IElementDef elementDef);
+    // v2.2.x ULTRA-LEAN: Removed getElementDef/setElementDef
+    // Old architecture methods eliminated - use PluginConfiguration directly
 
     /**
      * Gets the parent plugin in the execution hierarchy.
