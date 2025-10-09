@@ -17,6 +17,148 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #61: JSONToXML "content" Key Not Correctly Converted
+
+**Status**: ✅ FIXED  
+**Reported**: GitHub Issue #61  
+**Fixed in**: v2.2.1  
+**Severity**: Medium  
+**Component**: `webharvest-core` - `JsonToXmlPlugin`
+
+#### Description
+The `org.json.XML.toString()` method has a special case for the JSON key "content", treating it as a text node container instead of a regular JSON key. This causes the "content" key to be stripped from XML output.
+
+**Problem Example**:
+```json
+Input:  {"a": {"content": {"b": "c"}}}
+Output: <a><b>c</b></a>  ❌ "content" key is lost!
+Expected: <a><content><b>c</b></content></a>
+```
+
+**Real-World Impact**:
+- APIs returning JSON with "content" field (common in CMS, articles, posts)
+- Data loss during JSON→XML conversion
+- Unpredictable behavior (only "content" affected, other keys work normally)
+
+#### Root Cause
+The `org.json.XML.toString()` method (from org.json:json Maven dependency) has hardcoded special handling for the key "content":
+
+```java
+// In org.json.XML.toString():
+if (k.equals("content")) {
+    // Special case: treat as text node, not element
+    // This strips the "content" key from output!
+}
+```
+
+This was originally intended to support a specific JSON→XML text node representation, but it breaks normal JSON conversion where "content" is a legitimate data field.
+
+**Why We Can't Patch org.json**:
+- We use Maven dependency `org.json:json:20231013` (not vendored code)
+- Cannot modify third-party library behavior
+- Must maintain compatibility with standard org.json API
+
+#### Fix
+**Strategy**: Create custom `JsonXmlConverter` that treats ALL JSON keys equally without special cases.
+
+**Implementation**:
+Created new utility class `org.webharvest.utils.JsonXmlConverter`:
+
+```java
+/**
+ * JSON to XML converter without "content" special case.
+ * Fixes Bug #61.
+ */
+public class JsonXmlConverter {
+    public static String toXml(JSONObject jsonObject, String rootTag) throws JSONException {
+        // Convert JSON to XML, treating ALL keys equally
+        // NO special case for "content" key
+        for (String key : keys) {
+            Object value = jsonObject.get(key);
+            xml.append("<").append(key).append(">");
+            appendValue(xml, value);  // Recursively handle nested objects/arrays
+            xml.append("</").append(key).append(">");
+        }
+    }
+}
+```
+
+Updated `JsonToXmlPlugin.java` to use `JsonXmlConverter` instead of `org.json.XML`:
+
+```java
+// Before (Bug #61):
+return new NodeVariable(XML.toString(new JSONObject(jsonString), rootTag));
+
+// After (Fixed):
+return new NodeVariable(JsonXmlConverter.toXml(new JSONObject(jsonString), rootTag));
+```
+
+**Benefits**:
+- All JSON keys treated equally (no special cases)
+- Predictable, transparent JSON→XML mapping
+- Handles nested objects, arrays, primitives
+- Proper XML escaping for special characters
+- No dependency on org.json implementation details
+
+#### Tests Added
+**Comprehensive test suite with 9 tests (4 bug-specific + 5 regression):**
+
+**Bug #61 Tests** (4 hard tests):
+1. ✅ `testContentKeyIsPreservedInXmlOutput()`
+   - Complex nested: `{"a": {"content": {"b": "c"}}}`
+   - Verifies "content" key appears in XML output
+
+2. ✅ `testSimpleContentKey()`
+   - Simple case: `{"a": {"content": "hello world"}}`
+   - Should output `<a><content>hello world</content></a>`
+
+3. ✅ `testNestedContentKeys()`
+   - Multiple "content" keys: `{"article": {"content": {"paragraph": {"content": "text"}}}}`
+   - Both "content" keys must be preserved
+
+4. ✅ `testContentKeyLikeOtherKeys()`
+   - Comparison: "content" vs "data" key
+   - Both should behave identically
+
+**Regression Tests** (5 hard tests):
+5. ✅ `testArrayConversion_NoRegression()`
+   - JSON arrays still work: `{"items": ["a", "b", "c"]}`
+   - Each item converted to `<item>` element
+
+6. ✅ `testNestedObjects_NoRegression()`
+   - Complex nested objects without "content"
+   - Ensures normal conversion still works
+
+7. ✅ `testXmlEscaping_NoRegression()`
+   - Special characters: `<tag> & 'quotes' "double"`
+   - Verifies proper XML escaping (&lt;, &amp;, &apos;, &quot;)
+
+8. ✅ `testPrimitiveTypes_NoRegression()`
+   - Numbers, booleans: `{count: 42, active: true}`
+   - All primitive types handled correctly
+
+9. ✅ `testRealWorldJsonWithContentKey()`
+   - Complex real-world article JSON with "content" field
+   - Full integration test with nested objects, mixed types
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/plugin/core/JsonToXmlPluginBug61Test.java`
+- `webharvest-core/src/main/java/org/webharvest/utils/JsonXmlConverter.java`
+
+**Test Results**:
+- All 9 tests PASS (100%)
+- Full core test suite: 2571/2571 PASS (100%)
+- Zero regression
+- Added 10 new tests total (5 Bug #62 + 4 Bug #61 + 5 regression)
+
+#### References
+- Original report: [GitHub Issue #61]
+- Code: `webharvest-core/src/main/java/org/webharvest/plugin/core/JsonToXmlPlugin.java`
+- Utility: `webharvest-core/src/main/java/org/webharvest/utils/JsonXmlConverter.java`
+- Tests: 9 comprehensive unit tests
+
+---
+
 ### Bug #62: Regexp Group Isolation Issue
 
 **Status**: ✅ FIXED  
@@ -230,11 +372,13 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed**: 2
-- **Critical**: 1
+- **Total Bugs Fixed**: 2 (in v2.2.1)
+- **Critical**: 1 (ConfigPlugin scope)
 - **High**: 0
-- **Medium**: 1
+- **Medium**: 2 (Bug #61, Bug #62)
 - **Low**: 0
+- **Total Tests Added**: 16 tests (7 Bug #62 + 9 Bug #61)
+- **Test Suite Size**: 2571 tests (100% passing)
 
 ---
 

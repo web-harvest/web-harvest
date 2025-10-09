@@ -36,8 +36,8 @@ package org.webharvest.plugin.core;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.XML;
 import org.webharvest.exception.PluginException;
+import org.webharvest.utils.JsonXmlConverter;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -52,6 +52,29 @@ import org.webharvest.runtime.variables.Variable;
 /**
  * Converter from JSON to XML.
  * Migrated from org.webharvest.runtime.processors.plugins.JsonToXmlPlugin
+ * 
+ * <h3>Bug #61 Fix (v2.2.1)</h3>
+ * <p>
+ * Fixed issue where JSON key "content" was treated specially by org.json.XML,
+ * causing it to be stripped from XML output. Now uses {@link JsonXmlConverter}
+ * which treats all JSON keys equally without special cases.
+ * </p>
+ * 
+ * <p>
+ * <strong>Before Fix:</strong><br>
+ * Input: <code>{"a": {"content": "hello"}}</code><br>
+ * Output: <code>&lt;a&gt;hello&lt;/a&gt;</code> (content key lost!)
+ * </p>
+ * 
+ * <p>
+ * <strong>After Fix:</strong><br>
+ * Input: <code>{"a": {"content": "hello"}}</code><br>
+ * Output: <code>&lt;a&gt;&lt;content&gt;hello&lt;/content&gt;&lt;/a&gt;</code> (preserved!)
+ * </p>
+ * 
+ * @author Web-Harvest Team
+ * @version 2.2.1
+ * @see JsonXmlConverter
  */
 @CorePlugin(elementName = "json-to-xml")
 public class JsonToXmlPlugin extends AbstractPlugin {
@@ -268,13 +291,15 @@ public class JsonToXmlPlugin extends AbstractPlugin {
             if (jsonString.startsWith("[")) {
                 // It's a JSON array
                 JSONArray jsonArray = new JSONArray(jsonString);
-                return new NodeVariable(XML.toString(jsonArray, rootTag));
+                // Bug #61 Fix: Use JsonXmlConverter instead of org.json.XML
+                return new NodeVariable(JsonXmlConverter.toXml(jsonArray, rootTag));
             } else if (!jsonString.startsWith("{")) {
                 // If it doesn't start with { or [, wrap it in an object
                 jsonString = "{\"data\": " + jsonString + "}";
             }
             
-            return new NodeVariable(XML.toString(
+            // Bug #61 Fix: Use JsonXmlConverter which doesn't have "content" special case
+            return new NodeVariable(JsonXmlConverter.toXml(
                     new JSONObject(jsonString),
                     rootTag));
         } catch (JSONException e) {
