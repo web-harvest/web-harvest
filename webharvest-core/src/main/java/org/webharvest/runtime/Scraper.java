@@ -42,8 +42,10 @@ import org.webharvest.events.ScraperExecutionEndEvent;
 import org.webharvest.events.ScraperExecutionErrorEvent;
 import org.webharvest.events.ScraperExecutionStartEvent;
 import org.webharvest.events.ScraperExecutionStoppedEvent;
-import org.webharvest.runtime.processors.Processor;
-import org.webharvest.runtime.processors.ProcessorFactory;
+import org.webharvest.plugin.Plugin;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.definition.v3.PluginConfigurationTree;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -83,20 +85,44 @@ public class Scraper implements WebScraper {
         eventBus.post(new ScraperExecutionStartEvent(this));
 
         try {
-            final Processor processor = ProcessorFactory.INSTANCE.createProcessor(context,
-                    context.getConfig().getElementDef());
-            if (processor != null) {
-                processor.run(context);
-                
-                // CRITICAL: Post EndEvent HERE - INSIDE the try block,
-                // BEFORE processor.run() returns and triggers any cleanup!
-                // This ensures listeners can extract variables BEFORE they are cleaned up from nested scopes.
-                eventBus.post(new ScraperExecutionEndEvent(this,
-                        System.currentTimeMillis() - startTime, context));
+            // v2.2.x ULTRA-LEAN: Use CorePluginRegistry + PluginConfiguration instead of ProcessorFactory + IElementDef
+            final PluginConfigurationTree tree = context.getConfig().getConfigurationTree();
+            if (tree != null) {
+                final PluginConfiguration rootConfig = tree.getConfiguration();
+                if (rootConfig != null) {
+                    // Get plugin class from registry
+                    CorePluginRegistry registry = CorePluginRegistry.getInstance();
+                    Class<? extends Plugin> pluginClass = registry.getPluginClass(rootConfig.getElementName());
+                    
+                    if (pluginClass != null) {
+                        // Create plugin instance (like DefaultPluginBodyExecutor does)
+                        Plugin plugin = pluginClass.newInstance();
+                        
+                        // Initialize plugin with configuration
+                        plugin.initialize(rootConfig);
+                        
+                        // Execute plugin
+                        plugin.execute(context);
+                        
+                        // CRITICAL: Post EndEvent HERE - INSIDE the try block,
+                        // BEFORE plugin.execute() returns and triggers any cleanup!
+                        // This ensures listeners can extract variables BEFORE they are cleaned up from nested scopes.
+                        eventBus.post(new ScraperExecutionEndEvent(this,
+                                System.currentTimeMillis() - startTime, context));
+                    } else {
+                        LOG.warn("Plugin class not found for root element: {}", rootConfig.getElementName());
+                    }
+                }
             }
         } catch (InterruptedException e) {
             informListenersAboutError(e);
             Thread.currentThread().interrupt();
+        } catch (InstantiationException | IllegalAccessException e) {
+            LOG.error("Failed to create root plugin instance", e);
+            informListenersAboutError(e);
+        } catch (org.webharvest.plugin.exceptions.PluginException e) {
+            LOG.error("Failed to initialize root plugin", e);
+            informListenersAboutError(e);
         }
     }
 
