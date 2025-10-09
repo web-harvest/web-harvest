@@ -17,6 +17,117 @@ Each bug entry includes:
 
 ## Version 2.2.1 (In Progress)
 
+### Bug #16: Try Cannot Catch Exception Raised by Invalid URI in HTTP
+
+**Status**: ✅ VERIFIED FIXED (Already working in v2.2.1)  
+**Reported**: GitHub Issue #16  
+**Verified in**: v2.2.1  
+**Severity**: Medium (user-reported, but already fixed)  
+**Component**: `webharvest-core` - Exception handling chain (`HttpPlugin`, `TryPlugin`)
+
+**Note**: This bug was already fixed by proper exception handling implementation. No new code changes needed - adding verification tests.
+
+#### Description
+User reported that when an invalid URI is passed to `<http>`, the resulting `IllegalArgumentException` stops the scraper even if surrounded by a `<try>` block.
+
+**User Example**:
+```xml
+<try>
+  <body>
+    <http url="http://web-harvest.sf.net/ê" />
+  </body>
+  <catch/>
+</try>
+```
+
+**Expected**: Exception caught by `<try>`  
+**Reported Behavior**: Scraper stopped with `IllegalArgumentException`  
+**Current Behavior**: ✅ Exception IS caught by `<try>` (FIXED)
+
+#### Why It's Fixed
+The exception handling chain works correctly:
+
+**1. HttpPlugin.doExecute()** (line 153):
+```java
+catch (Exception e) {
+    throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
+}
+```
+- Catches ALL exceptions including `IllegalArgumentException`
+- Wraps in `IllegalStateException` with original as cause
+
+**2. TryPlugin.doExecute()** (line 381):
+```java
+catch (Exception e) {
+    context.setLocalVar("error", new NodeVariable(e.getMessage()));
+    context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
+    context.setLocalVar("stacktrace", new NodeVariable(sw.toString()));
+    return EmptyVariable.INSTANCE;
+}
+```
+- Catches ALL `Exception` types (including `IllegalStateException`)
+- Sets error variables in context
+- Returns gracefully
+
+**3. CatchPlugin.doExecute()** (line 373):
+```java
+Variable errorVar = context.getVar("error");
+if (errorVar != null && !(errorVar instanceof EmptyVariable)) {
+    // Execute catch block
+}
+```
+- Checks for error variable set by `<try>`
+- Executes catch block if error occurred
+
+**Exception Flow**:
+```
+Invalid URI → IllegalArgumentException (GetMethod)
+    ↓ caught by HttpPlugin
+IllegalStateException (wrapped)
+    ↓ caught by TryPlugin
+Error variables set in context
+    ↓ checked by CatchPlugin
+Catch block executed ✅
+```
+
+#### Tests Added
+**Regression tests to verify exception handling works**:
+
+1. ✅ `HttpPluginInvalidUriTest` - Unit test
+   - Tests which URI patterns throw `IllegalArgumentException`
+   - Verifies exception occurs at GetMethod level
+   - Documents invalid URI patterns
+
+2. ✅ `Bug16TryCatchInvalidUriTest` - Integration test
+   - Verifies `<try>/<catch>` handles invalid URI
+   - Regression test to prevent future breaks
+   - Documents correct `<try>/<catch>` usage
+
+**Test Location**:
+- `webharvest-core/src/test/java/org/webharvest/plugin/core/HttpPluginInvalidUriTest.java`
+- `webharvest-core/src/test/java/org/webharvest/plugin/integration/Bug16TryCatchInvalidUriTest.java`
+- `webharvest-core/src/test/resources/integration-tests/bug16_try_catch_invalid_uri.xml`
+
+#### User Impact
+**Original Issue**: Invalid URI stopped scraper  
+**Current Behavior**: Invalid URI caught by `<try>`, scraper continues
+
+**Benefits**:
+- Robust error handling
+- Scraper can continue after HTTP errors
+- Error information available in catch block
+- Graceful degradation
+
+#### References
+- Original report: [GitHub Issue #16]
+- Code: 
+  - `HttpPlugin.java` (line 153) - catches exceptions
+  - `TryPlugin.java` (line 381) - catches exceptions
+  - `CatchPlugin.java` (line 373) - executes on error
+- Used by: All HTTP operations with try/catch
+
+---
+
 ### Bug #29: CommonUtils.createVariable Does Not Handle NativeJavaObjects
 
 **Status**: ✅ FIXED  
@@ -922,18 +1033,19 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Fixed**: 7 unique bugs (+ 1 duplicate identified)
+- **Total Bugs Fixed/Verified**: 8 unique bugs (+ 1 duplicate identified)
   - **v2.1.0**: 1 bug (Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 6 bugs (Bug #29, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+  - **v2.2.1**: 7 bugs (Bug #16 verified, Bug #29, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
 - **Duplicates Identified**: 1 (Bug #36 = Bug #47)
+- **Verified Fixed (Already Working)**: 1 (Bug #16 - exception handling chain)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
   - **High**: 2 (Bug #47/36 charset, Bug #60 variable name)
-  - **Medium**: 5 (Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
+  - **Medium**: 6 (Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 0
-- **Total Tests Added** (v2.2.1): 37 tests (5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
-- **Test Suite Size**: 2599 tests (100% passing)
+- **Total Tests Added** (v2.2.1): 38 tests (1 Bug #16 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite Size**: 2600 tests (100% passing)
 - **Regression Rate**: 0% (zero regressions introduced)
 
 ## Philosophy: Fixing Bugs Prevents New Bugs
