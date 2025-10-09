@@ -536,9 +536,26 @@ public class CommonUtil {
     }
 
     /**
-     * Calculates full URL for specified page URL and link
-     * which could be full, absolute or relative like there can
-     * be found in A or IMG tags.
+     * Creates full URL from page URL and relative link.
+     * Handles relative links, absolute paths, query parameters, and parent directory references.
+     * Links can be full URLs, absolute paths, or relative paths as found in A or IMG tags.
+     * 
+     * <h3>Bug #7 Fix (v2.2.1): Parent Directory Normalization</h3>
+     * <p>
+     * <strong>Issue:</strong> Parent directory references ("..") were not normalized,
+     * resulting in URLs like {@code http://example.com/foo/../bar.htm}.
+     * Some servers (IIS) don't handle ".." in URLs and close connections.
+     * </p>
+     * <p>
+     * <strong>Fix:</strong> Normalize path by resolving ".." and "." segments,
+     * similar to how browsers handle relative URLs.
+     * </p>
+     * 
+     * @param pageUrl Base page URL
+     * @param link Relative or absolute link
+     * @return Normalized full URL
+     * @since 1.0
+     * @version 2.2.1
      */
     public static String fullUrl(String pageUrl, String link) {
         if (isFullUrl(link)) {
@@ -568,7 +585,77 @@ public class CommonUtil {
             pageUrl = pageUrl.substring(0, slashIndex + 1);
         }
 
-        return isLinkAbsolute ? pageUrl + link.substring(1) : pageUrl + link;
+        String fullUrl = isLinkAbsolute ? pageUrl + link.substring(1) : pageUrl + link;
+        
+        // Bug #7 Fix: Normalize path (resolve ".." and ".")
+        return normalizePath(fullUrl);
+    }
+    
+    /**
+     * Normalizes URL path by resolving ".." (parent) and "." (current) directory references.
+     * 
+     * Bug #7 Fix: This prevents URLs like "http://example.com/foo/../bar.htm"
+     * which cause problems with IIS servers.
+     * 
+     * @param url URL to normalize
+     * @return Normalized URL with ".." and "." resolved
+     * @since 2.2.1
+     */
+    private static String normalizePath(String url) {
+        if (url == null || !url.contains("/")) {
+            return url;
+        }
+        
+        // Quick check: if no ".." or "." in URL, return as-is (performance optimization)
+        if (!url.contains("..") && !url.contains("./")) {
+            return url;
+        }
+        
+        // Split URL into protocol+host and path
+        int protocolEnd = url.indexOf("://");
+        if (protocolEnd < 0) {
+            return url; // Not a valid URL, return as-is
+        }
+        
+        int pathStart = url.indexOf("/", protocolEnd + 3);
+        if (pathStart < 0) {
+            return url; // No path, just domain
+        }
+        
+        String baseUrl = url.substring(0, pathStart);
+        String path = url.substring(pathStart);
+        
+        // Split path into segments
+        String[] segments = path.split("/");
+        java.util.List<String> normalizedSegments = new java.util.ArrayList<>();
+        
+        for (String segment : segments) {
+            if (segment.isEmpty() || ".".equals(segment)) {
+                // Skip empty segments and current directory references
+                continue;
+            } else if ("..".equals(segment)) {
+                // Parent directory: remove last segment (if exists)
+                if (!normalizedSegments.isEmpty()) {
+                    normalizedSegments.remove(normalizedSegments.size() - 1);
+                }
+                // If normalizedSegments is empty, we're at root - ignore ".."
+            } else {
+                // Normal segment: add to result
+                normalizedSegments.add(segment);
+            }
+        }
+        
+        // Rebuild path
+        if (normalizedSegments.isEmpty()) {
+            return baseUrl + "/";
+        }
+        
+        StringBuilder normalizedPath = new StringBuilder(baseUrl);
+        for (String segment : normalizedSegments) {
+            normalizedPath.append("/").append(segment);
+        }
+        
+        return normalizedPath.toString();
     }
 
     /**

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #7: CommonUtils.fullUrl: ".." Is Not Handled Correctly** (r711)
+- **Issue**: Parent directory references ("..") not normalized in URLs
+- **Problem**: IIS servers close connections on URLs with ".." (e.g., `http://example.com/foo/../bar.htm`)
+- **Fix**: Added normalizePath() to resolve ".." and "." segments like browsers do
+- **Impact**: Compatible with all servers (IIS, Apache, Nginx), follows URL standards
+- **Tests**: 8 tests including multiple ".." levels, edge cases, regression tests
+
 **Bug #29: CommonUtils.createVariable Does Not Handle NativeJavaObjects** (r709)
 - **Issue**: JavaScript (Rhino) returns NativeJavaObject wrappers, not unwrapped Java objects
 - **Problem**: createVariable() stored wrapped objects in NodeVariable instead of actual objects
@@ -98,10 +105,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✅ Testing & Quality
 
-- **Test Suite**: 2599 tests (100% passing)
-- **New Tests**: +37 tests for bug fixes (5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite**: 2609 tests (100% passing)
+- **New Tests**: +47 tests for bug fixes (8 Bug #7 + 1 Bug #16 + 5 Bug #29 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Integration Tests**: XML-based tests for all plugin modules + JavaScript/Rhino integration
 - **Zero Regression**: All existing functionality maintained
+- **New Testing Guide**: Comprehensive testing methodology in DEVELOPER_GUIDE.md
 
 ## [2.2.0] - October 2025
 
