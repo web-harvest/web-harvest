@@ -49,7 +49,6 @@ public class LoopPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new LoopPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -92,7 +91,6 @@ public class LoopPluginTest {
     @Test
     public void testLoopPluginInitialize() throws PluginException {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1,item2");
@@ -121,7 +119,6 @@ public class LoopPluginTest {
     @Test
     public void testLoopPluginExecuteWithEmptyItems() throws InterruptedException, PluginException {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("");
@@ -152,7 +149,6 @@ public class LoopPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1,item2");
@@ -184,7 +180,6 @@ public class LoopPluginTest {
     @Test
     public void testLoopPluginWithCustomDelimiter() throws PluginException, InterruptedException {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1|item2|item3");
@@ -226,7 +221,6 @@ public class LoopPluginTest {
         when(context.getCharset()).thenReturn("UTF-8");
         
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("singleItem");
@@ -250,7 +244,6 @@ public class LoopPluginTest {
         when(context.getCharset()).thenReturn("UTF-8");
         
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1||item2||item3");
@@ -274,7 +267,6 @@ public class LoopPluginTest {
         when(context.getCharset()).thenReturn("UTF-8");
         
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item@#$,item%^&,item*()");
@@ -298,7 +290,6 @@ public class LoopPluginTest {
         when(context.getCharset()).thenReturn("UTF-8");
         
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("项目1,项目2,项目3");
@@ -322,7 +313,6 @@ public class LoopPluginTest {
         when(context.getCharset()).thenReturn("UTF-8");
         
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1,item2,item3,item4,item5");
@@ -382,7 +372,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithEmptyItems() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("");
@@ -402,7 +391,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithNullDelimiter() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("a,b,c");
@@ -422,7 +410,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithFilterAttribute() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("1,2,3,4,5");
@@ -442,7 +429,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithSingleItem() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("single");
@@ -464,7 +450,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithManyItems() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         StringBuilder manyItems = new StringBuilder();
         for (int i = 0; i < 50; i++) {
@@ -492,7 +477,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithUnicodeItems() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("中文,العربية,русский");
@@ -514,7 +498,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithSpecialDelimiter() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("part1||part2||part3");
@@ -536,7 +519,6 @@ public class LoopPluginTest {
     @Test
     public void testExecuteWithEmptyItemsInList() throws Exception {
         LoopPlugin newPlugin = new LoopPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("items")).thenReturn("item1,,item3,,item5");

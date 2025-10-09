@@ -145,8 +145,8 @@ public abstract class XmlBasedIntegrationTestBase {
         // Create a HarvestLoadCallback that does nothing (configuration loads automatically)
         org.webharvest.HarvestLoadCallback loadCallback = new org.webharvest.HarvestLoadCallback() {
             @Override
-            public void onSuccess(java.util.List<org.webharvest.definition.IElementDef> elements) {
-                LOG.debug("Configuration loaded with {} elements", elements.size());
+            public void onSuccess(org.webharvest.definition.v3.PluginConfigurationTree configTree) {
+                LOG.debug("Configuration loaded: {}", configTree);
             }
         };
         

@@ -49,7 +49,6 @@ public class HtmlToXmlPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new HtmlToXmlPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== Metadata Tests ====================

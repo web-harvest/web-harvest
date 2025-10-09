@@ -41,7 +41,6 @@ public class HtmlToXmlPluginMassiveTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new HtmlToXmlPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== HTML5 Tags Tests ====================

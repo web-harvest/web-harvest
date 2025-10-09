@@ -91,7 +91,6 @@ public class ScriptPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new ScriptPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== Basic Functionality Tests ====================

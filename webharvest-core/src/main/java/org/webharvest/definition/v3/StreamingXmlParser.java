@@ -279,14 +279,25 @@ public class StreamingXmlParser implements ConfigParser {
             // Get accumulated text content
             String textContent = textStack.pop().toString().trim();
             
-            // If element had text content, add it as a property
-            if (!textContent.isEmpty() && !treeStack.isEmpty()) {
+            // Get current element
+            if (!treeStack.isEmpty()) {
                 PluginConfigurationTree current = treeStack.peek();
                 PluginConfiguration config = current.getConfiguration();
                 
-                // Add text content as special property
-                if (config instanceof DefaultPluginConfiguration) {
+                // If element had text content, add it as a property
+                if (!textContent.isEmpty() && config instanceof DefaultPluginConfiguration) {
                     ((DefaultPluginConfiguration) config).setProperty("_textContent", textContent);
+                }
+                
+                // IMPORTANT: Populate children in PluginConfiguration (NEW v2.2.x)
+                // This allows PluginBodyExecutor to iterate through config.getChildren()
+                if (current.hasChildren() && config instanceof DefaultPluginConfiguration) {
+                    java.util.List<PluginConfiguration> childConfigs = new java.util.ArrayList<>();
+                    for (PluginConfigurationTree child : current.getChildren()) {
+                        childConfigs.add(child.getConfiguration());
+                    }
+                    ((DefaultPluginConfiguration) config).setChildren(childConfigs);
+                    LOG.debug("Populated {} children in PluginConfiguration for element: {}", childConfigs.size(), localName);
                 }
             }
             

@@ -92,7 +92,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         // When
@@ -113,7 +112,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         
         // When/Then
         plugin.initialize(configuration);
@@ -129,7 +127,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         
         // When/Then
         plugin.initialize(configuration);
@@ -215,7 +212,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -233,7 +229,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         // Execute multiple times
@@ -255,7 +250,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -273,7 +267,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -291,7 +284,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -309,7 +301,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -327,7 +318,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -345,7 +335,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -360,7 +349,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -375,7 +363,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        plugin.setElementDef(elementDef);
         plugin.initialize(configuration);
         
         Variable result = plugin.execute(context);
@@ -449,7 +436,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -478,7 +464,6 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithRelativePath() throws Exception {
         IncludePlugin newPlugin = new IncludePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("path")).thenReturn("./relative/path/file.xml");
@@ -491,7 +476,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -502,7 +486,6 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithFullAbsolutePath() throws Exception {
         IncludePlugin newPlugin = new IncludePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("path")).thenReturn("/absolute/path/file.xml");
@@ -515,7 +498,6 @@ public class IncludePluginTest {
         when(elementDef.hasOperations()).thenReturn(false);
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);

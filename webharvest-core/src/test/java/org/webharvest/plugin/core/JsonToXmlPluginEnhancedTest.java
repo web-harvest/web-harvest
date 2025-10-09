@@ -45,7 +45,6 @@ public class JsonToXmlPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new JsonToXmlPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== Metadata Tests ====================

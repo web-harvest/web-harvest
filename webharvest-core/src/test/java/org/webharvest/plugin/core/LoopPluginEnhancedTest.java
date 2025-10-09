@@ -43,7 +43,6 @@ public class LoopPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new LoopPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

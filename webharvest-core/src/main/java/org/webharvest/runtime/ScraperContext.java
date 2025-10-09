@@ -55,7 +55,6 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.variables.VariableName;
-import org.webharvest.runtime.web.HttpClientManager;
 import org.webharvest.utils.Assert;
 import org.webharvest.utils.CommonUtil;
 import org.webharvest.utils.KeyValuePair;
@@ -69,8 +68,6 @@ import com.google.inject.Inject;
  * scraper execution are stored in this context.
  */
 public class ScraperContext implements DynamicScopeContext {
-
-    @Inject private HttpClientManager httpClientManager;
 
     private Stack<Set<String>> variablesNamesStack = new Stack<Set<String>>();
 
@@ -95,8 +92,8 @@ public class ScraperContext implements DynamicScopeContext {
     @PostConstruct
     public void initContext() {
         setLocalVar("sys", new ScriptingVariable(new SystemUtilities(this)));
-        setLocalVar("http", new ScriptingVariable(
-                httpClientManager.getHttpInfo()));
+        // Bug #41: httpClientManager removed - HttpComponents 4.x migration
+        // ${http} variable no longer available
     }
 
     public void setLocalVar(String name, Object value) {

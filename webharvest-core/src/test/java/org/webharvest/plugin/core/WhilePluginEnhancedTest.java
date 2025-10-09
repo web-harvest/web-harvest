@@ -41,7 +41,6 @@ public class WhilePluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new WhilePlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

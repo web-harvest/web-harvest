@@ -49,7 +49,6 @@ public class SetVarPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new SetVarPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -76,7 +75,6 @@ public class SetVarPluginTest {
     @Test
     public void testSetVarPluginInitialize() throws PluginException {
         SetVarPlugin newPlugin = new SetVarPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("var", "")).thenReturn("testVar");
@@ -90,7 +88,6 @@ public class SetVarPluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testSetVarPluginInitializeWithNullConfiguration() throws PluginException {
         SetVarPlugin newPlugin = new SetVarPlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }

@@ -37,8 +37,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
+// ULTRA-LEAN v2.2.x: Removed IElementDef imports
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -47,7 +46,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.XmlNode;
+// ULTRA-LEAN v2.2.x: No more XmlNode needed
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -57,12 +56,6 @@ import static org.testng.Assert.*;
  */
 public class EmptyPluginTest {
 
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
-    
     @Mock
     private DynamicScopeContext context;
     
@@ -76,14 +69,6 @@ public class EmptyPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new EmptyPlugin();
         
-        // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
-        
-        // Mock elementDef
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(xmlNode.getText()).thenReturn("Test empty content");
-        when(elementDef.hasOperations()).thenReturn(false);
         
         // Mock configuration
         when(configuration.getProperty("id")).thenReturn(null); // Optional attribute
@@ -124,7 +109,6 @@ public class EmptyPluginTest {
     public void testEmptyPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         EmptyPlugin newPlugin = new EmptyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -162,7 +146,6 @@ public class EmptyPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -185,7 +168,6 @@ public class EmptyPluginTest {
     public void testEmptyPluginWithIdAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         EmptyPlugin newPlugin = new EmptyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with 'id' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -292,7 +274,6 @@ public class EmptyPluginTest {
     @Test
     public void testEmptyPluginWithNullId() throws PluginException, InterruptedException {
         EmptyPlugin newPlugin = new EmptyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn(null);
@@ -307,7 +288,6 @@ public class EmptyPluginTest {
     @Test
     public void testEmptyPluginWithEmptyId() throws PluginException, InterruptedException {
         EmptyPlugin newPlugin = new EmptyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("");
@@ -322,7 +302,6 @@ public class EmptyPluginTest {
     @Test
     public void testEmptyPluginWithSpecialCharacterId() throws PluginException, InterruptedException {
         EmptyPlugin newPlugin = new EmptyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("empty-id_123");

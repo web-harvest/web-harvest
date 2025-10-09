@@ -31,7 +31,6 @@ public class ConfigPluginXMLTest {
         
         // Mock element definition with child elements
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // When
         plugin.initialize(config);
@@ -76,6 +75,11 @@ public class ConfigPluginXMLTest {
         assertTrue(result instanceof org.webharvest.runtime.variables.EmptyVariable);
     }
 }
+
+
+
+
+
 
 
 

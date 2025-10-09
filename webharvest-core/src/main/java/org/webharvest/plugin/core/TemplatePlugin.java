@@ -317,7 +317,9 @@ public class TemplatePlugin extends AbstractPlugin {
         
         LOGGER.info("TemplatePlugin.doExecute: Language: {}, ID: {}", language, templateId);
         LOGGER.info("TemplatePlugin.doExecute: ElementDef: {}", getElementDef());
-        LOGGER.info("TemplatePlugin.doExecute: ElementDef class: {}", getElementDef().getClass().getName());
+        if (getElementDef() != null) {
+            LOGGER.info("TemplatePlugin.doExecute: ElementDef class: {}", getElementDef().getClass().getName());
+        }
         LOGGER.info("TemplatePlugin.doExecute: Context charset: {}", context.getCharset());
         
             try {

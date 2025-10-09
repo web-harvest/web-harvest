@@ -41,7 +41,6 @@ public class SleepPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new SleepPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -85,7 +84,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginInitialize() throws PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("500");
@@ -98,7 +96,6 @@ public class SleepPluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testSleepPluginInitializeWithNullConfiguration() throws PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }
@@ -106,7 +103,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginInitializeWithMissingMilliseconds() throws PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn(null);
@@ -119,7 +115,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginInitializeWithEmptyMilliseconds() throws PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("");
@@ -142,7 +137,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginExecuteWithZeroMilliseconds() throws InterruptedException, PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("0");
@@ -160,7 +154,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginExecuteWithInvalidMilliseconds() throws InterruptedException, PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("invalid");
@@ -185,7 +178,6 @@ public class SleepPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("100");
@@ -239,7 +231,6 @@ public class SleepPluginTest {
     @Test
     public void testSleepPluginWithNegativeMilliseconds() throws InterruptedException, PluginException {
         SleepPlugin newPlugin = new SleepPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("milliseconds")).thenReturn("-100");

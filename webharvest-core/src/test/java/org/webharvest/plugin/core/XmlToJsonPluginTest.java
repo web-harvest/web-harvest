@@ -45,7 +45,6 @@ public class XmlToJsonPluginTest {
         plugin = new XmlToJsonPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -131,7 +130,6 @@ public class XmlToJsonPluginTest {
     public void testXmlToJsonPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         XmlToJsonPlugin newPlugin = new XmlToJsonPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -147,7 +145,6 @@ public class XmlToJsonPluginTest {
     public void testXmlToJsonPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         XmlToJsonPlugin newPlugin = new XmlToJsonPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration
         newPlugin.initialize(null);
@@ -167,7 +164,6 @@ public class XmlToJsonPluginTest {
                 return super.doExecute(context);
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -195,7 +191,6 @@ public class XmlToJsonPluginTest {
                 return super.doExecute(context);
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -223,7 +218,6 @@ public class XmlToJsonPluginTest {
                 return super.doExecute(context);
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -251,7 +245,6 @@ public class XmlToJsonPluginTest {
                 return super.doExecute(context);
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -277,7 +270,6 @@ public class XmlToJsonPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);

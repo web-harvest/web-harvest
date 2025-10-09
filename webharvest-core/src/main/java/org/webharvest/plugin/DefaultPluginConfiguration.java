@@ -36,7 +36,10 @@
 */
 package org.webharvest.plugin;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -53,6 +56,7 @@ public class DefaultPluginConfiguration implements PluginConfiguration {
     private final String namespace;
     private final String elementName;
     private final String pluginId;
+    private List<PluginConfiguration> children = new ArrayList<>();
 
     /**
      * Constructor for creating a plugin configuration.
@@ -291,12 +295,32 @@ public class DefaultPluginConfiguration implements PluginConfiguration {
     }
 
     @Override
+    public List<PluginConfiguration> getChildren() {
+        return Collections.unmodifiableList(children);
+    }
+
+    @Override
+    public void setChildren(List<PluginConfiguration> children) {
+        if (children == null) {
+            this.children = new ArrayList<>();
+        } else {
+            this.children = new ArrayList<>(children);
+        }
+    }
+
+    @Override
+    public boolean hasChildren() {
+        return !children.isEmpty();
+    }
+
+    @Override
     public String toString() {
         return "DefaultPluginConfiguration{" +
                 "pluginId='" + pluginId + '\'' +
                 ", namespace='" + namespace + '\'' +
                 ", elementName='" + elementName + '\'' +
                 ", properties=" + properties +
+                ", children=" + children.size() +
                 '}';
     }
 }

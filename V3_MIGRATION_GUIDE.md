@@ -267,3 +267,4 @@ Web-Harvest v3.0's new parser is a major architectural improvement that:
 **Version**: 3.0.0-SNAPSHOT  
 **Status**: POC Complete, Full Implementation Planned
 
+

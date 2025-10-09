@@ -31,7 +31,6 @@ public class ConfigPluginIntegrationTest {
         
         // Mock element definition
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // When
         plugin.initialize(config);
@@ -58,7 +57,6 @@ public class ConfigPluginIntegrationTest {
         
         // Mock element definition
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // When
         plugin.initialize(config);
@@ -85,7 +83,6 @@ public class ConfigPluginIntegrationTest {
         
         // Mock element definition
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // When
         plugin.initialize(config);

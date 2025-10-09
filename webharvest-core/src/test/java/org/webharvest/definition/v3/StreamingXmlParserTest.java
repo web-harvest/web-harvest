@@ -47,7 +47,7 @@ public class StreamingXmlParserTest {
         System.out.println("\n### v3.0 Parser POC: Simple HTTP config ###");
         
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<config>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <http url=\"http://example.com\" method=\"GET\"/>\n" +
             "</config>";
         
@@ -84,7 +84,7 @@ public class StreamingXmlParserTest {
         System.out.println("\n### v3.0 Parser POC: Nested config (http + xpath) ###");
         
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<config>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <http url=\"http://example.com\">\n" +
             "        <xpath expression=\"//title\"/>\n" +
             "    </http>\n" +
@@ -119,8 +119,8 @@ public class StreamingXmlParserTest {
         System.out.println("\n### v3.0 Parser POC: Multiple elements ###");
         
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<config>\n" +
-            "    <var-def name=\"url\"><constant>http://example.com</constant></var-def>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <def var=\"url\"><constant>http://example.com</constant></def>\n" +
             "    <http url=\"${url}\"/>\n" +
             "    <file action=\"write\" path=\"output.txt\"/>\n" +
             "</config>";
@@ -130,7 +130,7 @@ public class StreamingXmlParserTest {
         
         assertEquals(tree.getChildCount(), 3, "Should have 3 children");
         
-        assertEquals(tree.getChildren().get(0).getPluginElementName(), "var-def");
+        assertEquals(tree.getChildren().get(0).getPluginElementName(), "def");
         assertEquals(tree.getChildren().get(1).getPluginElementName(), "http");
         assertEquals(tree.getChildren().get(2).getPluginElementName(), "file");
         
@@ -147,7 +147,7 @@ public class StreamingXmlParserTest {
         System.out.println("\n### v3.0 Parser POC: Text content ###");
         
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<config>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <constant>Hello World</constant>\n" +
             "</config>";
         

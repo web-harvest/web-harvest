@@ -78,7 +78,6 @@ public class JsonToXmlPluginTest {
         plugin = new JsonToXmlPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -125,7 +124,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -141,7 +139,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration - JsonToXmlPlugin throws exception
         newPlugin.initialize(null);
@@ -173,7 +170,6 @@ public class JsonToXmlPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -213,7 +209,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithTagAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with 'tag' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -260,7 +255,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithJsonArray() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -284,7 +278,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithJsonObject() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -308,7 +301,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithInvalidJson() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -332,7 +324,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithCustomTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with custom tag
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -356,7 +347,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithEmptyTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with empty tag
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -380,7 +370,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithNullTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with null tag
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -404,7 +393,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithWhitespaceTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with whitespace tag
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -428,7 +416,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithSpecialCharactersTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with special characters tag
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -452,7 +439,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithNestedObject() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -476,7 +462,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithArrayOfObjects() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -500,7 +485,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithEmptyArray() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -524,7 +508,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithEmptyObject() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -549,7 +532,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithNumericTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -573,7 +555,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithMixedCaseTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -597,7 +578,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithUnicodeTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -621,7 +601,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithLongTag() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -645,7 +624,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithTagContainingDots() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -669,7 +647,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithTagContainingHyphens() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -693,7 +670,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginWithTagContainingUnderscores() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -717,7 +693,6 @@ public class JsonToXmlPluginTest {
     public void testJsonToXmlPluginMultipleExecutions() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         JsonToXmlPlugin newPlugin = new JsonToXmlPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration
         PluginConfiguration config = mock(PluginConfiguration.class);

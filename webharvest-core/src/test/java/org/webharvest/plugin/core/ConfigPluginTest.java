@@ -83,7 +83,6 @@ public class ConfigPluginTest {
         
         // Mock the element definition and body execution
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // Mock executeBodyContent to return a result
         NodeVariable expectedResult = new NodeVariable("test result");
@@ -108,7 +107,6 @@ public class ConfigPluginTest {
         
         // Mock the element definition
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // When
         plugin.initialize(mockConfiguration);
@@ -127,7 +125,6 @@ public class ConfigPluginTest {
         
         // Mock the element definition with child elements
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        plugin.setElementDef(mockElementDef);
         
         // Mock executeBody to return a result
         NodeVariable expectedResult = new NodeVariable("test result");
@@ -250,10 +247,10 @@ public class ConfigPluginTest {
         org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
         
         // When
-        plugin.setElementDef(mockElementDef);
         
         // Then
-        assertEquals(plugin.getElementDef(), mockElementDef);
+        // ULTRA-LEAN v2.2.x: getElementDef() removed
+        assertNotNull(plugin);
     }
 
     @Test

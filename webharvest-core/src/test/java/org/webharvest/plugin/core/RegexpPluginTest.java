@@ -33,7 +33,6 @@ public class RegexpPluginTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         plugin = new RegexpPlugin();
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.hasOperations()).thenReturn(false);

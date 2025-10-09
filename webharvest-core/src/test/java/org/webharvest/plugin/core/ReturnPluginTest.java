@@ -73,10 +73,11 @@ public class ReturnPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new ReturnPlugin();
         
-        // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(mockElementDef);
+        // Mock hasChildren() for new architecture
+        when(mockConfiguration.hasChildren()).thenReturn(false);
+        when(mockConfiguration.getChildren()).thenReturn(java.util.Collections.emptyList());
         
-        // Mock ElementDef methods
+        // Mock ElementDef methods for fallback
         when(mockElementDef.hasOperations()).thenReturn(false);
         when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
     }

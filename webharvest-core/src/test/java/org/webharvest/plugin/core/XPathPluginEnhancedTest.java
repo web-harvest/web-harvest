@@ -46,7 +46,6 @@ public class XPathPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new XPathPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== Metadata Tests ====================

@@ -40,7 +40,6 @@ public class TokenizePluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new TokenizePlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

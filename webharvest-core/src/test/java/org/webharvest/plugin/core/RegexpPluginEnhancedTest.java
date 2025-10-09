@@ -40,7 +40,6 @@ public class RegexpPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new RegexpPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

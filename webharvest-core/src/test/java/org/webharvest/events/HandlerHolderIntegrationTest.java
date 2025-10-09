@@ -43,12 +43,10 @@ import org.webharvest.Harvest;
 import org.webharvest.Harvester;
 import org.webharvest.Harvester.ContextInitCallback;
 import org.webharvest.Registry;
-import org.webharvest.ioc.HttpModule;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.ioc.Scraping;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.WebScraper;
-import org.webharvest.runtime.web.HttpClientManager.ProxySettings;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -67,8 +65,8 @@ public class HandlerHolderIntegrationTest {
 
     @BeforeClass
     public void setUp() {
-        injector = Guice.createInjector(new ScraperModule("."), new HttpModule(
-                ProxySettings.NO_PROXY_SET));
+        // Note: HttpModule removed during HttpComponents 4.x migration
+        injector = Guice.createInjector(new ScraperModule("."));
         harvest = injector.getInstance(Harvest.class);
         harvest.addEventHandler(new EventHandler<DummyEvent>() {
 

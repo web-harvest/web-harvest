@@ -178,13 +178,7 @@
             <groupId>com.google.inject.extensions</groupId>
             <artifactId>guice-assistedinject</artifactId>
         </dependency>
-        <!-- HTTP Client 3.x - old version still used by core code -->
-        <dependency>
-            <groupId>commons-httpclient</groupId>
-            <artifactId>commons-httpclient</artifactId>
-            <version>3.1</version>
-        </dependency>
-        <!-- HTTP Client 4.x - for future migration -->
+        <!-- Bug #41 Fix: Apache HttpComponents 4.x (migrated from commons-httpclient 3.1) -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>

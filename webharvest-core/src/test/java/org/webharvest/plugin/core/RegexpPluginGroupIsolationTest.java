@@ -51,7 +51,6 @@ public class RegexpPluginGroupIsolationTest {
         config1.put("source", "john@example.com");
         
         plugin.initialize(new DefaultPluginConfiguration("test-regexp", "http://org.webharvest/schema/2.1/core", "regexp", config1));
-        plugin.setElementDef(null); // Not needed for this test
         Variable result1 = plugin.execute(context);
         
         // Verify first regexp sets 4 group variables (group0-group3)
@@ -67,7 +66,6 @@ public class RegexpPluginGroupIsolationTest {
         config2.put("source", "Price: 999");
         
         plugin2.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config2));
-        plugin2.setElementDef(null);
         Variable result2 = plugin2.execute(context);
         
         // CRITICAL: After second regexp, old groups (group2, group3) should be CLEARED
@@ -105,7 +103,6 @@ public class RegexpPluginGroupIsolationTest {
             config.put("source", testCase);
             
             plugin.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config));
-            plugin.setElementDef(null);
             Variable result = plugin.execute(context);
             
             // Verify groups are from CURRENT iteration, not previous
@@ -136,7 +133,6 @@ public class RegexpPluginGroupIsolationTest {
         outerConfig.put("source", "key1=value1");
         
         outerPlugin.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", outerConfig));
-        outerPlugin.setElementDef(null);
         Variable outerResult = outerPlugin.execute(context);
         
         String outerGroup1 = context.getVar("group1").toString();
@@ -152,7 +148,6 @@ public class RegexpPluginGroupIsolationTest {
         innerConfig.put("source", "value1");
         
         innerPlugin.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", innerConfig));
-        innerPlugin.setElementDef(null);
         Variable innerResult = innerPlugin.execute(context);
         
         // CRITICAL: Inner execution should REPLACE outer groups
@@ -182,7 +177,6 @@ public class RegexpPluginGroupIsolationTest {
         config1.put("source", "CODE:123");
         
         plugin1.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config1));
-        plugin1.setElementDef(null);
         plugin1.execute(context);
         
         assertEquals(context.getVar("group1").toString(), "CODE");
@@ -195,7 +189,6 @@ public class RegexpPluginGroupIsolationTest {
         config2.put("source", "this is a test string");
         
         plugin2.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config2));
-        plugin2.setElementDef(null);
         plugin2.execute(context);
         
         // group0 should exist (full match)
@@ -226,7 +219,6 @@ public class RegexpPluginGroupIsolationTest {
         config1.put("source", "ABCDEFGHIJ");
         
         plugin1.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config1));
-        plugin1.setElementDef(null);
         plugin1.execute(context);
         
         // Verify all 10 groups are set
@@ -241,7 +233,6 @@ public class RegexpPluginGroupIsolationTest {
         config2.put("source", "99-88");
         
         plugin2.initialize(new DefaultPluginConfiguration("test-regexp-id", "http://org.webharvest/schema/2.1/core", "regexp", config2));
-        plugin2.setElementDef(null);
         plugin2.execute(context);
         
         // Verify new groups

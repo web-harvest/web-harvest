@@ -453,6 +453,8 @@ public class DefaultPluginRegistryTest {
             // No-op
         }
 
+        // Implement getElementDef/setElementDef for backward compatibility
+        
         @Override
         public IElementDef getElementDef() {
             return null;

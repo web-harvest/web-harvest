@@ -274,6 +274,13 @@ public class ReturnPlugin extends AbstractPlugin {
      */
     private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
         final List<Object> resultList = new ArrayList<Object>();
+        
+        // Null safety
+        if (getElementDef() == null) {
+            // No logging if LOGGER not available
+            return EmptyVariable.INSTANCE;
+        }
+        
         final org.webharvest.definition.IElementDef[] defs = getElementDef().getOperationDefs();
         
         for (org.webharvest.definition.IElementDef def : defs) {

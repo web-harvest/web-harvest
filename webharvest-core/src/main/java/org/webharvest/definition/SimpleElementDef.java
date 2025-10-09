@@ -33,8 +33,8 @@ public class SimpleElementDef extends AbstractElementDef {
     }
 
     public Class<? extends Processor> getProcessorClass() {
-        // Return a default processor class
-        return org.webharvest.runtime.processors.EmptyProcessor.class;
+        // EmptyProcessor was removed - return null (SimpleElementDef is legacy)
+        return null;
     }
 
     public String getId() {

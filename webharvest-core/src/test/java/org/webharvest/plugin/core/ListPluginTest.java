@@ -45,7 +45,6 @@ public class ListPluginTest {
         plugin = new ListPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -132,7 +131,6 @@ public class ListPluginTest {
     public void testListPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         ListPlugin newPlugin = new ListPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -148,7 +146,6 @@ public class ListPluginTest {
     public void testListPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         ListPlugin newPlugin = new ListPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration should throw exception
         newPlugin.initialize(null);
@@ -209,7 +206,6 @@ public class ListPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);

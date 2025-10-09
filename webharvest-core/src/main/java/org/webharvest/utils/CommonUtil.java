@@ -45,7 +45,6 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.webharvest.exception.VariableException;
 import org.webharvest.runtime.variables.*;
-import org.webharvest.runtime.web.HttpInfo;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.stream.StreamResult;
@@ -691,8 +690,7 @@ public class CommonUtil {
             return new ListVariable((Collection) value);
         } else if (value instanceof Object[]) {
             return new ListVariable(Arrays.asList((Object[]) value));
-        } else if (value instanceof SystemUtilities
-                || value instanceof HttpInfo) {
+        } else if (value instanceof SystemUtilities) {
             return new ScriptingVariable(value);
         } else if (value.getClass().getName().equals("org.mozilla.javascript.NativeJavaObject")) {
             // Bug #29 Fix: Handle NativeJavaObject from JavaScript/Rhino

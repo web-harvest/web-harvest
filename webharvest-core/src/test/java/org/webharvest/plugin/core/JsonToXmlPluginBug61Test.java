@@ -53,7 +53,6 @@ public class JsonToXmlPluginBug61Test {
         
         plugin.initialize(new DefaultPluginConfiguration("test-json-to-xml", 
                 "http://org.webharvest/schema/2.1/core", "json-to-xml", config));
-        plugin.setElementDef(null);
         
         // Mock body execution by directly testing with JSON string
         // We'll need to test this differently since we can't easily mock executeBody

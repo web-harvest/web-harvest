@@ -35,7 +35,6 @@ public class VarPluginTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         plugin = new VarPlugin();
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.hasOperations()).thenReturn(false);

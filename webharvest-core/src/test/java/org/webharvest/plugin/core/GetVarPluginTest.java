@@ -47,7 +47,6 @@ public class GetVarPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new GetVarPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -73,7 +72,6 @@ public class GetVarPluginTest {
     @Test
     public void testGetVarPluginInitialize() throws PluginException {
         GetVarPlugin newPlugin = new GetVarPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("var", "")).thenReturn("testVar");

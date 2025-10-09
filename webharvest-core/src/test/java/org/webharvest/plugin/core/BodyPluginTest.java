@@ -49,7 +49,6 @@ public class BodyPluginTest {
         plugin = new BodyPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -96,7 +95,6 @@ public class BodyPluginTest {
     public void testBodyPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         BodyPlugin newPlugin = new BodyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -112,7 +110,6 @@ public class BodyPluginTest {
     public void testBodyPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         BodyPlugin newPlugin = new BodyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration
         newPlugin.initialize(null);
@@ -132,7 +129,6 @@ public class BodyPluginTest {
                 return bodyResult;
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -160,7 +156,6 @@ public class BodyPluginTest {
                 return null;
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -185,7 +180,6 @@ public class BodyPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -214,7 +208,6 @@ public class BodyPluginTest {
     public void testBodyPluginWithIdAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         BodyPlugin newPlugin = new BodyPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with 'id' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -232,7 +225,6 @@ public class BodyPluginTest {
                 return bodyResult;
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         testPlugin.initialize(config);

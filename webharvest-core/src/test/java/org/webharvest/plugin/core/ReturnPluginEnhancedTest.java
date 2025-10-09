@@ -40,7 +40,6 @@ public class ReturnPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new ReturnPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

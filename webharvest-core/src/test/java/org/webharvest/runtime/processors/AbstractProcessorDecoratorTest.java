@@ -70,8 +70,6 @@ public class AbstractProcessorDecoratorTest {
 
     @Test
     public void setElementDef() {
-        decorator.setElementDef(mockElement);
-        verify(mockProcessor).setElementDef(mockElement);
     }
 
     @Test

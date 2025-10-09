@@ -143,6 +143,31 @@ public interface PluginConfiguration {
      * @return plugin ID
      */
     String getPluginId();
+
+    /**
+     * Gets list of child plugin configurations (for new architecture - v2.2.x).
+     * This replaces the old IElementDef.getOperationDefs() method.
+     * 
+     * @return list of child configurations, empty list if no children
+     * @since 2.2.0
+     */
+    java.util.List<PluginConfiguration> getChildren();
+    
+    /**
+     * Sets list of child plugin configurations (for new architecture - v2.2.x).
+     * 
+     * @param children list of child configurations
+     * @since 2.2.0
+     */
+    void setChildren(java.util.List<PluginConfiguration> children);
+    
+    /**
+     * Checks if this configuration has any children.
+     * 
+     * @return true if has children, false otherwise
+     * @since 2.2.0
+     */
+    boolean hasChildren();
 }
 
 

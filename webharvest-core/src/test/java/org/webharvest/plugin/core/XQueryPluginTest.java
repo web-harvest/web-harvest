@@ -271,3 +271,4 @@ public class XQueryPluginTest {
         // Results depend on XQuery execution, but should not be null
     }
 }
+

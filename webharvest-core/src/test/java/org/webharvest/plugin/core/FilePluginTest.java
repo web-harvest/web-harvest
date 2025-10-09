@@ -33,7 +33,6 @@ public class FilePluginTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         plugin = new FilePlugin();
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.hasOperations()).thenReturn(false);

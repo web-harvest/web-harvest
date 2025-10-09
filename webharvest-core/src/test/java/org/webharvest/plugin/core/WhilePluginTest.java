@@ -36,7 +36,6 @@ public class WhilePluginTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         plugin = new WhilePlugin();
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.hasOperations()).thenReturn(false);

@@ -50,7 +50,6 @@ public class DefPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new DefPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -87,7 +86,6 @@ public class DefPluginTest {
     @Test
     public void testDefPluginInitialize() throws PluginException {
         DefPlugin newPlugin = new DefPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("var", "")).thenReturn("testVar");
@@ -101,7 +99,6 @@ public class DefPluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testDefPluginInitializeWithNullConfiguration() throws PluginException {
         DefPlugin newPlugin = new DefPlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }

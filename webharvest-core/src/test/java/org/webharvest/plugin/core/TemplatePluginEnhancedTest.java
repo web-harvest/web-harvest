@@ -47,7 +47,6 @@ public class TemplatePluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new TemplatePlugin();
-        plugin.setElementDef(elementDef);
     }
     
     // ==================== Metadata Tests ====================

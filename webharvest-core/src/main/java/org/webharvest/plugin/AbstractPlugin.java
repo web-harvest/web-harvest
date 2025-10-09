@@ -232,42 +232,50 @@ public abstract class AbstractPlugin implements Plugin {
 
     /**
      * Executes the body content of this plugin.
-     * This method delegates to ExecutableBodyContentProvider to execute child elements.
+     * NEW ARCHITECTURE (v2.2.x): Uses PluginBodyExecutor instead of ExecutableBodyContentProvider.
+     * Falls back to old architecture for backward compatibility.
      * 
      * @param context the execution context
      * @return the result of executing the body content
      * @throws InterruptedException if execution is interrupted
      */
     protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("AbstractPlugin.executeBody() called for plugin: " + getClass().getSimpleName());
-        if (elementDef == null) {
-            System.out.println("AbstractPlugin.executeBody(): No element definition available");
-            LOGGER.debug("No element definition available for body execution");
+        LOGGER.debug("AbstractPlugin.executeBody() called for plugin: {}", getClass().getSimpleName());
+        
+        // Null safety
+        if (context == null) {
+            LOGGER.warn("Context is null in executeBody()");
             return EmptyVariable.INSTANCE;
         }
         
-        System.out.println("AbstractPlugin.executeBody(): elementDef = " + elementDef);
-        System.out.println("AbstractPlugin.executeBody(): elementDef.hasOperations() = " + elementDef.hasOperations());
-        LOGGER.debug("Executing body content for plugin: {}", getClass().getSimpleName());
+        // NEW ARCHITECTURE (v2.2.x): Use PluginBodyExecutor with PluginConfiguration.getChildren()
+        if (configuration != null && Boolean.TRUE.equals(configuration.hasChildren())) {
+            LOGGER.debug("Using NEW architecture: PluginBodyExecutor with {} children", configuration.getChildren().size());
+            try {
+                PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
+                return executor.executeBody(configuration, context);
+            } catch (Exception e) {
+                LOGGER.warn("PluginBodyExecutor failed: {}", e.getMessage());
+                // Fall through to old architecture
+            }
+        }
         
-        try {
-            // Create ExecutableBodyContentProvider to execute child elements
-            ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
-            Variable result = bodyProvider.executeBody(context);
-            LOGGER.debug("Body execution completed with result: {}", result);
-            return result;
-        } catch (Exception e) {
-            LOGGER.warn("Body execution failed: {}", e.getMessage());
-            // Fallback to text content if body execution fails
+        // FALLBACK: Old architecture (if elementDef is set but configuration has no children)
+        // This supports backward compatibility during migration
+        if (elementDef != null && elementDef.hasOperations()) {
+            LOGGER.debug("Using OLD architecture fallback: ExecutableBodyContentProvider");
             try {
                 ExecutableBodyContentProvider bodyProvider = new ExecutableBodyContentProvider(elementDef);
-                Variable fallbackResult = bodyProvider.getBodyTextContent(context);
-                LOGGER.debug("Fallback to text content completed with result: {}", fallbackResult);
-                return fallbackResult;
-            } catch (Exception fallbackException) {
-                LOGGER.error("Both body execution and text content extraction failed", fallbackException);
+                Variable result = bodyProvider.executeBody(context);
+                LOGGER.debug("Body execution completed with result: {}", result);
+                return result;
+            } catch (Exception e) {
+                LOGGER.warn("Body execution failed: {}", e.getMessage());
                 return EmptyVariable.INSTANCE;
             }
         }
+        
+        LOGGER.debug("No body content to execute");
+        return EmptyVariable.INSTANCE;
     }
 }

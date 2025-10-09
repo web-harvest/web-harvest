@@ -44,7 +44,6 @@ public class StylesheetPluginTest {
         plugin = new StylesheetPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -91,7 +90,6 @@ public class StylesheetPluginTest {
     public void testStylesheetPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         StylesheetPlugin newPlugin = new StylesheetPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -107,7 +105,6 @@ public class StylesheetPluginTest {
     public void testStylesheetPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         StylesheetPlugin newPlugin = new StylesheetPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration
         newPlugin.initialize(null);
@@ -138,7 +135,6 @@ public class StylesheetPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -167,7 +163,6 @@ public class StylesheetPluginTest {
     public void testStylesheetPluginWithIdAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         StylesheetPlugin newPlugin = new StylesheetPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with 'id' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -184,3 +179,4 @@ public class StylesheetPluginTest {
         assertTrue(result instanceof EmptyVariable);
     }
 }
+

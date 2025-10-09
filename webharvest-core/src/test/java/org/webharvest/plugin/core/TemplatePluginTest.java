@@ -41,8 +41,9 @@ public class TemplatePluginTest {
         when(mockContext.getVar(anyString())).thenReturn(EmptyVariable.INSTANCE);
         doNothing().when(mockContext).setLocalVar(anyString(), any());
         
-        // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(mockElementDef);
+        // Mock PluginConfiguration.hasChildren() for new architecture
+        when(mockConfiguration.hasChildren()).thenReturn(false);
+        when(mockConfiguration.getChildren()).thenReturn(java.util.Collections.emptyList());
     }
 
     @Test

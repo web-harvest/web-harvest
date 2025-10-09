@@ -47,7 +47,6 @@ public class ElsePluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new ElsePlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -89,7 +88,6 @@ public class ElsePluginTest {
     @Test
     public void testElsePluginInitialize() throws PluginException {
         ElsePlugin newPlugin = new ElsePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("elseId");
@@ -102,7 +100,6 @@ public class ElsePluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testElsePluginInitializeWithNullConfiguration() throws PluginException {
         ElsePlugin newPlugin = new ElsePlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }
@@ -127,7 +124,6 @@ public class ElsePluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         testPlugin.initialize(config);

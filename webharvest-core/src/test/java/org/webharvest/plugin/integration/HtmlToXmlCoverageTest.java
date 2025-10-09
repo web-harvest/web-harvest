@@ -38,3 +38,4 @@ public class HtmlToXmlCoverageTest extends XmlBasedIntegrationTestBase {
     }
 }
 
+

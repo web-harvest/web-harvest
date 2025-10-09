@@ -48,7 +48,6 @@ public class CallParamPluginTest {
         plugin = new CallParamPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -102,7 +101,6 @@ public class CallParamPluginTest {
     public void testCallParamPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         CallParamPlugin newPlugin = new CallParamPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -119,7 +117,6 @@ public class CallParamPluginTest {
     public void testCallParamPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         CallParamPlugin newPlugin = new CallParamPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration
         newPlugin.initialize(null);
@@ -129,7 +126,6 @@ public class CallParamPluginTest {
     public void testCallParamPluginInitializeWithMissingName() throws PluginException {
         // Create a new plugin instance for this test
         CallParamPlugin newPlugin = new CallParamPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with missing required 'name' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -142,7 +138,6 @@ public class CallParamPluginTest {
     public void testCallParamPluginInitializeWithEmptyName() throws PluginException {
         // Create a new plugin instance for this test
         CallParamPlugin newPlugin = new CallParamPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with empty 'name' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -176,7 +171,6 @@ public class CallParamPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -223,7 +217,6 @@ public class CallParamPluginTest {
     public void testCallParamPluginWithIdAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         CallParamPlugin newPlugin = new CallParamPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with both 'name' and 'id' attributes
         PluginConfiguration config = mock(PluginConfiguration.class);

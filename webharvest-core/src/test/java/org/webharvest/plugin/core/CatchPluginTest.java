@@ -48,7 +48,10 @@ public class CatchPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new CatchPlugin();
         
-        plugin.setElementDef(elementDef);
+        // Mock hasChildren() for new architecture
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.emptyList());
+        
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -90,7 +93,6 @@ public class CatchPluginTest {
     @Test
     public void testCatchPluginInitialize() throws PluginException {
         CatchPlugin newPlugin = new CatchPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("catchId");
@@ -103,7 +105,6 @@ public class CatchPluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testCatchPluginInitializeWithNullConfiguration() throws PluginException {
         CatchPlugin newPlugin = new CatchPlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }
@@ -152,7 +153,6 @@ public class CatchPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         testPlugin.initialize(config);
@@ -175,7 +175,6 @@ public class CatchPluginTest {
     @Test
     public void testCatchPluginWithIdAttribute() throws PluginException, InterruptedException {
         CatchPlugin newPlugin = new CatchPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("catchId");

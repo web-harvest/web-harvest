@@ -48,7 +48,6 @@ public class TryPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new TryPlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -90,7 +89,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginInitialize() throws PluginException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("tryId");
@@ -103,7 +101,6 @@ public class TryPluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testTryPluginInitializeWithNullConfiguration() throws PluginException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }
@@ -128,7 +125,6 @@ public class TryPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         testPlugin.initialize(config);
@@ -151,7 +147,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithIdAttribute() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("tryId");
@@ -185,7 +180,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithSpecialCharactersInId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try@#$");
@@ -203,7 +197,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithUnicodeInId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("尝试");
@@ -221,7 +214,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithVeryLongId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("very-long-try-plugin-id-with-many-characters-to-test-system");
@@ -239,7 +231,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithNumericId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try123");
@@ -257,7 +248,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithHyphenatedId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try-test-id-with-hyphens");
@@ -275,7 +265,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithUnderscoreId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try_test_id");
@@ -293,7 +282,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithMixedCaseId() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("TryTestId");
@@ -327,7 +315,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithVariousIDs() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try-123-test");
@@ -343,7 +330,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithNumericID() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("999");
@@ -359,7 +345,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithUnicodeID() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("测试中文");
@@ -419,7 +404,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithSpecialCharID() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("try-<>&\"'");
@@ -435,7 +419,6 @@ public class TryPluginTest {
     @Test
     public void testTryPluginWithLongID() throws PluginException, InterruptedException {
         TryPlugin newPlugin = new TryPlugin();
-        newPlugin.setElementDef(elementDef);
         
         StringBuilder longId = new StringBuilder();
         for (int i = 0; i < 100; i++) {

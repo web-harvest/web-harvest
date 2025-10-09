@@ -33,3 +33,4 @@ public class XPathCoverageTest extends XmlBasedIntegrationTestBase {
     }
 }
 
+

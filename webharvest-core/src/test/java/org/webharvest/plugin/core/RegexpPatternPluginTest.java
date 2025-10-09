@@ -48,7 +48,6 @@ public class RegexpPatternPluginTest {
         plugin = new RegexpPatternPlugin();
         
         // Set ElementDef to avoid NullPointerException
-        plugin.setElementDef(elementDef);
         
         // Mock elementDef
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
@@ -95,7 +94,6 @@ public class RegexpPatternPluginTest {
     public void testRegexpPatternPluginInitialize() throws PluginException {
         // Create a new plugin instance for this test
         RegexpPatternPlugin newPlugin = new RegexpPatternPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test successful initialization
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -111,7 +109,6 @@ public class RegexpPatternPluginTest {
     public void testRegexpPatternPluginInitializeWithNullConfiguration() throws PluginException {
         // Create a new plugin instance for this test
         RegexpPatternPlugin newPlugin = new RegexpPatternPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Test initialization with null configuration
         newPlugin.initialize(null);
@@ -142,7 +139,6 @@ public class RegexpPatternPluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         // Initialize the plugin
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -171,7 +167,6 @@ public class RegexpPatternPluginTest {
     public void testRegexpPatternPluginWithIdAttribute() throws PluginException, InterruptedException {
         // Create a new plugin instance for this test
         RegexpPatternPlugin newPlugin = new RegexpPatternPlugin();
-        newPlugin.setElementDef(elementDef);
         
         // Mock configuration with 'id' attribute
         PluginConfiguration config = mock(PluginConfiguration.class);

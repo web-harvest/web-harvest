@@ -47,7 +47,6 @@ public class CasePluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new CasePlugin();
         
-        plugin.setElementDef(elementDef);
         
         when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         when(elementDef.getNode()).thenReturn(xmlNode);
@@ -89,7 +88,6 @@ public class CasePluginTest {
     @Test
     public void testCasePluginInitialize() throws PluginException {
         CasePlugin newPlugin = new CasePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("testId");
@@ -102,7 +100,6 @@ public class CasePluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testCasePluginInitializeWithNullConfiguration() throws PluginException {
         CasePlugin newPlugin = new CasePlugin();
-        newPlugin.setElementDef(elementDef);
         
         newPlugin.initialize(null);
     }
@@ -110,7 +107,6 @@ public class CasePluginTest {
     @Test
     public void testCasePluginInitializeWithMissingId() throws PluginException {
         CasePlugin newPlugin = new CasePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn(null);
@@ -123,7 +119,6 @@ public class CasePluginTest {
     @Test
     public void testCasePluginInitializeWithEmptyId() throws PluginException {
         CasePlugin newPlugin = new CasePlugin();
-        newPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("   ");
@@ -153,7 +148,6 @@ public class CasePluginTest {
                 throw new InterruptedException("Test interruption");
             }
         };
-        testPlugin.setElementDef(elementDef);
         
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("testId");
@@ -254,7 +248,6 @@ public class CasePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn(null);
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -269,7 +262,6 @@ public class CasePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("");
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -284,7 +276,6 @@ public class CasePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("case-id_123");
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -299,7 +290,6 @@ public class CasePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("12345");
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);
@@ -314,7 +304,6 @@ public class CasePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("id")).thenReturn("测试");
         
-        newPlugin.setElementDef(elementDef);
         newPlugin.initialize(config);
         
         Variable result = newPlugin.execute(context);

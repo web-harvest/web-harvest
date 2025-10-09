@@ -41,7 +41,6 @@ public class TryPluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new TryPlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

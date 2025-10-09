@@ -40,7 +40,6 @@ public class FilePluginEnhancedTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         plugin = new FilePlugin();
-        plugin.setElementDef(elementDef);
     }
     
     @Test

@@ -345,6 +345,8 @@ public class PluginFactoryTest {
             return null;
         }
         
+        // Implement setElementDef/getElementDef for backward compatibility
+        
         @Override
         public void setElementDef(org.webharvest.definition.IElementDef elementDef) {
             // Not used in tests
