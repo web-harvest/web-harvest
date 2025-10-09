@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Impact**: Images, PDFs, videos now handled correctly without corruption
 - **Tests**: 4 validation tests, 2618/2618 PASS, zero regression
 
+**Bug #13: MIME Types Detection for RSS/XML Feeds** (r716) - Verified Fixed
+- **Status**: Fixed by architecture refactoring (v2.1.0+), verified in v2.2.1
+- **Issue**: Old HttpProcessor used whitelist (text/*, application/xml), user wanted application/rss
+- **Problem**: Had to manually add each text MIME type (rss, atom, json, etc.)
+- **Fix**: New HttpPlugin uses inverse approach - detect binary, default to text
+- **Impact**: application/rss+xml, application/atom+xml, application/json all work automatically
+- **Benefits**: Zero maintenance, extensible, safer defaults
+- **Tests**: 8 verification tests (RSS, Atom, JSON, XML), 2626/2626 PASS
+
 **Bug #18: HttpProcessor Charset Detection** (r712) - Resolved  
 - **Status**: Not a Bug - Correct HTTP Behavior
 - **Issue**: User expected meta tag charset, but HTTP header charset was used

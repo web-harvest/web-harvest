@@ -243,6 +243,154 @@ private boolean isBinaryContentType(String contentType) {
 
 ---
 
+### Bug #13: MIME Types Detection for RSS/XML Feeds
+
+**Status**: ✅ VERIFIED FIXED (Architecture Change)  
+**Reported**: GitHub Issue #13  
+**Fixed in**: v2.1.0+ (architecture refactoring)  
+**Verified**: v2.2.1  
+**Severity**: Low (enhancement request)  
+**Component**: `webharvest-core` - `HttpPlugin` MIME type detection
+
+**Note**: Bug existed in old `HttpProcessor`. Fixed by new architecture approach in `HttpPlugin`.
+
+#### Description
+In old `HttpProcessor`, MIME type detection used whitelist approach: check if type starts with "text" or equals "application/xml". User wanted to add "application/rss" but had to modify code for each new text type.
+
+**User Report**:
+> "In HttpProcessor.execute() the response is tried to convert to a string if
+> MIME-Type starts with 'text' or 'application/xml' or if it is null.
+> For me I added also 'application/rss'."
+
+**Old Problem**:
+```java
+// Old HttpProcessor (whitelist approach):
+if (mimeType.startsWith("text") 
+    || mimeType.equals("application/xml")
+    || mimeType == null) {
+    // Treat as text
+}
+// Problem: Have to add each text type manually!
+```
+
+#### Root Cause
+**Old Architecture (HttpProcessor)**:
+- Used **whitelist** approach: explicitly check for text types
+- Problem: Every new text type required code change
+- User wanted `application/rss+xml` → had to add to whitelist
+
+#### Fix (v2.1.0+ - Architecture Change)
+**New Architecture (HttpPlugin)** uses **inverse approach**:
+- **Blacklist**: Detect what IS binary, everything else defaults to text
+- No need to add text types manually
+
+**Implementation**:
+```java
+// New HttpPlugin (blacklist approach):
+private boolean isBinaryContentType(String contentType) {
+    // Only explicitly list BINARY types
+    return mimeType.startsWith("image/")
+        || mimeType.startsWith("video/")
+        || mimeType.startsWith("audio/")
+        || mimeType.equals("application/pdf")
+        || mimeType.equals("application/zip")
+        // ... other binary types
+        
+    // Everything else defaults to TEXT!
+    // This automatically handles:
+    // - application/xml ✓
+    // - application/rss+xml ✓
+    // - application/atom+xml ✓
+    // - application/json ✓
+    // - text/* ✓
+}
+```
+
+**Benefits**:
+1. **Automatic Support**: All text-like types work automatically
+2. **No Code Changes**: New text types don't require updates
+3. **Safer Default**: Unknown types treated as text (safe)
+4. **Extensible**: Easy to add new binary types if needed
+
+#### Verification Tests
+Added 8 comprehensive tests to verify fix:
+
+1. ✅ `testBug13_XmlMimeTypes_TreatedAsText()`
+   - application/xml → TEXT
+   - application/rss+xml → TEXT (Bug #13!)
+   - application/atom+xml → TEXT
+   - application/xhtml+xml → TEXT
+
+2. ✅ `testBug13_JsonAndTextTypes_TreatedAsText()`
+   - application/json → TEXT
+   - application/javascript → TEXT
+   - text/* → TEXT
+
+3. ✅ `testBug13_MimeTypesWithCharset_TreatedAsText()`
+   - application/rss+xml; charset=UTF-8 → TEXT
+
+4. ✅ `testBug13_BinaryTypes_TreatedAsBinary()`
+   - Regression: Binary types still detected
+
+5. ✅ `testBug13_NullAndEmptyMimeTypes_DefaultToText()`
+   - null/empty → TEXT (safe default)
+
+6. ✅ `testBug13_RealWorldRssFeedMimeTypes()`
+   - RSS 2.0, Atom 1.0, RDF → TEXT
+
+7. ✅ `testBug13_ApplicationTypesDefaultToText()`
+   - application/soap+xml, application/ld+json → TEXT
+
+8. ✅ `testBug13_DocumentationAndVerification()`
+   - Documents the fix approach
+
+**Test Location**:
+- `HttpPluginBug13MimeTypesTest.java`
+
+**Test Results**:
+- Bug #13 tests: 8/8 PASS (100%)
+- Full core suite: 2626/2626 PASS [was 2618]
+- Zero regression
+
+#### Files Changed
+- `HttpPluginBug13MimeTypesTest.java` - NEW: Verification tests
+
+**Note**: No code changes needed - bug fixed by architecture refactoring.
+
+#### User Impact
+**Before Fix** (old HttpProcessor):
+- ✗ application/rss+xml not recognized
+- ✗ Had to modify code for each new text type
+- ✗ Maintenance burden
+
+**After Fix** (HttpPlugin v2.1.0+):
+- ✅ application/rss+xml works automatically
+- ✅ application/atom+xml works automatically
+- ✅ ANY text-like MIME type works
+- ✅ Zero maintenance
+
+**Examples that work automatically**:
+```xml
+<!-- RSS feeds -->
+<http url="http://example.com/feed.rss"/>
+<!-- Content-Type: application/rss+xml → TEXT ✓ -->
+
+<!-- Atom feeds -->
+<http url="http://example.com/feed.atom"/>
+<!-- Content-Type: application/atom+xml → TEXT ✓ -->
+
+<!-- JSON APIs -->
+<http url="http://api.example.com/data"/>
+<!-- Content-Type: application/json → TEXT ✓ -->
+```
+
+#### References
+- Original report: [GitHub Issue #13]
+- Fixed by: Architecture refactoring (v2.1.0+)
+- Verified: HttpPluginBug13MimeTypesTest.java (v2.2.1)
+
+---
+
 ### Bug #18: HttpProcessor Does Not Recognize Charset in Some Cases
 
 **Status**: ✅ RESOLVED (By Architecture Change + Not a Bug)  
@@ -1602,21 +1750,21 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 
 ## Statistics
 
-- **Total Bugs Addressed**: 11 unique bugs (+ 1 duplicate identified)
-  - **v2.1.0**: 1 bug (Bug #60 - during migration)
+- **Total Bugs Addressed**: 12 unique bugs (+ 1 duplicate identified)
+  - **v2.1.0**: 2 bugs (Bug #13 by architecture, Bug #60 - during migration)
   - **v2.2.0**: 1 bug (ConfigPlugin scope fix)
-  - **v2.2.1**: 10 bugs (Bug #7, Bug #16 verified, Bug #18 resolved, Bug #29, Bug #39 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+  - **v2.2.1**: 10 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #29, Bug #39 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
 - **Fixed with Code Changes**: 9 bugs (Bug #7, #29, #39, #47/36, #48, #55, #61, #62, ConfigPlugin)
-- **Verified Fixed (Already Working)**: 1 (Bug #16 - exception handling chain)
+- **Verified Fixed (Already Working)**: 2 (Bug #13 by architecture, Bug #16 - exception handling)
 - **Resolved by Architecture Change**: 1 (Bug #18 - charset detection, Not a Bug per HTTP spec)
 - **Duplicates Identified**: 1 (Bug #36 = Bug #47)
 - **By Severity**:
   - **Critical**: 1 (ConfigPlugin scope)
   - **High**: 3 (Bug #39 binary corruption, Bug #47/36 charset, Bug #60 variable name)
   - **Medium**: 7 (Bug #7, Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
-  - **Low**: 1 (Bug #18 - user expectation vs. spec)
-- **Total Tests Added** (v2.2.1): 55 tests (8 Bug #7 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
-- **Test Suite Size**: 2618 tests (100% passing)
+  - **Low**: 2 (Bug #13 - enhancement by architecture, Bug #18 - user expectation vs. spec)
+- **Total Tests Added** (v2.2.1): 63 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 5 Bug #29 + 4 Bug #39 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Test Suite Size**: 2626 tests (100% passing)
 - **Regression Rate**: 0% (zero regressions introduced)
 
 ## Philosophy: Fixing Bugs Prevents New Bugs
