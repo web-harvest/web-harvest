@@ -133,15 +133,17 @@ public class DefaultHttpService implements HttpService {
     
     /**
      * Default implementation of HttpResponse.
+     * 
+     * Bug #39 Fix: Stores response as byte[] to support binary content.
      */
     private static class DefaultHttpResponse implements HttpResponse {
         private final int statusCode;
-        private final String body;
+        private final byte[] binaryData;  // Bug #39: Store as binary
         private final Map<String, String> headers;
         
         public DefaultHttpResponse(int statusCode, String body, Map<String, String> headers) {
             this.statusCode = statusCode;
-            this.body = body;
+            this.binaryData = body != null ? body.getBytes(java.nio.charset.StandardCharsets.UTF_8) : new byte[0];
             this.headers = headers;
         }
         
@@ -152,7 +154,17 @@ public class DefaultHttpService implements HttpService {
         
         @Override
         public String getBody() {
-            return body;
+            // Convert binary to String
+            if (binaryData == null || binaryData.length == 0) {
+                return "";
+            }
+            return new String(binaryData, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        
+        @Override
+        public byte[] getBodyAsBinary() {
+            // Bug #39 Fix: Return binary data directly
+            return binaryData != null ? binaryData : new byte[0];
         }
         
         @Override

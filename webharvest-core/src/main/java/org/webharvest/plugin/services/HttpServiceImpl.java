@@ -134,6 +134,9 @@ public class HttpServiceImpl implements HttpService {
     /**
      * Executes an HTTP request and returns the response.
      * 
+     * <p>Bug #39 Fix: Now reads response as binary data (byte[]) to support
+     * images and other binary content without String conversion corruption.</p>
+     * 
      * @param request the HTTP request to execute
      * @return the HTTP response
      * @throws HttpServiceException if the request fails
@@ -142,11 +145,12 @@ public class HttpServiceImpl implements HttpService {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getStatusLine().getStatusCode();
             
-            // Get response body
-            String body = "";
+            // Bug #39 Fix: Get response body as BINARY first
+            // This prevents corruption of image/PDF/video data
+            byte[] binaryData = new byte[0];
             HttpEntity entity = response.getEntity();
             if (entity != null) {
-                body = EntityUtils.toString(entity);
+                binaryData = EntityUtils.toByteArray(entity);
             }
             
             // Get response headers
@@ -155,9 +159,10 @@ public class HttpServiceImpl implements HttpService {
                 responseHeaders.put(header.getName(), header.getValue());
             }
             
-            LOGGER.debug("HTTP request completed with status code: {}", statusCode);
+            LOGGER.debug("HTTP request completed with status code: {}, body size: {} bytes", 
+                statusCode, binaryData.length);
             
-            return new HttpResponseImpl(statusCode, body, responseHeaders);
+            return new HttpResponseImpl(statusCode, binaryData, responseHeaders);
             
         } catch (IOException e) {
             LOGGER.error("HTTP request failed: {}", e.getMessage(), e);
@@ -167,16 +172,19 @@ public class HttpServiceImpl implements HttpService {
     
     /**
      * Simple implementation of {@link HttpResponse}.
+     * 
+     * Bug #39 Fix: Stores response as byte[] to support binary content
+     * without corruption.
      */
     private static class HttpResponseImpl implements HttpResponse {
         
         private final int statusCode;
-        private final String body;
+        private final byte[] binaryData;  // Bug #39: Store as binary
         private final Map<String, String> headers;
         
-        public HttpResponseImpl(int statusCode, String body, Map<String, String> headers) {
+        public HttpResponseImpl(int statusCode, byte[] binaryData, Map<String, String> headers) {
             this.statusCode = statusCode;
-            this.body = body;
+            this.binaryData = binaryData;
             this.headers = headers;
         }
         
@@ -187,7 +195,20 @@ public class HttpServiceImpl implements HttpService {
         
         @Override
         public String getBody() {
-            return body;
+            // Convert binary to String (for text content)
+            if (binaryData == null || binaryData.length == 0) {
+                return "";
+            }
+            
+            // Use UTF-8 by default for String conversion
+            // (HttpPlugin can use charset from Content-Type if needed)
+            return new String(binaryData, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        
+        @Override
+        public byte[] getBodyAsBinary() {
+            // Bug #39 Fix: Return binary data directly (no String conversion)
+            return binaryData != null ? binaryData : new byte[0];
         }
         
         @Override

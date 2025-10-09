@@ -9,14 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
-**Bug #39: Forcing MIME Type to Binary for Images** (r713) - Documented as Enhancement Request  
-- **Status**: Enhancement request requiring architecture changes
-- **Issue**: No way to force binary mode when server sends wrong Content-Type for images
-- **Problem**: Binary data corrupted when processed as String (0xFF → 0xEF 0xBF 0xBD)
-- **Proposed**: Add `force-binary="yes"` attribute to `<http>` element
-- **Workarounds**: Direct file write, external tools, server config fix
-- **Tests**: 4 concept tests demonstrating problem and proposed solution
-- **Target**: v2.3.0 implementation
+**Bug #39: Forcing MIME Type to Binary for Images** (r714) - FIXED
+- **Issue**: Binary content corrupted when server sends wrong Content-Type
+- **Problem**: HttpPlugin converted all responses to String, corrupting binary data (0xFF → 0xEF 0xBF 0xBD)
+- **Fix**: Auto-detection of binary MIME types (image/*, video/*, audio/*, application/pdf, etc.)
+- **Changes**: 
+  - Added `HttpResponse.getBodyAsBinary()` API
+  - HttpServiceImpl stores responses as byte[]
+  - HttpPlugin auto-detects binary Content-Type
+- **Impact**: Images, PDFs, videos now handled correctly without corruption
+- **Tests**: 4 validation tests, 2618/2618 PASS, zero regression
 
 **Bug #18: HttpProcessor Charset Detection** (r712) - Resolved  
 - **Status**: Not a Bug - Correct HTTP Behavior

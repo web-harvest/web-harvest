@@ -38,8 +38,15 @@ import java.util.Map;
 /**
  * Represents an HTTP response.
  * 
+ * <h3>Bug #39 Fix (v2.2.1): Binary Content Support</h3>
+ * <p>
+ * Added {@link #getBodyAsBinary()} method to support binary content downloads
+ * without String conversion corruption.
+ * </p>
+ * 
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
+ * @version 2.2.1
  */
 public interface HttpResponse {
     
@@ -52,10 +59,24 @@ public interface HttpResponse {
     
     /**
      * Gets the response body as a string.
+     * Use this for text content (HTML, JSON, XML, etc.).
      * 
-     * @return the response body
+     * @return the response body as String
      */
     String getBody();
+    
+    /**
+     * Gets the response body as binary data.
+     * Use this for binary content (images, PDFs, videos, etc.) to avoid
+     * String conversion corruption.
+     * 
+     * <p>Bug #39 Fix: Added to support binary downloads when server sends
+     * wrong Content-Type or when handling images without file extensions.</p>
+     * 
+     * @return the response body as byte array
+     * @since 2.2.1
+     */
+    byte[] getBodyAsBinary();
     
     /**
      * Gets the response headers.

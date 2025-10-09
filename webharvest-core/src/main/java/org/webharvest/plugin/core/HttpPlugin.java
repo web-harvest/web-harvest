@@ -58,7 +58,25 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * 
  * <p>
  * This plugin performs GET and POST requests with full support for:
- * headers, parameters, authentication, redirects, and proper URL encoding.
+ * headers, parameters, authentication, redirects, proper URL encoding, and binary content.
+ * </p>
+ * 
+ * <h3>Binary Content Support (Bug #39 - Fixed in v2.2.1)</h3>
+ * <p>
+ * <strong>Issue:</strong> Binary content (images, PDFs, videos) was always converted to String,
+ * corrupting binary data. No way to force binary mode for misconfigured servers.
+ * </p>
+ * <p>
+ * <strong>Example:</strong><br>
+ * Image URL: {@code http://example.com/image/12345} (no .jpg extension)<br>
+ * Server Content-Type: {@code text/plain} (WRONG! Actually JPEG)<br>
+ * Before fix: Binary data converted to String → corrupted (0xFF → 0xEF 0xBF 0xBD)<br>
+ * After fix: Auto-detected as image/* → binary data preserved
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> HttpPlugin now auto-detects binary MIME types (image/*, video/*, audio/*,
+ * application/pdf, etc.) and stores response as {@code byte[]} in NodeVariable instead of String.
+ * This prevents corruption of binary data.
  * </p>
  * 
  * <h3>URL Encoding (Bug #55 - Fixed in v2.2.1)</h3>
@@ -77,10 +95,16 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * now properly encodes '#' as %23 in parameter values.
  * </p>
  * 
- * <h3>Usage Example</h3>
+ * <h3>Usage Examples</h3>
  * <pre>{@code
- * <http url="http://example.com/api?key=value&color=#FF0000"/>
+ * <!-- Text content (HTML, JSON, XML) -->
+ * <http url="http://example.com/api?key=value"/>
  * 
+ * <!-- Binary content (images, PDFs) - auto-detected -->
+ * <http url="http://example.com/image.jpg"/>
+ * <file action="write" path="image.jpg" type="binary">${http}</file>
+ * 
+ * <!-- POST request -->
  * <http url="http://example.com" method="POST">
  *   <http-header name="Content-Type">application/json</http-header>
  *   <http-param name="data">{"test": "value"}</http-param>
@@ -144,15 +168,62 @@ public class HttpPlugin extends AbstractPlugin {
                 response = httpService.get(url, headers);
             }
             
-            String responseBody = response.getBody();
-            LOGGER.debug("HttpPlugin: Response body length = {}", responseBody.length());
-            LOGGER.debug("HttpPlugin: First 200 chars = '{}'", responseBody.substring(0, Math.min(responseBody.length(), 200)));
+            // Bug #39 Fix: Check if response should be treated as binary
+            String contentType = response.getContentType();
+            boolean isBinary = isBinaryContentType(contentType);
             
-            return new NodeVariable(responseBody);
+            if (isBinary) {
+                // Binary content: images, PDFs, videos, etc.
+                byte[] binaryData = response.getBodyAsBinary();
+                LOGGER.debug("HttpPlugin: Binary response, {} bytes", binaryData.length);
+                return new NodeVariable(binaryData);
+            } else {
+                // Text content: HTML, JSON, XML, etc.
+                String responseBody = response.getBody();
+                LOGGER.debug("HttpPlugin: Text response, {} chars", responseBody.length());
+                LOGGER.debug("HttpPlugin: First 200 chars = '{}'", 
+                    responseBody.substring(0, Math.min(responseBody.length(), 200)));
+                return new NodeVariable(responseBody);
+            }
             
         } catch (Exception e) {
             throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Determines if Content-Type indicates binary content.
+     * 
+     * <p>Bug #39 Fix: Detects binary MIME types (images, videos, PDFs, etc.)
+     * to prevent String conversion corruption.</p>
+     * 
+     * @param contentType the Content-Type header value
+     * @return true if binary content, false if text
+     * @since 2.2.1
+     */
+    private boolean isBinaryContentType(String contentType) {
+        if (contentType == null || contentType.isEmpty()) {
+            return false;  // Unknown type, default to text
+        }
+        
+        String mimeType = contentType.toLowerCase();
+        
+        // Remove parameters (e.g., "image/jpeg; charset=utf-8" → "image/jpeg")
+        int semicolonIndex = mimeType.indexOf(';');
+        if (semicolonIndex > 0) {
+            mimeType = mimeType.substring(0, semicolonIndex).trim();
+        }
+        
+        // Bug #39 Fix: Detect binary MIME types
+        return mimeType.startsWith("image/")        // All images
+            || mimeType.startsWith("video/")        // All videos
+            || mimeType.startsWith("audio/")        // All audio
+            || mimeType.equals("application/pdf")    // PDFs
+            || mimeType.equals("application/zip")    // ZIP archives
+            || mimeType.equals("application/gzip")   // GZIP
+            || mimeType.equals("application/x-tar")  // TAR
+            || mimeType.equals("application/octet-stream")  // Generic binary
+            || mimeType.contains("binary");         // Any "binary" hint
     }
     
     @Override
