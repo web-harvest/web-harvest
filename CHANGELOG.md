@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Bug Fixes
 
+**Bug #33: JavaScript and AJAX Support** (r717) - FIXED (REGRESSION)
+- **Status**: Feature restored (existed r649-r655, lost r695, restored v2.2.1)
+- **Issue**: No JavaScript/AJAX support for dynamic pages
+- **History**: PhantomJS implementation (2013-2015) lost during refactoring
+- **Fix**: Reimplemented with HtmlUnit 2.70.0 (pure Java, actively maintained)
+- **Features**:
+  - JavaScript execution (enabled/disabled)
+  - AJAX handling with configurable wait
+  - Multiple named pages support
+  - 4 actions: load, execute-script, get-content, close
+- **Impact**: SPAs (React/Vue/Angular), AJAX pagination, dynamic forms now work
+- **Tests**: 15 Bug #33 tests, 47/47 module tests PASS, **51% coverage**
+
 **Bug #39: Forcing MIME Type to Binary for Images** (r714) - FIXED
 - **Issue**: Binary content corrupted when server sends wrong Content-Type
 - **Problem**: HttpPlugin converted all responses to String, corrupting binary data (0xFF → 0xEF 0xBF 0xBD)

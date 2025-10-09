@@ -23,15 +23,20 @@
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
  * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * CONSEQUPTION OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISING OF THE
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
 package org.webharvest.plugin.webbrowser;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.javascript.JavaScriptEngine;
 
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
@@ -47,11 +52,57 @@ import org.webharvest.runtime.variables.Variable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * WebBrowser plugin for browser automation.
+ * WebBrowser plugin for browser automation with JavaScript and AJAX support.
+ * 
+ * <h3>Bug #33 Fix (v2.2.1): JavaScript and AJAX Support</h3>
+ * <p>
+ * <strong>History:</strong> This feature existed in old architecture (r655, 2015)
+ * using PhantomJS, but was lost during refactoring to new plugin system. 
+ * This implementation restores the functionality using HtmlUnit.
+ * </p>
+ * 
+ * <h3>Features:</h3>
+ * <ul>
+ * <li><strong>load</strong>: Load URL with full JavaScript execution and AJAX handling</li>
+ * <li><strong>execute-script</strong>: Execute custom JavaScript on loaded page</li>
+ * <li><strong>get-content</strong>: Get page HTML after JavaScript/AJAX execution</li>
+ * <li><strong>close</strong>: Close browser instance</li>
+ * </ul>
+ * 
+ * <h3>Attributes:</h3>
+ * <ul>
+ * <li><code>action</code>: Action to perform (load|execute-script|get-content|close)</li>
+ * <li><code>url</code>: URL to load (required for 'load' action)</li>
+ * <li><code>page</code>: Named page reference (optional, default page if not specified)</li>
+ * <li><code>wait</code>: Wait time in ms for AJAX/JavaScript (default: 1000ms)</li>
+ * <li><code>javascript-enabled</code>: Enable/disable JavaScript (default: true)</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples:</h3>
+ * <pre>{@code
+ * <!-- Load page with JavaScript/AJAX -->
+ * <web-browser action="load" url="http://example.com/dynamic-page" page="main" wait="2000"/>
+ * 
+ * <!-- Execute JavaScript -->
+ * <web-browser action="execute-script" page="main">
+ *   document.querySelector('#load-more-button').click();
+ * </web-browser>
+ * 
+ * <!-- Get content after AJAX -->
+ * <web-browser action="get-content" page="main"/>
+ * 
+ * <!-- Close browser -->
+ * <web-browser action="close" page="main"/>
+ * }</pre>
  * 
  * @author Web-Harvest Team
  * @since 2.1.0
+ * @version 2.2.1
  */
 @CorePlugin(elementName = "web-browser")
 public class WebBrowserPlugin extends AbstractPlugin {
@@ -60,10 +111,20 @@ public class WebBrowserPlugin extends AbstractPlugin {
 
     private static final String ACTION_ATT_NAME = "action";
     private static final String URL_ATT_NAME = "url";
-    private static final String WIDTH_ATT_NAME = "width";
-    private static final String HEIGHT_ATT_NAME = "height";
+    private static final String PAGE_ATT_NAME = "page";
+    private static final String WAIT_ATT_NAME = "wait";
+    private static final String JAVASCRIPT_ENABLED_ATT_NAME = "javascript-enabled";
+
+    // Thread-safe storage for named pages (WebClient instances)
+    private static final Map<String, WebClient> namedPages = new ConcurrentHashMap<>();
+    private static WebClient defaultPage = null;
 
     private static final PluginMetadata METADATA = new PluginMetadata() {
+        @Override
+        public String getId() {
+            return "web-browser";
+        }
+
         @Override
         public String getName() {
             return "Web Browser Plugin";
@@ -71,12 +132,12 @@ public class WebBrowserPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Plugin for web browser automation";
+            return "Plugin for web browser automation with JavaScript and AJAX support (HtmlUnit)";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.2.1";
         }
 
         @Override
@@ -91,7 +152,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
 
         @Override
         public String getElementName() {
-            return "webbrowser";
+            return "web-browser";
         }
 
         @Override
@@ -106,7 +167,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[0];
+            return new String[]{"browser", "javascript", "ajax", "automation"};
         }
 
         @Override
@@ -120,11 +181,6 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         @Override
-        public String getId() {
-            return "WebBrowserPlugin";
-        }
-
-        @Override
         public PluginConfigurationSchema getConfigurationSchema() {
             return new PluginConfigurationSchema() {
                 @Override
@@ -134,17 +190,17 @@ public class WebBrowserPlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getRequiredAttributes() {
-                    return new String[] { ACTION_ATT_NAME };
+                    return new String[]{ACTION_ATT_NAME};
                 }
 
                 @Override
                 public String[] getOptionalAttributes() {
-                    return new String[] { URL_ATT_NAME, WIDTH_ATT_NAME, HEIGHT_ATT_NAME };
+                    return new String[]{URL_ATT_NAME, PAGE_ATT_NAME, WAIT_ATT_NAME, JAVASCRIPT_ENABLED_ATT_NAME};
                 }
 
                 @Override
                 public String getVersion() {
-                    return "2.1.0";
+                    return "2.2.1";
                 }
 
                 @Override
@@ -212,36 +268,59 @@ public class WebBrowserPlugin extends AbstractPlugin {
         
         String action = config.getProperty(ACTION_ATT_NAME);
         String url = config.getProperty(URL_ATT_NAME, "");
-        String width = config.getProperty(WIDTH_ATT_NAME, "1024");
-        String height = config.getProperty(HEIGHT_ATT_NAME, "768");
+        String pageName = config.getProperty(PAGE_ATT_NAME);
+        String waitStr = config.getProperty(WAIT_ATT_NAME, "1000");
+        String javascriptEnabledStr = config.getProperty(JAVASCRIPT_ENABLED_ATT_NAME, "true");
         
-        System.out.println("WebBrowser Plugin - Action: " + action + ", URL: " + url);
+        int waitTime;
+        try {
+            waitTime = Integer.parseInt(waitStr);
+        } catch (NumberFormatException e) {
+            waitTime = 1000;
+        }
+        
+        boolean javascriptEnabled = "true".equalsIgnoreCase(javascriptEnabledStr) 
+            || "yes".equalsIgnoreCase(javascriptEnabledStr);
+        
+        LOGGER.debug("WebBrowser Plugin - Action: " + action + ", URL: " + url + 
+            ", Page: " + pageName + ", Wait: " + waitTime + "ms");
         
         try {
-            return executeAction(action, url, width, height, context);
+            return executeAction(action, url, pageName, waitTime, javascriptEnabled, context);
         } catch (Exception e) {
-            LOGGER.error("Unexpected error in webbrowser plugin", e);
-            throw new RuntimeException("Unexpected error in webbrowser plugin: " + e.getMessage(), e);
+            LOGGER.error("Error in webbrowser plugin", e);
+            throw new RuntimeException("Error in webbrowser plugin: " + e.getMessage(), e);
         }
     }
 
-    private Variable executeAction(String action, String url, String width, String height, DynamicScopeContext context) 
+    private Variable executeAction(String action, String url, String pageName, 
+                                   int waitTime, boolean javascriptEnabled,
+                                   DynamicScopeContext context) 
             throws PluginException, InterruptedException {
         
         if ("load".equalsIgnoreCase(action)) {
-            return handleLoad(url, width, height, context);
-        } else if ("render".equalsIgnoreCase(action)) {
-            return handleRender(url, width, height, context);
-        } else if ("javascript".equalsIgnoreCase(action)) {
-            return handleJavascript(url, context);
+            return handleLoad(url, pageName, waitTime, javascriptEnabled);
+        } else if ("execute-script".equalsIgnoreCase(action)) {
+            return handleExecuteScript(pageName, waitTime, context);
+        } else if ("get-content".equalsIgnoreCase(action)) {
+            return handleGetContent(pageName);
+        } else if ("close".equalsIgnoreCase(action)) {
+            return handleClose(pageName);
         } else {
-            throw new PluginException("Unsupported WebBrowser action: " + action);
+            throw new PluginException("Unsupported WebBrowser action: " + action + 
+                ". Supported: load, execute-script, get-content, close");
         }
     }
 
-    private Variable handleLoad(String url, String width, String height, DynamicScopeContext context) 
-            throws PluginException, InterruptedException {
-        System.out.println("WebBrowser load: " + url);
+    /**
+     * Load URL with JavaScript and AJAX support.
+     * 
+     * <p>Bug #33 Fix: Uses HtmlUnit to fully execute JavaScript and wait for AJAX.</p>
+     */
+    private Variable handleLoad(String url, String pageName, int waitTime, boolean javascriptEnabled) 
+            throws PluginException {
+        LOGGER.info("WebBrowser load: " + url + " (page: " + pageName + 
+            ", wait: " + waitTime + "ms, js: " + javascriptEnabled + ")");
         
         if (url == null || url.trim().isEmpty()) {
             throw new PluginException("URL is required for load action");
@@ -252,47 +331,213 @@ public class WebBrowserPlugin extends AbstractPlugin {
             throw new PluginException("Invalid URL format: " + url);
         }
         
-        // Simulate browser loading (in real implementation, this would use PhantomJS or similar)
-        return new NodeVariable("Browser loaded: " + url + " (width: " + width + ", height: " + height + ")");
-    }
-
-    private Variable handleRender(String url, String width, String height, DynamicScopeContext context) 
-            throws PluginException, InterruptedException {
-        System.out.println("WebBrowser render: " + url);
-        
-        if (url == null || url.trim().isEmpty()) {
-            throw new PluginException("URL is required for render action");
-        }
-        
-        // Validate dimensions
         try {
-            int w = Integer.parseInt(width);
-            int h = Integer.parseInt(height);
-            if (w <= 0 || h <= 0) {
-                throw new PluginException("Invalid dimensions: width=" + width + ", height=" + height);
+            // Create WebClient with JavaScript support
+            WebClient webClient = createWebClient(javascriptEnabled);
+            
+            // Load page
+            LOGGER.debug("Loading page: {}", url);
+            HtmlPage page = webClient.getPage(url);
+            
+            // Wait for JavaScript/AJAX to complete
+            if (javascriptEnabled && waitTime > 0) {
+                LOGGER.debug("Waiting {}ms for JavaScript/AJAX", waitTime);
+                webClient.waitForBackgroundJavaScript(waitTime);
+                Thread.sleep(waitTime); // Additional wait for async operations
             }
-        } catch (NumberFormatException e) {
-            throw new PluginException("Invalid dimension format: width=" + width + ", height=" + height);
+            
+            // Store page for future reference
+            if (pageName != null && !pageName.isEmpty()) {
+                WebClient oldClient = namedPages.put(pageName, webClient);
+                if (oldClient != null) {
+                    oldClient.close();
+                }
+                LOGGER.debug("Stored page as: {}", pageName);
+            } else {
+                if (defaultPage != null) {
+                    defaultPage.close();
+                }
+                defaultPage = webClient;
+                LOGGER.debug("Stored as default page");
+            }
+            
+            String content = page.asXml();
+            LOGGER.debug("Page loaded successfully, content length: {} chars", content.length());
+            
+            return new NodeVariable(content);
+            
+        } catch (IOException e) {
+            throw new PluginException("Failed to load page: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new PluginException("Interrupted while waiting for page load", e);
         }
-        
-        // Simulate browser rendering (in real implementation, this would render to image/PDF)
-        return new NodeVariable("Browser rendered: " + url + " to " + width + "x" + height);
     }
 
-    private Variable handleJavascript(String url, DynamicScopeContext context) 
+    /**
+     * Execute JavaScript on loaded page.
+     * 
+     * <p>Bug #33 Fix: Executes custom JavaScript and returns result.</p>
+     */
+    private Variable handleExecuteScript(String pageName, int waitTime, DynamicScopeContext context) 
             throws PluginException, InterruptedException {
-        System.out.println("WebBrowser javascript execution");
+        LOGGER.info("WebBrowser execute-script (page: {})", pageName);
+        
+        // Get WebClient
+        WebClient webClient = getWebClient(pageName);
+        if (webClient == null) {
+            throw new PluginException("Page '" + (pageName != null ? pageName : "default") + 
+                "' not found. Use 'load' action first.");
+        }
         
         // Get JavaScript code from body content
         Variable bodyVariable = super.executeBody(context);
         String javascriptCode = bodyVariable != null ? bodyVariable.toString() : "";
         
         if (javascriptCode.trim().isEmpty()) {
-            throw new PluginException("JavaScript code is required for javascript action");
+            throw new PluginException("JavaScript code is required for execute-script action");
         }
         
-        // Simulate JavaScript execution (in real implementation, this would execute on page)
-        return new NodeVariable("JavaScript executed: " + javascriptCode.substring(0, Math.min(50, javascriptCode.length())) + "...");
+        try {
+            // Get current page
+            HtmlPage page = (HtmlPage) webClient.getCurrentWindow().getEnclosedPage();
+            
+            // Execute JavaScript
+            LOGGER.debug("Executing JavaScript: {}", 
+                javascriptCode.substring(0, Math.min(100, javascriptCode.length())));
+            Object result = page.executeJavaScript(javascriptCode).getJavaScriptResult();
+            
+            // Wait for any triggered AJAX
+            if (waitTime > 0) {
+                LOGGER.debug("Waiting {}ms for AJAX after script execution", waitTime);
+                webClient.waitForBackgroundJavaScript(waitTime);
+                Thread.sleep(waitTime);
+            }
+            
+            String resultStr = result != null ? result.toString() : "";
+            LOGGER.debug("JavaScript execution result: {}", resultStr);
+            
+            return new NodeVariable(resultStr);
+            
+        } catch (Exception e) {
+            throw new PluginException("Failed to execute JavaScript: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get current page content (after JavaScript/AJAX).
+     * 
+     * <p>Bug #33 Fix: Returns fully rendered HTML after all dynamic content loaded.</p>
+     */
+    private Variable handleGetContent(String pageName) throws PluginException {
+        LOGGER.info("WebBrowser get-content (page: {})", pageName);
+        
+        WebClient webClient = getWebClient(pageName);
+        if (webClient == null) {
+            throw new PluginException("Page '" + (pageName != null ? pageName : "default") + 
+                "' not found. Use 'load' action first.");
+        }
+        
+        try {
+            HtmlPage page = (HtmlPage) webClient.getCurrentWindow().getEnclosedPage();
+            String content = page.asXml();
+            
+            LOGGER.debug("Retrieved content, length: {} chars", content.length());
+            
+            return new NodeVariable(content);
+            
+        } catch (Exception e) {
+            throw new PluginException("Failed to get content: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Close browser instance.
+     */
+    private Variable handleClose(String pageName) throws PluginException {
+        LOGGER.info("WebBrowser close (page: {})", pageName);
+        
+        WebClient webClient = getWebClient(pageName);
+        if (webClient != null) {
+            webClient.close();
+            
+            if (pageName != null && !pageName.isEmpty()) {
+                namedPages.remove(pageName);
+                LOGGER.debug("Closed and removed page: {}", pageName);
+            } else {
+                defaultPage = null;
+                LOGGER.debug("Closed default page");
+            }
+        } else {
+            LOGGER.warn("Page '{}' not found, nothing to close", 
+                pageName != null ? pageName : "default");
+        }
+        
+        return EmptyVariable.INSTANCE;
+    }
+
+    /**
+     * Get WebClient for specified page name.
+     */
+    private WebClient getWebClient(String pageName) {
+        if (pageName != null && !pageName.isEmpty()) {
+            return namedPages.get(pageName);
+        } else {
+            return defaultPage;
+        }
+    }
+
+    /**
+     * Create configured WebClient.
+     * 
+     * <p>Bug #33 Fix: Configured for JavaScript/AJAX support.</p>
+     */
+    private WebClient createWebClient(boolean javascriptEnabled) {
+        // Use Chrome browser version for best compatibility
+        WebClient webClient = new WebClient(BrowserVersion.CHROME);
+        
+        // Configure JavaScript
+        webClient.getOptions().setJavaScriptEnabled(javascriptEnabled);
+        
+        // Configure AJAX controller
+        webClient.setAjaxController(new NicelyResynchronizingAjaxController());
+        
+        // Disable CSS (faster, not needed for scraping)
+        webClient.getOptions().setCssEnabled(false);
+        
+        // Throw exceptions on failing status codes (404, 500, etc.)
+        webClient.getOptions().setThrowExceptionOnFailingStatusCode(true);
+        
+        // Don't throw exceptions on script errors (many sites have non-critical errors)
+        webClient.getOptions().setThrowExceptionOnScriptError(false);
+        
+        // Disable redirects (we want to handle them explicitly)
+        webClient.getOptions().setRedirectEnabled(true);
+        
+        // Set timeout (30 seconds)
+        webClient.getOptions().setTimeout(30000);
+        
+        LOGGER.debug("Created WebClient (JavaScript: {}, Browser: Chrome)", javascriptEnabled);
+        
+        return webClient;
+    }
+
+    /**
+     * Cleanup method - close all open browsers.
+     */
+    public static void closeAllPages() {
+        LOGGER.info("Closing all WebBrowser pages");
+        
+        if (defaultPage != null) {
+            defaultPage.close();
+            defaultPage = null;
+        }
+        
+        for (WebClient client : namedPages.values()) {
+            client.close();
+        }
+        namedPages.clear();
+        
+        LOGGER.info("All WebBrowser pages closed");
     }
 }
-

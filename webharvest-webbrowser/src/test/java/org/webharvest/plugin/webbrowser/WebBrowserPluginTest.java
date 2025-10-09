@@ -64,7 +64,7 @@ public class WebBrowserPluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals("Web Browser Plugin", plugin.getMetadata().getName());
-        assertEquals("webbrowser", plugin.getMetadata().getElementName());
+        assertEquals("web-browser", plugin.getMetadata().getElementName());
         assertEquals("http://org.webharvest/schema/2.1/core", plugin.getMetadata().getNamespace());
     }
 
