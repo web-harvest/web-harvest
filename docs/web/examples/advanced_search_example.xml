@@ -12,9 +12,15 @@
     </http>
     
     <!-- Extract and process data -->
-    <html-to-xml>
-        <xpath expression="//title"/>
-    </html-to-xml>
+    <def var="page_title">
+        <xpath expression="//title/text()">
+            <html-to-xml>
+                <get var="target_url"/>
+            </html-to-xml>
+        </xpath>
+    </def>
+    
+    <!-- Note: Use //title/text() to extract TEXT content, not the element -->
     
     <!-- Generate search results -->
     <file action="write" path="advanced_search_results.xml" charset="UTF-8">

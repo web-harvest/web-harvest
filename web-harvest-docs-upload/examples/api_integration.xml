@@ -20,14 +20,15 @@
     </def>
     
     <!-- Extract specific fields -->
+    <!-- Note: Use /text() to extract TEXT content, not the element -->
     <def var="userName">
-        <xpath expression="//slideshow/title">
+        <xpath expression="//slideshow/title/text()">
             <script>processedData</script>
         </xpath>
     </def>
     
     <def var="userEmail">
-        <xpath expression="//slideshow/date">
+        <xpath expression="//slideshow/date/text()">
             <script>processedData</script>
         </xpath>
     </def>

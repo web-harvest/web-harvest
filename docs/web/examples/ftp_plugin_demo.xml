@@ -20,10 +20,11 @@
                         </xpath>
                         <body>
                             <file_info>
-                                <name><xpath expression="name"><get var="file"/></xpath></name>
-                                <size><xpath expression="size"><get var="file"/></xpath></size>
-                                <type><xpath expression="type"><get var="file"/></xpath></type>
-                                <modified><xpath expression="modified"><get var="file"/></xpath></modified>
+                                <!-- Use /text() to extract text content -->
+                                <name><xpath expression="name/text()"><get var="file"/></xpath></name>
+                                <size><xpath expression="size/text()"><get var="file"/></xpath></size>
+                                <type><xpath expression="type/text()"><get var="file"/></xpath></type>
+                                <modified><xpath expression="modified/text()"><get var="file"/></xpath></modified>
                             </file_info>
                         </body>
                     </loop>

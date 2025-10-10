@@ -21,14 +21,15 @@
     </def>
     
     <!-- Extract content using XPath -->
+    <!-- Note: Use /text() to extract TEXT content, not the element -->
     <def var="pageTitle">
-        <xpath expression="//title">
+        <xpath expression="//title/text()">
             <script>pageContent</script>
         </xpath>
     </def>
     
     <def var="headings">
-        <xpath expression="//h1 | //h2 | //h3 | //h4 | //h5 | //h6">
+        <xpath expression="//h1/text() | //h2/text() | //h3/text() | //h4/text() | //h5/text() | //h6/text()">
             <script>pageContent</script>
         </xpath>
     </def>

@@ -27,9 +27,10 @@
                     </xpath>
                     <body>
                         <product>
-                            <id><xpath expression="id"><get var="row"/></xpath></id>
-                            <name><xpath expression="name"><get var="row"/></xpath></name>
-                            <price><xpath expression="price"><get var="row"/></xpath></price>
+                            <!-- Use /text() to extract text content -->
+                            <id><xpath expression="id/text()"><get var="row"/></xpath></id>
+                            <name><xpath expression="name/text()"><get var="row"/></xpath></name>
+                            <price><xpath expression="price/text()"><get var="row"/></xpath></price>
                         </product>
                     </body>
                 </loop>
@@ -50,9 +51,10 @@
                     </xpath>
                     <body>
                         <expensive_product>
-                            <id><xpath expression="id"><get var="row"/></xpath></id>
-                            <name><xpath expression="name"><get var="row"/></xpath></name>
-                            <price><xpath expression="price"><get var="row"/></xpath></price>
+                            <!-- Use /text() to extract text content -->
+                            <id><xpath expression="id/text()"><get var="row"/></xpath></id>
+                            <name><xpath expression="name/text()"><get var="row"/></xpath></name>
+                            <price><xpath expression="price/text()"><get var="row"/></xpath></price>
                         </expensive_product>
                     </body>
                 </loop>

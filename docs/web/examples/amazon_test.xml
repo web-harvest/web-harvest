@@ -7,8 +7,9 @@
         </html-to-xml>
     </def>
     <!-- Extract product titles -->
+    <!-- Note: Use /text() to extract TEXT content from span elements -->
     <def var="products">
-        <xpath expression="//h2[contains(@class, 's-size-small')]//span">
+        <xpath expression="//h2[contains(@class, 's-size-small')]//span/text()">
             <get var="content"/>
         </xpath>
     </def>

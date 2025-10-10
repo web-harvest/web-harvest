@@ -8,7 +8,8 @@
     </def>
     <!-- Extract title -->
     <def var="title">
-        <xpath expression="//h1">
+        <!-- Use /text() to extract TEXT content, not the element -->
+        <xpath expression="//h1/text()">
             <get var="content"/>
         </xpath>
     </def>
