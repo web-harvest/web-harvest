@@ -51,10 +51,14 @@ public class HttpPluginBasicIntegrationTest extends XmlBasedIntegrationTestBase 
             "</config>";
         
         DynamicScopeContext context = executeXmlString(xml);
-        Variable content = context.getVar("content");
+        Variable response = context.getVar("response");  // FIX: was "content", should be "response"
         
-        assertNotNull(content);
-        assertTrue(content.toString().contains("<html") || content.toString().contains("HTML"));
+        assertNotNull(response, "HTTP response should be stored in variable");
+        String responseText = response.toString();
+        assertTrue(responseText.length() > 0, "Response should not be empty");
+        // httpbin.org/get returns JSON, not HTML
+        assertTrue(responseText.contains("\"") || responseText.contains("{"), 
+                   "Response should contain JSON content");
     }
     
     @Test

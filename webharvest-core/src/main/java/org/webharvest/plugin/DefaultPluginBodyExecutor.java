@@ -35,11 +35,14 @@ package org.webharvest.plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.ioc.InjectorHelper;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
+
+import com.google.inject.Injector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,8 +53,15 @@ import java.util.List;
  * This implementation uses PluginConfiguration.getChildren() to execute child plugins
  * without relying on the old IElementDef/Processor architecture.
  * 
+ * <p><b>v2.2.1 CRITICAL FIX (October 2025):</b> Plugin instances are now created via Guice
+ * {@link InjectorHelper#getInjector()}.getInstance() instead of reflection ({@code newInstance()}).
+ * This ensures that {@code @Inject} dependencies (like {@code HttpService}) are properly injected.
+ * Previously, plugins with dependencies would fail with {@code NullPointerException} or 
+ * {@code IllegalStateException}.</p>
+ * 
  * @author Robert Bala
  * @since 2.2.0
+ * @version 2.2.1
  */
 public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     
@@ -130,8 +140,22 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
         
         try {
-            // Create plugin instance
-            Plugin childPlugin = pluginClass.newInstance();
+            // v2.2.1 CRITICAL FIX: Use Guice Injector to create plugin instances
+            // This ensures @Inject dependencies (like HttpService) are properly injected!
+            // OLD: Plugin childPlugin = pluginClass.newInstance(); // ❌ No dependency injection!
+            // NEW: Use InjectorHelper to get Guice-managed instance
+            Plugin childPlugin;
+            Injector injector = InjectorHelper.getInjector();
+            if (injector != null) {
+                // Use Guice to create instance (with dependency injection)
+                childPlugin = injector.getInstance(pluginClass);
+                LOGGER.debug("Created plugin {} via Guice injector", childConfig.getElementName());
+            } else {
+                // Fallback to reflection (for tests without Guice)
+                childPlugin = pluginClass.newInstance();
+                LOGGER.warn("Created plugin {} via reflection (no Guice injector available)", 
+                           childConfig.getElementName());
+            }
             
             // Initialize plugin
             childPlugin.initialize(childConfig);

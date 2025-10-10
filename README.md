@@ -1,10 +1,25 @@
 # Web-Harvest
 
-## 🐛 **CRITICAL BUG FIX - October 10, 2025**
+## 🐛 **CRITICAL BUG FIXES - October 10, 2025**
 
-### ✅ **18-Year-Old BeanShell Bug Fixed!**
+### ✅ **Two Critical Bugs Fixed Using TDD!**
 
-**TDD Approach Success:** Fixed critical bug in `JSRScriptEngineAdapter.copyVariables()` that existed since 2006!
+**TDD Approach Success:** Fixed two critical bugs discovered through comprehensive testing!
+
+#### Bug #1: Dependency Injection in DefaultPluginBodyExecutor
+**Problem:** HttpPlugin (and all plugins with `@Inject` dependencies) didn't work!
+- Plugin children created via `newInstance()` (reflection)
+- Guice dependency injection bypassed
+- `HttpService` was null → all HTTP requests failed
+- **Symptoms:** Empty responses in IDE, integration tests failing
+
+**Solution:** Use `InjectorHelper.getInjector().getInstance(pluginClass)`
+- All `@Inject` dependencies now properly injected
+- HttpPlugin works correctly
+- +9 new tests added (HttpService, HttpPlugin unit & integration)
+
+#### Bug #2: 18-Year-Old BeanShell Type Conversion Bug
+**Problem:** Fixed critical bug in `JSRScriptEngineAdapter.copyVariables()` that existed since 2006!
 
 **Problem:**
 - BeanShell received `Variable` objects instead of their values

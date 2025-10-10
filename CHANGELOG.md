@@ -9,7 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Critical Bug Fixes - TDD Approach
 
-**BeanShell Variable Type Conversion** - Fixed 18-year-old bug!
+**Two Critical Bugs Fixed** using TDD methodology!
+
+#### Bug #1: DefaultPluginBodyExecutor Dependency Injection
+- **Issue:** Plugin children created via reflection (`newInstance()`) instead of Guice
+- **Impact:** `@Inject` dependencies (like `HttpService`) were NOT injected
+- **Symptom:** HttpPlugin returned empty content, all HTTP requests failed
+- **Fix:** Use `InjectorHelper.getInjector().getInstance(pluginClass)` instead of `newInstance()`
+- **Result:** All plugins with dependencies now work correctly
+- **Tests:** +9 new tests (HttpService, HttpPlugin unit & integration)
+
+#### Bug #2: BeanShell Variable Type Conversion
+**18-year-old bug fixed!**
 
 #### Fixed Issues
 - **JSRScriptEngineAdapter.copyVariables()** - CRITICAL FIX
