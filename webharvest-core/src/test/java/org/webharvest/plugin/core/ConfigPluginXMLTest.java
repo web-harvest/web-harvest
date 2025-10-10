@@ -30,7 +30,8 @@ public class ConfigPluginXMLTest {
         when(config.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
         // Mock element definition with child elements
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // v2.2.x: IElementDef removed - mock not needed
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
         
         // When
         plugin.initialize(config);

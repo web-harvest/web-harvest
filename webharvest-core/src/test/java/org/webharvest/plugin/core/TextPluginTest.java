@@ -37,12 +37,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
@@ -64,18 +66,45 @@ public class TextPluginTest {
     @Mock
     private DynamicScopeContext context;
     
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private PluginConfiguration configuration;
+    
+    // v2.2.x: Real ScraperContext for variable interpolation tests
+    private DynamicScopeContext realContext;
 
     @BeforeMethod
     public void setUp() {
         MockitoAnnotations.openMocks(this);
+        
+        // v2.2.x CRITICAL: Initialize BaseTemplater.scriptEngineFactory via Guice
+        // AND create real ScraperContext for interpolation tests
+        com.google.inject.Injector injector;
+        if (org.webharvest.runtime.templaters.BaseTemplater.scriptEngineFactory == null) {
+            injector = com.google.inject.Guice.createInjector(
+                new org.webharvest.ioc.ScraperModule("."));
+            // Static injection happens in ScraperModule.configure()
+        } else {
+            // BaseTemplater already initialized, but we still need injector for context
+            injector = com.google.inject.Guice.createInjector(
+                new org.webharvest.ioc.ScraperModule("."));
+        }
+        
+        // v2.2.x: Create REAL ScraperContext for EVERY test
+        // Mock context doesn't work with JSRScriptEngineAdapter.copyVariables()
+        realContext = injector.getInstance(org.webharvest.runtime.ScraperContext.class);
+        org.webharvest.definition.Config mockConfig = mock(org.webharvest.definition.Config.class);
+        realContext.setConfig(mockConfig);
+        realContext.setScriptingLanguage(org.webharvest.runtime.scripting.ScriptingLanguage.BEANSHELL);
+        
+        // v2.2.x CRITICAL: Register core plugins
+        org.webharvest.definition.CorePluginsRegistrar.registerCorePlugins();
+        
         plugin = new TextPlugin();
         
         // Set ElementDef to avoid NullPointerException
@@ -85,11 +114,12 @@ public class TextPluginTest {
     public void testTextPluginReturnsTextContent() throws Exception {
         // Given
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn("This is plain text content from Text Plugin");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false); // No child operations
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn("This is plain text content from Text Plugin");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false); // No child operations
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -105,11 +135,12 @@ public class TextPluginTest {
     public void testTextPluginReturnsEmptyStringWhenNoContent() throws Exception {
         // Given
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false); // No child operations
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false); // No child operations
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -135,11 +166,12 @@ public class TextPluginTest {
     public void testTextPluginReturnsEmptyStringWhenTextIsNull() throws Exception {
         // Given
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(null);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn(null);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -156,11 +188,12 @@ public class TextPluginTest {
         // Given
         String specialText = "Text with special chars: àáâãäåæçèéêë";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(specialText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn(specialText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -177,11 +210,12 @@ public class TextPluginTest {
         // Given
         String textWithWhitespace = "  Line 1\n  Line 2\r\n\tTabbed content  ";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(textWithWhitespace);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn(textWithWhitespace);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -202,11 +236,12 @@ public class TextPluginTest {
         }
         
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(largeText.toString());
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
+        // when(xmlNode.getText()).thenReturn(largeText.toString());
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]); // No child operations
         
         plugin.initialize(configuration);
         
@@ -236,11 +271,12 @@ public class TextPluginTest {
         String unicodeText = "Unicode: ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ 中文 العربية русский";
         
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(unicodeText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(unicodeText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -256,11 +292,12 @@ public class TextPluginTest {
     public void testTextPluginWithEmptyContent() throws Exception {
         // Given
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -277,11 +314,12 @@ public class TextPluginTest {
         // Given
         String htmlText = "Text with entities: &lt;&gt;&amp;&quot;";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(htmlText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(htmlText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -301,11 +339,12 @@ public class TextPluginTest {
             longText.append("This is a very long text. ");
         }
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(longText.toString());
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(longText.toString());
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -322,11 +361,12 @@ public class TextPluginTest {
         // Given
         String multiSpaceText = "Text    with     multiple      spaces";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(multiSpaceText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(multiSpaceText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -343,11 +383,12 @@ public class TextPluginTest {
         // Given
         String tabNewlineText = "Text\twith\ttabs\nand\nnewlines";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(tabNewlineText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(tabNewlineText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -364,11 +405,12 @@ public class TextPluginTest {
         // Given
         String numericText = "123456789";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(numericText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(xmlNode.getText()).thenReturn(numericText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         plugin.initialize(configuration);
         
@@ -385,11 +427,11 @@ public class TextPluginTest {
         // Given
         String simpleText = "Multiple execution test";
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn(simpleText);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - test is disabled (enabled=false) anyway
+        // when(xmlNode.getText()).thenReturn(simpleText);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -463,11 +505,11 @@ public class TextPluginTest {
         when(config.getProperty("id")).thenReturn(null);
         when(config.getProperty("delimiter")).thenReturn(null);
         
-        when(xmlNode.getText()).thenReturn("test");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("test");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         
@@ -483,11 +525,11 @@ public class TextPluginTest {
         when(config.getProperty("id")).thenReturn("test-id");
         when(config.getProperty("delimiter")).thenReturn("");
         
-        when(xmlNode.getText()).thenReturn("test content");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("test content");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         
@@ -503,11 +545,11 @@ public class TextPluginTest {
         when(config.getProperty("id")).thenReturn("test-id");
         when(config.getProperty("delimiter")).thenReturn("||");
         
-        when(xmlNode.getText()).thenReturn("part1||part2||part3");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("part1||part2||part3");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         
@@ -521,6 +563,52 @@ public class TextPluginTest {
         // Just testing that it doesn't throw exception
         PluginConfigurationSchema.AttributeDefinition attr = schema.getAttribute("delimiter");
         assertTrue(true);
+    }
+
+    // ==================================================================================
+    // CRITICAL TESTS - Variable Interpolation for TextPlugin (v2.2.x)
+    // ==================================================================================
+
+    @Test
+    public void testTextPluginWithVariableInterpolation() throws Exception {
+        // PROBLEM: TextPlugin should interpolate ${variables} in text content
+        // v2.2.x FIX: Use REAL ScraperContext and DefaultPluginConfiguration
+        
+        realContext.setLocalVar("name", new org.webharvest.runtime.variables.NodeVariable("World"));
+        
+        TextPlugin testPlugin = new TextPlugin();
+        org.webharvest.plugin.DefaultPluginConfiguration realConfig = 
+            new org.webharvest.plugin.DefaultPluginConfiguration("TextPlugin", 
+                "http://org.webharvest/schema/2.1/core", "text");
+        realConfig.setProperty("_textContent", "Hello ${name}!");
+        
+        testPlugin.initialize(realConfig);
+        Variable result = testPlugin.execute(realContext);
+        
+        assertNotNull(result, "Result should not be null");
+        assertEquals(result.toString(), "Hello World!", "Should interpolate ${name} to 'World'");
+    }
+
+    @Test
+    public void testTextPluginWithMultipleVariableInterpolations() throws Exception {
+        // Multiple variable interpolations
+        // v2.2.x FIX: Use REAL ScraperContext and DefaultPluginConfiguration
+        
+        realContext.setLocalVar("city", new org.webharvest.runtime.variables.NodeVariable("Warsaw"));
+        realContext.setLocalVar("country", new org.webharvest.runtime.variables.NodeVariable("Poland"));
+        
+        TextPlugin testPlugin = new TextPlugin();
+        org.webharvest.plugin.DefaultPluginConfiguration realConfig = 
+            new org.webharvest.plugin.DefaultPluginConfiguration("TextPlugin", 
+                "http://org.webharvest/schema/2.1/core", "text");
+        realConfig.setProperty("_textContent", "City: ${city}, Country: ${country}");
+        
+        testPlugin.initialize(realConfig);
+        Variable result = testPlugin.execute(realContext);
+        
+        assertNotNull(result);
+        assertEquals(result.toString(), "City: Warsaw, Country: Poland", 
+            "Should interpolate both variables");
     }
 }
 

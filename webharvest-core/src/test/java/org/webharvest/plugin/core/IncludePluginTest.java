@@ -37,9 +37,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -67,11 +68,11 @@ public class IncludePluginTest {
     @Mock
     private DynamicScopeContext context;
     
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private PluginConfiguration configuration;
@@ -86,11 +87,11 @@ public class IncludePluginTest {
     public void testIncludePluginReturnsEmptyVariable() throws Exception {
         // Given
         when(configuration.getProperty("path")).thenReturn("test.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -106,11 +107,11 @@ public class IncludePluginTest {
     public void testIncludePluginThrowsExceptionWhenPathIsNull() throws Exception {
         // Given
         when(configuration.getProperty("path")).thenReturn(null);
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         
         // When/Then
@@ -121,11 +122,11 @@ public class IncludePluginTest {
     public void testIncludePluginThrowsExceptionWhenPathIsEmpty() throws Exception {
         // Given
         when(configuration.getProperty("path")).thenReturn("");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         
         // When/Then
@@ -206,11 +207,11 @@ public class IncludePluginTest {
     public void testExecuteWithIdAttribute() throws Exception {
         when(configuration.getProperty("id")).thenReturn("test-include");
         when(configuration.getProperty("path")).thenReturn("test.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -223,11 +224,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteMultipleTimes() throws Exception {
         when(configuration.getProperty("path")).thenReturn("test.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -244,11 +245,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithDifferentPaths() throws Exception {
         when(configuration.getProperty("path")).thenReturn("different/path.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -261,11 +262,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithComplexPath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("examples/complex/path/test.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -278,11 +279,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithAbsolutePath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("/absolute/path/test.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -295,11 +296,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithSpecialCharactersInPath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("test-file_2024.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -312,11 +313,11 @@ public class IncludePluginTest {
     @Test
     public void testExecuteWithUnicodeInPath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("测试文件.xml");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -329,11 +330,11 @@ public class IncludePluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testExecuteWithNullPath() throws Exception {
         when(configuration.getProperty("path")).thenReturn(null);
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -343,11 +344,11 @@ public class IncludePluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testExecuteWithEmptyPath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -357,11 +358,11 @@ public class IncludePluginTest {
     @Test(expectedExceptions = PluginException.class)
     public void testExecuteWithWhitespacePath() throws Exception {
         when(configuration.getProperty("path")).thenReturn("   ");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         
@@ -430,11 +431,11 @@ public class IncludePluginTest {
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("path")).thenReturn("config/test.xml");
         
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         
@@ -470,11 +471,11 @@ public class IncludePluginTest {
         when(config.getProperty("id")).thenReturn(null);
         
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         
@@ -492,11 +493,11 @@ public class IncludePluginTest {
         when(config.getProperty("id")).thenReturn(null);
         
         when(context.getCharset()).thenReturn("UTF-8");
-        when(xmlNode.getText()).thenReturn("");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         newPlugin.initialize(config);
         

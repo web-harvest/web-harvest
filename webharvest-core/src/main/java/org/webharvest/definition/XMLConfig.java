@@ -38,8 +38,8 @@ import com.google.inject.assistedinject.Assisted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
-import org.webharvest.definition.v3.PluginConfigurationTree;
-import org.webharvest.definition.v3.StreamingXmlParser;
+import org.webharvest.definition.PluginConfigurationTree;
+import org.webharvest.definition.StreamingXmlParser;
 
 /**
  * Implementation of {@link ConfigSource} capable to work with XML
@@ -50,7 +50,7 @@ import org.webharvest.definition.v3.StreamingXmlParser;
  * @version %I%, %G%
  * @see Config
  * @see ConfigSource
- * @see IElementDef
+ * @see PluginConfigurationTree
  */
 public final class XMLConfig implements Config {
 
@@ -61,8 +61,6 @@ public final class XMLConfig implements Config {
     private final ConfigParser configParser;
     
     private final Injector injector;
-
-    private IElementDef elementDef;
     
     private PluginConfigurationTree configurationTree;
 
@@ -91,11 +89,13 @@ public final class XMLConfig implements Config {
      */
     @Override
     public Version getVersion() {
-        if (elementDef == null) {
+        if (configurationTree == null) {
             throw new IllegalStateException("Not loaded configuration");
         }
 
-        return WHConstants.XMLNS_CORE_10.equals(elementDef.getNamespaceURI()) ? Version.v1 : Version.v2;
+        // Get namespace from root configuration
+        String namespace = configurationTree.getConfiguration().getProperty("namespace");
+        return WHConstants.XMLNS_CORE_10.equals(namespace) ? Version.v1 : Version.v2;
     }
 
     /**
@@ -110,34 +110,7 @@ public final class XMLConfig implements Config {
      * {@inheritDoc}
      */
     @Override
-    @Deprecated
-    public IElementDef getElementDef() {
-        if (elementDef == null) {
-            throw new IllegalStateException("No configuration source provided");
-        }
-
-        return elementDef;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public PluginConfigurationTree getConfigurationTree() {
-        // Lazy parsing: If tree not available, try to create it now
-        if (configurationTree == null && elementDef != null) {
-            // Config was loaded with old parser, now parse with new one
-            try {
-                ConfigurableResolver resolver = injector.getInstance(ConfigurableResolver.class);
-                StreamingXmlParser streamingParser = new StreamingXmlParser(resolver);
-                configurationTree = streamingParser.parseToTree(configSource);
-            } catch (Exception e) {
-                throw new IllegalStateException(
-                    "Failed to parse configuration tree. " +
-                    "New parser not available. Use XMLConfig with StreamingXmlParser for v2.2.x API.", e);
-            }
-        }
-        
         if (configurationTree == null) {
             throw new IllegalStateException("No configuration loaded. Call reload() first.");
         }
@@ -150,11 +123,6 @@ public final class XMLConfig implements Config {
      */
     @Override
     public void reload() {
-        // Parse using old parser (for backward compatibility during migration)
-        this.elementDef = configParser.parse(configSource);
-        
-        // v2.2.x: Parse using new StreamingXmlParser (ULTRA-LEAN architecture)
-        // SAXConfigParser removed - StreamingXmlParser is now the only parser
         if (configParser instanceof StreamingXmlParser) {
             this.configurationTree = ((StreamingXmlParser) configParser).parseToTree(configSource);
         } else {

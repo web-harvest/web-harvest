@@ -35,17 +35,11 @@ package org.webharvest;
 
 import java.util.List;
 
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.v3.PluginConfigurationTree;
+import org.webharvest.definition.PluginConfigurationTree;
 
 /**
  * Callback interface representing successfully loaded scraping configuration.
  * 
- * <p><strong>MODERNIZATION (v2.2.x):</strong> This interface is being modernized
- * to use {@link PluginConfigurationTree} instead of {@link IElementDef}.
- * The old method {@link #onSuccess(List)} is deprecated and will be removed in v2.3.x.
- * Use {@link #onSuccess(PluginConfigurationTree)} instead.</p>
- *
  * By default the configuration is automatically loaded when creating new
  * harvester session object. This provides opportunity to perform some actions
  * before actually executing the harvester.
@@ -53,39 +47,19 @@ import org.webharvest.definition.v3.PluginConfigurationTree;
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%
- * @see IElementDef
  * @see PluginConfigurationTree
  * @see org.webharvest.Harvest
  */
 public interface HarvestLoadCallback {
 
     /**
-     * Invoked when successfully loaded scraping configuration (OLD API).
-     *
-     * @param elements loaded configuration elements as {@link IElementDef} type
-     * @deprecated Use {@link #onSuccess(PluginConfigurationTree)} instead.
-     *             This method will be removed in v2.3.x.
-     */
-    @Deprecated
-    default void onSuccess(List<IElementDef> elements) {
-        // Default implementation for backward compatibility
-        // Override if you still need old API
-    }
-
-    /**
-     * Invoked when successfully loaded scraping configuration (NEW API - v2.2.x).
-     * This is the modern replacement for {@link #onSuccess(List)}.
+     * Invoked when successfully loaded scraping configuration.
      *
      * @param configTree loaded configuration tree
      * @since 2.2.0
      */
     default void onSuccess(PluginConfigurationTree configTree) {
-        // Default implementation calls old method for backward compatibility
-        // This allows gradual migration
-        if (configTree != null && configTree.hasChildren()) {
-            // Note: Can't easily convert PluginConfigurationTree to List<IElementDef>
-            // So old implementations must override and implement new method
-        }
+        // Default empty implementation
     }
 
 }

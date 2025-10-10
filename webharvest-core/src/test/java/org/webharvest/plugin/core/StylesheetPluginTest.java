@@ -4,8 +4,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// // REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -14,7 +16,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.XmlNode;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -24,11 +27,11 @@ import static org.testng.Assert.*;
  */
 public class StylesheetPluginTest {
 
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private DynamicScopeContext context;
@@ -46,10 +49,11 @@ public class StylesheetPluginTest {
         // Set ElementDef to avoid NullPointerException
         
         // Mock elementDef
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(xmlNode.getText()).thenReturn("Test stylesheet value");
-        when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef removed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(xmlNode.getText()).thenReturn("Test stylesheet value");
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         // Mock configuration
         when(configuration.getProperty("id")).thenReturn(null); // Optional attribute

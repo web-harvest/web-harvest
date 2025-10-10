@@ -42,7 +42,8 @@ import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.registry.PluginRegistry;
 import org.webharvest.plugin.exceptions.PluginException;
-import org.webharvest.plugin.mock.MockPlugin;
+// REMOVED in v2.2.x - MockPlugin no longer exists
+// import org.webharvest.plugin.mock.MockPlugin;
 
 import java.lang.reflect.Constructor;
 import java.util.concurrent.ConcurrentHashMap;
@@ -166,13 +167,8 @@ public class DefaultPluginFactory implements PluginFactory {
             String pluginId = className.toLowerCase();
             String pluginName = className;
             
-            MockPlugin mockPlugin = MockPlugin.create(pluginId, pluginName);
-            
-            if (configuration != null) {
-                mockPlugin.initialize(configuration);
-            }
-            
-            return mockPlugin;
+            // v2.2.x: MockPlugin removed, throw exception instead
+            throw new PluginException("Cannot create mock plugin: MockPlugin class removed in v2.2.x. Plugin class: " + pluginClass.getName());
         } catch (Exception e) {
             throw new PluginException("Failed to create mock plugin: " + pluginClass.getName(), e);
         }

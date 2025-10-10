@@ -142,19 +142,6 @@ public class DefPluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertTrue(count >= 3, "Should have at least 3 user-defined variables (plus system vars)");
     }
     
-    /**
-     * Helper method to execute XML from string
-     */
-    private DynamicScopeContext executeXmlString(String xmlContent) throws Exception {
-        // Write to temporary file
-        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("test-config-", ".xml");
-        java.nio.file.Files.writeString(tempFile, xmlContent);
-        
-        try {
-            return executeXmlConfig(tempFile.toString());
-        } finally {
-            java.nio.file.Files.deleteIfExists(tempFile);
-        }
-    }
+    // v2.2.x: executeXmlString() moved to XmlBasedIntegrationTestBase
 }
 

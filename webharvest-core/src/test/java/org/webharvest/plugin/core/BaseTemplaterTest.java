@@ -2,7 +2,8 @@ package org.webharvest.plugin.core;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.UnitilsTestNGExtension;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.UnitilsTestNGExtension;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.scripting.ScriptEngine;
@@ -18,10 +19,14 @@ import static org.testng.Assert.*;
 /**
  * Test for BaseTemplater to verify variable resolution.
  */
-public class BaseTemplaterTest extends UnitilsTestNGExtension {
+public class BaseTemplaterTest {
+    // REMOVED in v2.2.x - UnitilsTestNGExtension no longer exists
+    // extends UnitilsTestNGExtension
 
-    @Override
-    protected ScriptEngineFactory getScriptEngineFactory() {
+    // REMOVED in v2.2.x - UnitilsTestNGExtension methods no longer needed
+    // @Override
+    // protected ScriptEngineFactory getScriptEngineFactory() {
+    private ScriptEngineFactory getScriptEngineFactory() {
         return new ScriptEngineFactory() {
             @Override
             public ScriptEngine getEngine(ScriptSource scriptSource) {

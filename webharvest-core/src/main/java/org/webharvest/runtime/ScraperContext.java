@@ -49,7 +49,6 @@ import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang.ObjectUtils;
 import org.webharvest.definition.Config;
-import org.webharvest.definition.FunctionDef;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
@@ -73,9 +72,9 @@ public class ScraperContext implements DynamicScopeContext {
 
     private Map<String, Stack<Variable>> centralReferenceTable = new HashMap<String, Stack<Variable>>();
 
-    // map of function definitions
-    @Deprecated
-    private final Map<String, FunctionDef> functionDefs = new HashMap<String, FunctionDef>();
+    // map of function definitions - REMOVED in v2.2.x (FunctionDef deleted)
+    // @Deprecated
+    // private final Map<String, FunctionDef> functionDefs = new HashMap<String, FunctionDef>();
 
     @Deprecated
     private ScriptingLanguage scriptingLanguage;
@@ -199,24 +198,6 @@ public class ScraperContext implements DynamicScopeContext {
                 setLocalVar(entry.getKey(), entry.getValue());
             }
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Deprecated
-    public FunctionDef getFunctionDef(final String name) {
-        return functionDefs.get(name);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Deprecated
-    public void addFunctionDef(final FunctionDef funcDef) {
-        functionDefs.put(funcDef.getName(), funcDef);
     }
 
     /**

@@ -25,8 +25,9 @@ public class TemplatePluginTest {
     @Mock
     private DynamicScopeContext mockContext;
 
-    @Mock
-    private org.webharvest.definition.IElementDef mockElementDef;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private org.webharvest.definition.IElementDef mockElementDef;
 
     private TemplatePlugin plugin;
 
@@ -197,8 +198,9 @@ public class TemplatePluginTest {
         when(mockContext.getScriptingLanguage()).thenReturn(org.webharvest.runtime.scripting.ScriptingLanguage.JAVASCRIPT);
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -217,8 +219,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("my-template");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -237,8 +240,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -257,8 +261,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -277,8 +282,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -297,8 +303,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -317,8 +324,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -337,8 +345,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-special-chars");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -357,8 +366,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("   ");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -377,8 +387,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn(null);
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -397,8 +408,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("test-template");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -423,8 +435,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("complex-template");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -443,8 +456,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-vars");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -463,8 +477,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-functions");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -483,8 +498,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-loops");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -503,8 +519,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-conditions");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -523,8 +540,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-math");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -543,8 +561,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-strings");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -563,8 +582,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-dates");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -583,8 +603,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-arrays");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -603,8 +624,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-objects");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -623,8 +645,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-errors");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -643,8 +666,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-nested");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -663,8 +687,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-with-recursion");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -683,8 +708,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-performance");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -703,8 +729,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-memory");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         
@@ -723,8 +750,9 @@ public class TemplatePluginTest {
         when(mockConfiguration.getProperty("id", "")).thenReturn("template-concurrency");
         
         // Mock ElementDef
-        when(mockElementDef.hasOperations()).thenReturn(false);
-        when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
+        // v2.2.x: mockElementDef removed
+        // when(mockElementDef.hasOperations()).thenReturn(false);
+        // when(mockElementDef.getOperationDefs()).thenReturn(new org.webharvest.definition.IElementDef[0]);
         
         plugin.initialize(mockConfiguration);
         

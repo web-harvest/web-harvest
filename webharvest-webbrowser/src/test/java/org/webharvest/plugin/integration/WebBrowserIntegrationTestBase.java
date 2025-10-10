@@ -78,10 +78,10 @@ public abstract class WebBrowserIntegrationTestBase {
         final DynamicScopeContext[] resultContext = new DynamicScopeContext[1];
 
         org.webharvest.HarvestLoadCallback loadCallback = new org.webharvest.HarvestLoadCallback() {
-            @Override
-            public void onSuccess(java.util.List<org.webharvest.definition.IElementDef> elements) {
-                LOG.debug("Configuration loaded with {} elements", elements.size());
-            }
+            // v2.2.x: IElementDef removed - onSuccess() method removed
+            // public void onSuccess(java.util.List<org.webharvest.definition.IElementDef> elements) {
+            //     LOG.debug("Configuration loaded with {} elements", elements.size());
+            // }
         };
 
         Harvester harvester = harvest.getHarvester(configSource, loadCallback);

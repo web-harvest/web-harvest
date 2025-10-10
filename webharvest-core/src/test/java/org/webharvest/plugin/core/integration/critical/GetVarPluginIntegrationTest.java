@@ -93,15 +93,6 @@ public class GetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertNotNull(sysInfo, "System variable 'sys' should be accessible");
     }
     
-    private DynamicScopeContext executeXmlString(String xmlContent) throws Exception {
-        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("test-config-", ".xml");
-        java.nio.file.Files.writeString(tempFile, xmlContent);
-        
-        try {
-            return executeXmlConfig(tempFile.toString());
-        } finally {
-            java.nio.file.Files.deleteIfExists(tempFile);
-        }
-    }
+    // v2.2.x: executeXmlString() moved to XmlBasedIntegrationTestBase
 }
 

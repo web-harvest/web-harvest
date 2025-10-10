@@ -46,6 +46,7 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.templaters.BaseTemplater;
 
 /**
  * Constant plugin that provides static text content.
@@ -389,7 +390,15 @@ public class ConstantPlugin extends AbstractPlugin {
             value = "";
         }
         
-        Variable result = new NodeVariable(value);
+        // v2.2.x FIX: Apply template interpolation to constant value
+        Variable result;
+        if (BaseTemplater.scriptEngineFactory != null && value.contains("${")) {
+            LOGGER.debug("ConstantPlugin.doExecute: Applying template interpolation to value");
+            result = BaseTemplater.evaluateToVariable(value, context.getScriptingLanguage(), context);
+            LOGGER.debug("ConstantPlugin.doExecute: Interpolated result: {}", result);
+        } else {
+            result = new NodeVariable(value);
+        }
         LOGGER.info("ConstantPlugin.doExecute: Created result: {}", result);
         
         // Set the result as a variable in the context

@@ -3,7 +3,8 @@ package org.webharvest.utils;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
-import org.webharvest.runtime.RuntimeConfig;
+// REMOVED in v2.2.x - RuntimeConfig no longer exists
+// import org.webharvest.runtime.RuntimeConfig;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
 

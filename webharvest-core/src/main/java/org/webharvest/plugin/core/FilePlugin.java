@@ -37,7 +37,8 @@ import com.google.inject.Inject;
 import org.webharvest.exception.FileException;
 import org.webharvest.ioc.WorkingDir;
 import org.webharvest.plugin.AbstractPlugin;
-import org.webharvest.plugin.BodyContentProvider;
+// REMOVED in v2.2.x - BodyContentProvider no longer exists
+// import org.webharvest.plugin.BodyContentProvider;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;

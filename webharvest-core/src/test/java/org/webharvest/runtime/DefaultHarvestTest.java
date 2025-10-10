@@ -49,8 +49,9 @@ import org.webharvest.Harvester;
 import org.webharvest.definition.Config;
 import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.v3.PluginConfigurationTree;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.IElementDef;
+import org.webharvest.definition.PluginConfigurationTree;
 import org.webharvest.events.EventHandler;
 import org.webharvest.events.EventSink;
 import org.webharvest.events.HandlerHolder;
@@ -86,8 +87,9 @@ public class DefaultHarvestTest extends UnitilsTestNG {
     @RegularMock
     private Config mockConfig;
 
-    @RegularMock
-    private IElementDef mockElementDef;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @RegularMock
+    // private IElementDef mockElementDef;
     
     @RegularMock
     private PluginConfigurationTree mockConfigTree;

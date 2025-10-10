@@ -11,7 +11,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.IElementDef;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -24,8 +25,9 @@ public class FilePluginTest {
     @Mock
     private DynamicScopeContext context;
 
-    @Mock
-    private IElementDef elementDef;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private IElementDef elementDef;
 
     private FilePlugin plugin;
 
@@ -34,9 +36,9 @@ public class FilePluginTest {
         MockitoAnnotations.initMocks(this);
         plugin = new FilePlugin();
         
-        // Mock elementDef
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef removed - no longer needed
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         // Mock context
         when(context.getCharset()).thenReturn("UTF-8");

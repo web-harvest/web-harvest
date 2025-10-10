@@ -8,15 +8,18 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -32,19 +35,27 @@ public class JsonToXmlPluginEnhancedTest {
 
     private JsonToXmlPlugin plugin;
     
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private PluginConfiguration configuration;
 
     @BeforeMethod
-    public void setUp() {
+    public void setUp() throws org.webharvest.plugin.exceptions.PluginException {
         MockitoAnnotations.openMocks(this);
+        // v2.2.x ULTRA-LEAN: Use spy to mock executeBody() method
         plugin = new JsonToXmlPlugin();
+        
+        // v2.2.x ULTRA-LEAN: Setup configuration mocks for new architecture
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(Collections.emptyList());
+        when(configuration.getProperty("roottagname")).thenReturn("json");
+        
+        plugin.initialize(configuration);        
     }
     
     // ==================== Metadata Tests ====================
@@ -70,13 +81,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"name\":\"John\",\"age\":30}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON content
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -89,13 +100,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "[\"item1\",\"item2\",\"item3\"]";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON array
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -108,13 +119,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"person\":{\"name\":\"John\",\"address\":{\"city\":\"Warsaw\"}}}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return nested JSON
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -127,13 +138,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"items\":[{\"id\":1},{\"id\":2},{\"id\":3}]}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with array
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -148,13 +159,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"value\":null}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with null
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -167,13 +178,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"active\":true,\"deleted\":false}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with booleans
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -186,13 +197,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"integer\":42,\"float\":3.14,\"negative\":-10}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with numbers
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -207,13 +218,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return empty JSON object
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -226,13 +237,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "[]";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return empty JSON array
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -245,13 +256,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"text\":\"Special: <>&\\\"\"}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with special characters
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -264,13 +275,13 @@ public class JsonToXmlPluginEnhancedTest {
         when(configuration.getProperty("id")).thenReturn(null);
         
         String json = "{\"text\":\"Unicode: \\u0105\\u0107\\u0119\"}";
-        when(xmlNode.getText()).thenReturn(json);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with Unicode
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);
@@ -282,7 +293,6 @@ public class JsonToXmlPluginEnhancedTest {
     public void testInitializeWithConfiguration() throws Exception {
         when(configuration.getProperty("id")).thenReturn("jsonId");
         
-        plugin.initialize(configuration);
         
         assertTrue(true);
     }

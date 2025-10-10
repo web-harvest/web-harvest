@@ -252,16 +252,16 @@ public class PluginDependencyInjectorTest {
         
         // Implement getElementDef/setElementDef for backward compatibility
         
-        @Override
-        public void setElementDef(org.webharvest.definition.IElementDef elementDef) {
-            // Not used in tests
-        }
-        
-        @Override
-        public org.webharvest.definition.IElementDef getElementDef() {
-            // Not used in tests
-            return null;
-        }
+        // REMOVED in v2.2.x - IElementDef no longer exists
+        // @Override
+        // public void setElementDef(org.webharvest.definition.IElementDef elementDef) {
+        //     // Not used in tests
+        // }
+        // @Override
+        // public org.webharvest.definition.IElementDef getElementDef() {
+        //     // Not used in tests
+        //     return null;
+        // }
         
         @Override
         public void cleanup() {

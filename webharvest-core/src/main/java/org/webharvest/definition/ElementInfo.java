@@ -39,7 +39,6 @@ package org.webharvest.definition;
 import java.util.*;
 
 import org.webharvest.WHConstants;
-import org.webharvest.runtime.processors.Processor;
 import org.webharvest.utils.CommonUtil;
 
 /**
@@ -51,8 +50,8 @@ public class ElementInfo {
     // properties containing suggested attribute values
 
     private String name;
-    private Class<? extends IElementDef> definitionClass;
-    private Class<? extends Processor> processorClass;
+    // private Class<? extends IElementDef> definitionClass;
+    // private Class<? extends Processor> processorClass;
     private String validTags;
 
     private Set<String> tagsSet = new TreeSet<String>();
@@ -72,14 +71,16 @@ public class ElementInfo {
     private Class[] dependantProcessors;
 
     public ElementInfo(String name,
-                       Class<? extends IElementDef> definitionClass,
-                       Class<? extends Processor> processorClass,
+                       Class definitionClass,  // v2.2.x: type removed (IElementDef deleted)
+                       Class processorClass,  // v2.2.x: type removed (Processor deleted)
                        String validTags, String validAtts,
                        final boolean isInternal,
                        final Class[] dependantProcessors) {
         this.name = name;
-        this.definitionClass = definitionClass;
-        this.processorClass = processorClass;
+        // v2.2.x: definitionClass field removed
+        // this.definitionClass = definitionClass;
+        // v2.2.x: processorClass field removed
+        // this.processorClass = processorClass;
         this.validTags = validTags;
 
         this.allTagsAllowed = validTags == null;
@@ -147,12 +148,12 @@ public class ElementInfo {
         return result.toString();
     }
 
-    public Class<? extends IElementDef> getDefinitionClass() {
-        return definitionClass;
+    public Class getDefinitionClass() {  // v2.2.x: type removed (IElementDef deleted)
+        return null;  // v2.2.x: field removed
     }
 
-    public Class<? extends Processor> getProcessorClass() {
-        return processorClass;
+    public Class getProcessorClass() {  // v2.2.x: type removed (Processor deleted)
+        return null;  // v2.2.x: field removed
     }
 
     public String getName() {

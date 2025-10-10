@@ -375,7 +375,21 @@ public class TextPlugin extends AbstractPlugin {
             String textContent = getConfiguration().getProperty("_textContent", "");
             LOGGER.debug("TextPlugin: textContent = '{}'", textContent);
             
-            // Return as NodeVariable
+            // v2.2.x FIX: Apply template interpolation to resolve ${variable} expressions
+            if (textContent != null && !textContent.isEmpty() && textContent.contains("${")) {
+                if (BaseTemplater.scriptEngineFactory != null) {
+                    LOGGER.debug("TextPlugin: Applying template interpolation");
+                    Variable interpolated = BaseTemplater.evaluateToVariable(textContent, 
+                                                                             context.getScriptingLanguage(), 
+                                                                             context);
+                    LOGGER.debug("TextPlugin: Interpolated result = '{}'", interpolated);
+                    return interpolated;
+                } else {
+                    LOGGER.warn("TextPlugin: BaseTemplater not available, returning text without interpolation");
+                }
+            }
+            
+            // Return as NodeVariable (no interpolation needed or BaseTemplater not available)
             return new NodeVariable(textContent != null ? textContent : "");
             
         } catch (Exception e) {

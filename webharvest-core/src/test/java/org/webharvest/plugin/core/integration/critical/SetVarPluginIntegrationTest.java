@@ -67,15 +67,6 @@ public class SetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertNotNull(context.getVar("var3"));
     }
     
-    private DynamicScopeContext executeXmlString(String xmlContent) throws Exception {
-        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("test-config-", ".xml");
-        java.nio.file.Files.writeString(tempFile, xmlContent);
-        
-        try {
-            return executeXmlConfig(tempFile.toString());
-        } finally {
-            java.nio.file.Files.deleteIfExists(tempFile);
-        }
-    }
+    // v2.2.x: executeXmlString() moved to XmlBasedIntegrationTestBase
 }
 

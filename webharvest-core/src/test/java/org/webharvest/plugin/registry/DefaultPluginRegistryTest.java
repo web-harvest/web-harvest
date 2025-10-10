@@ -8,7 +8,8 @@ import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - IElementDef no longer exists
+// import org.webharvest.definition.IElementDef;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
@@ -453,17 +454,15 @@ public class DefaultPluginRegistryTest {
             // No-op
         }
 
-        // Implement getElementDef/setElementDef for backward compatibility
-        
-        @Override
-        public IElementDef getElementDef() {
-            return null;
-        }
-
-        @Override
-        public void setElementDef(IElementDef elementDef) {
-            // No-op
-        }
+        // REMOVED in v2.2.x - IElementDef no longer exists
+        // @Override
+        // public IElementDef getElementDef() {
+        //     return null;
+        // }
+        // @Override
+        // public void setElementDef(IElementDef elementDef) {
+        //     // No-op
+        // }
 
         @Override
         public Plugin getParentPlugin() {

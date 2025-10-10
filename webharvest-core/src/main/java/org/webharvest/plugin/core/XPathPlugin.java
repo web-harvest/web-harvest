@@ -53,7 +53,8 @@ import net.sf.saxon.query.XQueryExpression;
 import net.sf.saxon.trans.XPathException;
 import org.webharvest.utils.XmlUtil;
 import org.webharvest.exception.ScraperXPathException;
-import org.webharvest.runtime.RuntimeConfig;
+// REMOVED in v2.2.x - RuntimeConfig no longer exists
+// import org.webharvest.runtime.RuntimeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -359,17 +360,17 @@ public class XPathPlugin extends AbstractPlugin {
         LOGGER.debug("Evaluating XPath expression: {} on XML content", expression);
         
         try {
-            // Use Saxon for XPath evaluation - same as original XPathProcessor
-            StaticQueryContext sqc = getRuntimeConfig(context).getStaticQueryContext();
-            Configuration saxonConfig = sqc.getConfiguration();
+            // v2.2.x ULTRA-LEAN: Create StaticQueryContext directly (RuntimeConfig removed)
+            Configuration saxonConfig = new Configuration();
+            StaticQueryContext sqc = new StaticQueryContext(saxonConfig);
             
             DynamicQueryContext dynamicContext = new DynamicQueryContext(saxonConfig);
             StringReader reader = new StringReader(xml.toString());
             
             dynamicContext.setContextItem(sqc.buildDocument(new StreamSource(reader)));
             
-            // Process XPath variables if any
-            Map<String, String> varMap = getVariableMap(config);
+            // Process XPath variables if any  
+            Map<String, String> varMap = getVariableMap(getConfiguration());
             Map<String, String> evaluatedVarMap = new HashMap<String, String>();
             for (Map.Entry<String, String> attEntry : varMap.entrySet()) {
                 String varName = attEntry.getKey();
@@ -384,7 +385,8 @@ public class XPathPlugin extends AbstractPlugin {
             for (Map.Entry<String, String> attEntry : evaluatedVarMap.entrySet()) {
                 String varName = attEntry.getKey();
                 xpathExpression = attEntry.getValue();
-                XQueryExpression exp = getRuntimeConfig(context).getXQueryExpressionPool().getCompiledExpression(xpathExpression);
+                // v2.2.x ULTRA-LEAN: Compile XQuery directly (XQueryExpressionPool removed)
+                XQueryExpression exp = sqc.compileQuery(xpathExpression);
                 ListVariable xpathResult = XmlUtil.createListOfXmlNodes(exp, dynamicContext);
                 context.setLocalVar(varName, xpathResult);
             }
@@ -392,7 +394,8 @@ public class XPathPlugin extends AbstractPlugin {
             // Evaluate main XPath expression
             if (expression != null) {
                 xpathExpression = expression;
-                XQueryExpression exp = getRuntimeConfig(context).getXQueryExpressionPool().getCompiledExpression(xpathExpression);
+                // v2.2.x ULTRA-LEAN: Compile XQuery directly (XQueryExpressionPool removed)
+                XQueryExpression exp = sqc.compileQuery(xpathExpression);
                 return XmlUtil.createListOfXmlNodes(exp, dynamicContext);
             } else {
                 return EmptyVariable.INSTANCE;
@@ -429,15 +432,10 @@ public class XPathPlugin extends AbstractPlugin {
         }
     }
     
-    /**
-     * Get RuntimeConfig from context - placeholder for now
-     * TODO: Implement proper RuntimeConfig access in new plugin architecture
-     */
-    private RuntimeConfig getRuntimeConfig(DynamicScopeContext context) {
-        // For now, create a new RuntimeConfig
-        // In a real implementation, this would be injected or accessed through context
-        return new RuntimeConfig();
-    }
+    // StaticQueryContext is now created directly in doExecute()
+    // private RuntimeConfig getRuntimeConfig(DynamicScopeContext context) {
+    //     return new RuntimeConfig();
+    // }
     
     /**
      * Get variable map from configuration - placeholder for now

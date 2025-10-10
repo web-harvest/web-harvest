@@ -8,9 +8,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.Variable;
@@ -28,11 +29,11 @@ public class HtmlToXmlPluginMassiveTest {
 
     private HtmlToXmlPlugin plugin;
     
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private PluginConfiguration configuration;
@@ -359,11 +360,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn(null);
         when(configuration.getProperty("charset")).thenReturn("UTF-8");
         
-        when(xmlNode.getText()).thenReturn("<div>UTF-8: ąćęłńóśźż</div>");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn("<div>UTF-8: ąćęłńóśźż</div>");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
@@ -378,11 +379,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn(null);
         when(configuration.getProperty("charset")).thenReturn("ISO-8859-1");
         
-        when(xmlNode.getText()).thenReturn("<div>ISO text</div>");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn("<div>ISO text</div>");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
@@ -397,11 +398,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn(null);
         when(configuration.getProperty("charset")).thenReturn("windows-1252");
         
-        when(xmlNode.getText()).thenReturn("<div>Windows charset</div>");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn("<div>Windows charset</div>");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
@@ -583,11 +584,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn("htmlParser");
         when(configuration.getProperty("charset")).thenReturn("UTF-8");
         
-        when(xmlNode.getText()).thenReturn("<div>Content</div>");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn("<div>Content</div>");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
@@ -602,11 +603,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn(null);
         when(configuration.getProperty("charset")).thenReturn(null);
         
-        when(xmlNode.getText()).thenReturn("<div>Content</div>");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn("<div>Content</div>");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
@@ -750,11 +751,11 @@ public class HtmlToXmlPluginMassiveTest {
         when(configuration.getProperty("id")).thenReturn(null);
         when(configuration.getProperty("charset")).thenReturn("UTF-8");
         
-        when(xmlNode.getText()).thenReturn(html);
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x ULTRA-LEAN: old architecture removed
+        // when(xmlNode.getText()).thenReturn(html);
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);

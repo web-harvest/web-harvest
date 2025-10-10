@@ -75,7 +75,7 @@ import org.webharvest.definition.validation.TransformerPair;
 import org.webharvest.definition.validation.URIToSchemaSourceTransformer;
 import org.webharvest.plugin.registry.PluginRegistryHolder;
 import org.webharvest.plugin.schema.PluginSchemaPostProcessor;
-import org.webharvest.runtime.RuntimeConfig;
+// import org.webharvest.runtime.RuntimeConfig;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.xml.sax.InputSource;
@@ -188,18 +188,15 @@ public class XmlUtil {
      * @return Instance of ListVariable that contains results.
      * @throws XPathException
      */
-    public static ListVariable evaluateXPath(String xpath, String xml, RuntimeConfig runtimeConfig) throws XPathException {
-        StaticQueryContext sqc = runtimeConfig.getStaticQueryContext();
-        Configuration config = sqc.getConfiguration();
-
-        XQueryExpression exp = runtimeConfig.getXQueryExpressionPool().getCompiledExpression(xpath);
-        DynamicQueryContext dynamicContext = new DynamicQueryContext(config);
-        StringReader reader = new StringReader(xml);
-
-        dynamicContext.setContextItem(sqc.buildDocument(new StreamSource(reader)));
-
-        return createListOfXmlNodes(exp, dynamicContext);
-    }
+    // public static ListVariable evaluateXPath(String xpath, String xml, RuntimeConfig runtimeConfig) throws XPathException {
+    //     StaticQueryContext sqc = runtimeConfig.getStaticQueryContext();
+    //     Configuration config = sqc.getConfiguration();
+    //     XQueryExpression exp = runtimeConfig.getXQueryExpressionPool().getCompiledExpression(xpath);
+    //     DynamicQueryContext dynamicContext = new DynamicQueryContext(config);
+    //     StringReader reader = new StringReader(xml);
+    //     dynamicContext.setContextItem(sqc.buildDocument(new StreamSource(reader)));
+    //     return createListOfXmlNodes(exp, dynamicContext);
+    // }
 
     /**
      * Creates list variable of resulting XML nodes.

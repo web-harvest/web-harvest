@@ -5,7 +5,8 @@ import com.google.inject.Injector;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginRegistry;
-import org.webharvest.definition.DefinitionResolver;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.DefinitionResolver;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.plugin.core.EmptyPlugin;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -38,7 +39,8 @@ public class DefaultPluginBodyExecutorTest {
         
         // Initialize registry
         Injector injector = Guice.createInjector(new ScraperModule("."));
-        DefinitionResolver resolver = injector.getInstance(DefinitionResolver.class);
+        // v2.2.x: DefinitionResolver removed
+        // DefinitionResolver resolver = injector.getInstance(DefinitionResolver.class);
         
         registry = CorePluginRegistry.getInstance();
         

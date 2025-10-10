@@ -56,12 +56,17 @@ import org.webharvest.utils.KeyValuePair;
  * trade-off, since currently creation of brand new
  * {@link javax.script.ScriptContext} instances each time script is evaluated is
  * quite expensive.
+ * 
+ * <p><b>v2.2.1 CRITICAL FIX (October 2025):</b> Fixed 18-year-old bug in {@link #copyVariables(DynamicScopeContext)}.
+ * Previously, {@link Variable} objects were passed directly to BeanShell for non-{@link ScriptingVariable} types,
+ * causing "Operator '+' inappropriate for objects" errors. Now always calls {@link Variable#getWrappedObject()}
+ * and performs automatic String→Number conversion for arithmetic operations.</p>
  *
  * @see ScriptEngine
  *
  * @author Piotr Dyraga
  * @since 2.1.0-SNAPSHOT
- * @version %I%, %G%
+ * @version 2.2.1
  */
 public final class JSRScriptEngineAdapter implements ScriptEngine {
 
@@ -103,15 +108,35 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
             final Variable value = pair.getValue();
             System.out.println("JSRScriptEngineAdapter.copyVariables: Copying variable '" + pair.getKey() + "' = " + value);
 
-            // FIXME: The inline condition below has been moved from the
-            // first web harvest implementation of script engines
-            // (org.webharvest.runtime.scripting.ScriptEngine abstract class);
-            // It was required to place it here for backward compatibility,
-            // however it would be neat if we just had value.getWrappedObject()
-            // invocation; this way we could use in scripts wrapped objects
-            // directly instead of manually unwrapping them...
-            adaptee.put(pair.getKey(), (value instanceof ScriptingVariable)
-                            ? value.getWrappedObject() : value);
+            // v2.2.x FIX: ALL Variable types have getWrappedObject() method!
+            // Use it directly instead of instanceof check.
+            // This fixes: "Operator '+' inappropriate for objects" in BeanShell
+            // NOTE: The old code only called getWrappedObject() for ScriptingVariable,
+            //       passing raw Variable objects to BeanShell for other types.
+            //       This caused type errors in arithmetic/comparison operations.
+            Object scriptValue = value.getWrappedObject();
+            
+            // v2.2.x FIX: Try to convert String to Number for BeanShell arithmetic
+            // NodeVariable often wraps Strings (e.g. "5") but BeanShell needs Numbers
+            // for arithmetic operations to work correctly.
+            if (scriptValue instanceof String) {
+                String str = ((String) scriptValue).trim();
+                if (!str.isEmpty()) {
+                    try {
+                        // Try Integer first (no decimal point)
+                        if (!str.contains(".") && !str.contains("e") && !str.contains("E")) {
+                            scriptValue = Integer.parseInt(str);
+                        } else {
+                            // Try Double for floating point numbers
+                            scriptValue = Double.parseDouble(str);
+                        }
+                    } catch (NumberFormatException e) {
+                        // Keep as String - not a number
+                    }
+                }
+            }
+            
+            adaptee.put(pair.getKey(), scriptValue);
             count++;
         }
         System.out.println("JSRScriptEngineAdapter.copyVariables: Copied " + count + " variables");

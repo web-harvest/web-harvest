@@ -36,6 +36,7 @@ package org.webharvest.plugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.slf4j.Logger;
@@ -266,6 +267,22 @@ public abstract class AbstractPlugin implements Plugin {
             return EmptyVariable.INSTANCE;
         }
         
+        // v2.2.x CRITICAL FIX: Check _textContent FIRST before checking children!
+        // StreamingXmlParser sets _textContent for text-only elements
+        if (configuration != null) {
+            String textContent = configuration.getProperty("_textContent");
+            if (textContent != null && !textContent.trim().isEmpty()) {
+                LOGGER.debug("AbstractPlugin.getBodyTextContent: Found _textContent: '{}'", textContent);
+                // Apply template interpolation if BaseTemplater is available
+                if (org.webharvest.runtime.templaters.BaseTemplater.scriptEngineFactory != null) {
+                    return org.webharvest.runtime.templaters.BaseTemplater.evaluateToVariable(
+                        textContent, context.getScriptingLanguage(), context);
+                } else {
+                    return new NodeVariable(textContent);
+                }
+            }
+        }
+        
         // v2.2.x ULTRA-LEAN: Use PluginBodyExecutor with PluginConfiguration.getChildren()
         if (configuration != null && Boolean.TRUE.equals(configuration.hasChildren())) {
             LOGGER.debug("Using ULTRA-LEAN architecture: PluginBodyExecutor.getBodyTextContent() with {} children", 
@@ -279,7 +296,7 @@ public abstract class AbstractPlugin implements Plugin {
             }
         }
         
-        LOGGER.debug("No body text content to extract (no children)");
+        LOGGER.debug("No body text content to extract (no _textContent and no children)");
         return EmptyVariable.INSTANCE;
     }
 }

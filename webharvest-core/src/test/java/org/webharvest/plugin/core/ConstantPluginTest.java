@@ -4,8 +4,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -14,7 +15,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.XmlNode;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -27,11 +29,11 @@ import static org.testng.Assert.*;
  */
 public class ConstantPluginTest {
 
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private DynamicScopeContext context;
@@ -46,13 +48,11 @@ public class ConstantPluginTest {
         MockitoAnnotations.openMocks(this);
         plugin = new ConstantPlugin();
         
-        // Set ElementDef to avoid NullPointerException
-        
-        // Mock elementDef
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(xmlNode.getText()).thenReturn("Test constant value");
-        when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(xmlNode.getText()).thenReturn("Test constant value");
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         // Mock configuration
         when(configuration.getProperty("value")).thenReturn("Test constant value");
@@ -76,7 +76,8 @@ public class ConstantPluginTest {
     public void testConstantPluginReturnsEmptyWhenNoValue() throws InterruptedException, PluginException {
         // Mock empty value
         when(configuration.getProperty("value")).thenReturn("");
-        when(xmlNode.getText()).thenReturn("");
+        // v2.2.x: xmlNode removed
+        // when(xmlNode.getText()).thenReturn("");
         
         // Execute plugin
         Variable result = plugin.execute(context);
@@ -138,7 +139,8 @@ public class ConstantPluginTest {
     public void testConstantPluginHandlesNullValue() throws InterruptedException, PluginException {
         // Mock null value
         when(configuration.getProperty("value")).thenReturn(null);
-        when(xmlNode.getText()).thenReturn(null);
+        // v2.2.x: xmlNode removed
+        // when(xmlNode.getText()).thenReturn(null);
         
         // Execute plugin
         Variable result = plugin.execute(context);

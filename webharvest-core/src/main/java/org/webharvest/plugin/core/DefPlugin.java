@@ -44,7 +44,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.CorePluginDef;
+import org.webharvest.runtime.templaters.BaseTemplater;
+// REMOVED in v2.2.x
 import org.webharvest.definition.XmlNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,18 +211,30 @@ public class DefPlugin extends AbstractPlugin {
             Variable value;
             
             if (!valueAttr.isEmpty()) {
-                // Use value from attribute
-                value = new NodeVariable(valueAttr);
+                // Use value from attribute WITH template interpolation (v2.2.x FIX)
+                LOGGER.debug("DefPlugin.doExecute: Processing value attribute with template interpolation");
+                // Check if BaseTemplater is available (it might be null in unit tests)
+                if (BaseTemplater.scriptEngineFactory != null) {
+                    Variable interpolated = BaseTemplater.evaluateToVariable(valueAttr, 
+                                                                             context.getScriptingLanguage(), 
+                                                                             context);
+                    value = interpolated;
+                    LOGGER.debug("DefPlugin.doExecute: Interpolated value attribute: {}", value);
+                } else {
+                    // Fallback for unit tests or when BaseTemplater is not initialized
+                    value = new NodeVariable(valueAttr);
+                    LOGGER.warn("DefPlugin.doExecute: BaseTemplater not available, using value attribute without interpolation");
+                }
             } else {
                 // Execute child elements to get the value
                 value = super.executeBody(context);
             }
             LOGGER.info("DefPlugin.doExecute: Body content result: {}", value);
             
-            // If no result from child processors, try XML node
+            // If no result from child processors, try XML node (text content)
             if (value == null || value instanceof EmptyVariable) {
                 LOGGER.info("DefPlugin.doExecute: No child processors result, trying XML node");
-                value = getBodyContentFromXmlNode();
+                value = getBodyContentFromXmlNode(context);
                 LOGGER.info("DefPlugin.doExecute: XML node result: {}", value);
             }
 
@@ -256,12 +269,29 @@ public class DefPlugin extends AbstractPlugin {
     /**
      * Gets the body content directly from configuration (v2.2.x ULTRA-LEAN).
      * Uses _textContent property populated by StreamingXmlParser.
+     * Applies template interpolation for ${variable} expressions.
+     * 
+     * @param context the execution context (needed for template interpolation)
+     * @return the interpolated body content as Variable
      */
-    private Variable getBodyContentFromXmlNode() {
+    private Variable getBodyContentFromXmlNode(DynamicScopeContext context) {
         // v2.2.x: Use _textContent property from PluginConfiguration
         String textContent = getConfiguration().getProperty("_textContent");
         if (textContent != null && !textContent.trim().isEmpty()) {
-            return new NodeVariable(textContent);
+            // v2.2.x FIX: Apply template interpolation to resolve ${variable} expressions
+            // Check if BaseTemplater is available (it might be null in unit tests)
+            if (BaseTemplater.scriptEngineFactory != null) {
+                LOGGER.debug("DefPlugin.getBodyContentFromXmlNode: Applying template interpolation to: {}", textContent);
+                Variable interpolated = BaseTemplater.evaluateToVariable(textContent, 
+                                                                         context.getScriptingLanguage(), 
+                                                                         context);
+                LOGGER.debug("DefPlugin.getBodyContentFromXmlNode: Interpolated result: {}", interpolated);
+                return interpolated;
+            } else {
+                // Fallback for unit tests or when BaseTemplater is not initialized
+                LOGGER.warn("DefPlugin.getBodyContentFromXmlNode: BaseTemplater not available, returning text content without interpolation");
+                return new NodeVariable(textContent);
+            }
         }
         
         return EmptyVariable.INSTANCE;

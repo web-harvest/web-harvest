@@ -45,7 +45,7 @@ import org.webharvest.events.ScraperExecutionStoppedEvent;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.definition.CorePluginRegistry;
-import org.webharvest.definition.v3.PluginConfigurationTree;
+import org.webharvest.definition.PluginConfigurationTree;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;

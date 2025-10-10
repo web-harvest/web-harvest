@@ -47,7 +47,7 @@ import org.webharvest.LockedRegistry;
 import org.webharvest.Registry;
 import org.webharvest.ScrapingAware;
 import org.webharvest.definition.*;
-import org.webharvest.definition.CorePluginsPostProcessor;
+// import org.webharvest.definition.CorePluginsPostProcessor;
 import org.webharvest.events.DefaultHandlerHolder;
 import org.webharvest.events.EventSink;
 import org.webharvest.events.HandlerHolder;
@@ -57,14 +57,13 @@ import org.webharvest.runtime.DefaultHarvest;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.EventBasedStatusHolder;
 import org.webharvest.runtime.RunningStatusGuard;
-import org.webharvest.runtime.RuntimeConfig;
+// import org.webharvest.runtime.RuntimeConfig;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.ScrapingHarvester;
 import org.webharvest.runtime.StatusHolder;
 import org.webharvest.runtime.WebScraper;
 // Database imports moved to DatabaseModule in webharvest-database
-import org.webharvest.runtime.processors.Processor;
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.jsr.JSRScriptEngineFactory;
 import org.webharvest.runtime.templaters.BaseTemplater;
@@ -110,6 +109,9 @@ public final class ScraperModule extends AbstractModule {
      */
     @Override
     protected void configure() {
+        // v2.2.x ULTRA-LEAN: Register core plugins first
+        org.webharvest.definition.CorePluginsRegistrar.registerCorePlugins();
+        
         // Core bindings
         bindCoreServices();
         bindScopes();
@@ -119,33 +121,35 @@ public final class ScraperModule extends AbstractModule {
         
         // Static injections
         requestStaticInjection(InjectorHelper.class);
-        requestStaticInjection(DefinitionResolver.class);
+        // REMOVED in v2.2.x - DefinitionResolver no longer exists
+        // requestStaticInjection(DefinitionResolver.class);
     }
     
     private void bindCoreServices() {
+        // REMOVED in v2.2.x - ResolverPostProcessor/CorePluginsPostProcessor no longer exist
         // Resolver post processors
-        System.out.println("ScraperModule: Creating CorePluginsPostProcessor instances");
-        CorePluginsPostProcessor coreProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.core");
-        CorePluginsPostProcessor dbProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.db");
-        CorePluginsPostProcessor ftpProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.ftp");
-        CorePluginsPostProcessor mailProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.mail");
-        CorePluginsPostProcessor webbrowserProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.webbrowser");
-        CorePluginsPostProcessor zipProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.zip");
-        AnnotatedPluginsPostProcessor annotatedProcessor = new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");
-        
-        System.out.println("ScraperModule: Created " + 6 + " CorePluginsPostProcessor instances");
-        
-        bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
-                .annotatedWith(Names.named("resolverPostProcessors"))
-                .toInstance(Arrays.asList(
-                    coreProcessor,
-                    dbProcessor,
-                    ftpProcessor,
-                    mailProcessor,
-                    webbrowserProcessor,
-                    zipProcessor,
-                    annotatedProcessor
-                ));
+        // System.out.println("ScraperModule: Creating CorePluginsPostProcessor instances");
+        // CorePluginsPostProcessor coreProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.core");
+        // CorePluginsPostProcessor dbProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.db");
+        // CorePluginsPostProcessor ftpProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.ftp");
+        // CorePluginsPostProcessor mailProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.mail");
+        // CorePluginsPostProcessor webbrowserProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.webbrowser");
+        // CorePluginsPostProcessor zipProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.zip");
+        // AnnotatedPluginsPostProcessor annotatedProcessor = new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");
+        //
+        // System.out.println("ScraperModule: Created " + 6 + " CorePluginsPostProcessor instances");
+        //
+        // bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
+        //         .annotatedWith(Names.named("resolverPostProcessors"))
+        //         .toInstance(Arrays.asList(
+        //             coreProcessor,
+        //             dbProcessor,
+        //             ftpProcessor,
+        //             mailProcessor,
+        //             webbrowserProcessor,
+        //             zipProcessor,
+        //             annotatedProcessor
+        //         ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
         bindListener(Matchers.any(), new PostConstructListener());
@@ -203,11 +207,13 @@ public final class ScraperModule extends AbstractModule {
         // Scripting
         bind(ScriptEngineFactory.class).to(JSRScriptEngineFactory.class).in(Singleton.class);
         requestStaticInjection(BaseTemplater.class);
-        bind(RuntimeConfig.class).in(Singleton.class);
+        // REMOVED in v2.2.x - RuntimeConfig no longer exists
+        // bind(RuntimeConfig.class).in(Singleton.class);
         
         // Configuration
         bindConstant().annotatedWith(WorkingDir.class).to(workingDir);
-        bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
+        // REMOVED in v2.2.x - ConfigurableResolver no longer exists
+        // bind(ConfigurableResolver.class).toProvider(DefinitionResolverProvider.class).in(Singleton.class);
     }
 
     // bindDBConnectionFactory() method removed - moved to DatabaseModule in webharvest-database
@@ -244,7 +250,7 @@ public final class ScraperModule extends AbstractModule {
     protected void bindConfigParser() {
         // v2.2.x: Use StreamingXmlParser (ULTRA-LEAN architecture)
         // SAXConfigParser removed - old architecture eliminated
-        bind(ConfigParser.class).to(org.webharvest.definition.v3.StreamingXmlParser.class);
+        bind(ConfigParser.class).to(org.webharvest.definition.StreamingXmlParser.class);
     }
 
     // FIXME rbala Plain old approach to guice's factory binding. Please consider it as temporary workaround. Can stay longer then actual work on 2.1 version.

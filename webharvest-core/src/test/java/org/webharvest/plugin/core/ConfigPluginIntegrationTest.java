@@ -29,8 +29,11 @@ public class ConfigPluginIntegrationTest {
         when(config.getProperty("charset", "UTF-8")).thenReturn("UTF-8");
         when(config.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
+        // v2.2.x: No longer need IElementDef - use PluginConfiguration children
         // Mock element definition
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        when(config.hasChildren()).thenReturn(false);
+        when(config.getChildren()).thenReturn(java.util.Collections.emptyList());
         
         // When
         plugin.initialize(config);
@@ -55,8 +58,11 @@ public class ConfigPluginIntegrationTest {
         when(config.getProperty("charset", "UTF-8")).thenReturn("ISO-8859-1");
         when(config.getProperty("scriptlang", "beanshell")).thenReturn("javascript");
         
+        // v2.2.x: No longer need IElementDef - use PluginConfiguration children
         // Mock element definition
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        when(config.hasChildren()).thenReturn(false);
+        when(config.getChildren()).thenReturn(java.util.Collections.emptyList());
         
         // When
         plugin.initialize(config);
@@ -81,8 +87,11 @@ public class ConfigPluginIntegrationTest {
         when(config.getProperty("charset", "UTF-8")).thenReturn("UTF-8");
         when(config.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
+        // v2.2.x: No longer need IElementDef - use PluginConfiguration children
         // Mock element definition
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        when(config.hasChildren()).thenReturn(false);
+        when(config.getChildren()).thenReturn(java.util.Collections.emptyList());
         
         // When
         plugin.initialize(config);

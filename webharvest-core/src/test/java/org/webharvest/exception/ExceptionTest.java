@@ -217,18 +217,19 @@ public class ExceptionTest {
         assertTrue(exception instanceof BaseException);
     }
     
-    @Test
-    public void testErrMsg() {
-        // Test that ErrMsg class is accessible
-        assertNotNull(ErrMsg.class);
-        
-        // Test some common error message methods
-        String msg1 = ErrMsg.missingAttribute("test", "attr");
-        assertNotNull(msg1);
-        assertTrue(msg1.contains("test") || msg1.contains("attr"));
-        
-        String msg2 = ErrMsg.invalidAttribute("test", "attr");
-        assertNotNull(msg2);
-        assertTrue(msg2.contains("test") || msg2.contains("attr"));
-    }
+    // v2.2.x: ErrMsg removed (only used in tests)
+    // @Test
+    // public void testErrMsg() {
+    //     // Test that ErrMsg class is accessible
+    //     assertNotNull(ErrMsg.class);
+    //     
+    //     // Test some common error message methods
+    //     String msg1 = ErrMsg.missingAttribute("test", "attr");
+    //     assertNotNull(msg1);
+    //     assertTrue(msg1.contains("test") || msg1.contains("attr"));
+    //     
+    //     String msg2 = ErrMsg.invalidAttribute("test", "attr");
+    //     assertNotNull(msg2);
+    //     assertTrue(msg2.contains("test") || msg2.contains("attr"));
+    // }
 }

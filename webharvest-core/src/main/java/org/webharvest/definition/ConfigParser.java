@@ -41,6 +41,6 @@ package org.webharvest.definition;
 public interface ConfigParser {
 
     // TODO rbala Missing Javadoc
-    IElementDef parse(ConfigSource configSource);
+    // IElementDef parse(ConfigSource configSource);
 
 }

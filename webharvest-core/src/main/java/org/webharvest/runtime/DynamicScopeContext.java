@@ -43,8 +43,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.webharvest.definition.Config;
-import org.webharvest.definition.FunctionDef;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
@@ -71,11 +70,11 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
 
     boolean containsVar(String name);
 
-    @Deprecated
-    FunctionDef getFunctionDef(String name);
-
-    @Deprecated
-    void addFunctionDef(FunctionDef funcDef);
+    // REMOVED in v2.2.x - FunctionDef no longer exists
+    // @Deprecated
+    // FunctionDef getFunctionDef(String name);
+    // @Deprecated
+    // void addFunctionDef(FunctionDef funcDef);
 
     @Deprecated
     ScriptingLanguage getScriptingLanguage();

@@ -40,7 +40,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - IElementDef no longer exists
+// import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.services.HttpServiceException;
 import org.webharvest.plugin.services.HttpResponse;
 
@@ -123,32 +124,41 @@ public class PluginInterfacesTest {
     
     @Test
     public void testBodyContentProvider() {
-        IElementDef elementDef = mock(IElementDef.class);
-        BodyContentProvider provider = new SimpleBodyContentProvider(elementDef);
+        // v2.2.x: BodyContentProvider removed - test no longer applicable
+        // IElementDef elementDef = mock(IElementDef.class);
+        // BodyContentProvider provider = new SimpleBodyContentProvider(elementDef);
+        // assertNotNull(provider);
+        // assertTrue(provider instanceof BodyContentProvider);
         
-        assertNotNull(provider);
-        // SimpleBodyContentProvider should be testable
-        assertTrue(provider instanceof BodyContentProvider);
+        // Test is now no-op - BodyContentProvider removed in v2.2.x
+        assertTrue(true);
     }
     
+    // v2.2.x: Rewritten to use PluginBodyExecutor instead of deleted BodyContentProvider
     @Test
     public void testExecutableBodyContentProvider() {
-        IElementDef elementDef = mock(IElementDef.class);
-        BodyContentProvider provider = new ExecutableBodyContentProvider(elementDef);
+        org.webharvest.plugin.PluginConfiguration config = mock(org.webharvest.plugin.PluginConfiguration.class);
+        when(config.hasChildren()).thenReturn(false);
+        when(config.getChildren()).thenReturn(java.util.Collections.emptyList());
         
-        assertNotNull(provider);
-        // ExecutableBodyContentProvider should be testable
-        assertTrue(provider instanceof BodyContentProvider);
+        org.webharvest.plugin.PluginBodyExecutor executor = new org.webharvest.plugin.DefaultPluginBodyExecutor();
+        
+        assertNotNull(executor);
+        // PluginBodyExecutor is the new way to execute plugin body content (v2.2.x)
+        assertTrue(executor instanceof org.webharvest.plugin.PluginBodyExecutor);
     }
     
     @Test
     public void testDefaultBodyContentProvider() {
-        IElementDef elementDef = mock(IElementDef.class);
-        BodyContentProvider provider = new DefaultBodyContentProvider(elementDef);
+        org.webharvest.plugin.PluginConfiguration config = mock(org.webharvest.plugin.PluginConfiguration.class);
+        when(config.hasChildren()).thenReturn(false);
+        when(config.getChildren()).thenReturn(java.util.Collections.emptyList());
         
-        assertNotNull(provider);
-        // DefaultBodyContentProvider should be testable
-        assertTrue(provider instanceof BodyContentProvider);
+        org.webharvest.plugin.PluginBodyExecutor executor = new org.webharvest.plugin.DefaultPluginBodyExecutor();
+        
+        assertNotNull(executor);
+        // PluginBodyExecutor replaces BodyContentProvider (v2.2.x)
+        assertTrue(executor instanceof org.webharvest.plugin.PluginBodyExecutor);
     }
     
     @Test

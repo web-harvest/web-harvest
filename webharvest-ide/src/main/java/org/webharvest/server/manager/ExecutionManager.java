@@ -10,7 +10,8 @@ import org.webharvest.Harvester;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.ConfigSource;
-import org.webharvest.definition.IElementDef;
+// v2.2.x: IElementDef removed
+// import org.webharvest.definition.IElementDef;
 import org.webharvest.events.ScraperExecutionEndEvent;
 // HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
@@ -105,11 +106,12 @@ public class ExecutionManager {
             
             // Create load callback
             HarvestLoadCallback loadCallback = new HarvestLoadCallback() {
-                @Override
-                public void onSuccess(List<IElementDef> elements) {
-                    LOG.info("Configuration loaded with {} elements", elements.size());
-                    sendLog(job.getId(), "SUCCESS", "Configuration loaded: " + elements.size() + " elements");
-                }
+                // v2.2.x: IElementDef removed - onSuccess() method removed
+                // @Override
+                // public void onSuccess(List<IElementDef> elements) {
+                //     LOG.info("Configuration loaded with {} elements", elements.size());
+                //     sendLog(job.getId(), "SUCCESS", "Configuration loaded: " + elements.size() + " elements");
+                // }
             };
             
             // Get harvester instance

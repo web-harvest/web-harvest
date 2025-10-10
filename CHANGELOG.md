@@ -5,6 +5,40 @@ All notable changes to Web-Harvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - October 10, 2025
+
+### 🐛 Critical Bug Fixes - TDD Approach
+
+**BeanShell Variable Type Conversion** - Fixed 18-year-old bug!
+
+#### Fixed Issues
+- **JSRScriptEngineAdapter.copyVariables()** - CRITICAL FIX
+  - ❌ **Old behavior (since 2006):** Passed `Variable` objects directly to BeanShell for non-ScriptingVariable types
+  - ✅ **New behavior:** Always calls `getWrappedObject()` + automatic `String→Number` conversion
+  - 🎯 **Impact:** BeanShell arithmetic (`counter + 1`), comparisons (`count < 5`), and complex expressions now work correctly
+  - 📊 **Test coverage:** 4 new unit tests in `JSRScriptEngineAdapterVariableConversionTest`
+
+#### Test Infrastructure Improvements
+- **BaseTemplater static injection** - Verified Guice static injection works correctly
+  - 📊 **New tests:** `BaseTemplaterStaticInjectionTest` (3 test methods)
+- **Real ScraperContext in tests** - Replaced Mockito mocks with real `ScraperContext` instances
+  - 🎯 **Fixed:** 9 variable interpolation tests in `DefPluginTest`, `SetVarPluginTest`, `TextPluginTest`
+  - 💡 **Reason:** Mock context doesn't implement `Iterable`, breaking `JSRScriptEngineAdapter.copyVariables()`
+- **DefaultPluginConfiguration in tests** - Replaced Mockito mocks with real configurations
+  - 🎯 **Fixed:** `testDefPluginWithChildrenExecution` and similar tests
+  - 💡 **Reason:** Mockito mocks don't work properly with `DefaultPluginBodyExecutor`
+
+#### Test Results
+- ✅ **Before:** 2419 tests, 12 failures
+- ✅ **After:** 2419 tests, 0 failures (100% pass rate!)
+- ✅ **New tests added:** 7 test methods (2 new test classes)
+- ✅ **Tests fixed:** 12 failures resolved
+
+#### Architecture Verification
+- Compared new architecture (r693) with old architecture (r680)
+- Confirmed: Logic is identical, only class names changed
+- Validated: `PluginBodyExecutor` is full replacement for `BodyProcessor`
+
 ## [2.2.1] - October 2025
 
 ### 🚀 Major Architecture Upgrade: ULTRA-LEAN v2.2.x

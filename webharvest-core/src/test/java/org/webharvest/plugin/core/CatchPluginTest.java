@@ -8,9 +8,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -29,11 +30,11 @@ import static org.testng.Assert.*;
  */
 public class CatchPluginTest {
 
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private DynamicScopeContext context;
@@ -53,10 +54,11 @@ public class CatchPluginTest {
         when(configuration.getChildren()).thenReturn(java.util.Collections.emptyList());
         
         
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(xmlNode.getText()).thenReturn("Test catch content");
-        when(elementDef.hasOperations()).thenReturn(false);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(xmlNode.getText()).thenReturn("Test catch content");
+        // when(elementDef.hasOperations()).thenReturn(false);
         
         when(configuration.getProperty("id")).thenReturn(null);
         

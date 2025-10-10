@@ -13,7 +13,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.definition.IElementDef;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.IElementDef;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -26,8 +27,9 @@ public class VarPluginTest {
     @Mock
     private DynamicScopeContext context;
 
-    @Mock
-    private IElementDef elementDef;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private IElementDef elementDef;
 
     private VarPlugin plugin;
 
@@ -36,9 +38,10 @@ public class VarPluginTest {
         MockitoAnnotations.initMocks(this);
         plugin = new VarPlugin();
         
+        // v2.2.x: elementDef removed - no longer needed
         // Mock elementDef
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // when(elementDef.hasOperations()).thenReturn(false);
+        // when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
         
         // Mock context
         doNothing().when(context).setLocalVar(anyString(), any());

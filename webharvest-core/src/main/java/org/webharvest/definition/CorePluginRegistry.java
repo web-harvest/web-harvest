@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 import org.webharvest.plugin.Plugin;
-import org.webharvest.runtime.processors.Processor;
 
 /**
  * Registry that maps processor classes to their corresponding plugin classes.
@@ -77,7 +76,7 @@ public final class CorePluginRegistry {
      * @param pluginClass the plugin class
      * @param elementName the element name
      */
-    public void registerMapping(Class<? extends Processor> processorClass, 
+    public void registerMapping(Class processorClass, 
                                Class<? extends Plugin> pluginClass,
                                String elementName) {
         System.out.println("CorePluginRegistry.registerMapping: " + elementName + " -> " + pluginClass.getName());

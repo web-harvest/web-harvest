@@ -8,9 +8,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.definition.CorePluginDef;
-import org.webharvest.definition.IElementDef;
-import org.webharvest.definition.XmlNode;
+// REMOVED in v2.2.x - old architecture classes no longer exist
+// import org.webharvest.definition.CorePluginDef;
+// import org.webharvest.definition.IElementDef;
+// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
@@ -28,19 +29,26 @@ public class TryPluginEnhancedTest {
 
     private TryPlugin plugin;
     
-    @Mock
-    private CorePluginDef elementDef;
-    
-    @Mock
-    private XmlNode xmlNode;
+    // REMOVED in v2.2.x - old architecture mocks no longer needed
+    // @Mock
+    // private CorePluginDef elementDef;
+    // @Mock
+    // private XmlNode xmlNode;
     
     @Mock
     private PluginConfiguration configuration;
 
     @BeforeMethod
-    public void setUp() {
+    public void setUp() throws org.webharvest.plugin.exceptions.PluginException {
         MockitoAnnotations.openMocks(this);
         plugin = new TryPlugin();
+        
+        // v2.2.x ULTRA-LEAN: Setup configuration mocks for new architecture
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(java.util.Collections.emptyList());
+        
+        // Initialize plugin with mock configuration
+        plugin.initialize(configuration);
     }
     
     @Test
@@ -61,13 +69,12 @@ public class TryPluginEnhancedTest {
         
         when(configuration.getProperty("id")).thenReturn(null);
         
-        when(xmlNode.getText()).thenReturn("normal execution");
-        when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        when(elementDef.getNode()).thenReturn(xmlNode);
-        when(elementDef.hasOperations()).thenReturn(false);
-        when(elementDef.getOperationDefs()).thenReturn(new IElementDef[0]);
+        // v2.2.x: elementDef/xmlNode removed - no longer needed
+        // when(xmlNode.getText()).thenReturn("normal execution");
+        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
+        // when(elementDef.getNode()).thenReturn(xmlNode);
+        // when(elementDef.hasOperations()).thenReturn(false);
         
-        plugin.initialize(configuration);
         Variable result = plugin.execute(realContext);
         
         assertNotNull(result);

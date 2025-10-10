@@ -40,7 +40,7 @@ import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.definition.CorePluginWebHarvestPluginDef;
+// REMOVED in v2.2.x
 import org.webharvest.definition.XmlNode;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
@@ -187,10 +187,15 @@ public class SetVarPlugin extends AbstractPlugin {
             Variable value;
             
             if (valueAttr != null && !valueAttr.isEmpty()) {
-                // Use value attribute and process it as template
-                value = BaseTemplater.evaluateToVariable(valueAttr, null, context);
-                if (value == null) {
-                    value = EmptyVariable.INSTANCE;
+                // Use value attribute and process it as template (v2.2.x FIX)
+                if (BaseTemplater.scriptEngineFactory != null) {
+                    value = BaseTemplater.evaluateToVariable(valueAttr, context.getScriptingLanguage(), context);
+                    if (value == null) {
+                        value = EmptyVariable.INSTANCE;
+                    }
+                } else {
+                    // Fallback for unit tests without BaseTemplater
+                    value = new NodeVariable(valueAttr);
                 }
             } else {
                 // Get the body content and process it as template
@@ -209,7 +214,13 @@ public class SetVarPlugin extends AbstractPlugin {
                         value = evaluateArithmeticExpression(bodyText, context);
                     } else {
                         System.out.println("SetVarPlugin.doExecute: Calling BaseTemplater.evaluateToVariable");
-                        value = BaseTemplater.evaluateToVariable(bodyText, null, context);
+                        // v2.2.x FIX: Use context.getScriptingLanguage() and null-safety
+                        if (BaseTemplater.scriptEngineFactory != null) {
+                            value = BaseTemplater.evaluateToVariable(bodyText, context.getScriptingLanguage(), context);
+                        } else {
+                            // Fallback for unit tests
+                            value = new NodeVariable(bodyText);
+                        }
                     }
                     System.out.println("SetVarPlugin.doExecute: Evaluated value=" + value);
                     if (value == null) {
@@ -346,8 +357,13 @@ public class SetVarPlugin extends AbstractPlugin {
                 }
             }
             
-            // Fallback to BaseTemplater for other expressions
-            return BaseTemplater.evaluateToVariable(expression, null, context);
+            // Fallback to BaseTemplater for other expressions (v2.2.x FIX)
+            if (BaseTemplater.scriptEngineFactory != null) {
+                return BaseTemplater.evaluateToVariable(expression, context.getScriptingLanguage(), context);
+            } else {
+                // Fallback for unit tests
+                return new NodeVariable(expression);
+            }
         } catch (Exception e) {
             System.out.println("SetVarPlugin.evaluateArithmeticExpression: Error evaluating expression '" + expression + "': " + e.getMessage());
             return EmptyVariable.INSTANCE;

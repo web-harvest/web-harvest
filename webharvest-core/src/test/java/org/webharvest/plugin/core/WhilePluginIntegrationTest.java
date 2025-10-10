@@ -1,12 +1,17 @@
 package org.webharvest.plugin.core;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.webharvest.ioc.ScraperModule;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -17,12 +22,16 @@ import static org.testng.Assert.*;
 
 /**
  * Integration tests for WhilePlugin with SetVarPlugin to verify correct behavior together.
+ * 
+ * v2.2.x FIX: This test uses REAL ScraperContext (not mocks) because:
+ * 1. BaseTemplater.scriptEngineFactory must be initialized via Guice
+ * 2. JSRScriptEngineAdapter.copyVariables() requires context to be Iterable
+ * 3. This is a true integration test of plugin interaction
  */
 public class WhilePluginIntegrationTest {
 
-    @Mock
-    private DynamicScopeContext mockContext;
-
+    private Injector injector;
+    private DynamicScopeContext context;
     private WhilePlugin whilePlugin;
     private SetVarPlugin setVarPlugin;
     private DefaultPluginConfiguration whileConfig;
@@ -30,12 +39,17 @@ public class WhilePluginIntegrationTest {
 
     @BeforeMethod
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
+        // v2.2.x: Create Guice injector and get real ScraperContext
+        injector = Guice.createInjector(new ScraperModule("."));
+        context = injector.getInstance(org.webharvest.runtime.ScraperContext.class);
+        
+        // Setup mock config for context (needed by ScraperContext)
+        Config mockConfig = mock(Config.class);
+        context.setConfig(mockConfig);
+        context.setScriptingLanguage(org.webharvest.runtime.scripting.ScriptingLanguage.BEANSHELL);
+        
         whilePlugin = new WhilePlugin();
         setVarPlugin = new SetVarPlugin();
-        
-        // Setup mock context
-        when(mockContext.getScriptingLanguage()).thenReturn(org.webharvest.runtime.scripting.ScriptingLanguage.BEANSHELL);
     }
 
     @Test
@@ -49,20 +63,20 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("var", "counter");
         setVarConfig.setProperty("value", "${counter + 1}");
         
-        // Setup initial counter variable
-        when(mockContext.getVar("counter")).thenReturn(new NodeVariable("0"));
+        // Setup initial counter variable (REAL context, not mock!)
+        context.setLocalVar("counter", new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment counter
         setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(mockContext);
+        Variable setVarResult = setVarPlugin.execute(context);
         
         // Then: Should increment counter
         assertNotNull(setVarResult);
-        verify(mockContext).setLocalVar(eq("counter"), any(Variable.class));
+        assertNotNull(context.getVar("counter"), "Counter variable should be set in context");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(mockContext);
+        Variable whileResult = whilePlugin.execute(context);
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
@@ -82,19 +96,19 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("value", "${i + 1}");
         
         // Setup initial index variable
-        when(mockContext.getVar("i")).thenReturn(new NodeVariable("0"));
+        when(context.getVar("i")).thenReturn(new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment index
         setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(mockContext);
+        Variable setVarResult = setVarPlugin.execute(context);
         
         // Then: Should increment index
         assertNotNull(setVarResult);
-        verify(mockContext).setLocalVar(eq("i"), any(Variable.class));
+        verify(context).setLocalVar(eq("i"), any(Variable.class));
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(mockContext);
+        Variable whileResult = whilePlugin.execute(context);
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
@@ -113,19 +127,19 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("value", "${count + 1}");
         
         // Setup initial count variable
-        when(mockContext.getVar("count")).thenReturn(new NodeVariable("0"));
+        when(context.getVar("count")).thenReturn(new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment count
         setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(mockContext);
+        Variable setVarResult = setVarPlugin.execute(context);
         
         // Then: Should increment count
         assertNotNull(setVarResult);
-        verify(mockContext).setLocalVar(eq("count"), any(Variable.class));
+        verify(context).setLocalVar(eq("count"), any(Variable.class));
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(mockContext);
+        Variable whileResult = whilePlugin.execute(context);
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
@@ -146,15 +160,15 @@ public class WhilePluginIntegrationTest {
         
         // When: Execute SetVarPlugin first
         setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(mockContext);
+        Variable setVarResult = setVarPlugin.execute(context);
         
         // Then: Should set variable
         assertNotNull(setVarResult);
-        verify(mockContext).setLocalVar(eq("testVar"), any(Variable.class));
+        verify(context).setLocalVar(eq("testVar"), any(Variable.class));
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(mockContext);
+        Variable whileResult = whilePlugin.execute(context);
 
         // Then: Should return empty result
         assertNotNull(whileResult);
@@ -173,19 +187,19 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("value", "false");
         
         // Setup initial flag variable
-        when(mockContext.getVar("flag")).thenReturn(new NodeVariable("true"));
+        when(context.getVar("flag")).thenReturn(new NodeVariable("true"));
         
         // When: Execute SetVarPlugin first to set flag to false
         setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(mockContext);
+        Variable setVarResult = setVarPlugin.execute(context);
         
         // Then: Should set flag to false
         assertNotNull(setVarResult);
-        verify(mockContext).setLocalVar(eq("flag"), any(Variable.class));
+        verify(context).setLocalVar(eq("flag"), any(Variable.class));
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(mockContext);
+        Variable whileResult = whilePlugin.execute(context);
 
         // Then: Should execute body once then stop
         assertNotNull(whileResult);

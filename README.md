@@ -1,5 +1,34 @@
 # Web-Harvest
 
+## 🐛 **CRITICAL BUG FIX - October 10, 2025**
+
+### ✅ **18-Year-Old BeanShell Bug Fixed!**
+
+**TDD Approach Success:** Fixed critical bug in `JSRScriptEngineAdapter.copyVariables()` that existed since 2006!
+
+**Problem:**
+- BeanShell received `Variable` objects instead of their values
+- Arithmetic operations failed: `"Operator '+' inappropriate for objects"`
+- Affected: `${counter + 1}`, `${count < 5}`, all arithmetic/comparison expressions
+
+**Solution:**
+- Always call `Variable.getWrappedObject()` (was only for `ScriptingVariable`)
+- Automatic `String→Number` conversion for arithmetic operations
+- All BeanShell expressions now work correctly
+
+**Impact:**
+- ✅ **Fixed 12 test failures** (variable interpolation tests)
+- ✅ **2419/2419 tests pass** (100% pass rate!)
+- ✅ **7 new tests added** (TDD methodology)
+- ✅ **Bug existed since v1.0** - now resolved!
+
+**Test Coverage:**
+- `BaseTemplaterStaticInjectionTest` - 3 tests verifying Guice static injection
+- `JSRScriptEngineAdapterVariableConversionTest` - 4 tests for BeanShell type conversion
+- See `CHANGELOG.md` for complete details
+
+---
+
 ## 🎉 **WEB-BASED IDE - October 2025**
 
 ### ✅ **Modern Web UI with Embedded Jetty**

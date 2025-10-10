@@ -13,7 +13,8 @@ import org.webharvest.Harvest;
 import org.webharvest.Harvester;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.ConfigSource;
-import org.webharvest.definition.IElementDef;
+// v2.2.x: IElementDef removed
+// import org.webharvest.definition.IElementDef;
 // HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
 // HttpClientManager removed during HttpComponents 4.x migration
@@ -92,12 +93,13 @@ public class ConfigServlet extends HttpServlet {
             
             // Try to create harvester (this validates the XML)
             harvest.getHarvester(configSource, new HarvestLoadCallback() {
-                @Override
-                public void onSuccess(List<IElementDef> elements) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Configuration validated successfully: {} elements", elements.size());
-                    }
-                }
+                // v2.2.x: IElementDef removed - onSuccess() method removed
+                // @Override
+                // public void onSuccess(List<IElementDef> elements) {
+                //     if (LOG.isDebugEnabled()) {
+                //         LOG.debug("Configuration validated successfully: {} elements", elements.size());
+                //     }
+                // }
             });
             
             // If no exception thrown, config is valid

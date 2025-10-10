@@ -81,8 +81,9 @@ public class ConfigPluginTest {
         when(mockConfiguration.getProperty("charset", "UTF-8")).thenReturn("UTF-8");
         when(mockConfiguration.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
+        // v2.2.x: IElementDef removed - no longer needed
         // Mock the element definition and body execution
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
         
         // Mock executeBodyContent to return a result
         NodeVariable expectedResult = new NodeVariable("test result");
@@ -105,8 +106,9 @@ public class ConfigPluginTest {
         when(mockConfiguration.getProperty("charset", "UTF-8")).thenReturn("ISO-8859-1");
         when(mockConfiguration.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
+        // v2.2.x: IElementDef removed - no longer needed
         // Mock the element definition
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
         
         // When
         plugin.initialize(mockConfiguration);
@@ -123,8 +125,9 @@ public class ConfigPluginTest {
         when(mockConfiguration.getProperty("charset", "UTF-8")).thenReturn("UTF-8");
         when(mockConfiguration.getProperty("scriptlang", "beanshell")).thenReturn("beanshell");
         
+        // v2.2.x: IElementDef removed - no longer needed
         // Mock the element definition with child elements
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+        // org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
         
         // Mock executeBody to return a result
         NodeVariable expectedResult = new NodeVariable("test result");
@@ -241,17 +244,18 @@ public class ConfigPluginTest {
         // Then - should throw PluginValidationException
     }
 
-    @Test
-    public void testSetAndGetElementDef() {
-        // Given
-        org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
-        
-        // When
-        
-        // Then
-        // ULTRA-LEAN v2.2.x: getElementDef() removed
-        assertNotNull(plugin);
-    }
+    // v2.2.x: IElementDef removed - test no longer relevant
+    // @Test
+    // public void testSetAndGetElementDef() {
+    //     // Given
+    //     org.webharvest.definition.IElementDef mockElementDef = mock(org.webharvest.definition.IElementDef.class);
+    //     
+    //     // When
+    //     
+    //     // Then
+    //     // ULTRA-LEAN v2.2.x: getElementDef() removed
+    //     assertNotNull(plugin);
+    // }
 
     @Test
     public void testIsInitialized() {

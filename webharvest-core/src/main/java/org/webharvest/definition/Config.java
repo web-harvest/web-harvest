@@ -33,7 +33,7 @@
 
 package org.webharvest.definition;
 
-import org.webharvest.definition.v3.PluginConfigurationTree;
+import org.webharvest.definition.PluginConfigurationTree;
 
 /**
  * Represents lazily loaded configuration object that is loaded from associated
@@ -80,7 +80,7 @@ public interface Config {
      *             This method will be removed in v2.3.x.
      */
     @Deprecated
-    IElementDef getElementDef();
+    // IElementDef getElementDef();
 
     /**
      * Gets reference to configuration tree (new architecture - v2.2.x).

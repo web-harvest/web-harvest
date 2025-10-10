@@ -37,7 +37,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
-import org.webharvest.definition.CorePluginWebHarvestPluginDef;
+// REMOVED in v2.2.x
 import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;

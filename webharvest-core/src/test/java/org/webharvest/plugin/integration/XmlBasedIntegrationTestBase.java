@@ -145,7 +145,7 @@ public abstract class XmlBasedIntegrationTestBase {
         // Create a HarvestLoadCallback that does nothing (configuration loads automatically)
         org.webharvest.HarvestLoadCallback loadCallback = new org.webharvest.HarvestLoadCallback() {
             @Override
-            public void onSuccess(org.webharvest.definition.v3.PluginConfigurationTree configTree) {
+            public void onSuccess(org.webharvest.definition.PluginConfigurationTree configTree) {
                 LOG.debug("Configuration loaded: {}", configTree);
             }
         };
@@ -264,6 +264,42 @@ public abstract class XmlBasedIntegrationTestBase {
      */
     protected String getExamplePath(String filename) {
         return TEST_RESOURCES_BASE + "/" + filename;
+    }
+    
+    /**
+     * Executes an XML configuration from a String and returns the result context.
+     * 
+     * @param xmlString The XML configuration as a String
+     * @return The execution context containing results
+     * @throws Exception If execution fails
+     */
+    protected DynamicScopeContext executeXmlString(String xmlString) throws Exception {
+        LOG.info("Executing XML configuration from String");
+        
+        // Create config source from String
+        org.webharvest.definition.ConfigSource configSource = 
+            new org.webharvest.definition.BufferConfigSource(xmlString);
+        
+        final DynamicScopeContext[] resultContext = new DynamicScopeContext[1];
+        
+        // Create a HarvestLoadCallback that does nothing (configuration loads automatically)
+        org.webharvest.HarvestLoadCallback loadCallback = new org.webharvest.HarvestLoadCallback() {
+            @Override
+            public void onSuccess(org.webharvest.definition.PluginConfigurationTree configTree) {
+                LOG.debug("Configuration loaded: {}", configTree);
+            }
+        };
+        
+        Harvester harvester = harvest.getHarvester(configSource, loadCallback);
+        resultContext[0] = harvester.execute(new Harvester.ContextInitCallback() {
+            @Override
+            public void onSuccess(DynamicScopeContext context) {
+                LOG.debug("XML configuration executed successfully");
+            }
+        });
+        
+        assertNotNull(resultContext[0], "Execution context should not be null");
+        return resultContext[0];
     }
 }
 
