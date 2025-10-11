@@ -39,7 +39,7 @@ package org.webharvest.runtime.templaters;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.ScriptSource;

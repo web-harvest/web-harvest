@@ -51,7 +51,7 @@ import org.webharvest.WHConstants;
 import org.webharvest.utils.CommonUtil;
 import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import java.util.ArrayList;
 import java.util.List;
 

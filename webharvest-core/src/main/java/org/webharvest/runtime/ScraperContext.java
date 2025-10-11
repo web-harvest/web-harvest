@@ -47,7 +47,7 @@ import javax.annotation.PostConstruct;
 
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections.Transformer;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.variables.EmptyVariable;

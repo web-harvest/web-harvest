@@ -35,7 +35,7 @@ package org.webharvest.utils;
 
 import net.sf.saxon.om.Item;
 import net.sf.saxon.trans.XPathException;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.webharvest.exception.ScraperXQueryException;
 
 import java.util.Properties;

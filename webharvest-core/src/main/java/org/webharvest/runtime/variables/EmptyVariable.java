@@ -37,7 +37,7 @@
 package org.webharvest.runtime.variables;
 
 import org.apache.commons.collections.iterators.EmptyIterator;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.Iterator;

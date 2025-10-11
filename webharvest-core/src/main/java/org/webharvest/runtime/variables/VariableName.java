@@ -35,7 +35,7 @@ package org.webharvest.runtime.variables;
 
 import static java.text.MessageFormat.format;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.webharvest.exception.VariableException;
 
 /**

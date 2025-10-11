@@ -41,8 +41,8 @@ import net.sf.saxon.om.NodeInfo;
 import net.sf.saxon.query.QueryResult;
 import net.sf.saxon.trans.XPathException;
 import net.sf.saxon.type.Type;
-import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.webharvest.exception.VariableException;
 import org.webharvest.runtime.variables.*;
 
