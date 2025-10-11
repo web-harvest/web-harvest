@@ -37,24 +37,32 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Default implementation of {@link HttpService} using Apache HttpClient 4.
+ * Default implementation of {@link HttpService} using Apache HttpClient 5.x
+ * 
+ * <p>Migrated from HttpClient 4.5.14 to 5.5.1 in October 2025 for:</p>
+ * <ul>
+ *   <li>Latest security updates</li>
+ *   <li>Improved performance</li>
+ *   <li>Modern Java support</li>
+ * </ul>
  * 
  * @author Robert Bala
  * @since 2.2.0
+ * @version 2.2.1
  */
 public class HttpServiceImpl implements HttpService {
     
@@ -123,7 +131,7 @@ public class HttpServiceImpl implements HttpService {
      * @param request the HTTP request
      * @param headers the headers to add
      */
-    private void addHeaders(HttpRequestBase request, Map<String, String> headers) {
+    private void addHeaders(ClassicHttpRequest request, Map<String, String> headers) {
         if (headers != null && !headers.isEmpty()) {
             for (Map.Entry<String, String> entry : headers.entrySet()) {
                 request.addHeader(entry.getKey(), entry.getValue());
@@ -141,9 +149,9 @@ public class HttpServiceImpl implements HttpService {
      * @return the HTTP response
      * @throws HttpServiceException if the request fails
      */
-    private HttpResponse executeRequest(HttpRequestBase request) throws HttpServiceException {
+    private HttpResponse executeRequest(ClassicHttpRequest request) throws HttpServiceException {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
-            int statusCode = response.getStatusLine().getStatusCode();
+            int statusCode = response.getCode();
             
             // Bug #39 Fix: Get response body as BINARY first
             // This prevents corruption of image/PDF/video data
@@ -153,9 +161,9 @@ public class HttpServiceImpl implements HttpService {
                 binaryData = EntityUtils.toByteArray(entity);
             }
             
-            // Get response headers
+            // Get response headers  
             Map<String, String> responseHeaders = new HashMap<>();
-            for (Header header : response.getAllHeaders()) {
+            for (Header header : response.getHeaders()) {
                 responseHeaders.put(header.getName(), header.getValue());
             }
             
