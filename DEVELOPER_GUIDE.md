@@ -1,10 +1,10 @@
-# Web-Harvest Developer Guide
+# WebHarvest Developer Guide
 
 ## 🎉 **IDE Modernization - October 2025**
 
 ### ✅ **Web-Based IDE with Embedded Jetty**
 
-Web-Harvest now features a modern, professional web-based IDE replacing the legacy Swing application!
+WebHarvest now features a modern, professional web-based IDE replacing the legacy Swing application!
 
 #### 🚀 Key Achievements:
 
@@ -58,7 +58,7 @@ Modern: @CorePlugin → CorePluginDef → PluginProcessorAdapter → AbstractPro
 
 ### Overview
 
-The Web-Harvest IDE is built as a web application with embedded Jetty server. See [webharvest-ide/IDE_GUIDE.md](webharvest-ide/IDE_GUIDE.md) for user documentation.
+The WebHarvest IDE is built as a web application with embedded Jetty server. See [webharvest-ide/IDE_GUIDE.md](webharvest-ide/IDE_GUIDE.md) for user documentation.
 
 ### Architecture
 
@@ -108,7 +108,7 @@ Results Display  ←WS→       ExecutionManager  ─┘
 **index.html**
 - Single-page application structure
 - Three-panel layout: Editor | Results (Output/Variables/Log)
-- Uses Web-Harvest branding (logo, colors)
+- Uses WebHarvest branding (logo, colors)
 
 **static/js/app.js**
 - Application state management
@@ -286,7 +286,7 @@ jar -uf target/webharvest-ide-2.2.0.jar \
 
 ## Architecture Overview
 
-Web-Harvest follows a modular, plugin-based architecture designed for extensibility and maintainability.
+WebHarvest follows a modular, plugin-based architecture designed for extensibility and maintainability.
 
 ### Core Components
 
@@ -438,7 +438,7 @@ public interface PluginConfiguration {
 
 ### Variable System
 
-Web-Harvest uses a flexible variable system:
+WebHarvest uses a flexible variable system:
 
 ```java
 // Variable types
@@ -456,7 +456,7 @@ boolean isEmpty = variable.isEmpty();
 
 ### XML Schema
 
-Web-Harvest uses XML Schema for configuration validation:
+WebHarvest uses XML Schema for configuration validation:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -525,7 +525,7 @@ try {
 ```java
 // Set variables
 context.setVar("baseUrl", new NodeVariable("https://example.com"));
-context.setVar("userAgent", new NodeVariable("Web-Harvest/2.1.0"));
+context.setVar("userAgent", new NodeVariable("WebHarvest/2.1.0"));
 
 // Get variables
 Variable baseUrl = context.getVar("baseUrl");
@@ -534,7 +534,7 @@ String url = baseUrl.toString();
 
 ## Testing Guidelines
 
-This comprehensive guide documents the testing methodology proven effective during development of Web-Harvest 2.2.1, where we achieved **2600 tests with 100% pass rate and zero regressions** while fixing 8 bugs.
+This comprehensive guide documents the testing methodology proven effective during development of WebHarvest 2.2.1, where we achieved **2600 tests with 100% pass rate and zero regressions** while fixing 8 bugs.
 
 ### Testing Philosophy
 
@@ -1419,7 +1419,7 @@ public class ProcessPlugin extends AbstractPlugin {
 }
 ```
 
-This developer guide provides comprehensive information for developing with Web-Harvest, including architecture overview, plugin development, core APIs, and best practices.
+This developer guide provides comprehensive information for developing with WebHarvest, including architecture overview, plugin development, core APIs, and best practices.
 
 
 

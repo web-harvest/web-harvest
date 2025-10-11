@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * Plugin that retrieves a variable value from the context.
  * This is equivalent to the old GetVarPlugin but using the new plugin architecture.
  *
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  * @version %I%, %G%
  */

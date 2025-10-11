@@ -4,7 +4,7 @@
 
 **SUCCESS! Proof of Concept complete.**
 
-We've successfully demonstrated that Web-Harvest can parse XML configurations **directly into PluginConfiguration objects**, completely bypassing the old `*Def` layer (HttpDef, XPathDef, etc.).
+We've successfully demonstrated that WebHarvest can parse XML configurations **directly into PluginConfiguration objects**, completely bypassing the old `*Def` layer (HttpDef, XPathDef, etc.).
 
 ## What Was Built
 
@@ -144,7 +144,7 @@ Based on POC results and architecture analysis:
 
 ✅ **POC is a complete success!**
 
-The new StreamingXmlParser proves that Web-Harvest v3.0 can:
+The new StreamingXmlParser proves that WebHarvest v3.0 can:
 1. Parse XML directly to PluginConfiguration
 2. Eliminate the entire *Def layer
 3. Simplify the architecture significantly
@@ -176,7 +176,7 @@ POC complete ✅
 ---
 
 **Date**: October 9, 2025  
-**Author**: Web-Harvest Team  
+**Author**: WebHarvest Team  
 **Status**: POC COMPLETE - Ready for v3.0 Full Implementation
 
 

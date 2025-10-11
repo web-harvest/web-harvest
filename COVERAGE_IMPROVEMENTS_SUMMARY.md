@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Successfully improved test coverage for critical Web-Harvest plugins through integration testing approach.
+Successfully improved test coverage for critical WebHarvest plugins through integration testing approach.
 
 **Result**: 44/47 plugins now have ≥35% coverage (was 37/47)
 
@@ -136,7 +136,7 @@ For future coverage improvements:
 
 ### Hybrid Architecture - Must Keep
 
-Web-Harvest uses TWO coexisting architectures:
+WebHarvest uses TWO coexisting architectures:
 
 **Old (@Definition)**:
 - Used by: XML Parser (SAXConfigParser)

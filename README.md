@@ -1,4 +1,4 @@
-# Web-Harvest
+# WebHarvest
 
 ## 🐛 **CRITICAL BUG FIXES - October 10, 2025**
 
@@ -48,7 +48,7 @@
 
 ### ✅ **Modern Web UI with Embedded Jetty**
 
-Web-Harvest now features a modern, web-based IDE that runs as a standalone Java application with embedded HTTP server!
+WebHarvest now features a modern, web-based IDE that runs as a standalone Java application with embedded HTTP server!
 
 **Key Features:**
 - 🌐 **Modern Web UI** - Monaco Editor (VS Code engine) for XML editing
@@ -93,7 +93,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 [![Java](https://img.shields.io/badge/java-11%2B-orange.svg)](https://www.oracle.com/java/)
 [![SourceForge](https://img.shields.io/badge/SourceForge-web--harvest-orange.svg)](https://sourceforge.net/projects/web-harvest/)
 
-**Web-Harvest** is an open-source web data extraction tool written in Java. It provides a powerful and flexible framework for collecting web pages and extracting useful data from them using XML-based configuration files.
+**WebHarvest** is an open-source web data extraction tool written in Java. It provides a powerful and flexible framework for collecting web pages and extracting useful data from them using XML-based configuration files.
 
 ## 🚀 Features
 
@@ -130,7 +130,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 
 ### Overview
 
-Web-Harvest IDE is a modern, web-based development environment for creating and testing scraping configurations. It runs as a standalone Java application with an embedded Jetty server.
+WebHarvest IDE is a modern, web-based development environment for creating and testing scraping configurations. It runs as a standalone Java application with an embedded Jetty server.
 
 ### Features
 
@@ -174,7 +174,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 └─────────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────────┐
-│  Web-Harvest Core Engine                │
+│  WebHarvest Core Engine                │
 │  └─ ExecutionManager (thread pool)      │
 └─────────────────────────────────────────┘
 ```
@@ -184,7 +184,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 - **Backend:** Jetty 11, Gson for JSON, SLF4J logging
 - **Frontend:** Vanilla JavaScript, Monaco Editor, Font Awesome icons
 - **Communication:** REST API for sync operations, WebSocket for streaming
-- **Styling:** Based on `docs/web/` styling with Web-Harvest branding
+- **Styling:** Based on `docs/web/` styling with WebHarvest branding
 - **Testing:** 4 professional integration tests with real Jetty WebSocket
 
 ---
@@ -269,7 +269,7 @@ String result = context.getVar("title").toString();
 
 ## 🏗 Architecture
 
-Web-Harvest follows a modular, plugin-based architecture:
+WebHarvest follows a modular, plugin-based architecture:
 
 ```
 webharvest/
@@ -290,7 +290,7 @@ webharvest/
 
 ## 🔌 Plugin System
 
-Web-Harvest provides a rich set of built-in plugins:
+WebHarvest provides a rich set of built-in plugins:
 
 ### Core Plugins
 - **HTTP Plugin**: Web page retrieval and HTTP operations
@@ -326,7 +326,7 @@ Web-Harvest provides a rich set of built-in plugins:
 
 ### Configuration Schema
 
-Web-Harvest uses XML Schema for configuration validation:
+WebHarvest uses XML Schema for configuration validation:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -341,7 +341,7 @@ Each plugin supports specific attributes and body content:
 
 ```xml
 <http url="https://example.com" method="GET" timeout="30000">
-    <http-header name="User-Agent" value="Web-Harvest/2.1.0"/>
+    <http-header name="User-Agent" value="WebHarvest/2.1.0"/>
     <http-param name="format" value="json"/>
     <xpath expression="//title" var="title"/>
 </http>
@@ -364,7 +364,7 @@ Variables can be referenced using `${variableName}` syntax:
 
 ### Test Coverage
 
-Web-Harvest has comprehensive test coverage across all modules:
+WebHarvest has comprehensive test coverage across all modules:
 
 - **webharvest-core**: 2556 tests, 50%+ coverage
   - Unit tests for all core plugins
@@ -588,8 +588,8 @@ This project is licensed under the BSD License - see the [LICENSE](LICENSE) file
 
 - **Original Author**: Vladimir Nikic
 - **Contributors**: Alexander Wajda, Robert Bala, Piotr Dyraga, Maciej Czapiewski
-- **Community**: All contributors and users who help improve Web-Harvest
+- **Community**: All contributors and users who help improve WebHarvest
 
 ---
 
-**Web-Harvest** - Making web data extraction simple and powerful! 🕷️✨
+**WebHarvest** - Making web data extraction simple and powerful! 🕷️✨

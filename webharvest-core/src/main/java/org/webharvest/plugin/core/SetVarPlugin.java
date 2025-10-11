@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * Plugin that sets a variable value in the context.
  * This is equivalent to the old SetVarPlugin but using the new plugin architecture.
  *
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  * @version %I%, %G%
  */

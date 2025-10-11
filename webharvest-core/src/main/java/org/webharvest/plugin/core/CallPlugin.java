@@ -63,7 +63,7 @@ import java.util.concurrent.Callable;
  * </p>
  * 
  * @core This is a core plugin
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.2.0
  */
 @CorePlugin(

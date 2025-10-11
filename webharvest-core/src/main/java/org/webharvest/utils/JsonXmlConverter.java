@@ -38,7 +38,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * JSON to XML converter for Web-Harvest.
+ * JSON to XML converter for WebHarvest.
  * 
  * <h3>Bug #61 Fix</h3>
  * <p>
@@ -71,7 +71,7 @@ import org.json.JSONObject;
  *   <li>Properly escapes XML special characters</li>
  * </ul>
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @version 2.2.1
  * @since 2.2.1 (Bug #61 fix)
  */

@@ -1,4 +1,4 @@
-# Web-Harvest 2.2.0 - October 2025 Release Notes
+# WebHarvest 2.2.0 - October 2025 Release Notes
 
 ## 🎉 Major Features
 
@@ -188,7 +188,7 @@ Removed session/planning documents:
 ### Updated Documentation
 - All documentation now in English
 - GitHub references → SourceForge references
-- "AI Assistant" → "Web-Harvest Team"
+- "AI Assistant" → "WebHarvest Team"
 - Removed outdated/temporary documents
 
 ---
@@ -292,13 +292,13 @@ The only "breaking" change is the UI (Swing → Web), but this is an improvement
 
 ## 🙏 Credits
 
-**Developed by:** Web-Harvest Team  
+**Developed by:** WebHarvest Team  
 **License:** BSD 3-Clause  
 **Project:** https://sourceforge.net/projects/web-harvest/  
 **Documentation:** https://web-harvest.sourceforge.io/
 
 **Special Thanks:**
-- Original Web-Harvest authors for the solid foundation
+- Original WebHarvest authors for the solid foundation
 - Jetty team for the excellent embedded server
 - Monaco Editor team for the professional editor component
 

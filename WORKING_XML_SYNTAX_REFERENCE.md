@@ -1,4 +1,4 @@
-# Web-Harvest XML Syntax Reference (VERIFIED WORKING)
+# WebHarvest XML Syntax Reference (VERIFIED WORKING)
 
 **Source**: webharvest-core/src/test/resources/integration-tests/new_plugins/  
 **Date**: October 8, 2025  

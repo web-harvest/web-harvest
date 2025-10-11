@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Web-Harvest will be documented in this file.
+All notable changes to WebHarvest will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -315,7 +315,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 - **Issue**: JavaScript (Rhino) returns NativeJavaObject wrappers, not unwrapped Java objects
 - **Problem**: createVariable() stored wrapped objects in NodeVariable instead of actual objects
 - **Fix**: Detect NativeJavaObject, unwrap using reflection, recursively create correct Variable type
-- **Impact**: Seamless JavaScript ↔ Web-Harvest integration, Lists → ListVariable, etc.
+- **Impact**: Seamless JavaScript ↔ WebHarvest integration, Lists → ListVariable, etc.
 - **Tests**: 5 tests including JavaScript integration with real Rhino Context
 
 **Bug #47: Character Set Problem in CLI Mode** (r707)
@@ -601,7 +601,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 ## [1.0.0] - 2006-XX-XX
 
 ### Added
-- **Initial Release**: First release of Web-Harvest
+- **Initial Release**: First release of WebHarvest
 - **Basic Web Scraping**: Core web scraping functionality
 - **XML Configuration**: XML-based configuration system
 - **Processor Architecture**: Original processor-based architecture
@@ -619,11 +619,11 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 
 ### Acknowledgments
 
-Special thanks to all contributors, testers, and users who have helped improve Web-Harvest over the years. The migration to the new plugin architecture represents a significant milestone in the project's evolution, providing better performance, maintainability, and extensibility.
+Special thanks to all contributors, testers, and users who have helped improve WebHarvest over the years. The migration to the new plugin architecture represents a significant milestone in the project's evolution, providing better performance, maintainability, and extensibility.
 
 ---
 
-For more information about Web-Harvest, visit our [GitHub repository](https://github.com/webharvest/webharvest) or check the [Developer Guide](DEVELOPER_GUIDE.md).
+For more information about WebHarvest, visit our [GitHub repository](https://github.com/webharvest/webharvest) or check the [Developer Guide](DEVELOPER_GUIDE.md).
 
 
 

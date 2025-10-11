@@ -16,7 +16,7 @@ import org.webharvest.runtime.database.StandaloneConnectionPool;
  * Guice module for database-specific bindings.
  * This module should be used together with ScraperModule from webharvest-core.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.2.0
  */
 public class DatabaseModule extends AbstractModule {

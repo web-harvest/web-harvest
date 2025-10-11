@@ -66,8 +66,8 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 /**
- * Command Line Interface for Web-Harvest.
- * Provides command line execution capabilities for Web-Harvest scraping configurations.
+ * Command Line Interface for WebHarvest.
+ * Provides command line execution capabilities for WebHarvest scraping configurations.
  */
 public class WebHarvestCLI {
 

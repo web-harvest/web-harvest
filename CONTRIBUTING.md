@@ -1,6 +1,6 @@
-# Contributing to Web-Harvest
+# Contributing to WebHarvest
 
-Thank you for your interest in contributing to Web-Harvest! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to WebHarvest! This document provides guidelines and information for contributors.
 
 ## Table of Contents
 
@@ -291,7 +291,7 @@ web-harvest/
 
 ### Version Numbering
 
-Web-Harvest follows [Semantic Versioning](https://semver.org/):
+WebHarvest follows [Semantic Versioning](https://semver.org/):
 - **MAJOR.MINOR.PATCH** (e.g., 2.2.0)
 - MAJOR: Breaking changes
 - MINOR: New features, backward compatible
@@ -394,7 +394,7 @@ Types: `Add`, `Fix`, `Update`, `Remove`, `Refactor`, `Docs`, `Test`
 
 ## License
 
-By contributing to Web-Harvest, you agree that your contributions will be licensed under the BSD License.
+By contributing to WebHarvest, you agree that your contributions will be licensed under the BSD License.
 
 ---
 
@@ -406,7 +406,7 @@ If you have questions about contributing:
 - Create a ticket on SourceForge
 - Contact project maintainers
 
-**Thank you for contributing to Web-Harvest!**
+**Thank you for contributing to WebHarvest!**
 
 ---
 

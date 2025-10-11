@@ -110,7 +110,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * </http>
  * }</pre>
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @version 2.2.1
  * @see org.webharvest.utils.CommonUtil#encodeUrl(String, String)
  */

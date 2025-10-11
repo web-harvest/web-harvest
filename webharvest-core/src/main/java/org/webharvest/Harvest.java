@@ -41,7 +41,7 @@ import org.webharvest.events.EventHandler;
 import org.webharvest.events.HarvesterEvent;
 
 /**
- * Web-Harvest application facade that provides control over creation of
+ * WebHarvest application facade that provides control over creation of
  * scraping processors {@link Harvester} and dispatching of scraping events.
  *
  * @author Robert Bala

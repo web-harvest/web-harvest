@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  * 
  * @core This is a core plugin
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(

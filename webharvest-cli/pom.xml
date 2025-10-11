@@ -9,13 +9,13 @@
   </parent>
   <artifactId>webharvest-cli</artifactId>
   <packaging>jar</packaging>
-  <name>Web-Harvest CLI</name>
+    <name>WebHarvest CLI</name>
   <description>
-        Command Line Interface for Web-Harvest.
-        Provides command line execution capabilities for Web-Harvest scraping configurations.
+        Command Line Interface for WebHarvest.
+        Provides command line execution capabilities for WebHarvest scraping configurations.
     </description>
   <dependencies>
-    <!-- Web-Harvest Core -->
+    <!-- WebHarvest Core -->
     <dependency>
       <groupId>net.sourceforge.web-harvest</groupId>
       <artifactId>webharvest-core</artifactId>

@@ -10,8 +10,8 @@
     </parent>
     <groupId>net.sourceforge.web-harvest</groupId>
     <artifactId>webharvest-ftp</artifactId>
-    <name>Web-Harvest FTP Extensions</name>
-    <description>FTP plugins for Web-Harvest including file transfer operations</description>
+    <name>WebHarvest FTP Extensions</name>
+    <description>FTP plugins for WebHarvest including file transfer operations</description>
     
     <build>
         <plugins>

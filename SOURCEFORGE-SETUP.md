@@ -2,7 +2,7 @@
 
 ## 📋 Step 1: Project Information
 
-- **Project Name**: Web-Harvest
+- **Project Name**: WebHarvest
 - **Project URL**: https://sourceforge.net/projects/web-harvest/
 - **Web URL**: https://web-harvest.sourceforge.io/
 - **SVN**: https://svn.code.sf.net/p/web-harvest/code/

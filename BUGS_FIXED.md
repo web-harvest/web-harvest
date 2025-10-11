@@ -1,6 +1,6 @@
-# Fixed Bugs - Web-Harvest
+# Fixed Bugs - WebHarvest
 
-This document tracks all bugs that have been reported and fixed in Web-Harvest, organized by version.
+This document tracks all bugs that have been reported and fixed in WebHarvest, organized by version.
 
 ## Format
 Each bug entry includes:
@@ -586,7 +586,7 @@ When downloading an image from a website that references it by number (no file e
 - Dynamic image URLs: `/image/12345`, `/photo/get?id=789`
 - No file extension (can't detect from URL)
 - Server misconfigured: sends `text/plain` instead of `image/jpeg`
-- Web-Harvest treats as text → corrupts binary data
+- WebHarvest treats as text → corrupts binary data
 - Can't save image to file
 
 #### Root Cause
@@ -937,13 +937,13 @@ Added 8 comprehensive tests to verify fix:
 **Note**: This issue was resolved by architectural refactoring and represents correct HTTP behavior per specification.
 
 #### Description
-User reported that Web-Harvest returned `iso-8859-1` charset from HTTP header, but page contained meta tag with `UTF-8` charset.
+User reported that WebHarvest returned `iso-8859-1` charset from HTTP header, but page contained meta tag with `UTF-8` charset.
 
 **User Example**:
 - URL: `http://www.rainbowappliance.com/KGSK901SSS.html`
 - HTTP Header: `Content-Type: text/html; charset=iso-8859-1`
 - Meta Tag: `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`
-- Web-Harvest returned: `iso-8859-1` (from HTTP header)
+- WebHarvest returned: `iso-8859-1` (from HTTP header)
 - User expected: `UTF-8` (from meta tag)
 
 **User's Analysis**:
@@ -1025,12 +1025,12 @@ The actual issue was a **misunderstanding of HTTP priority**:
 **Browser Behavior**:
 - Modern browsers also prioritize HTTP header
 - Only use meta tag if header doesn't specify charset
-- Web-Harvest follows same behavior
+- WebHarvest follows same behavior
 
 **Server Responsibility**:
 - If server sends `iso-8859-1` in header but `UTF-8` in meta tag
 - **The server is misconfigured** (inconsistent charset declaration)
-- Web-Harvest correctly reports the inconsistency
+- WebHarvest correctly reports the inconsistency
 
 #### Tests Added
 **Documentation and verification tests**:
@@ -1069,7 +1069,7 @@ The actual issue was a **misunderstanding of HTTP priority**:
 - HTTP header charset is correct source
 - Meta tag charset is secondary
 - Server misconfiguration if they differ
-- Web-Harvest follows HTTP specification
+- WebHarvest follows HTTP specification
 
 **If User Really Needs Meta Tag Charset**:
 Can extract it explicitly using XPath on parsed HTML.
@@ -1094,7 +1094,7 @@ Contact server administrator to fix inconsistent charset declaration.
 **Component**: `webharvest-core` - `CommonUtil.fullUrl()`
 
 #### Description
-Parent directory references ("..") in relative URLs were not normalized, resulting in URLs like `http://example.com/foo/../bar.htm`. Some servers (particularly IIS) don't handle ".." in URLs and close connections. Browsers automatically normalize these URLs, but Web-Harvest didn't.
+Parent directory references ("..") in relative URLs were not normalized, resulting in URLs like `http://example.com/foo/../bar.htm`. Some servers (particularly IIS) don't handle ".." in URLs and close connections. Browsers automatically normalize these URLs, but WebHarvest didn't.
 
 **User Report**:
 > "I ran into a problem with an IIS server encountering links like `../bar.htm`.
@@ -1112,7 +1112,7 @@ Parent directory references ("..") in relative URLs were not normalized, resulti
 - IIS servers close connection on URLs with ".."
 - Browsers normalize automatically
 - Wireshark confirmed browsers send normalized URLs
-- Web-Harvest sent non-normalized URLs → connection closed
+- WebHarvest sent non-normalized URLs → connection closed
 
 #### Root Cause
 **CommonUtil.fullUrl()** concatenated page URL and link without normalizing:
@@ -1504,7 +1504,7 @@ NativeJavaObject wrapping List → unwrap() → createVariable(List) → ListVar
 - JavaScript return values automatically unwrapped
 - Lists → ListVariable (correct)
 - Objects → NodeVariable with actual object (correct)
-- Seamless JavaScript ↔ Web-Harvest integration
+- Seamless JavaScript ↔ WebHarvest integration
 
 #### References
 - Original report: [GitHub Issue #29]
@@ -1622,7 +1622,7 @@ return new InputStreamReader(url.openStream(), StandardCharsets.UTF-8);
 - Zero regression
 
 #### User Guidance
-**Best Practice**: Always save Web-Harvest configuration files as UTF-8.
+**Best Practice**: Always save WebHarvest configuration files as UTF-8.
 - Most modern editors default to UTF-8
 - XML standard recommends UTF-8
 - Ensures portability across platforms
@@ -2036,7 +2036,7 @@ return new NodeVariable(JsonXmlConverter.toXml(new JSONObject(jsonString), rootT
 
 #### Description
 Old `TryProcessor` (from Swing GUI era) used invalid variable name `_error` to store exception information. 
-Variable names in Web-Harvest must match regex: `^[a-zA-Z][a-zA-Z0-9]*$` (no underscores allowed).
+Variable names in WebHarvest must match regex: `^[a-zA-Z][a-zA-Z0-9]*$` (no underscores allowed).
 
 **Error from old version**:
 ```
@@ -2235,7 +2235,7 @@ while (matcher.find()) {
 > Another important reason is that commons-httpclient 3.1 doesn't work on cloud hosting systems like JElastic and OpenShift."
 
 #### Description
-Migration from deprecated Apache Commons HttpClient 3.1 to modern Apache HttpComponents 4.x (4.5.14). This was a complete infrastructure upgrade affecting all HTTP operations in Web-Harvest.
+Migration from deprecated Apache Commons HttpClient 3.1 to modern Apache HttpComponents 4.x (4.5.14). This was a complete infrastructure upgrade affecting all HTTP operations in WebHarvest.
 
 #### Why It Was Needed
 
@@ -2402,12 +2402,12 @@ $ grep "httpclient" pom.xml
 
 #### Migration Notes for Users
 
-**No configuration changes needed!** All existing Web-Harvest XML configurations work without modification:
+**No configuration changes needed!** All existing WebHarvest XML configurations work without modification:
 
 ```xml
 <!-- This works exactly the same, but now uses HttpComponents 4.x internally -->
 <http url="https://example.com" method="GET">
-    <http-header name="User-Agent">Web-Harvest/2.2.0</http-header>
+    <http-header name="User-Agent">WebHarvest/2.2.0</http-header>
 </http>
 ```
 
@@ -2572,5 +2572,5 @@ Future changes must maintain this contract or tests fail.
 ---
 
 *Last Updated*: October 9, 2025  
-*Maintained by*: Web-Harvest Team
+*Maintained by*: WebHarvest Team
 

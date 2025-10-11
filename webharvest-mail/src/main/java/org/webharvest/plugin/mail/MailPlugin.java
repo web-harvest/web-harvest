@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Mail plugin for sending emails.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "mail")

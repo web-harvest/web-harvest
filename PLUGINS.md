@@ -1,4 +1,4 @@
-# Web-Harvest Plugins & Extensions Guide
+# WebHarvest Plugins & Extensions Guide
 
 ## 🎉 **PRZEŁOM ARCHITEKTURALNY - 2025-01-06**
 
@@ -26,7 +26,7 @@ Nowa: @CorePlugin → CorePluginDef → PluginProcessorAdapter → AbstractProce
 
 ## 🔌 **Plugin and Extension Guide**
 
-Web-Harvest 2.2.0 offers an extensive plugin system that allows for easy functionality extension.
+WebHarvest 2.2.0 offers an extensive plugin system that allows for easy functionality extension.
 
 ## 📋 **Available Processors**
 
@@ -35,7 +35,7 @@ Web-Harvest 2.2.0 offers an extensive plugin system that allows for easy functio
 #### **http** - HTTP Request Processor
 ```xml
 <http url="https://example.com" method="get">
-    <http-header name="User-Agent">Web-Harvest Bot</http-header>
+    <http-header name="User-Agent">WebHarvest Bot</http-header>
     <http-param name="search">web scraping</http-param>
 </http>
 ```
@@ -259,7 +259,7 @@ Web-Harvest 2.2.0 offers an extensive plugin system that allows for easy functio
     password="password"
     from="user@gmail.com"
     to="recipient@example.com"
-    subject="Web-Harvest Report">
+    subject="WebHarvest Report">
     <template>
         <![CDATA[
         <html>
@@ -574,5 +574,5 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 
 ---
 
-**Web-Harvest Plugins Guide** - Rozszerzaj możliwości Web-Harvest! 🔌
+**WebHarvest Plugins Guide** - Rozszerzaj możliwości WebHarvest! 🔌
 

@@ -59,7 +59,7 @@ import org.webharvest.utils.CommonUtil;
  * </p>
  * 
  * @core This is a core plugin
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(

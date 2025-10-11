@@ -72,7 +72,7 @@ import org.webharvest.runtime.variables.Variable;
  * Output: <code>&lt;a&gt;&lt;content&gt;hello&lt;/content&gt;&lt;/a&gt;</code> (preserved!)
  * </p>
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @version 2.2.1
  * @see JsonXmlConverter
  */

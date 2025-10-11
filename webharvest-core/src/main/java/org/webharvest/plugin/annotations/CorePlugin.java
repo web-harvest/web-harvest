@@ -42,7 +42,7 @@ import java.lang.annotation.Target;
 /**
  * Annotation to mark core plugins.
  * Core plugins are the original processors that have been migrated to the plugin architecture.
- * They are part of the core Web-Harvest functionality and are always available.
+ * They are part of the core WebHarvest functionality and are always available.
  * 
  * @author Robert Bala
  * @since 2.1.0

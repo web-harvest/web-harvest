@@ -201,7 +201,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 
 ---
 
-**Committed by:** Web-Harvest Team  
+**Committed by:** WebHarvest Team  
 **Date:** October 8, 2025  
 **Revisions:** 693, 694, 695  
 **Status:** ✅ Complete and Verified

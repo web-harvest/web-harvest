@@ -51,7 +51,7 @@ import org.webharvest.runtime.variables.Variable;
 /**
  * ZIP processor - creates ZIP archives from child zip-entry elements.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "zip")

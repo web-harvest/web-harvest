@@ -1,4 +1,4 @@
-# Old Architecture Analysis - Web-Harvest Core
+# Old Architecture Analysis - WebHarvest Core
 
 **Date**: October 9, 2025  
 **Purpose**: Identify legacy/deprecated code that can be safely removed  
@@ -8,7 +8,7 @@
 
 ## Summary
 
-Web-Harvest currently uses **HYBRID ARCHITECTURE**:
+WebHarvest currently uses **HYBRID ARCHITECTURE**:
 - **Old**: XmlNode → *Def classes → WebHarvestPlugin (via @Definition)
 - **New**: @CorePlugin → CorePluginDef → PluginProcessorAdapter → AbstractPlugin
 
@@ -225,7 +225,7 @@ These classes bridge old and new architectures - **KEEP and DOCUMENT**:
 
 ---
 
-**Analysis By**: Web-Harvest Team  
+**Analysis By**: WebHarvest Team  
 **Date**: October 9, 2025  
 **Safe to Remove**: 0 files (all deprecated code still used)  
 **Needs Documentation**: Hybrid architecture approach

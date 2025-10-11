@@ -83,7 +83,7 @@ import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 
 /**
- * Guice module for Web-Harvest configuration.
+ * Guice module for WebHarvest configuration.
  * Refactored to use smaller, focused methods for better maintainability.
  * 
  * @author Robert Bala

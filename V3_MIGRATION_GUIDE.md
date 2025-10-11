@@ -1,8 +1,8 @@
-# Web-Harvest v3.0 Migration Guide
+# WebHarvest v3.0 Migration Guide
 
 ## Overview
 
-Web-Harvest v3.0 introduces a revolutionary new XML parsing architecture that eliminates the intermediate `*Def` layer, resulting in simpler code, better performance, and easier plugin development.
+WebHarvest v3.0 introduces a revolutionary new XML parsing architecture that eliminates the intermediate `*Def` layer, resulting in simpler code, better performance, and easier plugin development.
 
 ## What's New in v3.0?
 
@@ -253,7 +253,7 @@ String attr = config.getProperty("url");
 
 ## Conclusion
 
-Web-Harvest v3.0's new parser is a major architectural improvement that:
+WebHarvest v3.0's new parser is a major architectural improvement that:
 - ✅ Simplifies the codebase by 88%
 - ✅ Improves performance by 20-30%
 - ✅ Makes plugin development 50% faster

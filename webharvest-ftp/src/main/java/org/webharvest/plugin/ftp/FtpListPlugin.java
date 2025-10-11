@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 /**
  * FTP List plugin for listing files in FTP server directory.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "ftp-list")

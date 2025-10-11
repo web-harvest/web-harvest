@@ -389,7 +389,7 @@ public void testHttpPlugin() {
 
 ---
 
-**Autor**: Web-Harvest Team  
+**Autor**: WebHarvest Team  
 **Data**: October 9, 2025  
 **Status**: Ready to Execute  
 **Target**: v2.2.x Complete Modernization

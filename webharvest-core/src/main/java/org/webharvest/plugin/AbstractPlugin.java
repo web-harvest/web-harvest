@@ -43,7 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Abstract base class for all Web-Harvest plugins.
+ * Abstract base class for all WebHarvest plugins.
  * Provides common functionality and template methods for plugin lifecycle management.
  * 
  * <p>

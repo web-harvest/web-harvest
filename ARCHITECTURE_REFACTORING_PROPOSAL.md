@@ -1,4 +1,4 @@
-# Architecture Refactoring Proposal - Web-Harvest v3.0
+# Architecture Refactoring Proposal - WebHarvest v3.0
 
 **Date**: October 9, 2025  
 **Status**: PROPOSAL (Not Implemented)  
@@ -284,7 +284,7 @@ Add comprehensive documentation:
 /**
  * ARCHITECTURE NOTE: Hybrid Design Pattern
  * 
- * Web-Harvest uses a two-layer architecture:
+ * WebHarvest uses a two-layer architecture:
  * 
  * Layer 1 (Parsing): XML → XmlNode → *Def classes
  *   Purpose: Parse XML configuration into object tree

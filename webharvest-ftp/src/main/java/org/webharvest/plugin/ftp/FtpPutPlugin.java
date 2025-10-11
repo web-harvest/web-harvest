@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 /**
  * FTP Put plugin for uploading files to FTP server.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "ftp-put")

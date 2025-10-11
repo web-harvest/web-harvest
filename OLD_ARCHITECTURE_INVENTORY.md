@@ -81,7 +81,7 @@ Dependencies: XmlNode (stara architektura parsera)
 30. ✅ **RegexpDef** - Wyrażenia regularne
 
 ### Plugin Definitions
-31. ✅ **WebHarvestPluginDef** - Pluginy Web-Harvest
+31. ✅ **WebHarvestPluginDef** - Pluginy WebHarvest
 32. ✅ **CorePluginDef** - Core plugins
 33. ✅ **CorePluginWebHarvestPluginDef** - Core plugin wrapper
 

@@ -1,4 +1,4 @@
-# Web-Harvest Core Plugins Inventory
+# WebHarvest Core Plugins Inventory
 
 **Date**: October 8, 2025  
 **Total Core Plugins**: 47  
@@ -82,13 +82,13 @@ Extracting from: `webharvest-core/src/main/java/org/webharvest/plugin/core/*Plug
 
 **Cause**: User confusion - old syntax vs new syntax
 
-**Old syntax** (Web-Harvest 1.x):
+**Old syntax** (WebHarvest 1.x):
 ```xml
 <var-def name="url">https://example.com</var-def>
 <var name="url"/>
 ```
 
-**New syntax** (Web-Harvest 2.1+):
+**New syntax** (WebHarvest 2.1+):
 ```xml
 <def var="url">https://example.com</def>
 <get var="url"/>

@@ -42,14 +42,14 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 
 /**
- * Core interface for all Web-Harvest plugins.
+ * Core interface for all WebHarvest plugins.
  * This interface defines the contract that all plugins must implement
- * to be compatible with the Web-Harvest plugin system.
+ * to be compatible with the WebHarvest plugin system.
  * 
  * <p>
  * Plugins are independent, modular components that can be dynamically
  * loaded and configured. Each plugin represents a specific functionality
- * that can be used in Web-Harvest configurations.
+ * that can be used in WebHarvest configurations.
  * </p>
  * 
  * @author Robert Bala

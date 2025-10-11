@@ -6,7 +6,7 @@
     <artifactId>webharvest</artifactId>
     <version>2.2.0</version>
     <packaging>pom</packaging>
-    <name>Web-Harvest</name>
+    <name>WebHarvest</name>
     <description>
         Open Source Web Data Extraction tool written in Java.
         It offers a way to collect desired Web pages and extract useful data from them.

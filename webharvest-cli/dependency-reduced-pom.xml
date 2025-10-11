@@ -7,9 +7,9 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>webharvest-cli</artifactId>
-  <name>Web-Harvest CLI</name>
-  <description>Command Line Interface for Web-Harvest.
-        Provides command line execution capabilities for Web-Harvest scraping configurations.</description>
+  <name>WebHarvest CLI</name>
+  <description>Command Line Interface for WebHarvest.
+        Provides command line execution capabilities for WebHarvest scraping configurations.</description>
   <build>
     <plugins>
       <plugin>

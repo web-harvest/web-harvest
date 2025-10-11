@@ -67,7 +67,7 @@ import java.util.Map;
  * &lt;database connection="mainDB" sql="SELECT * FROM users"/&gt;
  * </pre>
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.2.0
  */
 @CorePlugin(elementName = "connection")

@@ -131,7 +131,7 @@ import java.util.regex.Pattern;
  *   <li><code>flag-canoneq</code> (boolean, default=false) - Enable canonical equivalence</li>
  * </ul>
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @version 2.2.1
  * @see java.util.regex.Pattern
  * @see RegexpPatternPlugin

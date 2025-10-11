@@ -57,7 +57,7 @@ import org.webharvest.utils.CommonUtil;
 /**
  * Zip entry plugin - can be used only inside zip plugin.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "zip-entry")

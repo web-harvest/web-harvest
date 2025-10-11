@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 /**
  * FTP Get plugin for downloading files from FTP server.
  * 
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(elementName = "ftp-get")

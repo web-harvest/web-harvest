@@ -1,4 +1,4 @@
-# Web-Harvest Documentation Index
+# WebHarvest Documentation Index
 
 **Version**: 2.2.0  
 **Last Updated**: October 8, 2025
@@ -10,7 +10,7 @@
 ### Essential Reading
 
 1. **[README.md](README.md)** - Project overview and quick start
-   - What is Web-Harvest
+   - What is WebHarvest
    - Features and capabilities
    - Installation and basic usage
 

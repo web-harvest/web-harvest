@@ -54,12 +54,12 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * 
  * <p>
  * The constant plugin allows definition of static text content that can be used
- * internally in the Web-Harvest configuration. It is not explicitly used in
+ * internally in the WebHarvest configuration. It is not explicitly used in
  * configuration XML but is used internally to define static content.
  * </p>
  * 
  * @core This is a core plugin
- * @author Web-Harvest Team
+ * @author WebHarvest Team
  * @since 2.1.0
  */
 @CorePlugin(

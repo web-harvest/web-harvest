@@ -10,8 +10,8 @@
     </parent>
     <groupId>net.sourceforge.web-harvest</groupId>
     <artifactId>webharvest-mail</artifactId>
-    <name>Web-Harvest Mail Extensions</name>
-    <description>Mail plugins for Web-Harvest including email sending and attachment support</description>
+    <name>WebHarvest Mail Extensions</name>
+    <description>Mail plugins for WebHarvest including email sending and attachment support</description>
     
     <build>
         <plugins>
