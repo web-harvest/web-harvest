@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.1] - October 11, 2025
 
+### 🔒 CRITICAL: HttpClient 5.x Migration (r753)
+- **Migrated:** Apache HttpClient 4.5.14 → 5.5.1
+- **Reason:** Critical security component - active development and patches
+- **Approach:** TDD with 15 new comprehensive tests
+- **Added:** WireMock 2.35.0 for reliable HTTP server mocking
+- **Impact:** Modern HTTP/2 support, improved security, no regressions
+- **Tests:** 2442/2442 PASS (added 15 HTTP-specific tests)
+
+### 📦 Dependencies Cleanup (r743-r750)
+- **Removed:** 9 unused dependencies (commons-dbutils, commons-email, commons-net, commons-text, commons-beanutils, guice-multibindings, jackson-databind, commons-lang3)
+- **Migrated:** commons-lang 2.5 (EOL) → commons-lang3 3.14.0 (r749)
+- **Optimized:** Script engines scope compile → runtime (groovy, rhino) (r750)
+- **Verified:** Each removal tested with full test suite
+
+### 🎨 Branding & Code Quality (r751-r752)
+- **Rebranded:** "Web-Harvest" → "WebHarvest" across entire codebase (r751)
+  - 10 POM files, 23 MD files, 85+ Java files updated
+- **Logging:** Replaced all System.out.println with SLF4J (r752)
+  - 35 production files updated
+  - AbstractPlugin: LOGGER changed to protected for subclasses
+  - Consistent logging across all modules
+
 ### 📚 Documentation - XPath Best Practices
 
 **Fixed inconsistency between tests, documentation, and IDE examples regarding XPath text extraction.**
