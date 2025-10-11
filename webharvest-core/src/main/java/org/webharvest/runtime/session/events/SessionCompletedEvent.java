@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2006-2012 the original author or authors.
+ Copyright (c) 2006-2025 the original author or authors.
 
  Redistribution and use of this software in source and binary forms,
  with or without modification, are permitted provided that the following
@@ -29,39 +29,47 @@
  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
-package org.webharvest.events;
+package org.webharvest.runtime.session.events;
+
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.SessionMetrics;
 
 /**
- * Event informing that during the execution of Scraper some exception
- * has occurred. Event holds reference to the exception raised.
- *
- * @author Piotr Dyraga
- * @since 2.1.0-SNAPSHOT
- * @version %I%, %G%
+ * Event published when session completes successfully.
+ * 
+ * <p>This event includes final metrics for the completed session.</p>
+ * 
+ * @author Robert Bala
+ * @since 2.2.0
  */
-public final class ScraperExecutionErrorEvent {
-
-    private final Exception exception;
-
-    /**
-     * Event constructor accepting {@link Exception} which occurred during the
-     * execution.
-     *
-     * @param exception
-     *            reference to the {@link Exception} occurred
-     */
-    public ScraperExecutionErrorEvent(final Exception exception) {
-        this.exception = exception;
+public final class SessionCompletedEvent extends SessionEvent {
+    
+    private final SessionMetrics metrics;
+    
+    public SessionCompletedEvent(ScraperSession session) {
+        super(session);
+        this.metrics = session.getMetrics();
     }
-
+    
     /**
-     * Return reference to the exception occurred.
-     *
-     * @return exception occurred
+     * Returns the final metrics for the completed session.
+     * 
+     * @return session metrics (never null)
      */
-    public Exception getException() {
-        return this.exception;
+    public SessionMetrics getMetrics() {
+        return metrics;
+    }
+    
+    @Override
+    public String toString() {
+        return "SessionCompletedEvent{" +
+                "sessionId='" + getSessionId() + '\'' +
+                ", clientId='" + getClientId() + '\'' +
+                ", duration=" + metrics.getDuration() +
+                ", elementsProcessed=" + metrics.getProcessedElements() +
+                '}';
     }
 }
+

@@ -10,15 +10,13 @@ import org.webharvest.Harvester;
 import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.ConfigSource;
-// v2.2.x: IElementDef removed
-// import org.webharvest.definition.IElementDef;
-import org.webharvest.events.ScraperExecutionEndEvent;
-// HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
-// HttpClientManager removed during HttpComponents 4.x migration
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
+import org.webharvest.server.IDEClientContext;
+import org.webharvest.runtime.tracking.TokenTracker;
+import org.webharvest.runtime.tracking.TokenTrackerImpl;
 
 import java.util.List;
 import java.util.Map;

@@ -38,9 +38,6 @@ package org.webharvest.runtime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webharvest.events.ScraperExecutionEndEvent;
-import org.webharvest.events.ScraperExecutionErrorEvent;
-import org.webharvest.events.ScraperExecutionStartEvent;
 import org.webharvest.events.ScraperExecutionStoppedEvent;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfiguration;
@@ -81,8 +78,10 @@ public class Scraper implements WebScraper {
     public void execute(final DynamicScopeContext context) {
         long startTime = System.currentTimeMillis();
 
-        // inform all listeners that execution is just about to start
-        eventBus.post(new ScraperExecutionStartEvent(this));
+        // Note: Session lifecycle events (Started/Completed/Failed) are now published
+        // by ScraperSessionImpl, not here. This keeps concerns separated:
+        // - Scraper = low-level execution engine
+        // - Session = high-level lifecycle management with events
 
         try {
             // v2.2.x ULTRA-LEAN: Use CorePluginRegistry + PluginConfiguration instead of ProcessorFactory + IElementDef
@@ -104,11 +103,8 @@ public class Scraper implements WebScraper {
                         // Execute plugin
                         plugin.execute(context);
                         
-                        // CRITICAL: Post EndEvent HERE - INSIDE the try block,
-                        // BEFORE plugin.execute() returns and triggers any cleanup!
-                        // This ensures listeners can extract variables BEFORE they are cleaned up from nested scopes.
-                        eventBus.post(new ScraperExecutionEndEvent(this,
-                                System.currentTimeMillis() - startTime, context));
+                        // Note: SessionCompletedEvent is published by ScraperSessionImpl.markCompleted()
+                        // after this method returns. Context variables remain accessible there.
                     } else {
                         LOG.warn("Plugin class not found for root element: {}", rootConfig.getElementName());
                     }
@@ -129,8 +125,7 @@ public class Scraper implements WebScraper {
     /**
      * Logs information that Scraper's execution has been stopped.
      *
-     * @param event
-     *            an instance of {@link ScraperExecutionStoppedEvent}
+     * @param event an instance of {@link ScraperExecutionStoppedEvent}
      */
     @Subscribe
     public void onExecutionStopped(final ScraperExecutionStoppedEvent event) {
@@ -140,26 +135,17 @@ public class Scraper implements WebScraper {
     }
 
     /**
-     * Logs information about time of Scraper's execution on
-     * {@link ScraperExecutionEndEvent}.
-     *
-     * @param event
-     *            an instance of {@link ScraperExecutionEndEvent}
+     * Informs listeners about execution errors.
+     * 
+     * @param e the exception
+     * @deprecated Error events are now published by ScraperSessionImpl.markFailed()
+     * as SessionFailedEvent. This method is kept for backward compatibility.
      */
-    @Subscribe
-    public void onExecutionFinished(final ScraperExecutionEndEvent event) {
-        if (LOG.isInfoEnabled()) {
-            LOG.info("Configuration executed in {} ms.",
-                    event.getExecutionTime());
-        }
-    }
-
-    /**
-     * Inform all scraper listeners that an error has occured during scraper execution.
-     */
+    @Deprecated
     public void informListenersAboutError(Exception e) {
-        // inform al listeners that execution is continued
-        eventBus.post(new ScraperExecutionErrorEvent(e));
+        // Note: SessionFailedEvent is now published by ScraperSessionImpl.markFailed()
+        // This method is kept for backward compatibility but no longer publishes events
+        LOG.error("Scraper execution error", e);
     }
 
 }

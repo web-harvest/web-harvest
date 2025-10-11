@@ -31,20 +31,43 @@
  POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.webharvest.events;
+package org.webharvest.runtime.session.events;
 
-import org.webharvest.runtime.WebScraper;
+import org.webharvest.runtime.session.ScraperSession;
 
-public final class ScraperExecutionStartEvent {
-
-    private final WebScraper scraper;
-
-    public ScraperExecutionStartEvent(final WebScraper scraper) {
-        this.scraper = scraper;
+/**
+ * Event published when session fails due to an error.
+ * 
+ * <p>This event includes the error that caused the failure.</p>
+ * 
+ * @author Robert Bala
+ * @since 2.2.0
+ */
+public final class SessionFailedEvent extends SessionEvent {
+    
+    private final Throwable error;
+    
+    public SessionFailedEvent(ScraperSession session, Throwable error) {
+        super(session);
+        this.error = error;
     }
-
-    public WebScraper getScraper() {
-        return scraper;
+    
+    /**
+     * Returns the error that caused the session to fail.
+     * 
+     * @return the error (may be null if generic failure)
+     */
+    public Throwable getError() {
+        return error;
     }
-
+    
+    @Override
+    public String toString() {
+        return "SessionFailedEvent{" +
+                "sessionId='" + getSessionId() + '\'' +
+                ", clientId='" + getClientId() + '\'' +
+                ", error=" + (error != null ? error.getMessage() : "unknown") +
+                '}';
+    }
 }
+
