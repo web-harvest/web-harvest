@@ -14,9 +14,9 @@
         </json-to-xml>
     </def>
     
-    <!-- Extract value -->
+    <!-- Extract value (use /text() to get text content) -->
     <def var="slideshow">
-        <xpath expression="//slideshow/author">
+        <xpath expression="//slideshow/author/text()">
             <get var="xmlData"/>
         </xpath>
     </def>

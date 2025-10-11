@@ -19,16 +19,16 @@
         </html-to-xml>
     </def>
     
-    <!-- Extract title -->
+    <!-- Extract title (use /text() to get text content) -->
     <def var="title">
-        <xpath expression="//h1[@id='firstHeading']">
+        <xpath expression="//h1[@id='firstHeading']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <!-- Extract first paragraph -->
+    <!-- Extract first paragraph (use string() to get all text content) -->
     <def var="intro">
-        <xpath expression="//div[@id='mw-content-text']//p[1]">
+        <xpath expression="string(//div[@id='mw-content-text']//p[1])">
             <get var="page"/>
         </xpath>
     </def>

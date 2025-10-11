@@ -785,13 +785,13 @@ const app = {
     </def>
     
     <def var="title">
-        <xpath expression="//title">
+        <xpath expression="//title/text()">
             <get var="page"/>
         </xpath>
     </def>
     
     <def var="heading">
-        <xpath expression="//h1">
+        <xpath expression="//h1/text()">
             <get var="page"/>
         </xpath>
     </def>
@@ -824,16 +824,16 @@ Heading: \${heading}</template>
         </html-to-xml>
     </def>
     
-    <!-- Extract all quotes -->
+    <!-- Extract all quotes (use /text() to get text content) -->
     <def var="quotes">
-        <xpath expression="//div[@class='quote']//span[@class='text']">
+        <xpath expression="//div[@class='quote']//span[@class='text']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <!-- Extract all authors -->
+    <!-- Extract all authors (use /text() to get text content) -->
     <def var="authors">
-        <xpath expression="//div[@class='quote']//small[@class='author']">
+        <xpath expression="//div[@class='quote']//small[@class='author']/text()">
             <get var="page"/>
         </xpath>
     </def>
@@ -874,19 +874,19 @@ Authors:
     </def>
     
     <def var="userName">
-        <xpath expression="//name">
+        <xpath expression="//name/text()">
             <get var="xmlData"/>
         </xpath>
     </def>
     
     <def var="userEmail">
-        <xpath expression="//email">
+        <xpath expression="//email/text()">
             <get var="xmlData"/>
         </xpath>
     </def>
     
     <def var="userCity">
-        <xpath expression="//address/city">
+        <xpath expression="//address/city/text()">
             <get var="xmlData"/>
         </xpath>
     </def>
@@ -927,13 +927,13 @@ City: \${userCity}
     </def>
     
     <def var="title">
-        <xpath expression="//h1[@id='firstHeading']">
+        <xpath expression="//h1[@id='firstHeading']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
     <def var="intro">
-        <xpath expression="//div[@id='mw-content-text']//p[1]">
+        <xpath expression="string(//div[@id='mw-content-text']//p[1])">
             <get var="page"/>
         </xpath>
     </def>
@@ -982,29 +982,29 @@ Intro: \${intro}
         </json-to-xml>
     </def>
     
-    <!-- Extract user info -->
+    <!-- Extract user info (use /text() to get text content) -->
     <def var="name">
-        <xpath expression="//name">
+        <xpath expression="//name/text()">
             <get var="userXml"/>
         </xpath>
     </def>
     
     <def var="email">
-        <xpath expression="//email">
+        <xpath expression="//email/text()">
             <get var="userXml"/>
         </xpath>
     </def>
     
-    <!-- Count posts -->
+    <!-- Count posts (count function returns number) -->
     <def var="postCount">
         <xpath expression="count(//item)">
             <get var="postsXml"/>
         </xpath>
     </def>
     
-    <!-- Get first post -->
+    <!-- Get first post (use /text() to get text content) -->
     <def var="firstPost">
-        <xpath expression="//item[1]/title">
+        <xpath expression="//item[1]/title/text()">
             <get var="postsXml"/>
         </xpath>
     </def>

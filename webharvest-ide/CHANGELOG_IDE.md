@@ -1,5 +1,34 @@
 # Web-Harvest IDE - Change Log
 
+## Version 2.2.1 - October 11, 2025
+
+### 📚 Documentation Update - XPath Examples Fixed
+
+**All built-in IDE examples now use correct XPath syntax for text extraction.**
+
+#### Changes
+- ✅ **app.js** - Updated 5 example functions:
+  - Example 1: HTTP + XPath (`//title/text()`, `//h1/text()`)
+  - Example 2: Quotes Scraping (`//span[@class='text']/text()`, `//small[@class='author']/text()`)
+  - Example 3: JSON API (`//name/text()`, `//email/text()`, `//address/city/text()`)
+  - Example 4: Wikipedia (`//h1[@id='firstHeading']/text()`, `string(//p[1])`)
+  - Example 5: Data Pipeline (`//name/text()`, `//email/text()`, `//item[1]/title/text()`)
+
+- ✅ **webapp/examples/** - Updated 3 XML example files:
+  - `01_simple_api.xml` - `//slideshow/author/text()`
+  - `02_quotes_scraping.xml` - `/text()` for quotes and authors
+  - `03_wikipedia.xml` - `/text()` for title, `string()` for intro
+
+#### Impact
+- XPath now returns **text only**, not XML elements with tags
+- Example: `//h1/text()` returns `"Herman Melville - Moby-Dick"` instead of `"<h1>Herman Melville - Moby-Dick</h1>"`
+- Users can now safely copy and run examples from IDE
+- All examples verified by `IDEExamplesIntegrationTest` (3/3 PASS)
+
+#### Related Documentation
+- See `docs/web/XPATH_BEST_PRACTICES.md` for complete XPath text extraction guide
+- Integration tests: `webharvest-core/.../IDEExamplesIntegrationTest.java`
+
 ## Version 2.2.0 - October 2025
 
 ### 🎉 Initial Release - Web-Based IDE

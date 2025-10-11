@@ -16,16 +16,16 @@
         </html-to-xml>
     </def>
     
-    <!-- Extract all quotes -->
+    <!-- Extract all quotes (use /text() to get text content) -->
     <def var="quotes">
-        <xpath expression="//div[@class='quote']//span[@class='text']">
+        <xpath expression="//div[@class='quote']//span[@class='text']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <!-- Extract all authors -->
+    <!-- Extract all authors (use /text() to get text content) -->
     <def var="authors">
-        <xpath expression="//div[@class='quote']//small[@class='author']">
+        <xpath expression="//div[@class='quote']//small[@class='author']/text()">
             <get var="page"/>
         </xpath>
     </def>

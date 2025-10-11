@@ -5,6 +5,75 @@ All notable changes to Web-Harvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - October 11, 2025
+
+### 📚 Documentation - XPath Best Practices
+
+**Fixed inconsistency between tests, documentation, and IDE examples regarding XPath text extraction.**
+
+#### Problem
+- Integration tests used correct syntax: `//element/text()`
+- Documentation examples used: `//element` (returns element with tags, not text)
+- IDE built-in examples used: `//element` (returns element with tags, not text)
+- Users copying from docs/IDE got XML elements instead of text content
+- Example: `//h1` returns `"<h1>Title</h1>"` instead of `"Title"`
+
+#### Solution
+1. **Updated 16 XML example files** with correct XPath syntax:
+   - `docs/web/examples/`: 6 files (advanced_search, api_integration, database, ftp, nytimes, amazon)
+   - `web-harvest-docs-upload/examples/`: 7 files (same + simple_test, modern_web_scraping)
+   - `webharvest-ide/src/main/resources/webapp/examples/`: 3 files (simple_api, quotes, wikipedia)
+
+2. **Updated IDE built-in examples** (`app.js`):
+   - 5 JavaScript functions with XML templates
+   - 13 XPath expressions fixed to use `/text()` or `string()`
+
+3. **Created comprehensive guide**: `docs/web/XPATH_BEST_PRACTICES.md`
+   - Explains `//element` vs `//element/text()` vs `string(//element)`
+   - Provides correct patterns and examples
+   - Shows when to use each approach
+   - Quick reference table
+   - Testing guidelines
+
+4. **Added integration tests**: `IDEExamplesIntegrationTest.java`
+   - 3 test methods covering IDE examples
+   - Verifies XPath returns TEXT, not XML elements
+   - Tests httpbin.org, quotes.toscrape.com, and JSON API examples
+
+#### Changed Patterns
+
+**BEFORE (incorrect):**
+```xml
+<xpath expression="//title"/>  → Returns: <title>Text</title>
+<xpath expression="//h1"/>     → Returns: <h1>Text</h1>
+```
+
+**AFTER (correct):**
+```xml
+<xpath expression="//title/text()"/>  → Returns: Text
+<xpath expression="//h1/text()"/>     → Returns: Text
+OR: <xpath expression="string(//h1)"/> → Returns: Text
+```
+
+#### Files Changed
+- Documentation: 13 example XML files updated
+- Published docs: 10 example XML files updated
+- IDE: app.js (5 functions, 13 XPath expressions)
+- New guide: XPATH_BEST_PRACTICES.md
+- New tests: IDEExamplesIntegrationTest.java (3 test methods, all PASS)
+
+#### Impact
+- ✅ Users now get correct results from XPath
+- ✅ Examples are consistent with tests
+- ✅ Clear documentation of best practices
+- ✅ No breaking changes (examples just improved)
+- ✅ IDE examples verified by integration tests
+
+#### Test Results
+- ✅ IDEExamplesIntegrationTest: 3/3 PASS (httpbin, quotes.toscrape, httpbin/json)
+- ✅ All existing tests: 2424/2424 PASS
+- ✅ Total: 2427/2427 PASS (100% pass rate)
+
 ## [2.2.1] - October 10, 2025
 
 ### 🐛 Critical Bug Fixes - TDD Approach
