@@ -365,29 +365,29 @@ public class TryPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("TryPlugin.doExecute: START");
+        LOGGER.debug("TryPlugin.doExecute: START");
         LOGGER.debug("TryPlugin.doExecute: START");
         
         try {
             // Execute child elements directly in the same context (not using BodyProcessor)
-            System.out.println("TryPlugin.doExecute: About to execute child elements directly");
+            LOGGER.debug("TryPlugin.doExecute: About to execute child elements directly");
             Variable result = executeChildElementsDirectly(context);
-            System.out.println("TryPlugin.doExecute: Child elements executed successfully, result=" + result);
+            LOGGER.debug("TryPlugin.doExecute: Child elements executed successfully, result=" + result);
             
             // Set the result as a variable in the context
             context.setLocalVar("tryResult", result);
-            System.out.println("TryPlugin.doExecute: Set variable 'tryResult' in context");
+            LOGGER.debug("TryPlugin.doExecute: Set variable 'tryResult' in context");
             
             return result;
             
         } catch (Exception e) {
-            System.out.println("TryPlugin.doExecute: Exception caught: " + e.getMessage());
+            LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
             LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());
             
             // Set error information in context
             context.setLocalVar("error", new NodeVariable(e.getMessage()));
             context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
-            System.out.println("TryPlugin.doExecute: Set error variables in context");
+            LOGGER.debug("TryPlugin.doExecute: Set error variables in context");
             
             // Return empty result - the catch block should handle the error
             return EmptyVariable.INSTANCE;

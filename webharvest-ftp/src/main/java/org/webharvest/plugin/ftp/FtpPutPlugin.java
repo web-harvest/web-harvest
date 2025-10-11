@@ -229,7 +229,7 @@ public class FtpPutPlugin extends AbstractPlugin {
             }
         }
         
-        System.out.println("FTP Put Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
+        LOGGER.debug("FTP Put Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
         FTPClient ftpClient = null;
         try {
@@ -256,7 +256,7 @@ public class FtpPutPlugin extends AbstractPlugin {
                 throw new PluginException("Failed to upload file: " + path);
             }
             
-            System.out.println("FTP Put Plugin - Uploaded " + fileData.length + " bytes to " + path);
+            LOGGER.debug("FTP Put Plugin - Uploaded " + fileData.length + " bytes to " + path);
             
             return new NodeVariable("File uploaded successfully to " + path);
             

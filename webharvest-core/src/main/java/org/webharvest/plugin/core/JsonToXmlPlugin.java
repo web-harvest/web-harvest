@@ -273,12 +273,12 @@ public class JsonToXmlPlugin extends AbstractPlugin {
             
             if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                 jsonString = bodyContent.toString();
-                System.out.println("JsonToXmlPlugin: Retrieved JSON content: " + jsonString);
+                LOGGER.debug("JsonToXmlPlugin: Retrieved JSON content: " + jsonString);
             }
             
             // Handle empty or invalid JSON
             if (jsonString.isEmpty()) {
-                System.out.println("JsonToXmlPlugin: No JSON content provided");
+                LOGGER.debug("JsonToXmlPlugin: No JSON content provided");
                 return new NodeVariable("<empty/>");
             }
             

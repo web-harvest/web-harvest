@@ -234,7 +234,7 @@ public class MailPlugin extends AbstractPlugin {
         to = evaluateTemplate(to, context);
         subject = evaluateTemplate(subject, context);
         
-        System.out.println("Mail Plugin - SMTP: " + smtpHost + ":" + smtpPort + ", From: " + from + ", To: " + to + ", Subject: " + subject);
+        LOGGER.debug("Mail Plugin - SMTP: " + smtpHost + ":" + smtpPort + ", From: " + from + ", To: " + to + ", Subject: " + subject);
         
         try {
             Email email;
@@ -259,7 +259,7 @@ public class MailPlugin extends AbstractPlugin {
             }
             
             String messageId = email.send();
-            System.out.println("Mail sent successfully with message ID: " + messageId);
+            LOGGER.debug("Mail sent successfully with message ID: " + messageId);
             
             return new NodeVariable("Email sent successfully. Message ID: " + messageId);
             

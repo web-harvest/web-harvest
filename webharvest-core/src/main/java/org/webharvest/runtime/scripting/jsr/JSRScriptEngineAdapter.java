@@ -33,6 +33,8 @@
 
 package org.webharvest.runtime.scripting.jsr;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.exception.ScriptException;
 
 import org.webharvest.runtime.DynamicScopeContext;
@@ -70,6 +72,8 @@ import org.webharvest.utils.KeyValuePair;
  */
 public final class JSRScriptEngineAdapter implements ScriptEngine {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JSRScriptEngineAdapter.class);
+
     private javax.script.ScriptEngine adaptee;
 
     /**
@@ -102,11 +106,11 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
     }
 
     private void copyVariables(final DynamicScopeContext context) {
-        System.out.println("JSRScriptEngineAdapter.copyVariables: Starting to copy variables from context");
+        LOGGER.debug("copyVariables: Starting to copy variables from context");
         int count = 0;
         for (KeyValuePair<Variable> pair : context) {
             final Variable value = pair.getValue();
-            System.out.println("JSRScriptEngineAdapter.copyVariables: Copying variable '" + pair.getKey() + "' = " + value);
+            LOGGER.trace("copyVariables: Copying variable '{}' = {}", pair.getKey(), value);
 
             // v2.2.x FIX: ALL Variable types have getWrappedObject() method!
             // Use it directly instead of instanceof check.
@@ -139,6 +143,6 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
             adaptee.put(pair.getKey(), scriptValue);
             count++;
         }
-        System.out.println("JSRScriptEngineAdapter.copyVariables: Copied " + count + " variables");
+        LOGGER.debug("copyVariables: Copied {} variables", count);
     }
 }

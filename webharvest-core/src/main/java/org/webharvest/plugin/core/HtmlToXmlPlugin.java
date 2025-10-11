@@ -253,9 +253,9 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
         
         if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
             html = bodyContent.toString();
-            System.out.println("HtmlToXmlPlugin: Retrieved HTML content: " + html);
+            LOGGER.debug("HtmlToXmlPlugin: Retrieved HTML content: " + html);
         } else {
-            System.out.println("HtmlToXmlPlugin: No body content available");
+            LOGGER.debug("HtmlToXmlPlugin: No body content available");
             return new NodeVariable("<empty/>");
         }
         
@@ -325,7 +325,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     private class JSoupParseStrategy implements HtmlParsingStrategy {
         @Override
         public String parse(String html) throws Exception {
-            System.out.println("Trying JSoup.parse() strategy");
+            LOGGER.debug("Trying JSoup.parse() strategy");
             
             // Clean common HTML issues first
             String cleanedHtml = cleanCommonHtmlIssues(html);
@@ -335,7 +335,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
             
             // Check if content disappeared or structure is broken
             if (isContentDisappeared(document, html)) {
-                System.out.println("Content disappeared with JSoup.parse(), trying next strategy");
+                LOGGER.debug("Content disappeared with JSoup.parse(), trying next strategy");
                 return null;
             }
             
@@ -359,7 +359,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     private class JSoupCleanStrategy implements HtmlParsingStrategy {
         @Override
         public String parse(String html) throws Exception {
-            System.out.println("Trying JSoup.clean() strategy");
+            LOGGER.debug("Trying JSoup.clean() strategy");
             
             // Clean common HTML issues first
             String cleanedHtml = cleanCommonHtmlIssues(html);
@@ -403,7 +403,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     private class TagSoupStrategy implements HtmlParsingStrategy {
         @Override
         public String parse(String html) throws Exception {
-            System.out.println("Trying TagSoup + SAX strategy");
+            LOGGER.debug("Trying TagSoup + SAX strategy");
             
             try {
                 org.ccil.cowan.tagsoup.Parser parser = new org.ccil.cowan.tagsoup.Parser();
@@ -457,7 +457,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     private class TikaStrategy implements HtmlParsingStrategy {
         @Override
         public String parse(String html) throws Exception {
-            System.out.println("Trying Apache Tika strategy");
+            LOGGER.debug("Trying Apache Tika strategy");
             
             try {
                 Tika tika = new Tika();

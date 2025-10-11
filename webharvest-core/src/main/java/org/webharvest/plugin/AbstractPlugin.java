@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractPlugin implements Plugin {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPlugin.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractPlugin.class);
 
     private boolean initialized = false;
     private PluginConfiguration configuration;

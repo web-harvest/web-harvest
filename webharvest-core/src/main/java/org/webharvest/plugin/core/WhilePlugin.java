@@ -798,23 +798,23 @@ public class WhilePlugin extends AbstractPlugin {
         }
         
         PluginConfiguration config = getConfiguration();
-        System.out.println("WhilePlugin.doExecute: config=" + config);
-        System.out.println("WhilePlugin.doExecute: config.getClass()=" + (config != null ? config.getClass().getName() : "null"));
+        LOGGER.trace("WhilePlugin.doExecute: config=" + config);
+        LOGGER.trace("WhilePlugin.doExecute: config.getClass()=" + (config != null ? config.getClass().getName() : "null"));
 
         // Get while configuration - using the same logic as original WhileProcessor
         String index = config.getProperty("index", "");
         String maxLoopsString = config.getProperty("maxloops", "");
         // XML schema defines 'test' attribute (renamed from 'condition')
         String condition = config.getProperty("test", "");
-        System.out.println("WhilePlugin.doExecute: config.getProperty('test', '')='" + condition + "'");
+        LOGGER.debug("doExecute: config.getProperty('test', '')='" + condition + "'");
         // If 'test' is not found, try 'condition' for backward compatibility
         if (condition.isEmpty()) {
             condition = config.getProperty("condition", "");
-            System.out.println("WhilePlugin.doExecute: config.getProperty('condition', '')='" + condition + "'");
+            LOGGER.debug("doExecute: config.getProperty('condition', '')='" + condition + "'");
         }
         boolean isEmpty = CommonUtil.getBooleanValue(config.getProperty("empty", "false"), false);
 
-        System.out.println("WhilePlugin.doExecute: condition='" + condition + "', index='" + index + "', maxLoops='" + maxLoopsString + "', isEmpty=" + isEmpty);
+        LOGGER.trace("WhilePlugin.doExecute: condition='" + condition + "', index='" + index + "', maxLoops='" + maxLoopsString + "', isEmpty=" + isEmpty);
 
         final List<Object> resultList = new ArrayList<Object>();
         int i = 1;
@@ -826,12 +826,12 @@ public class WhilePlugin extends AbstractPlugin {
 
         // Evaluate condition using BaseTemplater like original WhileProcessor
         String evaluatedCondition = BaseTemplater.evaluateToString(condition, context.getScriptingLanguage(), context);
-        System.out.println("WhilePlugin.doExecute: evaluatedCondition='" + evaluatedCondition + "'");
-        System.out.println("WhilePlugin.doExecute: context.getScriptingLanguage()=" + context.getScriptingLanguage());
+        LOGGER.debug("doExecute: evaluatedCondition='" + evaluatedCondition + "'");
+        LOGGER.trace("WhilePlugin.doExecute: context.getScriptingLanguage()=" + context.getScriptingLanguage());
         
         // Check if counter is set in context
         Variable counterVar = context.getVar("counter");
-        System.out.println("WhilePlugin.doExecute: counter in context=" + counterVar);
+        LOGGER.trace("WhilePlugin.doExecute: counter in context=" + counterVar);
         
         // Try to evaluate as boolean using BeanShell directly
         boolean conditionResult = false;
@@ -840,7 +840,7 @@ public class WhilePlugin extends AbstractPlugin {
             org.webharvest.runtime.scripting.ScriptSource scriptSource = 
                 new org.webharvest.runtime.scripting.ScriptSource(evaluatedCondition, context.getScriptingLanguage());
             Object result = BaseTemplater.scriptEngineFactory.getEngine(scriptSource).evaluate(context, scriptSource);
-            System.out.println("WhilePlugin.doExecute: BeanShell result=" + result + ", type=" + (result != null ? result.getClass().getName() : "null"));
+            LOGGER.trace("WhilePlugin.doExecute: BeanShell result=" + result + ", type=" + (result != null ? result.getClass().getName() : "null"));
             
             if (result instanceof Boolean) {
                 conditionResult = (Boolean) result;
@@ -849,9 +849,9 @@ public class WhilePlugin extends AbstractPlugin {
                 String resultStr = result.toString();
                 conditionResult = CommonUtil.isBooleanTrue(resultStr);
             }
-            System.out.println("WhilePlugin.doExecute: conditionResult=" + conditionResult);
+            LOGGER.trace("WhilePlugin.doExecute: conditionResult=" + conditionResult);
         } catch (Exception e) {
-            System.out.println("WhilePlugin.doExecute: Error evaluating condition: " + e.getMessage());
+            LOGGER.trace("WhilePlugin.doExecute: Error evaluating condition: " + e.getMessage());
             // Fallback to string evaluation
             conditionResult = CommonUtil.isBooleanTrue(evaluatedCondition);
         }
@@ -861,17 +861,17 @@ public class WhilePlugin extends AbstractPlugin {
         
         // Apply safety limits to prevent infinite loops
         final double safeMaxLoops = Math.max(0, Math.min(maxLoops, 10000)); // Minimum 0, Maximum 10000 iterations
-        System.out.println("WhilePlugin.doExecute: maxLoops=" + maxLoops + ", safeMaxLoops=" + safeMaxLoops);
+        LOGGER.trace("WhilePlugin.doExecute: maxLoops=" + maxLoops + ", safeMaxLoops=" + safeMaxLoops);
 
         // Use conditionResult from BaseTemplater.evaluateToVariable
         while (conditionResult && (i <= safeMaxLoops)) {
-            System.out.println("WhilePlugin.doExecute: Loop iteration " + i + ", evaluatedCondition='" + evaluatedCondition + "'");
+            LOGGER.debug("doExecute: Loop iteration " + i + ", evaluatedCondition='" + evaluatedCondition + "'");
             
             // Execute body content using new architecture
-            System.out.println("WhilePlugin.doExecute: About to execute body content");
+            LOGGER.debug("doExecute: About to execute body content");
             Variable loopResult = executeBody(context);
-            System.out.println("WhilePlugin.doExecute: Body result.class=" + (loopResult != null ? loopResult.getClass().getName() : "null"));
-            System.out.println("WhilePlugin.doExecute: Body result=" + loopResult);
+            LOGGER.trace("WhilePlugin.doExecute: Body result.class=" + (loopResult != null ? loopResult.getClass().getName() : "null"));
+            LOGGER.trace("WhilePlugin.doExecute: Body result=" + loopResult);
             
             if (!isEmpty) {
                 resultList.addAll(loopResult.toList());
@@ -887,15 +887,15 @@ public class WhilePlugin extends AbstractPlugin {
             // we need to extract the updated value from the nested context.
             // For now, we'll check if condition uses 'counter' variable and update it.
             if (condition.contains("counter")) {
-                System.out.println("WhilePlugin.doExecute: Condition uses 'counter' variable, incrementing it");
+                LOGGER.debug("doExecute: Condition uses 'counter' variable, incrementing it");
                 Variable currentCounter = context.getVar("counter");
                 if (currentCounter != null) {
                     try {
                         int counterValue = Integer.parseInt(currentCounter.toString());
                         context.setLocalVar("counter", new NodeVariable(String.valueOf(counterValue + 1)));
-                        System.out.println("WhilePlugin.doExecute: Incremented counter to " + (counterValue + 1));
+                        LOGGER.trace("WhilePlugin.doExecute: Incremented counter to " + (counterValue + 1));
                     } catch (NumberFormatException e) {
-                        System.out.println("WhilePlugin.doExecute: Counter is not a number: " + currentCounter);
+                        LOGGER.trace("WhilePlugin.doExecute: Counter is not a number: " + currentCounter);
                     }
                 }
             }
@@ -904,13 +904,13 @@ public class WhilePlugin extends AbstractPlugin {
             try {
                 // Re-evaluate the condition using BaseTemplater first
                 String reEvaluatedCondition = BaseTemplater.evaluateToString(condition, context.getScriptingLanguage(), context);
-                System.out.println("WhilePlugin.doExecute: Re-evaluated condition='" + reEvaluatedCondition + "'");
+                LOGGER.debug("doExecute: Re-evaluated condition='" + reEvaluatedCondition + "'");
                 
                 // Then evaluate as boolean using BeanShell
                 org.webharvest.runtime.scripting.ScriptSource scriptSource = 
                     new org.webharvest.runtime.scripting.ScriptSource(reEvaluatedCondition, context.getScriptingLanguage());
                 Object result = BaseTemplater.scriptEngineFactory.getEngine(scriptSource).evaluate(context, scriptSource);
-                System.out.println("WhilePlugin.doExecute: Re-evaluated BeanShell result=" + result + ", type=" + (result != null ? result.getClass().getName() : "null"));
+                LOGGER.trace("WhilePlugin.doExecute: Re-evaluated BeanShell result=" + result + ", type=" + (result != null ? result.getClass().getName() : "null"));
                 
                 if (result instanceof Boolean) {
                     conditionResult = (Boolean) result;
@@ -918,21 +918,21 @@ public class WhilePlugin extends AbstractPlugin {
                     String resultStr = result.toString();
                     conditionResult = CommonUtil.isBooleanTrue(resultStr);
                 }
-                System.out.println("WhilePlugin.doExecute: Re-evaluated conditionResult=" + conditionResult);
+                LOGGER.trace("WhilePlugin.doExecute: Re-evaluated conditionResult=" + conditionResult);
             } catch (Exception e) {
-                System.out.println("WhilePlugin.doExecute: Error re-evaluating condition: " + e.getMessage());
+                LOGGER.trace("WhilePlugin.doExecute: Error re-evaluating condition: " + e.getMessage());
                 conditionResult = false;
             }
 
             // Safety check: if condition is still "true" and we're in test mode, break after first iteration
             // Only break if maxloops is not explicitly set (to allow tests to control loop count)
             if ("true".equals(evaluatedCondition) && i > 1 && maxLoopsString.isEmpty()) {
-                System.out.println("Breaking infinite loop in test mode");
+                LOGGER.trace("Breaking infinite loop in test mode");
                 break;
             }
         }
 
-        System.out.println("WhilePlugin.doExecute: Loop finished, i=" + i + ", resultList.size=" + resultList.size());
+        LOGGER.trace("WhilePlugin.doExecute: Loop finished, i=" + i + ", resultList.size=" + resultList.size());
         if (isEmpty) {
             return EmptyVariable.INSTANCE;
         } else {

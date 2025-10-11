@@ -149,7 +149,7 @@ public class RegexpPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("RegexpPlugin.doExecute: START - Method entered");
+        LOGGER.debug("RegexpPlugin.doExecute: START - Method entered");
         LOGGER.debug("RegexpPlugin.doExecute: START - Method entered");
         PluginConfiguration config = getConfiguration();
         
@@ -188,22 +188,22 @@ public class RegexpPlugin extends AbstractPlugin {
             LOGGER.debug("RegexpPlugin: Result from config = '{}'", result);
         }
         
-        System.out.println("RegexpPlugin.doExecute: Final pattern = '" + pattern + "'");
-        System.out.println("RegexpPlugin.doExecute: Final source = '" + source + "'");
+        LOGGER.debug("RegexpPlugin.doExecute: Final pattern = '" + pattern + "'");
+        LOGGER.debug("RegexpPlugin.doExecute: Final source = '" + source + "'");
         LOGGER.debug("RegexpPlugin: Final pattern = '{}'", pattern);
         LOGGER.debug("RegexpPlugin: Final source = '{}'", source);
         
         // Use executeBody() to get content from children if source is empty
         if (source.isEmpty()) {
-            System.out.println("RegexpPlugin.doExecute: Using executeBody() to get source content");
+            LOGGER.debug("RegexpPlugin.doExecute: Using executeBody() to get source content");
             LOGGER.debug("RegexpPlugin: Using executeBody() to get source content");
             Variable bodyResult = executeBody(context);
             if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
                 source = bodyResult.toString();
-                System.out.println("RegexpPlugin.doExecute: Source from executeBody(): '" + source + "'");
+                LOGGER.debug("RegexpPlugin.doExecute: Source from executeBody(): '" + source + "'");
                 LOGGER.debug("RegexpPlugin: Source from executeBody(): '{}'", source);
             } else {
-                System.out.println("RegexpPlugin.doExecute: executeBody() returned null or EmptyVariable");
+                LOGGER.debug("RegexpPlugin.doExecute: executeBody() returned null or EmptyVariable");
                 LOGGER.debug("RegexpPlugin: executeBody() returned null or EmptyVariable");
             }
         }
@@ -224,11 +224,11 @@ public class RegexpPlugin extends AbstractPlugin {
 
         if (source.isEmpty()) {
             LOGGER.warn("No source specified for regexp plugin");
-            System.out.println("RegexpPlugin.doExecute: No source specified, returning empty ListVariable");
+            LOGGER.debug("RegexpPlugin.doExecute: No source specified, returning empty ListVariable");
             return new ListVariable();
         }
 
-        System.out.println("RegexpPlugin.doExecute: About to execute regexp on source: '" + source + "'");
+        LOGGER.debug("RegexpPlugin.doExecute: About to execute regexp on source: '" + source + "'");
         LOGGER.debug("RegexpPlugin: About to execute regexp on source: '{}'", source);
 
         try {
@@ -250,9 +250,9 @@ public class RegexpPlugin extends AbstractPlugin {
                 flags |= Pattern.CANON_EQ;
             }
 
-            System.out.println("RegexpPlugin.doExecute: Pattern: '" + pattern + "'");
-            System.out.println("RegexpPlugin.doExecute: Source: '" + source + "'");
-            System.out.println("RegexpPlugin.doExecute: Flags: " + flags);
+            LOGGER.debug("RegexpPlugin.doExecute: Pattern: '" + pattern + "'");
+            LOGGER.debug("RegexpPlugin.doExecute: Source: '" + source + "'");
+            LOGGER.debug("RegexpPlugin.doExecute: Flags: " + flags);
             
             final Pattern compiledPattern = Pattern.compile(pattern, flags);
             final List<NodeVariable> resultList = new ArrayList<>();
@@ -304,7 +304,7 @@ public class RegexpPlugin extends AbstractPlugin {
                     resultList.add(new NodeVariable(buffer.toString()));
                 }
             }
-            System.out.println("RegexpPlugin.doExecute: Regexp executed successfully, returning ListVariable with " + resultList.size() + " results");
+            LOGGER.debug("RegexpPlugin.doExecute: Regexp executed successfully, returning ListVariable with " + resultList.size() + " results");
             LOGGER.debug("RegexpPlugin: Regexp executed successfully, returning ListVariable with {} results", resultList.size());
             return new ListVariable(resultList);
 

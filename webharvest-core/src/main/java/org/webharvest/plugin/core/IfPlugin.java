@@ -458,29 +458,29 @@ public class IfPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("IfPlugin.doExecute: START");
+        LOGGER.debug("IfPlugin.doExecute: START");
         PluginConfiguration config = getConfiguration();
 
         // Get condition from configuration - XML schema defines 'condition' attribute
         String condition = config.getProperty("condition", "");
         
-        System.out.println("If plugin - Condition: '" + condition + "'");
-        System.out.println("If plugin - Config properties: " + config.getProperties());
-        System.out.println("If plugin - Config toString: " + config);
+        LOGGER.debug("If plugin - Condition: '" + condition + "'");
+        LOGGER.debug("If plugin - Config properties: " + config.getProperties());
+        LOGGER.debug("If plugin - Config toString: " + config);
 
         try {
             // Evaluate condition (simplified - in real implementation this would be more complex)
             boolean conditionResult = evaluateCondition(condition, context);
-            System.out.println("IfPlugin.doExecute: conditionResult=" + conditionResult);
+            LOGGER.debug("IfPlugin.doExecute: conditionResult=" + conditionResult);
             
             if (conditionResult) {
                 // Execute body content when condition is true
                 Variable bodyResult = executeBody(context);
-                System.out.println("IfPlugin.doExecute: Condition true, executing body content");
+                LOGGER.debug("IfPlugin.doExecute: Condition true, executing body content");
                 return bodyResult;
             } else {
                 // Return EmptyVariable for false conditions
-                System.out.println("IfPlugin.doExecute: Condition false, returning EmptyVariable");
+                LOGGER.debug("IfPlugin.doExecute: Condition false, returning EmptyVariable");
                 return EmptyVariable.INSTANCE;
             }
 
@@ -496,13 +496,13 @@ public class IfPlugin extends AbstractPlugin {
                     }
                     
                     try {
-                        System.out.println("IfPlugin.evaluateCondition: Original condition=" + condition);
+                        LOGGER.debug("IfPlugin.evaluateCondition: Original condition=" + condition);
                         
                         // Handle template expressions like ${condition == 'true'}
                         if (condition.contains("${") && condition.contains("}")) {
                             // Extract the expression inside ${...}
                             String expression = condition.substring(condition.indexOf("${") + 2, condition.lastIndexOf("}"));
-                            System.out.println("IfPlugin.evaluateCondition: Extracted expression=" + expression);
+                            LOGGER.debug("IfPlugin.evaluateCondition: Extracted expression=" + expression);
                             
                             // Handle comparison expressions like "condition == 'true'"
                             if (expression.contains("==")) {
@@ -511,16 +511,16 @@ public class IfPlugin extends AbstractPlugin {
                                     String leftVar = parts[0].trim();
                                     String rightValue = parts[1].trim().replaceAll("['\"]", "");
                                     
-                                    System.out.println("IfPlugin.evaluateCondition: leftVar='" + leftVar + "', rightValue='" + rightValue + "'");
+                                    LOGGER.debug("IfPlugin.evaluateCondition: leftVar='" + leftVar + "', rightValue='" + rightValue + "'");
                                     
                                     // Get the variable value from context
                                     Variable leftVarValue = context.getVar(leftVar);
                                     String leftValue = leftVarValue != null ? leftVarValue.toString() : "";
                                     
-                                    System.out.println("IfPlugin.evaluateCondition: leftValue='" + leftValue + "'");
+                                    LOGGER.debug("IfPlugin.evaluateCondition: leftValue='" + leftValue + "'");
                                     
                                     boolean result = leftValue.equals(rightValue);
-                                    System.out.println("IfPlugin.evaluateCondition: comparison result=" + result);
+                                    LOGGER.debug("IfPlugin.evaluateCondition: comparison result=" + result);
                                     return result;
                                 }
                             }
@@ -536,7 +536,7 @@ public class IfPlugin extends AbstractPlugin {
                                     String leftValue = leftVarValue != null ? leftVarValue.toString() : "";
                                     
                                     boolean result = !leftValue.equals(rightValue);
-                                    System.out.println("IfPlugin.evaluateCondition: != comparison result=" + result);
+                                    LOGGER.debug("IfPlugin.evaluateCondition: != comparison result=" + result);
                                     return result;
                                 }
                             }
@@ -546,14 +546,14 @@ public class IfPlugin extends AbstractPlugin {
                             if (varValue != null) {
                                 String value = varValue.toString();
                                 boolean result = !value.equals("false") && !value.equals("0") && !value.isEmpty();
-                                System.out.println("IfPlugin.evaluateCondition: variable value='" + value + "', result=" + result);
+                                LOGGER.debug("IfPlugin.evaluateCondition: variable value='" + value + "', result=" + result);
                                 return result;
                             }
                         }
                         
                         // For simple boolean values
                         boolean result = !condition.equals("false") && !condition.equals("0") && !condition.isEmpty();
-                        System.out.println("IfPlugin.evaluateCondition: simple boolean result=" + result);
+                        LOGGER.debug("IfPlugin.evaluateCondition: simple boolean result=" + result);
                         return result;
                     } catch (Exception e) {
                         LOGGER.error("Error evaluating condition: " + condition, e);

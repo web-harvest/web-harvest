@@ -567,9 +567,9 @@ public class ScriptPlugin extends AbstractPlugin {
         
         if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
             sourceCode = bodyContent.toString();
-            System.out.println("ScriptPlugin: Retrieved script content: " + sourceCode);
+            LOGGER.debug("ScriptPlugin: Retrieved script content: " + sourceCode);
         } else {
-            System.out.println("ScriptPlugin: No body content available");
+            LOGGER.debug("ScriptPlugin: No body content available");
             return EmptyVariable.INSTANCE;
         }
 

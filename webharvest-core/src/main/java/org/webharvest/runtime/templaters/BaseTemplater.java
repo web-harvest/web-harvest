@@ -40,6 +40,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.ScriptSource;
@@ -57,6 +59,8 @@ import com.google.inject.Inject;
  */
 public class BaseTemplater {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseTemplater.class);
+
     @Inject
     public static ScriptEngineFactory scriptEngineFactory;
 
@@ -64,11 +68,11 @@ public class BaseTemplater {
     public static String VAR_END = "}";
 
     public static String evaluateToString(String source, ScriptingLanguage language, DynamicScopeContext context) {
-        System.out.println("BaseTemplater.evaluateToString: source='" + source + "', language=" + language);
-        System.out.println("BaseTemplater.evaluateToString: scriptEngineFactory=" + scriptEngineFactory);
+        LOGGER.debug("evaluateToString: source='{}', language={}", source, language);
+        LOGGER.trace("evaluateToString: scriptEngineFactory={}", scriptEngineFactory);
         final Variable result = evaluateToVariable(source, language, context);
         String resultStr = result.isEmpty() ? null : result.toString();
-        System.out.println("BaseTemplater.evaluateToString: result='" + resultStr + "'");
+        LOGGER.debug("evaluateToString: result='{}'", resultStr);
         return resultStr;
     }
 

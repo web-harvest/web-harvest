@@ -43,11 +43,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.PropertyConfigurator;
 import org.webharvest.definition.ConfigSource;
@@ -70,6 +71,8 @@ import com.google.inject.Injector;
  * Provides command line execution capabilities for WebHarvest scraping configurations.
  */
 public class WebHarvestCLI {
+
+    private static final Logger LOG = LoggerFactory.getLogger(WebHarvestCLI.class);
 
     public static Map<String, String> getArgValue(String[] args, boolean caseSensitive) {
         Map<String, String> params = new HashMap<String, String>();
@@ -105,7 +108,7 @@ public class WebHarvestCLI {
         } else {
             String configFilePath = params.get("config");
             if (configFilePath == null || "".equals(configFilePath)) {
-                System.err.println("You must specify configuration file path using config=<path> argument!");
+                LOG.error("You must specify configuration file path using config=<path> argument!");
                 printHelp();
                 System.exit(1);
             }
@@ -164,7 +167,7 @@ public class WebHarvestCLI {
     private static void parseDebugModeSettings(final Map<String, String> params,
             final String workingDir) throws IOException {
         if (CommonUtil.isBooleanTrue(params.get("debug"))) {
-            final Logger logger = LogManager.getLogger(DebugFileLogger.NAME);
+            final org.apache.log4j.Logger logger = LogManager.getLogger(DebugFileLogger.NAME);
             logger.setLevel(Level.TRACE);
             logger.addAppender(new FileAppender(
                     new PatternLayout(DebugFileLogger.LAYOUT),
@@ -245,43 +248,43 @@ public class WebHarvestCLI {
     }
 
     private static void printHelp() {
-        System.out.println("");
-        System.out.println("Web-Harvest Command Line Interface");
-        System.out.println("==================================");
-        System.out.println("");
-        System.out.println("Usage:");
-        System.out.println("   java -jar webharvest-cli-XX.jar [-h] config=<path> [workdir=<path>] [debug=yes|no]");
-        System.out.println("             [proxyhost=<proxy server> [proxyport=<proxy server port>]]");
-        System.out.println("             [proxyuser=<proxy username> [proxypassword=<proxy password>]]");
-        System.out.println("             [proxynthost=<NT host name>]");
-        System.out.println("             [proxyntdomain=<NT domain name>]");
-        System.out.println("             [loglevel=<level>]");
-        System.out.println("             [logpropsfile=<path>]");
-        System.out.println("             [plugins=<plugin-class1>[:<uri1>][,<plugin-class2>[:<uri2>]]...]");
-        System.out.println("             [dbdrivers=<jar-uri1>[,<jar-uri2>]...]");
-        System.out.println("             [vars=<name1>=<value1>[;<name2>=<value2>...]]");
-        System.out.println("");
-        System.out.println("Options:");
-        System.out.println("   -h            - shows this help.");
-        System.out.println("   config        - path or URL of configuration (URL must begin with \"http://\" or \"https://\").");
-        System.out.println("   workdir       - path of the working directory (default is current directory).");
-        System.out.println("   debug         - specify if Web-Harvest generates debugging output (default is no).");
-        System.out.println("   proxyhost     - specify proxy server.");
-        System.out.println("   proxyport     - specify port for proxy server.");
-        System.out.println("   proxyuser     - specify proxy server username.");
-        System.out.println("   proxypassword - specify proxy server password.");
-        System.out.println("   proxynthost   - NTLM authentication scheme - the host the request is originating from.");
-        System.out.println("   proxyntdomain - NTLM authentication scheme - the domain to authenticate within.");
-        System.out.println("   loglevel      - specify level of logging for Log4J (trace,info,debug,warn,error,fatal).");
-        System.out.println("   logpropsfile  - file path to custom Log4J properties. If specified, loglevel is ignored.");
-        System.out.println("   dbdrivers     - comma-separated list of JAR locations containing database drivers");
-        System.out.println("   vars	         - semicolon-separated list of pairs <name>=<value>, where <name> is a name of initial variable " +
+        LOG.info("");
+        LOG.info("WebHarvest Command Line Interface");
+        LOG.info("==================================");
+        LOG.info("");
+        LOG.info("Usage:");
+        LOG.info("   java -jar webharvest-cli-XX.jar [-h] config=<path> [workdir=<path>] [debug=yes|no]");
+        LOG.info("             [proxyhost=<proxy server> [proxyport=<proxy server port>]]");
+        LOG.info("             [proxyuser=<proxy username> [proxypassword=<proxy password>]]");
+        LOG.info("             [proxynthost=<NT host name>]");
+        LOG.info("             [proxyntdomain=<NT domain name>]");
+        LOG.info("             [loglevel=<level>]");
+        LOG.info("             [logpropsfile=<path>]");
+        LOG.info("             [plugins=<plugin-class1>[:<uri1>][,<plugin-class2>[:<uri2>]]...]");
+        LOG.info("             [dbdrivers=<jar-uri1>[,<jar-uri2>]...]");
+        LOG.info("             [vars=<name1>=<value1>[;<name2>=<value2>...]]");
+        LOG.info("");
+        LOG.info("Options:");
+        LOG.info("   -h            - shows this help.");
+        LOG.info("   config        - path or URL of configuration (URL must begin with \"http://\" or \"https://\").");
+        LOG.info("   workdir       - path of the working directory (default is current directory).");
+        LOG.info("   debug         - specify if Web-Harvest generates debugging output (default is no).");
+        LOG.info("   proxyhost     - specify proxy server.");
+        LOG.info("   proxyport     - specify port for proxy server.");
+        LOG.info("   proxyuser     - specify proxy server username.");
+        LOG.info("   proxypassword - specify proxy server password.");
+        LOG.info("   proxynthost   - NTLM authentication scheme - the host the request is originating from.");
+        LOG.info("   proxyntdomain - NTLM authentication scheme - the domain to authenticate within.");
+        LOG.info("   loglevel      - specify level of logging for Log4J (trace,info,debug,warn,error,fatal).");
+        LOG.info("   logpropsfile  - file path to custom Log4J properties. If specified, loglevel is ignored.");
+        LOG.info("   dbdrivers     - comma-separated list of JAR locations containing database drivers");
+        LOG.info("   vars	         - semicolon-separated list of pairs <name>=<value>, where <name> is a name of initial variable " +
                 "of the Web-Harvest context and <value> is its value");
-        System.out.println("");
-        System.out.println("Examples:");
-        System.out.println("   java -jar webharvest-cli-XX.jar config=myconfig.xml");
-        System.out.println("   java -jar webharvest-cli-XX.jar config=myconfig.xml workdir=/tmp debug=yes");
-        System.out.println("   java -jar webharvest-cli-XX.jar config=http://example.com/config.xml loglevel=debug");
+        LOG.info("");
+        LOG.info("Examples:");
+        LOG.info("   java -jar webharvest-cli-XX.jar config=myconfig.xml");
+        LOG.info("   java -jar webharvest-cli-XX.jar config=myconfig.xml workdir=/tmp debug=yes");
+        LOG.info("   java -jar webharvest-cli-XX.jar config=http://example.com/config.xml loglevel=debug");
     }
 
 }

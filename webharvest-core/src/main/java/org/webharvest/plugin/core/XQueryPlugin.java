@@ -276,7 +276,7 @@ public class XQueryPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("XQueryPlugin.doExecute: START");
+        LOGGER.debug("XQueryPlugin.doExecute: START");
         LOGGER.debug("XQueryPlugin.doExecute: START");
         
         // Get XQuery expression and XML from body content
@@ -286,7 +286,7 @@ public class XQueryPlugin extends AbstractPlugin {
         try {
             // Execute body content to get sub-elements
             Variable bodyContent = executeBody(context);
-            System.out.println("XQueryPlugin.doExecute: bodyContent=" + bodyContent);
+            LOGGER.debug("XQueryPlugin.doExecute: bodyContent=" + bodyContent);
             
             if (bodyContent == null || bodyContent instanceof EmptyVariable) {
                 LOGGER.warn("No body content available for XQuery evaluation");
@@ -295,24 +295,24 @@ public class XQueryPlugin extends AbstractPlugin {
             
             // Parse the body content to extract XQuery expression and XML
             String bodyText = bodyContent.toString();
-            System.out.println("XQueryPlugin.doExecute: bodyText=" + bodyText);
+            LOGGER.debug("XQueryPlugin.doExecute: bodyText=" + bodyText);
             
             // Simple parsing - assume first line is XQuery expression, rest is XML
             String[] lines = bodyText.split("\n");
             if (lines.length >= 2) {
                 xqExpression = lines[0].trim();
                 xmlContent = lines[1].trim();
-                System.out.println("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
-                System.out.println("XQueryPlugin.doExecute: Extracted xmlContent=" + xmlContent);
+                LOGGER.debug("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
+                LOGGER.debug("XQueryPlugin.doExecute: Extracted xmlContent=" + xmlContent);
             } else if (lines.length == 1) {
                 // Only one line - treat as XQuery expression
                 xqExpression = lines[0].trim();
-                System.out.println("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
+                LOGGER.debug("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
             }
             
         } catch (Exception e) {
             LOGGER.error("Error getting body content for XQuery evaluation", e);
-            System.out.println("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
+            LOGGER.debug("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
             return EmptyVariable.INSTANCE;
         }
         
@@ -333,16 +333,16 @@ public class XQueryPlugin extends AbstractPlugin {
             
             // Set XML content as context for XQuery evaluation
             if (xmlContent != null && !xmlContent.trim().isEmpty()) {
-                System.out.println("XQueryPlugin.doExecute: Setting XML content as context");
+                LOGGER.debug("XQueryPlugin.doExecute: Setting XML content as context");
                 try {
                     // Parse XML content and set as context item
                     StringReader reader = new StringReader(xmlContent);
                     javax.xml.transform.stream.StreamSource streamSource = new javax.xml.transform.stream.StreamSource(reader);
                     net.sf.saxon.om.Item contextItem = sqc.buildDocument(streamSource);
                     dynamicContext.setContextItem(contextItem);
-                    System.out.println("XQueryPlugin.doExecute: Successfully set XML content as context");
+                    LOGGER.debug("XQueryPlugin.doExecute: Successfully set XML content as context");
                 } catch (Exception contextException) {
-                    System.out.println("XQueryPlugin.doExecute: Failed to set XML content as context: " + contextException.getMessage());
+                    LOGGER.debug("XQueryPlugin.doExecute: Failed to set XML content as context: " + contextException.getMessage());
                     // Continue without context - some XQuery expressions might work without it
                 }
             }
@@ -351,7 +351,7 @@ public class XQueryPlugin extends AbstractPlugin {
             
         } catch (Exception e) {
             LOGGER.error("Failed to evaluate XQuery expression: {}", e.getMessage(), e);
-            System.out.println("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
+            LOGGER.debug("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
             throw new ScraperXQueryException("Error executing XQuery expression (XQuery = [" + xqExpression + "])!", e);
         }
     }

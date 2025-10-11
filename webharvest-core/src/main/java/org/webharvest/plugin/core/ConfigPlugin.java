@@ -385,9 +385,9 @@ public class ConfigPlugin extends AbstractPlugin {
         
         // Set the result as a variable in the context
         context.setLocalVar("configResult", result);
-        System.out.println("Config plugin - set variable 'configResult' in context");
+        LOGGER.debug("Config plugin - set variable 'configResult' in context");
         
-        System.out.println("Config plugin executed successfully");
+        LOGGER.debug("Config plugin executed successfully");
         
         return result;
     }

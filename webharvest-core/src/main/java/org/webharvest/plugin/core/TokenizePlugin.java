@@ -310,9 +310,9 @@ public class TokenizePlugin extends AbstractPlugin {
         
         if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
             text = bodyContent.toString();
-            System.out.println("TokenizePlugin: Retrieved text content: " + text);
+            LOGGER.debug("TokenizePlugin: Retrieved text content: " + text);
         } else {
-            System.out.println("TokenizePlugin: No body content available");
+            LOGGER.debug("TokenizePlugin: No body content available");
             return new ListVariable();
         }
 

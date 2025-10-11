@@ -365,7 +365,7 @@ public class ElsePlugin extends AbstractPlugin {
         
         // Set the result as a variable in the context
         context.setLocalVar("elseResult", result);
-        System.out.println("Else plugin - set variable 'elseResult' in context");
+        LOGGER.debug("Else plugin - set variable 'elseResult' in context");
         
         return result;
     }

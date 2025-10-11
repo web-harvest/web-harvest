@@ -693,42 +693,42 @@ public class FilePlugin extends AbstractPlugin {
         String path = BaseTemplater.evaluateToString(config.getProperty("path", ""), null, context);
         LOGGER.info("FilePlugin.doExecute: path={}", path);
         String type = config.getProperty("type", "text");
-        System.out.println("FilePlugin.doExecute: type=" + type);
+        LOGGER.debug("FilePlugin.doExecute: type=" + type);
         String charset = BaseTemplater.evaluateToString(config.getProperty("charset", context.getCharset()), null, context);
-        System.out.println("FilePlugin.doExecute: charset=" + charset);
-        System.out.println("FilePlugin.doExecute: getting listFilter property");
+        LOGGER.debug("FilePlugin.doExecute: charset=" + charset);
+        LOGGER.debug("FilePlugin.doExecute: getting listFilter property");
         String listFilter = BaseTemplater.evaluateToString(config.getProperty("listfilter", ""), null, context);
-        System.out.println("FilePlugin.doExecute: listFilter=" + listFilter);
-        System.out.println("FilePlugin.doExecute: getting listFiles property");
+        LOGGER.debug("FilePlugin.doExecute: listFilter=" + listFilter);
+        LOGGER.debug("FilePlugin.doExecute: getting listFiles property");
         boolean listFiles = CommonUtil.getBooleanValue(config.getProperty("listfiles", "true"), true);
-        System.out.println("FilePlugin.doExecute: listFiles=" + listFiles);
-        System.out.println("FilePlugin.doExecute: getting listDirs property");
+        LOGGER.debug("FilePlugin.doExecute: listFiles=" + listFiles);
+        LOGGER.debug("FilePlugin.doExecute: getting listDirs property");
         boolean listDirs = CommonUtil.getBooleanValue(config.getProperty("listdirs", "true"), true);
-        System.out.println("FilePlugin.doExecute: listDirs=" + listDirs);
-        System.out.println("FilePlugin.doExecute: getting listRecursive property");
+        LOGGER.debug("FilePlugin.doExecute: listDirs=" + listDirs);
+        LOGGER.debug("FilePlugin.doExecute: getting listRecursive property");
         boolean listRecursive = CommonUtil.getBooleanValue(config.getProperty("listrecursive", "false"), false);
-        System.out.println("FilePlugin.doExecute: listRecursive=" + listRecursive);
-        System.out.println("FilePlugin.doExecute: about to enter try block");
+        LOGGER.debug("FilePlugin.doExecute: listRecursive=" + listRecursive);
+        LOGGER.debug("FilePlugin.doExecute: about to enter try block");
         
-        System.out.println("File plugin - Action: " + action + ", Path: " + path + ", Type: " + type + ", Charset: " + charset);
+        LOGGER.debug("File plugin - Action: " + action + ", Path: " + path + ", Type: " + type + ", Charset: " + charset);
         
         try {
-            System.out.println("FilePlugin.doExecute: inside try block");
+            LOGGER.debug("FilePlugin.doExecute: inside try block");
             if (path.isEmpty()) {
-                System.out.println("FilePlugin.doExecute: path is empty, returning EmptyVariable");
+                LOGGER.debug("FilePlugin.doExecute: path is empty, returning EmptyVariable");
                 LOGGER.warn("No file path specified for file plugin");
                 return EmptyVariable.INSTANCE;
             }
-            System.out.println("FilePlugin.doExecute: path is not empty, continuing");
+            LOGGER.debug("FilePlugin.doExecute: path is not empty, continuing");
             
             // Basic file operations based on action
-            System.out.println("FilePlugin.doExecute: about to enter switch statement for action=" + action);
+            LOGGER.debug("FilePlugin.doExecute: about to enter switch statement for action=" + action);
             switch (action.toLowerCase()) {
                 case "read":
-                    System.out.println("FilePlugin.doExecute: calling handleFileRead");
+                    LOGGER.debug("FilePlugin.doExecute: calling handleFileRead");
                     return handleFileRead(path, type, charset, context);
                 case "write":
-                    System.out.println("FilePlugin.doExecute: calling handleFileWrite");
+                    LOGGER.debug("FilePlugin.doExecute: calling handleFileWrite");
                     return handleFileWrite(path, type, charset, false, context);
                 case "append":
                     return handleFileWrite(path, type, charset, true, context);
@@ -754,7 +754,7 @@ public class FilePlugin extends AbstractPlugin {
             
             if (type.equals("binary")) {
                 // For binary files, return empty for now
-                System.out.println("Binary file read not implemented yet");
+                LOGGER.debug("Binary file read not implemented yet");
                 return EmptyVariable.INSTANCE;
             } else {
                 // For text files, read content
@@ -773,8 +773,8 @@ public class FilePlugin extends AbstractPlugin {
                 workingDir = System.getProperty("user.dir");
             }
             File file = new File(workingDir, path);
-        System.out.println("FilePlugin.handleFileWrite: workingDir=" + workingDir);
-        System.out.println("FilePlugin.handleFileWrite: file=" + file.getAbsolutePath());
+        LOGGER.debug("FilePlugin.handleFileWrite: workingDir=" + workingDir);
+        LOGGER.debug("FilePlugin.handleFileWrite: file=" + file.getAbsolutePath());
             if (!file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
             }
@@ -784,12 +784,12 @@ public class FilePlugin extends AbstractPlugin {
             try {
                 // Execute child elements directly in the same context
                 bodyContent = super.executeBody(context);
-                System.out.println("FilePlugin.handleFileWrite: bodyContent type=" + 
+                LOGGER.debug("FilePlugin.handleFileWrite: bodyContent type=" + 
                     (bodyContent != null ? bodyContent.getClass().getName() : "null"));
                 
                 if (bodyContent == null || bodyContent instanceof EmptyVariable) {
                     LOGGER.warn("FilePlugin: bodyContent is null or EmptyVariable!");
-                    System.out.println("FilePlugin.handleFileWrite: bodyContent is null or EmptyVariable");
+                    LOGGER.debug("FilePlugin.handleFileWrite: bodyContent is null or EmptyVariable");
                 }
             } catch (Exception e) {
                 LOGGER.error("FilePlugin.handleFileWrite: Error executing body content: " + e.getMessage(), e);
@@ -819,13 +819,13 @@ public class FilePlugin extends AbstractPlugin {
                 if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                     content = bodyContent.toString();
                     LOGGER.info("FilePlugin: Content to write: [{}]", content);
-                    System.out.println("FilePlugin.handleFileWrite: content=" + content);
+                    LOGGER.debug("FilePlugin.handleFileWrite: content=" + content);
                 } else {
                     // Try to get raw text from child elements as XML
                     LOGGER.info("FilePlugin.handleFileWrite: Trying XML conversion");
                     content = getChildElementsAsRawText();
                     LOGGER.info("FilePlugin.handleFileWrite: XML conversion result: [{}]", content);
-                    System.out.println("FilePlugin.handleFileWrite: XML conversion result=" + content);
+                    LOGGER.debug("FilePlugin.handleFileWrite: XML conversion result=" + content);
                 }
                 
                 // If the content contains template variables (${...}), process them
@@ -833,9 +833,9 @@ public class FilePlugin extends AbstractPlugin {
                     try {
                         Variable processedContent = BaseTemplater.evaluateToVariable(content, null, context);
                         content = processedContent.toString();
-                        System.out.println("FilePlugin.handleFileWrite: processed template content=" + content);
+                        LOGGER.debug("FilePlugin.handleFileWrite: processed template content=" + content);
                     } catch (Exception e) {
-                        System.out.println("FilePlugin.handleFileWrite: Error processing template: " + e.getMessage());
+                        LOGGER.debug("FilePlugin.handleFileWrite: Error processing template: " + e.getMessage());
                         LOGGER.warn("Error processing template content: " + e.getMessage());
                     }
                 }
@@ -845,7 +845,7 @@ public class FilePlugin extends AbstractPlugin {
                 }
             }
             
-            System.out.println("File written successfully: " + file.getAbsolutePath());
+            LOGGER.debug("File written successfully: " + file.getAbsolutePath());
             return EmptyVariable.INSTANCE;
         } catch (Exception e) {
             LOGGER.error("Error writing file: " + path, e);

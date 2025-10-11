@@ -33,6 +33,8 @@
 
 package org.webharvest.docs;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -53,7 +55,8 @@ import java.util.*;
  * @version 2.1.0-SNAPSHOT
  */
 public class ProcessorReferenceGenerator {
-    
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessorReferenceGenerator.class);    
     private static final String[] PROCESSOR_PACKAGES = {
         "org.webharvest.runtime.processors",
         "org.webharvest.runtime.processors.plugins"
@@ -80,7 +83,7 @@ public class ProcessorReferenceGenerator {
     
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.err.println("Usage: ProcessorReferenceGenerator <output-directory>");
+            LOGGER.error("Usage: ProcessorReferenceGenerator <output-directory>");
             System.exit(1);
         }
         
@@ -89,9 +92,9 @@ public class ProcessorReferenceGenerator {
         
         try {
             generator.generateProcessorReference(outputDir);
-            System.out.println("Processor reference generated successfully in: " + outputDir);
+            LOGGER.debug("Processor reference generated successfully in: " + outputDir);
         } catch (Exception e) {
-            System.err.println("Error generating processor reference: " + e.getMessage());
+            LOGGER.error("Error generating processor reference: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }

@@ -288,7 +288,7 @@ public class XsltPlugin extends AbstractPlugin {
             return EmptyVariable.INSTANCE;
         }
         
-        System.out.println("Performing XSLT transformation on XML content with length: " + 
+        LOGGER.debug("Performing XSLT transformation on XML content with length: " + 
                     xmlContent.length() + " using stylesheet with length: " + stylesheetContent.length());
         
         try {

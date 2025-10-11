@@ -76,23 +76,23 @@ public class LoopPlugin extends AbstractPlugin {
             String itemsStr = config.getProperty("items", "");
             String delimiter = config.getProperty("delimiter", ",");
             
-            System.out.println("LoopPlugin: items=" + itemsStr + ", delimiter=" + delimiter);
+            LOGGER.debug("LoopPlugin: items=" + itemsStr + ", delimiter=" + delimiter);
             
             if (itemsStr.isEmpty()) {
-                System.out.println("LoopPlugin: No items specified");
+                LOGGER.debug("LoopPlugin: No items specified");
                 return EmptyVariable.INSTANCE;
             }
             
             // Split items by delimiter
             String[] items = itemsStr.split(delimiter);
-            System.out.println("LoopPlugin: Found " + items.length + " items");
+            LOGGER.debug("LoopPlugin: Found " + items.length + " items");
             
             StringBuilder result = new StringBuilder();
             
             // Loop through items
             for (int i = 0; i < items.length; i++) {
                 String currentItem = items[i].trim();
-                System.out.println("LoopPlugin: Processing item " + i + ": " + currentItem);
+                LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
                 
                 // Set current item in context
                 context.setLocalVar("item", new NodeVariable(currentItem));
@@ -105,11 +105,11 @@ public class LoopPlugin extends AbstractPlugin {
                 }
             }
             
-            System.out.println("LoopPlugin: Final result: " + result.toString());
+            LOGGER.debug("LoopPlugin: Final result: " + result.toString());
             return new NodeVariable(result.toString());
             
         } catch (Exception e) {
-            System.out.println("LoopPlugin: Error: " + e.getMessage());
+            LOGGER.debug("LoopPlugin: Error: " + e.getMessage());
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
             return EmptyVariable.INSTANCE;
         }

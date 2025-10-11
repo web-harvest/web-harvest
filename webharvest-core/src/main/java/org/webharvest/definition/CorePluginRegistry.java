@@ -33,6 +33,8 @@
 
 package org.webharvest.definition;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
@@ -47,6 +49,8 @@ import org.webharvest.plugin.Plugin;
  * @version %I%, %G%
  */
 public final class CorePluginRegistry {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CorePluginRegistry.class);
 
     private static final CorePluginRegistry INSTANCE = new CorePluginRegistry();
     
@@ -79,7 +83,7 @@ public final class CorePluginRegistry {
     public void registerMapping(Class processorClass, 
                                Class<? extends Plugin> pluginClass,
                                String elementName) {
-        System.out.println("CorePluginRegistry.registerMapping: " + elementName + " -> " + pluginClass.getName());
+        LOGGER.debug("CorePluginRegistry.registerMapping: " + elementName + " -> " + pluginClass.getName());
         elementNameToPluginMap.put(elementName, pluginClass);
     }
 

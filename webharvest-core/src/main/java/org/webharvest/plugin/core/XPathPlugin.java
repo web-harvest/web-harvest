@@ -423,7 +423,7 @@ public class XPathPlugin extends AbstractPlugin {
                 return EmptyVariable.INSTANCE;
             }
             
-            System.out.println("Retrieved XML content for XPath evaluation");
+            LOGGER.debug("Retrieved XML content for XPath evaluation");
             return bodyContent;
             
         } catch (Exception e) {

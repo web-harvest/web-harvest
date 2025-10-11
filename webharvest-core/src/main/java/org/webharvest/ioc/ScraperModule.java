@@ -128,7 +128,7 @@ public final class ScraperModule extends AbstractModule {
     private void bindCoreServices() {
         // REMOVED in v2.2.x - ResolverPostProcessor/CorePluginsPostProcessor no longer exist
         // Resolver post processors
-        // System.out.println("ScraperModule: Creating CorePluginsPostProcessor instances");
+        // LOGGER.debug("ScraperModule: Creating CorePluginsPostProcessor instances");
         // CorePluginsPostProcessor coreProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.core");
         // CorePluginsPostProcessor dbProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.db");
         // CorePluginsPostProcessor ftpProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.ftp");
@@ -137,7 +137,7 @@ public final class ScraperModule extends AbstractModule {
         // CorePluginsPostProcessor zipProcessor = new CorePluginsPostProcessor("org.webharvest.plugin.zip");
         // AnnotatedPluginsPostProcessor annotatedProcessor = new AnnotatedPluginsPostProcessor("org.webharvest.runtime.processors");
         //
-        // System.out.println("ScraperModule: Created " + 6 + " CorePluginsPostProcessor instances");
+        // LOGGER.debug("ScraperModule: Created " + 6 + " CorePluginsPostProcessor instances");
         //
         // bind(new TypeLiteral<List<? extends ResolverPostProcessor>>(){})
         //         .annotatedWith(Names.named("resolverPostProcessors"))

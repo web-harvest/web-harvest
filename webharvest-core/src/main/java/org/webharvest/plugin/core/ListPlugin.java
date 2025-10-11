@@ -247,7 +247,7 @@ public class ListPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("List plugin executing - creating list variable");
+        LOGGER.debug("List plugin executing - creating list variable");
         
         try {
             // List plugin executes its body content and returns it as a list
@@ -255,7 +255,7 @@ public class ListPlugin extends AbstractPlugin {
             
             // Set the result as a variable in the context
             context.setLocalVar("listResult", result);
-            System.out.println("List plugin - set variable 'listResult' in context");
+            LOGGER.debug("List plugin - set variable 'listResult' in context");
             
             return result;
             

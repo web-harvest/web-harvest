@@ -230,7 +230,7 @@ public class FtpGetPlugin extends AbstractPlugin {
             }
         }
         
-        System.out.println("FTP Get Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
+        LOGGER.debug("FTP Get Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
         FTPClient ftpClient = null;
         try {
@@ -254,7 +254,7 @@ public class FtpGetPlugin extends AbstractPlugin {
             }
             
             byte[] fileData = outputStream.toByteArray();
-            System.out.println("FTP Get Plugin - Downloaded " + fileData.length + " bytes");
+            LOGGER.debug("FTP Get Plugin - Downloaded " + fileData.length + " bytes");
             
             return new NodeVariable(new String(fileData));
             

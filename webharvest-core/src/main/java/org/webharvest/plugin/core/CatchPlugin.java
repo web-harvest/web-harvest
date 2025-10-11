@@ -365,27 +365,24 @@ public class CatchPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("CatchPlugin.doExecute: START");
-        LOGGER.debug("CatchPlugin.doExecute: START");
+        LOGGER.debug("doExecute: START");
         
         // Check if there was an error in the try block
         Variable errorVar = context.getVar("error");
         if (errorVar != null && !(errorVar instanceof EmptyVariable)) {
-            System.out.println("CatchPlugin.doExecute: Error detected: " + errorVar);
-            LOGGER.info("CatchPlugin executing due to error: {}", errorVar);
+            LOGGER.info("Error detected, executing catch block: {}", errorVar);
             
             // Execute child elements directly in the same context (not using BodyProcessor)
-            System.out.println("CatchPlugin.doExecute: About to execute child elements directly");
+            LOGGER.debug("About to execute child elements directly");
             Variable result = executeChildElementsDirectly(context);
-            System.out.println("CatchPlugin.doExecute: Child elements executed, result=" + result);
+            LOGGER.debug("Child elements executed, result={}", result);
             
             // Set the result as a variable in the context
             context.setLocalVar("catchResult", result);
-            System.out.println("CatchPlugin.doExecute: Set variable 'catchResult' in context");
+            LOGGER.debug("Set variable 'catchResult' in context");
             
             return result;
         } else {
-            System.out.println("CatchPlugin.doExecute: No error detected, skipping catch block");
             LOGGER.debug("No error detected, skipping catch block");
             return EmptyVariable.INSTANCE;
         }

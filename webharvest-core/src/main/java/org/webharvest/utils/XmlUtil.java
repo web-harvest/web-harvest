@@ -33,6 +33,8 @@
 
 package org.webharvest.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -86,6 +88,7 @@ import org.xml.sax.SAXException;
  */
 public class XmlUtil {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(XmlUtil.class);
     private static final Map<Integer, SAXParserFactory> saxParserFactoryMap;
 
     static {
@@ -250,7 +253,7 @@ public class XmlUtil {
         } catch (Exception e) {
             // Log the error but don't fail the class loading
             // This allows the application to continue even if schema initialization fails
-            System.err.println("Warning: Failed to initialize XML schema resolver: " + e.getMessage());
+            LOGGER.error("Warning: Failed to initialize XML schema resolver: " + e.getMessage());
         }
     }
     
@@ -263,7 +266,7 @@ public class XmlUtil {
                 SchemaComponentFactory.getSchemaResolver();
             schemaResolver.refresh();
         } catch (Exception e) {
-            System.err.println("Warning: Failed to refresh XML schema resolver: " + e.getMessage());
+            LOGGER.error("Warning: Failed to refresh XML schema resolver: " + e.getMessage());
         }
     }
 }

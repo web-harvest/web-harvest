@@ -791,7 +791,7 @@ public class HttpParamPlugin extends AbstractPlugin {
         
         // Log debug information instead of setting properties
         LOGGER.debug("HTTP parameter - name: {}, isFile: {}", name, isFile);
-        System.out.println("HTTP parameter configured with fileName and contentType");
+        LOGGER.debug("HTTP parameter configured with fileName and contentType");
         
         try {
             // TODO: Implement proper body execution
@@ -799,7 +799,7 @@ public class HttpParamPlugin extends AbstractPlugin {
             
             // TODO: In the original HttpParamProcessor, this would add the parameter to the parent HttpProcessor
             // For now, we'll simulate the parameter addition
-            System.out.println("HTTP parameter added (simplified implementation)");
+            LOGGER.debug("HTTP parameter added (simplified implementation)");
             
             return EmptyVariable.INSTANCE;
             

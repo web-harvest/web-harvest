@@ -354,23 +354,23 @@ public class XQExpressionPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("XQExpressionPlugin.doExecute: START");
+        LOGGER.debug("XQExpressionPlugin.doExecute: START");
         
         try {
             // Execute body content to get the XQuery expression text
             Variable bodyContent = executeBody(context);
-            System.out.println("XQExpressionPlugin.doExecute: bodyContent=" + bodyContent);
+            LOGGER.debug("XQExpressionPlugin.doExecute: bodyContent=" + bodyContent);
             
             if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
-                System.out.println("XQExpressionPlugin.doExecute: Returning body content: " + bodyContent.toString());
+                LOGGER.debug("XQExpressionPlugin.doExecute: Returning body content: " + bodyContent.toString());
                 return bodyContent;
             }
             
-            System.out.println("XQExpressionPlugin.doExecute: No body content, returning EmptyVariable");
+            LOGGER.debug("XQExpressionPlugin.doExecute: No body content, returning EmptyVariable");
             return EmptyVariable.INSTANCE;
             
         } catch (Exception e) {
-            System.out.println("XQExpressionPlugin.doExecute: ERROR: " + e.getMessage());
+            LOGGER.debug("XQExpressionPlugin.doExecute: ERROR: " + e.getMessage());
             return EmptyVariable.INSTANCE;
         }
     }

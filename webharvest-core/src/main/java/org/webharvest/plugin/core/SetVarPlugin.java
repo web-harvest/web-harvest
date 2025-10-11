@@ -172,12 +172,12 @@ public class SetVarPlugin extends AbstractPlugin {
      */
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("SetVarPlugin.doExecute: START");
+        LOGGER.debug("SetVarPlugin.doExecute: START");
         PluginConfiguration config = getConfiguration();
         String varName = config.getProperty("var", "");
         String valueAttr = config.getProperty("value", "");
         
-        System.out.println("SetVarPlugin.doExecute: varName='" + varName + "', valueAttr='" + valueAttr + "'");
+        LOGGER.debug("SetVarPlugin.doExecute: varName='" + varName + "', valueAttr='" + valueAttr + "'");
         
         if (varName.isEmpty()) {
             throw new RuntimeException("Variable name is required for set operation");
@@ -199,21 +199,21 @@ public class SetVarPlugin extends AbstractPlugin {
                 }
             } else {
                 // Get the body content and process it as template
-                System.out.println("SetVarPlugin.doExecute: Getting body content from XML node");
+                LOGGER.debug("SetVarPlugin.doExecute: Getting body content from XML node");
                 Variable bodyContent = getBodyContentFromXmlNode();
-                System.out.println("SetVarPlugin.doExecute: Body content=" + bodyContent);
+                LOGGER.debug("SetVarPlugin.doExecute: Body content=" + bodyContent);
                 if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                     // Process body content as template
                     String bodyText = bodyContent.toString();
-                    System.out.println("SetVarPlugin.doExecute: Body text='" + bodyText + "'");
-                    System.out.println("SetVarPlugin.doExecute: bodyContent class=" + bodyContent.getClass().getName());
+                    LOGGER.debug("SetVarPlugin.doExecute: Body text='" + bodyText + "'");
+                    LOGGER.debug("SetVarPlugin.doExecute: bodyContent class=" + bodyContent.getClass().getName());
                     
                     // For arithmetic expressions, we need to handle them specially
                     if (bodyText.contains("+") || bodyText.contains("-") || bodyText.contains("*") || bodyText.contains("/")) {
-                        System.out.println("SetVarPlugin.doExecute: Calling evaluateArithmeticExpression");
+                        LOGGER.debug("SetVarPlugin.doExecute: Calling evaluateArithmeticExpression");
                         value = evaluateArithmeticExpression(bodyText, context);
                     } else {
-                        System.out.println("SetVarPlugin.doExecute: Calling BaseTemplater.evaluateToVariable");
+                        LOGGER.debug("SetVarPlugin.doExecute: Calling BaseTemplater.evaluateToVariable");
                         // v2.2.x FIX: Use context.getScriptingLanguage() and null-safety
                         if (BaseTemplater.scriptEngineFactory != null) {
                             value = BaseTemplater.evaluateToVariable(bodyText, context.getScriptingLanguage(), context);
@@ -222,23 +222,23 @@ public class SetVarPlugin extends AbstractPlugin {
                             value = new NodeVariable(bodyText);
                         }
                     }
-                    System.out.println("SetVarPlugin.doExecute: Evaluated value=" + value);
+                    LOGGER.debug("SetVarPlugin.doExecute: Evaluated value=" + value);
                     if (value == null) {
                         value = EmptyVariable.INSTANCE;
                     }
                 } else {
-                    System.out.println("SetVarPlugin.doExecute: No body content, using EmptyVariable");
+                    LOGGER.debug("SetVarPlugin.doExecute: No body content, using EmptyVariable");
                     value = EmptyVariable.INSTANCE;
                 }
             }
             
             // Set the variable in the context
             context.setLocalVar(varName, value);
-            System.out.println("SetVarPlugin.doExecute: Set variable '" + varName + "' to value: " + value);
+            LOGGER.debug("SetVarPlugin.doExecute: Set variable '" + varName + "' to value: " + value);
             
             // Verify the variable was set
             Variable verifyVar = context.getVar(varName);
-            System.out.println("SetVarPlugin.doExecute: Verified variable '" + varName + "' = " + verifyVar);
+            LOGGER.debug("SetVarPlugin.doExecute: Verified variable '" + varName + "' = " + verifyVar);
             
             LOGGER.debug("Set variable '{}' with value: {}", varName, value);
             return value;
@@ -283,13 +283,13 @@ public class SetVarPlugin extends AbstractPlugin {
      */
     private Variable evaluateArithmeticExpression(String expression, DynamicScopeContext context) {
         try {
-            System.out.println("SetVarPlugin.evaluateArithmeticExpression: expression='" + expression + "'");
+            LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: expression='" + expression + "'");
             
             // Handle template expressions like ${counter + 1}
             if (expression.contains("${") && expression.contains("}")) {
                 // Extract the expression inside ${...}
                 String innerExpression = expression.substring(expression.indexOf("${") + 2, expression.lastIndexOf("}"));
-                System.out.println("SetVarPlugin.evaluateArithmeticExpression: innerExpression='" + innerExpression + "'");
+                LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: innerExpression='" + innerExpression + "'");
                 
                 // Handle addition like "counter + 1"
                 if (innerExpression.contains("+")) {
@@ -298,7 +298,7 @@ public class SetVarPlugin extends AbstractPlugin {
                         String leftVar = parts[0].trim();
                         String rightValueStr = parts[1].trim();
                         
-                        System.out.println("SetVarPlugin.evaluateArithmeticExpression: leftVar='" + leftVar + "', rightValueStr='" + rightValueStr + "'");
+                        LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: leftVar='" + leftVar + "', rightValueStr='" + rightValueStr + "'");
                         
                         // Get the variable value from context
                         Variable leftVarValue = context.getVar(leftVar);
@@ -307,7 +307,7 @@ public class SetVarPlugin extends AbstractPlugin {
                             try {
                                 leftValue = Double.parseDouble(leftVarValue.toString());
                             } catch (NumberFormatException e) {
-                                System.out.println("SetVarPlugin.evaluateArithmeticExpression: Cannot parse left value '" + leftVarValue.toString() + "' as number, using 0");
+                                LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: Cannot parse left value '" + leftVarValue.toString() + "' as number, using 0");
                                 leftValue = 0.0;
                             }
                         }
@@ -317,12 +317,12 @@ public class SetVarPlugin extends AbstractPlugin {
                         try {
                             rightValue = Double.parseDouble(rightValueStr);
                         } catch (NumberFormatException e) {
-                            System.out.println("SetVarPlugin.evaluateArithmeticExpression: Cannot parse right value '" + rightValueStr + "' as number, using 0");
+                            LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: Cannot parse right value '" + rightValueStr + "' as number, using 0");
                             rightValue = 0.0;
                         }
                         
                         double result = leftValue + rightValue;
-                        System.out.println("SetVarPlugin.evaluateArithmeticExpression: " + leftValue + " + " + rightValue + " = " + result);
+                        LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: " + leftValue + " + " + rightValue + " = " + result);
                         return new NodeVariable(String.valueOf((int) result)); // Return as integer
                     }
                 }
@@ -365,7 +365,7 @@ public class SetVarPlugin extends AbstractPlugin {
                 return new NodeVariable(expression);
             }
         } catch (Exception e) {
-            System.out.println("SetVarPlugin.evaluateArithmeticExpression: Error evaluating expression '" + expression + "': " + e.getMessage());
+            LOGGER.debug("SetVarPlugin.evaluateArithmeticExpression: Error evaluating expression '" + expression + "': " + e.getMessage());
             return EmptyVariable.INSTANCE;
         }
     }

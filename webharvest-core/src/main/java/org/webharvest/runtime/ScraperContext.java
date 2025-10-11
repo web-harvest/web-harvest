@@ -48,6 +48,8 @@ import javax.annotation.PostConstruct;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang3.ObjectUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -67,6 +69,8 @@ import com.google.inject.Inject;
  * scraper execution are stored in this context.
  */
 public class ScraperContext implements DynamicScopeContext {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScraperContext.class);
 
     private Stack<Set<String>> variablesNamesStack = new Stack<Set<String>>();
 
@@ -116,7 +120,7 @@ public class ScraperContext implements DynamicScopeContext {
             localVariableNames.add(name);
         }
         variableValueStack.push((Variable) ObjectUtils.defaultIfNull(variable, EmptyVariable.INSTANCE));
-        System.out.println("ScraperContext.setLocalVar('" + name + "', " + variable + ") - stack size: " + variableValueStack.size());
+        // Trace logging removed - use debugger instead
     }
 
     @Override
@@ -135,7 +139,7 @@ public class ScraperContext implements DynamicScopeContext {
         new VariableName(name);
         final Stack<Variable> stack = centralReferenceTable.get(name);
         Variable result = (stack == null) ? null : stack.peek();
-        System.out.println("ScraperContext.getVar('" + name + "') = " + result);
+        // Trace logging removed - use debugger instead
         return result;
     }
 

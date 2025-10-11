@@ -234,7 +234,7 @@ public class FtpListPlugin extends AbstractPlugin {
             }
         }
         
-        System.out.println("FTP List Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
+        LOGGER.debug("FTP List Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
         FTPClient ftpClient = null;
         try {
@@ -267,7 +267,7 @@ public class FtpListPlugin extends AbstractPlugin {
             
             result.append("</files>");
             
-            System.out.println("FTP List Plugin - Found " + files.length + " items in " + path);
+            LOGGER.debug("FTP List Plugin - Found " + files.length + " items in " + path);
             
             return new NodeVariable(result.toString());
             

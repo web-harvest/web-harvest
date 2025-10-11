@@ -360,7 +360,7 @@ public class XMLPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        System.out.println("XMLPlugin.doExecute: START");
+        LOGGER.debug("XMLPlugin.doExecute: START");
         PluginConfiguration config = getConfiguration();
 
         // Get XML configuration
@@ -368,19 +368,19 @@ public class XMLPlugin extends AbstractPlugin {
         boolean validate = CommonUtil.getBooleanValue(config.getProperty("validate", "false"), false);
         String schema = config.getProperty("schema", "");
 
-        System.out.println("XML plugin - Charset: " + charset + ", Validate: " + validate + ", Schema: " + schema);
+        LOGGER.debug("XML plugin - Charset: " + charset + ", Validate: " + validate + ", Schema: " + schema);
 
         try {
             // Execute body content to get XML content
             Variable bodyContent = executeBody(context);
-            System.out.println("XMLPlugin.doExecute: bodyContent=" + bodyContent);
+            LOGGER.debug("XMLPlugin.doExecute: bodyContent=" + bodyContent);
             
             String xmlContent = "";
             if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                 xmlContent = bodyContent.toString();
-                System.out.println("XMLPlugin.doExecute: Retrieved XML content: " + xmlContent);
+                LOGGER.debug("XMLPlugin.doExecute: Retrieved XML content: " + xmlContent);
             } else {
-                System.out.println("XMLPlugin.doExecute: No body content available");
+                LOGGER.debug("XMLPlugin.doExecute: No body content available");
                 return EmptyVariable.INSTANCE;
             }
 
@@ -391,14 +391,14 @@ public class XMLPlugin extends AbstractPlugin {
             }
 
             // Basic XML processing - in a real implementation this would parse and validate XML
-            System.out.println("Processing XML content with length: " + xmlContent.length());
+            LOGGER.debug("Processing XML content with length: " + xmlContent.length());
             
             // Return the XML content as NodeVariable
             return new NodeVariable(xmlContent);
 
         } catch (Exception e) {
             LOGGER.error("Error during XML processing", e);
-            System.out.println("XMLPlugin.doExecute: ERROR: " + e.getMessage());
+            LOGGER.debug("XMLPlugin.doExecute: ERROR: " + e.getMessage());
             return EmptyVariable.INSTANCE;
         }
     }
