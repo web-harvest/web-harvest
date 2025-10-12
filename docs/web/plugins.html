@@ -16,12 +16,13 @@
     <!-- Header -->
     <header class="site-header">
         <div class="container header-inner">
-            <a href="index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+            <a href="index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
                 <img src="images/logo.png" alt="WebHarvest" class="logo" />
                 <span class="project-name">WebHarvest</span>
             </a>
             <nav class="main-nav">
-                <a href="processors.html">Processors</a>
+                <a href="processors/">Processors</a>
                 <a href="plugins.html" class="active">Plugins</a>
                 <a href="ide.html">IDE</a>
                 <a href="examples/">Examples</a>
@@ -66,7 +67,7 @@
                 <p><strong>Built into webharvest-core</strong> - HTTP, XPath, XQuery, Regexp, JSON, XML, Control Flow,
                     Variables, Functions, Scripting, File I/O</p>
                 <div class="feature-tags">
-                    <a href="processors.html" class="tag">View Core</a>
+                    <a href="processors/" class="tag">View Core</a>
                 </div>
             </div>
 
@@ -401,16 +402,16 @@
                     <h3>Create Plugin Class</h3>
                     <p>Extend <code>AbstractProcessor</code> and add annotations:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">Example.java</span>
                         </div>
-                        <span class="window-title">Example.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">@Autoscanned
+                        <div class="window-content">
+                            <pre><code class="language-java">@Autoscanned
 @TargetNamespace({"http://web-harvest.sourceforge.net/schema/1.0/config"})
 @Definition(
     value = "my-plugin",
@@ -431,8 +432,8 @@ public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
         return new NodeVariable(result);
     }
 }</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -442,16 +443,16 @@ public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
                     <h3>Create Definition Class</h3>
                     <p>Define plugin attributes and validation:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">Example.java</span>
                         </div>
-                        <span class="window-title">Example.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">public class MyPluginDef extends ProcessorDefinition {
+                        <div class="window-content">
+                            <pre><code class="language-java">public class MyPluginDef extends ProcessorDefinition {
     private String attr1;
     private String attr2;
     
@@ -461,8 +462,8 @@ public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
     public String getAttr2() { return attr2; }
     public void setAttr2(String attr2) { this.attr2 = attr2; }
 }</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -472,37 +473,37 @@ public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
                     <h3>Package & Deploy</h3>
                     <p>Build JAR and add to WebHarvest classpath:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">terminal</span>
                         </div>
-                        <span class="window-title">terminal</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-bash">mvn clean package
+                        <div class="window-content">
+                            <pre><code class="language-bash">mvn clean package
 cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
 
 # Plugin is auto-discovered on next run!</code></pre>
+                        </div>
                     </div>
-                </div>
                     <p>Use in configurations:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">config.xml</span>
                         </div>
-                        <span class="window-title">config.xml</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-xml">&lt;my-plugin attr1="value"&gt;
+                        <div class="window-content">
+                            <pre><code class="language-xml">&lt;my-plugin attr1="value"&gt;
   &lt;http url="https://example.com"/&gt;
 &lt;/my-plugin&gt;</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
         </div>

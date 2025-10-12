@@ -16,12 +16,13 @@
     <!-- Professional Header -->
     <header class="site-header">
         <div class="container header-inner">
-            <a href="index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+            <a href="index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
                 <img src="images/logo.png" alt="WebHarvest" class="logo" />
                 <span class="project-name">WebHarvest</span>
             </a>
             <nav class="main-nav">
-                <a href="processors.html">Processors</a>
+                <a href="processors/">Processors</a>
                 <a href="plugins.html">Plugins</a>
                 <a href="ide.html" class="active">IDE</a>
                 <a href="examples/">Examples</a>
@@ -177,20 +178,20 @@
                     <h3>Download & Extract</h3>
                     <p>Download the IDE distribution from SourceForge:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">terminal</span>
                         </div>
-                        <span class="window-title">terminal</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webharvest-ide-2.2.0.zip
+                        <div class="window-content">
+                            <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webharvest-ide-2.2.0.zip
 unzip webharvest-ide-2.2.0.zip
 cd webharvest-ide-2.2.0</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -200,33 +201,33 @@ cd webharvest-ide-2.2.0</code></pre>
                     <h3>Launch IDE</h3>
                     <p>Start the IDE server:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">terminal</span>
                         </div>
-                        <span class="window-title">terminal</span>
+                        <div class="window-content">
+                            <pre><code class="language-bash">java -jar webharvest-ide-2.2.0.jar</code></pre>
+                        </div>
                     </div>
-                    <div class="window-content">
-                        <pre><code class="language-bash">java -jar webharvest-ide-2.2.0.jar</code></pre>
-                    </div>
-                </div>
                     <p>Or use the provided launcher script:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">terminal</span>
                         </div>
-                        <span class="window-title">terminal</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-bash">./start-ide.sh    # Linux/macOS
+                        <div class="window-content">
+                            <pre><code class="language-bash">./start-ide.sh    # Linux/macOS
 start-ide.bat      # Windows</code></pre>
+                        </div>
                     </div>
-                </div>
                     <p>Then open your browser at: <strong>http://localhost:8080</strong></p>
                 </div>
             </div>

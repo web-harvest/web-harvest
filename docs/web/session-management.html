@@ -16,12 +16,13 @@
     <!-- Header -->
     <header class="site-header">
         <div class="container header-inner">
-            <a href="index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+            <a href="index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
                 <img src="images/logo.png" alt="WebHarvest" class="logo" />
                 <span class="project-name">WebHarvest</span>
             </a>
             <nav class="main-nav">
-                <a href="processors.html">Processors</a>
+                <a href="processors/">Processors</a>
                 <a href="plugins.html">Plugins</a>
                 <a href="ide.html">IDE</a>
                 <a href="examples/">Examples</a>
@@ -77,8 +78,9 @@
         </div>
 
         <div class="diagram-container">
-            <h3 style="text-align: center; margin-bottom: 2rem; color: var(--text-primary);">Session Lifecycle Diagram</h3>
-            
+            <h3 style="text-align: center; margin-bottom: 2rem; color: var(--text-primary);">Session Lifecycle Diagram
+            </h3>
+
             <div class="diagram-box accent">
                 <i class="fas fa-play-circle"></i>
                 WebHarvestService.executeAsync()
@@ -106,7 +108,8 @@
             <div class="diagram-arrow"><i class="fas fa-arrow-down"></i></div>
 
             <!-- Execution Details -->
-            <div style="background: var(--gray-100); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 500px; margin: 1rem auto;">
+            <div
+                style="background: var(--gray-100); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 500px; margin: 1rem auto;">
                 <h4 style="text-align: center; margin-bottom: 1rem;">
                     <i class="fas fa-cogs"></i> Plugins Execute
                 </h4>
@@ -134,17 +137,20 @@
                     <small>Error: HTTP timeout</small>
                 </div>
             </div>
-            <div class="diagram-label">Event broadcast • End time recorded • Duration calculated • Token snapshot • Thread returned</div>
+            <div class="diagram-label">Event broadcast • End time recorded • Duration calculated • Token snapshot •
+                Thread returned</div>
 
             <!-- Cancellation Path -->
-            <div style="margin-top: 3rem; padding: 1.5rem; background: var(--gray-100); border-radius: var(--radius-xl); max-width: 600px; margin-left: auto; margin-right: auto;">
+            <div
+                style="margin-top: 3rem; padding: 1.5rem; background: var(--gray-100); border-radius: var(--radius-xl); max-width: 600px; margin-left: auto; margin-right: auto;">
                 <h4 style="margin-bottom: 1rem; color: var(--text-primary);">
                     <i class="fas fa-ban"></i> Cancellation Path
                 </h4>
                 <div class="diagram-row" style="align-items: center;">
                     <div class="diagram-box primary" style="max-width: 150px;">RUNNING</div>
                     <div style="font-weight: 600; color: var(--magenta); font-size: 1.125rem;">cancel()</div>
-                    <div class="diagram-box" style="max-width: 150px; background: var(--gray-500); color: white;">CANCELLED</div>
+                    <div class="diagram-box" style="max-width: 150px; background: var(--gray-500); color: white;">
+                        CANCELLED</div>
                 </div>
                 <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
                     → Thread interrupted<br>
@@ -378,16 +384,16 @@ Object tier = context.getMetadata("tier");</code></pre>
                 <div class="step-content">
                     <h3>Basic Async Execution</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionUsage.java</span>
                         </div>
-                        <span class="window-title">SessionUsage.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// Load configuration
+                        <div class="window-content">
+                            <pre><code class="language-java">// Load configuration
 Config config = Config.fromFile("scraper.xml");
 
 // Create client context
@@ -406,8 +412,8 @@ System.out.println("Status: " + session.getStatus()); // PENDING or RUNNING
 // Wait for completion (blocking)
 session.awaitCompletion();
 System.out.println("Final status: " + session.getStatus()); // COMPLETED/FAILED</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -416,16 +422,16 @@ System.out.println("Final status: " + session.getStatus()); // COMPLETED/FAILED<
                 <div class="step-content">
                     <h3>With Client Metadata & Monitoring</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionExample.java</span>
                         </div>
-                        <span class="window-title">SessionExample.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// Rich client context
+                        <div class="window-content">
+                            <pre><code class="language-java">// Rich client context
 ClientContext client = ClientContext.builder()
     .clientId("datacorp-prod")
     .metadata("project", "product-catalog")
@@ -459,8 +465,8 @@ if (session.getStatus() == SessionStatus.COMPLETED) {
     Variable result = context.getVar("result");
     System.out.println("Result: " + result);
 }</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -469,16 +475,16 @@ if (session.getStatus() == SessionStatus.COMPLETED) {
                 <div class="step-content">
                     <h3>Multi-Tenant with Session Registry</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionUsage.java</span>
                         </div>
-                        <span class="window-title">SessionUsage.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// Inject registry
+                        <div class="window-content">
+                            <pre><code class="language-java">// Inject registry
 @Inject
 private SessionRegistry registry;
 
@@ -511,8 +517,8 @@ long totalRequests = clientSessions.stream()
     .sum();
 
 System.out.printf("Total HTTP requests: %d%n", totalRequests);</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -521,16 +527,16 @@ System.out.printf("Total HTTP requests: %d%n", totalRequests);</code></pre>
                 <div class="step-content">
                     <h3>Event Listeners for Real-Time Updates</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionMonitor.java</span>
                         </div>
-                        <span class="window-title">SessionMonitor.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// Create event listener
+                        <div class="window-content">
+                            <pre><code class="language-java">// Create event listener
 public class SessionMonitor {
     
     @Subscribe
@@ -566,8 +572,8 @@ public class SessionMonitor {
 EventBus eventBus = InjectorHelper.getInjector()
     .getInstance(EventBus.class);
 eventBus.register(new SessionMonitor());</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -576,16 +582,16 @@ eventBus.register(new SessionMonitor());</code></pre>
                 <div class="step-content">
                     <h3>Session Cancellation</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionUsage.java</span>
                         </div>
-                        <span class="window-title">SessionUsage.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// Start long-running session
+                        <div class="window-content">
+                            <pre><code class="language-java">// Start long-running session
 Future<ScraperSession> future = service.executeAsync(config, client);
 ScraperSession session = future.get();
 
@@ -602,8 +608,8 @@ if (!session.awaitCompletion(5000)) {
     session.cancel();
     System.out.println("Session cancelled due to timeout");
 }</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -612,16 +618,16 @@ if (!session.awaitCompletion(5000)) {
                 <div class="step-content">
                     <h3>IDE Integration Example</h3>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">SessionExample.java</span>
                         </div>
-                        <span class="window-title">SessionExample.java</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-java">// IDE ExecutionManager
+                        <div class="window-content">
+                            <pre><code class="language-java">// IDE ExecutionManager
 public class ExecutionManager {
     private final WebHarvestService service;
     private final SessionRegistry registry;
@@ -654,8 +660,8 @@ public class ExecutionManager {
         return session.getSessionId();
     }
 }</code></pre>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
         </div>
@@ -670,12 +676,15 @@ public class ExecutionManager {
 
         <div class="download-card">
             <h3>Available Documentation</h3>
-            <p>For complete API documentation including all methods, parameters, and return types:</p>
+            <p>For complete API documentation including all methods, parameters, and return types, refer to the JavaDoc included in the distribution package:</p>
+            <ul style="margin-top: 1rem;">
+                <li><code>org.webharvest.runtime.session</code> - Session Management API</li>
+                <li><code>org.webharvest.runtime.tracking</code> - Token Tracking API</li>
+                <li><code>org.webharvest.runtime.client</code> - Client Context API</li>
+                <li><code>org.webharvest.runtime.service</code> - WebHarvest Service API</li>
+            </ul>
+            <p style="margin-top: 1.5rem;"><em>JavaDoc is available in the <code>docs/api/</code> directory of the distribution ZIP.</em></p>
             <div class="download-buttons" style="margin-top: 2rem;">
-                <a class="btn btn-primary btn-large" href="api/org/webharvest/runtime/session/package-summary.html">
-                    <i class="fas fa-book"></i>
-                    Browse JavaDoc
-                </a>
                 <a class="btn btn-secondary btn-large" href="token-tracking.html">
                     <i class="fas fa-coins"></i>
                     Token Tracking Docs
