@@ -45,17 +45,33 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * XQExpression plugin that provides XQuery expression evaluation functionality.
- * This is a core plugin migrated from the original XQExpressionProcessor.
+ * XQuery expression definition - used within {@code <xquery>} to specify query.
  * 
  * <p>
- * The XQExpression plugin evaluates XQuery expressions against XML content.
- * It requires both XML content and XQuery expression as sub-elements.
+ * The {@code <xq-expression>} processor defines the XQuery expression.
+ * Must be used as a child element of {@code <xquery>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <xquery>
+ *   <xq-expression>
+ *     <![CDATA[
+ *       for $p in //product
+ *       where $p/price > 100
+ *       return $p/name
+ *     ]]>
+ *   </xq-expression>
+ *   <xq-param name="xmlDoc">${productXml}</xq-param>
+ * </xquery>
+ * }</pre>
+ * 
+ * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see XQueryPlugin
  */
 @CorePlugin(
     elementName = "xq-expression",

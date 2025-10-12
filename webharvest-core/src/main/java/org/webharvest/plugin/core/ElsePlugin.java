@@ -47,18 +47,30 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Else plugin that provides the else branch for conditional execution.
- * This is a core plugin migrated from the original ElseProcessor.
+ * Else branch processor - fallback execution when {@code <if>} condition is false.
  * 
  * <p>
- * The else plugin is used as a fallback branch in conditional structures
- * like if-else or case statements. It executes when no other conditions
- * are met. It is typically used as a sub-element of other conditional plugins.
+ * The {@code <else>} processor executes when the preceding {@code <if>} condition
+ * evaluates to false. Used with {@code <if>} and {@code <case>} processors.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <if condition="${stock > 0}">
+ *   <def var="status" value="In Stock"/>
+ * </if>
+ * <else>
+ *   <def var="status" value="Out of Stock"/>
+ * </else>
+ * }</pre>
+ * 
+ * <p>See {@link IfPlugin} and {@link CasePlugin} for complete examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see IfPlugin
+ * @see CasePlugin
  */
 @CorePlugin(
     elementName = "else",

@@ -45,17 +45,35 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Stylesheet plugin that provides stylesheet functionality.
- * This is a core plugin migrated from the original StylesheetProcessor.
+ * XSLT stylesheet definition - used within {@code <xslt>} to specify transformation.
  * 
  * <p>
- * The stylesheet plugin is a placeholder plugin that does nothing.
- * It is used for organizational purposes in XSLT transformations.
+ * The {@code <stylesheet>} processor defines the XSLT stylesheet content.
+ * Must be used as a child element of {@code <xslt>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <xslt>
+ *   <stylesheet>
+ *     <![CDATA[
+ *     <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ *       <xsl:template match="/">
+ *         <!-- XSLT transformation -->
+ *       </xsl:template>
+ *     </xsl:stylesheet>
+ *     ]]>
+ *   </stylesheet>
+ *   <xml>${sourceXml}</xml>
+ * </xslt>
+ * }</pre>
+ * 
+ * <p>See {@link XsltPlugin} for complete XSLT examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see XsltPlugin
  */
 @CorePlugin(
     elementName = "stylesheet",

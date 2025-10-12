@@ -47,17 +47,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * ValueOf plugin that evaluates expressions and returns their values.
- * This is a core plugin migrated from the original ValueOfPlugin.
+ * Expression evaluation processor - evaluates ${} expressions explicitly.
  * 
  * <p>
- * The ValueOf plugin evaluates an expression using BaseTemplater and returns the result.
- * It requires an 'expr' attribute containing the expression to evaluate.
+ * The {@code <value-of>} processor explicitly evaluates template expressions.
+ * Mostly used for XPath-style value extraction. In most cases, direct ${} syntax is simpler.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <!-- Explicit expression evaluation -->
+ * <value-of expr="${productName}" />
+ * 
+ * <!-- Simpler: just use ${} directly -->
+ * ${productName}
+ * }</pre>
+ * 
+ * <p><strong>Note:</strong> Rarely needed - direct ${} syntax is preferred.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "value-of",

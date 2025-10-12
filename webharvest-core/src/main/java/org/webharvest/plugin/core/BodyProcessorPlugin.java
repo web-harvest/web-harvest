@@ -47,8 +47,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plugin which executes only body and returns variables list.
- * This is a simplified version of BodyProcessor for the plugin architecture.
+ * Body execution processor - internal utility for executing child processors.
+ * 
+ * <p>
+ * The {@code <body-processor>} is an internal processor used by the framework
+ * to execute child processors and collect their results. Not typically used
+ * directly in user configurations.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <p>Automatically used by framework - rarely needed in user XML configurations.</p>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(
     elementName = "body-processor",

@@ -49,17 +49,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * XML plugin that provides XML processing functionality.
- * This is a core plugin migrated from the original XMLProcessor.
+ * XML content wrapper processor - explicit XML content declaration.
  * 
  * <p>
- * The XML plugin is a simple container that allows XML content
- * to be processed. It currently returns an empty variable.
+ * The {@code <xml>} processor wraps XML content for explicit declaration.
+ * Rarely needed - most XML is processed directly without this wrapper.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <def var="xmlData">
+ *   <xml>
+ *     <products>
+ *       <product id="1">Item</product>
+ *     </products>
+ *   </xml>
+ * </def>
+ * }</pre>
+ * 
+ * <p><strong>Note:</strong> Usually unnecessary - direct XML content works in most contexts.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "xml",

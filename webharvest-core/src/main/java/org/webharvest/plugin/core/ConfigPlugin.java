@@ -55,17 +55,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Config plugin that provides configuration functionality.
- * This is a core plugin migrated from the original ConfigProcessor.
+ * Root configuration processor - top-level container for WebHarvest scrapers.
  * 
  * <p>
- * The config plugin sets up the scraper configuration including charset
- * and scripting language. It processes all operations within the config element.
+ * The {@code <config>} processor is the root element of every WebHarvest configuration.
+ * It defines global settings like charset and scripting language, and contains all
+ * other processors.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <config charset="UTF-8" scriptlang="javascript">
+ *   <!-- All scraper logic goes here -->
+ *   <http url="https://example.com"/>
+ *   <def var="data">...</def>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Attributes</h3>
+ * <ul>
+ *   <li><strong>charset:</strong> Default character encoding (default: UTF-8)</li>
+ *   <li><strong>scriptlang:</strong> Scripting language: javascript, groovy, beanshell (default: javascript)</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

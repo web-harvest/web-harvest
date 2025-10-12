@@ -45,17 +45,27 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Regexp source plugin that provides regexp source functionality.
- * This is a core plugin migrated from the original RegexpSourceProcessor.
+ * Regexp source text definition - used within {@code <regexp>} to specify input text.
  * 
  * <p>
- * The regexp source plugin is a placeholder plugin that defines the source text
- * for regular expression operations. It is used as a sub-element in regexp operations.
+ * The {@code <regexp-source>} processor defines the text to match against.
+ * Must be used as a child element of {@code <regexp>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <regexp>
+ *   <regexp-pattern>\\d{3}-\\d{3}-\\d{4}</regexp-pattern>
+ *   <regexp-source>${textWithPhoneNumbers}</regexp-source>
+ * </regexp>
+ * }</pre>
+ * 
+ * <p>See {@link RegexpPlugin} for complete regex examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see RegexpPlugin
  */
 @CorePlugin(
     elementName = "regexp-source",

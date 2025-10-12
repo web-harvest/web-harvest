@@ -45,17 +45,30 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * XQParam plugin that provides XQuery parameter functionality.
- * This is a core plugin migrated from the original XQParamProcessor.
+ * XQuery parameter definition - used within {@code <xquery>} to pass parameters.
  * 
  * <p>
- * The XQParam plugin defines external parameters for XQuery expressions.
- * It specifies parameter names and types for XQuery execution.
+ * The {@code <xq-param>} processor defines parameters for XQuery expressions.
+ * Must be used as a child element of {@code <xquery>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <xquery>
+ *   <xq-expression>
+ *     declare variable $minPrice external;
+ *     //product[price > $minPrice]
+ *   </xq-expression>
+ *   <xq-param name="minPrice" type="xs:integer">100</xq-param>
+ * </xquery>
+ * }</pre>
+ * 
+ * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see XQueryPlugin
  */
 @CorePlugin(
     elementName = "xq-param",

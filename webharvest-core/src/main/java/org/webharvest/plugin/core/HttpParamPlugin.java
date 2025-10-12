@@ -48,17 +48,28 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * HTTP parameter plugin that defines HTTP parameters for HTTP requests.
- * This is a core plugin migrated from the original HttpParamProcessor.
+ * HTTP request parameter (form data) - used within {@code <http>} for POST/PUT parameters.
  * 
  * <p>
- * The HTTP parameter plugin defines custom HTTP parameters that will be sent
- * with HTTP requests. It must be used within an HTTP plugin context.
+ * The {@code <http-param>} processor defines HTTP request parameters (form fields).
+ * Must be used as a child element of {@code <http>}. Used for POST/PUT form data.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <http url="https://example.com/login" method="POST">
+ *   <http-param name="username">john_doe</http-param>
+ *   <http-param name="password">secret123</http-param>
+ *   <http-param name="remember">true</http-param>
+ * </http>
+ * }</pre>
+ * 
+ * <p>See {@link HttpPlugin} for complete HTTP request examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see HttpPlugin
  */
 @CorePlugin(
     elementName = "http-param",

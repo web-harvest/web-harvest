@@ -47,7 +47,48 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * List plugin that creates a list variable from child elements.
+ * List creation processor - builds explicit list variables from multiple values.
+ * 
+ * <p>
+ * The {@code <list>} processor creates a ListVariable from its child elements.
+ * Useful for creating explicit lists or combining multiple values.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Create explicit list</h4>
+ * <pre>{@code
+ * <def var="urls">
+ *   <list>
+ *     <text>https://example.com/page1</text>
+ *     <text>https://example.com/page2</text>
+ *     <text>https://example.com/page3</text>
+ *   </list>
+ * </def>
+ * 
+ * <loop item="url">
+ *   ${urls}
+ *   <http url="${url}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 2: Combine XPath results</h4>
+ * <pre>{@code
+ * <def var="allLinks">
+ *   <list>
+ *     <xpath expression="//a/@href">${page1}</xpath>
+ *     <xpath expression="//a/@href">${page2}</xpath>
+ *   </list>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Note</h3>
+ * <p>Most processors (XPath, Loop, etc.) return lists automatically. {@code <list>}
+ * is mainly used for explicit list construction.</p>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "list",

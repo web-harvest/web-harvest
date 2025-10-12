@@ -45,17 +45,35 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * CallParam plugin that provides function call parameter functionality.
- * This is a core plugin migrated from the original CallParamProcessor.
+ * Function call parameter - used within {@code <call>} to pass arguments to functions.
  * 
  * <p>
- * The CallParam plugin defines a parameter for a function call.
- * It evaluates its body content and adds the parameter to the parent CallPlugin.
+ * The {@code <call-param>} processor defines a parameter passed to a function.
+ * Must be used as a child element of {@code <call>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <call name="fetchProduct">
+ *   <call-param name="productId">12345</call-param>
+ *   <call-param name="includeReviews">true</call-param>
+ * </call>
+ * }</pre>
+ * 
+ * <p>Inside the function, access parameters with:</p>
+ * <pre>{@code
+ * <function name="fetchProduct">
+ *   <def var="id"><call-param name="productId"/></def>
+ *   <def var="reviews"><call-param name="includeReviews"/></def>
+ *   <!-- Function logic -->
+ * </function>
+ * }</pre>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see CallPlugin
+ * @see FunctionPlugin
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

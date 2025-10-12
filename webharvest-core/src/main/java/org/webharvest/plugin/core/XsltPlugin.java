@@ -60,17 +60,60 @@ import java.io.StringReader;
 import java.io.StringWriter;
 
 /**
- * XSLT plugin that provides XSLT transformation functionality.
- * This is a core plugin migrated from the original XsltProcessor.
+ * XSLT transformation processor - transforms XML using XSLT stylesheets.
  * 
  * <p>
- * The XSLT plugin performs XSLT transformations on XML content using
- * XSLT stylesheets. It supports standard XSLT 1.0 and 2.0 transformations.
+ * The {@code <xslt>} processor applies XSLT transformations to XML content.
+ * Supports XSLT 1.0 and 2.0 for complex XML transformations.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Transform XML to HTML</h4>
+ * <pre>{@code
+ * <def var="html">
+ *   <xslt>
+ *     <stylesheet>
+ *       <![CDATA[
+ *       <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ *         <xsl:template match="/products">
+ *           <html>
+ *             <body>
+ *               <xsl:for-each select="product">
+ *                 <p><xsl:value-of select="name"/></p>
+ *               </xsl:for-each>
+ *             </body>
+ *           </html>
+ *         </xsl:template>
+ *       </xsl:stylesheet>
+ *       ]]>
+ *     </stylesheet>
+ *     <xml>${productXml}</xml>
+ *   </xslt>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: XML to JSON-like structure</h4>
+ * <pre>{@code
+ * <xslt>
+ *   <stylesheet>
+ *     <file path="transform.xsl" action="read"/>
+ *   </stylesheet>
+ *   <xml>${xmlData}</xml>
+ * </xslt>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>XSLT version:</strong> Supports 1.0 and 2.0 (depends on Java version)</li>
+ *   <li><strong>Performance:</strong> XSLT parsing/compilation is cached</li>
+ *   <li><strong>Alternative:</strong> Consider {@code <xquery>} for simpler transformations</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see StylesheetPlugin
  */
 @CorePlugin(
     elementName = "xslt",

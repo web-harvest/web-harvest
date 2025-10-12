@@ -45,17 +45,27 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Regexp pattern plugin that provides regexp pattern functionality.
- * This is a core plugin migrated from the original RegexpPatternProcessor.
+ * Regexp pattern definition - used within {@code <regexp>} to specify regex pattern.
  * 
  * <p>
- * The regexp pattern plugin is a placeholder plugin that defines the pattern
- * for regular expression operations. It is used as a sub-element in regexp operations.
+ * The {@code <regexp-pattern>} processor defines the regular expression pattern.
+ * Must be used as a child element of {@code <regexp>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<a href="([^"]+)">]]></regexp-pattern>
+ *   <regexp-source>${htmlPage}</regexp-source>
+ * </regexp>
+ * }</pre>
+ * 
+ * <p>See {@link RegexpPlugin} for complete regex examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see RegexpPlugin
  */
 @CorePlugin(
     elementName = "regexp-pattern",

@@ -47,17 +47,28 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * HTTP header plugin that defines HTTP headers for HTTP requests.
- * This is a core plugin migrated from the original HttpHeaderProcessor.
+ * HTTP request header definition - used within {@code <http>} to set custom headers.
  * 
  * <p>
- * The HTTP header plugin defines custom HTTP headers that will be sent
- * with HTTP requests. It must be used within an HTTP plugin context.
+ * The {@code <http-header>} processor defines HTTP request headers. Must be used
+ * as a child element of {@code <http>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <http url="https://api.example.com/data">
+ *   <http-header name="Authorization">Bearer ${apiKey}</http-header>
+ *   <http-header name="Accept">application/json</http-header>
+ *   <http-header name="User-Agent">WebHarvest/2.2</http-header>
+ * </http>
+ * }</pre>
+ * 
+ * <p>See {@link HttpPlugin} for complete HTTP request examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see HttpPlugin
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

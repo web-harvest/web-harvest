@@ -45,17 +45,29 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Regexp result plugin that provides regexp result functionality.
- * This is a core plugin migrated from the original RegexpResultProcessor.
+ * Regexp result template - used within {@code <regexp>} to format extracted matches.
  * 
  * <p>
- * The regexp result plugin is a placeholder plugin that defines the result format
- * for regular expression operations. It is used as a sub-element in regexp operations.
+ * The {@code <regexp-result>} processor defines output format for regex matches
+ * using capture group references (${group0}, ${group1}, etc.).
+ * Must be used as a child element of {@code <regexp>}.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<a href="([^"]+)">([^<]+)</a>]]></regexp-pattern>
+ *   <regexp-source>${html}</regexp-source>
+ *   <regexp-result>URL: ${group1}, Text: ${group2}</regexp-result>
+ * </regexp>
+ * }</pre>
+ * 
+ * <p>See {@link RegexpPlugin} for complete regex examples.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see RegexpPlugin
  */
 @CorePlugin(
     elementName = "regexp-result",
