@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>&lt;var&gt; - Variable reference processor | WebHarvest v2.2.0</title>
+    <link rel="stylesheet" href="../css/enterprise.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .processor-header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: var(--spacing-8) var(--spacing-4);
+            margin: 0 var(--spacing-4);
+            border-radius: var(--radius-2xl);
+        }
+        .processor-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--spacing-2);
+        }
+        .processor-tag {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-right: var(--spacing-2);
+        }
+        .processor-content {
+            max-width: 900px;
+            margin: var(--spacing-8) auto;
+            padding: 0 var(--spacing-4);
+        }
+        .section {
+            margin-bottom: var(--spacing-8);
+        }
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-4);
+            color: var(--purple);
+        }
+        .subsection-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: var(--spacing-6);
+            margin-bottom: var(--spacing-3);
+            color: var(--magenta);
+        }
+        .related-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-4);
+        }
+        .related-link {
+            padding: var(--spacing-3);
+            background: white;
+            border: 2px solid var(--purple);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            text-decoration: none;
+            color: var(--purple);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .related-link:hover {
+            background: var(--purple);
+            color: white;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+                <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest</span>
+            </a>
+            <nav class="main-nav">
+                <a href="index.html" class="active">Processors</a>
+                <a href="../plugins.html">Plugins</a>
+                <a href="../ide.html">IDE</a>
+                <a href="../examples/">Examples</a>
+                <a href="../documentation.html">Docs</a>
+                <a href="../news.html">News</a>
+                <a href="../support.html">Support</a>
+                <a class="cta" href="../index.html#download">Download</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="processor-header">
+        <div class="container">
+            <h1 class="processor-title">&lt;var&gt;</h1>
+            <p style="font-size: 1.125rem; margin-bottom: var(--spacing-3);">Variable reference processor</p>
+            <div>
+                <span class="processor-tag"><i class="fas fa-check"></i> COMMON</span>
+                <span class="processor-tag">v2.2.0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="processor-content">
+        <section class="section">
+            <h2 class="section-title">Overview</h2>
+            <p>The <code><var></code> processor is an alternative to <code><def></code> that uses <code>name</code>
+attribute instead of <code>var</code>. Both define variables - this is a legacy syntax
+maintained for compatibility.</p>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Usage Examples</h2>
+            
+        </section>
+
+        <section class="section">
+            
+        </section>
+
+        <section class="section">
+            
+        </section>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>WebHarvest v2.2.0</h4>
+                    <p>Open-source web scraping framework</p>
+                    <p class="footer-author">
+                        Created by Vladimir Nikić<br>
+                        Maintained by <a href="https://www.linkedin.com/in/rbala/" target="_blank" class="author-link">Robert Bala</a>
+                    </p>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="../documentation.html">Documentation</a></li>
+                        <li><a href="../examples/">Examples</a></li>
+                        <li><a href="index.html">All Processors</a></li>
+                        <li><a href="../plugins.html">Plugins</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="https://sourceforge.net/projects/web-harvest/" target="_blank">SourceForge</a></li>
+                        <li><a href="https://sourceforge.net/p/web-harvest/discussion/" target="_blank">Forum</a></li>
+                        <li><a href="https://sourceforge.net/p/web-harvest/bugs/" target="_blank">Bug Tracker</a></li>
+                        <li><a href="../support.html">Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2006-2025 WebHarvest Team. Licensed under BSD License.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
