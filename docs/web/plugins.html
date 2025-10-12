@@ -99,6 +99,12 @@
                 <p><strong>Module:</strong> <code>webharvest-database</code></p>
                 <p>Execute SQL queries, connect to any JDBC database with connection pooling.</p>
 
+                <div style="margin: var(--spacing-3) 0;">
+                    <a href="plugins/database.html" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View Documentation
+                    </a>
+                </div>
+
                 <h4>Features:</h4>
                 <ul>
                     <li>Named connections with pooling</li>
@@ -132,6 +138,12 @@
                 <h3><i class="fas fa-server"></i> FTP Plugin</h3>
                 <p><strong>Module:</strong> <code>webharvest-ftp</code></p>
                 <p>Upload/download files via FTP and FTPS with directory operations.</p>
+
+                <div style="margin: var(--spacing-3) 0;">
+                    <a href="plugins/ftp.html" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View Documentation
+                    </a>
+                </div>
 
                 <h4>Features:</h4>
                 <ul>
@@ -191,11 +203,82 @@
                 </div>
             </div>
 
+            <!-- Mail Plugin -->
+            <div class="usage-card">
+                <h3><i class="fas fa-envelope"></i> Mail Plugin</h3>
+                <p><strong>Module:</strong> <code>webharvest-mail</code></p>
+                <p>Send emails via SMTP with HTML, attachments, and authentication.</p>
+
+                <div style="margin: var(--spacing-3) 0;">
+                    <a href="plugins/mail.html" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View Documentation
+                    </a>
+                </div>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>SMTP email sending</li>
+                    <li>HTML and plain text emails</li>
+                    <li>Gmail, Office365, custom SMTP</li>
+                    <li>Authentication support</li>
+                </ul>
+
+                <h4>Example:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">mail-example.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;mail smtp-host="smtp.gmail.com"
+      smtp-port="587"
+      username="user@gmail.com"
+      password="app-password"
+      from="scraper@example.com"
+      to="admin@example.com"
+      subject="Scraping Report"&gt;
+    
+    Scraping completed at ${_date}
+    Products found: ${productCount}
+&lt;/mail&gt;</code></pre>
+                    </div>
+                </div>
+
+                <h4>Maven:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-mail&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+
             <!-- ZIP Plugin -->
             <div class="usage-card">
                 <h3><i class="fas fa-file-archive"></i> ZIP Plugin</h3>
                 <p><strong>Module:</strong> <code>webharvest-zip</code></p>
                 <p>Create and extract ZIP archives with compression options.</p>
+
+                <div style="margin: var(--spacing-3) 0;">
+                    <a href="plugins/zip.html" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View Documentation
+                    </a>
+                </div>
 
                 <h4>Features:</h4>
                 <ul>
@@ -254,6 +337,12 @@
                 <h3><i class="fas fa-globe"></i> Web Browser Plugin</h3>
                 <p><strong>Module:</strong> <code>webharvest-webbrowser</code></p>
                 <p>Automated browser interactions for JavaScript-heavy sites.</p>
+
+                <div style="margin: var(--spacing-3) 0;">
+                    <a href="plugins/web-browser.html" class="btn btn-primary">
+                        <i class="fas fa-book"></i> View Documentation
+                    </a>
+                </div>
 
                 <h4>Features:</h4>
                 <ul>
