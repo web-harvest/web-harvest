@@ -52,10 +52,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FTP Get plugin for downloading files from FTP server.
+ * FTP file download processor - downloads files from FTP server.
+ * 
+ * <p>
+ * The {@code <ftp-get>} processor downloads files from FTP server.
+ * Must be used as a child element of {@code <ftp>}.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <ftp host="ftp.example.com" username="user" password="pass">
+ *     <def var="fileContent">
+ *         <ftp-get path="/data/products.xml"/>
+ *     </def>
+ *     
+ *     <file path="products.xml" action="write">
+ *         ${fileContent}
+ *     </file>
+ * </ftp>
+ * }</pre>
+ * 
+ * <p>See {@link FtpPlugin} for complete FTP examples.</p>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see FtpPlugin
  */
 @CorePlugin(elementName = "ftp-get")
 public class FtpGetPlugin extends AbstractPlugin {

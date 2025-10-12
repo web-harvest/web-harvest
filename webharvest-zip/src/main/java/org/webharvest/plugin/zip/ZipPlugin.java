@@ -49,10 +49,91 @@ import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * ZIP processor - creates ZIP archives from child zip-entry elements.
+ * ZIP archive creation processor - packages multiple files into ZIP archives.
+ * 
+ * <p>
+ * The {@code <zip>} processor creates ZIP archives from multiple {@code <zip-entry>} child elements.
+ * Supports both text and binary content with automatic compression.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Create ZIP archive with scraped data</h4>
+ * <pre>{@code
+ * <zip path="output/scraped-data.zip">
+ *     <zip-entry name="products.xml">
+ *         <http url="https://example.com/products"/>
+ *     </zip-entry>
+ *     
+ *     <zip-entry name="data.json">
+ *         <http url="https://api.example.com/data"/>
+ *     </zip-entry>
+ * </zip>
+ * }</pre>
+ * 
+ * <h4>Example 2: Archive multiple pages with loop</h4>
+ * <pre>{@code
+ * <def var="pages">1,2,3,4,5</def>
+ * 
+ * <zip path="pages-archive.zip">
+ *     <loop item="page" delimiter=",">
+ *         ${pages}
+ *         
+ *         <def var="pageContent">
+ *             <http url="https://example.com/page/${page}"/>
+ *         </def>
+ *         
+ *         <zip-entry name="page-${page}.html">
+ *             ${pageContent}
+ *         </zip-entry>
+ *     </loop>
+ * </zip>
+ * }</pre>
+ * 
+ * <h4>Example 3: Archive binary files (images)</h4>
+ * <pre>{@code
+ * <zip path="images.zip">
+ *     <loop item="imageUrl">
+ *         <xpath expression="//img/@src">
+ *             <html-to-xml>
+ *                 <http url="https://example.com"/>
+ *             </html-to-xml>
+ *         </xpath>
+ *         
+ *         <def var="imageData">
+ *             <http url="${imageUrl}"/>
+ *         </def>
+ *         
+ *         <zip-entry name="images/image-${_index}.jpg" type="binary">
+ *             <get-var var="imageData"/>
+ *         </zip-entry>
+ *     </loop>
+ * </zip>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>path:</strong> Output ZIP file path (required)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Compression:</strong> Standard DEFLATE compression algorithm</li>
+ *   <li><strong>Path separators:</strong> Use forward slashes (/) for ZIP entry paths</li>
+ *   <li><strong>Memory:</strong> Entire ZIP built in memory - consider size</li>
+ *   <li><strong>Overwrite:</strong> Existing file is overwritten</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <zip-entry>} - Define ZIP entries</li>
+ *   <li>{@code <file>} - File I/O</li>
+ *   <li>{@code <http>} - Download content to archive</li>
+ * </ul>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(elementName = "zip")
 public class ZipPlugin extends AbstractPlugin {

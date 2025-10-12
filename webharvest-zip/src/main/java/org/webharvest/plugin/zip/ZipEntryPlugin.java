@@ -55,10 +55,32 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * Zip entry plugin - can be used only inside zip plugin.
+ * ZIP entry definition processor - defines single file entry in ZIP archive.
+ * 
+ * <p>
+ * The {@code <zip-entry>} processor defines a single file entry inside ZIP archive.
+ * Must be used as a child element of {@code <zip>}.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <zip path="archive.zip">
+ *     <zip-entry name="products.xml">
+ *         <http url="https://example.com/products"/>
+ *     </zip-entry>
+ *     
+ *     <zip-entry name="images/logo.jpg" type="binary">
+ *         <http url="https://example.com/logo.jpg"/>
+ *     </zip-entry>
+ * </zip>
+ * }</pre>
+ * 
+ * <p>See {@link ZipPlugin} for complete ZIP examples.</p>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see ZipPlugin
  */
 @CorePlugin(elementName = "zip-entry")
 public class ZipEntryPlugin extends AbstractPlugin {

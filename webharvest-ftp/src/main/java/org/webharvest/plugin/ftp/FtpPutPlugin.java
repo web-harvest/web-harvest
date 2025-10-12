@@ -52,10 +52,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FTP Put plugin for uploading files to FTP server.
+ * FTP file upload processor - uploads files to FTP server.
+ * 
+ * <p>
+ * The {@code <ftp-put>} processor uploads files to FTP server.
+ * Must be used as a child element of {@code <ftp>}.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <ftp host="ftp.example.com" username="user" password="pass">
+ *     <ftp-put path="/upload/data.xml">
+ *         <http url="https://example.com/data"/>
+ *     </ftp-put>
+ * </ftp>
+ * }</pre>
+ * 
+ * <p>See {@link FtpPlugin} for complete FTP examples.</p>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see FtpPlugin
  */
 @CorePlugin(elementName = "ftp-put")
 public class FtpPutPlugin extends AbstractPlugin {

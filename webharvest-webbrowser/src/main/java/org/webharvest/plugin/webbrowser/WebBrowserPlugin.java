@@ -83,22 +83,96 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li><code>javascript-enabled</code>: Enable/disable JavaScript (default: true)</li>
  * </ul>
  * 
- * <h3>Usage Examples:</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Render JavaScript-heavy page</h4>
  * <pre>{@code
- * <!-- Load page with JavaScript/AJAX -->
- * <web-browser action="load" url="http://example.com/dynamic-page" page="main" wait="2000"/>
+ * <!-- Regular HTTP can't see JavaScript content -->
+ * <def var="staticHtml">
+ *     <http url="https://spa-app.example.com"/>
+ * </def>
+ * <!-- Result: Just loading spinner HTML, no actual data -->
  * 
- * <!-- Execute JavaScript -->
- * <web-browser action="execute-script" page="main">
- *   document.querySelector('#load-more-button').click();
- * </web-browser>
+ * <!-- WebBrowser executes JavaScript -->
+ * <def var="renderedHtml">
+ *     <web-browser action="load" url="https://spa-app.example.com" wait="3000"/>
+ *     <web-browser action="get-content"/>
+ * </def>
+ * <!-- Result: Fully rendered page with AJAX data -->
  * 
- * <!-- Get content after AJAX -->
- * <web-browser action="get-content" page="main"/>
+ * <def var="products">
+ *     <xpath expression="//div[@class='product']">
+ *         <html-to-xml>${renderedHtml}</html-to-xml>
+ *     </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Single Page Application (SPA) scraping</h4>
+ * <pre>{@code
+ * <!-- Load SPA page -->
+ * <web-browser action="load" url="https://spa.example.com/products" page="main" wait="4000"/>
+ * 
+ * <!-- Get rendered content -->
+ * <def var="spaContent">
+ *     <web-browser action="get-content" page="main"/>
+ * </def>
+ * 
+ * <!-- Extract data with XPath -->
+ * <loop item="product">
+ *     <xpath expression="//div[@class='product-card']">
+ *         <html-to-xml>${spaContent}</html-to-xml>
+ *     </xpath>
+ *     
+ *     <def var="title">
+ *         <xpath expression=".//h3/text()">${product}</xpath>
+ *     </def>
+ * </loop>
  * 
  * <!-- Close browser -->
  * <web-browser action="close" page="main"/>
  * }</pre>
+ * 
+ * <h4>Example 3: Execute JavaScript on page</h4>
+ * <pre>{@code
+ * <!-- Load page -->
+ * <web-browser action="load" url="http://example.com" page="main" wait="2000"/>
+ * 
+ * <!-- Click "Load More" button via JavaScript -->
+ * <web-browser action="execute-script" page="main">
+ *   document.querySelector('#load-more-button').click();
+ * </web-browser>
+ * 
+ * <!-- Wait for AJAX -->
+ * <sleep milliseconds="2000"/>
+ * 
+ * <!-- Get updated content -->
+ * <def var="moreContent">
+ *     <web-browser action="get-content" page="main"/>
+ * </def>
+ * 
+ * <web-browser action="close" page="main"/>
+ * }</pre>
+ * 
+ * <h3>When to Use</h3>
+ * <ul>
+ *   <li><strong>Use web-browser:</strong> JavaScript-rendered content, SPAs, AJAX, infinite scroll</li>
+ *   <li><strong>Use http:</strong> Static HTML, APIs, better performance</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Performance:</strong> Slower than {@code <http>} due to JavaScript execution</li>
+ *   <li><strong>Memory:</strong> Browser engine requires more memory</li>
+ *   <li><strong>Wait time:</strong> Adjust wait parameter if content not loaded</li>
+ *   <li><strong>Named pages:</strong> Reuse browser instance with page attribute</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - HTTP requests (faster, no JavaScript)</li>
+ *   <li>{@code <html-to-xml>} - Parse rendered HTML</li>
+ *   <li>{@code <xpath>} - Extract data from rendered page</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @since 2.1.0

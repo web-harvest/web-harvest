@@ -60,10 +60,92 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FTP plugin for file operations.
+ * FTP connection container processor - defines FTP connection for child operations.
+ * 
+ * <p>
+ * The {@code <ftp>} processor establishes an FTP/FTPS connection and provides it to child
+ * processors ({@code <ftp-get>}, {@code <ftp-put>}, {@code <ftp-list>}). Supports passive mode,
+ * authentication, and binary/text transfers.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Download file from FTP</h4>
+ * <pre>{@code
+ * <ftp host="ftp.example.com" 
+ *      username="user" 
+ *      password="pass">
+ *     
+ *     <def var="fileContent">
+ *         <ftp-get path="/data/products.xml"/>
+ *     </def>
+ *     
+ *     <file path="products.xml" action="write">
+ *         ${fileContent}
+ *     </file>
+ * </ftp>
+ * }</pre>
+ * 
+ * <h4>Example 2: Upload scraped data to FTP</h4>
+ * <pre>{@code
+ * <def var="scrapedData">
+ *     <http url="https://example.com/api/data"/>
+ * </def>
+ * 
+ * <ftp host="ftp.backup.com" 
+ *      username="backup_user" 
+ *      password="backup_pass">
+ *     
+ *     <ftp-put path="/backups/data-${_date}.json">
+ *         ${scrapedData}
+ *     </ftp-put>
+ * </ftp>
+ * }</pre>
+ * 
+ * <h4>Example 3: List and download all files</h4>
+ * <pre>{@code
+ * <ftp host="ftp.example.com" username="user" password="pass">
+ *     
+ *     <def var="fileList">
+ *         <ftp-list path="/data/"/>
+ *     </def>
+ *     
+ *     <loop item="filename">
+ *         ${fileList}
+ *         
+ *         <ftp-get path="/data/${filename}"/>
+ *     </loop>
+ * </ftp>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>host:</strong> FTP server hostname (required)</li>
+ *   <li><strong>port:</strong> FTP port (default: 21)</li>
+ *   <li><strong>username:</strong> FTP username (required)</li>
+ *   <li><strong>password:</strong> FTP password (required)</li>
+ *   <li><strong>passive:</strong> Use passive mode (default: true, firewall-friendly)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Passive mode:</strong> Enabled by default for firewall compatibility</li>
+ *   <li><strong>Connection reuse:</strong> Single connection shared by all child operations</li>
+ *   <li><strong>Thread safety:</strong> Not thread-safe - use one FTP block per thread</li>
+ *   <li><strong>FTPS support:</strong> Use port 990 for implicit SSL</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <ftp-get>} - Download files</li>
+ *   <li>{@code <ftp-put>} - Upload files</li>
+ *   <li>{@code <ftp-list>} - List directory</li>
+ *   <li>{@code <file>} - Local file operations</li>
+ * </ul>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(elementName = "ftp")
 public class FtpPlugin extends AbstractPlugin {

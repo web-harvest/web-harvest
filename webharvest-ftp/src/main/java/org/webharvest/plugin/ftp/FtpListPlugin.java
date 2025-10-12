@@ -52,10 +52,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FTP List plugin for listing files in FTP server directory.
+ * FTP directory listing processor - lists files on FTP server.
+ * 
+ * <p>
+ * The {@code <ftp-list>} processor lists files in FTP directory.
+ * Must be used as a child element of {@code <ftp>}.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <ftp host="ftp.example.com" username="user" password="pass">
+ *     <def var="fileList">
+ *         <ftp-list path="/data/"/>
+ *     </def>
+ *     
+ *     <loop item="filename">
+ *         ${fileList}
+ *         <ftp-get path="/data/${filename}"/>
+ *     </loop>
+ * </ftp>
+ * }</pre>
+ * 
+ * <p>See {@link FtpPlugin} for complete FTP examples.</p>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
+ * @see FtpPlugin
  */
 @CorePlugin(elementName = "ftp-list")
 public class FtpListPlugin extends AbstractPlugin {

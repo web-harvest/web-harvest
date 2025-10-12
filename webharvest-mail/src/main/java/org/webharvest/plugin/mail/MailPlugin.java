@@ -57,10 +57,121 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Mail plugin for sending emails.
+ * Email sending processor - SMTP email support with HTML, attachments, and authentication.
+ * 
+ * <p>
+ * The {@code <mail>} processor sends emails via SMTP servers. Supports plain text and HTML
+ * emails with authentication for Gmail, Office365, and custom SMTP servers.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple text email</h4>
+ * <pre>{@code
+ * <mail smtp-host="smtp.gmail.com"
+ *       smtp-port="587"
+ *       username="user@gmail.com"
+ *       password="app-password"
+ *       from="scraper@example.com"
+ *       to="admin@example.com"
+ *       subject="Scraping completed">
+ *     
+ *     Scraping job completed successfully.
+ *     Products extracted: 150
+ *     Time: ${_date}
+ * </mail>
+ * }</pre>
+ * 
+ * <h4>Example 2: HTML email with scraping results</h4>
+ * <pre>{@code
+ * <def var="products">
+ *   <xpath expression="//product">
+ *     <html-to-xml>
+ *       <http url="https://example.com/products"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <mail smtp-host="smtp.gmail.com"
+ *       smtp-port="587"
+ *       username="user@gmail.com"
+ *       password="app-password"
+ *       from="scraper@example.com"
+ *       to="admin@example.com"
+ *       subject="Daily Product Report"
+ *       type="html">
+ *     
+ *     <template>
+ *       <![CDATA[
+ *       <html>
+ *         <body>
+ *           <h2>Daily Scraping Report</h2>
+ *           <p><strong>Products found:</strong> ${productCount}</p>
+ *           <p><strong>Timestamp:</strong> ${_date}</p>
+ *         </body>
+ *       </html>
+ *       ]]>
+ *     </template>
+ * </mail>
+ * }</pre>
+ * 
+ * <h4>Example 3: Error notification email</h4>
+ * <pre>{@code
+ * <try>
+ *   <http url="https://api.example.com/data"/>
+ * </try>
+ * <catch>
+ *   <mail smtp-host="smtp.example.com"
+ *         from="scraper@example.com"
+ *         to="admin@example.com"
+ *         subject="[ERROR] Scraping Failed">
+ *       
+ *       Scraping job failed with error:
+ *       ${_error}
+ *       
+ *       Time: ${_date}
+ *   </mail>
+ *   <exit/>
+ * </catch>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>smtp-host:</strong> SMTP server hostname (required)</li>
+ *   <li><strong>smtp-port:</strong> SMTP port (default: 25, use 587 for TLS)</li>
+ *   <li><strong>username:</strong> SMTP authentication username</li>
+ *   <li><strong>password:</strong> SMTP authentication password</li>
+ *   <li><strong>from:</strong> Sender email address (required)</li>
+ *   <li><strong>to:</strong> Recipient email address (required)</li>
+ *   <li><strong>subject:</strong> Email subject (required)</li>
+ *   <li><strong>type:</strong> Email type: "text" or "html" (default: text)</li>
+ * </ul>
+ * 
+ * <h3>SMTP Servers</h3>
+ * <ul>
+ *   <li><strong>Gmail:</strong> smtp.gmail.com:587 (requires App Password)</li>
+ *   <li><strong>Office365:</strong> smtp.office365.com:587</li>
+ *   <li><strong>Custom:</strong> Any SMTP server with authentication</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Gmail security:</strong> Use App Passwords, not account password</li>
+ *   <li><strong>TLS port:</strong> Use 587 for TLS, 465 for SSL, 25 for plain</li>
+ *   <li><strong>HTML emails:</strong> Set type="html" for HTML content</li>
+ *   <li><strong>Template support:</strong> All attributes support variable interpolation</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - HTTP requests</li>
+ *   <li>{@code <file>} - File I/O for attachments</li>
+ *   <li>{@code <template>} - HTML email generation</li>
+ * </ul>
  * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(elementName = "mail")
 public class MailPlugin extends AbstractPlugin {
