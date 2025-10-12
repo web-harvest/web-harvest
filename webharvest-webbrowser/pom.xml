@@ -4,15 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>net.sourceforge.web-harvest</groupId>
+        <groupId>org.webharvest</groupId>
         <artifactId>webharvest</artifactId>
         <version>2.2.0</version>
     </parent>
-    <groupId>net.sourceforge.web-harvest</groupId>
+    <groupId>org.webharvest</groupId>
     <artifactId>webharvest-webbrowser</artifactId>
     <name>WebHarvest WebBrowser Extensions</name>
     <description>WebBrowser plugins for WebHarvest including browser automation and JavaScript execution</description>
-    
     <build>
         <plugins>
             <plugin>
@@ -44,22 +43,19 @@
             </plugin>
         </plugins>
     </build>
-    
     <dependencies>
         <!-- Web-Harvest Core dependency -->
         <dependency>
-            <groupId>net.sourceforge.web-harvest</groupId>
+            <groupId>org.webharvest</groupId>
             <artifactId>webharvest-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-        
         <!-- HtmlUnit for JavaScript/AJAX support (Bug #33 fix) -->
         <dependency>
             <groupId>net.sourceforge.htmlunit</groupId>
             <artifactId>htmlunit</artifactId>
             <version>2.70.0</version>
         </dependency>
-        
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.testng</groupId>
@@ -100,21 +96,3 @@
         </dependency>
     </dependencies>
 </project>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

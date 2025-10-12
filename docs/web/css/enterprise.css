@@ -1189,6 +1189,175 @@ body {
 }
 
 /* ===================================
+   VISUAL DIAGRAMS
+   =================================== */
+
+/* Flowchart / Diagram Styles */
+.diagram-container {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-8);
+    margin: var(--spacing-6) 0;
+}
+
+.diagram-box {
+    background: linear-gradient(135deg, var(--gray-50), white);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: var(--spacing-3) auto;
+    max-width: 300px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+}
+
+.diagram-box:hover {
+    border-color: var(--magenta);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.diagram-box.primary {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: var(--magenta);
+}
+
+.diagram-box.accent {
+    background: var(--gradient-accent);
+    color: #000;
+    border-color: var(--yellow);
+}
+
+.diagram-box.success {
+    background: var(--lime);
+    color: white;
+    border-color: #8AB82E;
+}
+
+.diagram-box.error {
+    background: #F44336;
+    color: white;
+    border-color: #D32F2F;
+}
+
+.diagram-arrow {
+    text-align: center;
+    color: var(--magenta);
+    font-size: 1.5rem;
+    margin: var(--spacing-2) 0;
+}
+
+.diagram-arrow i {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.diagram-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-4);
+    margin: var(--spacing-4) 0;
+}
+
+.diagram-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-4);
+    margin: var(--spacing-3) 0;
+}
+
+.diagram-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: var(--spacing-2);
+}
+
+.diagram-box small {
+    display: block;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    font-weight: 400;
+    margin-top: var(--spacing-1);
+}
+
+/* Code Window (consistent across all pages) */
+.code-window {
+    background: var(--gray-900);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-2xl);
+    margin: var(--spacing-4) 0;
+}
+
+.window-header {
+    background: #2d2d2d;
+    padding: var(--spacing-3) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    border-bottom: 1px solid #3d3d3d;
+}
+
+.window-controls {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.control.red {
+    background: #ff5f56;
+}
+
+.control.yellow {
+    background: #ffbd2e;
+}
+
+.control.green {
+    background: #27c93f;
+}
+
+.window-title {
+    color: var(--gray-400);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.window-content {
+    padding: 0;
+}
+
+.window-content pre {
+    margin: 0;
+    padding: var(--spacing-5);
+    background: transparent;
+    border-radius: 0;
+}
+
+.window-content code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Code in usage cards/steps should also use window style */
+.usage-card .code-window,
+.install-step .code-window,
+.config-card .code-window {
+    margin-top: var(--spacing-3);
+}
+
+/* ===================================
    RESPONSIVE
    =================================== */
 

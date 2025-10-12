@@ -4,15 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>net.sourceforge.web-harvest</groupId>
+        <groupId>org.webharvest</groupId>
         <artifactId>webharvest</artifactId>
         <version>2.2.0</version>
     </parent>
-    <groupId>net.sourceforge.web-harvest</groupId>
+    <groupId>org.webharvest</groupId>
     <artifactId>webharvest-database</artifactId>
     <name>WebHarvest Database Extensions</name>
     <description>Database plugins for WebHarvest including database operations and JNDI support</description>
-    
     <build>
         <plugins>
             <plugin>
@@ -44,21 +43,18 @@
             </plugin>
         </plugins>
     </build>
-    
     <dependencies>
         <!-- Web-Harvest Core dependency -->
         <dependency>
-            <groupId>net.sourceforge.web-harvest</groupId>
+            <groupId>org.webharvest</groupId>
             <artifactId>webharvest-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-        
         <!-- Database dependencies -->
         <dependency>
             <groupId>commons-dbcp</groupId>
             <artifactId>commons-dbcp</artifactId>
         </dependency>
-        
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.testng</groupId>
@@ -99,19 +95,3 @@
         </dependency>
     </dependencies>
 </project>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

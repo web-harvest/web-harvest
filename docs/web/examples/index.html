@@ -1,766 +1,528 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Examples - Web-Harvest</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebHarvest Examples - Ready-to-Use Configurations</title>
+  <link rel="stylesheet" href="../css/enterprise.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="../css/prism.css">
-  <link rel="stylesheet" href="../css/processors.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
-  <!-- Navigation -->
-  <nav class="navbar">
-    <div class="nav-container">
-      <a href="../index.html" class="nav-logo">
-        <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
-        <span>Web-Harvest</span>
-      </a>
-      <ul class="nav-menu">
-        <li><a href="../index.html" class="nav-link">Home</a></li>
-        <li><a href="../index.html#features" class="nav-link">Features</a></li>
-        <li><a href="../index.html#ide" class="nav-link">IDE</a></li>
-        <li><a href="../index.html#architecture" class="nav-link">Architecture</a></li>
-        <li><a href="../processors/" class="nav-link">Processors</a></li>
-        <li><a href="index.html" class="nav-link active">Examples</a></li>
-        <li><a href="../api/" class="nav-link">API</a></li>
-        <li><a href="../index.html#download" class="nav-link">Download</a></li>
-      </ul>
-      <div class="hamburger">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar"></span>
-      </div>
-    </div>
-  </nav>
 
-  <!-- Main Content -->
-  <main class="main-content">
-    <div class="container">
-      <!-- Breadcrumb -->
-      <nav class="breadcrumb">
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+        <span class="project-name">WebHarvest</span>
+      </div>
+      <nav class="main-nav">
         <a href="../index.html">Home</a>
-        <i class="fas fa-chevron-right"></i>
-        <span>Examples</span>
+        <a href="../processors.html">Core</a>
+        <a href="../plugins.html">Plugins</a>
+        <a href="../ide.html">IDE</a>
+        <a href="index.html" class="active">Examples</a>
+        <a href="../documentation.html">Docs</a>
+        <a href="../news.html">News</a>
+        <a href="../support.html">Support</a>
+        <a class="cta" href="../index.html#download">Download</a>
       </nav>
+    </div>
+  </header>
 
-      <div class="page-header">
-        <h1>Example Configurations</h1>
-        <p>Real-world examples demonstrating Web-Harvest capabilities and best practices</p>
-      </div>
-
-      <!-- Filter and Search -->
-      <div class="examples-controls">
-        <div class="search-container">
-          <i class="fas fa-search search-icon"></i>
-          <input type="text" id="search-input" class="search-input" placeholder="Search examples...">
-        </div>
-        <div class="filter-buttons">
-          <button class="filter-button active" data-category="all">All</button>
-          <button class="filter-button" data-category="business">Business</button>
-          <button class="filter-button" data-category="ecommerce">E-commerce</button>
-          <button class="filter-button" data-category="analytics">Analytics</button>
-          <button class="filter-button" data-category="automation">Automation</button>
-          <button class="filter-button" data-category="data">Data Processing</button>
-        </div>
-      </div>
-
-      <!-- Real Examples Section -->
-      <div class="real-examples-section">
-        <h2>Available Example Files</h2>
-        <p>Download and run these real-world example configurations:</p>
-        <div class="examples-list">
-          <!-- New Plugin Architecture Examples -->
-          <div class="example-item featured">
-            <h4><a href="basic_variables_example.xml">Basic Variables Example</a></h4>
-            <p>Demonstrates variable usage in Web-Harvest</p>
-            <span class="tag new">New Feature</span>
-          </div>
-          <div class="example-item featured">
-            <h4><a href="advanced_search_example.xml">Advanced Search Example</a></h4>
-            <p>Web scraping and data extraction with modern architecture</p>
-            <span class="tag new">New Feature</span>
-          </div>
-          <div class="example-item featured">
-            <h4><a href="database_plugin_demo.xml">Database Plugin Demo</a></h4>
-            <p>Database operations with new plugin architecture</p>
-            <span class="tag plugin">Plugin Demo</span>
-          </div>
-          <div class="example-item featured">
-            <h4><a href="ftp_plugin_demo.xml">FTP Plugin Demo</a></h4>
-            <p>FTP operations with modern plugin system</p>
-            <span class="tag plugin">Plugin Demo</span>
-          </div>
-          <div class="example-item featured">
-            <h4><a href="mail_plugin_demo.xml">Mail Plugin Demo</a></h4>
-            <p>Email sending with @Plugin annotations</p>
-            <span class="tag plugin">Plugin Demo</span>
-          </div>
-          <div class="example-item featured">
-            <h4><a href="webbrowser_plugin_demo.xml">WebBrowser Plugin Demo</a></h4>
-            <p>Headless browser operations with JavaScript support</p>
-            <span class="tag plugin">Plugin Demo</span>
-          </div>
-
-          <!-- Classic Examples -->
-          <div class="example-item">
-            <h4><a href="simple_test.xml">Simple Test</a></h4>
-            <p>Basic configuration to test Web-Harvest functionality</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="ecommerce_monitoring.xml">E-commerce Monitoring</a></h4>
-            <p>Monitor product prices across e-commerce sites</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="social_media_analytics.xml">Social Media Analytics</a></h4>
-            <p>Extract and analyze social media data</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="data_processing_pipeline.xml">Data Processing Pipeline</a></h4>
-            <p>Complete data processing workflow</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="crawler.xml">Web Crawler</a></h4>
-            <p>Intelligent web crawler with link following</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="api_integration.xml">API Integration</a></h4>
-            <p>REST API integration and data processing</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="modern_web_scraping.xml">Modern Web Scraping</a></h4>
-            <p>Advanced web scraping techniques</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="product_catalog.xml">Product Catalog</a></h4>
-            <p>Extract product information from catalogs</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="xquery.xml">XQuery Examples</a></h4>
-            <p>Advanced XQuery data processing</p>
-          </div>
-          <div class="example-item">
-            <h4><a href="functions.xml">Function Examples</a></h4>
-            <p>Built-in function usage examples</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Examples Grid -->
-      <div class="examples-grid">
-        <!-- E-commerce Price Monitoring -->
-        <div class="example-card" data-category="ecommerce business">
-          <div class="example-header">
-            <h3>E-commerce Price Monitoring</h3>
-            <div class="example-tags">
-              <span class="tag ecommerce">E-commerce</span>
-              <span class="tag business">Business</span>
-            </div>
-          </div>
-          <p>Monitor product prices across multiple e-commerce sites and get alerts when prices drop below
-            threshold.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>Multi-site price monitoring</li>
-              <li>Price threshold alerts</li>
-              <li>Data persistence</li>
-              <li>Error handling</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <div class="code-window">
-              <div class="window-header">
-                <div class="window-controls">
-                  <span class="control red"></span>
-                  <span class="control yellow"></span>
-                  <span class="control green"></span>
-                </div>
-                <span class="window-title">ecommerce-monitoring.xml</span>
-              </div>
-              <div class="window-content">
-                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;!-- Configuration for price monitoring --&gt;
-  &lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
-  &lt;def var="priceThreshold"&gt;100.00&lt;/def&gt;
-  
-  &lt;!-- Fetch product data --&gt;
-  &lt;def var="productData"&gt;
-    &lt;html-to-xml advancedxmlescape="true" specialentities="true"&gt;
-      &lt;http url="${productUrl}" timeout="30000"&gt;
-        &lt;http-header name="User-Agent"&gt;Web-Harvest Bot&lt;/http-header&gt;
-      &lt;/http&gt;
-    &lt;/html-to-xml&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Extract current price --&gt;
-  &lt;def var="currentPrice"&gt;
-    &lt;xpath expression="//span[@class='price']"&gt;
-      &lt;get var="productData"/&gt;
-    &lt;/xpath&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Check if price is below threshold --&gt;
-  &lt;if condition="${currentPrice &lt; priceThreshold}"&gt;
-    &lt;then&gt;
-      &lt;file path="price_alert.txt" action="write"&gt;
-        &lt;template&gt;
-          &lt;![CDATA[
-          PRICE ALERT! 
-          Product: ${productUrl}
-          Current Price: $${currentPrice}
-          Threshold: $${priceThreshold}
-          Date: ${sys.currentTime()}
-          ]]&gt;
-        &lt;/template&gt;
-      &lt;/file&gt;
-    &lt;/then&gt;
-  &lt;/if&gt;
-&lt;/config&gt;</code></pre>
-              </div>
-            </div>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('ecommerce-monitoring')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('ecommerce-monitoring.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-
-        <!-- Social Media Analytics -->
-        <div class="example-card" data-category="analytics business">
-          <div class="example-header">
-            <h3>Social Media Analytics</h3>
-            <div class="example-tags">
-              <span class="tag analytics">Analytics</span>
-              <span class="tag business">Business</span>
-            </div>
-          </div>
-          <p>Extract and analyze social media posts for sentiment analysis and engagement metrics.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>API integration</li>
-              <li>JSON to XML conversion</li>
-              <li>XQuery data processing</li>
-              <li>Sentiment analysis</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <div class="code-window">
-              <div class="window-header">
-                <div class="window-controls">
-                  <span class="control red"></span>
-                  <span class="control yellow"></span>
-                  <span class="control green"></span>
-                </div>
-                <span class="window-title">social-media-analytics.xml</span>
-              </div>
-              <div class="window-content">
-                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;def var="hashtag"&gt;#technology&lt;/def&gt;
-  
-  &lt;!-- Get data from social media API --&gt;
-  &lt;def var="socialData"&gt;
-    &lt;http url="https://api.social.com/posts?hashtag=${hashtag}"&gt;
-      &lt;http-header name="Authorization"&gt;Bearer YOUR_API_KEY&lt;/http-header&gt;
-    &lt;/http&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Convert JSON to XML --&gt;
-  &lt;def var="postsXml"&gt;
-    &lt;json-to-xml&gt;
-      &lt;get var="socialData"/&gt;
-    &lt;/json-to-xml&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Analyze sentiment using XQuery --&gt;
-  &lt;def var="sentimentAnalysis"&gt;
-    &lt;xquery&gt;
-      &lt;xq-param name="posts"&gt;
-        &lt;get var="postsXml"/&gt;
-      &lt;/xq-param&gt;
-      &lt;xq-expression&gt;
-        &lt;![CDATA[
-        declare variable $posts as node() external;
-        
-        let $positive := count($posts//post[sentiment = "positive"])
-        let $negative := count($posts//post[sentiment = "negative"])
-        let $neutral := count($posts//post[sentiment = "neutral"])
-        let $total := count($posts//post)
-        
-        return
-        &lt;sentiment_analysis&gt;
-          &lt;total_posts&gt;{$total}&lt;/total_posts&gt;
-          &lt;positive_posts&gt;{$positive}&lt;/positive_posts&gt;
-          &lt;negative_posts&gt;{$negative}&lt;/negative_posts&gt;
-          &lt;neutral_posts&gt;{$neutral}&lt;/neutral_posts&gt;
-          &lt;positive_percentage&gt;{if ($total &gt; 0) then round($positive div $total * 100) else 0}&lt;/positive_percentage&gt;
-          &lt;negative_percentage&gt;{if ($total &gt; 0) then round($negative div $total * 100) else 0}&lt;/negative_percentage&gt;
-          &lt;neutral_percentage&gt;{if ($total &gt; 0) then round($neutral div $total * 100) else 0}&lt;/neutral_percentage&gt;
-        &lt;/sentiment_analysis&gt;
-        ]]&gt;
-      &lt;/xq-expression&gt;
-    &lt;/xquery&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Save results --&gt;
-  &lt;file path="sentiment_report.xml" action="write"&gt;
-    &lt;get var="sentimentAnalysis"/&gt;
-  &lt;/file&gt;
-&lt;/config&gt;</code></pre>
-              </div>
-            </div>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('social-media-analytics')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('social-media-analytics.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-
-        <!-- Data Processing Pipeline -->
-        <div class="example-card" data-category="data automation">
-          <div class="example-header">
-            <h3>Data Processing Pipeline</h3>
-            <div class="example-tags">
-              <span class="tag data">Data Processing</span>
-              <span class="tag automation">Automation</span>
-            </div>
-          </div>
-          <p>Complete data processing pipeline with validation, transformation, and reporting.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>CSV data processing</li>
-              <li>Data validation</li>
-              <li>Error handling</li>
-              <li>Report generation</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <div class="code-window">
-              <div class="window-header">
-                <div class="window-controls">
-                  <span class="control red"></span>
-                  <span class="control yellow"></span>
-                  <span class="control green"></span>
-                </div>
-                <span class="window-title">data-processing-pipeline.xml</span>
-              </div>
-              <div class="window-content">
-                <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;!-- Read input data --&gt;
-  &lt;def var="rawData"&gt;
-    &lt;file path="input.csv" action="read" charset="UTF-8"/&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Process each row --&gt;
-  &lt;def var="processedData"&gt;
-    &lt;loop item="row"&gt;
-      &lt;tokenize delimiters="," trimtokens="true"&gt;
-        &lt;get var="rawData"/&gt;
-      &lt;/tokenize&gt;
-      &lt;body&gt;
-        &lt;!-- Validate row data --&gt;
-        &lt;def var="validatedRow"&gt;
-          &lt;script&gt;
-            // Data validation logic
-            if (row.length() &gt;= 3) {
-              return row;
-            } else {
-              return null;
-            }
-          &lt;/script&gt;
-        &lt;/def&gt;
-        
-        &lt;!-- Only process valid rows --&gt;
-        &lt;if condition="${validatedRow != null}"&gt;
-          &lt;then&gt;
-            &lt;def var="processedRow"&gt;
-              &lt;template&gt;
-                &lt;![CDATA[
-                &lt;item&gt;
-                  &lt;id&gt;${row[0]}&lt;/id&gt;
-                  &lt;name&gt;${row[1]}&lt;/name&gt;
-                  &lt;price&gt;${row[2]}&lt;/price&gt;
-                  &lt;processed_at&gt;${sys.currentTime()}&lt;/processed_at&gt;
-                &lt;/item&gt;
-                ]]&gt;
-              &lt;/template&gt;
-            &lt;/def&gt;
-          &lt;/then&gt;
-        &lt;/if&gt;
-      &lt;/body&gt;
-    &lt;/loop&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Generate report --&gt;
-  &lt;file path="processed_data.xml" action="write"&gt;
-    &lt;template&gt;
-      &lt;![CDATA[
-      &lt;report&gt;
-        &lt;timestamp&gt;${sys.currentTime()}&lt;/timestamp&gt;
-        &lt;total_records&gt;${sys.recordCount()}&lt;/total_records&gt;
-        &lt;data&gt;
-          &lt;get var="processedData"/&gt;
-        &lt;/data&gt;
-      &lt;/report&gt;
-      ]]&gt;
-    &lt;/template&gt;
-  &lt;/file&gt;
-&lt;/config&gt;</code></pre>
-              </div>
-            </div>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('data-processing-pipeline')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('data-processing-pipeline.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-
-        <!-- Web Crawler -->
-        <div class="example-card" data-category="automation data">
-          <div class="example-header">
-            <h3>Web Crawler</h3>
-            <div class="example-tags">
-              <span class="tag automation">Automation</span>
-              <span class="tag data">Data</span>
-            </div>
-          </div>
-          <p>Intelligent web crawler that follows links and extracts content from multiple pages.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>Link following</li>
-              <li>Content extraction</li>
-              <li>Duplicate prevention</li>
-              <li>Error handling</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;def var="home"&gt;http://web-harvest.sourceforge.net/&lt;/def&gt;
-  &lt;def var="unvisited"&gt;
-    &lt;list&gt;
-      &lt;template&gt;${home}&lt;/template&gt;
-    &lt;/list&gt;
-  &lt;/def&gt;
-  &lt;def var="visited"&gt;
-    &lt;list&gt;&lt;/list&gt;
-  &lt;/def&gt;
-  &lt;def var="newLinks"&gt;
-    &lt;list&gt;&lt;/list&gt;
-  &lt;/def&gt;
-  
-  &lt;while condition="${unvisited.toString().length() &gt; 0}"&gt;
-    &lt;def var="currUrl"&gt;
-      &lt;get var="unvisited"/&gt;
-    &lt;/def&gt;
-    
-    &lt;def var="visitedUpdate"&gt;
-      &lt;script&gt;
-        print("Visiting: " + currUrl);
-      &lt;/script&gt;
-    &lt;/def&gt;
-    
-    &lt;def var="linkCheck"&gt;
-      &lt;script&gt;
-        boolean isValidUrl(String url) {
-          String urlSmall = url.toLowerCase();
-          return urlSmall.startsWith("http://web-harvest.sourceforge.net/") 
-                 &amp;&amp; urlSmall.endsWith(".php");
-        }
-        String fullLink = sys.fullUrl(home, currLink);
-        if (isValidUrl(fullLink.toString())) {
-          print("Found valid link: " + fullLink);
-        }
-      &lt;/script&gt;
-    &lt;/def&gt;
-    
-    &lt;def var="unvisited"&gt;
-      &lt;list&gt;&lt;/list&gt;
-    &lt;/def&gt;
-  &lt;/while&gt;
-&lt;/config&gt;</code></pre>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('web-crawler')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('crawler.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-
-        <!-- API Integration -->
-        <div class="example-card" data-category="automation business">
-          <div class="example-header">
-            <h3>API Integration</h3>
-            <div class="example-tags">
-              <span class="tag automation">Automation</span>
-              <span class="tag business">Business</span>
-            </div>
-          </div>
-          <p>Integrate with REST APIs to fetch, process, and store data from external services.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>REST API calls</li>
-              <li>Authentication</li>
-              <li>Data transformation</li>
-              <li>Database storage</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;def var="apiKey"&gt;YOUR_API_KEY&lt;/def&gt;
-  &lt;def var="baseUrl"&gt;https://api.example.com/v1&lt;/def&gt;
-  
-  &lt;!-- Fetch data from API --&gt;
-  &lt;def var="apiData"&gt;
-    &lt;http url="${baseUrl}/products" method="GET"&gt;
-      &lt;http-header name="Authorization"&gt;Bearer ${apiKey}&lt;/http-header&gt;
-      &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
-    &lt;/http&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Convert to XML --&gt;
-  &lt;def var="xmlData"&gt;
-    &lt;json-to-xml&gt;
-      &lt;get var="apiData"/&gt;
-    &lt;/json-to-xml&gt;
-  &lt;/def&gt;
-  
-  &lt;!-- Process and store data --&gt;
-  &lt;loop item="product"&gt;
-    &lt;xpath expression="//product"&gt;
-      &lt;get var="xmlData"/&gt;
-    &lt;/xpath&gt;
-    &lt;body&gt;
-      &lt;def var="productId"&gt;
-        &lt;xpath expression=".//id"&gt;
-          &lt;get var="product"/&gt;
-        &lt;/xpath&gt;
-      &lt;/def&gt;
-      &lt;def var="productName"&gt;
-        &lt;xpath expression=".//name"&gt;
-          &lt;get var="product"/&gt;
-        &lt;/xpath&gt;
-      &lt;/def&gt;
-      
-      &lt;!-- Store in database --&gt;
-      &lt;database 
-        driver="com.mysql.cj.jdbc.Driver"
-        url="jdbc:mysql://localhost:3306/products"
-        username="user"
-        password="pass"
-        query="INSERT INTO products (id, name) VALUES (?, ?)"&gt;
-        &lt;db-param&gt;${productId}&lt;/db-param&gt;
-        &lt;db-param&gt;${productName}&lt;/db-param&gt;
-      &lt;/database&gt;
-    &lt;/body&gt;
-  &lt;/loop&gt;
-&lt;/config&gt;</code></pre>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('api-integration')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('api_integration.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-
-        <!-- Email Automation -->
-        <div class="example-card" data-category="automation business">
-          <div class="example-header">
-            <h3>Email Automation</h3>
-            <div class="example-tags">
-              <span class="tag automation">Automation</span>
-              <span class="tag business">Business</span>
-            </div>
-          </div>
-          <p>Automated email notifications based on scraped data and business rules.</p>
-          <div class="example-features">
-            <h4>Features:</h4>
-            <ul>
-              <li>Email sending</li>
-              <li>Template processing</li>
-              <li>Conditional logic</li>
-              <li>Error handling</li>
-            </ul>
-          </div>
-          <div class="example-code">
-            <pre><code class="language-xml">&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
-  &lt;!-- Check for price alerts --&gt;
-  &lt;def var="alertData"&gt;
-    &lt;file path="price_alerts.xml" action="read"/&gt;
-  &lt;/def&gt;
-  
-  &lt;def var="hasAlerts"&gt;
-    &lt;xpath expression="count(//alert) &gt; 0"&gt;
-      &lt;get var="alertData"/&gt;
-    &lt;/xpath&gt;
-  &lt;/def&gt;
-  
-  &lt;if condition="${hasAlerts}"&gt;
-    &lt;then&gt;
-      &lt;def var="emailContent"&gt;
-        &lt;template&gt;
-          &lt;![CDATA[
-          &lt;html&gt;
-            &lt;body&gt;
-              &lt;h2&gt;Price Alert Summary&lt;/h2&gt;
-              &lt;p&gt;The following products have price alerts:&lt;/p&gt;
-              &lt;ul&gt;
-                &lt;li&gt;Product: ${productName} - Price: $${price}&lt;/li&gt;
-              &lt;/ul&gt;
-              &lt;p&gt;Generated at: ${sys.currentTime()}&lt;/p&gt;
-            &lt;/body&gt;
-          &lt;/html&gt;
-          ]]&gt;
-        &lt;/template&gt;
-      &lt;/def&gt;
-      
-      &lt;mail 
-        to="admin@example.com"
-        from="scraper@example.com"
-        subject="Price Alert Notification"
-        smtphost="smtp.example.com"
-        smtpport="587"&gt;
-        &lt;get var="emailContent"/&gt;
-      &lt;/mail&gt;
-    &lt;/then&gt;
-  &lt;/if&gt;
-&lt;/config&gt;</code></pre>
-          </div>
-          <div class="example-actions">
-            <button class="btn btn-primary" onclick="runExample('email-automation')">
-              <i class="fas fa-play"></i> Run Example
-            </button>
-            <button class="btn btn-secondary" onclick="downloadExample('email-automation.xml')">
-              <i class="fas fa-download"></i> Download
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- No Results Message -->
-      <div class="no-results" style="display: none;">
-        <i class="fas fa-search"></i>
-        <h3>No examples found</h3>
-        <p>Try adjusting your search or filter criteria.</p>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="hero-content">
+        <h1>WebHarvest<br />Examples</h1>
+        <p class="lead">Ready-to-use scraping configurations</p>
+        <p class="hero-description">
+          Professional examples organized by category: Web & HTTP, Data Extraction,
+          Data Transformation, Control Flow, and File Operations.
+        </p>
       </div>
     </div>
-  </main>
+  </section>
+
+  <!-- Quick Start -->
+  <section class="container" style="margin-top: 4rem;">
+    <div class="feature-card" style="max-width: 900px; margin: 0 auto; background: var(--gray-50);">
+      <h3 style="margin-bottom: 1rem;"><i class="fas fa-rocket"></i> How to Use These Examples</h3>
+      <ol style="margin-left: 2rem; color: var(--text-secondary);">
+        <li><strong>Download:</strong> Click any example below to download the XML configuration</li>
+        <li><strong>Edit:</strong> Open in WebHarvest IDE or your favorite XML editor</li>
+        <li><strong>Customize:</strong> Update URLs, selectors, and parameters for your needs</li>
+        <li><strong>Run:</strong> Execute via CLI (<code>java -jar webharvest-cli.jar config.xml</code>) or IDE</li>
+      </ol>
+      <div style="margin-top: 1.5rem;">
+        <a href="../ide.html" class="btn btn-primary">
+          <i class="fas fa-laptop-code"></i> Try in IDE
+        </a>
+        <a href="../processors.html" class="btn btn-outline" style="margin-left: 1rem;">
+          <i class="fas fa-book"></i> View Processors
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Web & HTTP Category -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-globe"></i>
+        </span>
+        Web & HTTP
+      </h2>
+      <p class="section-subtitle">HTTP requests, HTML parsing, web scraping</p>
+
+      <div class="processors-grid">
+        <a href="simple_test.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-vial"></i>
+          </div>
+          <h4>Simple HTTP Test</h4>
+          <p>Basic HTTP request with HTML parsing</p>
+        </a>
+
+        <a href="amazon_test.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-shopping-cart"></i>
+          </div>
+          <h4>Amazon Product Scraper</h4>
+          <p>Extract product info from Amazon-like sites</p>
+        </a>
+
+        <a href="modern_web_scraping.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-spider"></i>
+          </div>
+          <h4>Modern Web Scraping</h4>
+          <p>Advanced techniques with error handling</p>
+        </a>
+
+        <a href="crawler.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-sitemap"></i>
+          </div>
+          <h4>Web Crawler</h4>
+          <p>Follow links and crawl multiple pages</p>
+        </a>
+
+        <a href="improved_nytimes.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-newspaper"></i>
+          </div>
+          <h4>News Site Scraper</h4>
+          <p>Extract articles from news websites</p>
+        </a>
+
+        <a href="api_integration.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-plug"></i>
+          </div>
+          <h4>REST API Integration</h4>
+          <p>Call REST APIs and process responses</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Extraction Category -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-search"></i>
+        </span>
+        Data Extraction
+      </h2>
+      <p class="section-subtitle">XPath, XQuery, regex-based data extraction</p>
+
+      <div class="processors-grid">
+        <a href="advanced_search_example.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-code-branch"></i>
+          </div>
+          <h4>Advanced XPath</h4>
+          <p>Complex XPath queries and data extraction</p>
+        </a>
+
+        <a href="xquery.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-database"></i>
+          </div>
+          <h4>XQuery Processing</h4>
+          <p>Advanced XML querying and transformation</p>
+        </a>
+
+        <a href="product_catalog.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-th-list"></i>
+          </div>
+          <h4>Product Catalog</h4>
+          <p>Extract structured product data</p>
+        </a>
+
+        <a href="google_images.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-images"></i>
+          </div>
+          <h4>Image Extractor</h4>
+          <p>Download images from search results</p>
+        </a>
+
+        <a href="social_media_analytics.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h4>Social Media Analytics</h4>
+          <p>Extract and analyze social media data</p>
+        </a>
+
+        <a href="ecommerce_monitoring.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+          <h4>E-commerce Monitoring</h4>
+          <p>Price tracking and inventory monitoring</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data Transformation Category -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-exchange-alt"></i>
+        </span>
+        Data Transformation
+      </h2>
+      <p class="section-subtitle">JSON, XML, CSV conversion and processing</p>
+
+      <div class="processors-grid">
+        <a href="data_processing_pipeline.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-project-diagram"></i>
+          </div>
+          <h4>Data Processing Pipeline</h4>
+          <p>Complete ETL pipeline with transformations</p>
+        </a>
+
+        <a href="canon.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-file-code"></i>
+          </div>
+          <h4>XML Canonicalization</h4>
+          <p>XML normalization and formatting</p>
+        </a>
+
+        <a href="canon_with_namespace.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-sitemap"></i>
+          </div>
+          <h4>Namespace Handling</h4>
+          <p>XML with namespace processing</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Control Flow Category -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-code-branch"></i>
+        </span>
+        Control Flow
+      </h2>
+      <p class="section-subtitle">Loops, conditions, functions, error handling</p>
+
+      <div class="processors-grid">
+        <a href="basic_variables_example.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-flask"></i>
+          </div>
+          <h4>Variables & Expressions</h4>
+          <p>Variable definition and usage patterns</p>
+        </a>
+
+        <a href="functions.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-function"></i>
+          </div>
+          <h4>Functions</h4>
+          <p>Define and call custom functions</p>
+        </a>
+
+        <a href="expekt.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h4>Error Handling</h4>
+          <p>Try/catch and error recovery</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- External Plugins Category -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-plug"></i>
+        </span>
+        External Plugins
+      </h2>
+      <p class="section-subtitle">Database, Mail, FTP, Browser automation</p>
+
+      <div class="processors-grid">
+        <a href="database_plugin_demo.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-database"></i>
+          </div>
+          <h4>Database Operations</h4>
+          <p>JDBC connections, SQL queries, result processing</p>
+        </a>
+
+        <a href="mail_plugin_demo.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-envelope"></i>
+          </div>
+          <h4>Email Sending</h4>
+          <p>SMTP email with HTML templates</p>
+        </a>
+
+        <a href="ftp_plugin_demo.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-server"></i>
+          </div>
+          <h4>FTP Upload/Download</h4>
+          <p>FTP file transfer operations</p>
+        </a>
+
+        <a href="webbrowser_plugin_demo.xml" class="processor-card" download>
+          <div class="processor-icon">
+            <i class="fas fa-globe"></i>
+          </div>
+          <h4>Browser Automation</h4>
+          <p>Headless browser with JavaScript support</p>
+        </a>
+      </div>
+
+      <div
+        style="margin-top: 2rem; padding: 1.5rem; background: var(--yellow); color: #000; border-radius: var(--radius-xl); font-weight: 600;">
+        <i class="fas fa-info-circle"></i> External plugins require separate Maven dependencies.
+        <a href="../plugins.html" style="color: #000; text-decoration: underline; font-weight: 700;">View plugin
+          documentation →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- All Example Files -->
+  <section class="container" style="margin-top: 6rem;">
+    <div class="section-header">
+      <h2>All Available Examples</h2>
+      <p class="section-subtitle">Complete list of downloadable configurations</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+      <a href="simple_test.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> simple_test.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Basic HTTP test configuration</p>
+      </a>
+
+      <a href="advanced_search_example.xml" class="feature-card" style="text-decoration: none; color: inherit;"
+        download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> advanced_search_example.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Advanced search and extraction</p>
+      </a>
+
+      <a href="amazon_test.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> amazon_test.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Amazon product scraping</p>
+      </a>
+
+      <a href="api_integration.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> api_integration.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">REST API integration</p>
+      </a>
+
+      <a href="basic_variables_example.xml" class="feature-card" style="text-decoration: none; color: inherit;"
+        download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> basic_variables_example.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Variable usage examples</p>
+      </a>
+
+      <a href="canon.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> canon.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">XML canonicalization</p>
+      </a>
+
+      <a href="canon_with_namespace.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> canon_with_namespace.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Namespace handling</p>
+      </a>
+
+      <a href="crawler.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> crawler.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Web crawler with link following</p>
+      </a>
+
+      <a href="data_processing_pipeline.xml" class="feature-card" style="text-decoration: none; color: inherit;"
+        download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> data_processing_pipeline.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Complete ETL pipeline</p>
+      </a>
+
+      <a href="database_plugin_demo.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> database_plugin_demo.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Database plugin example</p>
+      </a>
+
+      <a href="ecommerce_monitoring.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> ecommerce_monitoring.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Price and inventory monitoring</p>
+      </a>
+
+      <a href="flickr.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> flickr.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Flickr photo scraping</p>
+      </a>
+
+      <a href="ftp_plugin_demo.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> ftp_plugin_demo.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">FTP plugin example</p>
+      </a>
+
+      <a href="functions.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> functions.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Custom function examples</p>
+      </a>
+
+      <a href="google_images.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> google_images.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Google Images scraping</p>
+      </a>
+
+      <a href="improved_nytimes.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> improved_nytimes.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">New York Times articles</p>
+      </a>
+
+      <a href="mail_plugin_demo.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> mail_plugin_demo.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Mail plugin example</p>
+      </a>
+
+      <a href="modern_web_scraping.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> modern_web_scraping.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Modern scraping techniques</p>
+      </a>
+
+      <a href="product_catalog.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> product_catalog.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Product catalog extraction</p>
+      </a>
+
+      <a href="social_media_analytics.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> social_media_analytics.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Social analytics</p>
+      </a>
+
+      <a href="webbrowser_plugin_demo.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> webbrowser_plugin_demo.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Browser plugin example</p>
+      </a>
+
+      <a href="xquery.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> xquery.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">XQuery transformations</p>
+      </a>
+
+      <a href="yahoomail.xml" class="feature-card" style="text-decoration: none; color: inherit;" download>
+        <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">
+          <i class="fas fa-file-code"></i> yahoomail.xml
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Yahoo Mail integration</p>
+      </a>
+    </div>
+  </section>
 
   <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h3>Web-Harvest</h3>
-          <p>Advanced web scraping and data extraction tool for Java applications.</p>
-        </div>
-        <div class="footer-section">
-          <h4>Documentation</h4>
-          <ul>
-            <li><a href="../processors/">Processors</a></li>
-            <li><a href="../api/">API</a></li>
-            <li><a href="index.html">Examples</a></li>
-          </ul>
-        </div>
-        <div class="footer-section">
-          <h4>Resources</h4>
-          <ul>
-            <li><a href="../index.html#download">Download</a></li>
-            <li><a href="index.html">Examples</a></li>
-            <li><a href="#">Tutorials</a></li>
-          </ul>
-        </div>
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <img src="../images/logo.png" alt="WebHarvest" class="footer-logo" />
+        <p>© 2025 WebHarvest — Enterprise web scraping framework</p>
       </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 Web-Harvest. All rights reserved. Version 2.1.0-SNAPSHOT</p>
+      <div class="footer-links">
+        <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+        <a href="../documentation.html">Documentation</a>
+        <a href="index.html">Examples</a>
+        <a href="../support.html">Support</a>
+      </div>
+      <div class="footer-author">
+        <a href="https://www.linkedin.com/in/rbala/" target="_blank" rel="noopener" class="author-link">
+          <i class="fab fa-linkedin"></i> Robert Bala
+        </a>
       </div>
     </div>
   </footer>
 
-  <script src="../js/script.js"></script>
   <script src="../js/prism.js"></script>
-  <script>
-    // Example-specific JavaScript
-    function runExample(exampleName) {
-      console.log(`Running example: ${exampleName}`);
-      // Implementation for running examples
-      alert(`Running example: ${exampleName}`);
-    }
-
-    function downloadExample(fileName) {
-      console.log(`Downloading example: ${fileName}`);
-      // Implementation for downloading examples
-      const link = document.createElement('a');
-      link.href = `../examples/${fileName}`;
-      link.download = fileName;
-      link.click();
-    }
-
-    // Search and filter functionality
-    document.addEventListener('DOMContentLoaded', function () {
-      const searchInput = document.getElementById('search-input');
-      const filterButtons = document.querySelectorAll('.filter-button');
-      const exampleCards = document.querySelectorAll('.example-card');
-      const noResults = document.querySelector('.no-results');
-
-      function filterExamples() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const activeCategory = document.querySelector('.filter-button.active').dataset.category;
-        let visibleCount = 0;
-
-        exampleCards.forEach(card => {
-          const cardText = card.textContent.toLowerCase();
-          const cardCategory = card.dataset.category;
-          const matchesSearch = searchTerm === '' || cardText.includes(searchTerm);
-          const matchesCategory = activeCategory === 'all' || cardCategory.includes(activeCategory);
-
-          if (matchesSearch && matchesCategory) {
-            card.style.display = 'block';
-            visibleCount++;
-          } else {
-            card.style.display = 'none';
-          }
-        });
-
-        noResults.style.display = visibleCount === 0 ? 'block' : 'none';
-      }
-
-      searchInput.addEventListener('input', filterExamples);
-
-      filterButtons.forEach(button => {
-        button.addEventListener('click', function () {
-          filterButtons.forEach(btn => btn.classList.remove('active'));
-          this.classList.add('active');
-          filterExamples();
-        });
-      });
-    });
-  </script>
 </body>
 
 </html>

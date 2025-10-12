@@ -4,10 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebHarvest Custom Plugins - Build & Extend</title>
+    <title>WebHarvest External Plugins - Extend Your Scrapers</title>
     <link rel="stylesheet" href="css/enterprise.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/prism.css">
 </head>
 
 <body>
@@ -37,13 +38,479 @@
     <section class="hero">
         <div class="container hero-inner">
             <div class="hero-content">
-                <h1>Custom Plugins<br />for WebHarvest</h1>
-                <p class="lead">Extend WebHarvest with your own processors</p>
+                <h1>External Plugins<br />for WebHarvest</h1>
+                <p class="lead">Extend scraping capabilities beyond the core</p>
                 <p class="hero-description">
-                    Coming soon: Comprehensive guide to building custom plugins,
-                    auto-discovery system, and available external plugins.
+                    WebHarvest's plugin system supports external modules for databases, email,
+                    FTP, archives, and browser automation with automatic discovery.
                 </p>
             </div>
+            <div class="hero-visual">
+                <img src="images/hero-icon.png" alt="WebHarvest Plugins" />
+            </div>
+        </div>
+    </section>
+
+    <!-- Core vs External -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2>Core vs. External Plugins</h2>
+            <p class="section-subtitle">Understanding the plugin ecosystem</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-cube"></i>
+                </div>
+                <h3>Core Processors (47)</h3>
+                <p><strong>Built into webharvest-core</strong> - HTTP, XPath, XQuery, Regexp, JSON, XML, Control Flow,
+                    Variables, Functions, Scripting, File I/O</p>
+                <div class="feature-tags">
+                    <a href="processors.html" class="tag">View Core</a>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-cubes"></i>
+                </div>
+                <h3>External Plugins (5+)</h3>
+                <p><strong>Separate Maven modules</strong> - Database (JDBC), Mail (SMTP/IMAP), FTP/FTPS, ZIP archives,
+                    Web Browser automation</p>
+                <div class="feature-tags">
+                    <span class="tag">This Page</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Available External Plugins -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Available External Plugins</h2>
+            <p class="section-subtitle">Production-ready extensions for common use cases</p>
+        </div>
+
+        <div class="usage-grid">
+            <!-- Database Plugin -->
+            <div class="usage-card">
+                <h3><i class="fas fa-database"></i> Database Plugin</h3>
+                <p><strong>Module:</strong> <code>webharvest-database</code></p>
+                <p>Execute SQL queries, connect to any JDBC database with connection pooling.</p>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>Named connections with pooling</li>
+                    <li>Support for all JDBC databases</li>
+                    <li>Inline or external SQL</li>
+                    <li>Result mapping to XML</li>
+                </ul>
+
+                <h4>Example:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-mail&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FTP Plugin -->
+            <div class="usage-card">
+                <h3><i class="fas fa-server"></i> FTP Plugin</h3>
+                <p><strong>Module:</strong> <code>webharvest-ftp</code></p>
+                <p>Upload/download files via FTP and FTPS with directory operations.</p>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>FTP and FTPS support</li>
+                    <li>Upload/download files</li>
+                    <li>Directory listing</li>
+                    <li>Passive/active mode</li>
+                </ul>
+
+                <h4>Example:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">ftp-example.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;ftp 
+    host="ftp.example.com"
+    username="user"
+    password="password"
+    action="put"
+    remoteFile="/data/report.xml"
+    localFile="report.xml"/&gt;
+
+&lt;!-- Download --&gt;
+&lt;ftp 
+    host="ftp.example.com"
+    username="user"
+    password="password"
+    action="get"
+    remoteFile="/data/input.csv"
+    localFile="input.csv"/&gt;</code></pre>
+                    </div>
+                </div>
+
+                <h4>Maven:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-ftp&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZIP Plugin -->
+            <div class="usage-card">
+                <h3><i class="fas fa-file-archive"></i> ZIP Plugin</h3>
+                <p><strong>Module:</strong> <code>webharvest-zip</code></p>
+                <p>Create and extract ZIP archives with compression options.</p>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>Create ZIP archives</li>
+                    <li>Extract ZIP contents</li>
+                    <li>List archive contents</li>
+                    <li>Compression levels</li>
+                </ul>
+
+                <h4>Example:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">zip-example.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;!-- Create archive --&gt;
+&lt;zip path="archive.zip" action="create"&gt;
+  &lt;file path="file1.txt" action="read"/&gt;
+  &lt;file path="file2.txt" action="read"/&gt;
+&lt;/zip&gt;
+
+&lt;!-- Extract archive --&gt;
+&lt;zip path="archive.zip" 
+     action="extract" 
+     destination="output/"/&gt;</code></pre>
+                    </div>
+                </div>
+
+                <h4>Maven:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-zip&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Web Browser Plugin -->
+            <div class="usage-card">
+                <h3><i class="fas fa-globe"></i> Web Browser Plugin</h3>
+                <p><strong>Module:</strong> <code>webharvest-webbrowser</code></p>
+                <p>Automated browser interactions for JavaScript-heavy sites.</p>
+
+                <h4>Features:</h4>
+                <ul>
+                    <li>Headless browser automation</li>
+                    <li>JavaScript execution</li>
+                    <li>DOM interaction</li>
+                    <li>Screenshot capture</li>
+                </ul>
+
+                <h4>Example:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">browser-example.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;web-browser 
+    url="https://dynamic-site.com"
+    waitForElement=".loaded"&gt;
+  &lt;!-- Browser actions --&gt;
+  &lt;click selector=".load-more"/&gt;
+  &lt;wait milliseconds="2000"/&gt;
+  &lt;extract selector=".items" var="items"/&gt;
+&lt;/web-browser&gt;</code></pre>
+                    </div>
+                </div>
+
+                <h4>Maven:</h4>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-webbrowser&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Plugin System Overview -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>How the Plugin System Works</h2>
+            <p class="section-subtitle">Auto-discovery, registration, and dependency injection</p>
+        </div>
+
+        <div class="architecture-cards">
+            <div class="arch-card">
+                <h3><i class="fas fa-search"></i> Auto-Discovery</h3>
+                <ul>
+                    <li><strong>Classpath Scanning:</strong> Plugins discovered automatically at startup</li>
+                    <li><strong>Annotations:</strong> <code>@Autoscanned</code> + <code>@Definition</code></li>
+                    <li><strong>No Configuration:</strong> Just add JAR to classpath</li>
+                    <li><strong>Namespace Support:</strong> Multiple XML namespaces</li>
+                </ul>
+            </div>
+
+            <div class="arch-card">
+                <h3><i class="fas fa-cogs"></i> Dependency Injection</h3>
+                <ul>
+                    <li><strong>Guice Integration:</strong> Full DI support via <code>@Inject</code></li>
+                    <li><strong>Service Location:</strong> <code>InjectorHelper</code> for manual lookup</li>
+                    <li><strong>HttpService:</strong> Shared HTTP client with connection pooling</li>
+                    <li><strong>Lifecycle Management:</strong> Automatic initialization and cleanup</li>
+                </ul>
+            </div>
+
+            <div class="arch-card">
+                <h3><i class="fas fa-file-code"></i> XSD Generation</h3>
+                <ul>
+                    <li><strong>Automatic Schemas:</strong> XSD generated from plugin annotations</li>
+                    <li><strong>IDE Support:</strong> Auto-completion in XML editors</li>
+                    <li><strong>Validation:</strong> Compile-time configuration checking</li>
+                    <li><strong>Documentation:</strong> Self-documenting plugins</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Building Custom Plugins -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Building Custom Plugins</h2>
+            <p class="section-subtitle">Step-by-step guide to creating your own</p>
+        </div>
+
+        <div class="installation-steps">
+            <div class="install-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Maven Setup</h3>
+                    <p>Create a new Maven project and add WebHarvest dependency:</p>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">pom.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
+  &lt;artifactId&gt;webharvest-core&lt;/artifactId&gt;
+  &lt;version&gt;2.2.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <div class="install-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Create Plugin Class</h3>
+                    <p>Extend <code>AbstractProcessor</code> and add annotations:</p>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">Example.java</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-java">@Autoscanned
+@TargetNamespace({"http://web-harvest.sourceforge.net/schema/1.0/config"})
+@Definition(
+    value = "my-plugin",
+    validAttributes = {"attr1", "attr2"},
+    requiredAttributes = "attr1"
+)
+public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
+    
+    @Override
+    public Variable execute(DynamicScopeContext context) 
+            throws InterruptedException {
+        String attr1 = BaseTemplater.evaluateToString(
+            elementDef.getAttr1(), null, context);
+        
+        // Plugin logic
+        String result = processData(attr1);
+        
+        return new NodeVariable(result);
+    }
+}</code></pre>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <div class="install-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Create Definition Class</h3>
+                    <p>Define plugin attributes and validation:</p>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">Example.java</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-java">public class MyPluginDef extends ProcessorDefinition {
+    private String attr1;
+    private String attr2;
+    
+    public String getAttr1() { return attr1; }
+    public void setAttr1(String attr1) { this.attr1 = attr1; }
+    
+    public String getAttr2() { return attr2; }
+    public void setAttr2(String attr2) { this.attr2 = attr2; }
+}</code></pre>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <div class="install-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Package & Deploy</h3>
+                    <p>Build JAR and add to WebHarvest classpath:</p>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash">mvn clean package
+cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
+
+# Plugin is auto-discovered on next run!</code></pre>
+                    </div>
+                </div>
+                    <p>Use in configurations:</p>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">config.xml</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-xml">&lt;my-plugin attr1="value"&gt;
+  &lt;http url="https://example.com"/&gt;
+&lt;/my-plugin&gt;</code></pre>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download CTA -->
+    <section class="download container" id="download" style="margin-top: 6rem;">
+        <div class="download-card">
+            <h2>Ready to Extend?</h2>
+            <p>Download external plugins or build your own custom extensions</p>
+            <div class="download-buttons">
+                <a class="btn btn-primary btn-large" href="https://sourceforge.net/projects/web-harvest/files/">
+                    <i class="fas fa-download"></i>
+                    Download Plugins
+                </a>
+                <a class="btn btn-secondary btn-large" href="examples/">
+                    <i class="fas fa-code"></i>
+                    View Examples
+                </a>
+            </div>
+            <p style="margin-top: 1.5rem; font-size: 0.9375rem; opacity: 0.85;">
+                All Plugins • Apache License 2.0 • Production Ready
+            </p>
         </div>
     </section>
 
@@ -68,7 +535,7 @@
         </div>
     </footer>
 
+    <script src="js/prism.js"></script>
 </body>
 
 </html>
-

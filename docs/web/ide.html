@@ -177,9 +177,21 @@
                 <div class="step-content">
                     <h3>Download & Extract</h3>
                     <p>Download the IDE distribution from SourceForge:</p>
-                    <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webharvest-ide-2.2.0.zip
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webharvest-ide-2.2.0.zip
 unzip webharvest-ide-2.2.0.zip
 cd webharvest-ide-2.2.0</code></pre>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -188,10 +200,34 @@ cd webharvest-ide-2.2.0</code></pre>
                 <div class="step-content">
                     <h3>Launch IDE</h3>
                     <p>Start the IDE server:</p>
-                    <pre><code class="language-bash">java -jar webharvest-ide-2.2.0.jar</code></pre>
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash">java -jar webharvest-ide-2.2.0.jar</code></pre>
+                    </div>
+                </div>
                     <p>Or use the provided launcher script:</p>
-                    <pre><code class="language-bash">./start-ide.sh    # Linux/macOS
+                    <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash">./start-ide.sh    # Linux/macOS
 start-ide.bat      # Windows</code></pre>
+                    </div>
+                </div>
                     <p>Then open your browser at: <strong>http://localhost:8080</strong></p>
                 </div>
             </div>
@@ -336,7 +372,17 @@ start-ide.bat      # Windows</code></pre>
             <div class="config-card">
                 <h3>Server Settings</h3>
                 <p>Configure via <code>ide.properties</code> or JVM arguments:</p>
-                <pre><code class="language-properties"># Port (default: 8080)
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">ide.properties</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-properties"># Port (default: 8080)
 server.port=8080
 
 # Context path (default: /)
@@ -347,14 +393,38 @@ server.maxThreads=200
 
 # Session timeout (default: 30 minutes)
 server.sessionTimeout=1800</code></pre>
+                    </div>
+                </div>
                 <p><strong>JVM arguments:</strong></p>
-                <pre><code class="language-bash">java -Dserver.port=9090 -jar webharvest-ide-2.2.0.jar</code></pre>
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash">java -Dserver.port=9090 -jar webharvest-ide-2.2.0.jar</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="config-card">
                 <h3>Execution Settings</h3>
                 <p>Configure WebHarvest runtime behavior:</p>
-                <pre><code class="language-properties"># Max HTTP connections (default: 20)
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">ide.properties</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-properties"># Max HTTP connections (default: 20)
 http.maxConnections=20
 
 # Connection timeout (default: 30s)
@@ -365,6 +435,8 @@ tracking.enabled=true
 
 # Log level (default: INFO)
 logging.level=INFO</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="config-card">
@@ -392,12 +464,24 @@ logging.level=INFO</code></pre>
                 <h4><i class="fas fa-exclamation-triangle"></i> Port Already in Use</h4>
                 <p><strong>Problem:</strong> <code>Port 8080 is already in use</code></p>
                 <p><strong>Solution:</strong></p>
-                <pre><code class="language-bash"># Option 1: Find and kill process
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash"># Option 1: Find and kill process
 lsof -i :8080
 kill -9 &lt;PID&gt;
 
 # Option 2: Use different port
 java -Dserver.port=9090 -jar webharvest-ide-2.2.0.jar</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="trouble-card">
@@ -416,18 +500,40 @@ java -Dserver.port=9090 -jar webharvest-ide-2.2.0.jar</code></pre>
                 <h4><i class="fas fa-exclamation-triangle"></i> Browser Cache Issues</h4>
                 <p><strong>Problem:</strong> Old UI/styles showing after update</p>
                 <p><strong>Solution:</strong></p>
-                <pre><code class="language-bash"># Hard refresh browser
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash"># Hard refresh browser
 Ctrl/Cmd + Shift + R
 
 # Or clear cache manually
 Settings → Privacy → Clear Browsing Data → Cached Images/Files</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="trouble-card">
                 <h4><i class="fas fa-exclamation-triangle"></i> Java Version Error</h4>
                 <p><strong>Problem:</strong> <code>Unsupported class file major version</code></p>
                 <p><strong>Solution:</strong></p>
-                <pre><code class="language-bash"># Check Java version
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash"># Check Java version
 java -version  # Should be 11+
 
 # Install Java 11+ if needed
@@ -436,18 +542,32 @@ sudo apt install openjdk-11-jdk
 
 # macOS (Homebrew):
 brew install openjdk@11</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="trouble-card">
                 <h4><i class="fas fa-exclamation-triangle"></i> Memory Issues</h4>
                 <p><strong>Problem:</strong> OutOfMemoryError or slow performance</p>
                 <p><strong>Solution:</strong></p>
-                <pre><code class="language-bash"># Increase heap size
+                <div class="code-window">
+                    <div class="window-header">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <span class="window-title">terminal</span>
+                    </div>
+                    <div class="window-content">
+                        <pre><code class="language-bash"># Increase heap size
 java -Xmx2g -jar webharvest-ide-2.2.0.jar
 
 # Or configure in start script
 export JAVA_OPTS="-Xmx2g -Xms512m"
 ./start-ide.sh</code></pre>
+                    </div>
+                </div>
             </div>
 
             <div class="trouble-card">
@@ -510,4 +630,3 @@ export JAVA_OPTS="-Xmx2g -Xms512m"
 </body>
 
 </html>
-
