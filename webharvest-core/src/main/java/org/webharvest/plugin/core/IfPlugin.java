@@ -50,17 +50,142 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * If plugin that provides conditional processing.
- * This is a core plugin migrated from the original IfProcessor.
+ * Conditional execution processor - execute body content only if condition is true.
  * 
  * <p>
- * The if plugin provides conditional processing based on a condition expression.
- * It currently returns an empty variable as the original processor does.
+ * The {@code <if>} processor evaluates a boolean condition and executes its body content
+ * only when the condition is true. It's essential for implementing conditional logic,
+ * error handling, data validation, and dynamic behavior in scrapers.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Condition Expressions</h3>
+ * <p>The {@code condition} attribute accepts:</p>
+ * <ul>
+ *   <li><strong>Boolean literals:</strong> {@code "true"}, {@code "false"}</li>
+ *   <li><strong>Comparisons:</strong> {@code "${count > 10}"}, {@code "${status == 'OK'}"}</li>
+ *   <li><strong>Empty checks:</strong> {@code "${empty(varname)}"}</li>
+ *   <li><strong>Script expressions:</strong> Any JavaScript expression returning boolean</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic conditional execution</h4>
+ * <pre>{@code
+ * <def var="httpStatus" value="200"/>
+ * 
+ * <if condition="${httpStatus == '200'}">
+ *   <file path="success.log" action="append">
+ *     Request succeeded at ${_date}
+ *   </file>
+ * </if>
+ * }</pre>
+ * 
+ * <h4>Example 2: Error handling</h4>
+ * <pre>{@code
+ * <def var="response">
+ *   <http url="https://api.example.com/data"/>
+ * </def>
+ * 
+ * <if condition="${empty(response)}">
+ *   <file path="errors.log" action="append">
+ *     Failed to fetch data from API
+ *   </file>
+ *   <exit/>
+ * </if>
+ * 
+ * <!-- Continue with non-empty response -->
+ * }</pre>
+ * 
+ * <h4>Example 3: If-else pattern with {@code <else>}</h4>
+ * <pre>{@code
+ * <def var="stock" value="5"/>
+ * 
+ * <if condition="${stock > 0}">
+ *   <def var="status" value="In Stock"/>
+ * </if>
+ * <else>
+ *   <def var="status" value="Out of Stock"/>
+ * </else>
+ * }</pre>
+ * 
+ * <h4>Example 4: Numeric comparison</h4>
+ * <pre>{@code
+ * <loop item="product" index="i" maxloops="100">
+ *   <xpath expression="//product">...</xpath>
+ *   
+ *   <def var="price">
+ *     <xpath expression=".//price/text()">${product}</xpath>
+ *   </def>
+ *   
+ *   <!-- Only save expensive products -->
+ *   <if condition="${price > 100}">
+ *     <file path="expensive-products.txt" action="append">
+ *       Product ${i}: $${price}
+ *     </file>
+ *   </if>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 5: String matching</h4>
+ * <pre>{@code
+ * <def var="category" value="electronics"/>
+ * 
+ * <if condition="${category == 'electronics'}">
+ *   <http url="https://example.com/electronics"/>
+ * </if>
+ * }</pre>
+ * 
+ * <h4>Example 6: Variable existence check</h4>
+ * <pre>{@code
+ * <if condition="${empty(apiKey)}">
+ *   <def var="apiKey" value="default-key"/>
+ * </if>
+ * 
+ * <http url="https://api.example.com?key=${apiKey}"/>
+ * }</pre>
+ * 
+ * <h3>Condition Evaluation</h3>
+ * <p>Conditions are evaluated using the configured scripting language (JavaScript by default):</p>
+ * <ul>
+ *   <li><strong>Truthy values:</strong> {@code "true"}, {@code "1"}, non-empty strings</li>
+ *   <li><strong>Falsy values:</strong> {@code "false"}, {@code "0"}, {@code ""}, {@code "null"}</li>
+ *   <li><strong>Operators:</strong> {@code ==, !=, <, >, <=, >=, &&, ||, !}</li>
+ * </ul>
+ * 
+ * <h3>Common Patterns</h3>
+ * <pre>{@code
+ * <!-- Check if variable exists -->
+ * <if condition="${!empty(varname)}">...</if>
+ * 
+ * <!-- Numeric comparison -->
+ * <if condition="${count >= 10}">...</if>
+ * 
+ * <!-- String equality -->
+ * <if condition="${status == 'success'}">...</if>
+ * 
+ * <!-- Complex boolean logic -->
+ * <if condition="${(count > 0) && (status == 'OK')}">...</if>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Required attribute:</strong> {@code condition} is mandatory</li>
+ *   <li><strong>Body execution:</strong> Body is only executed if condition is true</li>
+ *   <li><strong>No return value:</strong> {@code <if>} doesn't return a value (use {@code <def>} inside)</li>
+ *   <li><strong>Else support:</strong> Use {@code <else>} processor for alternative branch</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <else>} - Alternative execution path</li>
+ *   <li>{@code <while>} - Conditional looping</li>
+ *   <li>{@code <empty>} - Check for empty values</li>
+ *   <li>{@code <script>} - Complex conditional logic</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "if",

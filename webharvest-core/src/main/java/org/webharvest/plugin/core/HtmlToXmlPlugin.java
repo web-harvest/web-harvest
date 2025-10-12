@@ -80,11 +80,269 @@ import java.io.IOException;
 import java.io.StringReader;
 
 /**
- * Advanced HTML to XML plugin using Chain of Responsibility pattern
- * with Strategy pattern for different HTML parsing strategies.
+ * HTML to well-formed XML converter - essential for XPath/XQuery processing of web pages.
  * 
- * Each strategy implements HtmlParsingStrategy interface and tries to parse HTML.
- * If one strategy fails, the next one in the chain is tried.
+ * <p>
+ * The {@code <html-to-xml>} processor is one of the most critical processors in WebHarvest.
+ * It converts potentially malformed HTML from web pages into well-formed XML that can be
+ * processed using XPath and XQuery. This is necessary because most web pages contain
+ * invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.
+ * </p>
+ * 
+ * <h3>Why HTML to XML Conversion?</h3>
+ * <p>
+ * HTML from the web is often "tag soup" - syntactically invalid but rendered by browsers:
+ * </p>
+ * <ul>
+ *   <li>Unclosed tags: {@code <p>Text<p>More text}</li>
+ *   <li>Missing quotes: {@code <div class=container>}</li>
+ *   <li>Invalid nesting: {@code <b><i>Text</b></i>}</li>
+ *   <li>Missing closing tags: {@code <li>Item 1<li>Item 2}</li>
+ * </ul>
+ * <p>
+ * XPath requires well-formed XML. {@code <html-to-xml>} fixes all these issues,
+ * enabling reliable data extraction.
+ * </p>
+ * 
+ * <h3>Multi-Strategy Parsing (Chain of Responsibility)</h3>
+ * <p>
+ * The plugin uses multiple parsing strategies in order of robustness. If one fails,
+ * the next is tried automatically:
+ * </p>
+ * <ol>
+ *   <li><strong>JSoup.parse():</strong> Primary parser - fast, handles most HTML correctly</li>
+ *   <li><strong>JSoup.clean():</strong> Aggressive cleaning with Safelist - for broken structure</li>
+ *   <li><strong>TagSoup:</strong> Streaming SAX parser - for low memory/large files</li>
+ *   <li><strong>Apache Tika:</strong> Content extraction fallback - when structure doesn't matter</li>
+ *   <li><strong>Basic cleaning:</strong> Last resort - regex-based cleaning</li>
+ * </ol>
+ * <p>
+ * This multi-strategy approach ensures that even the worst HTML can be processed.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Convert HTTP response to XML for XPath</h4>
+ * <pre>{@code
+ * <def var="productName">
+ *   <xpath expression="//h1[@class='product-title']/text()">
+ *     <html-to-xml>
+ *       <http url="https://example.com/product/123"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Extract multiple fields from page</h4>
+ * <pre>{@code
+ * <!-- Fetch page once -->
+ * <def var="htmlPage">
+ *   <http url="https://example.com/article/456"/>
+ * </def>
+ * 
+ * <!-- Convert to XML once -->
+ * <def var="xmlPage">
+ *   <html-to-xml>${htmlPage}</html-to-xml>
+ * </def>
+ * 
+ * <!-- Extract multiple fields -->
+ * <def var="title">
+ *   <xpath expression="//h1/text()">
+ *     ${xmlPage}
+ *   </xpath>
+ * </def>
+ * 
+ * <def var="author">
+ *   <xpath expression="//meta[@name='author']/@content">
+ *     ${xmlPage}
+ *   </xpath>
+ * </def>
+ * 
+ * <def var="content">
+ *   <xpath expression="//div[@class='content']">
+ *     ${xmlPage}
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 3: Extract all links from page</h4>
+ * <pre>{@code
+ * <def var="links">
+ *   <xpath expression="//a/@href">
+ *     <html-to-xml>
+ *       <http url="https://example.com/links"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <!-- Loop through all links -->
+ * <loop item="link">
+ *   ${links}
+ *   
+ *   <http url="${link}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 4: Extract table data</h4>
+ * <pre>{@code
+ * <def var="rows">
+ *   <xpath expression="//table[@id='products']/tr">
+ *     <html-to-xml>
+ *       <http url="https://example.com/products"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <loop item="row">
+ *   ${rows}
+ *   
+ *   <def var="productName">
+ *     <xpath expression="td[1]/text()">${row}</xpath>
+ *   </def>
+ *   <def var="productPrice">
+ *     <xpath expression="td[2]/text()">${row}</xpath>
+ *   </def>
+ *   
+ *   <!-- Save to file/database -->
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 5: Complex selector with namespaces</h4>
+ * <pre>{@code
+ * <def var="articles">
+ *   <xpath expression="//article[contains(@class, 'news-item')]//h2/text()">
+ *     <html-to-xml>
+ *       <http url="https://news.example.com"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 6: Handling malformed HTML</h4>
+ * <pre>{@code
+ * <!-- Even badly broken HTML works -->
+ * <def var="brokenHtml" value="<p>Unclosed paragraph<div>No closing div<b>Bold"/>
+ * 
+ * <html-to-xml>${brokenHtml}</html-to-xml>
+ * <!-- Result: Well-formed XML with auto-closed tags -->
+ * }</pre>
+ * 
+ * <h3>Common Patterns</h3>
+ * 
+ * <h4>Pattern 1: Fetch → Convert → Extract</h4>
+ * <pre>{@code
+ * <!-- 1. Fetch HTML -->
+ * <def var="page">
+ *   <http url="https://example.com"/>
+ * </def>
+ * 
+ * <!-- 2. Convert to XML -->
+ * <def var="xml">
+ *   <html-to-xml>${page}</html-to-xml>
+ * </def>
+ * 
+ * <!-- 3. Extract data with XPath -->
+ * <def var="data">
+ *   <xpath expression="//div[@class='content']/p">
+ *     ${xml}
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Pattern 2: Inline conversion (compact)</h4>
+ * <pre>{@code
+ * <def var="title">
+ *   <xpath expression="//title/text()">
+ *     <html-to-xml>
+ *       <http url="https://example.com"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Technical Details</h3>
+ * 
+ * <p><strong>Parsing Strategies:</strong></p>
+ * <ol>
+ *   <li><strong>JSoup Parse:</strong> Primary strategy using JSoup library
+ *     <ul>
+ *       <li>Handles most modern HTML correctly</li>
+ *       <li>Preserves document structure</li>
+ *       <li>Auto-closes tags and fixes nesting</li>
+ *       <li>Fast performance</li>
+ *     </ul>
+ *   </li>
+ *   <li><strong>JSoup Clean:</strong> Aggressive cleaning with Safelist
+ *     <ul>
+ *       <li>Used when structure is severely broken</li>
+ *       <li>Removes dangerous content</li>
+ *       <li>Guaranteed well-formed output</li>
+ *     </ul>
+ *   </li>
+ *   <li><strong>TagSoup:</strong> SAX-based streaming parser
+ *     <ul>
+ *       <li>Low memory usage for huge files</li>
+ *       <li>Very lenient with broken HTML</li>
+ *       <li>Slower but more robust</li>
+ *     </ul>
+ *   </li>
+ *   <li><strong>Apache Tika:</strong> Content extraction
+ *     <ul>
+ *       <li>Last resort - extracts just text</li>
+ *       <li>Works when HTML is completely broken</li>
+ *       <li>Loses structure but preserves content</li>
+ *     </ul>
+ *   </li>
+ * </ol>
+ * 
+ * <p><strong>Automatic Fixes Applied:</strong></p>
+ * <ul>
+ *   <li>Invalid XML characters removed (control characters)</li>
+ *   <li>Malformed DOCTYPE declarations fixed or removed</li>
+ *   <li>Element names with dots normalized (class.name → class_name)</li>
+ *   <li>Unclosed tags automatically closed</li>
+ *   <li>Invalid nesting corrected</li>
+ *   <li>Missing quotes added to attributes</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>No parameters:</strong> html-to-xml has no attributes - uses body content only</li>
+ *   <li><strong>Input source:</strong> Can be from {@code <http>}, {@code <file>}, {@code <def>}, or literal text</li>
+ *   <li><strong>Output format:</strong> Always well-formed XML (validates against XML spec)</li>
+ *   <li><strong>Memory usage:</strong> Entire HTML is loaded into memory - consider file size</li>
+ *   <li><strong>Performance:</strong> JSoup is fast (~50MB/sec), TagSoup is slower but more robust</li>
+ *   <li><strong>Charset:</strong> Respects charset from HTTP or uses UTF-8 default</li>
+ * </ul>
+ * 
+ * <h3>Troubleshooting</h3>
+ * 
+ * <p><strong>If XPath returns empty results:</strong></p>
+ * <ul>
+ *   <li>Save XML to file and inspect: {@code <file path="debug.xml" action="write">${xmlPage}</file>}</li>
+ *   <li>Check if namespaces were added by parser</li>
+ *   <li>Verify element names (may be lowercased)</li>
+ *   <li>Try simpler XPath expression first</li>
+ * </ul>
+ * 
+ * <p><strong>If content is missing:</strong></p>
+ * <ul>
+ *   <li>JSoup may have removed malformed elements</li>
+ *   <li>Try TagSoup strategy (more lenient)</li>
+ *   <li>Check if content is loaded via JavaScript (use web-browser plugin instead)</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - Fetch HTML from web</li>
+ *   <li>{@code <xpath>} - Extract data from XML</li>
+ *   <li>{@code <xquery>} - Complex XML querying</li>
+ *   <li>{@code <json-to-xml>} - Convert JSON to XML</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

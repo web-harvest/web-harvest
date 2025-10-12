@@ -71,16 +71,266 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * File plugin that provides file operations like read, write, append, and list.
+ * File I/O processor - read, write, append, and list files on the filesystem.
  * 
- * <h3>Bug #41 Fix (v2.2.1): Binary File Downloads</h3>
  * <p>
- * Fixed binary file corruption when downloading files (RAR, ZIP, images, etc.).
- * Now uses {@link NodeVariable#toBinary()} instead of {@code toString().getBytes()}
- * to preserve binary data without String conversion corruption.
+ * The {@code <file>} processor provides complete file system operations for both
+ * text and binary files. It supports reading files, writing output, appending data,
+ * and listing directory contents with filtering.
  * </p>
  * 
+ * <h3>Supported Operations</h3>
+ * <ul>
+ *   <li><strong>read:</strong> Read file content (text or binary)</li>
+ *   <li><strong>write:</strong> Write content to file (creates parent directories if needed)</li>
+ *   <li><strong>append:</strong> Append content to existing file</li>
+ *   <li><strong>list:</strong> List directory contents with optional filtering</li>
+ * </ul>
+ * 
+ * <h3>Binary File Support (Bug #41 - Fixed in v2.2.1)</h3>
+ * <p>
+ * <strong>Issue:</strong> Binary files (images, PDFs, ZIPs, RAR) were corrupted when
+ * saved because content was converted to String and back to bytes, causing encoding issues.
+ * </p>
+ * <p>
+ * <strong>Fix:</strong> FilePlugin now uses {@link NodeVariable#toBinary()} method which
+ * preserves original {@code byte[]} data without String conversion. This prevents
+ * corruption of binary content downloaded via {@code <http>}.
+ * </p>
+ * <p>
+ * <strong>Example - Download binary file:</strong>
+ * <pre>{@code
+ * <!-- Download image -->
+ * <def var="imageData">
+ *   <http url="https://example.com/image.jpg"/>
+ * </def>
+ * 
+ * <!-- Save as binary (no corruption!) -->
+ * <file path="downloaded.jpg" action="write" type="binary">
+ *   <get-var var="imageData"/>
+ * </file>
+ * }</pre>
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Read text file</h4>
+ * <pre>{@code
+ * <def var="config">
+ *   <file path="config.txt" action="read"/>
+ * </def>
+ * 
+ * <!-- File content is now in ${config} variable -->
+ * }</pre>
+ * 
+ * <h4>Example 2: Write text file</h4>
+ * <pre>{@code
+ * <file path="output.txt" action="write">
+ *   This is the file content
+ *   with multiple lines
+ * </file>
+ * }</pre>
+ * 
+ * <h4>Example 3: Write HTML from HTTP response</h4>
+ * <pre>{@code
+ * <def var="htmlPage">
+ *   <http url="https://example.com"/>
+ * </def>
+ * 
+ * <file path="page.html" action="write" charset="UTF-8">
+ *   ${htmlPage}
+ * </file>
+ * }</pre>
+ * 
+ * <h4>Example 4: Save JSON API response</h4>
+ * <pre>{@code
+ * <file path="data/products.json" action="write">
+ *   <http url="https://api.example.com/products">
+ *     <http-header name="Accept">application/json</http-header>
+ *   </http>
+ * </file>
+ * }</pre>
+ * 
+ * <h4>Example 5: Download binary file (image, PDF, ZIP)</h4>
+ * <pre>{@code
+ * <file path="downloads/document.pdf" action="write" type="binary">
+ *   <http url="https://example.com/report.pdf"/>
+ * </file>
+ * 
+ * <!-- Works with images, ZIPs, executables, etc. -->
+ * <file path="archive.zip" action="write" type="binary">
+ *   <http url="https://example.com/data.zip"/>
+ * </file>
+ * }</pre>
+ * 
+ * <h4>Example 6: Append to log file</h4>
+ * <pre>{@code
+ * <loop item="url" index="i">
+ *   <def var="urls">http://example.com/page1&#10;http://example.com/page2</def>
+ *   
+ *   <def var="page">
+ *     <http url="${url}"/>
+ *   </def>
+ *   
+ *   <!-- Append each result to log -->
+ *   <file path="scraping.log" action="append">
+ *     Processed ${url} at ${_date}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 7: List directory files</h4>
+ * <pre>{@code
+ * <!-- List all files in directory -->
+ * <def var="fileList">
+ *   <file path="downloads/" action="list"/>
+ * </def>
+ * 
+ * <!-- Process each file -->
+ * <loop item="filename">
+ *   ${fileList}
+ *   
+ *   <file path="downloads/${filename}" action="read"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 8: List with filter (wildcard pattern)</h4>
+ * <pre>{@code
+ * <!-- List only .xml files -->
+ * <def var="xmlFiles">
+ *   <file path="configs/" 
+ *         action="list" 
+ *         listfilter="*.xml"
+ *         listfiles="true"
+ *         listdirs="false"/>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 9: Recursive directory listing</h4>
+ * <pre>{@code
+ * <!-- List all Java files recursively -->
+ * <def var="javaFiles">
+ *   <file path="src/" 
+ *         action="list"
+ *         listfilter="*.java"
+ *         listrecursive="true"/>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>File Paths</h3>
+ * <p>
+ * File paths can be:
+ * </p>
+ * <ul>
+ *   <li><strong>Relative:</strong> Resolved against working directory (configurable via {@code -Dworkdir})</li>
+ *   <li><strong>Absolute:</strong> Full path like {@code /home/user/data.txt} or {@code C:\data\file.txt}</li>
+ *   <li><strong>Template variables:</strong> Paths support variable interpolation: {@code output/${filename}.txt}</li>
+ * </ul>
+ * 
+ * <h3>Character Encoding</h3>
+ * <p>
+ * For text files, the {@code charset} attribute controls encoding. Default is UTF-8.
+ * Common values: UTF-8, ISO-8859-1, Windows-1252, US-ASCII.
+ * </p>
+ * <p>
+ * Binary files ignore the charset attribute.
+ * </p>
+ * 
+ * <h3>Directory Creation</h3>
+ * <p>
+ * When writing files, parent directories are created automatically if they don't exist.
+ * For example, {@code <file path="output/data/results.txt" action="write">} will create
+ * both {@code output/} and {@code output/data/} directories.
+ * </p>
+ * 
+ * <h3>List Filter Wildcards</h3>
+ * <p>
+ * The {@code listfilter} attribute supports command-prompt style wildcards:
+ * </p>
+ * <ul>
+ *   <li><strong>*</strong> - Matches any characters (e.g., {@code *.xml} matches all XML files)</li>
+ *   <li><strong>?</strong> - Matches single character (e.g., {@code file?.txt} matches file1.txt, fileA.txt)</li>
+ *   <li><strong>.</strong> - Literal dot (automatically escaped)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Write safety:</strong> Write action overwrites existing files without warning</li>
+ *   <li><strong>Append behavior:</strong> Creates file if it doesn't exist</li>
+ *   <li><strong>Binary vs Text:</strong> Use {@code type="binary"} for images, ZIPs, PDFs to avoid corruption</li>
+ *   <li><strong>Performance:</strong> Large files are read entirely into memory - consider file size</li>
+ *   <li><strong>Thread safety:</strong> Multiple threads can write to different files safely</li>
+ * </ul>
+ * 
+ * <h3>Common Patterns</h3>
+ * 
+ * <h4>Pattern 1: Scrape and save HTML pages</h4>
+ * <pre>{@code
+ * <loop item="pageNum" index="i" maxloops="10">
+ *   <def var="urls">1,2,3,4,5,6,7,8,9,10</def>
+ *   
+ *   <def var="html">
+ *     <http url="https://example.com/page/${pageNum}"/>
+ *   </def>
+ *   
+ *   <file path="pages/page-${pageNum}.html" action="write">
+ *     ${html}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Pattern 2: Download all images from a page</h4>
+ * <pre>{@code
+ * <def var="imageUrls">
+ *   <xpath expression="//img/@src">
+ *     <html-to-xml>
+ *       <http url="https://example.com"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <loop item="url" index="i">
+ *   ${imageUrls}
+ *   
+ *   <file path="images/image-${i}.jpg" action="write" type="binary">
+ *     <http url="${url}"/>
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Pattern 3: Export to CSV file</h4>
+ * <pre>{@code
+ * <!-- Write CSV header -->
+ * <file path="products.csv" action="write">
+ *   ID,Name,Price
+ * </file>
+ * 
+ * <!-- Append each product -->
+ * <loop item="product">
+ *   <xpath expression="//product">
+ *     <http url="https://api.example.com/products"/>
+ *   </xpath>
+ *   
+ *   <def var="id"><xpath expression="@id"/></def>
+ *   <def var="name"><xpath expression="name/text()"/></def>
+ *   <def var="price"><xpath expression="price/text()"/></def>
+ *   
+ *   <file path="products.csv" action="append">
+ *     ${id},${name},${price}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - Download files from web</li>
+ *   <li>{@code <def>} - Store file content in variables</li>
+ *   <li>{@code <template>} - Generate dynamic file content</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
  * @version 2.2.1
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "file",

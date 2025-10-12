@@ -51,12 +51,138 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plugin that sets a variable value in the context.
- * This is equivalent to the old SetVarPlugin but using the new plugin architecture.
- *
+ * Variable setter processor - updates existing variables (legacy, use {@code <def>} instead).
+ * 
+ * <p>
+ * The {@code <set-var>} processor updates the value of an existing variable in the
+ * execution context. This is a legacy processor maintained for backward compatibility.
+ * </p>
+ * 
+ * <p>
+ * <strong>Deprecation Notice:</strong> This processor is maintained for compatibility
+ * with configurations written for WebHarvest 1.x. New configurations should use
+ * {@code <def>} instead, which provides the same functionality with cleaner syntax.
+ * </p>
+ * 
+ * <h3>Differences: set-var vs def</h3>
+ * <table>
+ *   <tr>
+ *     <th>Aspect</th>
+ *     <th>{@code <set-var>}</th>
+ *     <th>{@code <def>}</th>
+ *   </tr>
+ *   <tr>
+ *     <td>Purpose</td>
+ *     <td>Update existing variable</td>
+ *     <td>Define or update variable</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Syntax</td>
+ *     <td>{@code <set-var name="x">}</td>
+ *     <td>{@code <def var="x">}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Arithmetic</td>
+ *     <td>Limited support</td>
+ *     <td>Via template or script</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Recommended</td>
+ *     <td>No (legacy)</td>
+ *     <td><strong>Yes</strong></td>
+ *   </tr>
+ * </table>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic variable update (legacy syntax)</h4>
+ * <pre>{@code
+ * <def var="counter" value="0"/>
+ * 
+ * <loop maxloops="10">
+ *   <!-- Legacy: set-var -->
+ *   <set-var name="counter">${counter + 1}</set-var>
+ *   
+ *   <!-- Modern: use def instead -->
+ *   <def var="counter" value="${counter}1"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 2: Arithmetic expressions (limited support)</h4>
+ * <pre>{@code
+ * <def var="count" value="5"/>
+ * 
+ * <!-- set-var has basic arithmetic -->
+ * <set-var name="count">${count + 1}</set-var>
+ * <set-var name="count">${count - 1}</set-var>
+ * }</pre>
+ * 
+ * <h4>Example 3: Updating with processor result</h4>
+ * <pre>{@code
+ * <def var="totalItems" value="0"/>
+ * 
+ * <loop item="page" maxloops="5">
+ *   <def var="pageItems">
+ *     <xpath expression="count(//item)">
+ *       <http url="https://api.example.com/page/${page}"/>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <!-- Add to total (string concatenation, not arithmetic!) -->
+ *   <set-var name="totalItems">${totalItems}${pageItems}</set-var>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Migration to {@code <def>}</h3>
+ * 
+ * <p><strong>Old (set-var):</strong></p>
+ * <pre>{@code
+ * <set-var name="counter">${counter + 1}</set-var>
+ * }</pre>
+ * 
+ * <p><strong>New (def):</strong></p>
+ * <pre>{@code
+ * <def var="counter" value="${counter}1"/>
+ * }</pre>
+ * 
+ * <p><strong>Or with script for real arithmetic:</strong></p>
+ * <pre>{@code
+ * <def var="counter">
+ *   <script>
+ *     <![CDATA[
+ *       var current = parseInt(context.getVar("counter"));
+ *       current + 1;
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Limitations</h3>
+ * <ul>
+ *   <li><strong>Arithmetic:</strong> Only basic + and - operations, result is string concatenation unless using script</li>
+ *   <li><strong>Type conversion:</strong> Limited automatic type conversion</li>
+ *   <li><strong>Scope:</strong> Can only update variables in current scope</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Deprecated:</strong> Use {@code <def>} for new configurations</li>
+ *   <li><strong>Attribute name:</strong> Uses {@code name="x"} instead of {@code var="x"}</li>
+ *   <li><strong>Arithmetic caveat:</strong> {@code ${x + 1}} is string concat, not math (use script for real math)</li>
+ *   <li><strong>Template support:</strong> Variable name supports template interpolation</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <def>} - Modern variable definition (recommended)</li>
+ *   <li>{@code <get-var>} - Retrieve variable value</li>
+ *   <li>{@code <script>} - For complex arithmetic and logic</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
- * @version %I%, %G%
+ * @version 2.2.0
+ * @since 1.0
+ * @deprecated Use {@code <def>} processor instead for cleaner syntax
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

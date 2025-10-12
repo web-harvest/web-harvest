@@ -50,9 +50,269 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Template plugin that evaluates template content using scripting languages.
- * Supports ${expression} syntax with beanshell, javascript, and groovy.
- * This plugin uses BaseTemplater for template processing.
+ * Template processor - evaluates {@code ${expression}} syntax for variable interpolation and dynamic content.
+ * 
+ * <p>
+ * The {@code <template>} processor provides powerful variable interpolation and expression
+ * evaluation within text content. It processes {@code ${...}} expressions using the configured
+ * scripting language (JavaScript, Groovy, or BeanShell), enabling dynamic content generation,
+ * string building, and simple computations.
+ * </p>
+ * 
+ * <p>
+ * <strong>Note:</strong> In most cases, you don't need explicit {@code <template>} processor -
+ * {@code ${}} expressions work automatically in text content and attributes. Use {@code <template>}
+ * when you need explicit template processing or language selection.
+ * </p>
+ * 
+ * <h3>Template Expression Syntax</h3>
+ * <p>The {@code ${expression}} syntax supports:</p>
+ * <ul>
+ *   <li><strong>Variables:</strong> {@code ${varname}} - Simple variable interpolation</li>
+ *   <li><strong>Properties:</strong> {@code ${object.property}} - Access object properties</li>
+ *   <li><strong>Arithmetic:</strong> {@code ${price * quantity}} - Mathematical operations</li>
+ *   <li><strong>String concat:</strong> {@code ${firstName + " " + lastName}} - Combine strings</li>
+ *   <li><strong>Function calls:</strong> {@code ${methodName(arg1, arg2)}} - Call functions</li>
+ *   <li><strong>Conditionals:</strong> {@code ${condition ? value1 : value2}} - Ternary operator</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple variable interpolation</h4>
+ * <pre>{@code
+ * <def var="username" value="john_doe"/>
+ * <def var="apiKey" value="abc123"/>
+ * 
+ * <!-- Automatic template interpolation in attributes -->
+ * <http url="https://api.example.com/user/${username}?key=${apiKey}"/>
+ * 
+ * <!-- Explicit template processor (same result) -->
+ * <def var="url">
+ *   <template>https://api.example.com/user/${username}?key=${apiKey}</template>
+ * </def>
+ * <http url="${url}"/>
+ * }</pre>
+ * 
+ * <h4>Example 2: Building complex strings</h4>
+ * <pre>{@code
+ * <def var="firstName" value="John"/>
+ * <def var="lastName" value="Doe"/>
+ * <def var="age" value="30"/>
+ * 
+ * <def var="greeting">
+ *   <template>
+ *     Hello, ${firstName} ${lastName}!
+ *     You are ${age} years old.
+ *     Next year you will be ${parseInt(age) + 1}.
+ *   </template>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 3: HTML generation</h4>
+ * <pre>{@code
+ * <loop item="product" index="i">
+ *   <xpath expression="//product">...</xpath>
+ *   
+ *   <def var="name"><xpath expression=".//name/text()">${product}</xpath></def>
+ *   <def var="price"><xpath expression=".//price/text()">${product}</xpath></def>
+ *   
+ *   <def var="html">
+ *     <template>
+ *       <![CDATA[
+ *         <div class="product" id="product-${i}">
+ *           <h3>${name}</h3>
+ *           <p class="price">$${price}</p>
+ *           <a href="/product/${i}">View Details</a>
+ *         </div>
+ *       ]]>
+ *     </template>
+ *   </def>
+ *   
+ *   <file path="products.html" action="append">${html}</file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 4: JSON generation</h4>
+ * <pre>{@code
+ * <def var="userId" value="123"/>
+ * <def var="userName" value="John Doe"/>
+ * <def var="userEmail" value="john@example.com"/>
+ * 
+ * <def var="jsonOutput">
+ *   <template>
+ *     <![CDATA[
+ *     {
+ *       "id": ${userId},
+ *       "name": "${userName}",
+ *       "email": "${userEmail}",
+ *       "timestamp": "${_date}",
+ *       "source": "WebHarvest"
+ *     }
+ *     ]]>
+ *   </template>
+ * </def>
+ * 
+ * <file path="user-${userId}.json" action="write">${jsonOutput}</file>
+ * }</pre>
+ * 
+ * <h4>Example 5: CSV generation</h4>
+ * <pre>{@code
+ * <!-- CSV header -->
+ * <file path="products.csv" action="write">ID,Name,Price,Stock</file>
+ * 
+ * <!-- CSV rows with template -->
+ * <loop item="product">
+ *   <xpath expression="//product">...</xpath>
+ *   
+ *   <def var="id"><xpath expression="@id">${product}</xpath></def>
+ *   <def var="name"><xpath expression="name/text()">${product}</xpath></def>
+ *   <def var="price"><xpath expression="price/text()">${product}</xpath></def>
+ *   <def var="stock"><xpath expression="stock/text()">${product}</xpath></def>
+ *   
+ *   <file path="products.csv" action="append">
+ *     <template>${id},"${name}",${price},${stock}</template>
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 6: Email body generation</h4>
+ * <pre>{@code
+ * <def var="customerName" value="Jane Smith"/>
+ * <def var="orderTotal" value="299.99"/>
+ * <def var="orderId" value="ORD-98765"/>
+ * 
+ * <def var="emailBody">
+ *   <template>
+ *     <![CDATA[
+ *     Dear ${customerName},
+ *     
+ *     Thank you for your order ${orderId}.
+ *     
+ *     Order Details:
+ *     - Total: $${orderTotal}
+ *     - Date: ${_date}
+ *     - Estimated delivery: 3-5 business days
+ *     
+ *     Track your order: https://example.com/track/${orderId}
+ *     
+ *     Best regards,
+ *     The Team
+ *     ]]>
+ *   </template>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 7: XML document generation</h4>
+ * <pre>{@code
+ * <def var="products">
+ *   <template>
+ *     <![CDATA[
+ *     <?xml version="1.0" encoding="UTF-8"?>
+ *     <products>
+ *     ]]>
+ *   </template>
+ * </def>
+ * 
+ * <loop item="product">
+ *   <xpath expression="//product">...</xpath>
+ *   
+ *   <def var="name"><xpath expression="name/text()">${product}</xpath></def>
+ *   <def var="price"><xpath expression="price/text()">${product}</xpath></def>
+ *   
+ *   <def var="products" value="${products}">
+ *     <template>
+ *       <![CDATA[
+ *       <product>
+ *         <name>${name}</name>
+ *         <price>${price}</price>
+ *       </product>
+ *       ]]>
+ *     </template>
+ *   </def>
+ * </loop>
+ * 
+ * <def var="products" value="${products}</products>"/>
+ * <file path="products.xml" action="write">${products}</file>
+ * }</pre>
+ * 
+ * <h3>Built-in Variables</h3>
+ * <p>Available in all templates:</p>
+ * <ul>
+ *   <li><strong>${_date}:</strong> Current date/time</li>
+ *   <li><strong>${_index}:</strong> Current loop index (inside loops)</li>
+ *   <li><strong>${_item}:</strong> Current loop item (inside loops)</li>
+ * </ul>
+ * 
+ * <h3>Automatic vs Explicit Template Processing</h3>
+ * 
+ * <p><strong>Automatic (most common):</strong></p>
+ * <pre>{@code
+ * <!-- Templates work automatically in text and attributes -->
+ * <http url="https://example.com/user/${userId}"/>
+ * <file path="output-${timestamp}.txt" action="write">
+ *   User: ${userName}
+ * </file>
+ * }</pre>
+ * 
+ * <p><strong>Explicit {@code <template>} when:</strong></p>
+ * <ul>
+ *   <li>Need to select specific scripting language</li>
+ *   <li>Complex multi-line templates with CDATA</li>
+ *   <li>Template contains XML that would be parsed as processors</li>
+ *   <li>Want clear semantic separation of template from other content</li>
+ * </ul>
+ * 
+ * <h3>Expression Examples</h3>
+ * 
+ * <pre>{@code
+ * <!-- Variable access -->
+ * ${username}
+ * 
+ * <!-- Arithmetic -->
+ * ${price * 1.23}  <!-- Add 23% tax -->
+ * ${count + 1}
+ * ${total / itemCount}
+ * 
+ * <!-- String operations -->
+ * ${name.toUpperCase()}
+ * ${email.substring(0, email.indexOf('@'))}
+ * ${url.replace('http:', 'https:')}
+ * 
+ * <!-- Conditional -->
+ * ${stock > 0 ? 'In Stock' : 'Out of Stock'}
+ * ${price > 100 ? 'Premium' : 'Standard'}
+ * 
+ * <!-- Function calls (if defined) -->
+ * ${formatDate(timestamp)}
+ * ${calculateDiscount(price, 0.15)}
+ * }</pre>
+ * 
+ * <h3>Performance Tips</h3>
+ * <ul>
+ *   <li><strong>Minimize in loops:</strong> Build template once, reference variable in loop</li>
+ *   <li><strong>Cache complex expressions:</strong> Evaluate once, store in variable</li>
+ *   <li><strong>Use script for heavy logic:</strong> {@code <script>} is better for complex computations</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>CDATA for XML:</strong> Use {@code <![CDATA[...]]>} when template contains XML/HTML tags</li>
+ *   <li><strong>Escaping:</strong> Use {@code $${}} to output literal {@code ${}} in text</li>
+ *   <li><strong>Language:</strong> Inherits from config default or specify via {@code language} attribute</li>
+ *   <li><strong>Error handling:</strong> Invalid expressions return empty string (logged as warning)</li>
+ *   <li><strong>Thread safety:</strong> Template evaluation is thread-safe</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <script>} - For complex scripting logic</li>
+ *   <li>{@code <def>} - Variable definition</li>
+ *   <li>{@code <function>} - Define reusable template functions</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "template",

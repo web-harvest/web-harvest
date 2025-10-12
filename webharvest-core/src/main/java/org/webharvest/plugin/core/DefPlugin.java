@@ -51,11 +51,156 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plugin that defines variables using the 'def' element.
- * This plugin allows defining variables with their values.
+ * Variable definition plugin - defines or updates variables in the execution context.
  * 
- * @author AI Assistant
- * @since 2.1.0
+ * <p>
+ * The {@code <def>} element is one of the most fundamental processors in WebHarvest.
+ * It creates or updates variables in the current scope, making data available for
+ * subsequent processors through variable references ({@code ${varname}}).
+ * </p>
+ * 
+ * <h3>Variable Value Sources</h3>
+ * <p>Variable value can be provided in three ways (in order of precedence):</p>
+ * <ol>
+ *   <li><strong>value attribute:</strong> Direct value assignment with template interpolation</li>
+ *   <li><strong>Child processors:</strong> Result of executing nested processors</li>
+ *   <li><strong>Text content:</strong> Plain text or text with variable interpolation</li>
+ * </ol>
+ * 
+ * <h3>Template Interpolation (v2.2.x Enhancement)</h3>
+ * <p>
+ * All value sources support template interpolation, allowing you to reference
+ * other variables using {@code ${varname}} syntax. This applies to both the
+ * {@code value} attribute and text content.
+ * </p>
+ * 
+ * <h3>Variable Scope</h3>
+ * <p>
+ * Variables are stored in the current execution context and are accessible to:
+ * </p>
+ * <ul>
+ *   <li>All subsequent processors in the same scope</li>
+ *   <li>Child scopes (nested processors)</li>
+ *   <li>Template expressions using {@code ${varname}} syntax</li>
+ *   <li>Script processors via context API</li>
+ * </ul>
+ * <p>
+ * Variables defined inside functions or loops are local to that scope unless
+ * explicitly made global.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple string value</h4>
+ * <pre>{@code
+ * <def var="apiKey" value="abc123xyz"/>
+ * 
+ * <!-- Use the variable -->
+ * <http url="https://api.example.com?key=${apiKey}"/>
+ * }</pre>
+ * 
+ * <h4>Example 2: Value from child processor (HTTP response)</h4>
+ * <pre>{@code
+ * <def var="htmlContent">
+ *   <http url="https://example.com"/>
+ * </def>
+ * 
+ * <!-- Extract data from stored HTML -->
+ * <def var="title">
+ *   <xpath expression="//title/text()">
+ *     <html-to-xml>${htmlContent}</html-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 3: Template interpolation in value attribute</h4>
+ * <pre>{@code
+ * <def var="baseUrl" value="https://example.com"/>
+ * <def var="apiPath" value="/api/v1"/>
+ * 
+ * <!-- Combine variables -->
+ * <def var="fullUrl" value="${baseUrl}${apiPath}/users"/>
+ * <!-- Result: https://example.com/api/v1/users -->
+ * }</pre>
+ * 
+ * <h4>Example 4: Text content with interpolation</h4>
+ * <pre>{@code
+ * <def var="firstName" value="John"/>
+ * <def var="lastName" value="Doe"/>
+ * 
+ * <def var="fullName">Hello, ${firstName} ${lastName}!</def>
+ * <!-- Result: Hello, John Doe! -->
+ * }</pre>
+ * 
+ * <h4>Example 5: Complex value from multiple processors</h4>
+ * <pre>{@code
+ * <def var="productData">
+ *   <http url="https://api.example.com/product/123"/>
+ *   <json-to-xml>${http}</json-to-xml>
+ *   <xpath expression="//product/name/text()"/>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 6: Updating existing variables</h4>
+ * <pre>{@code
+ * <def var="counter" value="0"/>
+ * 
+ * <loop item="product" index="i" maxloops="100">
+ *   <http url="https://api.example.com/products"/>
+ *   
+ *   <!-- Update counter (concatenation, not arithmetic) -->
+ *   <def var="counter" value="${counter}1"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Common Patterns</h3>
+ * 
+ * <h4>Configuration Variables</h4>
+ * <pre>{@code
+ * <config>
+ *   <!-- Define constants at the top -->
+ *   <def var="BASE_URL" value="https://production.example.com"/>
+ *   <def var="API_KEY" value="secret_key_here"/>
+ *   <def var="MAX_RETRIES" value="3"/>
+ *   
+ *   <!-- Rest of scraper logic -->
+ *   <http url="${BASE_URL}/api/data?key=${API_KEY}"/>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Data Accumulation</h4>
+ * <pre>{@code
+ * <def var="allProducts" value=""/>
+ * 
+ * <loop item="page" index="i" maxloops="10">
+ *   <def var="pageData">
+ *     <http url="https://api.example.com/products?page=${i}"/>
+ *   </def>
+ *   
+ *   <!-- Accumulate results -->
+ *   <def var="allProducts" value="${allProducts}${pageData}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Variable names:</strong> Must be valid identifiers (alphanumeric + underscore)</li>
+ *   <li><strong>Overwriting:</strong> Defining a variable with existing name updates its value</li>
+ *   <li><strong>Empty values:</strong> If no value is provided (no attribute, no body), variable is set to empty string</li>
+ *   <li><strong>Type preservation:</strong> Variables store the actual Variable type (NodeVariable, ListVariable, etc.)</li>
+ *   <li><strong>Performance:</strong> Variable lookup is O(1), safe to use extensively</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <var>} - Alternative syntax for variable definition</li>
+ *   <li>{@code <get-var>} - Retrieve variable value</li>
+ *   <li>{@code <set-var>} - Update existing variable (deprecated, use def instead)</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

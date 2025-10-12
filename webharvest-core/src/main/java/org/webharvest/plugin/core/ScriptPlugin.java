@@ -53,18 +53,258 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Script plugin that executes script code in various scripting languages.
- * This is a core plugin migrated from the original ScriptProcessor.
+ * Script execution processor - execute JavaScript, Groovy, or BeanShell code for complex logic.
  * 
  * <p>
- * The script plugin allows execution of script code in supported languages
- * like JavaScript, Groovy, and BeanShell. It can process script content
- * from the body and return the result.
+ * The {@code <script>} processor enables execution of arbitrary code in multiple scripting
+ * languages. This is essential for complex data transformations, arithmetic operations,
+ * API calls, conditional logic, and any processing that's difficult to express in pure XML.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Supported Languages</h3>
+ * <ul>
+ *   <li><strong>JavaScript (default):</strong> Rhino engine, ECMAScript 5 compatible</li>
+ *   <li><strong>Groovy:</strong> Full Groovy language support with Java interop</li>
+ *   <li><strong>BeanShell:</strong> Lightweight Java-like scripting</li>
+ * </ul>
+ * 
+ * <h3>Context API</h3>
+ * <p>Scripts have access to the WebHarvest context via the {@code context} object:</p>
+ * <ul>
+ *   <li><strong>context.getVar("name"):</strong> Get variable value (returns Variable object)</li>
+ *   <li><strong>context.setVar("name", value):</strong> Set variable (deprecated, use return value)</li>
+ *   <li><strong>context.getCharset():</strong> Get current character encoding</li>
+ *   <li><strong>context.getScriptingLanguage():</strong> Get active scripting language</li>
+ * </ul>
+ * 
+ * <p><strong>Accessing variable values as String:</strong></p>
+ * <pre>{@code
+ * var username = context.getVar("username").toString();
+ * var count = parseInt(context.getVar("count").toString());
+ * }</pre>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Arithmetic operations (real math, not string concat)</h4>
+ * <pre>{@code
+ * <def var="price" value="99.99"/>
+ * <def var="quantity" value="5"/>
+ * 
+ * <def var="total">
+ *   <script language="javascript">
+ *     <![CDATA[
+ *       var price = parseFloat(context.getVar("price").toString());
+ *       var qty = parseInt(context.getVar("quantity").toString());
+ *       price * qty;  // Returns: 499.95
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: String manipulation</h4>
+ * <pre>{@code
+ * <def var="email" value="USER@EXAMPLE.COM"/>
+ * 
+ * <def var="normalizedEmail">
+ *   <script>
+ *     <![CDATA[
+ *       var email = context.getVar("email").toString();
+ *       email.toLowerCase();  // Returns: user@example.com
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 3: Conditional logic</h4>
+ * <pre>{@code
+ * <def var="httpStatus" value="404"/>
+ * 
+ * <def var="shouldRetry">
+ *   <script>
+ *     <![CDATA[
+ *       var status = parseInt(context.getVar("httpStatus").toString());
+ *       
+ *       if (status >= 500 && status < 600) {
+ *         "true";  // Server error - retry
+ *       } else if (status == 429) {
+ *         "true";  // Rate limit - retry
+ *       } else {
+ *         "false";  // Don't retry
+ *       }
+ *     ]]>
+ *   </script>
+ * </def>
+ * 
+ * <if condition="${shouldRetry}">
+ *   <sleep time="5000"/>
+ *   <http url="${url}"/>
+ * </if>
+ * }</pre>
+ * 
+ * <h4>Example 4: JSON parsing and manipulation</h4>
+ * <pre>{@code
+ * <def var="jsonData">
+ *   <http url="https://api.example.com/data"/>
+ * </def>
+ * 
+ * <def var="extractedValue">
+ *   <script>
+ *     <![CDATA[
+ *       var json = context.getVar("jsonData").toString();
+ *       var obj = JSON.parse(json);
+ *       obj.users[0].name;  // Extract nested value
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 5: Date formatting</h4>
+ * <pre>{@code
+ * <def var="timestamp" value="1609459200000"/>
+ * 
+ * <def var="formattedDate">
+ *   <script>
+ *     <![CDATA[
+ *       var ts = parseInt(context.getVar("timestamp").toString());
+ *       var date = new Date(ts);
+ *       date.toISOString();  // Returns: 2021-01-01T00:00:00.000Z
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 6: Complex URL building</h4>
+ * <pre>{@code
+ * <def var="baseUrl" value="https://api.example.com"/>
+ * <def var="endpoint" value="users"/>
+ * <def var="userId" value="123"/>
+ * <def var="fields">name,email,age</def>
+ * 
+ * <def var="fullUrl">
+ *   <script>
+ *     <![CDATA[
+ *       var base = context.getVar("baseUrl").toString();
+ *       var ep = context.getVar("endpoint").toString();
+ *       var id = context.getVar("userId").toString();
+ *       var fields = context.getVar("fields").toString();
+ *       
+ *       base + "/" + ep + "/" + id + "?fields=" + encodeURIComponent(fields);
+ *       // Returns: https://api.example.com/users/123?fields=name%2Cemail%2Cage
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 7: Groovy for Java library access</h4>
+ * <pre>{@code
+ * <def var="uuid">
+ *   <script language="groovy">
+ *     <![CDATA[
+ *       import java.util.UUID
+ *       UUID.randomUUID().toString()
+ *     ]]>
+ *   </script>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 8: Counter with real increment</h4>
+ * <pre>{@code
+ * <def var="counter" value="0"/>
+ * 
+ * <loop maxloops="10">
+ *   <!-- Real arithmetic increment -->
+ *   <def var="counter">
+ *     <script>
+ *       <![CDATA[
+ *         var current = parseInt(context.getVar("counter").toString());
+ *         current + 1;
+ *       ]]>
+ *     </script>
+ *   </def>
+ *   
+ *   <http url="https://example.com/page/${counter}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Language Selection</h3>
+ * 
+ * <p>Set language via attribute or config default:</p>
+ * <pre>{@code
+ * <!-- JavaScript (default) -->
+ * <script>
+ *   var x = 42;
+ * </script>
+ * 
+ * <!-- Groovy -->
+ * <script language="groovy">
+ *   def x = 42
+ * </script>
+ * 
+ * <!-- BeanShell -->
+ * <script language="beanshell">
+ *   int x = 42;
+ * </script>
+ * }</pre>
+ * 
+ * <h3>Return Values</h3>
+ * <p>
+ * The last expression in the script is returned as the processor result.
+ * It's automatically converted to a Variable object:
+ * </p>
+ * <ul>
+ *   <li><strong>String:</strong> Wrapped in NodeVariable</li>
+ *   <li><strong>Number:</strong> Converted to String, wrapped in NodeVariable</li>
+ *   <li><strong>Boolean:</strong> Converted to "true"/"false"</li>
+ *   <li><strong>null/undefined:</strong> EmptyVariable</li>
+ *   <li><strong>Variable object:</strong> Returned as-is</li>
+ * </ul>
+ * 
+ * <h3>Best Practices</h3>
+ * <ul>
+ *   <li><strong>Use CDATA:</strong> Wrap script in {@code <![CDATA[...]]>} to avoid XML escaping issues</li>
+ *   <li><strong>Error handling:</strong> Use try-catch in scripts for robust execution</li>
+ *   <li><strong>Variable conversion:</strong> Always call {@code .toString()} on Variable objects</li>
+ *   <li><strong>Type safety:</strong> Use parseInt(), parseFloat() for numeric operations</li>
+ *   <li><strong>Keep it simple:</strong> Complex logic should be in Java plugins, not scripts</li>
+ * </ul>
+ * 
+ * <h3>Common Use Cases</h3>
+ * <ul>
+ *   <li><strong>Math operations:</strong> Real arithmetic (multiplication, division, etc.)</li>
+ *   <li><strong>String processing:</strong> Regex, formatting, encoding</li>
+ *   <li><strong>Date/time handling:</strong> Parsing, formatting, calculations</li>
+ *   <li><strong>Conditional logic:</strong> Complex if/else branching</li>
+ *   <li><strong>JSON manipulation:</strong> Parsing, transformation, extraction</li>
+ *   <li><strong>API signatures:</strong> HMAC, OAuth, request signing</li>
+ * </ul>
+ * 
+ * <h3>Performance Considerations</h3>
+ * <ul>
+ *   <li><strong>Script compilation:</strong> Scripts are compiled once per execution (cached)</li>
+ *   <li><strong>Engine initialization:</strong> First script execution may be slower</li>
+ *   <li><strong>Groovy overhead:</strong> Groovy is slower than JavaScript but more powerful</li>
+ *   <li><strong>Avoid in loops:</strong> Extract logic outside loop when possible</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>CDATA required:</strong> Use {@code <![CDATA[...]]>} for any code with {@code <, >, &}</li>
+ *   <li><strong>Context access:</strong> {@code context} object is always available</li>
+ *   <li><strong>Last expression:</strong> The final evaluated expression is returned</li>
+ *   <li><strong>No side effects:</strong> Prefer returning values over context.setVar()</li>
+ *   <li><strong>Thread safety:</strong> Each execution has isolated script context</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <template>} - Simple variable interpolation (faster than script)</li>
+ *   <li>{@code <def>} - Variable assignment</li>
+ *   <li>{@code <function>} - Define reusable script functions</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "script",

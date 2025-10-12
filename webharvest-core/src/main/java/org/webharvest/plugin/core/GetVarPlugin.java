@@ -51,12 +51,206 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plugin that retrieves a variable value from the context.
- * This is equivalent to the old GetVarPlugin but using the new plugin architecture.
- *
+ * Variable retrieval processor - retrieves variable value from execution context.
+ * 
+ * <p>
+ * The {@code <get-var>} processor retrieves the value of a previously defined variable
+ * and returns it for use in the current execution flow. It's commonly used to pass
+ * data between different parts of a scraper configuration while preserving the original
+ * Variable type (binary data, XML structure, lists).
+ * </p>
+ * 
+ * <p>
+ * <strong>Note:</strong> In most cases, you can use the simpler {@code ${varname}} syntax
+ * for variable interpolation within text content. The {@code <get-var>} processor is
+ * specifically needed when you want to pass the actual Variable object (preserving type)
+ * to another processor without String conversion.
+ * </p>
+ * 
+ * <h3>get-var vs Template ${} Syntax</h3>
+ * <table border="1">
+ *   <tr>
+ *     <th>Syntax</th>
+ *     <th>Use Case</th>
+ *     <th>Result Type</th>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code ${varname}}</td>
+ *     <td>Text interpolation in attributes/content</td>
+ *     <td>String (calls toString())</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code <get-var var="varname"/>}</td>
+ *     <td>Pass Variable object to processor</td>
+ *     <td>Original Variable type (binary, XML, list)</td>
+ *   </tr>
+ * </table>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple text retrieval (both syntaxes work)</h4>
+ * <pre>{@code
+ * <def var="apiUrl" value="https://api.example.com"/>
+ * 
+ * <!-- Template syntax (simpler) -->
+ * <http url="${apiUrl}/users"/>
+ * 
+ * <!-- Processor syntax (explicit) -->
+ * <http>
+ *   <get-var var="apiUrl"/>/users
+ * </http>
+ * }</pre>
+ * 
+ * <h4>Example 2: Preserving binary data (use get-var!)</h4>
+ * <pre>{@code
+ * <!-- Download image as binary -->
+ * <def var="imageData">
+ *   <http url="https://example.com/logo.png"/>
+ * </def>
+ * 
+ * <!-- CORRECT: get-var preserves byte[] array -->
+ * <file path="logo.png" action="write" type="binary">
+ *   <get-var var="imageData"/>
+ * </file>
+ * 
+ * <!-- WRONG: ${imageData} converts to String, corrupts binary! -->
+ * <file path="broken.png" action="write" type="binary">
+ *   ${imageData}  <!-- ❌ Corrupted! -->
+ * </file>
+ * }</pre>
+ * 
+ * <h4>Example 3: Preserving XML structure</h4>
+ * <pre>{@code
+ * <def var="xmlData">
+ *   <json-to-xml>
+ *     <http url="https://api.example.com/data.json"/>
+ *   </json-to-xml>
+ * </def>
+ * 
+ * <!-- get-var preserves XML structure for XPath -->
+ * <def var="username">
+ *   <xpath expression="//user/name/text()">
+ *     <get-var var="xmlData"/>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 4: Working with lists</h4>
+ * <pre>{@code
+ * <def var="productIds">
+ *   <xpath expression="//product/@id">
+ *     <html-to-xml>
+ *       <http url="https://example.com/products"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <!-- Loop needs Variable object, not String -->
+ * <loop item="id">
+ *   <get-var var="productIds"/>
+ *   
+ *   <http url="https://example.com/product/${id}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 5: Dynamic variable names with template interpolation</h4>
+ * <pre>{@code
+ * <def var="lang" value="en"/>
+ * <def var="greeting_en" value="Hello"/>
+ * <def var="greeting_pl" value="Cześć"/>
+ * <def var="greeting_de" value="Hallo"/>
+ * 
+ * <!-- Dynamic variable name -->
+ * <get-var var="greeting_${lang}"/>
+ * <!-- Result: Hello (retrieves greeting_en) -->
+ * }</pre>
+ * 
+ * <h4>Example 6: Reusing expensive HTTP calls</h4>
+ * <pre>{@code
+ * <!-- Fetch API data once -->
+ * <def var="apiData">
+ *   <http url="https://api.example.com/data?key=${apiKey}"/>
+ * </def>
+ * 
+ * <!-- Reuse the same response multiple times -->
+ * <def var="userId">
+ *   <xpath expression="//user/@id">
+ *     <json-to-xml><get-var var="apiData"/></json-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <def var="userName">
+ *   <xpath expression="//user/name">
+ *     <json-to-xml><get-var var="apiData"/></json-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <def var="userEmail">
+ *   <xpath expression="//user/email">
+ *     <json-to-xml><get-var var="apiData"/></json-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>When to Use</h3>
+ * 
+ * <p><strong>Use {@code <get-var>} when you need to:</strong></p>
+ * <ul>
+ *   <li>Pass binary data to {@code <file>} (images, PDFs, ZIPs)</li>
+ *   <li>Preserve XML/JSON structure for XPath/XQuery processing</li>
+ *   <li>Work with ListVariable in {@code <loop>} iterations</li>
+ *   <li>Use dynamic variable names (e.g., {@code var="item_${index}"})</li>
+ *   <li>Chain processors that expect Variable objects, not Strings</li>
+ * </ul>
+ * 
+ * <p><strong>Use {@code ${variable}} when you need to:</strong></p>
+ * <ul>
+ *   <li>Interpolate text in URLs, paths, or content</li>
+ *   <li>Build strings from variables</li>
+ *   <li>Simple text replacement (toString() is acceptable)</li>
+ * </ul>
+ * 
+ * <h3>Error Handling</h3>
+ * <p>
+ * If the requested variable doesn't exist in the current scope or any parent scope,
+ * {@code <get-var>} throws a RuntimeException:
+ * </p>
+ * <pre>
+ * Error retrieving variable 'productId': Variable 'productId' is not defined!
+ * </pre>
+ * <p>
+ * This strict behavior helps catch typos and missing variable definitions early in
+ * the execution. To handle optional variables, use {@code <if>}:
+ * </p>
+ * <pre>{@code
+ * <if condition="${empty(optionalVar)}">
+ *   <!-- Variable doesn't exist, use default -->
+ *   <def var="optionalVar" value="default"/>
+ * </if>
+ * 
+ * <get-var var="optionalVar"/>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Type preservation:</strong> Preserves original Variable type (NodeVariable, ListVariable, etc.)</li>
+ *   <li><strong>Variable scope:</strong> Searches current scope, then parent scopes up to global</li>
+ *   <li><strong>Template support:</strong> The {@code var} attribute itself supports ${} interpolation</li>
+ *   <li><strong>No fallback:</strong> Missing variables throw error (unlike ${} which may return empty)</li>
+ *   <li><strong>Performance:</strong> O(1) variable lookup, safe to use extensively</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <def>} - Define or update variables</li>
+ *   <li>{@code <var>} - Alternative variable definition syntax</li>
+ *   <li>{@code ${varname}} - Template variable interpolation</li>
+ *   <li>{@code <empty>} - Check if variable is empty</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
- * @version %I%, %G%
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

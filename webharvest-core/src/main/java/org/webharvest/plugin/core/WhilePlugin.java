@@ -56,18 +56,174 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * While plugin that provides while loop functionality.
- * This is a core plugin migrated from the original WhileProcessor.
+ * While loop processor - repeats execution while condition remains true.
  * 
  * <p>
- * The While plugin executes its body content repeatedly while a condition
- * is true. It supports index variables, maximum loop limits, and empty
- * result handling.
+ * The {@code <while>} processor executes its body content repeatedly as long as the
+ * specified condition evaluates to true. Unlike {@code <loop>}, which iterates over
+ * a collection, {@code <while>} continues until a condition becomes false or maxloops
+ * limit is reached.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>condition (or test):</strong> Boolean expression evaluated before each iteration</li>
+ *   <li><strong>index:</strong> Variable name for 0-based iteration counter (optional)</li>
+ *   <li><strong>maxloops:</strong> Safety limit to prevent infinite loops (default: 100)</li>
+ *   <li><strong>empty:</strong> Skip empty results if true (default: false)</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Pagination with has-next indicator</h4>
+ * <pre>{@code
+ * <def var="hasNextPage" value="true"/>
+ * <def var="page" value="1"/>
+ * 
+ * <while condition="${hasNextPage}" maxloops="20">
+ *   <def var="response">
+ *     <http url="https://api.example.com/products?page=${page}"/>
+ *   </def>
+ *   
+ *   <!-- Check if there's a next page -->
+ *   <def var="hasNextPage">
+ *     <xpath expression="//pagination/hasNext/text()">
+ *       <json-to-xml>${response}</json-to-xml>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <!-- Increment page -->
+ *   <def var="page">
+ *     <script>parseInt(context.getVar("page")) + 1</script>
+ *   </def>
+ * </while>
+ * }</pre>
+ * 
+ * <h4>Example 2: Retry logic with backoff</h4>
+ * <pre>{@code
+ * <def var="success" value="false"/>
+ * <def var="retryCount" value="0"/>
+ * 
+ * <while condition="${!success && retryCount < 3}" maxloops="3">
+ *   <def var="response">
+ *     <http url="https://api.example.com/data"/>
+ *   </def>
+ *   
+ *   <if condition="${!empty(response)}">
+ *     <def var="success" value="true"/>
+ *   </if>
+ *   <else>
+ *     <def var="retryCount">
+ *       <script>parseInt(context.getVar("retryCount")) + 1</script>
+ *     </def>
+ *     <sleep time="1000"/>  <!-- Wait before retry -->
+ *   </else>
+ * </while>
+ * }</pre>
+ * 
+ * <h4>Example 3: Process until specific value found</h4>
+ * <pre>{@code
+ * <def var="found" value="false"/>
+ * 
+ * <while condition="${!found}" maxloops="50" index="i">
+ *   <def var="item">
+ *     <http url="https://api.example.com/item/${i}"/>
+ *   </def>
+ *   
+ *   <if condition="${item == 'TARGET'}">
+ *     <def var="found" value="true"/>
+ *   </if>
+ * </while>
+ * }</pre>
+ * 
+ * <h4>Example 4: Dynamic pagination (unknown page count)</h4>
+ * <pre>{@code
+ * <def var="hasMore" value="true"/>
+ * <def var="offset" value="0"/>
+ * 
+ * <while test="${hasMore}" maxloops="100">
+ *   <def var="data">
+ *     <http url="https://api.example.com/items?offset=${offset}&limit=100"/>
+ *   </def>
+ *   
+ *   <!-- Check if response has items -->
+ *   <def var="itemCount">
+ *     <xpath expression="count(//item)">
+ *       <json-to-xml>${data}</json-to-xml>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <if condition="${itemCount == '0'}">
+ *     <def var="hasMore" value="false"/>
+ *   </if>
+ *   <else>
+ *     <def var="offset">
+ *       <script>parseInt(context.getVar("offset")) + 100</script>
+ *     </def>
+ *   </else>
+ * </while>
+ * }</pre>
+ * 
+ * <h3>Condition vs Loop</h3>
+ * <table border="1">
+ *   <tr>
+ *     <th>Use {@code <while>} when:</th>
+ *     <th>Use {@code <loop>} when:</th>
+ *   </tr>
+ *   <tr>
+ *     <td>Pagination with unknown page count</td>
+ *     <td>Iterating over known collection</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Retry logic until success</td>
+ *     <td>Processing list of URLs</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Search until item found</td>
+ *     <td>Extract all items from XPath</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Continue while condition true</td>
+ *     <td>Process each item in array</td>
+ *   </tr>
+ * </table>
+ * 
+ * <h3>Infinite Loop Protection</h3>
+ * <p>
+ * Always set {@code maxloops} to prevent infinite loops:
+ * </p>
+ * <pre>{@code
+ * <!-- Safe: has limit -->
+ * <while condition="${hasMore}" maxloops="100">
+ *   ...
+ * </while>
+ * 
+ * <!-- Dangerous: no explicit limit (defaults to 100) -->
+ * <while condition="${true}">
+ *   ...  <!-- Will stop after 100 iterations -->
+ * </while>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Condition evaluation:</strong> Re-evaluated before each iteration</li>
+ *   <li><strong>Index variable:</strong> Auto-incremented, starts at 0</li>
+ *   <li><strong>maxloops default:</strong> 100 iterations (safety measure)</li>
+ *   <li><strong>Infinite loops:</strong> Set maxloops=-1 to disable limit (risky!)</li>
+ *   <li><strong>test vs condition:</strong> Both attributes work (condition preferred)</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <loop>} - Iterate over collections</li>
+ *   <li>{@code <if>} - One-time conditional execution</li>
+ *   <li>{@code <exit>} - Break out of while loop</li>
+ *   <li>{@code <script>} - Complex condition logic</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "while",

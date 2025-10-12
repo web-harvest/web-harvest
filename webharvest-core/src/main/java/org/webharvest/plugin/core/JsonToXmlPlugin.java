@@ -50,30 +50,187 @@ import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Converter from JSON to XML.
- * Migrated from org.webharvest.runtime.processors.plugins.JsonToXmlPlugin
+ * JSON to XML converter - converts JSON API responses to XML for XPath processing.
  * 
- * <h3>Bug #61 Fix (v2.2.1)</h3>
  * <p>
- * Fixed issue where JSON key "content" was treated specially by org.json.XML,
- * causing it to be stripped from XML output. Now uses {@link JsonXmlConverter}
- * which treats all JSON keys equally without special cases.
+ * The {@code <json-to-xml>} processor converts JSON data (from REST APIs, files, etc.)
+ * into well-formed XML. This enables you to use XPath and XQuery to extract data from
+ * JSON responses, providing a unified query language for both HTML and JSON sources.
  * </p>
  * 
+ * <h3>Why Convert JSON to XML?</h3>
+ * <ul>
+ *   <li><strong>Unified querying:</strong> Use XPath for both HTML pages and JSON APIs</li>
+ *   <li><strong>Complex extraction:</strong> XPath is more powerful than simple JSON path for nested data</li>
+ *   <li><strong>Data transformation:</strong> XSLT and XQuery work on XML, not JSON</li>
+ *   <li><strong>Consistent pipeline:</strong> Same processors ({@code <xpath>}) for all data sources</li>
+ * </ul>
+ * 
+ * <h3>Bug #61 Fix (v2.2.1): "content" Key Preservation</h3>
+ * <p>
+ * <strong>Issue:</strong> The org.json.XML library treated the JSON key {@code "content"}
+ * specially, stripping it from XML output and using its value as element text content.
+ * This broke data extraction for APIs using {@code "content"} as a regular field name.
+ * </p>
  * <p>
  * <strong>Before Fix:</strong><br>
- * Input: <code>{"a": {"content": "hello"}}</code><br>
- * Output: <code>&lt;a&gt;hello&lt;/a&gt;</code> (content key lost!)
+ * Input JSON: {@code {"article": {"content": "hello world"}}}<br>
+ * Output XML: {@code <article>hello world</article>} (content key lost!)
+ * </p>
+ * <p>
+ * <strong>After Fix (v2.2.1):</strong><br>
+ * Input JSON: {@code {"article": {"content": "hello world"}}}<br>
+ * Output XML: {@code <article><content>hello world</content></article>} (preserved!)
+ * </p>
+ * <p>
+ * Fix implemented via custom {@link JsonXmlConverter} which treats all JSON keys
+ * equally without special cases.
  * </p>
  * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Parse JSON API response</h4>
+ * <pre>{@code
+ * <def var="userName">
+ *   <xpath expression="//user/name/text()">
+ *     <json-to-xml>
+ *       <http url="https://api.example.com/user/123">
+ *         <http-header name="Accept">application/json</http-header>
+ *       </http>
+ *     </json-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Extract from nested JSON</h4>
+ * <pre>{@code
+ * <!-- JSON: {"data": {"users": [{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]}} -->
+ * <def var="userNames">
+ *   <xpath expression="//users/item/name/text()">
+ *     <json-to-xml>
+ *       <http url="https://api.example.com/users"/>
+ *     </json-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <!-- Result: List of names -->
+ * <loop item="name">
+ *   ${userNames}
+ *   
+ *   <file path="names.txt" action="append">${name}&#10;</file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 3: JSON array processing</h4>
+ * <pre>{@code
+ * <!-- JSON: [{"id": 1, "title": "Post 1"}, {"id": 2, "title": "Post 2"}] -->
+ * <loop item="post">
+ *   <xpath expression="//item">
+ *     <json-to-xml>
+ *       <http url="https://api.example.com/posts"/>
+ *     </json-to-xml>
+ *   </xpath>
+ *   
+ *   <def var="postId"><xpath expression="id/text()">${post}</xpath></def>
+ *   <def var="postTitle"><xpath expression="title/text()">${post}</xpath></def>
+ *   
+ *   <file path="posts/post-${postId}.txt" action="write">
+ *     ${postTitle}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 4: Complex nested data extraction</h4>
+ * <pre>{@code
+ * <def var="addresses">
+ *   <xpath expression="//users/item[address/city/text()='London']/address/street/text()">
+ *     <json-to-xml>
+ *       <http url="https://api.example.com/users"/>
+ *     </json-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 5: Custom root tag name</h4>
+ * <pre>{@code
+ * <json-to-xml tag="root">
+ *   <http url="https://api.example.com/data"/>
+ * </json-to-xml>
+ * <!-- Output: <root>...</root> instead of default <json>...</json> -->
+ * }</pre>
+ * 
+ * <h3>JSON to XML Mapping</h3>
+ * <table border="1">
+ *   <tr>
+ *     <th>JSON Type</th>
+ *     <th>XML Representation</th>
+ *   </tr>
+ *   <tr>
+ *     <td>Object {@code {"key": "value"}}</td>
+ *     <td>{@code <key>value</key>}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Array {@code [1, 2, 3]}</td>
+ *     <td>{@code <item>1</item><item>2</item><item>3</item>}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Nested {@code {"user": {"name": "John"}}}</td>
+ *     <td>{@code <user><name>John</name></user>}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Number {@code 42}</td>
+ *     <td>{@code <number>42</number>}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Boolean {@code true}</td>
+ *     <td>{@code <boolean>true</boolean>}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Null {@code null}</td>
+ *     <td>{@code <null/>}</td>
+ *   </tr>
+ * </table>
+ * 
+ * <h3>Array Handling</h3>
  * <p>
- * <strong>After Fix:</strong><br>
- * Input: <code>{"a": {"content": "hello"}}</code><br>
- * Output: <code>&lt;a&gt;&lt;content&gt;hello&lt;/content&gt;&lt;/a&gt;</code> (preserved!)
+ * JSON arrays are converted to repeated {@code <item>} elements:
  * </p>
+ * <pre>
+ * JSON: [{"id": 1}, {"id": 2}]
+ * XML:  &lt;item&gt;&lt;id&gt;1&lt;/id&gt;&lt;/item&gt;
+ *       &lt;item&gt;&lt;id&gt;2&lt;/id&gt;&lt;/item&gt;
+ * </pre>
+ * <p>
+ * Use XPath {@code //item} to iterate over array elements.
+ * </p>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Root element:</strong> Output is always wrapped in root element (default: {@code <json>})</li>
+ *   <li><strong>Array items:</strong> Array elements use {@code <item>} tag name</li>
+ *   <li><strong>Key preservation:</strong> All JSON keys are preserved (Bug #61 fixed)</li>
+ *   <li><strong>Type information:</strong> JSON types are preserved in element structure</li>
+ *   <li><strong>Invalid XML chars:</strong> JSON keys with spaces/special chars are escaped</li>
+ * </ul>
+ * 
+ * <h3>Performance</h3>
+ * <ul>
+ *   <li><strong>Conversion speed:</strong> Fast for typical API responses (< 1MB)</li>
+ *   <li><strong>Memory usage:</strong> Entire JSON is loaded into memory</li>
+ *   <li><strong>Large files:</strong> For huge JSON files (> 10MB), consider streaming JSON parsers</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xml-to-json>} - Convert XML back to JSON</li>
+ *   <li>{@code <xpath>} - Query the resulting XML</li>
+ *   <li>{@code <http>} - Fetch JSON from APIs</li>
+ *   <li>{@code <script>} - Alternative for JSON parsing with JSON.parse()</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.1
+ * @since 2.0
  * @see JsonXmlConverter
  */
 @CorePlugin(elementName = "json-to-xml")
