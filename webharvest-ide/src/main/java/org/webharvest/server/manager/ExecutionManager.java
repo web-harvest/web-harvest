@@ -38,6 +38,7 @@ public class ExecutionManager {
     
     private final ExecutorService executorService;
     private final Map<String, ExecutionJob> activeExecutions;
+    private final Map<String, ExecutionJob> completedExecutions;  // v2.2: Keep completed jobs
     private final Map<String, org.eclipse.jetty.websocket.api.Session> webSocketSessions;
     private final Injector injector;
     private final Harvest harvest;
@@ -47,6 +48,7 @@ public class ExecutionManager {
         
         this.executorService = Executors.newFixedThreadPool(5); // Max 5 concurrent executions
         this.activeExecutions = new ConcurrentHashMap<>();
+        this.completedExecutions = new ConcurrentHashMap<>();  // v2.2: Store completed jobs
         this.webSocketSessions = new ConcurrentHashMap<>();
         
         LOG.info("Creating Guice injector for Harvest API...");
@@ -81,9 +83,14 @@ public class ExecutionManager {
                 executeJob(job);
             } catch (Exception e) {
                 LOG.error("Execution failed: {}", job.getId(), e);
+                job.addLog("ERROR", "Execution failed: " + e.getMessage());
                 sendUpdate(job.getId(), "FAILED", e.getMessage(), 0, null);
             } finally {
+                // v2.2: Move to completed instead of removing (Apple HIG - preserve state)
                 activeExecutions.remove(job.getId());
+                completedExecutions.put(job.getId(), job);
+                LOG.info("Job {} moved to completed storage (total completed: {})", 
+                    job.getId(), completedExecutions.size());
             }
         });
     }
@@ -139,11 +146,23 @@ public class ExecutionManager {
             sendLog(job.getId(), "SUCCESS", "Extracted " + resultMap.size() + " variables");
             sendLog(job.getId(), "INFO", "Preparing results for display...");
             
+            // v2.2: Store results in job (Apple HIG - preserve state)
+            job.setResults(resultMap);
+            job.setLastMessage("Execution completed successfully");
+            
             // Notify completion
             job.setStatus("COMPLETED");
             sendUpdate(job.getId(), "COMPLETED", "Execution completed successfully", 100, resultMap);
             
             sendLog(job.getId(), "SUCCESS", "Results sent to browser!");
+            
+            // v2.2: Log session summary
+            if (job.getSession() != null) {
+                sendLog(job.getId(), "INFO", "═══ SESSION SUMMARY ═══");
+                sendLog(job.getId(), "INFO", job.getSessionInfo());
+                sendLog(job.getId(), "INFO", job.getTokenUsageInfo());
+                sendLog(job.getId(), "INFO", "═══════════════════════");
+            }
             
         } catch (Exception e) {
             LOG.error("Execution error: {}", job.getId(), e);
@@ -239,9 +258,16 @@ public class ExecutionManager {
     }
     
     /**
-     * Send log entry via WebSocket
+     * Send log entry via WebSocket AND store in job (v2.2: Apple HIG - preserve logs)
      */
     private void sendLog(String executionId, String level, String message) {
+        // v2.2: Store log in job first (Apple HIG - each tab keeps own logs)
+        ExecutionJob job = getJob(executionId);
+        if (job != null) {
+            job.addLog(level, message);
+        }
+        
+        // Send via WebSocket for real-time display
         org.eclipse.jetty.websocket.api.Session session = webSocketSessions.get(executionId);
         if (session != null && session.isOpen()) {
             try {
@@ -254,6 +280,24 @@ public class ExecutionManager {
                 LOG.error("Failed to send log message", e);
             }
         }
+    }
+    
+    /**
+     * Get job from active or completed storage.
+     */
+    private ExecutionJob getJob(String executionId) {
+        ExecutionJob job = activeExecutions.get(executionId);
+        if (job == null) {
+            job = completedExecutions.get(executionId);
+        }
+        return job;
+    }
+    
+    /**
+     * Get job info for API endpoint (v2.2).
+     */
+    public ExecutionJob getExecutionJob(String executionId) {
+        return getJob(executionId);
     }
     
     public void pause(String executionId) {
@@ -324,6 +368,37 @@ public class ExecutionManager {
                     json.append("}");
                 } else {
                     LOG.warn("No results to send for execution: {}", executionId);
+                }
+                
+                // v2.2: Add session info on completion
+                ExecutionJob job = getJob(executionId);
+                if (job != null && ("COMPLETED".equals(status) || "FAILED".equals(status))) {
+                    if (job.getSession() != null) {
+                        LOG.info("Adding session info to WebSocket message");
+                        json.append(",\"sessionInfo\":{");
+                        org.webharvest.runtime.session.ScraperSession scraperSession = job.getSession();
+                        org.webharvest.runtime.session.SessionMetrics metrics = scraperSession.getMetrics();
+                        
+                        json.append("\"sessionId\":\"").append(scraperSession.getSessionId()).append("\",");
+                        json.append("\"clientId\":\"").append(scraperSession.getClientId() != null ? scraperSession.getClientId() : "").append("\",");
+                        json.append("\"status\":\"").append(scraperSession.getStatus()).append("\",");
+                        json.append("\"duration\":").append(metrics.getDuration().toMillis()).append(",");
+                        json.append("\"elementsProcessed\":").append(metrics.getProcessedElements()).append(",");
+                        json.append("\"processingRate\":").append(metrics.getProcessingRate());
+                        json.append("}");
+                    }
+                    
+                    if (job.getTokenTracker() != null) {
+                        LOG.info("Adding token usage to WebSocket message");
+                        json.append(",\"tokenUsage\":{");
+                        org.webharvest.runtime.tracking.TokenUsage usage = job.getTokenTracker().getUsage();
+                        
+                        json.append("\"httpRequests\":").append(usage.getHttpRequests()).append(",");
+                        json.append("\"httpBytes\":").append(usage.getHttpBytes()).append(",");
+                        json.append("\"cpuTimeMs\":").append(usage.getCpuTimeMillis()).append(",");
+                        json.append("\"memoryPeakBytes\":").append(usage.getMemoryPeakBytes());
+                        json.append("}");
+                    }
                 }
                 
                 json.append("}");

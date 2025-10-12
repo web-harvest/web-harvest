@@ -1,822 +1,232 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processor Reference - Web-Harvest</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/prism.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Processors - WebHarvest</title>
+  <link rel="stylesheet" href="../css/enterprise.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="../index.html" class="nav-logo">
-                <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest" class="nav-icon">
-                <span>Web-Harvest</span>
-            </a>
-            <ul class="nav-menu">
-                <li><a href="../index.html" class="nav-link">Home</a></li>
-                <li><a href="../index.html#features" class="nav-link">Features</a></li>
-                <li><a href="../index.html#ide" class="nav-link">IDE</a></li>
-                <li><a href="../index.html#architecture" class="nav-link">Architecture</a></li>
-                <li><a href="index.html" class="nav-link active">Processors</a></li>
-                <li><a href="../examples/" class="nav-link">Examples</a></li>
-                <li><a href="../api/" class="nav-link">API</a></li>
-                <li><a href="../index.html#download" class="nav-link">Download</a></li>
-            </ul>
-            <div class="hamburger">
-                <span class="bar"></span>
-                <span class="bar"></span>
-                <span class="bar"></span>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <div class="page-header">
-                <h1>Processor Reference</h1>
-                <p>Complete reference for all Web-Harvest processors and their configuration options</p>
-                <div class="version-selector">
-                    <h3><i class="fas fa-code-branch"></i> Available Versions</h3>
-                    <div class="version-buttons">
-                        <a href="2.2.0/" class="version-button active">2.2.0 (Latest)</a>
-                        <span class="version-button disabled">2.1.0 (Legacy)</span>
-                    </div>
-                </div>
-            </div>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+        <span class="project-name">WebHarvest</span>
+      </div>
+      <nav class="main-nav">
+        <a href="../index.html">Home</a>
+        <a href="../index.html#features">Features</a>
+        <a href="index.html" style="color: var(--purple-600); font-weight: 600;">Processors</a>
+        <a href="../examples/">Examples</a>
+        <a href="../api/">API Docs</a>
+        <a class="cta" href="../index.html#download">Download</a>
+      </nav>
+    </div>
+  </header>
 
-            <!-- Plugin Architecture Section -->
-            <div class="plugin-architecture-section">
-                <h2><i class="fas fa-puzzle-piece"></i> Modern Plugin Architecture</h2>
-                <div class="architecture-grid">
-                    <div class="architecture-card">
-                        <h3><i class="fas fa-code"></i> Plugin Annotations</h3>
-                        <p>Simple @Plugin annotations automatically discover and register all processors</p>
-                    </div>
-                    <div class="architecture-card">
-                        <h3><i class="fas fa-bridge"></i> Legacy Bridge</h3>
-                        <p>Seamless compatibility layer for smooth migration from old to new architecture</p>
-                    </div>
-                    <div class="architecture-card">
-                        <h3><i class="fas fa-search"></i> Auto Discovery</h3>
-                        <p>Automatic detection and registration of all plugin packages (FTP, Mail, DB, WebBrowser)</p>
-                    </div>
-                    <div class="architecture-card">
-                        <h3><i class="fas fa-syringe"></i> Smart Injection</h3>
-                        <p>Intelligent dependency injection with automatic service resolution and lifecycle management
-                        </p>
-                    </div>
-                </div>
-            </div>
+  <!-- Page Hero -->
+  <section class="page-hero">
+    <div class="container">
+      <h1>Core Processors</h1>
+      <p class="page-subtitle">Complete reference for all 42+ WebHarvest processors</p>
+    </div>
+  </section>
 
-            <!-- Processor Categories -->
-            <div class="processor-categories">
-                <div class="category-section">
-                    <h2><i class="fas fa-globe"></i> Web & HTTP Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;http&gt;</h3>
-                                <a href="2.2.0/individual/http.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Performs HTTP requests to fetch web content</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>url</code> - Target URL (required)</li>
-                                    <li><code>method</code> - HTTP method</li>
-                                    <li><code>timeout</code> - Request timeout</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">http-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;http url="https://example.com" method="GET" timeout="30000"&gt;
-    &lt;http-header name="Accept"&gt;application/json&lt;/http-header&gt;
-    &lt;http-param name="page"&gt;1&lt;/http-param&gt;
-&lt;/http&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+  <!-- All Processors by Category -->
+  <section class="processors-all container">
+    
+    <!-- Web & HTTP -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-globe"></i>
+        </span>
+        Web & HTTP
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/http.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-globe"></i>
+          </div>
+          <h4>HTTP</h4>
+          <p>HTTP requests and responses with full client features</p>
+        </a>
+        <a href="2.2.0/individual/html-to-xml.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-code"></i>
+          </div>
+          <h4>HTML-to-XML</h4>
+          <p>Parse HTML documents to XML format</p>
+        </a>
+      </div>
+    </div>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;html-to-xml&gt;</h3>
-                                <a href="2.2.0/individual/html-to-xml.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Converts HTML content to well-formed XML using advanced parsing strategies</p>
-                            <div class="processor-attributes">
-                                <h4>Key Features:</h4>
-                                <ul>
-                                    <li><code>advancedxmlescape</code> - XML character escaping</li>
-                                    <li><code>unicodechars</code> - Unicode support</li>
-                                    <li><code>omitunknowntags</code> - Clean unknown tags</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">html-to-xml-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;html-to-xml 
-    advancedxmlescape="true" 
-    specialentities="true" 
-    unicodechars="true"&gt;
-    &lt;http url="https://example.com"/&gt;
-&lt;/html-to-xml&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Data Extraction -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-search"></i>
+        </span>
+        Data Extraction
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/xpath.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-code-branch"></i>
+          </div>
+          <h4>XPath</h4>
+          <p>XPath queries on XML documents</p>
+        </a>
+        <a href="2.2.0/individual/xquery.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-database"></i>
+          </div>
+          <h4>XQuery</h4>
+          <p>Advanced XQuery 3.1 support</p>
+        </a>
+        <a href="2.2.0/individual/regexp.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-search"></i>
+          </div>
+          <h4>Regex</h4>
+          <p>Regular expression matching and extraction</p>
+        </a>
+        <a href="2.2.0/individual/tokenize.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-scissors"></i>
+          </div>
+          <h4>Tokenize</h4>
+          <p>Split text into tokens</p>
+        </a>
+      </div>
+    </div>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;web-browser&gt;</h3>
-                                <a href="2.2.0/individual/web-browser.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Headless web browser for JavaScript-heavy sites using PhantomJS</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>path</code> - PhantomJS executable path</li>
-                                    <li><code>port</code> - Communication port</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">web-browser-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;web-browser path="/usr/bin/phantomjs" port="8081"&gt;
-    &lt;web-browser-load url="https://spa.example.com"/&gt;
-    &lt;web-browser-javascript&gt;
-        return document.querySelector('.content').innerHTML;
-    &lt;/web-browser-javascript&gt;
-&lt;/web-browser&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Data Transformation -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-exchange-alt"></i>
+        </span>
+        Data Transformation
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/json-to-xml.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-file-code"></i>
+          </div>
+          <h4>JSON-to-XML</h4>
+          <p>Convert JSON to XML format</p>
+        </a>
+        <a href="2.2.0/individual/xml-to-json.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-file-export"></i>
+          </div>
+          <h4>XML-to-JSON</h4>
+          <p>Convert XML to JSON format</p>
+        </a>
+      </div>
+    </div>
 
-                <div class="category-section">
-                    <h2><i class="fas fa-search"></i> Data Extraction Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;xpath&gt;</h3>
-                                <a href="2.2.0/individual/xpath.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Extracts data using XPath expressions</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>expression</code> - XPath expression</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">xpath-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;xpath expression="//div[@class='product']//h3"&gt;
-    &lt;html-to-xml&gt;
-        &lt;http url="https://shop.example.com"/&gt;
-    &lt;/html-to-xml&gt;
-&lt;/xpath&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Control Flow -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-repeat"></i>
+        </span>
+        Control Flow
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/loop.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-repeat"></i>
+          </div>
+          <h4>Loop</h4>
+          <p>Iterate over collections and lists</p>
+        </a>
+        <a href="2.2.0/individual/def-var.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-box"></i>
+          </div>
+          <h4>Def Var</h4>
+          <p>Define and set variables</p>
+        </a>
+        <a href="2.2.0/individual/get-var.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-hand-pointer"></i>
+          </div>
+          <h4>Get Var</h4>
+          <p>Retrieve variable values</p>
+        </a>
+      </div>
+    </div>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;xquery&gt;</h3>
-                                <a href="2.2.0/individual/xquery.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Advanced data processing using XQuery 3.1</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">xquery-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;xquery&gt;
-    &lt;xq-param name="data"&gt;
-        &lt;get var="xmlData"/&gt;
-    &lt;/xq-param&gt;
-    &lt;xq-expression&gt;
-        &lt;![CDATA[
-        declare variable $data as node() external;
-        &lt;results&gt;
-            {
-                for $item in $data//item
-                return &lt;item&gt;
-                    &lt;name&gt;{$item/name}&lt;/name&gt;
-                    &lt;price&gt;{$item/price}&lt;/price&gt;
-                &lt;/item&gt;
-            }
-        &lt;/results&gt;
-        ]]&gt;
-    &lt;/xq-expression&gt;
-&lt;/xquery&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- File Operations -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-folder"></i>
+        </span>
+        File Operations
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/file.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-file"></i>
+          </div>
+          <h4>File</h4>
+          <p>Read and write file operations</p>
+        </a>
+      </div>
+    </div>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;regexp&gt;</h3>
-                                <a href="2.2.0/individual/regexp.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Pattern matching and text extraction using regular expressions</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>pattern</code> - Regex pattern</li>
-                                    <li><code>action</code> - Action type</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">regexp-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;regexp pattern="&lt;title&gt;(.*?)&lt;/title&gt;" action="match"&gt;
-    &lt;http url="https://example.com"/&gt;
-&lt;/regexp&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Database & Communication -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-server"></i>
+        </span>
+        Database & Communication
+      </h2>
+      <div class="processors-grid">
+        <a href="2.2.0/individual/database.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-database"></i>
+          </div>
+          <h4>Database</h4>
+          <p>JDBC database operations</p>
+        </a>
+        <a href="2.2.0/individual/mail.html" class="processor-card">
+          <div class="processor-icon">
+            <i class="fas fa-envelope"></i>
+          </div>
+          <h4>Mail</h4>
+          <p>Send emails with attachments</p>
+        </a>
+      </div>
+    </div>
 
-                <div class="category-section">
-                    <h2><i class="fas fa-file"></i> File & Data Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;file&gt;</h3>
-                                <a href="2.2.0/individual/file.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>File read/write operations</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>path</code> - File path</li>
-                                    <li><code>action</code> - Action type</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">file-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;file path="output.xml" action="write" charset="UTF-8"&gt;
-    &lt;template&gt;
-        &lt;![CDATA[
-        &lt;results&gt;
-            &lt;title&gt;${title}&lt;/title&gt;
-            &lt;content&gt;${content}&lt;/content&gt;
-        &lt;/results&gt;
-        ]]&gt;
-    &lt;/template&gt;
-&lt;/file&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+  </section>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;json-to-xml&gt;</h3>
-                                <a href="2.2.0/individual/json-to-xml.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Converts JSON data to XML format</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">json-to-xml-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;json-to-xml&gt;
-    &lt;http url="https://api.example.com/data"/&gt;
-&lt;/json-to-xml&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <img src="../images/logo.png" alt="WebHarvest" class="footer-logo" />
+        <p>© 2025 WebHarvest — Enterprise web scraping framework</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+        <a href="../api/">API</a>
+        <a href="../examples/">Examples</a>
+        <a href="2.2.0/">v2.2.0 Docs</a>
+      </div>
+    </div>
+  </footer>
 
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;xml-to-json&gt;</h3>
-                                <a href="2.2.0/individual/xml-to-json.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Converts XML data to JSON format</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">xml-to-json-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;xml-to-json&gt;
-    &lt;get var="xmlData"/&gt;
-&lt;/xml-to-json&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="category-section">
-                    <h2><i class="fas fa-code-branch"></i> Control Flow Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;loop&gt;</h3>
-                                <a href="2.2.0/individual/loop.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Iterates over a collection of items</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>item</code> - Current item variable</li>
-                                    <li><code>maxloops</code> - Max iterations</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">loop-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;loop item="product" index="i" maxloops="10"&gt;
-    &lt;list&gt;
-        &lt;constant&gt;Product 1&lt;/constant&gt;
-        &lt;constant&gt;Product 2&lt;/constant&gt;
-    &lt;/list&gt;
-    &lt;body&gt;
-        &lt;def var="productName"&gt;
-            &lt;get var="product"/&gt;
-        &lt;/def&gt;
-    &lt;/body&gt;
-&lt;/loop&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;while&gt;</h3>
-                                <a href="2.2.0/individual/while.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Repeats execution while condition is true</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>condition</code> - Condition expression</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">while-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;while condition="${pageUrl.toString().length() != 0}" maxloops="10"&gt;
-    &lt;def var="content"&gt;
-        &lt;http url="${pageUrl}"/&gt;
-    &lt;/def&gt;
-    &lt;def var="nextPage"&gt;
-        &lt;xpath expression="//a[@class='next']/@href"&gt;
-            &lt;get var="content"/&gt;
-        &lt;/xpath&gt;
-    &lt;/def&gt;
-    &lt;def var="pageUrl"&gt;
-        &lt;get var="nextPage"/&gt;
-    &lt;/def&gt;
-&lt;/while&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;if&gt;</h3>
-                                <a href="2.2.0/individual/if.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Conditional execution based on expression</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">if-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;if condition="${price &lt; 100}"&gt;
-    &lt;then&gt;
-        &lt;def var="alert"&gt;Price is below threshold!&lt;/def&gt;
-    &lt;/then&gt;
-    &lt;else&gt;
-        &lt;def var="alert"&gt;Price is above threshold.&lt;/def&gt;
-    &lt;/else&gt;
-&lt;/if&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="category-section">
-                    <h2><i class="fas fa-variable"></i> Variable Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;def var&gt;</h3>
-                                <a href="2.2.0/individual/def-var.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Defines a new variable with a value</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">def-var-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;def var="productUrl"&gt;https://shop.example.com/product/123&lt;/def&gt;
-&lt;def var="productData"&gt;
-    &lt;html-to-xml&gt;
-        &lt;http url="${productUrl}"/&gt;
-    &lt;/html-to-xml&gt;
-&lt;/def&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;get var&gt;</h3>
-                                <a href="2.2.0/individual/get-var.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Retrieves the value of a variable</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">get-var-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;def var="title"&gt;
-    &lt;xpath expression="//title"&gt;
-        &lt;get var="pageContent"/&gt;
-    &lt;/xpath&gt;
-&lt;/def&gt;
-&lt;file path="title.txt" action="write"&gt;
-    &lt;get var="title"/&gt;
-&lt;/file&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;script&gt;</h3>
-                                <a href="2.2.0/individual/script.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Executes scripting code (BeanShell, JavaScript, Groovy)</p>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">script-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;script&gt;
-    // BeanShell code
-    String fullUrl = sys.fullUrl("https://example.com", "/path");
-    return fullUrl;
-&lt;/script&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="category-section">
-                    <h2><i class="fas fa-plug"></i> Extension Processors</h2>
-                    <div class="processors-grid">
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;database&gt;</h3>
-                                <a href="2.2.0/individual/database.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Database operations (SELECT, INSERT, UPDATE, DELETE)</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>driver</code> - JDBC driver</li>
-                                    <li><code>url</code> - Connection URL</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">database-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;database 
-    driver="com.mysql.cj.jdbc.Driver"
-    url="jdbc:mysql://localhost:3306/mydb"
-    username="user"
-    password="pass"
-    query="SELECT * FROM products WHERE price &lt; ?"&gt;
-    &lt;db-param&gt;100&lt;/db-param&gt;
-&lt;/database&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;mail&gt;</h3>
-                                <a href="2.2.0/individual/mail.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Sends email messages</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>to</code> - Recipient email</li>
-                                    <li><code>subject</code> - Email subject</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">mail-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;mail 
-    to="admin@example.com"
-    from="scraper@example.com"
-    subject="Scraping Alert"
-    smtphost="smtp.example.com"
-    smtpport="587"&gt;
-    &lt;template&gt;Price alert: ${productName} is now $${price}&lt;/template&gt;
-&lt;/mail&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="processor-card">
-                            <div class="processor-card-header">
-                                <h3>&lt;tokenize&gt;</h3>
-                                <a href="2.2.0/individual/tokenize.html" class="processor-link">
-                                    <i class="fas fa-external-link-alt"></i>
-                                    View Details
-                                </a>
-                            </div>
-                            <p>Splits text into tokens using delimiters</p>
-                            <div class="processor-attributes">
-                                <h4>Key Attributes:</h4>
-                                <ul>
-                                    <li><code>delimiters</code> - Delimiter characters</li>
-                                </ul>
-                            </div>
-                            <div class="processor-example">
-                                <h4>Example:</h4>
-                                <div class="code-window">
-                                    <div class="window-header">
-                                        <div class="window-controls">
-                                            <span class="control red"></span>
-                                            <span class="control yellow"></span>
-                                            <span class="control green"></span>
-                                        </div>
-                                        <span class="window-title">tokenize-example.xml</span>
-                                    </div>
-                                    <div class="window-content">
-                                        <pre><code class="language-xml">&lt;tokenize delimiters="," trimtokens="true"&gt;
-    &lt;file path="data.csv" action="read"/&gt;
-&lt;/tokenize&gt;</code></pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Web-Harvest</h3>
-                    <p>Advanced web scraping and data extraction tool for Java applications.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Documentation</h4>
-                    <ul>
-                        <li><a href="../api/org/webharvest/runtime/processors/package-summary.html">Processors</a></li>
-                        <li><a href="../api/org/webharvest/runtime/RuntimeConfig.html">Configuration</a></li>
-                        <li><a href="../examples/">Examples</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Resources</h4>
-                    <ul>
-                        <li><a href="../index.html#download">Download</a></li>
-                        <li><a href="../examples/">Examples</a></li>
-                        <li><a href="#">Tutorials</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Web-Harvest. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="../js/script.js"></script>
-    <script src="../js/prism.js"></script>
 </body>
-
 </html>
+

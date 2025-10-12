@@ -1,0 +1,449 @@
+/**
+ * WebHarvest IDE Custom Styles
+ * Extends enterprise.css for IDE-specific components
+ */
+
+/* IDE-specific header (full width) */
+.ide-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    padding: 0 var(--spacing-6);
+    max-width: none;
+}
+
+/* Nav actions (IDE-specific buttons) */
+.nav-actions {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.btn-sm {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: 0.875rem;
+    background: var(--gray-100);
+    color: var(--text-secondary);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    cursor: pointer;
+}
+
+.btn-sm:hover {
+    background: var(--gray-200);
+    color: var(--text-primary);
+    border-color: var(--magenta);
+}
+
+/* ===================================
+   IDE LAYOUT
+   =================================== */
+
+.ide-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 72px);
+}
+
+.tab-bar {
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: var(--spacing-2) var(--spacing-4);
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.tab {
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: 0.875rem;
+}
+
+.tab:hover {
+    background: var(--gray-200);
+}
+
+.tab.active {
+    background: white;
+    border-bottom-color: white;
+    font-weight: 600;
+    border-top: 2px solid var(--magenta);
+}
+
+.tab-close {
+    background: none;
+    border: none;
+    color: var(--gray-500);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.875rem;
+}
+
+.tab-close:hover {
+    color: var(--magenta);
+}
+
+.tab-add-btn {
+    background: transparent;
+    border: 1px dashed var(--magenta);
+    color: var(--magenta);
+    border-radius: var(--radius-md);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-add-btn:hover {
+    background: rgba(216, 27, 96, 0.1);
+}
+
+/* ===================================
+   EDITOR & RESULTS PANELS
+   =================================== */
+
+.ide-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    overflow: hidden;
+}
+
+.editor-panel,
+.results-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.editor-panel {
+    border-right: 1px solid var(--gray-200);
+}
+
+.panel-header {
+    background: var(--gradient-primary);
+    color: white;
+    padding: var(--spacing-3) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.panel-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.panel-header h3 i {
+    color: var(--yellow);
+}
+
+.editor-actions,
+.execution-controls {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.monaco-editor {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ===================================
+   RESULTS TABS
+   =================================== */
+
+.results-tabs {
+    display: flex;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.result-tab {
+    padding: var(--spacing-3) var(--spacing-4);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    border-bottom: 2px solid transparent;
+}
+
+.result-tab:hover {
+    color: var(--text-primary);
+    background: rgba(216, 27, 96, 0.05);
+}
+
+.result-tab.active {
+    color: var(--magenta);
+    font-weight: 700;
+    border-bottom-color: var(--magenta);
+    background: white;
+}
+
+.result-tab i {
+    font-size: 0.875rem;
+}
+
+/* ===================================
+   RESULT PANELS
+   =================================== */
+
+.results-content {
+    flex: 1;
+    overflow: auto;
+    background: white;
+}
+
+.result-panel {
+    display: none;
+    padding: var(--spacing-4);
+    height: 100%;
+    overflow: auto;
+}
+
+.result-panel.active {
+    display: block;
+}
+
+/* ===================================
+   SESSION INFO PANEL
+   =================================== */
+
+.session-info-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.session-info-card,
+.token-usage-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    box-shadow: var(--shadow-sm);
+}
+
+.session-info-card h3,
+.token-usage-card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.session-info-card h3 {
+    color: var(--magenta);
+}
+
+.token-usage-card h3 {
+    color: var(--yellow);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-4);
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.info-item label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-item span {
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Status badges */
+.status-badge {
+    padding: var(--spacing-1) var(--spacing-3);
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+}
+
+.status-completed {
+  background: #A4C639;
+  color: white;
+}
+
+.status-running {
+    background: #3B82F6;
+    color: white;
+}
+
+.status-failed {
+    background: #EF4444;
+    color: white;
+}
+
+.status-pending {
+    background: var(--yellow);
+    color: #000;
+}
+
+/* ===================================
+   VARIABLES & LOG
+   =================================== */
+
+.variables-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+.variable-card {
+    background: var(--bg-subtle);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3);
+}
+
+.variable-name {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--magenta);
+    margin-bottom: var(--spacing-2);
+}
+
+.variable-value {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-content {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    padding: var(--spacing-4);
+}
+
+.log-entry {
+    padding: var(--spacing-1) 0;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.log-entry.info {
+    color: var(--text-secondary);
+}
+
+.log-entry.success {
+    color: #10B981;
+}
+
+.log-entry.warning {
+    color: #F59E0B;
+}
+
+.log-entry.error {
+    color: #EF4444;
+    font-weight: 600;
+}
+
+/* ===================================
+   STATUS BAR
+   =================================== */
+
+.status-bar {
+    background: var(--gradient-primary);
+    color: white;
+    padding: var(--spacing-2) var(--spacing-4);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.status-left,
+.status-right {
+    display: flex;
+    gap: var(--spacing-4);
+    align-items: center;
+}
+
+/* ===================================
+   PROGRESS BAR
+   =================================== */
+
+.progress-bar {
+    background: var(--gray-200);
+    height: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: var(--yellow);
+    height: 100%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 1024px) {
+    .ide-content {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--gray-200);
+    }
+}

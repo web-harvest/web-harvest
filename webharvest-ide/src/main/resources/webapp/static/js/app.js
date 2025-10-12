@@ -153,7 +153,16 @@ const app = {
             id: tabId,
             name: tabName,
             content: tabContent,
-            modified: false
+            modified: false,
+
+            // v2.2: Per-tab execution state (Apple HIG - each document has own state)
+            executionId: null,
+            logs: [],
+            results: {},
+            sessionInfo: null,
+            tokenUsage: null,
+            status: 'IDLE',
+            lastUpdate: null
         };
 
         this.tabs.push(tab);
@@ -168,7 +177,14 @@ const app = {
     },
 
     /**
-     * Switch to tab
+     * Get active tab (v2.2 helper)
+     */
+    getActiveTab() {
+        return this.tabs.find(t => t.id === this.activeTabId);
+    },
+
+    /**
+     * Switch to tab (v2.2: Restores per-tab state - Apple HIG)
      */
     switchTab(tabId) {
         console.log('Switching to tab:', tabId);
@@ -194,6 +210,16 @@ const app = {
             } else {
                 console.warn('  Editor not ready yet, content will load when Monaco initializes');
             }
+
+            // v2.2: Restore per-tab execution state (Apple HIG)
+            console.log('  Restoring tab state:', {
+                logs: tab.logs.length,
+                results: Object.keys(tab.results).length,
+                status: tab.status
+            });
+            this.renderLogs();
+            this.renderResults();
+            this.renderSessionInfo();
         }
 
         this.renderTabs();
@@ -282,11 +308,21 @@ const app = {
     },
 
     /**
-     * Run configuration
+     * Run configuration (v2.2: Stores executionId in active tab)
      */
     async runConfig() {
+        const tab = this.getActiveTab();
+        if (!tab) return;
+
         const xml = this.editor.getValue();
-        const tabName = this.tabs.find(t => t.id === this.activeTabId)?.name || 'config.xml';
+        const tabName = tab.name;
+
+        // v2.2: Clear previous execution data in THIS tab
+        tab.logs = [];
+        tab.results = {};
+        tab.sessionInfo = null;
+        tab.tokenUsage = null;
+        tab.status = 'RUNNING';
 
         this.setStatus('<i class="fas fa-spinner fa-spin"></i> Connecting...', 'info');
         this.showProgress(0);
@@ -314,7 +350,10 @@ const app = {
             });
 
             const result = await response.json();
-            this.currentExecutionId = result.executionId;
+
+            // v2.2: Store executionId in TAB, not globally
+            tab.executionId = result.executionId;
+            this.currentExecutionId = result.executionId;  // Keep for backward compat
 
             this.addLog('info', '⚙ Execution ID: ' + result.executionId.substring(0, 8) + '...');
             this.addLog('info', '🔌 Creating new WebSocket connection...');
@@ -327,6 +366,7 @@ const app = {
             document.getElementById('executionControls').style.display = 'flex';
 
         } catch (error) {
+            tab.status = 'FAILED';
             this.setStatus('<i class="fas fa-times-circle text-error"></i> Execution failed: ' + error.message, 'error');
             this.addLog('error', '✗ Error: ' + error.message);
             this.hideProgress();
@@ -449,6 +489,21 @@ const app = {
                     this.addLog('warning', '⚠ No results returned');
                 }
 
+                // v2.2: Store session info and token usage in active tab
+                const tab = this.getActiveTab();
+                if (tab) {
+                    if (update.sessionInfo) {
+                        console.log('Storing session info in tab:', update.sessionInfo);
+                        tab.sessionInfo = update.sessionInfo;
+                    }
+                    if (update.tokenUsage) {
+                        console.log('Storing token usage in tab:', update.tokenUsage);
+                        tab.tokenUsage = update.tokenUsage;
+                    }
+                    // Render session info panel
+                    this.renderSessionInfo();
+                }
+
                 // Close WebSocket after successful completion
                 if (this.webSocket) {
                     console.log('Closing WebSocket after successful execution');
@@ -521,27 +576,54 @@ const app = {
     },
 
     /**
-     * Display execution results
+     * Display execution results (v2.2: Stores in active tab)
      */
     displayResults(results) {
         console.log('=== displayResults called ===');
         console.log('Results type:', typeof results);
         console.log('Results keys:', results ? Object.keys(results).length : 0);
 
+        // v2.2: Store in active tab (Apple HIG - per-document results)
+        const tab = this.getActiveTab();
+        if (tab) {
+            tab.results = results || {};
+            tab.status = 'COMPLETED';
+            tab.lastUpdate = new Date();
+        }
+
+        // Render results
+        this.renderResults();
+    },
+
+    /**
+     * Render results for active tab (v2.2: Apple HIG)
+     */
+    renderResults() {
+        const tab = this.getActiveTab();
+
         try {
             // Show results tabs
             document.getElementById('resultsTabs').style.display = 'flex';
             document.getElementById('statusDisplay').style.display = 'none';
 
-            // Display main output (configResult or first significant variable)
             const outputContent = document.getElementById('outputContent');
+            const variablesContent = document.getElementById('variablesContent');
+
+            if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
+                // No results - show empty state
+                outputContent.innerHTML = '<p style="color: #666; padding: 20px;">No results yet. Click Run to execute this configuration.</p>';
+                variablesContent.innerHTML = '<p style="color: #666; padding: 20px;">No variables yet.</p>';
+                return;
+            }
+
+            // Display main output (configResult or first significant variable)
+            const results = tab.results;
             const mainResult = results.configResult || results.html || results.response ||
                 results.data || Object.values(results)[0] || 'No output';
             outputContent.textContent = mainResult;
             console.log('Output tab updated with main result (', mainResult.length, 'chars)');
 
             // Display variables
-            const variablesContent = document.getElementById('variablesContent');
             variablesContent.innerHTML = '<p>Loading results...</p>';
 
             // Use setTimeout to avoid UI freeze
@@ -589,9 +671,90 @@ const app = {
             }, 100); // Small delay to avoid UI freeze
 
         } catch (err) {
-            console.error('Error in displayResults:', err);
+            console.error('Error in renderResults:', err);
             this.addLog('error', 'Failed to display results: ' + err.message);
         }
+    },
+
+    /**
+     * Render session info for active tab (v2.2: New!)
+     */
+    renderSessionInfo() {
+        const tab = this.getActiveTab();
+        const sessionPanel = document.getElementById('sessionPanel');
+
+        if (!sessionPanel) return;
+
+        if (!tab || !tab.sessionInfo) {
+            sessionPanel.innerHTML = `
+                <div style="padding: 20px; color: #666;">
+                    <p>No session information available.</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">
+                        Session data will appear here after running a configuration.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const session = tab.sessionInfo;
+        const tokens = tab.tokenUsage || {};
+
+        sessionPanel.innerHTML = `
+            <div class="session-info-container">
+                <div class="session-info-card">
+                    <h3><i class="fas fa-info-circle"></i> Session Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Session ID:</label>
+                            <span>${session.sessionId ? session.sessionId.substring(0, 8) + '...' : 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Client ID:</label>
+                            <span>${session.clientId || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Status:</label>
+                            <span class="status-badge status-${session.status ? session.status.toLowerCase() : 'unknown'}">${session.status || 'UNKNOWN'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Duration:</label>
+                            <span>${session.duration ? (session.duration / 1000).toFixed(2) + 's' : 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Elements Processed:</label>
+                            <span>${session.elementsProcessed || 0}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Processing Rate:</label>
+                            <span>${session.processingRate ? session.processingRate.toFixed(2) + ' elem/s' : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="token-usage-card">
+                    <h3><i class="fas fa-coins"></i> Token Usage</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>HTTP Requests:</label>
+                            <span>${tokens.httpRequests || 0}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>HTTP Bytes:</label>
+                            <span>${tokens.httpBytes ? (tokens.httpBytes / 1024).toFixed(2) + ' KB' : '0 KB'}</span>
+                        </div>
+                        <div class="info-item">
+                            <label>CPU Time:</label>
+                            <span>${tokens.cpuTimeMs || 0} ms</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Memory Peak:</label>
+                            <span>${tokens.memoryPeakBytes ? (tokens.memoryPeakBytes / 1024 / 1024).toFixed(2) + ' MB' : '0 MB'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     /**
@@ -708,20 +871,50 @@ const app = {
     },
 
     /**
-     * Add log entry
+     * Add log entry (v2.2: Stores in active tab)
      */
     addLog(type, message) {
-        const logContent = document.getElementById('logContent');
-        const entry = document.createElement('div');
-        entry.className = 'log-entry ' + type;
-        const time = new Date().toLocaleTimeString();
-        entry.textContent = `[${time}] ${message}`;
-        logContent.appendChild(entry);
-        logContent.scrollTop = logContent.scrollHeight;
+        // v2.2: Store in active tab (Apple HIG - per-document logs)
+        const tab = this.getActiveTab();
+        if (tab) {
+            const logEntry = {
+                time: new Date().toLocaleTimeString(),
+                type: type,
+                message: message
+            };
+            tab.logs.push(logEntry);
+        }
+
+        // Render logs for active tab
+        this.renderLogs();
 
         // Auto-show log panel if error
         if (type === 'error') {
             this.switchResultTab('log');
+        }
+    },
+
+    /**
+     * Render logs for active tab (v2.2: Apple HIG)
+     */
+    renderLogs() {
+        const tab = this.getActiveTab();
+        const logContent = document.getElementById('logContent');
+
+        if (!logContent) return;
+
+        logContent.innerHTML = '';
+
+        if (tab && tab.logs && tab.logs.length > 0) {
+            tab.logs.forEach(log => {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry ' + log.type;
+                entry.textContent = `[${log.time}] ${log.message}`;
+                logContent.appendChild(entry);
+            });
+            logContent.scrollTop = logContent.scrollHeight;
+        } else {
+            logContent.innerHTML = '<p style="color: #666; padding: 20px;">No logs yet. Click Run to execute this configuration.</p>';
         }
     },
 

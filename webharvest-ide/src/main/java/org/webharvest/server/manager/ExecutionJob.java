@@ -5,6 +5,12 @@ import org.webharvest.runtime.session.SessionMetrics;
 import org.webharvest.runtime.tracking.TokenTracker;
 import org.webharvest.runtime.tracking.TokenUsage;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 /**
  * Execution job with state management and session tracking.
  * 
@@ -13,8 +19,11 @@ import org.webharvest.runtime.tracking.TokenUsage;
  *   <li>ScraperSession for tracking</li>
  *   <li>TokenTracker for resource monitoring</li>
  *   <li>Session metadata</li>
+ *   <li>Per-job log storage (Apple HIG - each tab has own logs)</li>
+ *   <li>Per-job results storage</li>
  * </ul>
  * 
+ * @author Robert Bala
  * @since 2.2.0
  */
 public class ExecutionJob {
@@ -26,6 +35,11 @@ public class ExecutionJob {
     private volatile int progress = 0;
     private volatile ScraperSession session;  // v2.2: Session tracking
     private volatile TokenTracker tokenTracker;  // v2.2: Token tracking
+    
+    // v2.2: Per-job storage (Apple HIG - each document has own state)
+    private final List<LogEntry> logs = new CopyOnWriteArrayList<>();
+    private final Map<String, String> results = new ConcurrentHashMap<>();
+    private volatile String lastMessage = "";
     
     public ExecutionJob(String id, String configName, String configXml) {
         this.id = id;
@@ -109,6 +123,41 @@ public class ExecutionJob {
             usage.getHttpBytes(),
             usage.getCpuTimeMillis(),
             usage.getMemoryPeakBytes());
+    }
+    
+    // v2.2: Log storage (Apple HIG - each tab keeps its own logs)
+    
+    public void addLog(String level, String message) {
+        logs.add(new LogEntry(level, message));
+    }
+    
+    public List<LogEntry> getAllLogs() {
+        return new ArrayList<>(logs);
+    }
+    
+    public int getLogCount() {
+        return logs.size();
+    }
+    
+    // v2.2: Results storage
+    
+    public void setResults(Map<String, String> results) {
+        this.results.clear();
+        if (results != null) {
+            this.results.putAll(results);
+        }
+    }
+    
+    public Map<String, String> getResults() {
+        return new ConcurrentHashMap<>(results);
+    }
+    
+    public void setLastMessage(String message) {
+        this.lastMessage = message;
+    }
+    
+    public String getLastMessage() {
+        return lastMessage;
     }
 }
 

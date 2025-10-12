@@ -107,15 +107,10 @@
     </plugins>
   </build>
   <dependencies>
+        <!-- Core Framework (ONLY) - plugins are optional -->
         <dependency>
             <groupId>net.sourceforge.web-harvest</groupId>
             <artifactId>webharvest-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>net.sourceforge.web-harvest</groupId>
-            <artifactId>webharvest-database</artifactId>
             <version>${project.version}</version>
         </dependency>
         

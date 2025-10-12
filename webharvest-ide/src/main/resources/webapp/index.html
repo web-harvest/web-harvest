@@ -1,44 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web-Harvest IDE - Modern Web Scraping Editor</title>
-    
+    <title>WebHarvest IDE - Professional Web Scraping Editor</title>
+
     <!-- Web-Harvest Styles -->
-    <link rel="stylesheet" href="static/css/style.css">
-    <link rel="stylesheet" href="static/css/ide.css">
-    
+    <link rel="stylesheet" href="static/css/enterprise.css">
+    <link rel="stylesheet" href="static/css/ide-custom.css">
+
     <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="nav-logo">
-                <img src="https://a.fsdn.com/allura/p/web-harvest/icon?1362692635" alt="Web-Harvest">
-                <span>Web-Harvest IDE</span>
-            </a>
+    <!-- Navigation (Unified with Website) -->
+    <header class="site-header">
+        <div class="ide-header-inner">
+            <div class="brand">
+                <img src="static/img/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest IDE</span>
+            </div>
             <div class="nav-actions">
-                <button class="btn btn-sm btn-secondary" onclick="app.addTab()">
-                    <i class="fas fa-plus"></i> New Tab
+                <button class="btn btn-sm" onclick="app.addTab()">
+                    <i class="fas fa-plus"></i> New
                 </button>
-                <button class="btn btn-sm btn-secondary" onclick="app.openFile()">
+                <button class="btn btn-sm" onclick="app.openFile()">
                     <i class="fas fa-folder-open"></i> Open
                 </button>
-                <button class="btn btn-sm btn-secondary" onclick="app.saveFile()">
+                <button class="btn btn-sm" onclick="app.saveFile()">
                     <i class="fas fa-save"></i> Save
                 </button>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main IDE Container -->
     <div class="ide-container">
@@ -81,7 +83,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Status Display -->
                 <div id="statusDisplay" class="status-display">
                     <div class="welcome-message">
@@ -106,6 +108,9 @@
                     </button>
                     <button class="result-tab" data-tab="log">
                         <i class="fas fa-list"></i> Log
+                    </button>
+                    <button class="result-tab" data-tab="session">
+                        <i class="fas fa-info-circle"></i> Session
                     </button>
                 </div>
 
@@ -134,6 +139,15 @@
                     <div id="logPanel" class="result-panel">
                         <div class="log-content" id="logContent"></div>
                     </div>
+
+                    <div id="sessionPanel" class="result-panel">
+                        <div style="padding: 20px; color: #666;">
+                            <p>No session information available.</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">
+                                Session data will appear here after running a configuration.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -154,5 +168,5 @@
     <!-- Application Script -->
     <script src="static/js/app.js"></script>
 </body>
-</html>
 
+</html>

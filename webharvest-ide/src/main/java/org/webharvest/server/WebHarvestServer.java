@@ -76,7 +76,8 @@ public class WebHarvestServer {
         // 1. REST API servlets
         context.addServlet(new ServletHolder(new ConfigServlet()), "/api/config/*");
         context.addServlet(new ServletHolder(new ExecutionServlet()), "/api/execute/*");
-        LOG.info("API servlets configured: /api/config/*, /api/execute/*");
+        context.addServlet(new ServletHolder(new org.webharvest.server.api.ExecutionInfoServlet()), "/api/execution/*");
+        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/*");
         
         // 2. WebSocket servlet
         JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {
