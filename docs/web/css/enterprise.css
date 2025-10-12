@@ -850,6 +850,344 @@ body {
     color: white;
 }
 
+.footer-author {
+    margin-left: auto;
+}
+
+.author-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--gray-400);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-md);
+}
+
+.author-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.author-link i {
+    font-size: 1rem;
+}
+
+/* ===================================
+   IDE PAGE COMPONENTS
+   =================================== */
+
+/* Installation Steps */
+.installation-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8);
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.install-step {
+    display: flex;
+    gap: var(--spacing-6);
+    align-items: flex-start;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-content h3 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-3);
+    color: var(--text-primary);
+}
+
+.step-content p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.step-content ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.step-content ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.step-content ul li strong {
+    color: var(--text-primary);
+}
+
+.step-content pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.step-content code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Usage Grid */
+.usage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.usage-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+}
+
+.usage-card:hover {
+    border-color: var(--magenta);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.usage-card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.usage-card h3 i {
+    color: var(--magenta);
+}
+
+.usage-card ol,
+.usage-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.usage-card ol li,
+.usage-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.usage-card code {
+    background: var(--gray-100);
+    color: var(--magenta);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Architecture Cards */
+.architecture-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.arch-card {
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+    transition: all 0.2s;
+}
+
+.arch-card:hover {
+    border-color: var(--yellow);
+    background: white;
+    box-shadow: var(--shadow-md);
+}
+
+.arch-card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.arch-card h3 i {
+    color: var(--yellow);
+}
+
+.arch-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.arch-card ul li {
+    margin-bottom: var(--spacing-3);
+}
+
+.arch-card ul li strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Config Options */
+.config-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--spacing-8);
+    margin-top: var(--spacing-8);
+}
+
+.config-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+}
+
+.config-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+}
+
+.config-card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.config-card pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin-bottom: var(--spacing-4);
+}
+
+.config-card code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.config-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.config-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.config-card ul li strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Troubleshooting Grid */
+.troubleshooting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.trouble-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-left: 4px solid var(--magenta);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-5);
+    box-shadow: var(--shadow-sm);
+}
+
+.trouble-card h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-3);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.trouble-card h4 i {
+    color: var(--magenta);
+}
+
+.trouble-card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-2);
+    font-size: 0.9375rem;
+}
+
+.trouble-card p strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.trouble-card pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    margin: var(--spacing-2) 0;
+}
+
+.trouble-card code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.trouble-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+}
+
+.trouble-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+/* Navigation Active State */
+.main-nav a.active {
+    color: var(--magenta);
+    font-weight: 600;
+}
+
 /* ===================================
    RESPONSIVE
    =================================== */
