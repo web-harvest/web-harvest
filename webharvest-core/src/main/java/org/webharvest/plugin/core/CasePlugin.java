@@ -53,18 +53,43 @@ import java.util.List;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * Case plugin that provides conditional execution with multiple if-else branches.
- * This is a core plugin migrated from the original CaseProcessor.
+ * Multi-branch conditional processor - switch/case statement with multiple conditions.
  * 
  * <p>
- * The case plugin allows execution of multiple conditional branches (if statements)
- * and an optional else branch. It evaluates conditions in order and executes
- * the first matching branch, or the else branch if no conditions match.
+ * The {@code <case>} processor evaluates multiple {@code <if>} conditions in sequence and
+ * executes the first matching branch. It's equivalent to if-else-if chains but with cleaner
+ * syntax for multiple conditions.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Route by HTTP status</h4>
+ * <pre>{@code
+ * <case>
+ *   <if condition="${httpStatus == '200'}">
+ *     <def var="result" value="success"/>
+ *   </if>
+ *   <if condition="${httpStatus == '404'}">
+ *     <def var="result" value="not_found"/>
+ *   </if>
+ *   <if condition="${httpStatus >= '500'}">
+ *     <def var="result" value="server_error"/>
+ *   </if>
+ *   <else>
+ *     <def var="result" value="unknown"/>
+ *   </else>
+ * </case>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>First match wins:</strong> Only first matching {@code <if>} executes</li>
+ *   <li><strong>Else is optional:</strong> Executed if no conditions match</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

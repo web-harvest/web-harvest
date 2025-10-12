@@ -52,18 +52,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Catch plugin that provides the catch block for exception handling.
- * This is a core plugin migrated from the original CatchProcessor.
+ * Exception catch block processor - handles exceptions from {@code <try>} block.
  * 
  * <p>
- * The catch plugin is used as the catch block in try-catch structures.
- * It executes when an exception occurs in the try block and has access
- * to the error information through the context variable "error".
+ * The {@code <catch>} processor executes only when an exception occurs in the preceding
+ * {@code <try>} block. It provides access to error details via {@code ${_error}} variable
+ * and enables graceful error handling, logging, and recovery.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <p>See {@link TryPlugin} for complete try-catch examples.</p>
+ * 
+ * <h3>Error Variable</h3>
+ * <p>The {@code ${_error}} variable contains the exception message and is available
+ * only within the catch block.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
+ * @see TryPlugin
  */
 @CorePlugin(
     elementName = "catch",

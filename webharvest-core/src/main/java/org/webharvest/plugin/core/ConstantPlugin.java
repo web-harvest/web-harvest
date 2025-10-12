@@ -49,18 +49,24 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.templaters.BaseTemplater;
 
 /**
- * Constant plugin that provides static text content.
- * This is a core plugin migrated from the original ConstantProcessor.
+ * Constant value processor - defines static, immutable text values.
  * 
  * <p>
- * The constant plugin allows definition of static text content that can be used
- * internally in the WebHarvest configuration. It is not explicitly used in
- * configuration XML but is used internally to define static content.
+ * The {@code <constant>} processor wraps static text content. It's primarily used
+ * internally by the framework for static configuration values. User configurations
+ * typically use {@code <def>} or direct text content instead.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <constant value="static text"/>
+ * }</pre>
+ * 
+ * <p><strong>Note:</strong> Rarely used directly. Use {@code <def>} for variable definitions.</p>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "constant",

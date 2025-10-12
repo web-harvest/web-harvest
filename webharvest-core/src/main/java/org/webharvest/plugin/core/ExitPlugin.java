@@ -50,17 +50,80 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * Exit plugin that provides conditional exit functionality.
- * This is a core plugin migrated from the original ExitProcessor.
+ * Exit/termination processor - stops scraper execution conditionally or unconditionally.
  * 
  * <p>
- * The exit plugin allows conditional exit from the scraper execution.
- * It evaluates a condition and if true, posts an exit event with an optional message.
+ * The {@code <exit>} processor immediately terminates scraper execution, optionally
+ * with a custom message. It's useful for early termination on errors, completion conditions,
+ * or when specific data is found.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Exit on error</h4>
+ * <pre>{@code
+ * <def var="response">
+ *   <http url="https://api.example.com/data"/>
+ * </def>
+ * 
+ * <if condition="${empty(response)}">
+ *   <exit message="API returned empty response - terminating"/>
+ * </if>
+ * }</pre>
+ * 
+ * <h4>Example 2: Exit when target found</h4>
+ * <pre>{@code
+ * <loop item="item" maxloops="1000">
+ *   <xpath expression="//item">...</xpath>
+ *   
+ *   <if condition="${item == 'TARGET'}">
+ *     <file path="found.txt" action="write">Found target: ${item}</file>
+ *     <exit message="Target item found, stopping search"/>
+ *   </if>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 3: Conditional exit based on quota</h4>
+ * <pre>{@code
+ * <def var="requestCount" value="0"/>
+ * 
+ * <while condition="${hasMore}">
+ *   <http url="https://api.example.com/data"/>
+ *   
+ *   <def var="requestCount">
+ *     <script>parseInt(context.getVar("requestCount")) + 1</script>
+ *   </def>
+ *   
+ *   <if condition="${requestCount >= 100}">
+ *     <exit message="Request quota reached (100 requests)"/>
+ *   </if>
+ * </while>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>message:</strong> Optional exit message (logged and included in event)</li>
+ *   <li><strong>condition:</strong> Optional boolean condition (exits only if true)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Immediate termination:</strong> Stops execution immediately (no cleanup)</li>
+ *   <li><strong>Exit event:</strong> Fires ScraperExecutionExitEvent via EventBus</li>
+ *   <li><strong>No return value:</strong> Execution never continues past exit</li>
+ *   <li><strong>Use with care:</strong> May leave resources open (files, connections)</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <if>} - Conditional exit logic</li>
+ *   <li>{@code <return>} - Exit from function (not entire scraper)</li>
+ *   <li>{@code <try>} - Exception handling instead of exit</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "exit",

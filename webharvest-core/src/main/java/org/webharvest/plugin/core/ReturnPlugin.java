@@ -49,17 +49,75 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 
 /**
- * Return plugin that sets the return value for function calls.
- * This is a core plugin migrated from the original ReturnProcessor.
+ * Function return processor - explicitly sets function return value and exits function.
  * 
  * <p>
- * The return plugin is used within function definitions to specify the return value.
- * It executes its body and sets the result as the function's return value.
+ * The {@code <return>} processor is used inside {@code <function>} definitions to explicitly
+ * return a value and immediately exit the function. If no {@code <return>} is used, the
+ * function returns the result of its last expression.
  * </p>
  * 
- * @core This is a core plugin
- * @author Robert Bala
- * @since 2.2.0
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Early return from function</h4>
+ * <pre>{@code
+ * <function name="findProduct">
+ *   <def var="query"><call-param name="query"/></def>
+ *   
+ *   <loop item="product" maxloops="100">
+ *     <xpath expression="//product">...</xpath>
+ *     
+ *     <def var="name"><xpath expression=".//name/text()">${product}</xpath></def>
+ *     
+ *     <if condition="${name == query}">
+ *       <return>${product}</return>  <!-- Found! Exit function immediately -->
+ *     </if>
+ *   </loop>
+ *   
+ *   <!-- Not found -->
+ *   <return>NOT_FOUND</return>
+ * </function>
+ * }</pre>
+ * 
+ * <h4>Example 2: Conditional return</h4>
+ * <pre>{@code
+ * <function name="validateEmail">
+ *   <def var="email"><call-param name="email"/></def>
+ *   
+ *   <if condition="${empty(email)}">
+ *     <return>false</return>
+ *   </if>
+ *   
+ *   <regexp>
+ *     <regexp-pattern>^[\\w.-]+@[\\w.-]+\\.\\w+$</regexp-pattern>
+ *     <regexp-source>${email}</regexp-source>
+ *   </regexp>
+ *   
+ *   <if condition="${!empty(group0)}">
+ *     <return>true</return>
+ *   </if>
+ *   
+ *   <return>false</return>
+ * </function>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Function only:</strong> Used only inside {@code <function>} definitions</li>
+ *   <li><strong>Immediate exit:</strong> Stops function execution, returns to caller</li>
+ *   <li><strong>Optional:</strong> Functions can return last expression without {@code <return>}</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <function>} - Function definition</li>
+ *   <li>{@code <call>} - Function invocation</li>
+ *   <li>{@code <exit>} - Exit entire scraper (not just function)</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "return",

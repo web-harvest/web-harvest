@@ -45,18 +45,41 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 
 /**
- * Empty plugin that executes its body and returns an empty variable.
- * This is a core plugin migrated from the original EmptyProcessor.
+ * Empty check processor - tests if a value is empty or executes body without output.
  * 
  * <p>
- * The empty plugin is useful for grouping other plugins without
- * producing any output. It simply executes its child plugins and
- * returns an empty result.
+ * The {@code <empty>} processor serves two purposes: (1) Check if a value is empty/null,
+ * and (2) Execute processors for their side effects without producing output.
  * </p>
  * 
- * @core This is a core plugin
- * @author Robert Bala
- * @since 2.1.0
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Check if variable is empty</h4>
+ * <pre>{@code
+ * <if condition="${empty(apiKey)}">
+ *   <file path="error.log" action="append">API key not configured!</file>
+ *   <exit/>
+ * </if>
+ * }</pre>
+ * 
+ * <h4>Example 2: Execute for side effects only</h4>
+ * <pre>{@code
+ * <empty>
+ *   <!-- Log activity without storing result -->
+ *   <file path="debug.log" action="append">
+ *     Processing started at ${_date}
+ *   </file>
+ * </empty>
+ * }</pre>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <if>} - Conditional execution</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "empty",

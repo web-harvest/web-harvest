@@ -52,18 +52,90 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Try plugin that provides exception handling with try-catch functionality.
- * This is a core plugin migrated from the original TryProcessor.
+ * Exception handling processor - try-catch blocks for robust error handling.
  * 
  * <p>
- * The try plugin allows execution of code blocks with exception handling.
- * It executes the try body and catches any exceptions, then executes
- * the catch block with error information available in the context.
+ * The {@code <try>} processor provides exception handling similar to Java try-catch.
+ * It executes its body and if any exception occurs, the {@code <catch>} block is executed
+ * with error details available in the {@code ${_error}} variable.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Handle HTTP errors gracefully</h4>
+ * <pre>{@code
+ * <try>
+ *   <def var="data">
+ *     <http url="https://api.example.com/data"/>
+ *   </def>
+ * </try>
+ * <catch>
+ *   <file path="errors.log" action="append">
+ *     HTTP request failed: ${_error}
+ *     Timestamp: ${_date}
+ *   </file>
+ *   <def var="data" value=""/>  <!-- Use empty default -->
+ * </catch>
+ * }</pre>
+ * 
+ * <h4>Example 2: Retry on failure</h4>
+ * <pre>{@code
+ * <def var="success" value="false"/>
+ * <def var="retries" value="0"/>
+ * 
+ * <while condition="${!success && retries < 3}">
+ *   <try>
+ *     <http url="https://api.example.com/data"/>
+ *     <def var="success" value="true"/>
+ *   </try>
+ *   <catch>
+ *     <def var="retries">
+ *       <script>parseInt(context.getVar("retries")) + 1</script>
+ *     </def>
+ *     <sleep milliseconds="2000"/>
+ *   </catch>
+ * </while>
+ * }</pre>
+ * 
+ * <h4>Example 3: Continue processing on XPath failure</h4>
+ * <pre>{@code
+ * <loop item="product">
+ *   <xpath expression="//product">...</xpath>
+ *   
+ *   <try>
+ *     <def var="price">
+ *       <xpath expression=".//price/text()">${product}</xpath>
+ *     </def>
+ *   </try>
+ *   <catch>
+ *     <def var="price" value="N/A"/>  <!-- Default if XPath fails -->
+ *   </catch>
+ *   
+ *   <file path="products.txt" action="append">
+ *     Product price: ${price}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Error Variable</h3>
+ * <p>Inside {@code <catch>} block, the {@code ${_error}} variable contains error message.</p>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
+ *   <li><strong>Error variable:</strong> ${_error} available only inside catch block</li>
+ *   <li><strong>No rethrow:</strong> Exceptions are caught and handled, not propagated</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <catch>} - Exception handler block</li>
+ *   <li>{@code <if>} - Conditional logic</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "try",

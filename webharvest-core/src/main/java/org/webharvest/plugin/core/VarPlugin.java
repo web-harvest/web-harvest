@@ -48,8 +48,30 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Variable reference plugin.
- * Returns the value of a variable from the context.
+ * Variable reference processor - alternative syntax for {@code <def>} with name attribute.
+ * 
+ * <p>
+ * The {@code <var>} processor is an alternative to {@code <def>} that uses {@code name}
+ * attribute instead of {@code var}. Both define variables - this is a legacy syntax
+ * maintained for compatibility.
+ * </p>
+ * 
+ * <h3>Usage</h3>
+ * <pre>{@code
+ * <!-- Legacy syntax -->
+ * <var name="apiUrl">https://api.example.com</var>
+ * 
+ * <!-- Modern syntax (preferred) -->
+ * <def var="apiUrl">https://api.example.com</def>
+ * }</pre>
+ * 
+ * <p><strong>Recommendation:</strong> Use {@code <def var="...">} for new configurations.</p>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
+ * @deprecated Use {@code <def>} instead
+ * @see DefPlugin
  */
 @CorePlugin(
     elementName = "var",

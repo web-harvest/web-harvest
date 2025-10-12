@@ -45,8 +45,97 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Sleep plugin that pauses execution for specified number of milliseconds.
- * Migrated from org.webharvest.runtime.processors.plugins.SleepPlugin
+ * Sleep/delay processor - pauses execution for specified duration.
+ * 
+ * <p>
+ * The {@code <sleep>} processor pauses scraper execution for a specified time period.
+ * This is essential for rate limiting, respecting robots.txt crawl delays, waiting for
+ * dynamic content, retry backoff strategies, and avoiding server overload.
+ * </p>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Fixed delay between requests</h4>
+ * <pre>{@code
+ * <loop item="url" maxloops="100">
+ *   <tokenize>${urls}</tokenize>
+ *   
+ *   <http url="${url}"/>
+ *   
+ *   <!-- Wait 2 seconds between requests -->
+ *   <sleep milliseconds="2000"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 2: Retry with exponential backoff</h4>
+ * <pre>{@code
+ * <def var="retryCount" value="0"/>
+ * <def var="success" value="false"/>
+ * 
+ * <while condition="${!success && retryCount < 5}">
+ *   <def var="response">
+ *     <http url="https://api.example.com/data"/>
+ *   </def>
+ *   
+ *   <if condition="${empty(response)}">
+ *     <!-- Exponential backoff: 1s, 2s, 4s, 8s, 16s -->
+ *     <def var="delay">
+ *       <script>Math.pow(2, parseInt(context.getVar("retryCount"))) * 1000</script>
+ *     </def>
+ *     <sleep milliseconds="${delay}"/>
+ *     <def var="retryCount">
+ *       <script>parseInt(context.getVar("retryCount")) + 1</script>
+ *     </def>
+ *   </if>
+ *   <else>
+ *     <def var="success" value="true"/>
+ *   </else>
+ * </while>
+ * }</pre>
+ * 
+ * <h4>Example 3: Respect rate limits</h4>
+ * <pre>{@code
+ * <!-- API allows 10 requests per minute -->
+ * <loop item="endpoint" maxloops="10">
+ *   <tokenize>${endpoints}</tokenize>
+ *   
+ *   <http url="https://api.example.com/${endpoint}"/>
+ *   
+ *   <!-- 6 seconds = 10 requests/minute -->
+ *   <sleep milliseconds="6000"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>milliseconds:</strong> Sleep duration in milliseconds (1000ms = 1 second)</li>
+ *   <li><strong>time:</strong> Alternative attribute name for milliseconds</li>
+ * </ul>
+ * 
+ * <h3>Common Durations</h3>
+ * <ul>
+ *   <li><strong>100ms:</strong> milliseconds="100" (very short delay)</li>
+ *   <li><strong>1 second:</strong> milliseconds="1000"</li>
+ *   <li><strong>5 seconds:</strong> milliseconds="5000"</li>
+ *   <li><strong>1 minute:</strong> milliseconds="60000"</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Thread blocking:</strong> Blocks current thread (no other processing during sleep)</li>
+ *   <li><strong>Interruptible:</strong> Sleep can be interrupted by cancel/stop operations</li>
+ *   <li><strong>Template support:</strong> Duration supports variable interpolation</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - Often used together for rate limiting</li>
+ *   <li>{@code <while>} - Retry loops with sleep backoff</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(elementName = "sleep")
 public class SleepPlugin extends AbstractPlugin {

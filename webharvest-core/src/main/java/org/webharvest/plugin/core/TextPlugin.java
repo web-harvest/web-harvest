@@ -54,17 +54,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Text plugin that processes text content with charset and delimiter support.
- * This is a core plugin migrated from the original TextProcessor.
+ * Text processor - simple text content wrapper and charset converter.
  * 
  * <p>
- * The text plugin allows processing of text content with configurable charset
- * and delimiter settings. It can handle both single text values and lists of text.
+ * The {@code <text>} processor wraps text content and optionally converts character encoding.
+ * It's mainly used for explicit text declaration or charset conversion scenarios.
  * </p>
  * 
- * @core This is a core plugin
- * @author Robert Bala
- * @since 2.2.0
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Explicit text content</h4>
+ * <pre>{@code
+ * <def var="message">
+ *   <text>This is plain text content</text>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Charset conversion</h4>
+ * <pre>{@code
+ * <def var="latinText">
+ *   <text charset="ISO-8859-1">
+ *     <file path="legacy-file.txt" action="read"/>
+ *   </text>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Note</h3>
+ * <p>In most cases, plain text works without {@code <text>} wrapper. This processor
+ * is rarely needed in modern configurations.</p>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "text",
