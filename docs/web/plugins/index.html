@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plugins - WebHarvest</title>
+  <link rel="stylesheet" href="../css/enterprise.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="../index.html" class="brand"
+        style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+        <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+        <span class="project-name">WebHarvest</span>
+      </a>
+      <nav class="main-nav">
+        <a href="index.html" class="active">Plugins</a>
+        <a href="../plugins.html">Plugins</a>
+        <a href="../ide.html">IDE</a>
+        <a href="../examples/">Examples</a>
+        <a href="../documentation.html">Docs</a>
+        <a href="../news.html">News</a>
+        <a href="../support.html">Support</a>
+        <a class="cta" href="../index.html#download">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Page Hero -->
+  <section class="page-hero">
+    <div class="container">
+      <h1>WebHarvest Core Plugins</h1>
+      <p class="page-subtitle">47 built-in plugins + runtime engine + plugin system</p>
+    </div>
+  </section>
+
+  <!-- Core Framework Overview -->
+  <section class="container" style="margin-top: 3rem;">
+    <div class="feature-card" style="max-width: 900px; margin: 0 auto; background: var(--gray-50);">
+      <h2 style="margin-bottom: 1rem;">What is WebHarvest Core?</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+        <strong>webharvest-core</strong> is the foundation framework that includes everything needed for web scraping:
+      </p>
+      <ul style="margin-left: 2rem; color: var(--text-secondary); margin-bottom: 1rem;">
+        <li><strong>47 Built-in Plugins</strong> - HTTP, XPath, XQuery, Control Flow, Variables, Scripting, File I/O
+        </li>
+        <li><strong>Runtime Engine</strong> - Configuration parser, execution engine, context management</li>
+        <li><strong>Plugin System</strong> - Auto-discovery, dependency injection, XSD generation</li>
+        <li><strong>Session Management</strong> - UUID tracking, metrics, token usage (v2.2)</li>
+        <li><strong>Event System</strong> - Guava EventBus integration for lifecycle events</li>
+      </ul>
+      <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+        <strong>No external dependencies required</strong> - all plugins below are included in
+        <code>webharvest-core</code>.
+      </p>
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <a href="../architecture.html" class="btn btn-primary">
+          <i class="fas fa-sitemap"></i> View Architecture
+        </a>
+        <a href="../plugins.html" class="btn btn-outline">
+          <i class="fas fa-plug"></i> External Plugins
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- All Plugins by Category -->
+  <section class="plugins-all container" style="margin-top: 4rem;">
+
+    <!-- Web & HTTP -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-globe"></i>
+        </span>
+        Web & HTTP
+      </h2>
+      <div class="plugins-grid">
+        <a href="http.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-globe"></i>
+          </div>
+          <h4>HTTP</h4>
+          <p>HTTP requests and responses with full client features</p>
+        </a>
+        <a href="html-to-xml.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-code"></i>
+          </div>
+          <h4>HTML-to-XML</h4>
+          <p>Parse HTML documents to XML format</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Data Extraction -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-search"></i>
+        </span>
+        Data Extraction
+      </h2>
+      <div class="plugins-grid">
+        <a href="xpath.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-code-branch"></i>
+          </div>
+          <h4>XPath</h4>
+          <p>XPath queries on XML documents</p>
+        </a>
+        <a href="xquery.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-database"></i>
+          </div>
+          <h4>XQuery</h4>
+          <p>Advanced XQuery 3.1 support</p>
+        </a>
+        <a href="regexp.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-search"></i>
+          </div>
+          <h4>Regex</h4>
+          <p>Regular expression matching and extraction</p>
+        </a>
+        <a href="tokenize.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-scissors"></i>
+          </div>
+          <h4>Tokenize</h4>
+          <p>Split text into tokens</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Data Transformation -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-exchange-alt"></i>
+        </span>
+        Data Transformation
+      </h2>
+      <div class="plugins-grid">
+        <a href="json-to-xml.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-file-code"></i>
+          </div>
+          <h4>JSON-to-XML</h4>
+          <p>Convert JSON to XML format</p>
+        </a>
+        <a href="xml-to-json.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-file-export"></i>
+          </div>
+          <h4>XML-to-JSON</h4>
+          <p>Convert XML to JSON format</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Control Flow -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-repeat"></i>
+        </span>
+        Control Flow
+      </h2>
+      <div class="plugins-grid">
+        <a href="loop.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-repeat"></i>
+          </div>
+          <h4>Loop</h4>
+          <p>Iterate over collections and lists</p>
+        </a>
+        <a href="def-var.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-box"></i>
+          </div>
+          <h4>Def Var</h4>
+          <p>Define and set variables</p>
+        </a>
+        <a href="get-var.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-hand-pointer"></i>
+          </div>
+          <h4>Get Var</h4>
+          <p>Retrieve variable values</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- File Operations -->
+    <div class="category">
+      <h2>
+        <span class="category-icon">
+          <i class="fas fa-folder"></i>
+        </span>
+        File Operations
+      </h2>
+      <div class="plugins-grid">
+        <a href="file.html" class="plugin-card">
+          <div class="plugin-icon">
+            <i class="fas fa-file"></i>
+          </div>
+          <h4>File</h4>
+          <p>Read and write file operations</p>
+        </a>
+      </div>
+    </div>
+
+
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <img src="../images/logo.png" alt="WebHarvest" class="footer-logo" />
+        <p>© 2025 WebHarvest — Enterprise web scraping framework</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+        <a href="../documentation.html">Documentation</a>
+        <a href="../examples/">Examples</a>
+        <a href="../support.html">Support</a>
+      </div>
+      <div class="footer-author">
+        <a href="https://www.linkedin.com/in/rbala/" target="_blank" rel="noopener" class="author-link">
+          <i class="fab fa-linkedin"></i> Robert Bala
+        </a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
