@@ -16,13 +16,12 @@
     <!-- Header -->
     <header class="site-header">
         <div class="container header-inner">
-            <div class="brand">
+            <a href="index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
                 <img src="images/logo.png" alt="WebHarvest" class="logo" />
                 <span class="project-name">WebHarvest</span>
-            </div>
+            </a>
             <nav class="main-nav">
-                <a href="index.html">Home</a>
-                <a href="processors.html">Core</a>
+                <a href="processors.html">Processors</a>
                 <a href="plugins.html" class="active">Plugins</a>
                 <a href="ide.html">IDE</a>
                 <a href="examples/">Examples</a>
@@ -358,25 +357,41 @@
             <div class="install-step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <h3>Maven Setup</h3>
-                    <p>Create a new Maven project and add WebHarvest dependency:</p>
+                    <h3>Maven / Gradle Setup</h3>
+                    <p><strong>Maven:</strong> Add dependency to pom.xml:</p>
                     <div class="code-window">
-                    <div class="window-header">
-                        <div class="window-controls">
-                            <span class="control red"></span>
-                            <span class="control yellow"></span>
-                            <span class="control green"></span>
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">pom.xml</span>
                         </div>
-                        <span class="window-title">pom.xml</span>
-                    </div>
-                    <div class="window-content">
-                        <pre><code class="language-xml">&lt;dependency&gt;
+                        <div class="window-content">
+                            <pre><code class="language-xml">&lt;dependency&gt;
   &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
   &lt;artifactId&gt;webharvest-core&lt;/artifactId&gt;
   &lt;version&gt;2.2.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
+                        </div>
                     </div>
-                </div>
+                    <p style="margin-top: 1rem;"><strong>Gradle:</strong> Add to build.gradle:</p>
+                    <div class="code-window">
+                        <div class="window-header">
+                            <div class="window-controls">
+                                <span class="control red"></span>
+                                <span class="control yellow"></span>
+                                <span class="control green"></span>
+                            </div>
+                            <span class="window-title">build.gradle</span>
+                        </div>
+                        <div class="window-content">
+                            <pre><code class="language-groovy">dependencies {
+    implementation 'org.webharvest:webharvest-core:2.2.0'
+}</code></pre>
+                        </div>
+                    </div>
                 </div>
             </div>
 

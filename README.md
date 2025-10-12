@@ -216,6 +216,19 @@ mvn clean install
 </dependency>
 ```
 
+### Gradle Dependency
+
+```groovy
+dependencies {
+    implementation 'org.webharvest:webharvest-core:2.2.0'
+    
+    // Optional: External plugins
+    implementation 'org.webharvest:webharvest-database:2.2.0'
+    implementation 'org.webharvest:webharvest-mail:2.2.0'
+    implementation 'org.webharvest:webharvest-ftp:2.2.0'
+}
+```
+
 ## 🚀 Quick Start
 
 ### Basic Example
