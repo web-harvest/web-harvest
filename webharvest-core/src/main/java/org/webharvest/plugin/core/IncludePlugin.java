@@ -47,18 +47,71 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Include plugin that includes external configuration files.
- * This is a core plugin migrated from the original IncludeProcessor.
+ * Include external configuration processor - imports other XML config files.
  * 
  * <p>
- * The include plugin allows including external configuration files
- * into the current configuration. This enables modular configuration
- * and code reuse.
+ * The {@code <include>} processor imports and executes external WebHarvest configuration
+ * files, enabling modular scraper design, code reuse, and separation of concerns.
+ * Included configurations execute in the same context, sharing variables and state.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Include common functions</h4>
+ * <pre>{@code
+ * <!-- main.xml -->
+ * <config>
+ *   <!-- Import shared functions -->
+ *   <include path="functions/http-helpers.xml"/>
+ *   <include path="functions/data-extractors.xml"/>
+ *   
+ *   <!-- Use imported functions -->
+ *   <call name="fetchAndParse">
+ *     <call-param name="url">https://example.com</call-param>
+ *   </call>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: Modular configuration</h4>
+ * <pre>{@code
+ * <!-- main.xml -->
+ * <config>
+ *   <include path="config/constants.xml"/>     <!-- API keys, URLs -->
+ *   <include path="scrapers/products.xml"/>    <!-- Product scraping logic -->
+ *   <include path="scrapers/reviews.xml"/>     <!-- Review scraping logic -->
+ *   <include path="export/formatters.xml"/>    <!-- Export functions -->
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Conditional include</h4>
+ * <pre>{@code
+ * <def var="environment" value="production"/>
+ * 
+ * <if condition="${environment == 'production'}">
+ *   <include path="config/prod-settings.xml"/>
+ * </if>
+ * <else>
+ *   <include path="config/dev-settings.xml"/>
+ * </else>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Path resolution:</strong> Paths are relative to working directory or absolute</li>
+ *   <li><strong>Shared context:</strong> Included config runs in same context, shares variables</li>
+ *   <li><strong>Execution timing:</strong> Included config executes immediately at include point</li>
+ *   <li><strong>Recursive includes:</strong> Can include files that include other files</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <function>} - Alternative: define functions inline</li>
+ *   <li>{@code <file>} - Read file content as data</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "include",

@@ -47,18 +47,90 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 /**
- * Function plugin that defines user-defined functions.
- * This is a core plugin migrated from the original FunctionProcessor.
+ * Function definition processor - defines reusable functions with parameters.
  * 
  * <p>
- * The function plugin allows defining custom functions that can be called
- * from other parts of the configuration. Functions are registered in the
- * context and can be invoked later.
+ * The {@code <function>} processor defines named, reusable functions that can be
+ * called multiple times from different parts of the configuration using {@code <call>}.
+ * Functions support parameters, local variables, and return values, enabling
+ * modular and maintainable scraper configurations.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple function</h4>
+ * <pre>{@code
+ * <function name="getCurrentDate">
+ *   ${_date}
+ * </function>
+ * 
+ * <def var="timestamp">
+ *   <call name="getCurrentDate"/>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Function with parameters</h4>
+ * <pre>{@code
+ * <function name="fetchProduct">
+ *   <def var="productId"><call-param name="productId"/></def>
+ *   
+ *   <http url="https://api.example.com/product/${productId}"/>
+ * </function>
+ * 
+ * <!-- Call with different IDs -->
+ * <def var="product1"><call name="fetchProduct"><call-param name="productId">123</call-param></call></def>
+ * <def var="product2"><call name="fetchProduct"><call-param name="productId">456</call-param></call></def>
+ * }</pre>
+ * 
+ * <h4>Example 3: Reusable extraction logic</h4>
+ * <pre>{@code
+ * <function name="extractProductInfo">
+ *   <def var="html"><call-param name="html"/></def>
+ *   
+ *   <def var="name">
+ *     <xpath expression="//h1[@class='title']/text()">
+ *       <html-to-xml>${html}</html-to-xml>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <def var="price">
+ *     <xpath expression="//span[@class='price']/text()">
+ *       <html-to-xml>${html}</html-to-xml>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <template>${name}|${price}</template>
+ * </function>
+ * 
+ * <loop item="url">
+ *   <tokenize>${urls}</tokenize>
+ *   
+ *   <def var="page"><http url="${url}"/></def>
+ *   <def var="info">
+ *     <call name="extractProductInfo">
+ *       <call-param name="html">${page}</call-param>
+ *     </call>
+ *   </def>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Define before use:</strong> Functions must be defined before calling</li>
+ *   <li><strong>Parameters:</strong> Retrieved via {@code <call-param>} inside function body</li>
+ *   <li><strong>Return value:</strong> Last expression in function body is returned</li>
+ *   <li><strong>Variable scope:</strong> Function has local scope for variables</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <call>} - Invoke defined functions</li>
+ *   <li>{@code <call-param>} - Define function parameters</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "function",

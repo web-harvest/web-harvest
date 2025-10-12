@@ -59,80 +59,178 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Regular expression plugin with full regression compatibility.
- * Provides 100% functionality of the old RegexpProcessor.
+ * Regular expression processor - pattern matching, extraction, and text replacement.
  * 
- * <h3>Group Variables</h3>
  * <p>
- * Captured groups from pattern matching are automatically stored as variables in the execution context:
+ * The {@code <regexp>} processor provides powerful regular expression capabilities for:
+ * pattern matching, text extraction using capture groups, search and replace operations,
+ * and complex text parsing. It automatically stores captured groups as variables for
+ * easy access.
+ * </p>
+ * 
+ * <h3>Core Features</h3>
  * <ul>
- *   <li><code>group0</code> - Full matched text (entire pattern match)</li>
- *   <li><code>group1</code> - First capturing group (...)</li>
- *   <li><code>group2</code> - Second capturing group</li>
- *   <li><code>groupN</code> - Nth capturing group (up to 100 groups supported)</li>
+ *   <li><strong>Pattern matching:</strong> Find patterns in text using Java regex syntax</li>
+ *   <li><strong>Capture groups:</strong> Extract parts of matches into variables (group0-group99)</li>
+ *   <li><strong>Search & replace:</strong> Replace matched text with templates</li>
+ *   <li><strong>Multiple matches:</strong> Process all matches or limit with max attribute</li>
+ *   <li><strong>Regex flags:</strong> Case-insensitive, multiline, dotall, etc.</li>
  * </ul>
+ * 
+ * <h3>Captured Group Variables (Bug #62 Fixed in v2.2.1)</h3>
+ * <p>
+ * Capture groups from pattern matching are automatically stored as variables:
+ * </p>
+ * <ul>
+ *   <li><strong>${group0}:</strong> Full matched text (entire pattern match)</li>
+ *   <li><strong>${group1}:</strong> First capturing group (...)</li>
+ *   <li><strong>${group2}:</strong> Second capturing group</li>
+ *   <li><strong>${groupN}:</strong> Nth capturing group (up to 100 groups)</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>Bug #62 Fix:</strong> Prior to v2.2.1, sequential (non-nested) regexp calls
+ * would incorrectly share group variables. Groups are now properly cleared before each
+ * regexp execution, ensuring complete isolation.
  * </p>
  * 
- * <h3>Group Isolation (Bug #62 - Fixed in v2.2.1)</h3>
- * <p>
- * <strong>Issue:</strong> Prior to v2.2.1, when two {@code <regexp>} statements were used sequentially 
- * (not nested), the second regexp would incorrectly retrieve group values from the FIRST regexp instead 
- * of its own captured groups.
- * </p>
- * <p>
- * <strong>Fix:</strong> Group variables (group0-group99) are now properly cleared before each regexp 
- * execution. This ensures complete isolation between independent regexp calls. Each {@code <regexp>} 
- * execution gets a clean slate for its group variables.
- * </p>
+ * <h3>Usage Examples</h3>
  * 
- * <h3>Example: Multiple Regexp Calls with Proper Isolation</h3>
+ * <h4>Example 1: Extract email addresses</h4>
  * <pre>{@code
- * <config xmlns="http://org.webharvest/schema/2.1/core">
- *   <!-- First regexp: extract pairs -->
- *   <def var="pairs">
- *     <regexp replace="false">
- *       <regexp-pattern>([^;]+)</regexp-pattern>
- *       <regexp-source>name:John;age:30</regexp-source>
- *     </regexp>
- *   </def>
+ * <def var="emails">
+ *   <regexp>
+ *     <regexp-pattern>([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})</regexp-pattern>
+ *     <regexp-source>
+ *       <http url="https://example.com/contacts"/>
+ *     </regexp-source>
+ *   </regexp>
+ * </def>
+ * 
+ * <loop item="email">
+ *   ${emails}
  *   
- *   <loop item="pair">
- *     <list><get var="pairs"/></list>
- *     <body>
- *       <!-- Second regexp: extract key:value -->
- *       <!-- Groups here are ISOLATED from first regexp -->
- *       <regexp replace="false">
- *         <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
- *         <regexp-source><get var="pair"/></regexp-source>
- *         <regexp-result>
- *           Key=<get var="group1"/>, Value=<get var="group2"/>
- *         </regexp-result>
- *       </regexp>
- *     </body>
- *   </loop>
- * </config>
+ *   <file path="emails.txt" action="append">${email}&#10;</file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 2: Parse key-value pairs with capture groups</h4>
+ * <pre>{@code
+ * <def var="data">name:John;email:john@example.com;age:30</def>
+ * 
+ * <loop item="pair">
+ *   <regexp>
+ *     <regexp-pattern>([^;]+)</regexp-pattern>
+ *     <regexp-source>${data}</regexp-source>
+ *   </regexp>
+ *   
+ *   <!-- For each pair, extract key and value -->
+ *   <regexp>
+ *     <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+ *     <regexp-source>${pair}</regexp-source>
+ *   </regexp>
+ *   
+ *   <!-- group1 = key, group2 = value (Bug #62: properly isolated!) -->
+ *   <def var="${group1}" value="${group2}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 3: Find and replace</h4>
+ * <pre>{@code
+ * <def var="html">
+ *   <http url="https://example.com/page"/>
+ * </def>
+ * 
+ * <!-- Replace all http:// with https:// -->
+ * <def var="secureHtml">
+ *   <regexp replace="true">
+ *     <regexp-pattern>http://</regexp-pattern>
+ *     <regexp-source>${html}</regexp-source>
+ *     <regexp-result>https://</regexp-result>
+ *   </regexp>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 4: Extract URLs with named groups</h4>
+ * <pre>{@code
+ * <loop item="url">
+ *   <regexp>
+ *     <regexp-pattern>https?://([^/]+)(/.*)}</regexp-pattern>
+ *     <regexp-source>
+ *       <http url="https://example.com/links"/>
+ *     </regexp-source>
+ *   </regexp>
+ *   
+ *   <!-- group0 = full URL, group1 = domain, group2 = path -->
+ *   <file path="urls.txt" action="append">
+ *     URL: ${group0}
+ *     Domain: ${group1}
+ *     Path: ${group2}
+ *   </file>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 5: Case-insensitive search</h4>
+ * <pre>{@code
+ * <regexp flag-caseinsensitive="true">
+ *   <regexp-pattern>error|warning|fail</regexp-pattern>
+ *   <regexp-source>
+ *     <file path="log.txt" action="read"/>
+ *   </regexp-source>
+ * </regexp>
  * }</pre>
  * 
  * <h3>Child Elements</h3>
  * <ul>
- *   <li><code>&lt;regexp-pattern&gt;</code> (required) - Regular expression pattern to match</li>
- *   <li><code>&lt;regexp-source&gt;</code> (required) - Source text to apply regexp to</li>
- *   <li><code>&lt;regexp-result&gt;</code> (optional) - Template for result formatting (can reference group variables)</li>
+ *   <li><strong>{@code <regexp-pattern>}:</strong> Regular expression pattern (required)</li>
+ *   <li><strong>{@code <regexp-source>}:</strong> Text to search/process (required)</li>
+ *   <li><strong>{@code <regexp-result>}:</strong> Template for formatting results (optional)</li>
  * </ul>
  * 
  * <h3>Attributes</h3>
  * <ul>
- *   <li><code>replace</code> (boolean, default=false) - If true, replaces matched text with result template</li>
- *   <li><code>max</code> (integer, default=1000000) - Maximum number of matches to process</li>
- *   <li><code>flag-caseinsensitive</code> (boolean, default=false) - Enable case-insensitive matching</li>
- *   <li><code>flag-multiline</code> (boolean, default=false) - Enable multiline mode (^ and $ match line boundaries)</li>
- *   <li><code>flag-dotall</code> (boolean, default=true) - Enable dot-all mode (. matches newlines)</li>
- *   <li><code>flag-unicodecase</code> (boolean, default=true) - Enable Unicode-aware case folding</li>
- *   <li><code>flag-canoneq</code> (boolean, default=false) - Enable canonical equivalence</li>
+ *   <li><strong>replace:</strong> If true, performs find & replace (default: false)</li>
+ *   <li><strong>max:</strong> Maximum matches to process (default: 1000000)</li>
+ *   <li><strong>flag-caseinsensitive:</strong> Ignore case (default: false)</li>
+ *   <li><strong>flag-multiline:</strong> ^ and $ match line boundaries (default: false)</li>
+ *   <li><strong>flag-dotall:</strong> . matches newlines (default: true)</li>
+ *   <li><strong>flag-unicodecase:</strong> Unicode-aware case folding (default: true)</li>
+ *   <li><strong>flag-canoneq:</strong> Canonical equivalence (default: false)</li>
+ * </ul>
+ * 
+ * <h3>Common Patterns</h3>
+ * <pre>{@code
+ * <!-- Extract emails -->
+ * <regexp-pattern>([\\w.-]+@[\\w.-]+\\.\\w+)</regexp-pattern>
+ * 
+ * <!-- Extract phone numbers -->
+ * <regexp-pattern>\\d{3}-\\d{3}-\\d{4}</regexp-pattern>
+ * 
+ * <!-- Extract between tags -->
+ * <regexp-pattern><title>(.*?)</title></regexp-pattern>
+ * 
+ * <!-- Split CSV -->
+ * <regexp-pattern>([^,]+)</regexp-pattern>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Group isolation:</strong> Groups cleared before each regexp (Bug #62 fixed)</li>
+ *   <li><strong>Java regex syntax:</strong> Uses {@code java.util.regex.Pattern}</li>
+ *   <li><strong>Returns ListVariable:</strong> All matches as list items</li>
+ *   <li><strong>Max limit:</strong> Default 1M matches (adjust if needed)</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <tokenize>} - Simple text splitting</li>
+ *   <li>{@code <xpath>} - XML querying</li>
+ *   <li>{@code <script>} - Complex regex with JavaScript</li>
  * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.1
+ * @since 1.0
  * @see java.util.regex.Pattern
  * @see RegexpPatternPlugin
  * @see RegexpSourcePlugin

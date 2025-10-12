@@ -64,17 +64,118 @@ import java.util.Map;
 import javax.xml.transform.stream.StreamSource;
 
 /**
- * XQuery plugin that provides XQuery expression evaluation functionality.
- * This is a core plugin migrated from the original XQueryProcessor.
+ * XQuery expression processor - powerful XML querying and transformation using XQuery language.
  * 
  * <p>
- * The XQuery plugin evaluates XQuery expressions against XML content.
- * It requires both XML content and XQuery expression as sub-elements.
+ * The {@code <xquery>} processor evaluates XQuery expressions against XML data, providing
+ * advanced querying, filtering, transformation, and aggregation capabilities beyond what
+ * XPath offers. XQuery is a full-featured query language (similar to SQL for databases)
+ * designed specifically for XML data.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>XQuery vs XPath</h3>
+ * <table border="1">
+ *   <tr>
+ *     <th>Feature</th>
+ *     <th>XPath</th>
+ *     <th>XQuery</th>
+ *   </tr>
+ *   <tr>
+ *     <td>Selection</td>
+ *     <td>Simple paths</td>
+ *     <td>Complex FLWOR expressions</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Transformation</td>
+ *     <td>Limited</td>
+ *     <td>Full XML reconstruction</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Joins</td>
+ *     <td>Not supported</td>
+ *     <td>Multi-document joins</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Aggregation</td>
+ *     <td>Basic (count, sum)</td>
+ *     <td>Advanced (group by, distinct)</td>
+ *   </tr>
+ * </table>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: FLWOR expression (For-Let-Where-Order-Return)</h4>
+ * <pre>{@code
+ * <def var="expensiveProducts">
+ *   <xquery>
+ *     <![CDATA[
+ *       for $product in //product
+ *       where $product/price > 100
+ *       order by $product/price descending
+ *       return $product/name/text()
+ *     ]]>
+ *     <html-to-xml>
+ *       <http url="https://example.com/products"/>
+ *     </html-to-xml>
+ *   </xquery>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: XML transformation</h4>
+ * <pre>{@code
+ * <def var="transformedXml">
+ *   <xquery>
+ *     <![CDATA[
+ *       <products>
+ *       {
+ *         for $p in //div[@class='product']
+ *         return
+ *           <product>
+ *             <id>{data($p/@id)}</id>
+ *             <name>{$p//h3/text()}</name>
+ *             <price>{$p//span[@class='price']/text()}</price>
+ *           </product>
+ *       }
+ *       </products>
+ *     ]]>
+ *     <html-to-xml>
+ *       <http url="https://example.com/products"/>
+ *     </html-to-xml>
+ *   </xquery>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 3: Aggregation (count, sum, avg)</h4>
+ * <pre>{@code
+ * <def var="totalPrice">
+ *   <xquery>
+ *     <![CDATA[
+ *       sum(//product/price)
+ *     ]]>
+ *     <json-to-xml>
+ *       <http url="https://api.example.com/products"/>
+ *     </json-to-xml>
+ *   </xquery>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Saxon engine:</strong> Uses Saxon XQuery processor</li>
+ *   <li><strong>CDATA required:</strong> Wrap XQuery in {@code <![CDATA[...]]>}</li>
+ *   <li><strong>Input XML:</strong> Provided as child processor result</li>
+ *   <li><strong>Returns ListVariable:</strong> Result can be single or multiple items</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xpath>} - Simpler XML querying</li>
+ *   <li>{@code <xslt>} - XSLT transformations</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.1.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     elementName = "xquery",

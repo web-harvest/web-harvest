@@ -48,8 +48,149 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * Tokenize plugin that splits text into tokens based on delimiters.
- * Migrated from org.webharvest.runtime.processors.plugins.TokenizePlugin
+ * Text tokenizer processor - splits text into tokens using delimiters for iteration.
+ * 
+ * <p>
+ * The {@code <tokenize>} processor splits text content into individual tokens (words, lines,
+ * or custom-delimited parts) and returns them as a ListVariable for iteration with {@code <loop>}.
+ * This is useful for processing CSV data, splitting lines, parsing structured text, or any
+ * scenario requiring text segmentation.
+ * </p>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>delimiters:</strong> Characters to use as delimiters (default: space, tab, newline)</li>
+ *   <li><strong>trimtokens:</strong> Trim whitespace from each token (default: true)</li>
+ *   <li><strong>allowemptytokens:</strong> Include empty tokens in result (default: false)</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Split by default delimiters (whitespace)</h4>
+ * <pre>{@code
+ * <def var="text" value="apple banana cherry date elderberry"/>
+ * 
+ * <loop item="fruit">
+ *   <tokenize>${text}</tokenize>
+ *   
+ *   <file path="fruits.txt" action="append">
+ *     ${fruit}
+ *   </file>
+ * </loop>
+ * <!-- Processes: apple, banana, cherry, date, elderberry -->
+ * }</pre>
+ * 
+ * <h4>Example 2: Split CSV line</h4>
+ * <pre>{@code
+ * <def var="csvLine" value="John,Doe,john@example.com,30"/>
+ * 
+ * <loop item="field" index="i">
+ *   <tokenize delimiters=",">${csvLine}</tokenize>
+ *   
+ *   <def var="field${i}" value="${field}"/>
+ * </loop>
+ * <!-- field0=John, field1=Doe, field2=john@example.com, field3=30 -->
+ * }</pre>
+ * 
+ * <h4>Example 3: Process multiline text</h4>
+ * <pre>{@code
+ * <def var="urls">
+ *   https://example.com/page1
+ *   https://example.com/page2
+ *   https://example.com/page3
+ * </def>
+ * 
+ * <loop item="url">
+ *   <tokenize delimiters="&#10;">${urls}</tokenize>
+ *   
+ *   <http url="${url}"/>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 4: Parse semicolon-separated values</h4>
+ * <pre>{@code
+ * <def var="data" value="id:123;name:Product A;price:99.99"/>
+ * 
+ * <loop item="pair">
+ *   <tokenize delimiters=";">${data}</tokenize>
+ *   
+ *   <!-- Each pair is "key:value" -->
+ *   <def var="key">
+ *     <tokenize delimiters=":">${pair}</tokenize>
+ *   </def>
+ * </loop>
+ * }</pre>
+ * 
+ * <h4>Example 5: Trim vs no-trim</h4>
+ * <pre>{@code
+ * <def var="text" value="  apple  ,  banana  ,  cherry  "/>
+ * 
+ * <!-- With trimming (default) -->
+ * <tokenize delimiters="," trimtokens="true">${text}</tokenize>
+ * <!-- Result: ["apple", "banana", "cherry"] -->
+ * 
+ * <!-- Without trimming -->
+ * <tokenize delimiters="," trimtokens="false">${text}</tokenize>
+ * <!-- Result: ["  apple  ", "  banana  ", "  cherry  "] -->
+ * }</pre>
+ * 
+ * <h4>Example 6: Allow empty tokens</h4>
+ * <pre>{@code
+ * <def var="data" value="apple,,cherry,,elderberry"/>
+ * 
+ * <!-- Skip empty tokens (default) -->
+ * <tokenize delimiters="," allowemptytokens="false">${data}</tokenize>
+ * <!-- Result: ["apple", "cherry", "elderberry"] -->
+ * 
+ * <!-- Keep empty tokens -->
+ * <tokenize delimiters="," allowemptytokens="true">${data}</tokenize>
+ * <!-- Result: ["apple", "", "cherry", "", "elderberry"] -->
+ * }</pre>
+ * 
+ * <h3>Common Use Cases</h3>
+ * <ul>
+ *   <li><strong>CSV parsing:</strong> Split comma/tab delimited data</li>
+ *   <li><strong>Line processing:</strong> Split multiline text into individual lines</li>
+ *   <li><strong>URL lists:</strong> Process newline-separated URLs</li>
+ *   <li><strong>Tag extraction:</strong> Split space-separated tags or keywords</li>
+ *   <li><strong>Path parsing:</strong> Split file paths by / or \</li>
+ * </ul>
+ * 
+ * <h3>Delimiter Syntax</h3>
+ * <p>
+ * The {@code delimiters} attribute can contain multiple delimiter characters.
+ * Any of these characters will split the text:
+ * </p>
+ * <pre>{@code
+ * <!-- Split by comma OR semicolon -->
+ * <tokenize delimiters=",;">${text}</tokenize>
+ * 
+ * <!-- Split by newline (&#10; is line feed) -->
+ * <tokenize delimiters="&#10;">${text}</tokenize>
+ * 
+ * <!-- Split by space, tab, newline -->
+ * <tokenize delimiters=" &#9;&#10;">${text}</tokenize>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Default delimiters:</strong> Space, tab, newline, carriage return</li>
+ *   <li><strong>Multiple delimiters:</strong> All delimiter chars split independently</li>
+ *   <li><strong>Returns ListVariable:</strong> Result is a list, use with {@code <loop>}</li>
+ *   <li><strong>Empty tokens:</strong> By default filtered out (set allowemptytokens=true to keep)</li>
+ *   <li><strong>Trim by default:</strong> Leading/trailing whitespace removed (set trimtokens=false to keep)</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <regexp>} - Advanced text splitting with regex patterns</li>
+ *   <li>{@code <loop>} - Iterate over tokenized results</li>
+ *   <li>{@code <text>} - Simple text manipulation</li>
+ * </ul>
+ * 
+ * @author WebHarvest Team
+ * @version 2.2.0
+ * @since 2.0
  */
 @CorePlugin(elementName = "tokenize")
 public class TokenizePlugin extends AbstractPlugin {

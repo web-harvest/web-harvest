@@ -53,18 +53,95 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * Call plugin that executes function calls.
- * This is a core plugin migrated from the original CallProcessor.
+ * Function invocation processor - calls user-defined functions with parameters.
  * 
  * <p>
- * The CallPlugin allows calling defined functions with parameters.
- * It supports the same functionality as the original CallProcessor but with
- * improved error handling, dependency injection, and modern architecture.
+ * The {@code <call>} processor invokes functions defined with {@code <function>},
+ * passing parameters and receiving return values. This enables code reuse, modular
+ * configurations, and abstraction of complex logic into reusable components.
  * </p>
  * 
- * @core This is a core plugin
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple function call</h4>
+ * <pre>{@code
+ * <!-- Define function -->
+ * <function name="fetchUser">
+ *   <def var="userId"><call-param name="userId"/></def>
+ *   
+ *   <http url="https://api.example.com/user/${userId}"/>
+ * </function>
+ * 
+ * <!-- Call function -->
+ * <def var="userData">
+ *   <call name="fetchUser">
+ *     <call-param name="userId">123</call-param>
+ *   </call>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 2: Function with multiple parameters</h4>
+ * <pre>{@code
+ * <function name="buildUrl">
+ *   <def var="base"><call-param name="baseUrl"/></def>
+ *   <def var="path"><call-param name="path"/></def>
+ *   <def var="query"><call-param name="query"/></def>
+ *   
+ *   <template>${base}${path}?${query}</template>
+ * </function>
+ * 
+ * <call name="buildUrl">
+ *   <call-param name="baseUrl">https://api.example.com</call-param>
+ *   <call-param name="path">/users</call-param>
+ *   <call-param name="query">limit=10&offset=0</call-param>
+ * </call>
+ * }</pre>
+ * 
+ * <h4>Example 3: Reusable scraping function</h4>
+ * <pre>{@code
+ * <function name="scrapePage">
+ *   <def var="url"><call-param name="url"/></def>
+ *   
+ *   <def var="title">
+ *     <xpath expression="//h1/text()">
+ *       <html-to-xml>
+ *         <http url="${url}"/>
+ *       </html-to-xml>
+ *     </xpath>
+ *   </def>
+ *   
+ *   ${title}
+ * </function>
+ * 
+ * <!-- Use function multiple times -->
+ * <loop item="pageUrl">
+ *   <tokenize>${urlList}</tokenize>
+ *   
+ *   <def var="pageTitle">
+ *     <call name="scrapePage">
+ *       <call-param name="url">${pageUrl}</call-param>
+ *     </call>
+ *   </def>
+ * </loop>
+ * }</pre>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Function scope:</strong> Functions must be defined before calling</li>
+ *   <li><strong>Parameters:</strong> Passed via {@code <call-param>} child elements</li>
+ *   <li><strong>Return value:</strong> Function returns last expression result</li>
+ *   <li><strong>Variable scope:</strong> Function parameters are local to function body</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <function>} - Define functions</li>
+ *   <li>{@code <call-param>} - Pass parameters to functions</li>
+ * </ul>
+ * 
  * @author WebHarvest Team
- * @since 2.2.0
+ * @version 2.2.0
+ * @since 1.0
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",
