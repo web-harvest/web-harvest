@@ -142,3 +142,4 @@ Zawsze używaj Hard Refresh (Ctrl+Shift+R) po rebuild!
 
 **IDE już działa!** Po wyczyszczeniu cache zobaczysz nową wersję z per-tab state i session info! 🎉
 
+

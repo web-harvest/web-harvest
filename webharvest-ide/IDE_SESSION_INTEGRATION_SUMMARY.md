@@ -237,3 +237,4 @@ Czy chcesz żebym:
 **B)** Zrobił commit core, a IDE w następnej sesji?
 **C)** Coś innego?
 
+

@@ -304,8 +304,8 @@
 }
 
 .status-completed {
-  background: #A4C639;
-  color: white;
+    background: #A4C639;
+    color: white;
 }
 
 .status-running {

@@ -1,0 +1,183 @@
+/**
+ * Session Info Panel Styles - Web-Harvest v2.2
+ * Modern gradient design with Apple HIG principles
+ */
+
+/* Session Panel Container */
+.session-info-container {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, rgba(123,31,162,0.03), rgba(216,27,96,0.03));
+    min-height: 100%;
+}
+
+/* Info Cards */
+.session-info-card,
+.token-usage-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.session-info-card:hover,
+.token-usage-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+/* Card Headers */
+.session-info-card h3,
+.token-usage-card h3 {
+    margin: 0 0 1.2rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1A1A1A;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.session-info-card h3 i {
+    color: #D81B60;
+}
+
+.token-usage-card h3 i {
+    color: #FFC107;
+}
+
+/* Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.info-item label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-item span {
+    font-size: 1rem;
+    color: #1A1A1A;
+    font-weight: 600;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #FFC107, #FFD54F);
+    color: #000;
+}
+
+.status-running {
+    background: linear-gradient(135deg, #2196F3, #64B5F6);
+    color: #FFF;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #4CAF50, #81C784);
+    color: #FFF;
+}
+
+.status-failed {
+    background: linear-gradient(135deg, #F44336, #EF5350);
+    color: #FFF;
+}
+
+.status-cancelled {
+    background: linear-gradient(135deg, #9E9E9E, #BDBDBD);
+    color: #FFF;
+}
+
+.status-idle {
+    background: #F5F5F5;
+    color: #666;
+}
+
+.status-unknown {
+    background: #EEEEEE;
+    color: #999;
+}
+
+/* Gradient Accents */
+.session-info-card {
+    border-left: 4px solid #D81B60;
+}
+
+.token-usage-card {
+    border-left: 4px solid #FFC107;
+}
+
+/* Empty State */
+#sessionPanel > div[style*="padding"] {
+    text-align: center;
+    padding: 3rem 2rem !important;
+}
+
+#sessionPanel > div[style*="padding"] p:first-child {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .session-info-container {
+        padding: 1rem;
+        gap: 1rem;
+    }
+}
+
+/* Animation for Session Info Appearance */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.session-info-card,
+.token-usage-card {
+    animation: fadeInUp 0.4s ease;
+}
+
+.session-info-card {
+    animation-delay: 0.1s;
+}
+
+.token-usage-card {
+    animation-delay: 0.2s;
+}
+
+
