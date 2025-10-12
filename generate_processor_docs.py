@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-WebHarvest Processor Documentation Generator
-Generates HTML documentation pages from JavaDoc comments in Plugin classes.
+WebHarvest Plugin Documentation Generator
+Generates HTML documentation pages from JavaDoc comments in core Plugin classes.
 """
 
 import re
@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Processor categories and their processors
+# Plugin categories and their plugins
 CATEGORIES = {
     'CRITICAL': ['HttpPlugin', 'XPathPlugin', 'RegexpPlugin', 'TokenizePlugin', 
                  'WhilePlugin', 'FunctionPlugin', 'CallPlugin', 'HtmlToXmlPlugin'],
@@ -23,8 +23,8 @@ CATEGORIES = {
                  'RegexpSourcePlugin', 'RegexpResultPlugin', 'ListPlugin', 'BodyProcessorPlugin']
 }
 
-# Processor name mappings (Plugin class name -> element name)
-PROCESSOR_NAMES = {
+# Plugin name mappings (Plugin class name -> element name)
+PLUGIN_NAMES = {
     'HttpPlugin': 'http',
     'XPathPlugin': 'xpath',
     'RegexpPlugin': 'regexp',
@@ -383,13 +383,13 @@ def generate_html(processor_name: str, element_name: str, data: Dict, category: 
 
 def main():
     """Main generation function."""
-    print("🚀 WebHarvest Processor Documentation Generator")
+    print("🚀 WebHarvest Plugin Documentation Generator (Core Plugins)")
     print("=" * 60)
     
     # Paths
     base_dir = Path(__file__).parent
     plugins_dir = base_dir / "webharvest-core" / "src" / "main" / "java" / "org" / "webharvest" / "plugin" / "core"
-    output_dir = base_dir / "docs" / "web" / "processors"
+    output_dir = base_dir / "docs" / "web" / "plugins"
     
     if not plugins_dir.exists():
         print(f"❌ Plugins directory not found: {plugins_dir}")
@@ -401,7 +401,7 @@ def main():
     
     # Process all categories
     for category, processors in CATEGORIES.items():
-        print(f"\n📁 {category} ({len(processors)} processors)")
+        print(f"\n📁 {category} ({len(processors)} plugins)")
         
         for processor_class in processors:
             java_file = plugins_dir / f"{processor_class}.java"
@@ -410,7 +410,7 @@ def main():
                 print(f"  ⚠️  {processor_class}: File not found")
                 continue
             
-            element_name = PROCESSOR_NAMES.get(processor_class, processor_class.replace('Plugin', '').lower())
+            element_name = PLUGIN_NAMES.get(processor_class, processor_class.replace('Plugin', '').lower())
             
             # Extract and parse JavaDoc
             javadoc = extract_javadoc(java_file)
