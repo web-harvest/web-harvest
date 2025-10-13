@@ -589,7 +589,13 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 📄 License
 
-This project is licensed under the BSD License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD License.
+
+**Copyright Notice:**
+- Original work: Copyright (c) 2006-2007, Vladimir Nikic
+- Modified work: Copyright (c) 2006-2025, the original author or authors
+
+See [licences/webharvest_licence.txt](licences/webharvest_licence.txt) for the full license text and [NOTICE](NOTICE) for detailed attribution information.
 
 ## 📞 Support
 
@@ -599,9 +605,19 @@ This project is licensed under the BSD License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **Original Author**: Vladimir Nikic
-- **Contributors**: Alexander Wajda, Robert Bala, Piotr Dyraga, Maciej Czapiewski
-- **Community**: All contributors and users who help improve WebHarvest
+### Original Author
+- **Vladimir Nikic** - Created WebHarvest (2006-2007)
+
+### Contributors
+- **Alexander Wajda** - Developer
+- **[Robert Bala](https://www.linkedin.com/in/rbala)** - Project Admin, Major Refactoring & Modernization (2024-2025)
+- **Piotr Dyraga** - Developer
+- **Maciej Czapiewski** - Developer
+
+### Community
+We thank all contributors and users who help improve WebHarvest!
+
+**Note**: This project has undergone substantial modernization and refactoring in 2024-2025, including migration to Java 11+, complete architecture redesign, web-based IDE implementation, and numerous enhancements. See [NOTICE](NOTICE) for detailed contribution history.
 
 ---
 

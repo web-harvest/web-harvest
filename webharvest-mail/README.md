@@ -201,7 +201,7 @@ mvn test
 
 ## License
 
-Copyright (c) 2006-2025 WebHarvest Team. See LICENSE file for details.
+Copyright (c) 2006-2025 the original author or authors. See LICENSE file for details.
 
 
 

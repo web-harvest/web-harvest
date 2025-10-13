@@ -21,7 +21,7 @@ This project adheres to a code of conduct. By participating, you are expected to
 
 ### Prerequisites
 
-- **Java 8 or higher**: Required for development
+- **Java 11 or higher**: Required for development
 - **Maven 3.6+**: Required for building the project
 - **SVN Client**: Required for version control (TortoiseSVN, command-line svn, etc.)
 - **IDE**: IntelliJ IDEA, Eclipse, or VS Code recommended
@@ -72,7 +72,7 @@ mvn clean test jacoco:report
 #### IntelliJ IDEA
 
 1. Import the project as a Maven project
-2. Configure Java SDK to Java 8 or higher
+2. Configure Java SDK to Java 11 or higher
 3. Enable annotation processing
 4. Configure code style settings (use project .editorconfig if available)
 
@@ -80,7 +80,7 @@ mvn clean test jacoco:report
 
 1. Import as Maven project
 2. Install M2Eclipse plugin if not already installed
-3. Configure Java compiler to 1.8 or higher
+3. Configure Java compiler to 11 or higher
 4. Enable annotation processing
 
 ## Contributing Process
@@ -320,7 +320,7 @@ svn copy https://svn.code.sf.net/p/web-harvest/code/trunk \
 - **SourceForge Project**: https://sourceforge.net/projects/web-harvest/
 - **Issue Tracker**: https://sourceforge.net/p/web-harvest/tickets/
 - **Mailing List**: web-harvest-users@lists.sourceforge.net
-- **Documentation**: See DOCUMENTATION_INDEX.md
+- **Documentation**: See README.md and DEVELOPER_GUIDE.md
 
 ### Communication Channels
 
@@ -410,5 +410,5 @@ If you have questions about contributing:
 
 ---
 
-**Last Updated**: October 8, 2025  
+**Last Updated**: October 13, 2025  
 **Version**: 2.2.0

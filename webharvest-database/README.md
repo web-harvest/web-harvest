@@ -210,5 +210,5 @@ Current test coverage: **29 tests, 0 failures**
 
 ## License
 
-Copyright (c) 2006-2025 Web-Harvest Team. See LICENSE file for details.
+Copyright (c) 2006-2025 the original author or authors. See LICENSE file for details.
 

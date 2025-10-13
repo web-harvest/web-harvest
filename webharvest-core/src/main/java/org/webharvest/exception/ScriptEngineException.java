@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2006-2007, Vladimir Nikic
+ Copyright (c) 2006-2025 the original author or authors.
  All rights reserved.
 
  Redistribution and use of this software in source and binary forms,

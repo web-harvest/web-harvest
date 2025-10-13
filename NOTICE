@@ -1,0 +1,69 @@
+WebHarvest
+Copyright 2006-2025 the original author or authors.
+
+================================================================================
+
+ORIGINAL WORK
+
+This product includes software originally developed by Vladimir Nikic (2006-2007).
+The original WebHarvest project was created and actively maintained during 2006-2007.
+
+================================================================================
+
+SUBSTANTIAL MODIFICATIONS
+
+This product has been substantially modified and enhanced by subsequent contributors:
+
+- Vladimir Nikic - Original Author (2006-2007)
+- Alexander Wajda - Developer
+- Robert Bala - Project Admin, Major Refactoring & Modernization (2024-2025)
+  https://www.linkedin.com/in/rbala
+- Piotr Dyraga - Developer
+- Maciej Czapiewski - Developer
+- and other contributors
+
+Major refactoring and modernization work performed in 2024-2025 included:
+- Migration to modern Java (Java 11+)
+- Complete architecture redesign
+- Web-based IDE implementation
+- Enhanced plugin system
+- Comprehensive test coverage
+- Modern HTTP client (Apache HttpClient 5)
+- WebSocket support
+- Database connection pooling
+- And numerous other improvements
+
+================================================================================
+
+THIRD-PARTY COMPONENTS
+
+This product includes the following third-party components:
+
+Apache HttpComponents (Apache License 2.0)
+- httpclient5
+- See licences/apache_licence.txt
+
+BeanShell (Sun Public License / LGPL)
+- See licences/beanshell_licence.txt
+
+Groovy (Apache License 2.0)
+- See licences/groovy_licence.txt
+
+Mozilla Rhino (MPL 2.0)
+- See licences/rhino_licence.txt
+
+Saxon XSLT Processor (Mozilla Public License)
+- See licences/saxon_licence.txt
+
+ASM (BSD License)
+- See licences/asm_licence.txt
+
+And other components as documented in the project dependencies.
+
+================================================================================
+
+LICENSE
+
+This software is licensed under the BSD License.
+See licences/webharvest_licence.txt for the full license text.
+
