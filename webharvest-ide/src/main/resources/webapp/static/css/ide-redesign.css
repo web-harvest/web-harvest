@@ -60,6 +60,39 @@
     gap: var(--spacing-2);
 }
 
+/* Progress Bar */
+.progress-bar {
+    height: 3px;
+    background: var(--color-border);
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--color-primary);
+    transition: width 0.3s ease;
+    width: 0;
+}
+
+.progress-text {
+    position: absolute;
+    right: 8px;
+    top: -20px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+/* Execution Controls */
+.execution-controls {
+    padding: 8px 16px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .monaco-editor-container {
     flex: 1;
     overflow: hidden;
@@ -75,6 +108,9 @@
     background: white;
     border-bottom: 1px solid #e0e0e0;
     gap: var(--spacing-1);
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
 }
 
 .sidebar-nav-btn {
@@ -136,7 +172,11 @@
 .sidebar-panel {
     display: none;
     flex-direction: column;
-    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: white;
 }
 
@@ -788,4 +828,300 @@
     .sidebar-nav {
         justify-content: space-around;
     }
+}
+/* ===========================
+   Session History Styles
+   =========================== */
+
+.session-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.session-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.session-history-header h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.session-count {
+    background: var(--purple);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.session-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.session-history-item {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.session-history-item:hover {
+    transform: translateX(4px);
+    border-color: var(--purple);
+    box-shadow: 0 2px 8px rgba(123, 31, 162, 0.2);
+}
+
+.session-history-item.completed {
+    border-left: 4px solid #10B981;
+}
+
+.session-history-item.failed {
+    border-left: 4px solid #EF4444;
+}
+
+.session-history-item.running {
+    border-left: 4px solid #3B82F6;
+}
+
+.session-history-item .session-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.session-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.session-status.completed {
+    color: #10B981;
+}
+
+.session-status.failed {
+    color: #EF4444;
+}
+
+.session-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.session-history-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.session-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.session-detail i {
+    color: var(--purple);
+    width: 16px;
+}
+
+.session-stats-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.session-stat-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.session-stat-mini i {
+    color: var(--magenta);
+}
+
+.session-id-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-muted);
+}
+
+.session-id-mini i {
+    color: var(--purple);
+}
+
+/* Session Details View */
+.session-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.session-details-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.session-details-header h4 {
+    margin: 0;
+    flex: 1;
+}
+
+/* Status Colors */
+.status-completed {
+    color: #10B981;
+}
+
+.status-failed {
+    color: #EF4444;
+}
+
+.status-running {
+    color: #3B82F6;
+}
+
+.status-pending {
+    color: #F59E0B;
+}
+
+.status-cancelled {
+    color: #6B7280;
+}
+
+/* Button Styles */
+.btn-block {
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.btn-secondary:hover {
+    background: var(--purple);
+    color: white;
+    border-color: var(--purple);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* ===========================
+   Plugin Breakdown Styles
+   =========================== */
+
+.plugin-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.plugin-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.plugin-stat .plugin-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.plugin-stat .plugin-name i {
+    color: var(--purple);
+}
+
+.plugin-stat .plugin-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 1.5rem;
+}
+
+.plugin-bar {
+    background: var(--bg-light);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    margin-left: 1.5rem;
+}
+
+.plugin-bar-fill {
+    background: linear-gradient(90deg, var(--purple), var(--magenta));
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* ===========================
+   Execution Control Buttons
+   =========================== */
+
+.btn-warning {
+    background: linear-gradient(135deg, #F59E0B, #FFC107);
+    color: white;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #D97706, #F59E0B);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10B981, #34D399);
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #10B981);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.execution-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }

@@ -36,6 +36,12 @@ public class ExecutionJob {
     private volatile ScraperSession session;  // v2.2: Session tracking
     private volatile TokenTracker tokenTracker;  // v2.2: Token tracking
     
+    // v2.2: Execution control flags
+    private volatile boolean paused = false;
+    private volatile boolean stopped = false;
+    private final Object pauseLock = new Object();
+    private volatile Thread executionThread;  // For interruption
+    
     // v2.2: Per-job storage (Apple HIG - each document has own state)
     private final List<LogEntry> logs = new CopyOnWriteArrayList<>();
     private final Map<String, String> results = new ConcurrentHashMap<>();
@@ -158,6 +164,107 @@ public class ExecutionJob {
     
     public String getLastMessage() {
         return lastMessage;
+    }
+    
+    // ========== Execution Control (v2.2.0) ==========
+    
+    /**
+     * Pauses execution.
+     * Next checkPaused() call will block until resumed.
+     * 
+     * @since 2.2.0
+     */
+    public void pause() {
+        this.paused = true;
+        this.status = "PAUSED";
+    }
+    
+    /**
+     * Resumes paused execution.
+     * 
+     * @since 2.2.0
+     */
+    public void resume() {
+        synchronized (pauseLock) {
+            this.paused = false;
+            this.status = "RUNNING";
+            pauseLock.notifyAll();
+        }
+    }
+    
+    /**
+     * Stops execution (cannot resume).
+     * 
+     * @since 2.2.0
+     */
+    public void stop() {
+        this.stopped = true;
+        this.status = "STOPPED";
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();  // Wake up if paused
+        }
+        // Interrupt execution thread to break out of sleep/wait
+        if (executionThread != null) {
+            executionThread.interrupt();
+        }
+    }
+    
+    /**
+     * Sets the execution thread (for interruption on stop).
+     * 
+     * @param thread the execution thread
+     * @since 2.2.0
+     */
+    public void setExecutionThread(Thread thread) {
+        this.executionThread = thread;
+    }
+    
+    /**
+     * Checks if execution should pause.
+     * If paused, blocks until resumed or stopped.
+     * 
+     * @return true if stopped, false if should continue
+     * @since 2.2.0
+     */
+    public boolean checkPauseOrStop() {
+        if (stopped) {
+            return true;  // Signal to stop
+        }
+        
+        if (paused) {
+            synchronized (pauseLock) {
+                while (paused && !stopped) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return true;  // Interrupted - stop execution
+                    }
+                }
+            }
+        }
+        
+        return stopped;  // Return true if stopped while paused
+    }
+    
+    /**
+     * Returns whether execution is currently paused.
+     * 
+     * @return true if paused
+     * @since 2.2.0
+     */
+    public boolean isPaused() {
+        return paused;
+    }
+    
+    /**
+     * Returns whether execution has been stopped.
+     * 
+     * @return true if stopped
+     * @since 2.2.0
+     */
+    public boolean isStopped() {
+        return stopped;
     }
 }
 

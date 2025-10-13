@@ -105,25 +105,18 @@ public class ExecutionServlet extends HttpServlet {
             String executionId = UUID.randomUUID().toString();
             ExecutionRequest execReq = new ExecutionRequest(executionId, configName, configXml);
             
-            // Return execution ID FIRST (so frontend can connect WebSocket)
+            // Return execution ID IMMEDIATELY (frontend needs it to connect WebSocket!)
             JsonObject response = new JsonObject();
             response.addProperty("executionId", executionId);
             response.addProperty("status", "QUEUED");
-            response.addProperty("message", "Execution queued, waiting for WebSocket...");
+            response.addProperty("message", "Execution queued");
             
             sendJsonResponse(resp, HttpServletResponse.SC_OK, response);
+            LOG.info("Returned executionId to client: {}", executionId);
             
-            // Wait a bit for WebSocket to connect (100ms)
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException ie) {
-                // ignore
-            }
-            
-            // NOW submit to execution manager
-            executionManager.submit(execReq);
-            
-            LOG.info("Execution submitted after WebSocket delay: {}", executionId);
+            // Submit with DELAYED start (allows WebSocket to connect first)
+            // ExecutionManager will wait for WebSocket before starting
+            executionManager.submitWithWebSocketWait(execReq);
             
         } catch (Exception e) {
             LOG.error("Failed to start execution", e);

@@ -225,3 +225,7 @@ Time:    Zależy od Ciebie
 Ale decyzja należy do Ciebie! Co wybierasz? 🎯
 
 
+
+
+
+

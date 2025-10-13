@@ -19,7 +19,7 @@ import java.net.ServerSocket;
 import java.net.URI;
 
 /**
- * Web-Harvest IDE - Embedded Jetty Server
+ * WebHarvest IDE - Embedded Jetty Server
  * 
  * Modern web-based IDE with:
  * - Monaco Editor (VS Code editor)
@@ -43,7 +43,7 @@ public class WebHarvestServer {
     }
     
     public void start() throws Exception {
-        LOG.info("Starting Web-Harvest IDE on port {}...", port);
+        LOG.info("Starting WebHarvest IDE on port {}...", port);
         LOG.info("Java version: {}", System.getProperty("java.version"));
         LOG.info("Working directory: {}", System.getProperty("user.dir"));
         
@@ -76,8 +76,9 @@ public class WebHarvestServer {
         // 1. REST API servlets
         context.addServlet(new ServletHolder(new ConfigServlet()), "/api/config/*");
         context.addServlet(new ServletHolder(new ExecutionServlet()), "/api/execute/*");
-        context.addServlet(new ServletHolder(new org.webharvest.server.api.ExecutionInfoServlet()), "/api/execution/*");
-        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/*");
+        context.addServlet(new ServletHolder(new org.webharvest.server.api.ExecutionControlServlet()), "/api/execution/*");
+        context.addServlet(new ServletHolder(new org.webharvest.server.api.SessionHistoryServlet()), "/api/sessions/*");
+        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/* (control+info), /api/sessions/*");
         
         // 2. WebSocket servlet
         JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {
@@ -104,7 +105,7 @@ public class WebHarvestServer {
         // Add shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                LOG.info("Shutting down Web-Harvest IDE...");
+                LOG.info("Shutting down WebHarvest IDE...");
                 server.stop();
             } catch (Exception e) {
                 LOG.error("Error during shutdown", e);
@@ -113,14 +114,22 @@ public class WebHarvestServer {
         
         // Start server
         server.start();
-        LOG.info("Web-Harvest IDE started successfully!");
+        LOG.info("WebHarvest IDE started successfully!");
         LOG.info("Open in browser: http://localhost:{}", port);
         
         // Auto-open browser
         openBrowser();
         
         // Wait for server
-        server.join();
+        LOG.info("[DEBUG] About to call server.join()...");
+        try {
+            server.join();
+            LOG.info("[DEBUG] server.join() completed normally");
+        } catch (Exception e) {
+            LOG.error("[DEBUG] server.join() threw exception:", e);
+            throw e;
+        }
+        LOG.info("[DEBUG] After server.join()");
     }
     
     private void openBrowser() {
@@ -177,7 +186,7 @@ public class WebHarvestServer {
             WebHarvestServer server = new WebHarvestServer(port);
             server.start();
         } catch (Exception e) {
-            LOG.error("Failed to start Web-Harvest IDE", e);
+            LOG.error("Failed to start WebHarvest IDE", e);
             System.exit(1);
         }
     }

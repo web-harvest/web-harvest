@@ -219,6 +219,7 @@ const app = {
             });
             this.renderLogs();
             this.renderResults();
+            this.renderVariables();
             this.renderSessionInfo();
         }
 
@@ -311,11 +312,19 @@ const app = {
      * Run configuration (v2.2: Stores executionId in active tab)
      */
     async runConfig() {
+        console.log('[1] runConfig() called');
+
         const tab = this.getActiveTab();
-        if (!tab) return;
+        console.log('[2] Active tab:', tab);
+        if (!tab) {
+            console.error('[ERROR] No active tab!');
+            this.addLog('error', 'No active tab found');
+            return;
+        }
 
         const xml = this.editor.getValue();
         const tabName = tab.name;
+        console.log('[3] Got XML, length:', xml.length, 'name:', tabName);
 
         // v2.2: Clear previous execution data in THIS tab
         tab.logs = [];
@@ -339,6 +348,10 @@ const app = {
 
         try {
             // FIRST: Create execution to get ID
+            console.log('[DEBUG] About to send POST /api/execute');
+            console.log('[DEBUG] configName:', tabName);
+            console.log('[DEBUG] configXml length:', xml.length);
+
             const response = await fetch('/api/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -349,7 +362,15 @@ const app = {
                 })
             });
 
+            console.log('[DEBUG] fetch() returned, status:', response.status);
+            console.log('[DEBUG] response ok:', response.ok);
+
+            if (!response.ok) {
+                throw new Error('Server returned error: ' + response.status);
+            }
+
             const result = await response.json();
+            console.log('[DEBUG] JSON parsed, executionId:', result.executionId);
 
             // v2.2: Store executionId in TAB, not globally
             tab.executionId = result.executionId;
@@ -366,9 +387,15 @@ const app = {
             document.getElementById('executionControls').style.display = 'flex';
 
         } catch (error) {
+            console.error('[ERROR] runConfig() failed:', error);
+            console.error('[ERROR] Error type:', error.constructor.name);
+            console.error('[ERROR] Error message:', error.message);
+            console.error('[ERROR] Stack:', error.stack);
+
             tab.status = 'FAILED';
             this.setStatus('<i class="fas fa-times-circle text-error"></i> Execution failed: ' + error.message, 'error');
             this.addLog('error', '✗ Error: ' + error.message);
+            this.addLog('error', '✗ Error type: ' + error.constructor.name);
             this.hideProgress();
         }
     },
@@ -380,11 +407,24 @@ const app = {
         return new Promise((resolve, reject) => {
             const wsUrl = `ws://${window.location.host}/ws/execution?id=${executionId}`;
 
-            console.log('Connecting WebSocket to:', wsUrl);
-            this.webSocket = new WebSocket(wsUrl);
+            console.log('🔍 [Safari Debug] Browser:', navigator.userAgent);
+            console.log('🔍 [Safari Debug] WebSocket URL:', wsUrl);
+            console.log('🔍 [Safari Debug] WebSocket support:', typeof WebSocket !== 'undefined');
+
+            try {
+                this.webSocket = new WebSocket(wsUrl);
+                console.log('✓ [Safari Debug] WebSocket object created, readyState:', this.webSocket.readyState);
+            } catch (err) {
+                console.error('❌ [Safari Debug] Failed to create WebSocket:', err);
+                this.addLog('error', '✗ WebSocket creation failed: ' + err.message);
+                reject(err);
+                return;
+            }
 
             this.webSocket.onopen = () => {
+                console.log('✓ [Safari Debug] WebSocket onopen event fired!');
                 console.log('✓ WebSocket connected for execution:', executionId);
+                this.addLog('success', '✓ [Debug] WebSocket connected!');
                 resolve(); // Connection established!
             };
 
@@ -421,13 +461,17 @@ const app = {
             };
 
             this.webSocket.onerror = (error) => {
-                console.error('❌ WebSocket error:', error);
-                this.addLog('error', '✗ WebSocket connection error');
+                console.error('❌ [Safari Debug] WebSocket onerror event:', error);
+                console.error('❌ [Safari Debug] ReadyState:', this.webSocket.readyState);
+                console.error('❌ [Safari Debug] URL:', this.webSocket.url);
+                this.addLog('error', '✗ WebSocket connection error (check console)');
                 reject(error);
             };
 
             this.webSocket.onclose = (event) => {
+                console.log('🔌 [Safari Debug] WebSocket onclose event');
                 console.log('🔌 WebSocket closed:', event.code, event.reason);
+                console.log('🔌 [Safari Debug] Was clean:', event.wasClean);
 
                 // Check if this was unexpected disconnect (not normal closure)
                 if (event.code !== 1000 && event.code !== 1005) {
@@ -438,9 +482,12 @@ const app = {
 
             // Timeout after 5 seconds
             setTimeout(() => {
-                if (this.webSocket.readyState !== WebSocket.OPEN) {
-                    console.warn('WebSocket connection timeout');
-                    reject(new Error('WebSocket connection timeout'));
+                if (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN) {
+                    console.warn('⏱ [Safari Debug] WebSocket connection timeout!');
+                    console.warn('⏱ [Safari Debug] Current readyState:', this.webSocket.readyState);
+                    console.warn('⏱ [Safari Debug] Expected: 1 (OPEN), got:', this.webSocket.readyState);
+                    this.addLog('error', '✗ WebSocket timeout - readyState: ' + this.webSocket.readyState);
+                    reject(new Error('WebSocket connection timeout (readyState: ' + this.webSocket.readyState + ')'));
                 }
             }, 5000);
         });
@@ -466,11 +513,21 @@ const app = {
 
             case 'RUNNING':
                 this.addLog('info', '⚙ ' + update.message);
+                // Show Pause button, hide Resume button (in case resuming)
+                const pauseBtnRun = document.getElementById('pauseBtn');
+                const resumeBtnRun = document.getElementById('resumeBtn');
+                if (pauseBtnRun) pauseBtnRun.style.display = 'inline-block';
+                if (resumeBtnRun) resumeBtnRun.style.display = 'none';
                 break;
 
             case 'PAUSED':
                 this.setStatus('<i class="fas fa-pause-circle text-warning"></i> Paused', 'paused');
                 this.addLog('warning', '⏸ ' + update.message);
+                // Show Resume button, hide Pause button
+                const pauseBtn = document.getElementById('pauseBtn');
+                const resumeBtn = document.getElementById('resumeBtn');
+                if (pauseBtn) pauseBtn.style.display = 'none';
+                if (resumeBtn) resumeBtn.style.display = 'inline-block';
                 break;
 
             case 'COMPLETED':
@@ -484,6 +541,9 @@ const app = {
                 if (update.results && Object.keys(update.results).length > 0) {
                     console.log('Displaying', Object.keys(update.results).length, 'results');
                     this.displayResults(update.results);
+
+                    // Switch to Results panel to show results
+                    this.switchSidebarPanel('results');
                 } else {
                     console.warn('No results in update!');
                     this.addLog('warning', '⚠ No results returned');
@@ -500,7 +560,8 @@ const app = {
                         console.log('Storing token usage in tab:', update.tokenUsage);
                         tab.tokenUsage = update.tokenUsage;
                     }
-                    // Render session info panel
+                    // Render all panels
+                    this.renderVariables();
                     this.renderSessionInfo();
                 }
 
@@ -595,167 +656,7 @@ const app = {
         this.renderResults();
     },
 
-    /**
-     * Render results for active tab (v2.2: Apple HIG)
-     */
-    renderResults() {
-        const tab = this.getActiveTab();
 
-        try {
-            // Show results tabs
-            document.getElementById('resultsTabs').style.display = 'flex';
-            document.getElementById('statusDisplay').style.display = 'none';
-
-            const outputContent = document.getElementById('outputContent');
-            const variablesContent = document.getElementById('variablesContent');
-
-            if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
-                // No results - show empty state
-                outputContent.innerHTML = '<p style="color: #666; padding: 20px;">No results yet. Click Run to execute this configuration.</p>';
-                variablesContent.innerHTML = '<p style="color: #666; padding: 20px;">No variables yet.</p>';
-                return;
-            }
-
-            // Display main output (configResult or first significant variable)
-            const results = tab.results;
-            const mainResult = results.configResult || results.html || results.response ||
-                results.data || Object.values(results)[0] || 'No output';
-            outputContent.textContent = mainResult;
-            console.log('Output tab updated with main result (', mainResult.length, 'chars)');
-
-            // Display variables
-            variablesContent.innerHTML = '<p>Loading results...</p>';
-
-            // Use setTimeout to avoid UI freeze
-            setTimeout(() => {
-                try {
-                    variablesContent.innerHTML = '';
-
-                    let varCount = 0;
-                    const entries = Object.entries(results || {});
-                    console.log('Processing', entries.length, 'variables...');
-
-                    entries.forEach(([name, value]) => {
-                        // Truncate if too long (max 300 chars for display)
-                        const displayValue = value.length > 300
-                            ? value.substring(0, 300) + `...\n(${value.length} total chars, truncated)`
-                            : value;
-
-                        const card = document.createElement('div');
-                        card.className = 'variable-card';
-
-                        const varName = document.createElement('div');
-                        varName.className = 'variable-name';
-                        varName.textContent = name;
-
-                        const varValue = document.createElement('div');
-                        varValue.className = 'variable-value';
-                        varValue.textContent = displayValue;
-
-                        card.appendChild(varName);
-                        card.appendChild(varValue);
-                        variablesContent.appendChild(card);
-                        varCount++;
-                    });
-
-                    console.log('✓ Created', varCount, 'variable cards');
-                    this.addLog('success', `✓ Displayed ${varCount} variables`);
-
-                    // Switch to output tab to show main result
-                    this.switchResultTab('output');
-
-                } catch (err) {
-                    console.error('Error creating variable cards:', err);
-                    variablesContent.innerHTML = '<p class="error">Error displaying results: ' + err.message + '</p>';
-                }
-            }, 100); // Small delay to avoid UI freeze
-
-        } catch (err) {
-            console.error('Error in renderResults:', err);
-            this.addLog('error', 'Failed to display results: ' + err.message);
-        }
-    },
-
-    /**
-     * Render session info for active tab (v2.2: New!)
-     */
-    renderSessionInfo() {
-        const tab = this.getActiveTab();
-        const sessionPanel = document.getElementById('sessionPanel');
-
-        if (!sessionPanel) return;
-
-        if (!tab || !tab.sessionInfo) {
-            sessionPanel.innerHTML = `
-                <div style="padding: 20px; color: #666;">
-                    <p>No session information available.</p>
-                    <p style="font-size: 0.9em; margin-top: 10px;">
-                        Session data will appear here after running a configuration.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-
-        const session = tab.sessionInfo;
-        const tokens = tab.tokenUsage || {};
-
-        sessionPanel.innerHTML = `
-            <div class="session-info-container">
-                <div class="session-info-card">
-                    <h3><i class="fas fa-info-circle"></i> Session Information</h3>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Session ID:</label>
-                            <span>${session.sessionId ? session.sessionId.substring(0, 8) + '...' : 'N/A'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Client ID:</label>
-                            <span>${session.clientId || 'N/A'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Status:</label>
-                            <span class="status-badge status-${session.status ? session.status.toLowerCase() : 'unknown'}">${session.status || 'UNKNOWN'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Duration:</label>
-                            <span>${session.duration ? (session.duration / 1000).toFixed(2) + 's' : 'N/A'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Elements Processed:</label>
-                            <span>${session.elementsProcessed || 0}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Processing Rate:</label>
-                            <span>${session.processingRate ? session.processingRate.toFixed(2) + ' elem/s' : 'N/A'}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="token-usage-card">
-                    <h3><i class="fas fa-coins"></i> Token Usage</h3>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>HTTP Requests:</label>
-                            <span>${tokens.httpRequests || 0}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>HTTP Bytes:</label>
-                            <span>${tokens.httpBytes ? (tokens.httpBytes / 1024).toFixed(2) + ' KB' : '0 KB'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>CPU Time:</label>
-                            <span>${tokens.cpuTimeMs || 0} ms</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Memory Peak:</label>
-                            <span>${tokens.memoryPeakBytes ? (tokens.memoryPeakBytes / 1024 / 1024).toFixed(2) + ' MB' : '0 MB'}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
 
     /**
      * Switch result tab
@@ -778,16 +679,17 @@ const app = {
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
 
-        progressBar.style.display = 'block';
-        progressFill.style.width = percent + '%';
-        progressText.textContent = Math.round(percent) + '%';
+        if (progressBar) progressBar.style.display = 'block';
+        if (progressFill) progressFill.style.width = percent + '%';
+        if (progressText) progressText.textContent = Math.round(percent) + '%';
     },
 
     /**
      * Hide progress bar
      */
     hideProgress() {
-        document.getElementById('progressBar').style.display = 'none';
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) progressBar.style.display = 'none';
     },
 
     /**
@@ -895,43 +797,26 @@ const app = {
     },
 
     /**
-     * Render logs for active tab (v2.2: Apple HIG)
-     */
-    renderLogs() {
-        const tab = this.getActiveTab();
-        const logContent = document.getElementById('logContent');
-
-        if (!logContent) return;
-
-        logContent.innerHTML = '';
-
-        if (tab && tab.logs && tab.logs.length > 0) {
-            tab.logs.forEach(log => {
-                const entry = document.createElement('div');
-                entry.className = 'log-entry ' + log.type;
-                entry.textContent = `[${log.time}] ${log.message}`;
-                logContent.appendChild(entry);
-            });
-            logContent.scrollTop = logContent.scrollHeight;
-        } else {
-            logContent.innerHTML = '<p style="color: #666; padding: 20px;">No logs yet. Click Run to execute this configuration.</p>';
-        }
-    },
-
-    /**
      * Clear results
      */
     clearResults() {
-        document.getElementById('outputContent').textContent = 'Executing...';
-        document.getElementById('variablesContent').innerHTML = '';
-        document.getElementById('logContent').innerHTML = '';
+        // Clear results - with null checks for Safari compatibility
+        const outputContent = document.getElementById('outputContent');
+        if (outputContent) outputContent.textContent = 'Executing...';
+
+        const variablesContent = document.getElementById('variablesContent');
+        if (variablesContent) variablesContent.innerHTML = '';
+
+        const logContent = document.getElementById('logContent');
+        if (logContent) logContent.innerHTML = '';
     },
 
     /**
      * Set status message
      */
     setStatus(message, type) {
-        document.getElementById('statusMessage').innerHTML = message;
+        const statusMessage = document.getElementById('statusMessage');
+        if (statusMessage) statusMessage.innerHTML = message;
     },
 
     /**
@@ -1224,17 +1109,17 @@ Data aggregated from 2 API sources!
      */
     switchSidebarPanel(panelName) {
         console.log('Switching sidebar panel to:', panelName);
-        
+
         // Update nav buttons
         document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.panel === panelName);
         });
-        
+
         // Update panels
         document.querySelectorAll('.sidebar-panel').forEach(panel => {
             panel.classList.toggle('active', panel.id === panelName + 'Panel');
         });
-        
+
         // Update active tab's state
         const tab = this.getActiveTab();
         if (tab) {
@@ -1259,7 +1144,7 @@ Data aggregated from 2 API sources!
 
     async loadExamplesList() {
         const grid = document.getElementById('examplesGrid');
-        
+
         // Example configurations
         const examples = [
             { file: 'simple_test.xml', title: 'Simple HTTP Test', icon: 'vial', category: 'Web & HTTP' },
@@ -1269,7 +1154,7 @@ Data aggregated from 2 API sources!
             { file: 'json_api.xml', title: 'JSON API', icon: 'file-code', category: 'Data Transformation' },
             { file: 'loop_pagination.xml', title: 'Loop & Pagination', icon: 'repeat', category: 'Control Flow' }
         ];
-        
+
         grid.innerHTML = examples.map(ex => `
             <div class="example-card" data-file="${ex.file}" onclick="app.selectExample('${ex.file}')">
                 <i class="fas fa-${ex.icon}"></i>
@@ -1291,7 +1176,7 @@ Data aggregated from 2 API sources!
             alert('Please select an example first');
             return;
         }
-        
+
         try {
             const response = await fetch(`/examples/${this.selectedExample}`);
             const content = await response.text();
@@ -1321,9 +1206,10 @@ Data aggregated from 2 API sources!
     renderLogs() {
         const tab = this.getActiveTab();
         const container = document.getElementById('logsContent');
-        
+        const badge = document.getElementById('logsBadge');
+
         if (!container) return;
-        
+
         if (!tab || !tab.logs || tab.logs.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -1331,20 +1217,23 @@ Data aggregated from 2 API sources!
                     <p>No logs yet</p>
                     <small>Logs will appear during execution</small>
                 </div>`;
+            // Update badge to 0 when no logs
+            if (badge) badge.textContent = '0';
             return;
         }
-        
+
         container.innerHTML = tab.logs.map(log => `
             <div class="log-entry ${log.type}">
                 <span class="log-time">${log.time}</span>
                 <span class="log-message">${this.escapeHtml(log.message)}</span>
             </div>
         `).join('');
-        
+
         container.scrollTop = container.scrollHeight;
-        
-        if (document.getElementById('logsBadge')) {
-            document.getElementById('logsBadge').textContent = tab.logs.length;
+
+        // Update badge with log count
+        if (badge) {
+            badge.textContent = tab.logs.length;
         }
     },
 
@@ -1357,12 +1246,19 @@ Data aggregated from 2 API sources!
     },
 
     renderResults() {
+        console.log('[renderResults] Called');
         const tab = this.getActiveTab();
+        console.log('[renderResults] Active tab:', tab);
         const container = document.getElementById('resultsContent');
-        
-        if (!container) return;
-        
+        console.log('[renderResults] Container:', container);
+
+        if (!container) {
+            console.warn('[renderResults] Container not found!');
+            return;
+        }
+
         if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
+            console.log('[renderResults] No results to display');
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-table"></i>
@@ -1371,44 +1267,167 @@ Data aggregated from 2 API sources!
                 </div>`;
             return;
         }
-        
+
+        const resultCount = Object.keys(tab.results).length;
+        console.log('[renderResults] Rendering', resultCount, 'results');
         container.innerHTML = Object.entries(tab.results).map(([key, value]) => `
             <div class="result-item">
                 <span class="result-key">${this.escapeHtml(key)}:</span>
                 <span class="result-value">${this.escapeHtml(String(value))}</span>
             </div>
         `).join('');
+        console.log('[renderResults] Done rendering');
+    },
+
+    renderVariables() {
+        console.log('[renderVariables] Called');
+        const tab = this.getActiveTab();
+        const container = document.getElementById('variablesContent');
+        const badge = document.getElementById('varsBadge');
+
+        if (!container) {
+            console.warn('[renderVariables] Container not found!');
+            return;
+        }
+
+        if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
+            console.log('[renderVariables] No variables to display');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-box"></i>
+                    <p>No variables yet</p>
+                    <small>Variables will appear during execution</small>
+                </div>`;
+            if (badge) badge.textContent = '0';
+            return;
+        }
+
+        const varCount = Object.keys(tab.results).length;
+        console.log('[renderVariables] Rendering', varCount, 'variables');
+
+        container.innerHTML = Object.entries(tab.results).map(([key, value]) => `
+            <div class="var-item">
+                <div class="var-name">${this.escapeHtml(key)}</div>
+                <div class="var-value">${this.escapeHtml(String(value).substring(0, 200))}${String(value).length > 200 ? '...' : ''}</div>
+            </div>
+        `).join('');
+
+        if (badge) badge.textContent = varCount;
+        console.log('[renderVariables] Done, badge updated to:', varCount);
     },
 
     renderSessionInfo() {
+        console.log('[renderSessionInfo] Called');
         const tab = this.getActiveTab();
         const container = document.getElementById('sessionContent');
-        
-        if (!container) return;
-        
+        console.log('[renderSessionInfo] Container:', container);
+
+        if (!container) {
+            console.warn('[renderSessionInfo] Container not found!');
+            return;
+        }
+
         if (!tab || !tab.sessionInfo) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-info-circle"></i>
                     <p>No session active</p>
                     <small>Session details will appear after execution</small>
-                </div>`;
+                </div>
+                <button class="btn btn-secondary" onclick="app.loadSessionHistory()">
+                    <i class="fas fa-history"></i> View History
+                </button>`;
             return;
         }
-        
+
         const session = tab.sessionInfo;
+        const duration = session.duration < 1000 ?
+            `${session.duration}ms` :
+            `${(session.duration / 1000).toFixed(2)}s`;
+
         container.innerHTML = `
             <div class="session-card">
-                <h4>Session</h4>
+                <h4>Current Session</h4>
                 <div class="session-stat">
                     <span class="session-stat-label">ID:</span>
-                    <span class="session-stat-value">${session.sessionId || 'N/A'}</span>
+                    <span class="session-stat-value">${session.sessionId ? session.sessionId.substring(0, 8) + '...' : 'N/A'}</span>
                 </div>
                 <div class="session-stat">
                     <span class="session-stat-label">Status:</span>
-                    <span class="session-stat-value">${session.status || 'N/A'}</span>
+                    <span class="session-stat-value status-${session.status ? session.status.toLowerCase() : 'unknown'}">
+                        <i class="${this.getStatusIcon(session.status)}"></i> ${session.status || 'N/A'}
+                    </span>
                 </div>
-            </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Duration:</span>
+                    <span class="session-stat-value">${duration}</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Elements:</span>
+                    <span class="session-stat-value">${session.elementsProcessed || 0}</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Rate:</span>
+                    <span class="session-stat-value">${session.processingRate ? session.processingRate.toFixed(2) : '0.00'} elem/s</span>
+                </div>
+            </div>`;
+
+        // v2.2: HTTP Metrics (if available)
+        if (session.httpMetrics) {
+            const http = session.httpMetrics;
+            const kbDown = (http.bytesDownloaded / 1024).toFixed(2);
+            const kbUp = (http.bytesUploaded / 1024).toFixed(2);
+
+            container.innerHTML += `
+            <div class="session-card">
+                <h4><i class="fas fa-network-wired"></i> HTTP Metrics</h4>
+                <div class="session-stat">
+                    <span class="session-stat-label">Requests:</span>
+                    <span class="session-stat-value">${http.requests}</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Downloaded:</span>
+                    <span class="session-stat-value">${kbDown} KB</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Uploaded:</span>
+                    <span class="session-stat-value">${kbUp} KB</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Avg Response:</span>
+                    <span class="session-stat-value">${http.avgResponseTime} ms</span>
+                </div>
+            </div>`;
+        }
+
+        // v2.2: Plugin Breakdown (if available)
+        if (session.pluginBreakdown) {
+            const plugins = session.pluginBreakdown;
+            const pluginList = Object.entries(plugins)
+                .sort((a, b) => b[1] - a[1])  // Sort by time (longest first)
+                .map(([name, timeMs]) => `
+                    <div class="plugin-stat">
+                        <span class="plugin-name"><i class="fas fa-puzzle-piece"></i> ${name}</span>
+                        <span class="plugin-time">${timeMs}ms</span>
+                        <div class="plugin-bar">
+                            <div class="plugin-bar-fill" style="width: ${(timeMs / session.duration * 100).toFixed(1)}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+            container.innerHTML += `
+            <div class="session-card">
+                <h4><i class="fas fa-chart-bar"></i> Plugin Breakdown</h4>
+                <div class="plugin-breakdown">
+                    ${pluginList}
+                </div>
+            </div>`;
+        }
+
+        container.innerHTML += `
+            <button class="btn btn-secondary btn-block" onclick="app.loadSessionHistory()" style="margin-top: 1rem;">
+                <i class="fas fa-history"></i> View All Sessions
+            </button>
         `;
     },
 
@@ -1418,7 +1437,7 @@ Data aggregated from 2 API sources!
             alert('No results to export');
             return;
         }
-        
+
         const json = JSON.stringify(tab.results, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1432,23 +1451,23 @@ Data aggregated from 2 API sources!
     showPluginHelp(pluginName) {
         const tooltip = document.getElementById('pluginTooltip');
         if (!tooltip) return;
-        
+
         const title = document.getElementById('tooltipTitle');
         const description = document.getElementById('tooltipDescription');
         const link = document.getElementById('tooltipLink');
-        
+
         const plugins = {
             'http': { title: 'HTTP Plugin', desc: 'HTTP/HTTPS request plugin', url: '/plugins/http.html' },
             'xpath': { title: 'XPath Plugin', desc: 'Extract data from XML using XPath', url: '/plugins/xpath.html' },
             'html-to-xml': { title: 'HTML to XML Plugin', desc: 'Convert HTML to XML', url: '/plugins/html-to-xml.html' }
         };
-        
+
         const plugin = plugins[pluginName] || { title: pluginName, desc: 'Plugin documentation', url: '/plugins/' };
-        
+
         title.textContent = plugin.title;
         description.textContent = plugin.desc;
         link.href = plugin.url;
-        
+
         tooltip.style.display = 'block';
     },
 
@@ -1461,6 +1480,328 @@ Data aggregated from 2 API sources!
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Load and display session execution history
+     */
+    async loadSessionHistory() {
+        console.log('[loadSessionHistory] Loading session history...');
+
+        try {
+            const response = await fetch('/api/sessions/history?limit=20');
+
+            if (!response.ok) {
+                console.error('[loadSessionHistory] HTTP error:', response.status);
+                alert('Failed to load session history');
+                return;
+            }
+
+            const data = await response.json();
+            console.log('[loadSessionHistory] Loaded', data.total, 'sessions');
+
+            this.renderSessionHistory(data.sessions);
+
+        } catch (error) {
+            console.error('[loadSessionHistory] Error:', error);
+            alert('Error loading session history: ' + error.message);
+        }
+    },
+
+    /**
+     * Render session history in the Session panel
+     */
+    renderSessionHistory(sessions) {
+        console.log('[renderSessionHistory] Rendering', sessions.length, 'sessions');
+
+        const container = document.getElementById('sessionContent');
+        if (!container) {
+            console.warn('[renderSessionHistory] Container not found!');
+            return;
+        }
+
+        if (!sessions || sessions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <p>No session history</p>
+                    <small>Execute some configurations to build history</small>
+                </div>`;
+            return;
+        }
+
+        let html = `
+            <div class="session-history">
+                <div class="session-history-header">
+                    <h4><i class="fas fa-history"></i> Session History</h4>
+                    <span class="session-count">${sessions.length} sessions</span>
+                </div>
+                <div class="session-history-list">`;
+
+        sessions.forEach((session, index) => {
+            const statusClass = session.status.toLowerCase();
+            const statusIcon = this.getStatusIcon(session.status);
+            const timestamp = new Date(session.timestamp).toLocaleString();
+            const duration = session.duration < 1000 ?
+                `${session.duration}ms` :
+                `${(session.duration / 1000).toFixed(2)}s`;
+
+            html += `
+                <div class="session-history-item ${statusClass}" onclick="app.showSessionDetails(${index})">
+                    <div class="session-history-header">
+                        <span class="session-status">
+                            <i class="${statusIcon}"></i> ${session.status}
+                        </span>
+                        <span class="session-time">${timestamp}</span>
+                    </div>
+                    <div class="session-history-details">
+                        <div class="session-detail">
+                            <i class="fas fa-file-code"></i>
+                            <span>${session.configName}</span>
+                        </div>
+                        <div class="session-stats-row">
+                            <div class="session-stat-mini">
+                                <i class="fas fa-clock"></i>
+                                ${duration}
+                            </div>
+                            <div class="session-stat-mini">
+                                <i class="fas fa-cubes"></i>
+                                ${session.elementsProcessed} elements
+                            </div>
+                            <div class="session-stat-mini">
+                                <i class="fas fa-tachometer-alt"></i>
+                                ${session.processingRate.toFixed(1)} elem/s
+                            </div>
+                        </div>
+                    </div>
+                    <div class="session-id-mini">
+                        <i class="fas fa-fingerprint"></i>
+                        ${session.sessionId.substring(0, 8)}...
+                    </div>
+                </div>`;
+        });
+
+        html += `
+                </div>
+                <button class="btn btn-secondary btn-block" onclick="app.loadSessionHistory()">
+                    <i class="fas fa-sync"></i> Refresh
+                </button>
+            </div>`;
+
+        container.innerHTML = html;
+
+        // Store sessions for details view
+        this.sessionHistory = sessions;
+    },
+
+    /**
+     * Get icon for session status
+     */
+    getStatusIcon(status) {
+        const icons = {
+            'COMPLETED': 'fas fa-check-circle',
+            'FAILED': 'fas fa-times-circle',
+            'RUNNING': 'fas fa-spinner fa-spin',
+            'PENDING': 'fas fa-clock',
+            'CANCELLED': 'fas fa-ban'
+        };
+        return icons[status] || 'fas fa-question-circle';
+    },
+
+    /**
+     * Show details for a specific session
+     */
+    /**
+     * Pause current execution
+     */
+    async pauseExecution() {
+        const tab = this.getActiveTab();
+        if (!tab || !tab.executionId) {
+            alert('No active execution to pause');
+            return;
+        }
+        
+        console.log('[pauseExecution] Pausing:', tab.executionId);
+        
+        try {
+            const response = await fetch(`/api/execution/${tab.executionId}/pause`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[pauseExecution] Paused:', result);
+                this.addLog('info', '⏸ Execution paused');
+            } else {
+                console.error('[pauseExecution] Failed:', response.status);
+                alert('Failed to pause execution');
+            }
+        } catch (error) {
+            console.error('[pauseExecution] Error:', error);
+            alert('Error pausing execution: ' + error.message);
+        }
+    },
+
+    /**
+     * Resume paused execution
+     */
+    async resumeExecution() {
+        const tab = this.getActiveTab();
+        if (!tab || !tab.executionId) {
+            alert('No paused execution to resume');
+            return;
+        }
+        
+        console.log('[resumeExecution] Resuming:', tab.executionId);
+        
+        try {
+            const response = await fetch(`/api/execution/${tab.executionId}/resume`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[resumeExecution] Resumed:', result);
+                this.addLog('info', '▶ Execution resumed');
+            } else {
+                console.error('[resumeExecution] Failed:', response.status);
+                alert('Failed to resume execution');
+            }
+        } catch (error) {
+            console.error('[resumeExecution] Error:', error);
+            alert('Error resuming execution: ' + error.message);
+        }
+    },
+
+    /**
+     * Stop execution
+     */
+    async stopExecution() {
+        const tab = this.getActiveTab();
+        if (!tab || !tab.executionId) {
+            alert('No execution to stop');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to stop this execution?')) {
+            return;
+        }
+        
+        console.log('[stopExecution] Stopping:', tab.executionId);
+        
+        try {
+            const response = await fetch(`/api/execution/${tab.executionId}/stop`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[stopExecution] Stopped:', result);
+                this.addLog('warn', '⏹ Execution stopped by user');
+            } else {
+                console.error('[stopExecution] Failed:', response.status);
+                alert('Failed to stop execution');
+            }
+        } catch (error) {
+            console.error('[stopExecution] Error:', error);
+            alert('Error stopping execution: ' + error.message);
+        }
+    },
+
+    showSessionDetails(index) {
+        if (!this.sessionHistory || !this.sessionHistory[index]) {
+            console.warn('[showSessionDetails] Session not found:', index);
+            return;
+        }
+        
+        const session = this.sessionHistory[index];
+        console.log('[showSessionDetails] Showing session:', session.sessionId);
+
+        const container = document.getElementById('sessionContent');
+        if (!container) return;
+
+        const timestamp = new Date(session.timestamp).toLocaleString();
+        const duration = session.duration < 1000 ?
+            `${session.duration}ms` :
+            `${(session.duration / 1000).toFixed(2)}s`;
+
+        container.innerHTML = `
+            <div class="session-details">
+                <div class="session-details-header">
+                    <button class="btn btn-sm" onclick="app.loadSessionHistory()">
+                        <i class="fas fa-arrow-left"></i> Back to History
+                    </button>
+                    <h4><i class="fas fa-info-circle"></i> Session Details</h4>
+                </div>
+                
+                <div class="session-card">
+                    <h5>General</h5>
+                    <div class="session-stat">
+                        <span class="session-stat-label">ID:</span>
+                        <span class="session-stat-value">${session.sessionId}</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Config:</span>
+                        <span class="session-stat-value">${session.configName}</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Status:</span>
+                        <span class="session-stat-value status-${session.status.toLowerCase()}">
+                            <i class="${this.getStatusIcon(session.status)}"></i> ${session.status}
+                        </span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Timestamp:</span>
+                        <span class="session-stat-value">${timestamp}</span>
+                    </div>
+                </div>
+                
+                <div class="session-card">
+                    <h5>Performance</h5>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Duration:</span>
+                        <span class="session-stat-value">${duration}</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Elements:</span>
+                        <span class="session-stat-value">${session.elementsProcessed}</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Rate:</span>
+                        <span class="session-stat-value">${session.processingRate.toFixed(2)} elem/s</span>
+                    </div>
+                </div>`;
+
+        // v2.2: HTTP Metrics (if available)
+        if (session.httpMetrics) {
+            const http = session.httpMetrics;
+            const kbDown = (http.bytesDownloaded / 1024).toFixed(2);
+            const kbUp = (http.bytesUploaded / 1024).toFixed(2);
+
+            container.innerHTML += `
+                <div class="session-card">
+                    <h5>HTTP Metrics</h5>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Requests:</span>
+                        <span class="session-stat-value">${http.requests}</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Downloaded:</span>
+                        <span class="session-stat-value">${kbDown} KB</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Uploaded:</span>
+                        <span class="session-stat-value">${kbUp} KB</span>
+                    </div>
+                    <div class="session-stat">
+                        <span class="session-stat-label">Avg Response:</span>
+                        <span class="session-stat-value">${http.avgResponseTime} ms</span>
+                    </div>
+                </div>`;
+        }
+
+        container.innerHTML += `
+            </div>`;
     }
 };
 

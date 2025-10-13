@@ -238,3 +238,7 @@ Czy chcesz żebym:
 **C)** Coś innego?
 
 
+
+
+
+

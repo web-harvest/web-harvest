@@ -276,14 +276,6 @@
                     <target>11</target>
                     <encoding>UTF-8</encoding>
                     <optimize>true</optimize>
-                    <compilerArgs>
-                        <arg>--add-modules</arg>
-                        <arg>java.base</arg>
-                        <arg>--add-modules</arg>
-                        <arg>java.net</arg>
-                        <arg>--add-modules</arg>
-                        <arg>java.security</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -474,7 +466,7 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
+                    <version>3.11.0</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-resources-plugin</artifactId>

@@ -181,6 +181,31 @@ public interface ScraperSession {
     Throwable getError();
     
     /**
+     * Marks the session as running with the provided execution context.
+     * 
+     * <p>Transitions session from PENDING to RUNNING status and starts timing metrics.</p>
+     * 
+     * @param context the execution context
+     */
+    void markRunning(DynamicScopeContext context);
+    
+    /**
+     * Marks the session as successfully completed.
+     * 
+     * <p>Transitions session to COMPLETED status and finalizes metrics.</p>
+     */
+    void markCompleted();
+    
+    /**
+     * Marks the session as failed with the given error.
+     * 
+     * <p>Transitions session to FAILED status and captures error information.</p>
+     * 
+     * @param error the error that caused the failure
+     */
+    void markFailed(Throwable error);
+    
+    /**
      * Attempts to cancel this session.
      * 
      * <p>Cancellation is best-effort and may not succeed if the session is already
@@ -218,5 +243,9 @@ public interface ScraperSession {
      */
     boolean awaitCompletion(long timeoutMillis) throws InterruptedException;
 }
+
+
+
+
 
 

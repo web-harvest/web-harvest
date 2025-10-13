@@ -367,9 +367,69 @@ public class WebHarvestExample {
 
 ---
 
+## Session History API (IDE v2.2.0)
+
+### Overview
+
+The IDE provides a REST API for retrieving execution history. All completed sessions are stored in memory and can be queried for auditing, performance analysis, and debugging.
+
+### Endpoint: GET /api/sessions/history
+
+**URL**: `http://localhost:8080/api/sessions/history`
+
+**Query Parameters**:
+- `limit` (integer, optional): Max sessions to return (default: 20, max: 100)
+- `offset` (integer, optional): Skip first N sessions for pagination (default: 0)
+- `status` (string, optional): Filter by status (COMPLETED, FAILED, RUNNING, etc.)
+
+**Response Format**:
+```json
+{
+  "sessions": [
+    {
+      "sessionId": "abc123-def456-...",
+      "timestamp": "2025-10-13T12:00:00Z",
+      "status": "COMPLETED",
+      "duration": 150,
+      "configName": "scraper.xml",
+      "elementsProcessed": 25,
+      "processingRate": 166.67
+    }
+  ],
+  "total": 42,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+**Example Usage**:
+```bash
+# Get last 20 sessions
+curl http://localhost:8080/api/sessions/history
+
+# Get only completed sessions
+curl http://localhost:8080/api/sessions/history?status=COMPLETED
+
+# Pagination
+curl http://localhost:8080/api/sessions/history?limit=50&offset=50
+```
+
+**UI Access**:
+1. Open IDE: http://localhost:8080
+2. Click "Session" tab in right sidebar
+3. Click "View All Sessions" button
+4. Browse session history with full metrics
+
+---
+
 **See also:**
+- [Session History Guide](../SESSION_HISTORY.md)
 - [User Guide](SESSION_USER_GUIDE.md)
 - [Architecture Documentation](SESSION_TOKEN_ARCHITECTURE.md)
 - JavaDoc: `mvn javadoc:javadoc`
+
+
+
+
 
 

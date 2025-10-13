@@ -249,3 +249,7 @@ Czas:  Teraz - IDE już działa!
 Możesz teraz przetestować lub przejrzeć kod! Co wolisz zrobić najpierw?
 
 
+
+
+
+

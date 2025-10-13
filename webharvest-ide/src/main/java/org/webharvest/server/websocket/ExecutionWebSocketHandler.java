@@ -18,11 +18,13 @@ public class ExecutionWebSocketHandler {
     @OnWebSocketConnect
     public void onConnect(Session session) {
         String executionId = getExecutionIdFromQuery(session);
+        LOG.info("🔌 WebSocket onConnect called! URI: {}", session.getUpgradeRequest().getRequestURI());
         if (executionId != null) {
-            LOG.info("WebSocket connected for execution: {}", executionId);
+            LOG.info("✓ WebSocket connected for execution: {}", executionId);
             executionManager.registerWebSocket(executionId, session);
         } else {
-            LOG.warn("WebSocket connected without execution ID");
+            LOG.warn("⚠ WebSocket connected WITHOUT execution ID! Query: {}", 
+                session.getUpgradeRequest().getRequestURI().getQuery());
         }
     }
     
