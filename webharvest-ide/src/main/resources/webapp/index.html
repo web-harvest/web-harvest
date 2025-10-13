@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebHarvest IDE - Professional Web Scraping Editor</title>
 
-    <!-- Web-Harvest Styles -->
+    <!-- Enterprise Design System -->
     <link rel="stylesheet" href="static/css/enterprise.css">
-    <link rel="stylesheet" href="static/css/ide-custom.css">
+    <link rel="stylesheet" href="static/css/ide-redesign.css">
 
     <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -17,151 +17,222 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
-    <!-- Navigation (Unified with Website) -->
+    <!-- Unified Header (matching website) -->
     <header class="site-header">
-        <div class="ide-header-inner">
+        <div class="container">
             <div class="brand">
                 <img src="static/img/logo.png" alt="WebHarvest" class="logo" />
                 <span class="project-name">WebHarvest IDE</span>
             </div>
-            <div class="nav-actions">
-                <button class="btn btn-sm" onclick="app.addTab()">
-                    <i class="fas fa-plus"></i> New
-                </button>
-                <button class="btn btn-sm" onclick="app.openFile()">
+            <div class="ide-actions">
+                <button class="btn btn-sm" onclick="app.openFile()" title="Open Configuration (Cmd+O)">
                     <i class="fas fa-folder-open"></i> Open
                 </button>
-                <button class="btn btn-sm" onclick="app.saveFile()">
+                <button class="btn btn-sm" onclick="app.saveFile()" title="Save (Cmd+S)">
                     <i class="fas fa-save"></i> Save
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="app.showExamplesModal()" title="Load Example">
+                    <i class="fas fa-download"></i> Examples
+                </button>
+                <button class="btn btn-sm" onclick="window.open('http://localhost:8080/docs', '_blank')"
+                    title="Documentation">
+                    <i class="fas fa-question-circle"></i> Help
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main IDE Container -->
-    <div class="ide-container">
-        <!-- Tab Bar -->
-        <div class="tab-bar">
-            <div id="tabs" class="tabs"></div>
-            <button class="tab-add-btn" onclick="app.addTab()">
-                <i class="fas fa-plus"></i>
-            </button>
+    <!-- Tab Bar (macOS-style) -->
+    <div class="tab-bar">
+        <div id="tabs" class="tabs"></div>
+        <button class="tab-add-btn" onclick="app.addTab()" title="New Tab (Cmd+T)">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Main IDE Content (Split View) -->
+    <div class="ide-main">
+        <!-- Left: Editor Panel (70%) -->
+        <div class="editor-section">
+            <div class="editor-toolbar">
+                <div class="toolbar-left">
+                    <span class="toolbar-title">
+                        <i class="fas fa-file-code"></i>
+                        <span id="currentFileName">config.xml</span>
+                    </span>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-sm btn-primary" onclick="app.runConfig()" title="Run Configuration (Cmd+R)">
+                        <i class="fas fa-play"></i> Run
+                    </button>
+                    <button class="btn btn-sm" onclick="app.validateConfig()" title="Validate XML">
+                        <i class="fas fa-check"></i> Validate
+                    </button>
+                </div>
+            </div>
+            <div id="editor" class="monaco-editor-container"></div>
         </div>
 
-        <!-- Editor and Results Split View -->
-        <div class="ide-content">
-            <!-- Left Panel: Monaco Editor -->
-            <div class="editor-panel">
-                <div class="panel-header">
-                    <h3><i class="fas fa-code"></i> XML Configuration</h3>
-                    <div class="editor-actions">
-                        <button class="btn btn-sm btn-primary" onclick="app.runConfig()">
-                            <i class="fas fa-play"></i> Run
-                        </button>
-                        <button class="btn btn-sm btn-secondary" onclick="app.validateConfig()">
-                            <i class="fas fa-check"></i> Validate
-                        </button>
-                    </div>
-                </div>
-                <div id="editor" class="monaco-editor"></div>
+        <!-- Right: Sidebar Panel (30%) -->
+        <div class="sidebar-section">
+            <!-- Sidebar Tab Navigation -->
+            <div class="sidebar-nav">
+                <button class="sidebar-nav-btn active" data-panel="logs" onclick="app.switchSidebarPanel('logs')">
+                    <i class="fas fa-list-ul"></i>
+                    <span>Logs</span>
+                    <span class="badge" id="logsBadge">0</span>
+                </button>
+                <button class="sidebar-nav-btn" data-panel="results" onclick="app.switchSidebarPanel('results')">
+                    <i class="fas fa-table"></i>
+                    <span>Results</span>
+                </button>
+                <button class="sidebar-nav-btn" data-panel="variables" onclick="app.switchSidebarPanel('variables')">
+                    <i class="fas fa-box"></i>
+                    <span>Variables</span>
+                    <span class="badge" id="varsBadge">0</span>
+                </button>
+                <button class="sidebar-nav-btn" data-panel="session" onclick="app.switchSidebarPanel('session')">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Session</span>
+                </button>
             </div>
 
-            <!-- Right Panel: Execution Results -->
-            <div class="results-panel">
-                <div class="panel-header">
-                    <h3><i class="fas fa-terminal"></i> Execution Results</h3>
-                    <div class="execution-controls" id="executionControls" style="display: none;">
-                        <button class="btn btn-sm btn-warning" onclick="app.pauseExecution()">
-                            <i class="fas fa-pause"></i> Pause
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="app.stopExecution()">
-                            <i class="fas fa-stop"></i> Stop
+            <!-- Sidebar Content Area -->
+            <div class="sidebar-content">
+                <!-- Logs Panel -->
+                <div id="logsPanel" class="sidebar-panel active">
+                    <div class="panel-header">
+                        <h3>Execution Logs</h3>
+                        <button class="btn-icon" onclick="app.clearLogs()" title="Clear Logs">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
-                </div>
-
-                <!-- Status Display -->
-                <div id="statusDisplay" class="status-display">
-                    <div class="welcome-message">
-                        <i class="fas fa-info-circle"></i>
-                        <p>Click <strong>Run</strong> to execute your scraper configuration</p>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div id="progressBar" class="progress-bar" style="display: none;">
-                    <div id="progressFill" class="progress-fill"></div>
-                    <span id="progressText" class="progress-text">0%</span>
-                </div>
-
-                <!-- Results Tabs -->
-                <div id="resultsTabs" class="results-tabs" style="display: none;">
-                    <button class="result-tab active" data-tab="output">
-                        <i class="fas fa-file-alt"></i> Output
-                    </button>
-                    <button class="result-tab" data-tab="variables">
-                        <i class="fas fa-database"></i> Variables
-                    </button>
-                    <button class="result-tab" data-tab="log">
-                        <i class="fas fa-list"></i> Log
-                    </button>
-                    <button class="result-tab" data-tab="session">
-                        <i class="fas fa-info-circle"></i> Session
-                    </button>
-                </div>
-
-                <!-- Results Content -->
-                <div id="resultsContent" class="results-content">
-                    <div id="outputPanel" class="result-panel active">
-                        <div class="code-window">
-                            <div class="window-header">
-                                <div class="window-controls">
-                                    <span class="control red"></span>
-                                    <span class="control yellow"></span>
-                                    <span class="control green"></span>
-                                </div>
-                                <span class="window-title">output.txt</span>
-                            </div>
-                            <div class="window-content">
-                                <pre id="outputContent"><code>No output yet</code></pre>
+                    <div class="panel-body">
+                        <div id="logsContent" class="logs-list">
+                            <div class="empty-state">
+                                <i class="fas fa-list-ul"></i>
+                                <p>No logs yet</p>
+                                <small>Logs will appear here during execution</small>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div id="variablesPanel" class="result-panel">
-                        <div id="variablesContent" class="variables-grid"></div>
+                <!-- Results Panel -->
+                <div id="resultsPanel" class="sidebar-panel">
+                    <div class="panel-header">
+                        <h3>Results</h3>
+                        <button class="btn-icon" onclick="app.exportResults()" title="Export Results">
+                            <i class="fas fa-download"></i>
+                        </button>
                     </div>
-
-                    <div id="logPanel" class="result-panel">
-                        <div class="log-content" id="logContent"></div>
+                    <div class="panel-body">
+                        <div id="resultsContent" class="results-tree">
+                            <div class="empty-state">
+                                <i class="fas fa-table"></i>
+                                <p>No results yet</p>
+                                <small>Results will appear after execution</small>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div id="sessionPanel" class="result-panel">
-                        <div style="padding: 20px; color: #666;">
-                            <p>No session information available.</p>
-                            <p style="font-size: 0.9em; margin-top: 10px;">
-                                Session data will appear here after running a configuration.
-                            </p>
+                <!-- Variables Panel -->
+                <div id="variablesPanel" class="sidebar-panel">
+                    <div class="panel-header">
+                        <h3>Variables</h3>
+                        <input type="search" placeholder="Filter..." class="search-input"
+                            onkeyup="app.filterVariables(this.value)">
+                    </div>
+                    <div class="panel-body">
+                        <div id="variablesContent" class="variables-list">
+                            <div class="empty-state">
+                                <i class="fas fa-box"></i>
+                                <p>No variables defined</p>
+                                <small>Variables will appear during execution</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Panel -->
+                <div id="sessionPanel" class="sidebar-panel">
+                    <div class="panel-header">
+                        <h3>Session Info</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div id="sessionContent" class="session-info">
+                            <div class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>No session active</p>
+                                <small>Session details will appear after execution</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Resize Handle -->
+        <div class="resize-handle" id="resizeHandle"></div>
     </div>
 
     <!-- Status Bar -->
     <div class="status-bar">
         <div class="status-left">
-            <span id="statusMessage"><i class="fas fa-circle text-success"></i> Ready</span>
+            <span id="statusMessage">
+                <i class="fas fa-circle" style="color: var(--lime);"></i> Ready
+            </span>
         </div>
         <div class="status-right">
             <span id="cursorPosition">Ln 1, Col 1</span>
             <span>XML</span>
             <span>UTF-8</span>
+        </div>
+    </div>
+
+    <!-- Examples Modal -->
+    <div id="examplesModal" class="modal">
+        <div class="modal-overlay" onclick="app.hideExamplesModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Load Example Configuration</h2>
+                <button class="btn-icon" onclick="app.hideExamplesModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="examples-grid" id="examplesGrid">
+                    <!-- Populated dynamically from /examples/ -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="app.hideExamplesModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="app.loadSelectedExample()">
+                    <i class="fas fa-download"></i> Load Example
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plugin Help Tooltip -->
+    <div id="pluginTooltip" class="plugin-tooltip" style="display: none;">
+        <div class="tooltip-header">
+            <strong id="tooltipTitle"></strong>
+            <button class="btn-icon-sm" onclick="app.hideTooltip()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="tooltip-body">
+            <p id="tooltipDescription"></p>
+            <a id="tooltipLink" href="#" target="_blank" class="tooltip-link">
+                <i class="fas fa-external-link-alt"></i> View Documentation
+            </a>
         </div>
     </div>
 

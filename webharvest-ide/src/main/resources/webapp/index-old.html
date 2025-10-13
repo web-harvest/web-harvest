@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebHarvest IDE - Professional Web Scraping Editor</title>
+
+    <!-- Web-Harvest Styles -->
+    <link rel="stylesheet" href="static/css/enterprise.css">
+    <link rel="stylesheet" href="static/css/ide-custom.css">
+
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation (Unified with Website) -->
+    <header class="site-header">
+        <div class="ide-header-inner">
+            <div class="brand">
+                <img src="static/img/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest IDE</span>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-sm" onclick="app.addTab()">
+                    <i class="fas fa-plus"></i> New
+                </button>
+                <button class="btn btn-sm" onclick="app.openFile()">
+                    <i class="fas fa-folder-open"></i> Open
+                </button>
+                <button class="btn btn-sm" onclick="app.saveFile()">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main IDE Container -->
+    <div class="ide-container">
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div id="tabs" class="tabs"></div>
+            <button class="tab-add-btn" onclick="app.addTab()">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <!-- Editor and Sidebar Split View (Apple HIG - 70/30 split) -->
+        <div class="ide-content">
+            <!-- Left: Monaco Editor (70%) -->
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-code"></i> XML Configuration</h3>
+                    <div class="editor-actions">
+                        <button class="btn btn-sm btn-primary" onclick="app.runConfig()">
+                            <i class="fas fa-play"></i> Run
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="app.validateConfig()">
+                            <i class="fas fa-check"></i> Validate
+                        </button>
+                        <button class="btn btn-sm" onclick="app.showExamplesModal()">
+                            <i class="fas fa-download"></i> Examples
+                        </button>
+                    </div>
+                </div>
+                <div id="editor" class="monaco-editor"></div>
+            </div>
+
+            <!-- Right: Sidebar with Tabs (30%) -->
+            <div class="sidebar-panel">
+                <!-- Sidebar Tab Buttons -->
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" data-panel="logs" onclick="app.switchSidebarPanel('logs')">
+                        <i class="fas fa-list"></i>
+                        <span>Logs</span>
+                    </button>
+                    <button class="sidebar-tab" data-panel="results" onclick="app.switchSidebarPanel('results')">
+                        <i class="fas fa-table"></i>
+                        <span>Results</span>
+                    </button>
+                    <button class="sidebar-tab" data-panel="variables" onclick="app.switchSidebarPanel('variables')">
+                        <i class="fas fa-box"></i>
+                        <span>Variables</span>
+                    </button>
+                    <button class="sidebar-tab" data-panel="session" onclick="app.switchSidebarPanel('session')">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Session</span>
+                    </button>
+                </div>
+
+                <!-- Sidebar Content Panels -->
+                <div class="sidebar-content">
+                    <!-- Logs Panel -->
+                    <div id="logsPanel" class="sidebar-content-panel active">
+                <div class="panel-header">
+                    <h3><i class="fas fa-terminal"></i> Execution Results</h3>
+                    <div class="execution-controls" id="executionControls" style="display: none;">
+                        <button class="btn btn-sm btn-warning" onclick="app.pauseExecution()">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="app.stopExecution()">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Display -->
+                <div id="statusDisplay" class="status-display">
+                    <div class="welcome-message">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Click <strong>Run</strong> to execute your scraper configuration</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="progressBar" class="progress-bar" style="display: none;">
+                    <div id="progressFill" class="progress-fill"></div>
+                    <span id="progressText" class="progress-text">0%</span>
+                </div>
+
+                <!-- Results Tabs -->
+                <div id="resultsTabs" class="results-tabs" style="display: none;">
+                    <button class="result-tab active" data-tab="output">
+                        <i class="fas fa-file-alt"></i> Output
+                    </button>
+                    <button class="result-tab" data-tab="variables">
+                        <i class="fas fa-database"></i> Variables
+                    </button>
+                    <button class="result-tab" data-tab="log">
+                        <i class="fas fa-list"></i> Log
+                    </button>
+                    <button class="result-tab" data-tab="session">
+                        <i class="fas fa-info-circle"></i> Session
+                    </button>
+                </div>
+
+                <!-- Results Content -->
+                <div id="resultsContent" class="results-content">
+                    <div id="outputPanel" class="result-panel active">
+                        <div class="code-window">
+                            <div class="window-header">
+                                <div class="window-controls">
+                                    <span class="control red"></span>
+                                    <span class="control yellow"></span>
+                                    <span class="control green"></span>
+                                </div>
+                                <span class="window-title">output.txt</span>
+                            </div>
+                            <div class="window-content">
+                                <pre id="outputContent"><code>No output yet</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="variablesPanel" class="result-panel">
+                        <div id="variablesContent" class="variables-grid"></div>
+                    </div>
+
+                    <div id="logPanel" class="result-panel">
+                        <div class="log-content" id="logContent"></div>
+                    </div>
+
+                    <div id="sessionPanel" class="result-panel">
+                        <div style="padding: 20px; color: #666;">
+                            <p>No session information available.</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">
+                                Session data will appear here after running a configuration.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span id="statusMessage"><i class="fas fa-circle text-success"></i> Ready</span>
+        </div>
+        <div class="status-right">
+            <span id="cursorPosition">Ln 1, Col 1</span>
+            <span>XML</span>
+            <span>UTF-8</span>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="static/js/app.js"></script>
+</body>
+
+</html>

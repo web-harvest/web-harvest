@@ -5,13 +5,15 @@
  */
 
 :root {
-    /* Brand Colors (EXACT from ChatGPT mockup) */
+    /* Brand Colors (ALL 4 from icon) */
     --purple: #7B1FA2;
     /* Purple start */
     --magenta: #D81B60;
     /* Magenta/Pink DOMINANT */
     --yellow: #FFC107;
     /* Yellow accent */
+    --lime: #A4C639;
+    /* Lime/Green - success states */
 
     /* Brand Gradients */
     --gradient-primary: linear-gradient(135deg, #7B1FA2, #D81B60);
@@ -332,6 +334,10 @@ body {
     margin-bottom: var(--spacing-1);
     display: block;
     line-height: 1;
+}
+
+.stat-number.stat-success {
+    color: var(--lime);
 }
 
 .stat-label {
@@ -842,6 +848,513 @@ body {
 
 .footer-links a:hover {
     color: white;
+}
+
+.footer-author {
+    margin-left: auto;
+}
+
+.author-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    color: var(--gray-400);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-md);
+}
+
+.author-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.author-link i {
+    font-size: 1rem;
+}
+
+/* ===================================
+   IDE PAGE COMPONENTS
+   =================================== */
+
+/* Installation Steps */
+.installation-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8);
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.install-step {
+    display: flex;
+    gap: var(--spacing-6);
+    align-items: flex-start;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-content h3 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-3);
+    color: var(--text-primary);
+}
+
+.step-content p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.step-content ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.step-content ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.step-content ul li strong {
+    color: var(--text-primary);
+}
+
+.step-content pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.step-content code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Usage Grid */
+.usage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.usage-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+}
+
+.usage-card:hover {
+    border-color: var(--magenta);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.usage-card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.usage-card h3 i {
+    color: var(--magenta);
+}
+
+.usage-card ol,
+.usage-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.usage-card ol li,
+.usage-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.usage-card code {
+    background: var(--gray-100);
+    color: var(--magenta);
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Architecture Cards */
+.architecture-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.arch-card {
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+    transition: all 0.2s;
+}
+
+.arch-card:hover {
+    border-color: var(--yellow);
+    background: white;
+    box-shadow: var(--shadow-md);
+}
+
+.arch-card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.arch-card h3 i {
+    color: var(--yellow);
+}
+
+.arch-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.arch-card ul li {
+    margin-bottom: var(--spacing-3);
+}
+
+.arch-card ul li strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Config Options */
+.config-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--spacing-8);
+    margin-top: var(--spacing-8);
+}
+
+.config-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-6);
+}
+
+.config-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-4);
+}
+
+.config-card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.config-card pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin-bottom: var(--spacing-4);
+}
+
+.config-card code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.config-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+}
+
+.config-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+.config-card ul li strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Troubleshooting Grid */
+.troubleshooting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: var(--spacing-6);
+    margin-top: var(--spacing-8);
+}
+
+.trouble-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-left: 4px solid var(--magenta);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-5);
+    box-shadow: var(--shadow-sm);
+}
+
+.trouble-card h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-3);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.trouble-card h4 i {
+    color: var(--magenta);
+}
+
+.trouble-card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-2);
+    font-size: 0.9375rem;
+}
+
+.trouble-card p strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.trouble-card pre {
+    background: var(--gray-900);
+    color: var(--gray-100);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    margin: var(--spacing-2) 0;
+}
+
+.trouble-card code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.trouble-card ul {
+    margin-left: var(--spacing-6);
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+}
+
+.trouble-card ul li {
+    margin-bottom: var(--spacing-2);
+}
+
+/* Navigation Active State */
+.main-nav a.active {
+    color: var(--magenta);
+    font-weight: 600;
+}
+
+/* ===================================
+   VISUAL DIAGRAMS
+   =================================== */
+
+/* Flowchart / Diagram Styles */
+.diagram-container {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-8);
+    margin: var(--spacing-6) 0;
+}
+
+.diagram-box {
+    background: linear-gradient(135deg, var(--gray-50), white);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: var(--spacing-3) auto;
+    max-width: 300px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+}
+
+.diagram-box:hover {
+    border-color: var(--magenta);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.diagram-box.primary {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: var(--magenta);
+}
+
+.diagram-box.accent {
+    background: var(--gradient-accent);
+    color: #000;
+    border-color: var(--yellow);
+}
+
+.diagram-box.success {
+    background: var(--lime);
+    color: white;
+    border-color: #8AB82E;
+}
+
+.diagram-box.error {
+    background: #F44336;
+    color: white;
+    border-color: #D32F2F;
+}
+
+.diagram-arrow {
+    text-align: center;
+    color: var(--magenta);
+    font-size: 1.5rem;
+    margin: var(--spacing-2) 0;
+}
+
+.diagram-arrow i {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.diagram-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-4);
+    margin: var(--spacing-4) 0;
+}
+
+.diagram-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-4);
+    margin: var(--spacing-3) 0;
+}
+
+.diagram-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: var(--spacing-2);
+}
+
+.diagram-box small {
+    display: block;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    font-weight: 400;
+    margin-top: var(--spacing-1);
+}
+
+/* Code Window (consistent across all pages) */
+.code-window {
+    background: var(--gray-900);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-2xl);
+    margin: var(--spacing-4) 0;
+}
+
+.window-header {
+    background: #2d2d2d;
+    padding: var(--spacing-3) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    border-bottom: 1px solid #3d3d3d;
+}
+
+.window-controls {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.control.red {
+    background: #ff5f56;
+}
+
+.control.yellow {
+    background: #ffbd2e;
+}
+
+.control.green {
+    background: #27c93f;
+}
+
+.window-title {
+    color: var(--gray-400);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.window-content {
+    padding: 0;
+}
+
+.window-content pre {
+    margin: 0;
+    padding: var(--spacing-5);
+    background: transparent;
+    border-radius: 0;
+}
+
+.window-content code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Code in usage cards/steps should also use window style */
+.usage-card .code-window,
+.install-step .code-window,
+.config-card .code-window {
+    margin-top: var(--spacing-3);
 }
 
 /* ===================================

@@ -1217,6 +1217,250 @@ Data aggregated from 2 API sources!
         </template>
     </file>
 </config>`;
+    },
+
+    /**
+     * Sidebar Panel Management (v2.2 - Apple HIG)
+     */
+    switchSidebarPanel(panelName) {
+        console.log('Switching sidebar panel to:', panelName);
+        
+        // Update nav buttons
+        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.panel === panelName);
+        });
+        
+        // Update panels
+        document.querySelectorAll('.sidebar-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.id === panelName + 'Panel');
+        });
+        
+        // Update active tab's state
+        const tab = this.getActiveTab();
+        if (tab) {
+            tab.activeSidebarPanel = panelName;
+        }
+    },
+
+    /**
+     * Examples Modal Management
+     */
+    showExamplesModal() {
+        console.log('Showing examples modal...');
+        const modal = document.getElementById('examplesModal');
+        modal.classList.add('active');
+        this.loadExamplesList();
+    },
+
+    hideExamplesModal() {
+        const modal = document.getElementById('examplesModal');
+        modal.classList.remove('active');
+    },
+
+    async loadExamplesList() {
+        const grid = document.getElementById('examplesGrid');
+        
+        // Example configurations
+        const examples = [
+            { file: 'simple_test.xml', title: 'Simple HTTP Test', icon: 'vial', category: 'Web & HTTP' },
+            { file: 'amazon_test.xml', title: 'Amazon Scraper', icon: 'shopping-cart', category: 'Web & HTTP' },
+            { file: 'xpath_test.xml', title: 'XPath Examples', icon: 'code-branch', category: 'Data Extraction' },
+            { file: 'regexp_test.xml', title: 'Regex Matching', icon: 'search', category: 'Data Extraction' },
+            { file: 'json_api.xml', title: 'JSON API', icon: 'file-code', category: 'Data Transformation' },
+            { file: 'loop_pagination.xml', title: 'Loop & Pagination', icon: 'repeat', category: 'Control Flow' }
+        ];
+        
+        grid.innerHTML = examples.map(ex => `
+            <div class="example-card" data-file="${ex.file}" onclick="app.selectExample('${ex.file}')">
+                <i class="fas fa-${ex.icon}"></i>
+                <h4>${ex.title}</h4>
+                <p>${ex.category}</p>
+            </div>
+        `).join('');
+    },
+
+    selectExample(filename) {
+        document.querySelectorAll('.example-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.file === filename);
+        });
+        this.selectedExample = filename;
+    },
+
+    async loadSelectedExample() {
+        if (!this.selectedExample) {
+            alert('Please select an example first');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/examples/${this.selectedExample}`);
+            const content = await response.text();
+            this.addTab(this.selectedExample, content);
+            this.hideExamplesModal();
+            this.addLog('info', `Loaded example: ${this.selectedExample}`);
+        } catch (error) {
+            console.error('Failed to load example:', error);
+            this.addLog('error', `Failed to load example: ${error.message}`);
+        }
+    },
+
+    /**
+     * Logs, Variables, Results Rendering
+     */
+    clearLogs() {
+        const tab = this.getActiveTab();
+        if (tab) {
+            tab.logs = [];
+            this.renderLogs();
+            if (document.getElementById('logsBadge')) {
+                document.getElementById('logsBadge').textContent = '0';
+            }
+        }
+    },
+
+    renderLogs() {
+        const tab = this.getActiveTab();
+        const container = document.getElementById('logsContent');
+        
+        if (!container) return;
+        
+        if (!tab || !tab.logs || tab.logs.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-list-ul"></i>
+                    <p>No logs yet</p>
+                    <small>Logs will appear during execution</small>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = tab.logs.map(log => `
+            <div class="log-entry ${log.type}">
+                <span class="log-time">${log.time}</span>
+                <span class="log-message">${this.escapeHtml(log.message)}</span>
+            </div>
+        `).join('');
+        
+        container.scrollTop = container.scrollHeight;
+        
+        if (document.getElementById('logsBadge')) {
+            document.getElementById('logsBadge').textContent = tab.logs.length;
+        }
+    },
+
+    filterVariables(query) {
+        const items = document.querySelectorAll('.variable-item');
+        items.forEach(item => {
+            const name = item.querySelector('.var-name').textContent;
+            item.style.display = name.toLowerCase().includes(query.toLowerCase()) ? 'block' : 'none';
+        });
+    },
+
+    renderResults() {
+        const tab = this.getActiveTab();
+        const container = document.getElementById('resultsContent');
+        
+        if (!container) return;
+        
+        if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-table"></i>
+                    <p>No results yet</p>
+                    <small>Results will appear after execution</small>
+                </div>`;
+            return;
+        }
+        
+        container.innerHTML = Object.entries(tab.results).map(([key, value]) => `
+            <div class="result-item">
+                <span class="result-key">${this.escapeHtml(key)}:</span>
+                <span class="result-value">${this.escapeHtml(String(value))}</span>
+            </div>
+        `).join('');
+    },
+
+    renderSessionInfo() {
+        const tab = this.getActiveTab();
+        const container = document.getElementById('sessionContent');
+        
+        if (!container) return;
+        
+        if (!tab || !tab.sessionInfo) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-info-circle"></i>
+                    <p>No session active</p>
+                    <small>Session details will appear after execution</small>
+                </div>`;
+            return;
+        }
+        
+        const session = tab.sessionInfo;
+        container.innerHTML = `
+            <div class="session-card">
+                <h4>Session</h4>
+                <div class="session-stat">
+                    <span class="session-stat-label">ID:</span>
+                    <span class="session-stat-value">${session.sessionId || 'N/A'}</span>
+                </div>
+                <div class="session-stat">
+                    <span class="session-stat-label">Status:</span>
+                    <span class="session-stat-value">${session.status || 'N/A'}</span>
+                </div>
+            </div>
+        `;
+    },
+
+    exportResults() {
+        const tab = this.getActiveTab();
+        if (!tab || !tab.results) {
+            alert('No results to export');
+            return;
+        }
+        
+        const json = JSON.stringify(tab.results, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `results-${tab.name}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+
+    showPluginHelp(pluginName) {
+        const tooltip = document.getElementById('pluginTooltip');
+        if (!tooltip) return;
+        
+        const title = document.getElementById('tooltipTitle');
+        const description = document.getElementById('tooltipDescription');
+        const link = document.getElementById('tooltipLink');
+        
+        const plugins = {
+            'http': { title: 'HTTP Plugin', desc: 'HTTP/HTTPS request plugin', url: '/plugins/http.html' },
+            'xpath': { title: 'XPath Plugin', desc: 'Extract data from XML using XPath', url: '/plugins/xpath.html' },
+            'html-to-xml': { title: 'HTML to XML Plugin', desc: 'Convert HTML to XML', url: '/plugins/html-to-xml.html' }
+        };
+        
+        const plugin = plugins[pluginName] || { title: pluginName, desc: 'Plugin documentation', url: '/plugins/' };
+        
+        title.textContent = plugin.title;
+        description.textContent = plugin.desc;
+        link.href = plugin.url;
+        
+        tooltip.style.display = 'block';
+    },
+
+    hideTooltip() {
+        const tooltip = document.getElementById('pluginTooltip');
+        if (tooltip) tooltip.style.display = 'none';
+    },
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 };
 
