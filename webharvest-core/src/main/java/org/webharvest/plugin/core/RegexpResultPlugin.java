@@ -62,6 +62,27 @@ import org.webharvest.runtime.variables.Variable;
  * </regexp>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>template</strong> (required): Output template with group references (as element content)</li>
+ *   <li><strong>Group References</strong>: Use ${group0}, ${group1}, ${group2}, etc.</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <regexp>} element</li>
+ *   <li><strong>Group References</strong>: ${group0} = full match, ${group1} = first capture group</li>
+ *   <li><strong>Output Formatting</strong>: Defines how matched groups are formatted</li>
+ *   <li><strong>Multiple Matches</strong>: Template applied to each match found</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp-pattern>} - Regular expression pattern</li>
+ *   <li>{@code <regexp-source>} - Source text for matching</li>
+ * </ul>
+ * 
  * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team

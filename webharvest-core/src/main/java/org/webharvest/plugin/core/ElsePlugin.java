@@ -64,6 +64,27 @@ import org.webharvest.runtime.variables.Variable;
  * </else>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>No parameters</strong>: Else block executes when condition is false</li>
+ *   <li><strong>Content</strong>: Contains processors to execute in else case</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used after {@code <if>} or {@code <case>} block</li>
+ *   <li><strong>Conditional Logic</strong>: Executes only when preceding condition is false</li>
+ *   <li><strong>Fallback Processing</strong>: Provides alternative execution path</li>
+ *   <li><strong>Variable Scope</strong>: Variables defined in else block are available after execution</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <if>} - Conditional execution with condition</li>
+ *   <li>{@code <case>} - Case-based conditional execution</li>
+ *   <li>{@code <var>} - Variable definition</li>
+ * </ul>
+ * 
  * <p>See {@link IfPlugin} and {@link CasePlugin} for complete examples.</p>
  * 
  * @author WebHarvest Team

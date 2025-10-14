@@ -66,6 +66,27 @@ import org.webharvest.runtime.variables.Variable;
  * </xquery>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>expression</strong> (required): The XQuery expression (as element content)</li>
+ *   <li><strong>CDATA</strong> (recommended): Use CDATA section for complex queries</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <xquery>} element</li>
+ *   <li><strong>XQuery Syntax</strong>: Uses XQuery 1.0 syntax with Saxon engine</li>
+ *   <li><strong>CDATA Usage</strong>: Use CDATA for queries with special XML characters</li>
+ *   <li><strong>Parameter Binding</strong>: Use {@code <xq-param>} to bind external variables</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xquery>} - Main XQuery processor</li>
+ *   <li>{@code <xq-param>} - XQuery parameter binding</li>
+ *   <li>{@code <xpath>} - XPath expressions for simpler queries</li>
+ * </ul>
+ * 
  * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
  * 
  * @author WebHarvest Team

@@ -61,11 +61,38 @@ import java.util.List;
  * </p>
  * 
  * <h3>Usage</h3>
- * <p>See {@link TryPlugin} for complete try-catch examples.</p>
+ * <pre>{@code
+ * <try>
+ *   <http url="https://unreliable-api.com/data"/>
+ * </try>
+ * <catch>
+ *   <log message="API request failed: ${_error}"/>
+ *   <var name="fallback_data">Default data</var>
+ * </catch>
+ * }</pre>
  * 
- * <h3>Error Variable</h3>
- * <p>The {@code ${_error}} variable contains the exception message and is available
- * only within the catch block.</p>
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>No parameters</strong>: Catch block executes when exception occurs</li>
+ *   <li><strong>Error Variable</strong>: ${_error} contains exception message</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used after {@code <try>} block</li>
+ *   <li><strong>Error Variable</strong>: ${_error} is available only within catch block</li>
+ *   <li><strong>Exception Handling</strong>: Catches all exceptions from try block</li>
+ *   <li><strong>Recovery</strong>: Can define fallback values or alternative processing</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <try>} - Try block for exception handling</li>
+ *   <li>{@code <log>} - Logging error messages</li>
+ *   <li>{@code <var>} - Define fallback variables</li>
+ * </ul>
+ * 
+ * <p>See {@link TryPlugin} for complete try-catch examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

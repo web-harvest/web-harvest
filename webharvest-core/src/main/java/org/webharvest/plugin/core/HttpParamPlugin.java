@@ -64,6 +64,27 @@ import org.webharvest.utils.CommonUtil;
  * </http>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>name</strong> (required): The parameter name (form field name)</li>
+ *   <li><strong>value</strong> (required): The parameter value (as element content)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <http>} element</li>
+ *   <li><strong>HTTP Methods</strong>: Used with POST, PUT, PATCH methods for form data</li>
+ *   <li><strong>Content-Type</strong>: Automatically sets application/x-www-form-urlencoded</li>
+ *   <li><strong>Dynamic Values</strong>: Parameter values support variable substitution with ${var}</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - Main HTTP request processor</li>
+ *   <li>{@code <http-header>} - HTTP request headers</li>
+ *   <li>{@code <var>} - Variable definition for dynamic values</li>
+ * </ul>
+ * 
  * <p>See {@link HttpPlugin} for complete HTTP request examples.</p>
  * 
  * @author WebHarvest Team

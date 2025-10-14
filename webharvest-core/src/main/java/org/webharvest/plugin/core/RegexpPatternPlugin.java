@@ -60,6 +60,27 @@ import org.webharvest.runtime.variables.Variable;
  * </regexp>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>pattern</strong> (required): The regular expression pattern (as element content)</li>
+ *   <li><strong>CDATA</strong> (recommended): Use CDATA section for complex patterns</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <regexp>} element</li>
+ *   <li><strong>Pattern Syntax</strong>: Uses Java regular expression syntax</li>
+ *   <li><strong>CDATA Usage</strong>: Use CDATA for patterns with special XML characters</li>
+ *   <li><strong>Capture Groups</strong>: Use parentheses () for capturing matched groups</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp-source>} - Source text for pattern matching</li>
+ *   <li>{@code <regexp-result>} - Access to matched groups</li>
+ * </ul>
+ * 
  * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team

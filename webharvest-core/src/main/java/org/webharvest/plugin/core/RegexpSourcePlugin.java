@@ -60,6 +60,27 @@ import org.webharvest.runtime.variables.Variable;
  * </regexp>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>source</strong> (required): The text to match against (as element content)</li>
+ *   <li><strong>Variable Support</strong>: Can use ${var} for dynamic content</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <regexp>} element</li>
+ *   <li><strong>Text Input</strong>: Provides the text content for pattern matching</li>
+ *   <li><strong>Variable Substitution</strong>: Supports ${var} syntax for dynamic content</li>
+ *   <li><strong>Multiple Matches</strong>: Can match multiple occurrences in source text</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp-pattern>} - Regular expression pattern</li>
+ *   <li>{@code <regexp-result>} - Access to matched groups</li>
+ * </ul>
+ * 
  * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team

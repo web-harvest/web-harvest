@@ -94,21 +94,70 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * now properly encodes '#' as %23 in parameter values.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h4>Example 1: Simple GET Request</h4>
  * <pre>{@code
- * <!-- Text content (HTML, JSON, XML) -->
- * <http url="http://example.com/api?key=value"/>
+ * <def var="url">https://httpbin.org/get</def>
+ * <def var="response">
+ *     <http url="${url}"/>
+ * </def>
+ * <file action="write" path="target/http_output.txt">
+ *     <get var="response"/>
+ * </file>
+ * }</pre>
  * 
- * <!-- Binary content (images, PDFs) - auto-detected -->
- * <http url="http://example.com/image.jpg"/>
- * <file action="write" path="image.jpg" type="binary">${http}</file>
- * 
- * <!-- POST request -->
- * <http url="http://example.com" method="POST">
+ * <h4>Example 2: POST with JSON</h4>
+ * <pre>{@code
+ * <http url="https://api.example.com/users" method="POST">
  *   <http-header name="Content-Type">application/json</http-header>
- *   <http-param name="data">{"test": "value"}</http-param>
+ *   <http-header name="Authorization">Bearer ${apiToken}</http-header>
+ *   <http-param name="data">{"name": "John", "age": 30}</http-param>
  * </http>
  * }</pre>
+ * 
+ * <h4>Example 3: Binary Content (Images, PDFs)</h4>
+ * <pre>{@code
+ * <http url="http://example.com/image.jpg"/>
+ * <file action="write" path="downloaded_image.jpg" type="binary">${http}</file>
+ * }</pre>
+ * 
+ * <h4>Example 4: URL with Special Characters</h4>
+ * <pre>{@code
+ * <!-- Color parameter #FF0000 is automatically encoded as %23FF0000 -->
+ * <http url="http://example.com/api?color=#FF0000&amp;size=large"/>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>url</strong> (required): The HTTP/HTTPS URL to request</li>
+ *   <li><strong>method</strong> (optional): HTTP method (GET, POST, PUT, DELETE, etc.) - default: GET</li>
+ *   <li><strong>timeout</strong> (optional): Request timeout in milliseconds - default: 30000</li>
+ *   <li><strong>charset</strong> (optional): Character encoding - default: UTF-8</li>
+ *   <li><strong>followRedirects</strong> (optional): Follow HTTP redirects - default: true</li>
+ * </ul>
+ * 
+ * <h3>Sub-elements</h3>
+ * <ul>
+ *   <li>{@code <http-header>} - Define HTTP request headers</li>
+ *   <li>{@code <http-param>} - Define POST/PUT form parameters</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Binary Auto-Detection</strong>: Automatically detects binary content (images, PDFs, videos) and stores as byte[]</li>
+ *   <li><strong>URL Encoding</strong>: Special characters (#, &, =, etc.) are automatically encoded</li>
+ *   <li><strong>HTTPS Support</strong>: Full SSL/TLS support with certificate validation</li>
+ *   <li><strong>Response Variable</strong>: HTTP response content is available in ${http} or assigned variable</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http-header>} - HTTP request headers</li>
+ *   <li>{@code <http-param>} - HTTP form parameters</li>
+ *   <li>{@code <html-to-xml>} - Convert HTML response to XML for XPath</li>
+ *   <li>{@code <xpath>} - Extract data from HTML/XML response</li>
+ *   <li>{@code <regexp>} - Extract data with regular expressions</li>
+ *   <li>{@code <file>} - Save HTTP response to file</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.1

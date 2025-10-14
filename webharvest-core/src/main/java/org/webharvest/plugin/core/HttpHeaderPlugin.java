@@ -63,6 +63,27 @@ import org.webharvest.runtime.variables.Variable;
  * </http>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>name</strong> (required): The HTTP header name (e.g., Authorization, Accept, User-Agent)</li>
+ *   <li><strong>value</strong> (required): The HTTP header value (as element content)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <http>} element</li>
+ *   <li><strong>Header Names</strong>: Use standard HTTP header names (case-insensitive)</li>
+ *   <li><strong>Dynamic Values</strong>: Header values support variable substitution with ${var}</li>
+ *   <li><strong>Multiple Headers</strong>: Can define multiple headers in single HTTP request</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <http>} - Main HTTP request processor</li>
+ *   <li>{@code <http-param>} - HTTP query parameters</li>
+ *   <li>{@code <var>} - Variable definition for dynamic values</li>
+ * </ul>
+ * 
  * <p>See {@link HttpPlugin} for complete HTTP request examples.</p>
  * 
  * @author WebHarvest Team

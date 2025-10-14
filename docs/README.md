@@ -1,10 +1,10 @@
-# Web-Harvest 2.1.0 Documentation
+# Web-Harvest 2.2.0 Documentation
 
-This directory contains the complete documentation for Web-Harvest 2.1.0, including:
+This directory contains the complete documentation for Web-Harvest 2.2.0, including:
 
 - **Web Documentation** (`web/`) - Interactive HTML documentation with modern design
 - **API Documentation** - Generated from source code using Maven
-- **Processor Reference** - Complete reference for all processors
+- **Plugin Reference** - Complete reference for all 54 plugins (46 core + 8 external)
 - **Examples** - Real-world configuration examples
 - **User Guide** - Step-by-step tutorials and guides
 
@@ -13,8 +13,9 @@ This directory contains the complete documentation for Web-Harvest 2.1.0, includ
 ### Viewing the Documentation
 
 1. **Web Documentation**: Open `web/index.html` in your browser
-2. **API Documentation**: Run `mvn site` to generate API docs
-3. **Processor Reference**: See `web/processors/index.html`
+2. **Getting Started**: See `web/documentation/getting-started.html`
+3. **Plugin Reference**: See `web/documentation/2.2.0/index.html`
+4. **Architecture**: See `web/documentation/architecture.html`
 
 ### Building the Documentation
 
@@ -34,11 +35,18 @@ mvn clean package -Pdeploy-ftp
 ```
 docs/
 ├── web/                          # Interactive web documentation
-│   ├── index.html               # Main documentation page
+│   ├── index.html               # Main landing page
 │   ├── css/                     # Stylesheets
 │   ├── js/                      # JavaScript files
 │   ├── images/                  # Images and graphics
-│   ├── processors/              # Processor reference
+│   ├── documentation/           # Documentation hub
+│   │   ├── index.html           # Documentation index
+│   │   ├── getting-started.html # Getting started tutorial
+│   │   ├── architecture.html    # System architecture
+│   │   └── 2.2.0/               # Plugin documentation v2.2.0
+│   │       ├── index.html       # 54 plugins index
+│   │       ├── *.html           # 46 core plugin pages
+│   │       └── external/        # 8 external plugin pages
 │   ├── examples/                # Example configurations
 │   └── api/                     # API documentation
 ├── src/main/java/               # Documentation generators
@@ -56,12 +64,12 @@ docs/
 - **Syntax Highlighting**: Beautiful code syntax highlighting
 - **Dark Mode**: Optional dark theme support
 
-### Processor Reference
-- **Complete Coverage**: All 50+ processors documented
+### Plugin Reference
+- **Complete Coverage**: All 54 plugins documented (46 core + 8 external)
 - **Attribute Details**: Full attribute descriptions and types
 - **Code Examples**: Real-world usage examples
-- **Categories**: Organized by functionality
-- **Auto-generated**: Generated from source code annotations
+- **Categories**: Organized by functionality (Critical, Important, Common, Advanced, External)
+- **Auto-generated**: Generated from JavaDoc using Python scripts
 
 ### Examples
 - **Real-world Scenarios**: Business-focused examples
@@ -71,10 +79,10 @@ docs/
 
 ## Customization
 
-### Adding New Processors
-1. Add processor class with `@Definition` annotation
-2. Run `mvn clean site` to regenerate documentation
-3. Update processor reference if needed
+### Adding New Plugins
+1. Add plugin class with `@CorePlugin` or `@Definition` annotation
+2. Run `python3 generate_all_plugin_docs.py` to regenerate documentation
+3. Documentation is auto-generated from JavaDoc comments
 
 ### Adding New Examples
 1. Create XML configuration in `../examples/`
@@ -82,8 +90,8 @@ docs/
 3. Update example metadata and tags
 
 ### Styling
-- Modify `web/css/style.css` for main styles
-- Modify `web/css/processors.css` for processor-specific styles
+- Modify `web/css/enterprise.css` for main styles
+- Modify `web/css/prism.css` for syntax highlighting
 - Use CSS custom properties for easy theming
 
 ## Deployment
@@ -151,10 +159,10 @@ mvn clean site
 - Ensure web server is configured correctly
 - Verify CSS and JS files are accessible
 
-**Processor reference missing:**
-- Run `mvn clean compile` first
-- Check processor annotations
-- Verify classpath includes all modules
+**Plugin documentation missing:**
+- Run `python3 generate_all_plugin_docs.py` from project root
+- Check plugin JavaDoc comments
+- Verify Python scripts in root directory
 
 ### Getting Help
 
@@ -169,8 +177,9 @@ This documentation is part of Web-Harvest and is licensed under the Apache Licen
 
 ## Version History
 
-- **2.1.0-SNAPSHOT** - Current version with enhanced documentation
-- **2.0.x** - Previous versions with basic documentation
+- **2.2.0** - Current version with modernized plugin architecture and comprehensive documentation
+- **2.1.0** - Previous version with enhanced documentation
+- **2.0.x** - Earlier versions with basic documentation
 
 ---
 

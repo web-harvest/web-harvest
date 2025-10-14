@@ -63,6 +63,28 @@ import org.webharvest.runtime.variables.Variable;
  * </xquery>
  * }</pre>
  * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>name</strong> (required): The parameter name (matches XQuery variable)</li>
+ *   <li><strong>type</strong> (optional): XQuery data type (xs:string, xs:integer, etc.)</li>
+ *   <li><strong>value</strong> (required): The parameter value (as element content)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <xquery>} element</li>
+ *   <li><strong>Variable Declaration</strong>: XQuery must declare external variables</li>
+ *   <li><strong>Type Safety</strong>: Use type attribute for proper data type conversion</li>
+ *   <li><strong>Multiple Parameters</strong>: Can define multiple parameters for single query</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xquery>} - Main XQuery processor</li>
+ *   <li>{@code <xq-expression>} - XQuery expression definition</li>
+ *   <li>{@code <var>} - Variable definition for dynamic values</li>
+ * </ul>
+ * 
  * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
  * 
  * @author WebHarvest Team

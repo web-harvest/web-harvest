@@ -74,6 +74,61 @@ import org.xml.sax.InputSource;
  * It requires both XML content and XPath expression as sub-elements.
  * </p>
  * 
+ * <h3>Usage Examples</h3>
+ * <pre>{@code
+ * <!-- Extract single element text -->
+ * <xpath expression="//title/text()">
+ *   <html-to-xml>
+ *     <http url="https://example.com"/>
+ *   </html-to-xml>
+ * </xpath>
+ * 
+ * <!-- Extract all links -->
+ * <xpath expression="//a/@href">
+ *   <html-to-xml>
+ *     <http url="https://example.com"/>
+ *   </html-to-xml>
+ * </xpath>
+ * 
+ * <!-- Extract specific div content -->
+ * <xpath expression="//div[@class='content']//p">
+ *   <html-to-xml>
+ *     <http url="https://example.com"/>
+ *   </html-to-xml>
+ * </xpath>
+ * 
+ * <!-- Store result in variable -->
+ * <def var="title">
+ *   <xpath expression="//h1/text()">
+ *     <html-to-xml>
+ *       <http url="https://example.com"/>
+ *     </html-to-xml>
+ *   </xpath>
+ * </def>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>expression</strong> (required): The XPath expression to evaluate</li>
+ *   <li><strong>xml-content</strong> (required): XML content to evaluate against (as sub-element)</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>XML Input Required</strong>: The plugin requires valid XML content as input</li>
+ *   <li><strong>XPath Syntax</strong>: Uses standard XPath 1.0 syntax with Saxon engine</li>
+ *   <li><strong>Namespace Support</strong>: Supports XML namespaces in XPath expressions</li>
+ *   <li><strong>Error Handling</strong>: Invalid XPath expressions will throw PluginException</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <html-to-xml>} - Convert HTML to XML for XPath processing</li>
+ *   <li>{@code <xq-expression>} - XQuery expressions for complex XML processing</li>
+ *   <li>{@code <regexp-pattern>} - Regular expressions for text extraction</li>
+ *   <li>{@code <xml>} - XML manipulation and transformation</li>
+ * </ul>
+ * 
  * @core This is a core plugin
  * @author WebHarvest Team
  * @since 2.1.0
