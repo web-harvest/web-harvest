@@ -43,8 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.AbstractRegistry;
 import org.webharvest.AlreadyBoundException;
-import org.webharvest.events.ScraperExecutionEndEvent;
-import org.webharvest.events.ScraperExecutionErrorEvent;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
+import org.webharvest.runtime.session.events.SessionFailedEvent;
 import org.webharvest.exception.DatabaseException;
 
 import com.google.common.eventbus.Subscribe;
@@ -112,12 +112,11 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * Reacts on the end of configuration execution releasing all pooled
      * database connections.
      *
-     * @param event
-     *            {@link ScraperExecutionEndEvent} occurred
+     * @param event {@link SessionCompletedEvent} occurred (v2.2.1: updated from ScraperExecutionEndEvent)
      */
     @Subscribe
-    public void onExecutionEnd(final ScraperExecutionEndEvent event) {
-            LOG.debug("POOL: " + this);
+    public void onExecutionEnd(final SessionCompletedEvent event) {
+        LOG.debug("POOL: " + this);
         releaseAllConnections();
     }
 
@@ -125,11 +124,10 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * Reacts on the configuration execution error releasing all pooled database
      * connections.
      *
-     * @param event
-     *            {@link ScraperExecutionErrorEvent} occurred
+     * @param event {@link SessionFailedEvent} occurred (v2.2.1: updated from ScraperExecutionErrorEvent)
      */
     @Subscribe
-    public void onExecutionError(final ScraperExecutionErrorEvent event) {
+    public void onExecutionError(final SessionFailedEvent event) {
         releaseAllConnections();
     }
 

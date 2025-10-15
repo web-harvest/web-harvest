@@ -347,10 +347,31 @@ Execute SQL queries using named or inline connections.
 
 ## 🔧 **Creating Custom Plugins**
 
+### **Bug #40 Feature (v2.2.1): Auto-Discovery of Custom Plugins** 🎉
+
+WebHarvest now automatically discovers plugins from external packages! No need to modify core code.
+
+**Quick Start:**
+```bash
+# 1. Create your plugin in custom package
+# 2. Add @CorePlugin annotation
+# 3. Run with package scanning enabled
+java -Dwebharvest.plugin.packages=com.example.plugins \
+     -Dwebharvest.schema.validation=false \
+     -jar webharvest.jar config.xml
+```
+
+**Benefits:**
+- ✅ No core code modification needed
+- ✅ Automatic plugin registration
+- ✅ Multiple packages supported
+- ✅ Optional schema validation (useful during development)
+- ✅ Clean separation of custom and core plugins
+
 ### **1. Plugin Structure**
 
 ```java
-package com.example.webharvest.plugin;
+package com.example.plugins;  // YOUR custom package!
 
 import org.webharvest.runtime.processors.AbstractProcessor;
 import org.webharvest.runtime.processors.Processor;
@@ -411,12 +432,35 @@ public class MyPluginDefinition extends ProcessorDefinition {
 
 ### **3. Rejestracja pluginu**
 
-Plugin jest automatycznie rejestrowany dzięki adnotacji `@Autoscanned`. Upewnij się, że:
+**v2.2.1 (Bug #40): Automatyczna rejestracja z package scanning!**
 
-1. Klasa znajduje się w classpath
-2. Ma adnotację `@Autoscanned`
-3. Ma adnotację `@Definition` z poprawnymi parametrami
-4. Ma adnotację `@TargetNamespace`
+Plugin jest automatycznie rejestrowany dzięki adnotacji `@CorePlugin`. Upewnij się, że:
+
+1. **Klasa znajduje się w classpath** - dodaj JAR do classpath
+2. **Ma adnotację `@CorePlugin`** - z określonym `elementName`
+3. **Pakiet jest skonfigurowany do skanowania**:
+   - Via system property: `-Dwebharvest.plugin.packages=com.example.plugins`
+   - Lub programowo: `scanner.scanPackages("com.example.plugins")`
+
+**Przykład konfiguracji:**
+
+```bash
+# Dodaj swój JAR do classpath i skonfiguruj skanowanie
+java -cp webharvest.jar:my-plugins.jar \
+     -Dwebharvest.plugin.packages=com.example.plugins \
+     org.webharvest.Main config.xml
+```
+
+**Wyłączenie walidacji schema (opcjonalne):**
+
+Jeśli twój plugin nie ma XSD schema (typowe podczas rozwoju):
+
+```bash
+java -cp webharvest.jar:my-plugins.jar \
+     -Dwebharvest.plugin.packages=com.example.plugins \
+     -Dwebharvest.schema.validation=false \
+     org.webharvest.Main config.xml
+```
 
 ### **4. Testowanie pluginu**
 

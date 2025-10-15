@@ -85,11 +85,34 @@ import org.xml.sax.SAXException;
 
 /**
  * XML utils - contains common logic for XML handling
+ * 
+ * <h3>Bug #40: XML Schema Validation Toggle (v2.2.1)</h3>
+ * <p>
+ * Added system property {@code webharvest.schema.validation} to control
+ * whether XML schema validation is enabled. Default is TRUE (enabled).
+ * </p>
+ * <pre>
+ * // Disable schema validation:
+ * java -Dwebharvest.schema.validation=false ...
+ * 
+ * // Or in code:
+ * System.setProperty(XmlUtil.SCHEMA_VALIDATION_PROPERTY, "false");
+ * </pre>
+ * 
+ * @author Robert Bala (2025 refactoring)
  */
 public class XmlUtil {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XmlUtil.class);
     private static final Map<Integer, SAXParserFactory> saxParserFactoryMap;
+    
+    /**
+     * System property for controlling XML schema validation.
+     * Default: true (enabled)
+     * 
+     * @since 2.2.1 (Bug #40)
+     */
+    public static final String SCHEMA_VALIDATION_PROPERTY = "webharvest.schema.validation";
 
     static {
         /* Initialize schema resolver lazily to avoid IOC issues */
@@ -221,8 +244,70 @@ public class XmlUtil {
         return listVariable;
     }
 
+    /**
+     * Gets a SAXParserFactory with the specified configuration.
+     * 
+     * <p>
+     * <strong>Bug #40 Fix (v2.2.1):</strong> The validating parameter is now checked
+     * against the system property {@code webharvest.schema.validation}. If validation
+     * is disabled via system property, a non-validating factory is returned regardless
+     * of the validating parameter.
+     * </p>
+     * 
+     * @param validating whether validation is requested
+     * @param nsAware whether namespace awareness is needed
+     * @return configured SAXParserFactory
+     * @since 2.2.1 (Bug #40 - validation toggle)
+     */
     public static SAXParserFactory getSAXParserFactory(boolean validating, boolean nsAware) {
-        return saxParserFactoryMap.get((validating ? 1 : 0) | (nsAware ? 1 : 0) << 1);
+        // Bug #40 Fix: Check system property for schema validation
+        boolean effectiveValidating = validating && isSchemaValidationEnabled();
+        return saxParserFactoryMap.get((effectiveValidating ? 1 : 0) | (nsAware ? 1 : 0) << 1);
+    }
+    
+    /**
+     * Checks if XML schema validation is enabled.
+     * 
+     * <p>
+     * <strong>Bug #40 Feature (v2.2.1):</strong> Reads system property 
+     * {@code webharvest.schema.validation} to determine if schema validation
+     * should be enabled. Default is TRUE (enabled).
+     * </p>
+     * 
+     * <p>
+     * Accepted values for enabling: "true", "TRUE", "yes", "YES", "1"<br>
+     * Accepted values for disabling: "false", "FALSE", "no", "NO", "0"<br>
+     * Default (if property not set): true (enabled)
+     * </p>
+     * 
+     * @return true if schema validation is enabled, false otherwise
+     * @since 2.2.1 (Bug #40)
+     */
+    public static boolean isSchemaValidationEnabled() {
+        String propertyValue = System.getProperty(SCHEMA_VALIDATION_PROPERTY);
+        
+        // If property not set, default to TRUE (enabled)
+        if (propertyValue == null || propertyValue.trim().isEmpty()) {
+            return true;
+        }
+        
+        // Parse property value
+        String normalized = propertyValue.trim().toLowerCase();
+        
+        // True values: true, yes, 1
+        if ("true".equals(normalized) || "yes".equals(normalized) || "1".equals(normalized)) {
+            return true;
+        }
+        
+        // False values: false, no, 0
+        if ("false".equals(normalized) || "no".equals(normalized) || "0".equals(normalized)) {
+            return false;
+        }
+        
+        // Unknown value - log warning and default to true
+        LOGGER.warn("Unknown value for {}: '{}'. Defaulting to true (enabled)", 
+                    SCHEMA_VALIDATION_PROPERTY, propertyValue);
+        return true;
     }
     
     /**

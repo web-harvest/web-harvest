@@ -309,8 +309,42 @@ WebHarvest follows a modular, plugin-based architecture designed for extensibili
 
 ### Creating a New Plugin
 
+#### Bug #40 Feature (v2.2.1): Automatic Plugin Discovery
+
+WebHarvest now supports automatic discovery of plugins from external packages! You can create plugins in your own packages and have them automatically registered without modifying core code.
+
+**System Property Configuration:**
+```bash
+# Scan custom packages for plugins
+java -Dwebharvest.plugin.packages=com.example.plugins,com.mycompany.webharvest \
+     -jar webharvest.jar config.xml
+```
+
+**Programmatic Configuration:**
+```java
+import org.webharvest.plugin.scanner.PluginPackageScanner;
+import org.webharvest.definition.CorePluginRegistry;
+
+CorePluginRegistry registry = CorePluginRegistry.getInstance();
+PluginPackageScanner scanner = new PluginPackageScanner(registry);
+
+// Scan your custom packages
+scanner.scanPackages("com.example.plugins", "com.mycompany.webharvest");
+```
+
+### Step-by-Step Plugin Creation
+
 1. **Extend AbstractPlugin**:
 ```java
+package com.example.plugins;  // Your custom package!
+
+import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.annotations.CorePlugin;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.variables.NodeVariable;
+
 @CorePlugin(elementName = "myplugin")
 public class MyPlugin extends AbstractPlugin {
     
@@ -369,6 +403,37 @@ protected void doValidateConfiguration(PluginConfiguration config)
 2. **Execution**: Plugin performs its main functionality
 3. **Cleanup**: Resources are released and results are returned
 
+### Plugin Discovery (Bug #40 - v2.2.1)
+
+**Automatic Scanning:**
+- Place your plugin in any package
+- Add `@CorePlugin(elementName = "yourplugin")` annotation
+- Configure scanning via system property
+- Plugin automatically discovered and registered
+
+**Disabling XML Schema Validation (Bug #40 - v2.2.1):**
+
+If your custom plugin doesn't have an XSD schema, you can disable validation:
+
+```bash
+# Disable schema validation for development
+java -Dwebharvest.schema.validation=false \
+     -Dwebharvest.plugin.packages=com.example.plugins \
+     -jar webharvest.jar config.xml
+```
+
+This is useful for:
+- Custom plugins without XSD schemas
+- Development and testing environments
+- Faster parsing (no schema validation overhead)
+
+**Production Use:**
+```bash
+# Production: Enable validation (default), scan custom packages
+java -Dwebharvest.plugin.packages=com.example.plugins \
+     -jar webharvest.jar config.xml
+```
+
 ### Best Practices
 
 - **Thread Safety**: Plugins should be stateless and thread-safe
@@ -376,6 +441,8 @@ protected void doValidateConfiguration(PluginConfiguration config)
 - **Logging**: Use SLF4J for consistent logging
 - **Resource Management**: Properly close resources in try-with-resources blocks
 - **Configuration**: Validate all required parameters
+- **Package Naming**: Use reverse domain notation (com.company.project.plugins)
+- **Testing**: Write comprehensive tests for your custom plugins
 
 ## Core APIs
 

@@ -99,9 +99,14 @@ java -jar target/webharvest-ide-2.2.0.jar
 
 - **XML-based Configuration**: Define data extraction workflows using simple XML syntax
 - **Rich Plugin Ecosystem**: 48+ built-in plugins for various data extraction tasks
+- **Extensible Plugin System** (NEW in v2.2.1!): 
+  - **Auto-Discovery**: Scan custom packages for plugins automatically
+  - **No Core Modification**: Add plugins without changing core code
+  - **Configurable Schema Validation**: Enable/disable XML schema validation
+  - System properties: `-Dwebharvest.plugin.packages=...` and `-Dwebharvest.schema.validation=false`
 - **Multiple Output Formats**: Support for XML, JSON, CSV, and custom formats
 - **Scripting Support**: JavaScript, Groovy, and BeanShell integration
-- **Database Integration**: NEW! Named connections with automatic connection pooling
+- **Database Integration**: Named connections with automatic connection pooling
   - Define connections once with `<connection id="myDB" .../>`
   - Reuse with `<database connection="myDB" sql="..."/>`
   - Support for multiple concurrent databases
