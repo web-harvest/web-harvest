@@ -99,10 +99,21 @@ public abstract class AbstractPlugin implements Plugin {
             throw new IllegalArgumentException("Context cannot be null");
         }
         
+        // Bug #5 Fix: Wrap execution in try-finally to ensure cleanup always runs
         try {
             return doExecute(context);
         } catch (Exception e) {
             throw new RuntimeException("Plugin execution failed: " + e.getMessage(), e);
+        } finally {
+            // Bug #5: Cleanup must be called even when doExecute() throws exception
+            // This ensures resources are released and metrics are recorded
+            try {
+                doCleanup();
+            } catch (Exception cleanupEx) {
+                LOGGER.warn("Cleanup failed for plugin {}: {}", 
+                    getClass().getSimpleName(), cleanupEx.getMessage());
+                // Don't re-throw cleanup exceptions - original exception takes precedence
+            }
         }
     }
 
