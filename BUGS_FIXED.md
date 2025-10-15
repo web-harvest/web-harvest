@@ -7705,6 +7705,117 @@ java -Dwebharvest.script.scope.strict=true -jar webharvest-cli.jar config.xml
 
 ---
 
+### Bug #4: Add from-name to Mail Plugin
+
+**Status**: ✅ FIXED  
+**Reported**: SourceForge Patch #4  
+**Fixed in**: v2.2.0  
+**Severity**: Low (enhancement - email usability)  
+**Component**: `webharvest-mail` - `MailPlugin` class
+
+#### Quick Summary
+
+Added `from-name` attribute to mail plugin for setting a friendly sender name displayed instead of just the email address.
+
+**Before:**
+```
+Sender: noreply@company.com
+```
+
+**After (with from-name):**
+```
+Sender: Company Support Team <noreply@company.com>
+```
+
+#### User Request
+
+> "Allows you to set a friendly name which is displayed instead of the 
+> email address of the sender."
+
+#### Implementation
+
+**Added from-name as optional attribute:**
+
+```java
+// MailPlugin.java
+private static final String FROM_NAME_ATT_NAME = "from-name";  // Bug #4
+
+// In doExecute():
+String fromName = config.getProperty(FROM_NAME_ATT_NAME);
+fromName = evaluateTemplate(fromName, context);  // Template expansion
+
+if (fromName != null && !fromName.trim().isEmpty()) {
+    email.setFrom(from, fromName);  // With friendly name
+} else {
+    email.setFrom(from);            // Without (backwards compatible)
+}
+```
+
+#### Usage Example
+
+```xml
+<!-- Email with friendly sender name -->
+<mail smtp-host="smtp.gmail.com"
+      smtp-port="587"
+      username="scraper@gmail.com"
+      password="app-password"
+      from="noreply@company.com"
+      from-name="Company Support Team"
+      to="customer@example.com"
+      subject="Your Order Shipped">
+    
+    Dear Customer,
+    
+    Your order has been shipped!
+    
+    Best regards,
+    Company Support Team
+</mail>
+
+<!-- With template expansion -->
+<var-def name="scraper_name">Daily Products Scraper</var-def>
+
+<mail smtp-host="smtp.example.com"
+      from="scraper@company.com"
+      from-name="${scraper_name}"
+      to="admin@company.com"
+      subject="Scraping Report">
+    
+    Scraping completed successfully.
+    Products found: 127
+</mail>
+
+<!-- Without from-name (backwards compatible) -->
+<mail smtp-host="smtp.example.com"
+      from="bot@company.com"
+      to="user@example.com"
+      subject="Test">
+    
+    This shows only: bot@company.com
+</mail>
+```
+
+#### Tests
+
+**TDD Test (1 unit test - PASSED):**
+- `testBug4_FromNameInOptionalAttributes` - verifies from-name is recognized
+
+**Note**: Full SMTP integration tests require real SMTP server and are run separately.
+
+#### Impact
+
+- **Professional Emails**: Friendly sender names instead of technical email addresses
+- **Template Support**: from-name supports `${variable}` expansion
+- **Backwards Compatible**: Works without from-name (just like before)
+- **No Breaking Changes**: All existing mail configurations work
+
+#### Related
+
+- Apache Commons Email `setFrom(address, name)` method
+- Email RFC 5322 - "Name" <address@example.com> format
+
+---
+
 ### Bug #6: Allow Underscores in Variable Names
 
 **Status**: ✅ FIXED  

@@ -66,13 +66,14 @@ import org.slf4j.LoggerFactory;
  * 
  * <h3>Usage Examples</h3>
  * 
- * <h4>Example 1: Simple text email</h4>
+ * <h4>Example 1: Simple text email with friendly sender name (Bug #4)</h4>
  * <pre>{@code
  * <mail smtp-host="smtp.gmail.com"
  *       smtp-port="587"
  *       username="user@gmail.com"
  *       password="app-password"
  *       from="scraper@example.com"
+ *       from-name="WebHarvest Scraper"
  *       to="admin@example.com"
  *       subject="Scraping completed">
  *     
@@ -80,6 +81,7 @@ import org.slf4j.LoggerFactory;
  *     Products extracted: 150
  *     Time: ${_date}
  * </mail>
+ * <!-- Recipient sees: "WebHarvest Scraper <scraper@example.com>" -->
  * }</pre>
  * 
  * <h4>Example 2: HTML email with scraping results</h4>
@@ -142,6 +144,7 @@ import org.slf4j.LoggerFactory;
  *   <li><strong>username:</strong> SMTP authentication username</li>
  *   <li><strong>password:</strong> SMTP authentication password</li>
  *   <li><strong>from:</strong> Sender email address (required)</li>
+ *   <li><strong>from-name:</strong> Friendly sender name (Bug #4, v2.2.0) - displayed as "Name &lt;email@example.com&gt;"</li>
  *   <li><strong>to:</strong> Recipient email address (required)</li>
  *   <li><strong>subject:</strong> Email subject (required)</li>
  *   <li><strong>type:</strong> Email type: "text" or "html" (default: text)</li>
@@ -181,6 +184,7 @@ public class MailPlugin extends AbstractPlugin {
     private static final String SMTP_HOST_ATT_NAME = "smtp-host";
     private static final String SMTP_PORT_ATT_NAME = "smtp-port";
     private static final String FROM_ATT_NAME = "from";
+    private static final String FROM_NAME_ATT_NAME = "from-name";  // Bug #4: Friendly sender name
     private static final String TO_ATT_NAME = "to";
     private static final String SUBJECT_ATT_NAME = "subject";
     private static final String TYPE_ATT_NAME = "type";
@@ -261,7 +265,7 @@ public class MailPlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getOptionalAttributes() {
-                    return new String[] { SMTP_PORT_ATT_NAME, TYPE_ATT_NAME };
+                    return new String[] { SMTP_PORT_ATT_NAME, TYPE_ATT_NAME, FROM_NAME_ATT_NAME };  // Bug #4
                 }
 
                 @Override
@@ -335,6 +339,7 @@ public class MailPlugin extends AbstractPlugin {
         String smtpHost = config.getProperty(SMTP_HOST_ATT_NAME);
         int smtpPort = Integer.parseInt(evaluateTemplate(config.getProperty(SMTP_PORT_ATT_NAME, "25"), context));
         String from = config.getProperty(FROM_ATT_NAME);
+        String fromName = config.getProperty(FROM_NAME_ATT_NAME);  // Bug #4: Friendly sender name
         String to = config.getProperty(TO_ATT_NAME);
         String subject = config.getProperty(SUBJECT_ATT_NAME);
         String type = config.getProperty(TYPE_ATT_NAME, "text");
@@ -342,6 +347,7 @@ public class MailPlugin extends AbstractPlugin {
         // Evaluate template expressions
         smtpHost = evaluateTemplate(smtpHost, context);
         from = evaluateTemplate(from, context);
+        fromName = evaluateTemplate(fromName, context);  // Bug #4: Expand template in from-name
         to = evaluateTemplate(to, context);
         subject = evaluateTemplate(subject, context);
         
@@ -357,7 +363,16 @@ public class MailPlugin extends AbstractPlugin {
             
             email.setHostName(smtpHost);
             email.setSmtpPort(smtpPort);
-            email.setFrom(from);
+            
+            // Bug #4: Set friendly sender name if provided
+            if (fromName != null && !fromName.trim().isEmpty()) {
+                email.setFrom(from, fromName);
+                LOGGER.debug("Mail from: {} <{}>", fromName, from);
+            } else {
+                email.setFrom(from);
+                LOGGER.debug("Mail from: {}", from);
+            }
+            
             email.addTo(to);
             email.setSubject(subject);
             

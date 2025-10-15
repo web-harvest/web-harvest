@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bug #4: Friendly Sender Name in Mail Plugin
+  
+  Demonstrates the from-name attribute for setting a friendly
+  sender name that appears instead of just the email address.
+-->
+<config>
+    <!--
+      Example 1: Email with friendly sender name
+      
+      Recipient will see: "Company Support Team <noreply@company.com>"
+      instead of just: "noreply@company.com"
+    -->
+    <mail smtp-host="smtp.gmail.com"
+          smtp-port="587"
+          username="your-gmail@gmail.com"
+          password="your-app-password"
+          from="noreply@company.com"
+          from-name="Company Support Team"
+          to="customer@example.com"
+          subject="Your Order #12345 Shipped">
+        
+        Dear Customer,
+        
+        Your order #12345 has been shipped and is on its way!
+        
+        Tracking number: ABC123XYZ
+        
+        Best regards,
+        Company Support Team
+    </mail>
+    
+    <!--
+      Example 2: Automated scraper notification with dynamic from-name
+      
+      Uses template expansion in from-name attribute
+    -->
+    <var-def name="scraper_name">Daily Products Scraper</var-def>
+    <var-def name="products_found">127</var-def>
+    
+    <mail smtp-host="smtp.office365.com"
+          smtp-port="587"
+          username="scraper@company.com"
+          password="password123"
+          from="scraper@company.com"
+          from-name="${scraper_name}"
+          to="admin@company.com"
+          subject="Scraping Report - ${products_found} products found"
+          type="html">
+        
+        <template>
+          <![CDATA[
+          <html>
+            <body>
+              <h2>${scraper_name} - Daily Report</h2>
+              <p><strong>Products found:</strong> ${products_found}</p>
+              <p><strong>Timestamp:</strong> ${_date}</p>
+              <p><strong>Status:</strong> Success</p>
+            </body>
+          </html>
+          ]]>
+        </template>
+    </mail>
+    
+    <!--
+      Example 3: Error notification from scraper
+      
+      from-name shows scraper identity clearly
+    -->
+    <try>
+        <http url="https://api.example.com/data"/>
+    </try>
+    <catch>
+        <mail smtp-host="smtp.example.com"
+              from="alerts@company.com"
+              from-name="WebHarvest Alert System"
+              to="admin@company.com"
+              subject="[ERROR] Scraper Failed">
+            
+            SCRAPER ERROR ALERT
+            ===================
+            
+            Scraper failed with error:
+            ${_error}
+            
+            Time: ${_date}
+            
+            Please investigate immediately.
+        </mail>
+        <exit/>
+    </catch>
+    
+    <!--
+      Example 4: Without from-name (backwards compatible)
+      
+      Works exactly as before - just shows email address
+    -->
+    <mail smtp-host="smtp.gmail.com"
+          smtp-port="587"
+          username="user@gmail.com"
+          password="app-password"
+          from="bot@company.com"
+          to="user@example.com"
+          subject="Test Email">
+        
+        This email will show "bot@company.com" as sender
+        (no friendly name)
+    </mail>
+</config>
+
