@@ -33,7 +33,7 @@
 
 **Impact:**
 - ✅ **Fixed 12 test failures** (variable interpolation tests)
-- ✅ **2419/2419 tests pass** (100% pass rate!)
+- ✅ **3091/3091 tests pass** (100% pass rate!)
 - ✅ **7 new tests added** (TDD methodology)
 - ✅ **Bug existed since v1.0** - now resolved!
 
@@ -100,7 +100,7 @@ try {
   - XPath plugin with validation requirements
   - Resource cleanup under memory pressure
 - **8/8 tests passing** ✅
-- **No regressions** - 2648 total tests (2639 passing)
+- **No regressions** - 3091 total tests (all passing)
 
 **Usage:**
 No code changes required - all plugins automatically benefit from the fix!
@@ -173,7 +173,7 @@ Due to BeanShell's internal `bsh.NameSpace` architecture, complete v2.0 scope se
 - `FunctionParameterScopeBug7Test` - 6 unit tests (4 active, 2 disabled with docs)
 - `FunctionScopeIntegrationBug7Test` - 3 integration tests
 - **9/9 tests passing** ✅
-- **No regressions** - 2657 total tests (2648 passing)
+- **No regressions** - 3091 total tests (all passing)
 
 #### Bug #39: Unified CLI and GUI Settings
 **Problem:** Configuration duplication! GUI used `webharvest.properties`, CLI required all args explicitly.
@@ -788,10 +788,11 @@ Variables can be referenced using `${variableName}` syntax:
 
 WebHarvest has comprehensive test coverage across all modules:
 
-- **webharvest-core**: 2556 tests, 50%+ coverage
+- **webharvest-core**: 2959 tests, 58% coverage
   - Unit tests for all core plugins
   - Integration tests using XML configurations
   - Metadata and validation tests
+  - Infrastructure and utility tests
   
 - **webharvest-database**: Integration tests for database plugins
 - **webharvest-webbrowser**: Integration tests for browser automation
