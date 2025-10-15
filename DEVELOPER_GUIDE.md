@@ -436,6 +436,47 @@ java -Dwebharvest.plugin.packages=com.example.plugins \
 
 ### Best Practices
 
+#### DOM Structure Validation (Bug #14 - Already Implemented)
+
+Always validate DOM structure before data extraction to handle page changes gracefully:
+
+**Method 1: XPath count() validation**
+```xml
+<def var="hasRequiredElements">
+  <xpath expression="count(//div[@class='product']) > 0 and count(//span[@class='price']) > 0">
+    <get var="page"/>
+  </xpath>
+</def>
+
+<if condition="${hasRequiredElements}">
+  <!-- Safe to extract -->
+</if>
+```
+
+**Method 2: Multiple checks with If/Else**
+```xml
+<def var="titleCount"><xpath expression="count(//h1)">${page}</xpath></def>
+<def var="priceCount"><xpath expression="count(//span[@class='price'])">${page}</xpath></def>
+
+<if condition="${titleCount > 0 && priceCount > 0}">
+  <!-- Structure valid -->
+</if>
+```
+
+**Method 3: Try/Catch for flexible validation**
+```xml
+<try>
+  <def var="price">
+    <xpath expression="//span[@class='price']/text()">${page}</xpath>
+  </def>
+</try>
+<catch>
+  <def var="price" value="N/A"/>  <!-- Fallback if structure missing -->
+</catch>
+```
+
+#### General Best Practices
+
 - **Thread Safety**: Plugins should be stateless and thread-safe
 - **Error Handling**: Use appropriate exception types (`PluginException`, `PluginValidationException`)
 - **Logging**: Use SLF4J for consistent logging
@@ -520,6 +561,66 @@ boolean isEmpty = variable.isEmpty();
 ```
 
 ## Configuration System
+
+WebHarvest has two configuration systems:
+1. **Application Settings** - Application-wide configuration (CLI args, proxy, logging, etc.)
+2. **Workflow Configuration** - XML-based scraping workflow definitions
+
+### Application Settings (NEW in v2.2.1 - Bug #39)
+
+#### Overview
+WebHarvest v2.2.1 introduces a unified settings system that eliminates configuration duplication between GUI and CLI modes.
+
+**Key Features:**
+- Single configuration source for GUI and CLI
+- Modern CLI syntax using Apache Commons CLI
+- Auto-discovery from standard locations
+- CLI arguments can override file settings
+- Backward compatible with legacy format
+
+**Key Classes:**
+- `org.webharvest.settings.WebHarvestSettings` - Settings container
+- `org.webharvest.cli.CommandLineParser` - CLI argument parser
+
+#### Usage Example
+
+```java
+// Load settings from default locations
+WebHarvestSettings settings = WebHarvestSettings.loadDefault();
+// Auto-discovers from:
+// 1. -Dwebharvest.settings=path
+// 2. ~/.webharvest/webharvest.properties
+// 3. ./webharvest.properties
+
+// Override with Builder
+WebHarvestSettings custom = new WebHarvestSettings.Builder(settings)
+    .workDir("/custom/path")
+    .debug(true)
+    .proxyHost("proxy.company.com")
+    .build();
+
+// Parse CLI arguments
+CommandLineParser parser = new CommandLineParser(settings);
+WebHarvestSettings finalSettings = parser.parse(args);
+```
+
+**CLI Formats:**
+
+Modern (recommended):
+```bash
+java -jar webharvest-cli.jar -c config.xml -w /tmp --loglevel DEBUG
+```
+
+Legacy (still supported):
+```bash
+java -jar webharvest-cli.jar config=config.xml workdir=/tmp debug=true
+```
+
+**For complete documentation, see:**
+- `BUG_39_IMPLEMENTATION_SUMMARY.md`
+- `docs/web/documentation/settings-cli.html`
+
+### Workflow Configuration (XML)
 
 ### XML Schema
 

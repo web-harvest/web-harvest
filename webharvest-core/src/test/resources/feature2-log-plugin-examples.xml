@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Feature #2: Log Plugin Examples
+  Demonstrates logging to stdout and stderr
+-->
+<config>
+    <!-- Example 1: Basic Logging to stdout -->
+    <log>Starting web scraper...</log>
+    
+    <!-- Example 2: Progress Monitoring -->
+    <loop item="url" index="i">
+        <list>
+            <template>https://example.com/page1</template>
+            <template>https://example.com/page2</template>
+            <template>https://example.com/page3</template>
+        </list>
+        
+        <log dest="out">[INFO] Processing page ${i}: ${url}</log>
+        
+        <var-def name="response">
+            <http url="${url}"/>
+        </var-def>
+        
+        <log>Page ${i} fetched: ${sys.length(response)} bytes</log>
+    </loop>
+    
+    <!-- Example 3: Error Logging -->
+    <try>
+        <var-def name="data">
+            <http url="https://api.example.com/data"/>
+        </var-def>
+        <log>Data successfully fetched</log>
+    </try>
+    <catch>
+        <log dest="err">[ERROR] HTTP request failed</log>
+        <log dest="err">Exception: ${sys.exception}</log>
+        <log dest="err">Timestamp: ${sys.currentTime()}</log>
+    </catch>
+    
+    <!-- Example 4: Conditional Logging -->
+    <var-def name="items">
+        <xpath type="css" expression=".product">
+            <html-to-xml>${response}</html-to-xml>
+        </xpath>
+    </var-def>
+    
+    <var-def name="count">
+        <script>context.getVar("items").toList().size()</script>
+    </var-def>
+    
+    <if condition="${count > 0}">
+        <log>Found ${count} products to process</log>
+    </if>
+    <else>
+        <log dest="err">WARNING: No products found!</log>
+    </else>
+    
+    <!-- Example 5: Debug with Variable Values -->
+    <var-def name="username">johndoe</var-def>
+    <var-def name="userId">12345</var-def>
+    
+    <log>Debug: username=${username}, userId=${userId}</log>
+    
+    <!-- Example 6: Mixed stdout/stderr -->
+    <log dest="out">[INFO] Starting data extraction...</log>
+    <log dest="out">[INFO] Connecting to server...</log>
+    <log dest="err">[WARN] Retrying connection...</log>
+    <log dest="out">[INFO] Connection established</log>
+    
+    <!-- Example 7: Integration with CI/CD -->
+    <log>========================================</log>
+    <log>WebHarvest Batch Job Started</log>
+    <log>Timestamp: ${sys.currentTime()}</log>
+    <log>Configuration: production</log>
+    <log>========================================</log>
+    
+    <!-- scraping logic here -->
+    
+    <log>========================================</log>
+    <log>Batch Job Completed Successfully</log>
+    <log>Total items: ${count}</log>
+    <log>========================================</log>
+</config>
+

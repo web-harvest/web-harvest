@@ -296,17 +296,29 @@ public class LoopPlugin extends AbstractPlugin {
             
             // Loop through items
             for (int i = 0; i < items.length; i++) {
-                String currentItem = items[i].trim();
+                final String currentItem = items[i].trim();
+                final int iteration = i;
                 LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
                 
-                // Set current item in context
-                context.setLocalVar("item", new NodeVariable(currentItem));
-                context.setLocalVar("index", new NodeVariable(String.valueOf(i)));
-                
-                // Execute body content for each item
-                Variable bodyResult = executeBody(context);
-                if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
-                    result.append(bodyResult.toString());
+                // Bug #19 Fix: Execute each iteration in nested context
+                // This automatically cleans up variables created in loop body
+                // Prevents memory leak when looping 1000s of items
+                try {
+                    Variable bodyResult = context.executeWithinNewContext(() -> {
+                        // Set current item in nested context
+                        context.setLocalVar("item", new NodeVariable(currentItem));
+                        context.setLocalVar("index", new NodeVariable(String.valueOf(iteration)));
+                        
+                        // Execute body content for each item
+                        return executeBody(context);
+                    });
+                    
+                    if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
+                        result.append(bodyResult.toString());
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw e;
                 }
             }
             

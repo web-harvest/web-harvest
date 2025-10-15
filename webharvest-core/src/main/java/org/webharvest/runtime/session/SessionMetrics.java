@@ -2,6 +2,8 @@ package org.webharvest.runtime.session;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -42,6 +44,15 @@ public class SessionMetrics {
     private volatile Instant endTime;
     private final AtomicLong processedElements;
     
+    // HTTP metrics
+    private final AtomicLong httpRequestCount;
+    private final AtomicLong httpBytesDownloaded;
+    private final AtomicLong httpBytesUploaded;
+    private final AtomicLong httpTotalTimeMs;
+    
+    // Plugin breakdown
+    private final Map<String, AtomicLong> pluginExecutionTimes;
+    
     /**
      * Creates metrics with current time as start time.
      */
@@ -62,6 +73,15 @@ public class SessionMetrics {
         this.startTime = startTime;
         this.endTime = null;
         this.processedElements = new AtomicLong(0);
+        
+        // Initialize HTTP metrics
+        this.httpRequestCount = new AtomicLong(0);
+        this.httpBytesDownloaded = new AtomicLong(0);
+        this.httpBytesUploaded = new AtomicLong(0);
+        this.httpTotalTimeMs = new AtomicLong(0);
+        
+        // Initialize plugin breakdown
+        this.pluginExecutionTimes = new ConcurrentHashMap<>();
     }
     
     /**
@@ -202,5 +222,78 @@ public class SessionMetrics {
                 ", processedElements=" + processedElements.get() +
                 ", elementsPerSecond=" + String.format("%.2f", getElementsPerSecond()) +
                 '}';
+    }
+    
+    /**
+     * Records an HTTP request with metrics.
+     * 
+     * @param bytesDownloaded bytes downloaded
+     * @param bytesUploaded bytes uploaded
+     * @param responseTimeMs response time in milliseconds
+     */
+    public void recordHttpRequest(long bytesDownloaded, long bytesUploaded, long responseTimeMs) {
+        httpRequestCount.incrementAndGet();
+        httpBytesDownloaded.addAndGet(bytesDownloaded);
+        httpBytesUploaded.addAndGet(bytesUploaded);
+        httpTotalTimeMs.addAndGet(responseTimeMs);
+    }
+    
+    /**
+     * Records a plugin execution.
+     * 
+     * @param pluginName the plugin name
+     * @param executionTimeMs execution time in milliseconds
+     */
+    public void recordPluginExecution(String pluginName, long executionTimeMs) {
+        pluginExecutionTimes.computeIfAbsent(pluginName, k -> new AtomicLong(0))
+                           .addAndGet(executionTimeMs);
+    }
+    
+    /**
+     * Returns HTTP request count.
+     * 
+     * @return number of HTTP requests
+     */
+    public long getHttpRequestCount() {
+        return httpRequestCount.get();
+    }
+    
+    /**
+     * Returns total HTTP bytes downloaded.
+     * 
+     * @return bytes downloaded
+     */
+    public long getHttpBytesDownloaded() {
+        return httpBytesDownloaded.get();
+    }
+    
+    /**
+     * Returns total HTTP bytes uploaded.
+     * 
+     * @return bytes uploaded
+     */
+    public long getHttpBytesUploaded() {
+        return httpBytesUploaded.get();
+    }
+    
+    /**
+     * Returns average HTTP response time.
+     * 
+     * @return average response time in milliseconds, or 0 if no requests
+     */
+    public long getAverageHttpResponseTime() {
+        long count = httpRequestCount.get();
+        return count > 0 ? httpTotalTimeMs.get() / count : 0;
+    }
+    
+    /**
+     * Returns plugin execution time breakdown.
+     * 
+     * @return map of plugin name to execution time in milliseconds
+     */
+    public Map<String, Long> getPluginBreakdown() {
+        Map<String, Long> breakdown = new ConcurrentHashMap<>();
+        pluginExecutionTimes.forEach((name, time) -> breakdown.put(name, time.get()));
+        return breakdown;
     }
 }

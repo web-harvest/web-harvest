@@ -650,12 +650,12 @@ public class ExecutionManager {
                         json.append("\"processingRate\":").append(metrics.getProcessingRate());
                         
                         // v2.2: HTTP metrics
-                        if (metrics.getHttpRequests() > 0) {
+                        if (metrics.getHttpRequestCount() > 0) {
                             json.append(",\"httpMetrics\":{");
-                            json.append("\"requests\":").append(metrics.getHttpRequests()).append(",");
-                            json.append("\"bytesDownloaded\":").append(metrics.getBytesDownloaded()).append(",");
-                            json.append("\"bytesUploaded\":").append(metrics.getBytesUploaded()).append(",");
-                            json.append("\"avgResponseTime\":").append(metrics.getAvgResponseTime());
+                            json.append("\"requests\":").append(metrics.getHttpRequestCount()).append(",");
+                            json.append("\"bytesDownloaded\":").append(metrics.getHttpBytesDownloaded()).append(",");
+                            json.append("\"bytesUploaded\":").append(metrics.getHttpBytesUploaded()).append(",");
+                            json.append("\"avgResponseTime\":").append(metrics.getAverageHttpResponseTime());
                             json.append("}");
                         }
                         

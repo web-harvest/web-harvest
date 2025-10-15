@@ -53,34 +53,68 @@ import net.sf.saxon.query.XQueryExpression;
 import net.sf.saxon.trans.XPathException;
 import org.webharvest.utils.XmlUtil;
 import org.webharvest.exception.ScraperXPathException;
+
+// Bug #13: jsoup for CSS selectors
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 // REMOVED in v2.2.x - RuntimeConfig no longer exists
 // import org.webharvest.runtime.RuntimeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.xml.transform.stream.StreamSource;
-import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
 /**
- * XPath plugin that provides XPath expression evaluation functionality.
+ * XPath/CSS Selector plugin that provides expression evaluation functionality.
  * This is a core plugin migrated from the original XPathProcessor.
  * 
  * <p>
- * The XPath plugin evaluates XPath expressions against XML content.
- * It requires both XML content and XPath expression as sub-elements.
+ * The XPath plugin evaluates XPath expressions OR CSS selectors against XML/HTML content.
+ * It requires both content and expression as sub-elements.
+ * </p>
+ * 
+ * <h3>Bug #13 Enhancement: CSS Selector Support (v2.2.1)</h3>
+ * <p>
+ * Added support for CSS selectors as a modern alternative to XPath for HTML querying.
+ * Use the {@code type="css"} attribute to enable CSS selector mode.
  * </p>
  * 
  * <h3>Usage Examples</h3>
+ * 
+ * <h4>XPath Mode (default):</h4>
  * <pre>{@code
  * <!-- Extract single element text -->
  * <xpath expression="//title/text()">
  *   <html-to-xml>
  *     <http url="https://example.com"/>
  *   </html-to-xml>
+ * </xpath>
+ * }</pre>
+ * 
+ * <h4>CSS Selector Mode (Bug #13 - NEW!):</h4>
+ * <pre>{@code
+ * <!-- Extract links with class 'link' -->
+ * <xpath type="css" expression="a.link">
+ *   <html-to-xml>
+ *     <http url="https://example.com"/>
+ *   </html-to-xml>
+ * </xpath>
+ * 
+ * <!-- Extract product titles -->
+ * <xpath type="css" expression=".product h3">
+ *   <html-to-xml>${response}</html-to-xml>
+ * </xpath>
+ * 
+ * <!-- Use pseudo-selectors -->
+ * <xpath type="css" expression="li:first-child">
+ *   <html-to-xml>${content}</html-to-xml>
  * </xpath>
  * 
  * <!-- Extract all links -->
@@ -109,8 +143,19 @@ import org.xml.sax.InputSource;
  * 
  * <h3>Parameters</h3>
  * <ul>
- *   <li><strong>expression</strong> (required): The XPath expression to evaluate</li>
- *   <li><strong>xml-content</strong> (required): XML content to evaluate against (as sub-element)</li>
+ *   <li><strong>expression</strong> (required): The XPath expression OR CSS selector to evaluate</li>
+ *   <li><strong>type</strong> (optional): Query type - "xpath" (default) or "css" (Bug #13)</li>
+ *   <li><strong>xml-content</strong> (required): XML/HTML content to evaluate against (as sub-element)</li>
+ * </ul>
+ * 
+ * <h3>CSS Selector Syntax (type="css")</h3>
+ * <ul>
+ *   <li><code>a.link</code> - Links with class 'link'</li>
+ *   <li><code>.product h3</code> - H3 elements inside elements with class 'product'</li>
+ *   <li><code>tr:first-child</code> - First row in table</li>
+ *   <li><code>li:nth-child(2)</code> - Second list item</li>
+ *   <li><code>input[type='text']</code> - Text input fields</li>
+ *   <li><code>div > p</code> - Direct child paragraphs</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
@@ -399,10 +444,21 @@ public class XPathPlugin extends AbstractPlugin {
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         PluginConfiguration config = getConfiguration();
         String expression = config.getProperty("expression");
+        String type = config.getProperty("type");  // Bug #13: CSS selector support
         
         if (expression == null || expression.trim().isEmpty()) {
             LOGGER.warn("No XPath expression provided");
             return EmptyVariable.INSTANCE;
+        }
+        
+        // Bug #13: Route to CSS selector if type="css"
+        if ("css".equalsIgnoreCase(type)) {
+            Variable html = getXmlContent(context);
+            if (html == null || html instanceof EmptyVariable) {
+                LOGGER.warn("No HTML content for CSS selector");
+                return EmptyVariable.INSTANCE;
+            }
+            return evaluateCssSelector(html.toString(), expression);
         }
         
         // Get XML content from context - using the same logic as original XPathProcessor
@@ -500,6 +556,48 @@ public class XPathPlugin extends AbstractPlugin {
         // For now, return empty map
         // In a real implementation, this would extract variables from configuration
         return new HashMap<String, String>();
+    }
+    
+    /**
+     * Bug #13: Evaluate CSS selector against HTML content
+     * TDD Cycle 2: Minimal implementation to make test pass
+     * 
+     * @param htmlContent HTML content to query
+     * @param cssSelector CSS selector expression
+     * @return Variable containing results (null for now - minimal impl)
+     */
+    protected Variable evaluateCssSelector(String htmlContent, String cssSelector) {
+        // TDD GREEN Cycle 3: Real implementation with jsoup
+        LOGGER.info("Bug #13: CSS Selector '{}' on HTML content", cssSelector);
+        
+        try {
+            // Parse HTML with jsoup (use fully qualified name to avoid conflict with org.w3c.dom.Document)
+            org.jsoup.nodes.Document document = Jsoup.parse(htmlContent);
+            
+            // Apply CSS selector
+            Elements elements = document.select(cssSelector);
+            
+            if (elements.isEmpty()) {
+                LOGGER.debug("No elements matched CSS selector: {}", cssSelector);
+                return new NodeVariable("");
+            }
+            
+            // Collect text from all matched elements
+            List<Variable> results = new ArrayList<>();
+            for (Element element : elements) {
+                String text = element.text().trim();
+                if (!text.isEmpty()) {
+                    results.add(new NodeVariable(text));
+                }
+            }
+            
+            LOGGER.debug("CSS Selector matched {} elements", results.size());
+            return new ListVariable(results);
+            
+        } catch (Exception e) {
+            LOGGER.error("Error applying CSS selector: " + cssSelector, e);
+            throw new RuntimeException("CSS Selector error: " + e.getMessage(), e);
+        }
     }
     
 }

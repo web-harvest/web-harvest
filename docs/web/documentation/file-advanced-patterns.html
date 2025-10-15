@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Advanced Patterns - WebHarvest Documentation</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/processors.css">
+    <style>
+        .pattern-card {
+            background: white;
+            border-left: 4px solid #0ea5e9;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .code-example {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        .tip-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.25rem;
+        }
+        
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>📁 File Advanced Patterns</h1>
+            <p class="subtitle">CSV splitting, file caching, and age-based conditional reading</p>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                Solutions for <a href="https://github.com/webharvest/webharvest/issues/2" style="color: #0ea5e9;">#2 File command improvements</a>
+            </p>
+        </div>
+    </header>
+
+    <main class="container">
+        <nav class="doc-nav">
+            <a href="index.html">← Back to Documentation</a>
+        </nav>
+
+        <!-- Introduction -->
+        <section>
+            <h2>📋 Overview</h2>
+            <p>This guide demonstrates advanced file processing patterns that solve common use cases:</p>
+            <ul>
+                <li><strong>CSV/Text Splitting</strong> - Read file and split into lines or fields</li>
+                <li><strong>File Age Checking</strong> - Conditional processing based on file modification time</li>
+                <li><strong>Simple Caching</strong> - Reuse recent file results, refresh if stale</li>
+            </ul>
+            
+            <div class="tip-box">
+                <p><strong>💡 Good News:</strong> WebHarvest already provides all necessary tools for these patterns using <code>&lt;tokenize&gt;</code>, <code>&lt;script&gt;</code>, and <code>&lt;if&gt;</code> processors!</p>
+            </div>
+        </section>
+
+        <!-- Pattern 1: Split File -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 1: Split File into Lines (CSV Processing)</h2>
+                
+                <p><strong>Use Case:</strong> Read CSV file and process each line separately</p>
+                
+                <h3>Solution: File + Tokenize</h3>
+                <div class="code-example">
+&lt;!-- Read CSV file --&gt;
+&lt;def var="csvContent"&gt;
+  &lt;file path="data.csv" action="read"/&gt;
+&lt;/def&gt;
+
+&lt;!-- Split by newline into list of lines --&gt;
+&lt;def var="lines"&gt;
+  &lt;tokenize delimiters="\n"&gt;${csvContent}&lt;/tokenize&gt;
+&lt;/def&gt;
+
+&lt;!-- Process each line --&gt;
+&lt;loop item="line" index="i"&gt;
+  ${lines}
+  
+  &lt;!-- Skip header line --&gt;
+  &lt;if condition="${i > 0}"&gt;
+    &lt;!-- Split line into fields --&gt;
+    &lt;def var="fields"&gt;
+      &lt;tokenize delimiters=","&gt;${line}&lt;/tokenize&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Process CSV fields --&gt;
+    &lt;file path="output.txt" action="append"&gt;
+      Line ${i}: ${line}
+    &lt;/file&gt;
+  &lt;/if&gt;
+&lt;/loop&gt;
+                </div>
+                
+                <h3>Compact Version: Direct Loop</h3>
+                <div class="code-example">
+&lt;!-- Even simpler: Loop can split directly --&gt;
+&lt;loop item="line" index="i" delimiter="\n"&gt;
+  &lt;file path="data.csv" action="read"/&gt;
+  
+  &lt;!-- Each iteration gets one line --&gt;
+  &lt;if condition="${i > 0}"&gt;
+    &lt;!-- Process line --&gt;
+  &lt;/if&gt;
+&lt;/loop&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern 2: File Age Check -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 2: Conditional Read Based on File Age (Caching)</h2>
+                
+                <p><strong>Use Case:</strong> Only process file if it's newer than a certain age (e.g., cache for 2 hours)</p>
+                
+                <h3>Solution: Script + If Condition</h3>
+                <div class="code-example">
+&lt;!-- Check if cache file is fresh (younger than 2 hours) --&gt;
+&lt;def var="cacheFile"&gt;cache/data.txt&lt;/def&gt;
+&lt;def var="maxAgeMs"&gt;7200000&lt;/def&gt;  &lt;!-- 2 hours = 2 * 60 * 60 * 1000 --&gt;
+
+&lt;def var="isCacheFresh"&gt;
+  &lt;script&gt;
+    var file = new java.io.File(context.getVar('cacheFile').toString());
+    
+    if (!file.exists()) {
+      false;  // File doesn't exist - not fresh
+    } else {
+      var ageMs = new Date().getTime() - file.lastModified();
+      var maxAge = parseInt(context.getVar('maxAgeMs'));
+      ageMs &lt; maxAge;  // Fresh if age less than max
+    }
+  &lt;/script&gt;
+&lt;/def&gt;
+
+&lt;if condition="${isCacheFresh}"&gt;
+  &lt;!-- ✅ Cache is fresh - read from file --&gt;
+  &lt;def var="data"&gt;
+    &lt;file path="${cacheFile}" action="read"/&gt;
+  &lt;/def&gt;
+&lt;/if&gt;
+&lt;else&gt;
+  &lt;!-- ❌ Cache stale or missing - fetch fresh data --&gt;
+  &lt;def var="data"&gt;
+    &lt;http url="https://api.example.com/data"/&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Update cache --&gt;
+  &lt;file path="${cacheFile}" action="write"&gt;
+    ${data}
+  &lt;/file&gt;
+&lt;/else&gt;
+                </div>
+                
+                <h3>Reusable Cache Function</h3>
+                <div class="code-example">
+&lt;!-- Define cache helper function --&gt;
+&lt;function name="cachedHttp"&gt;
+  &lt;return&gt;
+    &lt;def var="url"&gt;&lt;call-param name="url"/&gt;&lt;/def&gt;
+    &lt;def var="cachePath"&gt;&lt;call-param name="cachePath"/&gt;&lt;/def&gt;
+    &lt;def var="maxAgeMs"&gt;&lt;call-param name="maxAgeMs"/&gt;&lt;/def&gt;
+    
+    &lt;!-- Check cache freshness --&gt;
+    &lt;def var="useCached"&gt;
+      &lt;script&gt;
+        var file = new java.io.File(context.getVar('cachePath').toString());
+        if (!file.exists()) {
+          false;
+        } else {
+          var age = new Date().getTime() - file.lastModified();
+          var maxAge = parseInt(context.getVar('maxAgeMs'));
+          age &lt; maxAge;
+        }
+      &lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;if condition="${useCached}"&gt;
+      &lt;file path="${cachePath}" action="read"/&gt;
+    &lt;/if&gt;
+    &lt;else&gt;
+      &lt;def var="fresh"&gt;
+        &lt;http url="${url}"/&gt;
+      &lt;/def&gt;
+      &lt;file path="${cachePath}" action="write"&gt;${fresh}&lt;/file&gt;
+      ${fresh}
+    &lt;/else&gt;
+  &lt;/return&gt;
+&lt;/function&gt;
+
+&lt;!-- Use cached HTTP --&gt;
+&lt;def var="data"&gt;
+  &lt;call name="cachedHttp"&gt;
+    &lt;call-param name="url"&gt;https://api.example.com/data&lt;/call-param&gt;
+    &lt;call-param name="cachePath"&gt;cache/api-data.txt&lt;/call-param&gt;
+    &lt;call-param name="maxAgeMs"&gt;3600000&lt;/call-param&gt; &lt;!-- 1 hour --&gt;
+  &lt;/call&gt;
+&lt;/def&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern 3: Time Notation Helper -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 3: Human-Readable Time Notation</h2>
+                
+                <p><strong>Use Case:</strong> Express age limits in readable format like "d:2,h:3,m:30" (2 days, 3 hours, 30 minutes)</p>
+                
+                <h3>Solution: Script Helper Function</h3>
+                <div class="code-example">
+&lt;!-- Parse time notation: "d:2,h:3,m:30,s:45" --&gt;
+&lt;function name="parseTimeNotation"&gt;
+  &lt;return&gt;
+    &lt;script&gt;
+      var notation = context.getVar('timeNotation').toString();
+      var totalMs = 0;
+      
+      var parts = notation.split(',');
+      for (var i = 0; i &lt; parts.length; i++) {
+        var part = parts[i].trim();
+        var kv = part.split(':');
+        if (kv.length == 2) {
+          var unit = kv[0].trim();
+          var value = parseInt(kv[1].trim());
+          
+          if (unit == 'd') totalMs += value * 24 * 60 * 60 * 1000;  // days
+          else if (unit == 'h') totalMs += value * 60 * 60 * 1000;  // hours
+          else if (unit == 'm') totalMs += value * 60 * 1000;        // minutes
+          else if (unit == 's') totalMs += value * 1000;             // seconds
+          else if (unit == 'ms') totalMs += value;                   // milliseconds
+        }
+      }
+      
+      totalMs;  // Return total milliseconds
+    &lt;/script&gt;
+  &lt;/return&gt;
+&lt;/function&gt;
+
+&lt;!-- Use it: Check if file younger than "d:2,h:3,m:30" --&gt;
+&lt;def var="timeNotation"&gt;d:2,h:3,m:30&lt;/def&gt;
+&lt;def var="maxAgeMs"&gt;
+  &lt;call name="parseTimeNotation"/&gt;
+&lt;/def&gt;
+
+&lt;def var="isFileYoung"&gt;
+  &lt;script&gt;
+    var file = new java.io.File('cache/data.txt');
+    if (!file.exists()) {
+      false;
+    } else {
+      var ageMs = new Date().getTime() - file.lastModified();
+      var maxAge = parseInt(context.getVar('maxAgeMs'));
+      ageMs &lt; maxAge;
+    }
+  &lt;/script&gt;
+&lt;/def&gt;
+
+&lt;if condition="${isFileYoung}"&gt;
+  &lt;!-- File is young - read cache --&gt;
+&lt;/if&gt;
+&lt;else&gt;
+  &lt;!-- File is old - refresh --&gt;
+&lt;/else&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern 4: Complete CSV Processing Pipeline -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 4: Complete CSV Processing with Caching</h2>
+                
+                <p><strong>Use Case:</strong> Process CSV file with line splitting and intelligent caching</p>
+                
+                <div class="code-example">
+&lt;config&gt;
+  &lt;!-- Configuration --&gt;
+  &lt;def var="dataFile"&gt;data/products.csv&lt;/def&gt;
+  &lt;def var="cacheMaxAge"&gt;3600000&lt;/def&gt;  &lt;!-- 1 hour --&gt;
+  
+  &lt;!-- Check if file is fresh (younger than 1 hour) --&gt;
+  &lt;def var="needsRefresh"&gt;
+    &lt;script&gt;
+      var file = new java.io.File(context.getVar('dataFile').toString());
+      if (!file.exists()) {
+        true;  // File doesn't exist - needs creation
+      } else {
+        var ageMs = new Date().getTime() - file.lastModified();
+        var maxAge = parseInt(context.getVar('cacheMaxAge'));
+        ageMs &gt;= maxAge;  // Needs refresh if age exceeds limit
+      }
+    &lt;/script&gt;
+  &lt;/def&gt;
+  
+  &lt;if condition="${needsRefresh}"&gt;
+    &lt;!-- Fetch fresh data from API --&gt;
+    &lt;def var="csvData"&gt;
+      &lt;http url="https://api.example.com/products.csv"/&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Update cache file --&gt;
+    &lt;file path="${dataFile}" action="write"&gt;
+      ${csvData}
+    &lt;/file&gt;
+  &lt;/if&gt;
+  &lt;else&gt;
+    &lt;!-- Use cached data --&gt;
+    &lt;def var="csvData"&gt;
+      &lt;file path="${dataFile}" action="read"/&gt;
+    &lt;/def&gt;
+  &lt;/else&gt;
+  
+  &lt;!-- Split CSV into lines and process --&gt;
+  &lt;loop item="line" index="i" delimiter="\n"&gt;
+    ${csvData}
+    
+    &lt;!-- Skip header (line 0) --&gt;
+    &lt;if condition="${i > 0}"&gt;
+      &lt;!-- Split line into fields --&gt;
+      &lt;loop item="field" index="fieldIdx" delimiter=","&gt;
+        ${line}
+        
+        &lt;!-- Process each field --&gt;
+        &lt;def var="field${fieldIdx}"&gt;${field}&lt;/def&gt;
+      &lt;/loop&gt;
+      
+      &lt;!-- Now have: field0, field1, field2, etc. --&gt;
+      &lt;file path="processed/product-${i}.json" action="write"&gt;
+        {
+          "id": "${field0}",
+          "name": "${field1}",
+          "price": "${field2}"
+        }
+      &lt;/file&gt;
+    &lt;/if&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern 5: Advanced Caching with Expiry -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 5: Multi-Level Cache with TTL</h2>
+                
+                <p><strong>Use Case:</strong> Implement sophisticated caching with different TTLs for different data types</p>
+                
+                <div class="code-example">
+&lt;!-- Reusable cache function with TTL --&gt;
+&lt;function name="cachedFetch"&gt;
+  &lt;return&gt;
+    &lt;def var="sourceUrl"&gt;&lt;call-param name="url"/&gt;&lt;/def&gt;
+    &lt;def var="cachePath"&gt;&lt;call-param name="cachePath"/&gt;&lt;/def&gt;
+    &lt;def var="ttlHours"&gt;&lt;call-param name="ttlHours"/&gt;&lt;/def&gt;
+    
+    &lt;def var="ttlMs"&gt;
+      &lt;script&gt;
+        parseInt(context.getVar('ttlHours')) * 60 * 60 * 1000;
+      &lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="cacheValid"&gt;
+      &lt;script&gt;
+        var file = new java.io.File(context.getVar('cachePath').toString());
+        if (!file.exists()) {
+          false;
+        } else {
+          var age = new Date().getTime() - file.lastModified();
+          var ttl = parseInt(context.getVar('ttlMs'));
+          age &lt; ttl;
+        }
+      &lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;if condition="${cacheValid}"&gt;
+      &lt;!-- Cache hit --&gt;
+      &lt;file path="${cachePath}" action="read"/&gt;
+    &lt;/if&gt;
+    &lt;else&gt;
+      &lt;!-- Cache miss - fetch and update --&gt;
+      &lt;def var="freshData"&gt;
+        &lt;http url="${sourceUrl}"/&gt;
+      &lt;/def&gt;
+      &lt;file path="${cachePath}" action="write"&gt;${freshData}&lt;/file&gt;
+      ${freshData}
+    &lt;/else&gt;
+  &lt;/return&gt;
+&lt;/function&gt;
+
+&lt;!-- Use with different TTLs --&gt;
+&lt;def var="productData"&gt;
+  &lt;call name="cachedFetch"&gt;
+    &lt;call-param name="url"&gt;https://api.example.com/products&lt;/call-param&gt;
+    &lt;call-param name="cachePath"&gt;cache/products.json&lt;/call-param&gt;
+    &lt;call-param name="ttlHours"&gt;24&lt;/call-param&gt;  &lt;!-- 24h cache --&gt;
+  &lt;/call&gt;
+&lt;/def&gt;
+
+&lt;def var="priceData"&gt;
+  &lt;call name="cachedFetch"&gt;
+    &lt;call-param name="url"&gt;https://api.example.com/prices&lt;/call-param&gt;
+    &lt;call-param name="cachePath"&gt;cache/prices.json&lt;/call-param&gt;
+    &lt;call-param name="ttlHours"&gt;1&lt;/call-param&gt;  &lt;!-- 1h cache (prices change often) --&gt;
+  &lt;/call&gt;
+&lt;/def&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Pattern 6: Complete Solution -->
+        <section>
+            <div class="pattern-card">
+                <h2>Pattern 6: Production-Ready File Caching System</h2>
+                
+                <p><strong>Complete solution with file age checking, CSV splitting, error handling</strong></p>
+                
+                <div class="code-example">
+&lt;config&gt;
+  &lt;!-- Configuration --&gt;
+  &lt;def var="apiUrl"&gt;https://api.example.com/products.csv&lt;/def&gt;
+  &lt;def var="cacheFile"&gt;cache/products.csv&lt;/def&gt;
+  &lt;def var="cacheMaxAge"&gt;d:1&lt;/def&gt;  &lt;!-- 1 day --&gt;
+  
+  &lt;!-- Parse time notation --&gt;
+  &lt;def var="maxAgeMs"&gt;
+    &lt;script&gt;
+      var notation = context.getVar('cacheMaxAge').toString();
+      var totalMs = 0;
+      var parts = notation.split(',');
+      
+      for (var i = 0; i &lt; parts.length; i++) {
+        var kv = parts[i].trim().split(':');
+        if (kv.length == 2) {
+          var unit = kv[0].trim();
+          var val = parseInt(kv[1].trim());
+          
+          if (unit == 'd') totalMs += val * 24 * 60 * 60 * 1000;
+          else if (unit == 'h') totalMs += val * 60 * 60 * 1000;
+          else if (unit == 'm') totalMs += val * 60 * 1000;
+          else if (unit == 's') totalMs += val * 1000;
+          else if (unit == 'ms') totalMs += val;
+        }
+      }
+      
+      totalMs;
+    &lt;/script&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Check cache age --&gt;
+  &lt;def var="cacheIsYoung"&gt;
+    &lt;script&gt;
+      var file = new java.io.File(context.getVar('cacheFile').toString());
+      if (!file.exists()) {
+        false;
+      } else {
+        var age = new Date().getTime() - file.lastModified();
+        var maxAge = parseInt(context.getVar('maxAgeMs'));
+        
+        // Log cache age
+        var ageHours = age / (60 * 60 * 1000);
+        var maxHours = maxAge / (60 * 60 * 1000);
+        print('Cache age: ' + ageHours.toFixed(1) + 'h (max: ' + maxHours.toFixed(1) + 'h)');
+        
+        age &lt; maxAge;
+      }
+    &lt;/script&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Fetch data (cached or fresh) --&gt;
+  &lt;if condition="${cacheIsYoung}"&gt;
+    &lt;def var="csvData"&gt;
+      &lt;file path="${cacheFile}" action="read"/&gt;
+    &lt;/def&gt;
+    &lt;file path="scraper.log" action="append"&gt;
+      [${_date}] Cache HIT - using cached data
+    &lt;/file&gt;
+  &lt;/if&gt;
+  &lt;else&gt;
+    &lt;try&gt;
+      &lt;def var="csvData"&gt;
+        &lt;http url="${apiUrl}"/&gt;
+      &lt;/def&gt;
+      &lt;file path="${cacheFile}" action="write"&gt;${csvData}&lt;/file&gt;
+      &lt;file path="scraper.log" action="append"&gt;
+        [${_date}] Cache MISS - fetched fresh data
+      &lt;/file&gt;
+    &lt;/try&gt;
+    &lt;catch&gt;
+      &lt;!-- Fallback to stale cache if fetch fails --&gt;
+      &lt;def var="csvData"&gt;
+        &lt;file path="${cacheFile}" action="read"/&gt;
+      &lt;/def&gt;
+      &lt;file path="scraper.log" action="append"&gt;
+        [${_date}] Fetch FAILED - using stale cache
+      &lt;/file&gt;
+    &lt;/catch&gt;
+  &lt;/else&gt;
+  
+  &lt;!-- Split CSV and process --&gt;
+  &lt;loop item="line" index="lineNum" delimiter="\n"&gt;
+    ${csvData}
+    
+    &lt;if condition="${lineNum > 0}"&gt;  &lt;!-- Skip header --&gt;
+      &lt;!-- Split line into fields --&gt;
+      &lt;def var="fields"&gt;
+        &lt;tokenize delimiters=","&gt;${line}&lt;/tokenize&gt;
+      &lt;/def&gt;
+      
+      &lt;!-- Access fields as list items --&gt;
+      &lt;loop item="field" index="colIdx"&gt;
+        ${fields}
+        
+        &lt;def var="col${colIdx}"&gt;${field}&lt;/def&gt;
+      &lt;/loop&gt;
+      
+      &lt;!-- Save processed data --&gt;
+      &lt;file path="output/product-${lineNum}.json" action="write"&gt;
+        {
+          "id": "${col0}",
+          "name": "${col1}",
+          "price": "${col2}",
+          "stock": "${col3}"
+        }
+      &lt;/file&gt;
+    &lt;/if&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits -->
+        <section>
+            <h2>✨ Benefits of These Patterns</h2>
+            <ul>
+                <li>✅ <strong>CSV Splitting</strong> - Tokenize + Loop provides flexible text splitting</li>
+                <li>✅ <strong>File Age Checking</strong> - Script with File.lastModified() enables caching</li>
+                <li>✅ <strong>Reusable Functions</strong> - Cache logic encapsulated for reuse</li>
+                <li>✅ <strong>Human-Readable TTL</strong> - "d:2,h:3,m:30" notation via helper function</li>
+                <li>✅ <strong>Error Handling</strong> - Try/Catch for graceful failover to stale cache</li>
+                <li>✅ <strong>No Native Changes Needed</strong> - Works with existing processors</li>
+            </ul>
+        </section>
+
+        <!-- Comparison -->
+        <section>
+            <h2>📊 Feature Request vs. Current Solution</h2>
+            
+            <h3>Requested Feature 1: SPLIT attribute</h3>
+            <div class="code-example">
+&lt;!-- User wanted: --&gt;
+&lt;file action="read" split="\n" path="data.csv"/&gt;
+  &lt;!-- Would return list of lines --&gt;
+
+&lt;!-- Current solution (equally simple): --&gt;
+&lt;loop item="line" delimiter="\n"&gt;
+  &lt;file path="data.csv" action="read"/&gt;
+  &lt;!-- Process each line --&gt;
+&lt;/loop&gt;
+
+&lt;!-- Or: --&gt;
+&lt;def var="lines"&gt;
+  &lt;tokenize delimiters="\n"&gt;
+    &lt;file path="data.csv" action="read"/&gt;
+  &lt;/tokenize&gt;
+&lt;/def&gt;
+            </div>
+            
+            <h3>Requested Feature 2: YOUNGERTHAN attribute</h3>
+            <div class="code-example">
+&lt;!-- User wanted: --&gt;
+&lt;file action="read" youngerthan="d:2,s:30,ms:10" path="cache.txt"&gt;
+  &lt;!-- Execute this body if file is older than limit --&gt;
+  &lt;http url="..."/&gt;
+&lt;/file&gt;
+
+&lt;!-- Current solution (more flexible): --&gt;
+&lt;def var="cacheIsYoung"&gt;
+  &lt;script&gt;
+    var file = new java.io.File('cache.txt');
+    if (!file.exists()) false;
+    else {
+      var age = new Date().getTime() - file.lastModified();
+      age &lt; (2*24*60*60*1000 + 30*1000 + 10);  // d:2,s:30,ms:10
+    }
+  &lt;/script&gt;
+&lt;/def&gt;
+
+&lt;if condition="${cacheIsYoung}"&gt;
+  &lt;def var="data"&gt;&lt;file path="cache.txt" action="read"/&gt;&lt;/def&gt;
+&lt;/if&gt;
+&lt;else&gt;
+  &lt;def var="data"&gt;&lt;http url="..."/&gt;&lt;/def&gt;
+  &lt;file path="cache.txt" action="write"&gt;${data}&lt;/file&gt;
+&lt;/else&gt;
+            </div>
+            
+            <div class="warning-box">
+                <p><strong>⚠️ Design Decision:</strong> While adding <code>split</code> and <code>youngerthan</code> attributes to FilePlugin is possible, the current approach offers:</p>
+                <ul>
+                    <li>More flexibility (custom logic via Script)</li>
+                    <li>Better composability (separate concerns: read vs. process)</li>
+                    <li>Easier debugging (explicit steps)</li>
+                    <li>No new syntax to learn (uses existing processors)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- See Also -->
+        <section>
+            <h2>🔗 See Also</h2>
+            <ul>
+                <li><a href="2.2.0/file.html">File Processor Reference</a></li>
+                <li><a href="2.2.0/tokenize.html">Tokenize Processor</a></li>
+                <li><a href="2.2.0/loop.html">Loop Processor</a></li>
+                <li><a href="2.2.0/script.html">Script Processor</a></li>
+                <li><a href="../examples/">Configuration Examples</a></li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2006-2025 WebHarvest Project. Licensed under Apache License 2.0.</p>
+            <p>
+                <a href="../index.html">Home</a> | 
+                <a href="index.html">Documentation</a> | 
+                <a href="../support.html">Support</a> |
+                <a href="https://github.com/webharvest/webharvest">GitHub</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
+

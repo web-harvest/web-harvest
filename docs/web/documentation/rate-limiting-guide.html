@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiting Guide - WebHarvest v2.2</title>
+    <link rel="stylesheet" href="../css/webharvest.css">
+    <link rel="stylesheet" href="../css/documentation.css">
+    <style>
+        .pattern-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin: 30px 0 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        .tip {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .warning {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+        }
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏱️ Rate Limiting & Scraping Speed Control</h1>
+            <p class="subtitle">Complete guide to responsible web scraping without overloading servers</p>
+        </header>
+
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> &raquo;
+            <a href="index.html">Documentation</a> &raquo;
+            <span>Rate Limiting Guide</span>
+        </nav>
+
+        <section class="intro">
+            <h2>📖 The Problem</h2>
+            <blockquote style="border-left: 4px solid #667eea; padding-left: 20px; font-style: italic; color: #666;">
+                "I would be very helpful, if the scraping speed (Hitcount) on a webpage could be configurable. 
+                As a minimum the web-harvest should support <strong>max connections/second</strong> to avoid any break down of a webserver/page. 
+                Currently webharvest downloads the info with maximum possible connection count per second."
+                <footer>— GitHub Issue #5</footer>
+            </blockquote>
+
+            <h3>Why Rate Limiting Matters</h3>
+            <ul>
+                <li>🚫 <strong>Avoid server overload</strong> - Prevent website crashes</li>
+                <li>🤝 <strong>Respectful scraping</strong> - Be a good web citizen</li>
+                <li>🛡️ <strong>Prevent IP bans</strong> - Avoid getting blocked</li>
+                <li>⚖️ <strong>Honor robots.txt</strong> - Follow crawl-delay directives</li>
+                <li>📜 <strong>Legal compliance</strong> - Respect Terms of Service</li>
+            </ul>
+
+            <div class="warning">
+                <strong>⚠️ Important:</strong> Uncontrolled high-speed scraping can:
+                <ul style="margin-top:10px;">
+                    <li>Crash small websites</li>
+                    <li>Get your IP permanently banned</li>
+                    <li>Violate Terms of Service</li>
+                    <li>Result in legal action</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="pattern-card">⏰ PATTERN 1: Fixed Delay Between Requests</div>
+        <section>
+            <h3>Simple Time-Based Rate Limiting</h3>
+            <p>The easiest approach: wait a fixed time between each HTTP request.</p>
+
+            <div class="code-block"><code>&lt;!-- Scrape 100 pages with 2-second delay between requests --&gt;
+&lt;loop item="url" maxloops="100"&gt;
+    &lt;xpath expression="//a/@href"&gt;${page}&lt;/xpath&gt;
+    
+    &lt;!-- Fetch page --&gt;
+    &lt;http url="${url}"/&gt;
+    
+    &lt;!-- ⏱️ Wait 2 seconds before next request --&gt;
+    &lt;sleep milliseconds="2000"/&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> Maximum 30 requests/minute (1 request every 2 seconds)
+            </div>
+
+            <h4>Common Delay Values</h4>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Delay</th>
+                        <th>Milliseconds</th>
+                        <th>Requests/Minute</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>100ms</td>
+                        <td>100</td>
+                        <td>600</td>
+                        <td>Very light load (small sites)</td>
+                    </tr>
+                    <tr>
+                        <td>500ms</td>
+                        <td>500</td>
+                        <td>120</td>
+                        <td>Light load</td>
+                    </tr>
+                    <tr>
+                        <td>1 second</td>
+                        <td>1000</td>
+                        <td>60</td>
+                        <td>Moderate load (recommended)</td>
+                    </tr>
+                    <tr>
+                        <td>2 seconds</td>
+                        <td>2000</td>
+                        <td>30</td>
+                        <td>Conservative (safe for most sites)</td>
+                    </tr>
+                    <tr>
+                        <td>5 seconds</td>
+                        <td>5000</td>
+                        <td>12</td>
+                        <td>Very conservative</td>
+                    </tr>
+                    <tr>
+                        <td>10 seconds</td>
+                        <td>10000</td>
+                        <td>6</td>
+                        <td>Extremely polite (fragile sites)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="tip">
+                <strong>💡 Recommendation:</strong> Start with 2-second delays for unknown sites, then adjust based on server response.
+            </div>
+        </section>
+
+        <div class="pattern-card">📊 PATTERN 2: Configurable Max Connections/Second</div>
+        <section>
+            <h3>Precise Rate Control</h3>
+            <p>Calculate exact delay to achieve desired requests-per-second rate:</p>
+
+            <div class="code-block"><code>&lt;!-- Configuration: 10 requests/minute = 6 seconds per request --&gt;
+&lt;def var="maxRequestsPerMinute"&gt;10&lt;/def&gt;
+&lt;def var="delayMs"&gt;
+    &lt;script&gt;&lt;![CDATA[
+        var rpm = parseInt("${maxRequestsPerMinute}");
+        var delaySeconds = 60.0 / rpm;
+        Math.floor(delaySeconds * 1000);  // Convert to milliseconds
+    ]]&gt;&lt;/script&gt;
+&lt;/def&gt;
+
+&lt;loop item="url"&gt;
+    ${urlList}
+    
+    &lt;http url="${url}"/&gt;
+    
+    &lt;!-- Dynamic delay based on configuration --&gt;
+    &lt;sleep milliseconds="${delayMs}"/&gt;
+    
+    &lt;log message="Rate: ${maxRequestsPerMinute} req/min, delay: ${delayMs}ms"/&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> Exact rate limiting with configurable speed
+            </div>
+
+            <h4>Rate Examples</h4>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Target Rate</th>
+                        <th>Delay Calculation</th>
+                        <th>Delay (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>60 req/min (1 req/sec)</td>
+                        <td>60000ms / 60</td>
+                        <td>1000ms</td>
+                    </tr>
+                    <tr>
+                        <td>30 req/min</td>
+                        <td>60000ms / 30</td>
+                        <td>2000ms</td>
+                    </tr>
+                    <tr>
+                        <td>10 req/min</td>
+                        <td>60000ms / 10</td>
+                        <td>6000ms</td>
+                    </tr>
+                    <tr>
+                        <td>5 req/min</td>
+                        <td>60000ms / 5</td>
+                        <td>12000ms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="pattern-card">📈 PATTERN 3: Exponential Backoff (Retry Strategy)</div>
+        <section>
+            <h3>Adaptive Rate Limiting on Errors</h3>
+            <p>Automatically slow down when encountering errors (429, 503, timeouts):</p>
+
+            <div class="code-block"><code>&lt;loop item="url"&gt;
+    ${urlList}
+    
+    &lt;def var="retryCount"&gt;0&lt;/def&gt;
+    &lt;def var="success"&gt;false&lt;/def&gt;
+    
+    &lt;while condition="${!success and retryCount &lt; 5}"&gt;
+        &lt;try&gt;
+            &lt;body&gt;
+                &lt;http url="${url}"/&gt;
+                &lt;def var="success"&gt;true&lt;/def&gt;
+            &lt;/body&gt;
+            &lt;catch&gt;
+                &lt;!-- Calculate exponential backoff: 1s, 2s, 4s, 8s, 16s --&gt;
+                &lt;def var="backoffDelay"&gt;
+                    &lt;script&gt;&lt;![CDATA[
+                        Math.pow(2, parseInt("${retryCount}")) * 1000
+                    ]]&gt;&lt;/script&gt;
+                &lt;/def&gt;
+                
+                &lt;log level="WARN" message="Request failed, retry ${retryCount}, waiting ${backoffDelay}ms"/&gt;
+                &lt;sleep milliseconds="${backoffDelay}"/&gt;
+                
+                &lt;def var="retryCount"&gt;
+                    &lt;script&gt;parseInt("${retryCount}") + 1&lt;/script&gt;
+                &lt;/def&gt;
+            &lt;/catch&gt;
+        &lt;/try&gt;
+    &lt;/while&gt;
+    
+    &lt;!-- Normal delay between successful requests --&gt;
+    &lt;sleep milliseconds="2000"/&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> Automatically slows down on errors, maintains normal speed on success
+            </div>
+        </section>
+
+        <div class="pattern-card">🎯 PATTERN 4: Respect robots.txt Crawl-Delay</div>
+        <section>
+            <h3>Honor Server Preferences</h3>
+            <p>Read and respect the crawl-delay directive from robots.txt:</p>
+
+            <div class="code-block"><code>&lt;!-- Fetch robots.txt --&gt;
+&lt;def var="robotsTxt"&gt;
+    &lt;http url="https://example.com/robots.txt"/&gt;
+&lt;/def&gt;
+
+&lt;!-- Extract Crawl-delay (in seconds) --&gt;
+&lt;def var="crawlDelaySeconds"&gt;
+    &lt;regexp&gt;
+        &lt;regexp-pattern&gt;Crawl-delay:\s*(\d+)&lt;/regexp-pattern&gt;
+        &lt;regexp-source&gt;${robotsTxt}&lt;/regexp-source&gt;
+        &lt;regexp-result&gt;
+            &lt;template&gt;\1&lt;/template&gt;
+        &lt;/regexp-result&gt;
+    &lt;/regexp&gt;
+&lt;/def&gt;
+
+&lt;!-- Convert to milliseconds, default to 2 seconds if not specified --&gt;
+&lt;def var="crawlDelayMs"&gt;
+    &lt;script&gt;&lt;![CDATA[
+        var delay = "${crawlDelaySeconds}";
+        if (delay && delay.trim() !== "") {
+            parseInt(delay) * 1000;
+        } else {
+            2000;  // Default 2 seconds
+        }
+    ]]&gt;&lt;/script&gt;
+&lt;/def&gt;
+
+&lt;log message="Using crawl-delay from robots.txt: ${crawlDelayMs}ms"/&gt;
+
+&lt;!-- Scrape with robot-specified delay --&gt;
+&lt;loop item="url"&gt;
+    ${urlList}
+    
+    &lt;http url="${url}"/&gt;
+    &lt;sleep milliseconds="${crawlDelayMs}"/&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> Respects server's requested delay, falls back to safe default
+            </div>
+        </section>
+
+        <div class="pattern-card">⚡ PATTERN 5: Adaptive Rate Limiting (Advanced)</div>
+        <section>
+            <h3>Adjust Speed Based on Server Response</h3>
+            <p>Monitor response times and adjust scraping speed dynamically:</p>
+
+            <div class="code-block"><code>&lt;!-- Configuration --&gt;
+&lt;def var="baseDelay"&gt;1000&lt;/def&gt;  &lt;!-- 1 second baseline --&gt;
+&lt;def var="slowThreshold"&gt;3000&lt;/def&gt;  &lt;!-- Response &gt; 3s = slow --&gt;
+
+&lt;loop item="url"&gt;
+    ${urlList}
+    
+    &lt;!-- Measure request time --&gt;
+    &lt;def var="startTime"&gt;
+        &lt;script&gt;new Date().getTime()&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;http url="${url}"/&gt;
+    
+    &lt;def var="endTime"&gt;
+        &lt;script&gt;new Date().getTime()&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;def var="responseTime"&gt;
+        &lt;script&gt;parseInt("${endTime}") - parseInt("${startTime}")&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Adaptive delay: if server is slow, wait longer --&gt;
+    &lt;def var="adaptiveDelay"&gt;
+        &lt;script&gt;&lt;![CDATA[
+            var respTime = parseInt("${responseTime}");
+            var threshold = parseInt("${slowThreshold}");
+            var base = parseInt("${baseDelay}");
+            
+            if (respTime &gt; threshold) {
+                // Server is slow, wait 2x longer
+                base * 2;
+            } else {
+                // Server is fast, use normal delay
+                base;
+            }
+        ]]&gt;&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;log message="Response: ${responseTime}ms, next delay: ${adaptiveDelay}ms"/&gt;
+    &lt;sleep milliseconds="${adaptiveDelay}"/&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> Automatically slows down for overloaded servers, maintains speed for healthy ones
+            </div>
+        </section>
+
+        <div class="pattern-card">🔄 PATTERN 6: Batch Processing with Pauses</div>
+        <section>
+            <h3>Process in Bursts</h3>
+            <p>Scrape in batches with longer pauses between batches:</p>
+
+            <div class="code-block"><code>&lt;!-- Configuration --&gt;
+&lt;def var="batchSize"&gt;10&lt;/def&gt;
+&lt;def var="batchDelay"&gt;30000&lt;/def&gt;  &lt;!-- 30 seconds between batches --&gt;
+&lt;def var="requestDelay"&gt;500&lt;/def&gt;  &lt;!-- 500ms within batch --&gt;
+
+&lt;def var="totalProcessed"&gt;0&lt;/def&gt;
+
+&lt;loop item="url"&gt;
+    ${urlList}
+    
+    &lt;http url="${url}"/&gt;
+    
+    &lt;def var="totalProcessed"&gt;
+        &lt;script&gt;parseInt("${totalProcessed}") + 1&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Check if batch complete --&gt;
+    &lt;def var="batchComplete"&gt;
+        &lt;script&gt;parseInt("${totalProcessed}") % parseInt("${batchSize}") === 0&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;if condition="${batchComplete}"&gt;
+        &lt;log message="Batch complete (${totalProcessed}), pausing for ${batchDelay}ms"/&gt;
+        &lt;sleep milliseconds="${batchDelay}"/&gt;
+    &lt;/if&gt;
+    &lt;else&gt;
+        &lt;sleep milliseconds="${requestDelay}"/&gt;
+    &lt;/else&gt;
+&lt;/loop&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Result:</strong> 
+                <ul style="margin-top:10px;">
+                    <li>Fast processing: 10 requests in 5 seconds</li>
+                    <li>Long pause: 30 seconds</li>
+                    <li>Repeat cycle</li>
+                    <li>Average rate: ~17 requests/minute</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>⚙️ Complete Configurable Solution</h2>
+            <p>Ready-to-use configuration with all rate limiting options:</p>
+
+            <div class="code-block"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config&gt;
+
+    &lt;!-- =================== RATE LIMITING CONFIGURATION =================== --&gt;
+    
+    &lt;!-- Basic Settings --&gt;
+    &lt;def var="MAX_REQUESTS_PER_MINUTE"&gt;30&lt;/def&gt;
+    &lt;def var="MIN_DELAY_MS"&gt;1000&lt;/def&gt;
+    &lt;def var="MAX_DELAY_MS"&gt;10000&lt;/def&gt;
+    
+    &lt;!-- Adaptive Settings --&gt;
+    &lt;def var="SLOW_RESPONSE_THRESHOLD_MS"&gt;3000&lt;/def&gt;
+    &lt;def var="ENABLE_ADAPTIVE"&gt;true&lt;/def&gt;
+    
+    &lt;!-- Retry Settings --&gt;
+    &lt;def var="MAX_RETRIES"&gt;5&lt;/def&gt;
+    &lt;def var="ENABLE_EXPONENTIAL_BACKOFF"&gt;true&lt;/def&gt;
+    
+    &lt;!-- Calculate base delay --&gt;
+    &lt;def var="baseDelayMs"&gt;
+        &lt;script&gt;&lt;![CDATA[
+            var rpm = parseInt("${MAX_REQUESTS_PER_MINUTE}");
+            var delaySeconds = 60.0 / rpm;
+            var delayMs = Math.floor(delaySeconds * 1000);
+            
+            // Clamp to min/max
+            var min = parseInt("${MIN_DELAY_MS}");
+            var max = parseInt("${MAX_DELAY_MS}");
+            Math.max(min, Math.min(max, delayMs));
+        ]]&gt;&lt;/script&gt;
+    &lt;/def&gt;
+    
+    &lt;log message="Rate limiting initialized: ${MAX_REQUESTS_PER_MINUTE} req/min, delay: ${baseDelayMs}ms"/&gt;
+    
+    &lt;!-- =================== ACTUAL SCRAPING WITH RATE LIMITING =================== --&gt;
+    
+    &lt;loop item="url"&gt;
+        ${urlList}
+        
+        &lt;def var="retryCount"&gt;0&lt;/def&gt;
+        &lt;def var="success"&gt;false&lt;/def&gt;
+        &lt;def var="currentDelay"&gt;${baseDelayMs}&lt;/def&gt;
+        
+        &lt;while condition="${!success and retryCount &lt; MAX_RETRIES}"&gt;
+            &lt;try&gt;
+                &lt;body&gt;
+                    &lt;!-- Measure response time --&gt;
+                    &lt;def var="startTime"&gt;
+                        &lt;script&gt;new Date().getTime()&lt;/script&gt;
+                    &lt;/def&gt;
+                    
+                    &lt;http url="${url}"/&gt;
+                    
+                    &lt;def var="endTime"&gt;
+                        &lt;script&gt;new Date().getTime()&lt;/script&gt;
+                    &lt;/def&gt;
+                    
+                    &lt;def var="responseTime"&gt;
+                        &lt;script&gt;parseInt("${endTime}") - parseInt("${startTime}")&lt;/script&gt;
+                    &lt;/def&gt;
+                    
+                    &lt;!-- Adaptive delay calculation --&gt;
+                    &lt;if condition="${ENABLE_ADAPTIVE}"&gt;
+                        &lt;def var="currentDelay"&gt;
+                            &lt;script&gt;&lt;![CDATA[
+                                var respTime = parseInt("${responseTime}");
+                                var threshold = parseInt("${SLOW_RESPONSE_THRESHOLD_MS}");
+                                var base = parseInt("${baseDelayMs}");
+                                
+                                if (respTime &gt; threshold) {
+                                    Math.min(parseInt("${MAX_DELAY_MS}"), base * 2);
+                                } else {
+                                    base;
+                                }
+                            ]]&gt;&lt;/script&gt;
+                        &lt;/def&gt;
+                    &lt;/if&gt;
+                    
+                    &lt;def var="success"&gt;true&lt;/def&gt;
+                    &lt;log message="✓ ${url} (${responseTime}ms, next delay: ${currentDelay}ms)"/&gt;
+                    
+                &lt;/body&gt;
+                &lt;catch&gt;
+                    &lt;!-- Exponential backoff on error --&gt;
+                    &lt;if condition="${ENABLE_EXPONENTIAL_BACKOFF}"&gt;
+                        &lt;def var="backoffDelay"&gt;
+                            &lt;script&gt;&lt;![CDATA[
+                                var base = parseInt("${baseDelayMs}");
+                                var retry = parseInt("${retryCount}");
+                                Math.min(
+                                    parseInt("${MAX_DELAY_MS}"),
+                                    Math.pow(2, retry) * base
+                                );
+                            ]]&gt;&lt;/script&gt;
+                        &lt;/def&gt;
+                        &lt;def var="currentDelay"&gt;${backoffDelay}&lt;/def&gt;
+                    &lt;/if&gt;
+                    
+                    &lt;log level="WARN" message="✗ ${url} failed, retry ${retryCount}, waiting ${currentDelay}ms"/&gt;
+                    &lt;def var="retryCount"&gt;
+                        &lt;script&gt;parseInt("${retryCount}") + 1&lt;/script&gt;
+                    &lt;/def&gt;
+                &lt;/catch&gt;
+            &lt;/try&gt;
+            
+            &lt;!-- Wait before next attempt --&gt;
+            &lt;sleep milliseconds="${currentDelay}"/&gt;
+        &lt;/while&gt;
+    &lt;/loop&gt;
+
+&lt;/config&gt;</code></div>
+
+            <div class="success">
+                <strong>✅ Features:</strong>
+                <ul style="margin-top:10px;">
+                    <li>Configurable max requests/minute</li>
+                    <li>Min/max delay clamping</li>
+                    <li>Adaptive speed based on response times</li>
+                    <li>Exponential backoff on errors</li>
+                    <li>Detailed logging</li>
+                    <li>All settings in one place</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>📋 Best Practices</h2>
+            
+            <div class="tip">
+                <h3>✅ DO:</h3>
+                <ul>
+                    <li><strong>Start conservative:</strong> 2-3 second delays for unknown sites</li>
+                    <li><strong>Read robots.txt:</strong> Honor crawl-delay directives</li>
+                    <li><strong>Monitor response times:</strong> Slow down if server struggles</li>
+                    <li><strong>Use User-Agent:</strong> Identify yourself properly</li>
+                    <li><strong>Handle errors gracefully:</strong> Exponential backoff on failures</li>
+                    <li><strong>Test with small samples:</strong> Before large-scale scraping</li>
+                    <li><strong>Scrape during off-peak hours:</strong> Less load on servers</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h3>❌ DON'T:</h3>
+                <ul>
+                    <li><strong>Never scrape at maximum speed:</strong> Always add delays</li>
+                    <li><strong>Don't ignore 429/503 errors:</strong> Server is telling you to slow down</li>
+                    <li><strong>Don't scrape login-protected content:</strong> Without permission</li>
+                    <li><strong>Don't ignore Terms of Service:</strong> Read and follow them</li>
+                    <li><strong>Don't use multiple IPs to bypass limits:</strong> That's evasion</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🎓 httrack-Style Configuration Reference</h2>
+            <p>WebHarvest equivalents to httrack limits options:</p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>httrack Option</th>
+                        <th>WebHarvest Equivalent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Max connections/second</td>
+                        <td><code>&lt;sleep milliseconds="1000"/&gt;</code> (1 req/sec)</td>
+                    </tr>
+                    <tr>
+                        <td>Max transfer rate</td>
+                        <td>N/A (controlled by network/server)</td>
+                    </tr>
+                    <tr>
+                        <td>Max simultaneous connections</td>
+                        <td>Sequential by default (use threads for parallel)</td>
+                    </tr>
+                    <tr>
+                        <td>Minimum transfer rate</td>
+                        <td>Timeout detection in <code>&lt;http&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>Max time</td>
+                        <td><code>&lt;while&gt;</code> with time check</td>
+                    </tr>
+                    <tr>
+                        <td>Max retries</td>
+                        <td><code>&lt;while condition="retryCount &lt; 5"&gt;</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="related">
+            <h2>📚 Related Documentation</h2>
+            <ul>
+                <li><a href="processor-sleep.html">Sleep Processor Reference</a></li>
+                <li><a href="processor-http.html">HTTP Processor Reference</a></li>
+                <li><a href="processor-loop.html">Loop Processor Reference</a></li>
+                <li><a href="debugging-guide.html">Debugging Guide</a></li>
+            </ul>
+        </section>
+
+        <footer class="doc-footer">
+            <p><strong>Author:</strong> WebHarvest Team | <strong>Version:</strong> 2.2.1 | <strong>Date:</strong> October 15, 2025</p>
+            <p><em>This guide addresses GitHub Issue #5: "Configurable Scraping Speed"</em></p>
+        </footer>
+    </div>
+</body>
+</html>
+

@@ -47,6 +47,12 @@ public class WhilePluginTest {
         // Mock context
         when(context.getCharset()).thenReturn("UTF-8");
         doNothing().when(context).setLocalVar(anyString(), any());
+        
+        // Bug #19 Fix: Mock executeWithinNewContext to actually execute the callable
+        when(context.executeWithinNewContext(any())).thenAnswer(invocation -> {
+            java.util.concurrent.Callable<?> callable = invocation.getArgument(0);
+            return callable.call();
+        });
     }
 
     @Test

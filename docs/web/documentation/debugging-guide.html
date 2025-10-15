@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debugging Guide - WebHarvest v2.2</title>
+    <link rel="stylesheet" href="../css/webharvest.css">
+    <link rel="stylesheet" href="../css/documentation.css">
+    <style>
+        .debug-pattern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin: 30px 0 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .tip {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .future {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🐛 Debugging Complex Scrapers</h1>
+            <p class="subtitle">Complete guide to debugging WebHarvest configurations for complex websites</p>
+        </header>
+
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> &raquo;
+            <a href="index.html">Documentation</a> &raquo;
+            <span>Debugging Guide</span>
+        </nav>
+
+        <section class="intro">
+            <h2>📖 The Problem</h2>
+            <blockquote style="border-left: 4px solid #667eea; padding-left: 20px; font-style: italic; color: #666;">
+                "I am developing a scraping tool for a complex javascript website...
+                frequently, I am getting the wrong response. However, it is not easy to spot such instances.
+                <strong>Debugging a configuration is really complicated without having a possibility to look
+                    at what WebHarvest is actually processing.</strong>"
+                <footer>— GitHub Issue #16</footer>
+            </blockquote>
+
+            <h3>Common Debugging Challenges</h3>
+            <ul>
+                <li>❌ Can't see the actual HTML response being processed</li>
+                <li>❌ Don't know if HTTP request succeeded or returned error page</li>
+                <li>❌ Variable values are opaque - hard to inspect</li>
+                <li>❌ No way to pause and examine state mid-execution</li>
+                <li>❌ Log is verbose but doesn't show actual data</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Good News!</strong> WebHarvest has powerful debugging capabilities built-in.
+                This guide shows you <strong>5 debugging patterns</strong> you can use RIGHT NOW.
+            </div>
+        </section>
+
+        <div class="debug-pattern">🔍 PATTERN 1: Save Responses to Debug Files</div>
+        <section>
+            <h3>The Workaround That Saves Lives</h3>
+            <p>The simplest and most effective debugging technique: <strong>save every response to a file</strong> so
+                you can inspect it.</p>
+
+            <div class="code-block"><code>&lt;!-- Fetch page --&gt;
+&lt;def var="response"&gt;
+    &lt;http url="https://complex-website.com/api/data"&gt;
+        &lt;http-header name="X-API-Key" value="${apiKey}"/&gt;
+    &lt;/http&gt;
+&lt;/def&gt;
+
+&lt;!-- 🐛 DEBUG: Save response to file --&gt;
+&lt;file path="debug/response-${sys.timestamp()}.html" action="write"&gt;
+    ${response}
+&lt;/file&gt;
+
+&lt;!-- Now process it --&gt;
+&lt;def var="data"&gt;
+    &lt;xpath expression="//div[@class='result']"&gt;
+        &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+&lt;/def&gt;</code></div>
+
+            <div class="tip">
+                <strong>💡 Pro Tip:</strong> Use <code>${sys.timestamp()}</code> or <code>${index}</code> to create
+                unique filenames for each request.
+                This prevents overwriting and lets you see the sequence of requests.
+            </div>
+
+            <h4>Advanced: Conditional Debug Saves</h4>
+            <div class="code-block"><code>&lt;!-- Only save when something looks wrong --&gt;
+&lt;def var="statusCode"&gt;
+    &lt;xpath expression="//meta[@name='http-status']/@content"&gt;
+        &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+&lt;/def&gt;
+
+&lt;if condition="${statusCode != '200'}"&gt;
+    &lt;!-- 🚨 ERROR RESPONSE - Save for inspection! --&gt;
+    &lt;file path="debug/ERROR-${sys.timestamp()}.html" action="write"&gt;
+        &lt;!-- Add metadata header --&gt;
+        &lt;text&gt;&lt;!-- DEBUG INFO
+Status: ${statusCode}
+URL: https://complex-website.com/api/data
+Timestamp: ${sys.timestamp()}
+--&gt;
+&lt;/text&gt;
+        ${response}
+    &lt;/file&gt;
+    
+    &lt;log message="ERROR RESPONSE SAVED - Check debug/ERROR-*.html"/&gt;
+&lt;/if&gt;</code></div>
+        </section>
+
+        <div class="debug-pattern">📊 PATTERN 2: Variable Inspection with Log</div>
+        <section>
+            <h3>See What's Actually in Your Variables</h3>
+            <p>Use <code>&lt;log&gt;</code> to print variable values at key points:</p>
+
+            <div class="code-block"><code>&lt;!-- Extract data --&gt;
+&lt;def var="productName"&gt;
+    &lt;xpath expression="//h1[@class='product-title']/text()"&gt;${page}&lt;/xpath&gt;
+&lt;/def&gt;
+
+&lt;!-- 🐛 DEBUG: Check what we extracted --&gt;
+&lt;log message="Product name extracted: '${productName}'"/&gt;
+
+&lt;def var="price"&gt;
+    &lt;xpath expression="//span[@class='price']/text()"&gt;${page}&lt;/xpath&gt;
+&lt;/def&gt;
+
+&lt;!-- 🐛 DEBUG: Verify price format --&gt;
+&lt;log message="Price extracted: '${price}' (length: ${sys.length(price)})"/&gt;
+
+&lt;!-- Validate data --&gt;
+&lt;if condition="${sys.length(productName) == 0}"&gt;
+    &lt;log level="ERROR" message="PROBLEM: Product name is empty!"/&gt;
+    &lt;log message="Page content preview: ${sys.substring(page, 0, 200)}..."/&gt;
+&lt;/if&gt;</code></div>
+
+            <h4>Log Levels Available</h4>
+            <div class="code-block"><code>&lt;log level="DEBUG" message="Detailed trace information"/&gt;
+&lt;log level="INFO" message="General information (default)"/&gt;
+&lt;log level="WARN" message="Warning - something unexpected"/&gt;
+&lt;log level="ERROR" message="Error - operation failed"/&gt;</code></div>
+
+            <div class="tip">
+                <strong>💡 Configure log4j.properties</strong> to control which levels are shown:
+                <pre style="background:#f5f5f5; padding:10px; margin-top:10px; border-radius:4px;">log4j.rootLogger=<strong>DEBUG</strong>, stdout  <em># Show DEBUG and above</em>
+log4j.rootLogger=<strong>INFO</strong>, stdout   <em># Show INFO and above (default)</em>
+log4j.rootLogger=<strong>WARN</strong>, stdout   <em># Only WARN and ERROR</em></pre>
+            </div>
+        </section>
+
+        <div class="debug-pattern">🔬 PATTERN 3: Step-by-Step Variable Tracking</div>
+        <section>
+            <h3>Track Variable Transformations</h3>
+            <p>When data goes through multiple transformations, save each step:</p>
+
+            <div class="code-block"><code>&lt;!-- STEP 1: Fetch raw HTML --&gt;
+&lt;def var="rawHtml"&gt;
+    &lt;http url="https://example.com/products"/&gt;
+&lt;/def&gt;
+&lt;file path="debug/1-raw.html" action="write"&gt;${rawHtml}&lt;/file&gt;
+
+&lt;!-- STEP 2: Convert to XML --&gt;
+&lt;def var="xmlDoc"&gt;
+    &lt;html-to-xml&gt;${rawHtml}&lt;/html-to-xml&gt;
+&lt;/def&gt;
+&lt;file path="debug/2-xml.xml" action="write"&gt;${xmlDoc}&lt;/file&gt;
+
+&lt;!-- STEP 3: Extract with XPath --&gt;
+&lt;def var="products"&gt;
+    &lt;xpath expression="//div[@class='product']"&gt;${xmlDoc}&lt;/xpath&gt;
+&lt;/def&gt;
+&lt;file path="debug/3-products.txt" action="write"&gt;${products}&lt;/file&gt;
+&lt;log message="Extracted ${sys.count(products)} products"/&gt;
+
+&lt;!-- STEP 4: Clean/transform --&gt;
+&lt;def var="cleaned"&gt;
+    &lt;replace regex="\s+" by=" "&gt;${products}&lt;/replace&gt;
+&lt;/def&gt;
+&lt;file path="debug/4-cleaned.txt" action="write"&gt;${cleaned}&lt;/file&gt;</code></div>
+
+            <div class="tip">
+                <strong>💡 Result:</strong> You get a "paper trail" showing exactly where data gets corrupted or lost.
+                Open files 1, 2, 3, 4 and see which step breaks!
+            </div>
+        </section>
+
+        <div class="debug-pattern">🎯 PATTERN 4: HTTP Request/Response Debugging</div>
+        <section>
+            <h3>Debug Complex HTTP Interactions</h3>
+            <p>For AJAX/API calls, JavaScript-heavy sites, and authentication flows:</p>
+
+            <div class="code-block"><code>&lt;!-- Create debug HTTP wrapper --&gt;
+&lt;function name="debugHttp"&gt;
+    &lt;param name="url"/&gt;
+    &lt;param name="method" value="GET"/&gt;
+    &lt;param name="label" value="request"/&gt;
+    
+    &lt;!-- Log request --&gt;
+    &lt;log message="[${label}] ${method} ${url}"/&gt;
+    
+    &lt;!-- Make request --&gt;
+    &lt;def var="response"&gt;
+        &lt;http url="${url}" method="${method}"&gt;
+            &lt;body&gt;${requestBody}&lt;/body&gt;
+        &lt;/http&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Save response --&gt;
+    &lt;file path="debug/http-${label}-${sys.timestamp()}.html" action="write"&gt;
+        &lt;text&gt;&lt;!-- 
+REQUEST: ${method} ${url}
+TIMESTAMP: ${sys.timestamp()}
+--&gt;
+&lt;/text&gt;
+        ${response}
+    &lt;/file&gt;
+    
+    &lt;!-- Check status --&gt;
+    &lt;def var="hasError"&gt;
+        &lt;xpath expression="contains(., 'error') or contains(., '404') or contains(., '500')"&gt;
+            &lt;text&gt;${response}&lt;/text&gt;
+        &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;if condition="${hasError}"&gt;
+        &lt;log level="WARN" message="[${label}] Response may contain errors - check debug file"/&gt;
+    &lt;/if&gt;
+    
+    &lt;return&gt;${response}&lt;/return&gt;
+&lt;/function&gt;
+
+&lt;!-- Use it --&gt;
+&lt;def var="loginResult"&gt;
+    &lt;call name="debugHttp"&gt;
+        &lt;call-param name="url"&gt;https://example.com/login&lt;/call-param&gt;
+        &lt;call-param name="method"&gt;POST&lt;/call-param&gt;
+        &lt;call-param name="label"&gt;login&lt;/call-param&gt;
+    &lt;/call&gt;
+&lt;/def&gt;</code></div>
+        </section>
+
+        <div class="debug-pattern">🧪 PATTERN 5: Try/Catch with Detailed Error Logging</div>
+        <section>
+            <h3>Graceful Error Handling with Full Context</h3>
+            <p>When things go wrong, capture ALL the context:</p>
+
+            <div class="code-block"><code>&lt;try&gt;
+    &lt;body&gt;
+        &lt;!-- Attempt risky operation --&gt;
+        &lt;def var="data"&gt;
+            &lt;xpath expression="//div[@class='data']/text()"&gt;
+                &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+            &lt;/xpath&gt;
+        &lt;/def&gt;
+    &lt;/body&gt;
+    
+    &lt;catch&gt;
+        &lt;!-- 🚨 Something failed - save EVERYTHING --&gt;
+        &lt;log level="ERROR" message="XPath extraction failed!"/&gt;
+        
+        &lt;!-- Save the problematic response --&gt;
+        &lt;file path="debug/FAILED-${sys.timestamp()}.html" action="write"&gt;
+            &lt;text&gt;&lt;!-- ERROR CONTEXT
+Timestamp: ${sys.timestamp()}
+XPath: //div[@class='data']/text()
+Response length: ${sys.length(response)}
+Response preview:
+--&gt;
+&lt;/text&gt;
+            ${response}
+        &lt;/file&gt;
+        
+        &lt;!-- Log error details --&gt;
+        &lt;log level="ERROR" message="Response saved to debug/FAILED-${sys.timestamp()}.html"/&gt;
+        &lt;log level="ERROR" message="Response preview: ${sys.substring(response, 0, 500)}"/&gt;
+        
+        &lt;!-- Set fallback value --&gt;
+        &lt;def var="data"&gt;ERROR&lt;/def&gt;
+    &lt;/catch&gt;
+&lt;/try&gt;</code></div>
+        </section>
+
+        <section>
+            <h2>🛠️ Complete Debug Configuration Template</h2>
+            <p>Here's a ready-to-use template with ALL debugging patterns built-in:</p>
+
+            <div class="code-block"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config&gt;
+
+    &lt;!-- ================== DEBUG CONFIGURATION ================== --&gt;
+    &lt;def var="DEBUG_MODE"&gt;true&lt;/def&gt;
+    &lt;def var="DEBUG_DIR"&gt;debug/${sys.timestamp()}&lt;/def&gt;
+    
+    &lt;!-- Create debug directory --&gt;
+    &lt;if condition="${DEBUG_MODE}"&gt;
+        &lt;log message="🐛 DEBUG MODE ENABLED - Saving responses to ${DEBUG_DIR}/"/&gt;
+    &lt;/if&gt;
+    
+    &lt;!-- Debug function wrapper --&gt;
+    &lt;function name="debugSave"&gt;
+        &lt;param name="content"/&gt;
+        &lt;param name="filename"/&gt;
+        &lt;param name="label" value="debug"/&gt;
+        
+        &lt;if condition="${DEBUG_MODE}"&gt;
+            &lt;file path="${DEBUG_DIR}/${filename}" action="write"&gt;
+                ${content}
+            &lt;/file&gt;
+            &lt;log message="[${label}] Saved ${DEBUG_DIR}/${filename}"/&gt;
+        &lt;/if&gt;
+        
+        &lt;return&gt;${content}&lt;/return&gt;
+    &lt;/function&gt;
+    
+    &lt;!-- ================== ACTUAL SCRAPING ================== --&gt;
+    
+    &lt;!-- 1. Login --&gt;
+    &lt;def var="loginPage"&gt;
+        &lt;http url="https://complex-website.com/login"/&gt;
+    &lt;/def&gt;
+    &lt;call name="debugSave"&gt;
+        &lt;call-param name="content"&gt;${loginPage}&lt;/call-param&gt;
+        &lt;call-param name="filename"&gt;1-login-page.html&lt;/call-param&gt;
+        &lt;call-param name="label"&gt;LOGIN&lt;/call-param&gt;
+    &lt;/call&gt;
+    
+    &lt;!-- 2. Submit credentials --&gt;
+    &lt;def var="authResult"&gt;
+        &lt;http url="https://complex-website.com/auth" method="POST"&gt;
+            &lt;http-param name="user" value="test"/&gt;
+            &lt;http-param name="pass" value="secret"/&gt;
+        &lt;/http&gt;
+    &lt;/def&gt;
+    &lt;call name="debugSave"&gt;
+        &lt;call-param name="content"&gt;${authResult}&lt;/call-param&gt;
+        &lt;call-param name="filename"&gt;2-auth-result.html&lt;/call-param&gt;
+        &lt;call-param name="label"&gt;AUTH&lt;/call-param&gt;
+    &lt;/call&gt;
+    
+    &lt;!-- 3. Check if logged in --&gt;
+    &lt;def var="isLoggedIn"&gt;
+        &lt;xpath expression="contains(., 'Welcome')"&gt;
+            &lt;text&gt;${authResult}&lt;/text&gt;
+        &lt;/xpath&gt;
+    &lt;/def&gt;
+    &lt;log message="Login status: ${isLoggedIn}"/&gt;
+    
+    &lt;if condition="${!isLoggedIn}"&gt;
+        &lt;log level="ERROR" message="LOGIN FAILED - Check debug files!"/&gt;
+        &lt;stop/&gt;
+    &lt;/if&gt;
+    
+    &lt;!-- 4. Fetch data --&gt;
+    &lt;def var="dataPage"&gt;
+        &lt;http url="https://complex-website.com/data"/&gt;
+    &lt;/def&gt;
+    &lt;call name="debugSave"&gt;
+        &lt;call-param name="content"&gt;${dataPage}&lt;/call-param&gt;
+        &lt;call-param name="filename"&gt;3-data-page.html&lt;/call-param&gt;
+        &lt;call-param name="label"&gt;DATA&lt;/call-param&gt;
+    &lt;/call&gt;
+    
+    &lt;!-- 5. Extract with error handling --&gt;
+    &lt;try&gt;
+        &lt;body&gt;
+            &lt;def var="results"&gt;
+                &lt;xpath expression="//div[@class='result']"&gt;
+                    &lt;html-to-xml&gt;${dataPage}&lt;/html-to-xml&gt;
+                &lt;/xpath&gt;
+            &lt;/def&gt;
+            &lt;log message="Extracted ${sys.count(results)} results"/&gt;
+        &lt;/body&gt;
+        &lt;catch&gt;
+            &lt;log level="ERROR" message="XPath extraction failed"/&gt;
+            &lt;file path="${DEBUG_DIR}/ERROR-extraction.html" action="write"&gt;
+                ${dataPage}
+            &lt;/file&gt;
+        &lt;/catch&gt;
+    &lt;/try&gt;
+
+&lt;/config&gt;</code></div>
+
+            <div class="tip">
+                <strong>✅ How to Use:</strong>
+                <ol>
+                    <li>Set <code>DEBUG_MODE</code> to <code>true</code></li>
+                    <li>Run your scraper</li>
+                    <li>Check <code>debug/[timestamp]/</code> directory</li>
+                    <li>Open HTML files in browser to see what WebHarvest actually received</li>
+                    <li>Compare expected vs actual responses</li>
+                    <li>Fix XPath expressions based on real data</li>
+                </ol>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔧 Advanced: log4j.properties Configuration</h2>
+            <p>Control logging verbosity at the system level:</p>
+
+            <div class="code-block"><code># Root logger level (DEBUG shows everything)
+log4j.rootLogger=DEBUG, stdout
+
+# Console appender
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+log4j.appender.stdout.layout.ConversionPattern=%d{HH:mm:ss} %-5p %c{1} - %m%n
+
+# Fine-tune specific packages
+log4j.logger.org.webharvest.plugin=DEBUG
+log4j.logger.org.webharvest.runtime=INFO
+log4j.logger.org.apache.http=WARN
+
+# File appender for permanent logs
+log4j.appender.file=org.apache.log4j.FileAppender
+log4j.appender.file.File=webharvest-debug.log
+log4j.appender.file.layout=org.apache.log4j.PatternLayout
+log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1} - %m%n</code></div>
+        </section>
+
+        <section>
+            <h2>📋 Debugging Checklist</h2>
+            <div class="tip">
+                <strong>When debugging complex websites, always:</strong>
+                <ul style="margin-top:10px;">
+                    <li>✅ Save responses to files (<code>&lt;file path="debug/..."&gt;</code>)</li>
+                    <li>✅ Use unique filenames (<code>${sys.timestamp()}</code>)</li>
+                    <li>✅ Log variable values at key points (<code>&lt;log&gt;</code>)</li>
+                    <li>✅ Wrap risky operations in <code>&lt;try&gt;/&lt;catch&gt;</code></li>
+                    <li>✅ Check HTTP status codes and error messages</li>
+                    <li>✅ Verify authentication succeeded before proceeding</li>
+                    <li>✅ Use <code>${sys.count(variable)}</code> to check list sizes</li>
+                    <li>✅ Test XPath expressions on ACTUAL responses, not assumptions</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🚀 Future Enhancements (Planned)</h2>
+            <div class="future">
+                <strong>📌 GitHub Issue #16 Requests:</strong>
+                <ul style="margin-top:10px;">
+                    <li>🔮 <strong>IDE Response Viewer</strong> - Built-in HTML render view</li>
+                    <li>🔮 <strong>Clickable Log Links</strong> - Click to view response in IDE</li>
+                    <li>🔮 <strong>Downloads Tab</strong> - Separate tab showing all HTTP responses</li>
+                    <li>🔮 <strong>Source View Window</strong> - Dedicated window for inspecting HTML</li>
+                    <li>✅ <strong>Log Levels</strong> - ALREADY IMPLEMENTED! (DEBUG, INFO, WARN, ERROR)</li>
+                </ul>
+                <p style="margin-top:15px;">
+                    <em>These features are planned for future WebHarvest IDE releases.
+                        For now, use the 5 debugging patterns above - they are very effective!</em>
+                </p>
+            </div>
+        </section>
+
+        <section class="related">
+            <h2>📚 Related Documentation</h2>
+            <ul>
+                <li><a href="processor-file.html">File Processor Reference</a></li>
+                <li><a href="processor-log.html">Log Processor Reference</a></li>
+                <li><a href="processor-try.html">Try/Catch Processor Reference</a></li>
+                <li><a href="tutorial-form-submit-pagination.html">Form Submit & Pagination Tutorial</a></li>
+            </ul>
+        </section>
+
+        <footer class="doc-footer">
+            <p><strong>Author:</strong> WebHarvest Team | <strong>Version:</strong> 2.2.1 | <strong>Date:</strong>
+                October 15, 2025</p>
+            <p><em>This guide addresses GitHub Issue #16: "More detailed log mode"</em></p>
+        </footer>
+    </div>
+</body>
+
+</html>

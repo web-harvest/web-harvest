@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Selectors Guide - WebHarvest</title>
+    <link rel="stylesheet" href="../css/webharvest.css">
+    <style>
+        .feature-card {
+            background: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background: #e9ecef;
+            font-weight: bold;
+        }
+
+        .selector-example {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .green {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .red {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 CSS Selectors Guide</h1>
+        <p class="lead">Modern HTML querying with CSS selectors in WebHarvest 2.2.1</p>
+
+        <div class="feature-card">
+            <h2>✨ Bug #13 Enhancement: CSS Selector Support</h2>
+            <p><strong>What's New:</strong> WebHarvest now supports CSS selectors as a modern, simpler alternative to
+                XPath for HTML querying!</p>
+            <ul>
+                <li>✅ W3C Standard syntax (not proprietary)</li>
+                <li>✅ Simpler than XPath: <code>a.link</code> vs <code>//a[@class='link']</code></li>
+                <li>✅ Familiar to web developers (jQuery, CSS)</li>
+                <li>✅ Powered by jsoup library (mature, 14+ years)</li>
+                <li>✅ Backward compatible (XPath still works!)</li>
+            </ul>
+        </div>
+
+        <h2>📚 Quick Start</h2>
+
+        <h3>Basic Usage</h3>
+        <pre><code>&lt;!-- CSS Selector Mode: type="css" --&gt;
+&lt;xpath type="css" expression="a.link"&gt;
+    &lt;html-to-xml&gt;
+        &lt;http url="https://example.com"/&gt;
+    &lt;/html-to-xml&gt;
+&lt;/xpath&gt;
+
+&lt;!-- XPath Mode (default): no type attribute --&gt;
+&lt;xpath expression="//a[@class='link']"&gt;
+    &lt;html-to-xml&gt;
+        &lt;http url="https://example.com"/&gt;
+    &lt;/html-to-xml&gt;
+&lt;/xpath&gt;</code></pre>
+
+        <h2>🆚 CSS vs XPath Comparison</h2>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>CSS Selector</th>
+                    <th>XPath</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Select by class</td>
+                    <td><code>a.link</code></td>
+                    <td><code>//a[@class='link']</code></td>
+                </tr>
+                <tr>
+                    <td>Select by ID</td>
+                    <td><code>#main-content</code></td>
+                    <td><code>//*[@id='main-content']</code></td>
+                </tr>
+                <tr>
+                    <td>Nested selection</td>
+                    <td><code>.product h3</code></td>
+                    <td><code>//div[@class='product']//h3</code></td>
+                </tr>
+                <tr>
+                    <td>First child</td>
+                    <td><code>li:first-child</code></td>
+                    <td><code>//li[1]</code></td>
+                </tr>
+                <tr>
+                    <td>Attribute selector</td>
+                    <td><code>input[type='text']</code></td>
+                    <td><code>//input[@type='text']</code></td>
+                </tr>
+                <tr>
+                    <td>Direct child</td>
+                    <td><code>div > p</code></td>
+                    <td><code>//div/p</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Verdict:</strong> <span class="green">CSS Selectors are simpler and more readable for HTML!</span>
+        </p>
+
+        <h2>💡 Real-World Examples</h2>
+
+        <div class="selector-example">
+            <h3>Example 1: E-commerce Product Scraping</h3>
+            <pre><code>&lt;config&gt;
+    &lt;!-- Scrape product names --&gt;
+    &lt;var-def name="products"&gt;
+        &lt;xpath type="css" expression=".product h3.title"&gt;
+            &lt;html-to-xml&gt;
+                &lt;http url="https://shop.example.com/products"/&gt;
+            &lt;/html-to-xml&gt;
+        &lt;/xpath&gt;
+    &lt;/var-def&gt;
+    
+    &lt;!-- Scrape prices --&gt;
+    &lt;var-def name="prices"&gt;
+        &lt;xpath type="css" expression=".product .price"&gt;
+            &lt;html-to-xml&gt;
+                &lt;http url="https://shop.example.com/products"/&gt;
+            &lt;/html-to-xml&gt;
+        &lt;/xpath&gt;
+    &lt;/var-def&gt;
+    
+    &lt;!-- Display results --&gt;
+    &lt;loop item="product" index="i"&gt;
+        &lt;list&gt;${products}&lt;/list&gt;
+        &lt;var-def name="price"&gt;
+            &lt;script&gt;context.getVar("prices").toList().get(i)&lt;/script&gt;
+        &lt;/var-def&gt;
+        &lt;echo&gt;${product}: ${price}&lt;/echo&gt;
+    &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+            <p><strong>What it does:</strong> Extracts product names and prices from an e-commerce site using simple CSS
+                selectors!</p>
+        </div>
+
+        <div class="selector-example">
+            <h3>Example 2: News Article Titles</h3>
+            <pre><code>&lt;var-def name="headlines"&gt;
+    &lt;xpath type="css" expression="article > h2.headline"&gt;
+        &lt;html-to-xml&gt;
+            &lt;http url="https://news.example.com"/&gt;
+        &lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+&lt;/var-def&gt;</code></pre>
+            <p><strong>CSS Selector:</strong> <code>article > h2.headline</code> = "H2 with class 'headline' that is a
+                direct child of 'article'"</p>
+        </div>
+
+        <div class="selector-example">
+            <h3>Example 3: Navigation Links</h3>
+            <pre><code>&lt;var-def name="nav_links"&gt;
+    &lt;xpath type="css" expression="nav.main-menu a[href]"&gt;
+        &lt;html-to-xml&gt;
+            &lt;http url="https://example.com"/&gt;
+        &lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+&lt;/var-def&gt;</code></pre>
+            <p><strong>CSS Selector:</strong> <code>nav.main-menu a[href]</code> = "Links with href inside nav with
+                class 'main-menu'"</p>
+        </div>
+
+        <h2>📖 CSS Selector Syntax Reference</h2>
+
+        <h3>Basic Selectors</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Selector</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>element</code></td>
+                    <td>Select by tag name</td>
+                    <td><code>a</code> = all links</td>
+                </tr>
+                <tr>
+                    <td><code>.class</code></td>
+                    <td>Select by class</td>
+                    <td><code>.link</code> = class="link"</td>
+                </tr>
+                <tr>
+                    <td><code>#id</code></td>
+                    <td>Select by ID</td>
+                    <td><code>#header</code> = id="header"</td>
+                </tr>
+                <tr>
+                    <td><code>[attribute]</code></td>
+                    <td>Select by attribute</td>
+                    <td><code>[href]</code> = has href</td>
+                </tr>
+                <tr>
+                    <td><code>[attr=value]</code></td>
+                    <td>Select by attribute value</td>
+                    <td><code>[type='text']</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Combinators</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Combinator</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>A B</code></td>
+                    <td>Descendant (any level)</td>
+                    <td><code>div p</code> = p inside div</td>
+                </tr>
+                <tr>
+                    <td><code>A > B</code></td>
+                    <td>Direct child</td>
+                    <td><code>div > p</code> = direct child p</td>
+                </tr>
+                <tr>
+                    <td><code>A + B</code></td>
+                    <td>Adjacent sibling</td>
+                    <td><code>h2 + p</code> = p after h2</td>
+                </tr>
+                <tr>
+                    <td><code>A, B</code></td>
+                    <td>Multiple selectors</td>
+                    <td><code>h1, h2, h3</code> = all headings</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Pseudo-Selectors</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Pseudo-Selector</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>:first-child</code></td>
+                    <td>First child element</td>
+                    <td><code>li:first-child</code></td>
+                </tr>
+                <tr>
+                    <td><code>:last-child</code></td>
+                    <td>Last child element</td>
+                    <td><code>li:last-child</code></td>
+                </tr>
+                <tr>
+                    <td><code>:nth-child(n)</code></td>
+                    <td>Nth child element</td>
+                    <td><code>li:nth-child(2)</code></td>
+                </tr>
+                <tr>
+                    <td><code>:not(selector)</code></td>
+                    <td>Negation</td>
+                    <td><code>a:not(.external)</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>⚖️ When to Use CSS vs XPath?</h2>
+
+        <div class="feature-card" style="border-left-color: #28a745;">
+            <h3 class="green">✅ Use CSS Selectors When:</h3>
+            <ul>
+                <li>Scraping modern HTML websites</li>
+                <li>Selecting by class, ID, or simple attributes</li>
+                <li>You want readable, maintainable code</li>
+                <li>Team knows jQuery/CSS (low learning curve)</li>
+                <li>Simple hierarchical selections</li>
+            </ul>
+        </div>
+
+        <div class="feature-card" style="border-left-color: #ffc107;">
+            <h3 style="color: #ffc107;">⚡ Use XPath When:</h3>
+            <ul>
+                <li>Working with XML (not HTML)</li>
+                <li>Need text() content selection</li>
+                <li>Complex predicates (conditions)</li>
+                <li>Need parent/ancestor selection</li>
+                <li>Following/preceding sibling logic</li>
+            </ul>
+        </div>
+
+        <h2>🔧 Migration Guide</h2>
+
+        <p>Migrating existing XPath configurations to CSS selectors is easy:</p>
+
+        <h3>Before (XPath):</h3>
+        <pre><code>&lt;xpath expression="//div[@class='product']//h3"&gt;
+    &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+&lt;/xpath&gt;</code></pre>
+
+        <h3>After (CSS Selectors):</h3>
+        <pre><code>&lt;xpath type="css" expression=".product h3"&gt;
+    &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+&lt;/xpath&gt;</code></pre>
+
+        <p class="green"><strong>✅ Simpler, more readable, same result!</strong></p>
+
+        <h2>🎓 Best Practices</h2>
+
+        <ol>
+            <li><strong>Start simple:</strong> Use basic selectors first (<code>.class</code>, <code>#id</code>)</li>
+            <li><strong>Test in browser:</strong> Use browser DevTools to test CSS selectors</li>
+            <li><strong>Be specific:</strong> <code>.product h3.title</code> is better than just <code>h3</code></li>
+            <li><strong>Use pseudo-selectors:</strong> <code>:first-child</code> is cleaner than index logic</li>
+            <li><strong>Mix with XPath when needed:</strong> Use the best tool for each job!</li>
+        </ol>
+
+        <h2>📊 Performance Notes</h2>
+
+        <p><strong>CSS Selectors performance:</strong></p>
+        <ul>
+            <li>✅ Fast for class/ID selections</li>
+            <li>✅ Efficient with jsoup's optimized parser</li>
+            <li>✅ Same speed as XPath for simple queries</li>
+            <li>⚠️ For very complex logic, XPath may be faster</li>
+        </ul>
+
+        <h2>🐛 Troubleshooting</h2>
+
+        <h3>Problem: Selector returns empty results</h3>
+        <p><strong>Solution:</strong></p>
+        <ul>
+            <li>Test selector in browser DevTools first</li>
+            <li>Check if HTML is valid (use <code>&lt;html-to-xml&gt;</code>)</li>
+            <li>Verify class/ID names are correct</li>
+            <li>Use broader selector, then narrow down</li>
+        </ul>
+
+        <h3>Problem: Need to select by text content</h3>
+        <p><strong>Solution:</strong> Use XPath for text() selections - CSS can't do this:</p>
+        <pre><code>&lt;!-- CSS can't select by text, use XPath: --&gt;
+&lt;xpath expression="//a[text()='Click Here']"&gt;
+    &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+&lt;/xpath&gt;</code></pre>
+
+        <h2>🔗 Related Documentation</h2>
+
+        <ul>
+            <li><a href="xpath-plugin.html">XPath Plugin Documentation</a></li>
+            <li><a href="html-to-xml.html">HTML to XML Processor</a></li>
+            <li><a href="tutorial-form-submit-pagination.html">Web Scraping Tutorial</a></li>
+            <li><a href="../api/index.html">JavaDoc API Reference</a></li>
+        </ul>
+
+        <h2>💬 Feedback</h2>
+
+        <p>Have questions about CSS selectors? Found a bug? <a
+                href="https://github.com/webharvest/webharvest/issues">Report it on GitHub!</a></p>
+
+        <div class="feature-card" style="border-left-color: #007bff;">
+            <h3 style="color: #007bff;">🎉 Summary</h3>
+            <p><strong>CSS Selectors in WebHarvest 2.2.1:</strong></p>
+            <ul>
+                <li>✅ Simple, modern syntax for HTML querying</li>
+                <li>✅ Fully backward compatible with XPath</li>
+                <li>✅ Powered by mature jsoup library</li>
+                <li>✅ Perfect for web scraping tasks</li>
+                <li>✅ Choose the best tool for your needs!</li>
+            </ul>
+        </div>
+
+        <hr>
+        <footer>
+            <p>&copy; 2006-2025 WebHarvest Team. All rights reserved.</p>
+            <p><a href="index.html">Back to Documentation</a></p>
+        </footer>
+    </div>
+</body>
+
+</html>

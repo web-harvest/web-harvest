@@ -65,6 +65,21 @@ import java.util.List;
  * limit is reached.
  * </p>
  * 
+ * <h3>Bug #19 Fix: Memory Leak Prevention (v2.2.1)</h3>
+ * <p>
+ * <strong>Problem:</strong> Variables created inside while loop body accumulated in memory,
+ * causing {@code OutOfMemoryError} during long-running loops (pagination, API polling).
+ * </p>
+ * <p>
+ * <strong>Solution:</strong> Each while iteration now executes in a nested {@link DynamicScopeContext}.
+ * Temporary variables are automatically cleaned up after each iteration, preventing memory leaks
+ * in long-running loops.
+ * </p>
+ * <p>
+ * <strong>Impact:</strong> Can now safely run while loops with 10,000+ iterations without memory issues.
+ * Particularly important for pagination scenarios where loop runs until "hasNextPage" becomes false.
+ * </p>
+ * 
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>condition (or test):</strong> Boolean expression evaluated before each iteration</li>
@@ -1023,21 +1038,35 @@ public class WhilePlugin extends AbstractPlugin {
         while (conditionResult && (i <= safeMaxLoops)) {
             LOGGER.debug("doExecute: Loop iteration " + i + ", evaluatedCondition='" + evaluatedCondition + "'");
             
-            // Execute body content using new architecture
-            LOGGER.debug("doExecute: About to execute body content");
-            Variable loopResult = executeBody(context);
-            LOGGER.trace("WhilePlugin.doExecute: Body result.class=" + (loopResult != null ? loopResult.getClass().getName() : "null"));
-            LOGGER.trace("WhilePlugin.doExecute: Body result=" + loopResult);
+            // Bug #19 Fix: Execute each iteration in nested context
+            // This automatically cleans up variables created in loop body
+            final int currentIteration = i;
             
-            if (!isEmpty) {
-                resultList.addAll(loopResult.toList());
+            try {
+                Variable loopResult = context.executeWithinNewContext(() -> {
+                    // Define current value of index variable in nested context
+                    if (index != null && !index.isEmpty()) {
+                        context.setLocalVar(index, new NodeVariable(String.valueOf(currentIteration)));
+                    }
+                    
+                    // Execute body content using new architecture
+                    LOGGER.debug("doExecute: About to execute body content");
+                    Variable bodyResult = executeBody(context);
+                    LOGGER.trace("WhilePlugin.doExecute: Body result.class=" + (bodyResult != null ? bodyResult.getClass().getName() : "null"));
+                    LOGGER.trace("WhilePlugin.doExecute: Body result=" + bodyResult);
+                    
+                    return bodyResult;
+                });
+                
+                if (!isEmpty) {
+                    resultList.addAll(loopResult.toList());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
             }
 
             i++;
-            // Define current value of index variable
-            if (index != null && !index.isEmpty()) {
-                context.setLocalVar(index, new NodeVariable(String.valueOf(i)));
-            }
             
             // IMPORTANT: If condition uses variables from body (like SetVarPlugin), 
             // we need to extract the updated value from the nested context.

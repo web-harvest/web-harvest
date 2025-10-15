@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bug #13: CSS Selector Examples
+  Demonstrates CSS selector functionality in XPathPlugin
+-->
+<config>
+    <!-- Example 1: Basic CSS Selector - Extract Links -->
+    <var-def name="example1_links">
+        <xpath type="css" expression="a.link">
+            <html-to-xml>
+                <![CDATA[
+                <html>
+                    <body>
+                        <a href="page1.html" class="link">Link 1</a>
+                        <a href="page2.html" class="link">Link 2</a>
+                        <a href="page3.html" class="other">Other Link</a>
+                    </body>
+                </html>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+    <!-- Example 2: Product Scraping with CSS Selectors -->
+    <var-def name="example2_products">
+        <xpath type="css" expression=".product h3">
+            <html-to-xml>
+                <![CDATA[
+                <html>
+                    <div class="product">
+                        <h3>Product A</h3>
+                        <span class="price">$19.99</span>
+                    </div>
+                    <div class="product">
+                        <h3>Product B</h3>
+                        <span class="price">$29.99</span>
+                    </div>
+                </html>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+    <!-- Example 3: Pseudo-selectors - First Child -->
+    <var-def name="example3_first">
+        <xpath type="css" expression="li:first-child">
+            <html-to-xml>
+                <![CDATA[
+                <ul>
+                    <li>First Item</li>
+                    <li>Second Item</li>
+                    <li>Third Item</li>
+                </ul>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+    <!-- Example 4: Complex Selector - Form Inputs -->
+    <var-def name="example4_inputs">
+        <xpath type="css" expression="input[type='text']">
+            <html-to-xml>
+                <![CDATA[
+                <form>
+                    <input type="text" name="username" placeholder="Username"/>
+                    <input type="password" name="password"/>
+                    <input type="text" name="email" placeholder="Email"/>
+                </form>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+    <!-- Example 5: Backward Compatibility - XPath Still Works -->
+    <var-def name="example5_xpath">
+        <xpath expression="//title/text()">
+            <html-to-xml>
+                <![CDATA[
+                <html>
+                    <head><title>Test Page</title></head>
+                    <body>Content</body>
+                </html>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+    <!-- Example 6: Real-world - Scrape Article Titles -->
+    <var-def name="example6_articles">
+        <xpath type="css" expression="article > h2.title">
+            <html-to-xml>
+                <![CDATA[
+                <main>
+                    <article>
+                        <h2 class="title">Breaking News</h2>
+                        <p>Article content...</p>
+                    </article>
+                    <article>
+                        <h2 class="title">Tech Update</h2>
+                        <p>More content...</p>
+                    </article>
+                </main>
+                ]]>
+            </html-to-xml>
+        </xpath>
+    </var-def>
+</config>

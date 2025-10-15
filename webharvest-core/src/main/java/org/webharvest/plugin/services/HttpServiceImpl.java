@@ -35,12 +35,15 @@ package org.webharvest.plugin.services;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.Header;
@@ -60,6 +63,13 @@ import org.slf4j.LoggerFactory;
  *   <li>Modern Java support</li>
  * </ul>
  * 
+ * <h3>Bug #36: Redirect Header Preservation (v2.2.1)</h3>
+ * <p>Added support for:</p>
+ * <ul>
+ *   <li><code>followRedirects</code> - control redirect behavior</li>
+ *   <li><code>preserveHeaders</code> - maintain headers across redirects</li>
+ * </ul>
+ * 
  * @author Robert Bala
  * @since 2.2.0
  * @version 2.2.1
@@ -72,18 +82,80 @@ public class HttpServiceImpl implements HttpService {
     
     /**
      * Creates a new HttpServiceImpl with a default HttpClient.
+     * 
+     * <p>Default behavior:</p>
+     * <ul>
+     *   <li>Redirects: ENABLED (follows 301/302)</li>
+     *   <li>Header preservation: NONE</li>
+     * </ul>
      */
     public HttpServiceImpl() {
         this.httpClient = HttpClients.createDefault();
     }
     
     /**
-     * Creates a new HttpServiceImpl with a custom HttpClient.
+     * Creates a new HttpServiceImpl with custom HttpClient.
      * 
      * @param httpClient the HTTP client to use
      */
     public HttpServiceImpl(CloseableHttpClient httpClient) {
         this.httpClient = httpClient;
+    }
+    
+    /**
+     * Creates HttpServiceImpl with redirect configuration.
+     * 
+     * <p><strong>Bug #36 Fix:</strong> This constructor enables control over
+     * redirect behavior and header preservation.</p>
+     * 
+     * @param followRedirects whether to follow HTTP redirects (301/302)
+     * 
+     * @since 2.2.1
+     */
+    public HttpServiceImpl(boolean followRedirects) {
+        this(followRedirects, new HashMap<>());
+    }
+    
+    /**
+     * Creates HttpServiceImpl with redirect and header preservation.
+     * 
+     * <p><strong>Bug #36 Fix:</strong> This constructor solves the problem of
+     * headers being lost during redirects (e.g., login → redirect → logout).</p>
+     * 
+     * <h4>Use Cases:</h4>
+     * <ul>
+     *   <li><strong>Login workflows:</strong> Preserve Cookie, Referer on redirect</li>
+     *   <li><strong>API auth:</strong> Preserve X-API-Key, Authorization headers</li>
+     *   <li><strong>Custom headers:</strong> Maintain any custom headers across redirects</li>
+     * </ul>
+     * 
+     * @param followRedirects whether to follow HTTP redirects
+     * @param defaultHeaders headers to add to ALL requests (initial + redirects)
+     * 
+     * @since 2.2.1
+     */
+    public HttpServiceImpl(boolean followRedirects, Map<String, String> defaultHeaders) {
+        LOGGER.debug("Creating HttpServiceImpl: followRedirects={}, defaultHeaders={}", 
+            followRedirects, defaultHeaders != null ? defaultHeaders.size() : 0);
+        
+        HttpClientBuilder builder = HttpClients.custom();
+        
+        // Configure redirect behavior
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setRedirectsEnabled(followRedirects)
+            .build();
+        builder.setDefaultRequestConfig(requestConfig);
+        
+        // Add header preservation interceptor if needed
+        if (defaultHeaders != null && !defaultHeaders.isEmpty()) {
+            HeaderPreservingInterceptor interceptor = new HeaderPreservingInterceptor(defaultHeaders);
+            builder.addRequestInterceptorFirst(interceptor);
+            
+            LOGGER.info("HTTP client configured with {} default headers for redirect preservation", 
+                defaultHeaders.size());
+        }
+        
+        this.httpClient = builder.build();
     }
     
     @Override
