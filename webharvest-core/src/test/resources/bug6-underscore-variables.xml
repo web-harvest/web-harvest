@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bug #6: Underscore Support in Variable Names
+  
+  This example demonstrates using underscores in variable names
+  for better readability and naming conventions.
+-->
+<config>
+    <!-- Function with underscore-prefixed parameters (common pattern) -->
+    <function name="login">
+        <param name="p_username"/>
+        <param name="p_password"/>
+        <param name="p_apikey"/>
+        
+        <return>
+            <http url="https://api.example.com/auth" method="POST">
+                <http-param name="username">${p_username}</http-param>
+                <http-param name="password">${p_password}</http-param>
+                <http-param name="apikey">${p_apikey}</http-param>
+            </http>
+        </return>
+    </function>
+    
+    <!-- Variables with descriptive underscore names -->
+    <var-def name="input_url">https://example.com/api/data</var-def>
+    <var-def name="output_file">target/result.xml</var-def>
+    <var-def name="debug_mode">true</var-def>
+    
+    <!-- Call function with underscore parameters -->
+    <var-def name="auth_token">
+        <call name="login">
+            <call-param name="p_username">admin</call-param>
+            <call-param name="p_password">secret123</call-param>
+            <call-param name="p_apikey">ABC-123-XYZ</call-param>
+        </call>
+    </var-def>
+    
+    <!-- Use underscore variables throughout -->
+    <var-def name="api_response">
+        <http url="${input_url}">
+            <http-header name="Authorization">Bearer ${auth_token}</http-header>
+        </http>
+    </var-def>
+    
+    <!-- Underscore names in loops -->
+    <loop item="product_item" index="product_index">
+        <list>
+            <var name="api_response"/>
+        </list>
+        <body>
+            <var-def name="product_name">
+                <xpath expression="//name/text()">${product_item}</xpath>
+            </var-def>
+            
+            <var-def name="product_price">
+                <xpath expression="//price/text()">${product_item}</xpath>
+            </var-def>
+            
+            <if condition="${debug_mode}">
+                <log message="Product ${product_index}: ${product_name} = ${product_price}"/>
+            </if>
+        </body>
+    </loop>
+    
+    <!-- Save result -->
+    <file path="${output_file}" action="write">
+        ${api_response}
+    </file>
+</config>

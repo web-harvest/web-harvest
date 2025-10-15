@@ -7705,6 +7705,137 @@ java -Dwebharvest.script.scope.strict=true -jar webharvest-cli.jar config.xml
 
 ---
 
+### Bug #6: Allow Underscores in Variable Names
+
+**Status**: ✅ FIXED  
+**Reported**: SourceForge Patch #6  
+**Fixed in**: v2.2.0  
+**Severity**: Medium (usability - naming conventions)  
+**Component**: `webharvest-core` - `VariableName` class
+
+#### Quick Summary
+
+Variable names can now contain underscores for better naming conventions and readability.
+
+**Before (restrictive):**
+```java
+// Pattern: ^[a-zA-Z][a-zA-Z0-9]*?$
+✅ Valid:   myVar, var1, test123
+❌ Invalid: p_parameter, input_value, my_var
+```
+
+**After (flexible):**
+```java
+// Pattern: ^[a-zA-Z][a-zA-Z0-9_]*?$
+✅ Valid:   myVar, var1, p_parameter, input_value, my_var_123
+❌ Invalid: _var (must start with letter), 123var, my-var
+```
+
+#### User Request
+
+> "Allow underscores in variable names. For example I use 'p_' prefix for function 
+> parameters and find it quite useful. (and also all my older configurations already use it)"
+
+**Use Cases:**
+- Function parameter prefixes: `p_username`, `p_password`, `p_apikey`
+- Descriptive names: `input_value`, `output_result`, `debug_mode`
+- Backwards compatibility: User's old configurations already use underscores
+
+#### Implementation
+
+**Single-line change in `VariableName.java`:**
+
+```java
+// OLD regex:
+if (!name.matches("^[a-zA-Z][a-zA-Z0-9]*?$")) {
+    throw new VariableException("Invalid variable name");
+}
+
+// NEW regex (Bug #6 Fix):
+if (!name.matches("^[a-zA-Z][a-zA-Z0-9_]*?$")) {
+    throw new VariableException("Invalid variable name");
+}
+```
+
+**Change:** Added `_` to allowed characters: `[a-zA-Z0-9]*?` → `[a-zA-Z0-9_]*?`
+
+#### Tests
+
+**9 TDD tests (all PASSED):**
+- `testVariableName_WithPPrefix_Accepted` - p_parameter ✅
+- `testVariableName_WithUnderscoreInMiddle_Accepted` - input_value ✅
+- `testVariableName_WithMultipleUnderscores_Accepted` - my_long_variable_name ✅
+- `testVariableName_WithUnderscoreAtEnd_Accepted` - temp_ ✅
+- `testVariableName_StartingWithUnderscore_Rejected` - _invalid ❌
+- `testVariableName_NormalAlphanumeric_StillWorks` - regression ✅
+- `testVariableName_InvalidNames_StillRejected` - regression ✅
+- `testVariableName_FunctionParameterPrefixes_Work` - real-world use case ✅
+- `testVariableName_MixedDigitsAndUnderscores_Accepted` - var_123_test_456 ✅
+
+**TDD Cycle:**
+- 🔴 RED: 6 tests FAILED (underscore names rejected)
+- 🟢 GREEN: 9 tests PASSED (all tests pass after fix)
+
+#### Usage Example
+
+```xml
+<!-- Function with underscore-prefixed parameters -->
+<function name="login">
+    <param name="p_username"/>
+    <param name="p_password"/>
+    <param name="p_apikey"/>
+    
+    <return>
+        <http url="https://api.example.com/auth" method="POST">
+            <http-param name="username">${p_username}</http-param>
+            <http-param name="password">${p_password}</http-param>
+            <http-param name="apikey">${p_apikey}</http-param>
+        </http>
+    </return>
+</function>
+
+<!-- Descriptive variable names -->
+<var-def name="input_url">https://example.com/data</var-def>
+<var-def name="output_file">target/result.xml</var-def>
+<var-def name="debug_mode">true</var-def>
+
+<!-- Call with underscore parameters -->
+<var-def name="auth_token">
+    <call name="login">
+        <call-param name="p_username">admin</call-param>
+        <call-param name="p_password">secret</call-param>
+        <call-param name="p_apikey">ABC-123</call-param>
+    </call>
+</var-def>
+```
+
+#### Impact
+
+- **Improved Readability**: Underscore-separated names easier to read than camelCase
+- **Naming Conventions**: Supports common conventions (prefix parameters, separate words)
+- **Backwards Compatible**: User's old configurations now work
+- **No Breaking Changes**: All previous valid names still valid
+
+#### Naming Rules (Updated)
+
+**Valid variable names:**
+- Must start with letter (a-z, A-Z)
+- Can contain letters, digits (0-9), underscores (_)
+- Examples: `myVar`, `var1`, `p_parameter`, `input_value`, `my_var_123`
+
+**Invalid variable names:**
+- Starting with underscore: `_var` ❌
+- Starting with digit: `123var` ❌
+- Special characters: `my-var`, `my.var`, `my@var` ❌
+- Spaces: `my var` ❌
+
+#### Related
+
+- **Bug #60**: Related to variable name validation
+- **Bug #7**: Function parameter scopes (benefits from underscore prefixes)
+
+---
+
 ### Bug #1: Prevent NPE when URL-encoding Parameters
 
 **Status**: ✅ ALREADY FIXED  

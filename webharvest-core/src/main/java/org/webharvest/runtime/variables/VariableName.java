@@ -43,6 +43,28 @@ import org.webharvest.exception.VariableException;
  * that is set on {@link org.webharvest.runtime.DynamicScopeContext}.
  * The variable name must conform the general rules that apply
  * to variable names of programming languages.
+ * 
+ * <h3>Bug #6: Underscore Support (v2.2.0)</h3>
+ * <p>Variable names can now contain underscores for better naming conventions:</p>
+ * <ul>
+ *   <li><strong>Function parameters:</strong> {@code p_parameter}, {@code p_username}</li>
+ *   <li><strong>Descriptive names:</strong> {@code input_value}, {@code output_result}</li>
+ *   <li><strong>Multiple underscores:</strong> {@code my_long_variable_name}</li>
+ * </ul>
+ * 
+ * <p><strong>Naming Rules:</strong></p>
+ * <ul>
+ *   <li>Must start with a letter (a-z, A-Z)</li>
+ *   <li>Can contain letters, digits (0-9), and underscores (_)</li>
+ *   <li>Cannot start with underscore or digit</li>
+ *   <li>Pattern: {@code ^[a-zA-Z][a-zA-Z0-9_]*?$}</li>
+ * </ul>
+ * 
+ * <p><strong>Examples:</strong></p>
+ * <pre>
+ * ✅ Valid:   myVar, var1, p_parameter, input_value, my_var_123
+ * ❌ Invalid: _var, 123var, my-var, my.var, my var
+ * </pre>
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
@@ -56,12 +78,16 @@ public final class VariableName {
 
     /**
      * Creates new {@link org.webharvest.runtime.variables.Variable} name.
+     * 
+     * <p>Bug #6 Fix: Now allows underscores in variable names for better
+     * naming conventions (e.g., {@code p_parameter}, {@code input_value}).</p>
      *
-     * @param name variable name.
+     * @param name variable name (must match pattern: {@code ^[a-zA-Z][a-zA-Z0-9_]*?$})
+     * @throws VariableException if name is null, empty, or doesn't match pattern
      */
     public VariableName(final String name) {
         if (StringUtils.isBlank(name)
-                || !name.matches("^[a-zA-Z][a-zA-Z0-9]*?$")) {
+                || !name.matches("^[a-zA-Z][a-zA-Z0-9_]*?$")) {
             throw new VariableException(format("Invalid variable name ''{0}''",
                     name));
         }
