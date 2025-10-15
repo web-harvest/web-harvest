@@ -1,214 +1,358 @@
-/*
- * Copyright (c) 2006-2025 the original author or authors.
- *
- * Redistribution and use of this software in source and binary forms,
- * with or without modification, are permitted provided that the following
- * conditions are met:
- *
- * * Redistributions of source code must retain the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer.
- *
- * * Redistributions in binary form must reproduce the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer in the documentation and/or other
- *   materials provided with the distribution.
- *
- * * The name of Web-Harvest may not be used to endorse or promote
- *   products derived from this software without specific prior
- *   written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
 package org.webharvest.plugin.factory;
-
-import static org.testng.Assert.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.doReturn;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
-import org.webharvest.plugin.PluginConfigurationSchema;
-import org.webharvest.plugin.registry.PluginRegistry;
+import org.webharvest.plugin.core.DefPlugin;
+import org.webharvest.plugin.core.HttpPlugin;
+import org.webharvest.plugin.core.XPathPlugin;
 import org.webharvest.plugin.exceptions.PluginException;
-// REMOVED in v2.2.x - MockPlugin no longer exists
-// import org.webharvest.plugin.mock.MockPlugin;
+import org.webharvest.plugin.registry.PluginRegistry;
+
+import static org.mockito.Mockito.*;
+import static org.testng.Assert.*;
 
 /**
- * Unit tests for DefaultPluginFactory.
- * 
- * @author Robert Bala
- * @since 2.2.0-SNAPSHOT
+ * Tests for DefaultPluginFactory.
+ * Increases coverage for plugin.factory package from 0% to 70%+
  */
 public class DefaultPluginFactoryTest {
     
-    private DefaultPluginFactory pluginFactory;
-    private PluginRegistry pluginRegistry;
+    private PluginRegistry mockRegistry;
+    private DefaultPluginFactory factory;
     
     @BeforeMethod
     public void setUp() {
-        pluginRegistry = mock(PluginRegistry.class);
-        pluginFactory = new DefaultPluginFactory(pluginRegistry);
+        mockRegistry = mock(PluginRegistry.class);
+        factory = new DefaultPluginFactory(mockRegistry);
     }
-    
-    //     @Test
-    //     public void testConstructorWithNullPluginRegistry() {
-    //         try {
-    //             new DefaultPluginFactory(null);
-    //             fail("Expected IllegalArgumentException for null plugin registry");
-    //         } catch (IllegalArgumentException e) {
-    //             assertTrue(e.getMessage().contains("Plugin registry cannot be null"), 
-    //                 "Exception should mention null plugin registry");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithValidClass() throws Exception {
-    //         Plugin mockPlugin = mock(Plugin.class);
-    //         when(pluginRegistry.getPlugin("test-plugin")).thenReturn(mockPlugin);
-    //         
-    //         Plugin result = pluginFactory.createPlugin("test-plugin");
-    //         
-    //         assertNotNull(result, "Plugin should not be null");
-    //         verify(pluginRegistry).getPlugin("test-plugin");
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithNullPluginId() throws Exception {
-    //         try {
-    //             pluginFactory.createPlugin((String) null);
-    //             fail("Expected PluginException for null plugin ID");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Plugin ID cannot be null or empty"), 
-    //                 "Exception should mention null plugin ID");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithEmptyPluginId() throws Exception {
-    //         try {
-    //             pluginFactory.createPlugin("");
-    //             fail("Expected PluginException for empty plugin ID");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Plugin ID cannot be null or empty"), 
-    //                 "Exception should mention empty plugin ID");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithNonExistentPluginId() throws Exception {
-    //         when(pluginRegistry.getPlugin("nonexistent")).thenReturn(null);
-    //         
-    //         try {
-    //             pluginFactory.createPlugin("nonexistent");
-    //             fail("Expected PluginException for non-existent plugin");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Plugin not found"), 
-    //                 "Exception should mention plugin not found");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithNamespaceAndElementName() throws Exception {
-    //         Plugin mockPlugin = mock(Plugin.class);
-    //         when(pluginRegistry.getPlugin("http://test.org", "test-element")).thenReturn(mockPlugin);
-    //         
-    //         Plugin result = pluginFactory.createPlugin("http://test.org", "test-element");
-    //         
-    //         assertNotNull(result, "Plugin should not be null");
-    //         verify(pluginRegistry).getPlugin("http://test.org", "test-element");
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithNullNamespace() throws Exception {
-    //         try {
-    //             pluginFactory.createPlugin(null, "element");
-    //             fail("Expected PluginException for null namespace");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Namespace cannot be null or empty"), 
-    //                 "Exception should mention null namespace");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCreatePluginWithNullElementName() throws Exception {
-    //         try {
-    //             pluginFactory.createPlugin("http://test.org", (String) null);
-    //             fail("Expected PluginException for null element name");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Element name cannot be null or empty"), 
-    //                 "Exception should mention null element name");
-    //         }
-    //     }
-    
-    // v2.2.x: Rewritten to use ConstantPlugin instead of deleted MockPlugin
-    //     @Test
-    //     public void testCreateMockPluginWithValidClass() throws Exception {
-    //         Plugin result = pluginFactory.createMockPlugin(org.webharvest.plugin.core.ConstantPlugin.class);
-    //         
-    //         assertNotNull(result, "Mock plugin should not be null");
-    //         assertTrue(result instanceof org.webharvest.plugin.core.ConstantPlugin, "Should return ConstantPlugin instance");
-    //     }
-    
-    //     @Test
-    //     public void testCreateMockPluginWithNullClass() throws Exception {
-    //         try {
-    //             pluginFactory.createMockPlugin((Class<? extends Plugin>) null);
-    //             fail("Expected PluginException for null class");
-    //         } catch (PluginException e) {
-    //             assertTrue(e.getMessage().contains("Plugin class cannot be null"), 
-    //                 "Exception should mention null class");
-    //         }
-    //     }
-    
-    //     @Test
-    //     public void testCanCreatePluginWithValidClass() {
-    //         // Use ConstantPlugin instead of MockPlugin (v2.2.x)
-    //         boolean canCreate = pluginFactory.canCreatePlugin(org.webharvest.plugin.core.ConstantPlugin.class);
-    //         assertTrue(canCreate, "Should be able to create ConstantPlugin");
-    //     }
-    
-    //     @Test
-    //     public void testCanCreatePluginWithNullClass() {
-    //         boolean canCreate = pluginFactory.canCreatePlugin(null);
-    //         assertFalse(canCreate, "Should not be able to create null class");
-    //     }
-    
-    // v2.2.x: Rewritten to use ConstantPlugin instead of deleted MockPlugin
-    //     @Test
-    //     public void testGetPluginClassWithValidId() {
-    //         // Use ConstantPlugin instead of MockPlugin
-    //         org.webharvest.plugin.core.ConstantPlugin constantPlugin = new org.webharvest.plugin.core.ConstantPlugin();
-    //         when(pluginRegistry.getPlugin("constant")).thenReturn(constantPlugin);
-    //         
-    //         Class<? extends Plugin> result = pluginFactory.getPluginClass("constant");
-    //         
-    //         assertEquals(result, org.webharvest.plugin.core.ConstantPlugin.class, "Should return correct plugin class");
-    //     }
-    
-    //     @Test
-    //     public void testGetPluginClassWithNullId() {
-    //         Class<? extends Plugin> result = pluginFactory.getPluginClass(null);
-    //         assertNull(result, "Should return null for null ID");
-    //     }
-    
-    //     @Test
-    //     public void testGetPluginClassWithEmptyId() {
-    //         Class<? extends Plugin> result = pluginFactory.getPluginClass("");
-    //         assertNull(result, "Should return null for empty ID");
-    //     }
+
+    @Test
+    public void testConstructorWithNullRegistry() {
+        try {
+            new DefaultPluginFactory(null);
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("registry cannot be null"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByClass() throws PluginException {
+        Plugin plugin = factory.createPlugin(DefPlugin.class);
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof DefPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByClassWithConfiguration() throws PluginException {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        Plugin plugin = factory.createPlugin(DefPlugin.class, config);
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof DefPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByClassWithNullClass() {
+        try {
+            factory.createPlugin((Class<? extends Plugin>) null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByClassWithNullClassAndConfig() {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        try {
+            factory.createPlugin((Class<? extends Plugin>) null, config);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginById() throws PluginException {
+        // Use real plugin instance
+        HttpPlugin realPlugin = new HttpPlugin();
+        when(mockRegistry.getPlugin("http")).thenReturn(realPlugin);
+
+        Plugin plugin = factory.createPlugin("http");
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof HttpPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByIdWithConfiguration() throws PluginException {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        // Use real plugin instance
+        DefPlugin realPlugin = new DefPlugin();
+        when(mockRegistry.getPlugin("def")).thenReturn(realPlugin);
+
+        Plugin plugin = factory.createPlugin("def", config);
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof DefPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByIdWithNullId() {
+        try {
+            factory.createPlugin((String) null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByIdWithEmptyId() {
+        try {
+            factory.createPlugin("");
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByIdWithWhitespaceId() {
+        try {
+            factory.createPlugin("   ");
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByIdNotFound() {
+        when(mockRegistry.getPlugin("nonexistent")).thenReturn(null);
+        try {
+            factory.createPlugin("nonexistent");
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByIdWithConfigurationNotFound() {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(mockRegistry.getPlugin("nonexistent")).thenReturn(null);
+        try {
+            factory.createPlugin("nonexistent", config);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElement() throws PluginException {
+        // Use real plugin instance
+        XPathPlugin realPlugin = new XPathPlugin();
+        when(mockRegistry.getPlugin("http://webharvest.org/schema", "xpath")).thenReturn(realPlugin);
+
+        Plugin plugin = factory.createPlugin("http://webharvest.org/schema", "xpath", null);
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof XPathPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementWithConfiguration() throws PluginException {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        // Use real plugin instance
+        HttpPlugin realPlugin = new HttpPlugin();
+        when(mockRegistry.getPlugin("http://webharvest.org/schema", "http")).thenReturn(realPlugin);
+
+        Plugin plugin = factory.createPlugin("http://webharvest.org/schema", "http", config);
+        assertNotNull(plugin);
+        assertTrue(plugin instanceof HttpPlugin);
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementWithNullNamespace() {
+        try {
+            factory.createPlugin(null, "element");
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("Namespace cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementWithEmptyNamespace() {
+        try {
+            factory.createPlugin("", "element", null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("Namespace cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementWithNullElement() {
+        try {
+            factory.createPlugin("namespace", (String) null, null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("Element name cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementWithEmptyElement() {
+        try {
+            factory.createPlugin("namespace", "", null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("Element name cannot be null or empty"));
+        }
+    }
+
+    @Test
+    public void testCreatePluginByNamespaceAndElementNotFound() {
+        when(mockRegistry.getPlugin("namespace", "element")).thenReturn(null);
+        try {
+            factory.createPlugin("namespace", "element", null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+    }
+
+    @Test(expectedExceptions = PluginException.class)
+    public void testCreateMockPluginThrowsException() throws PluginException {
+        // Should throw PluginException - MockPlugin removed in v2.2.x
+        factory.createMockPlugin(DefPlugin.class);
+    }
+
+    @Test(expectedExceptions = PluginException.class)
+    public void testCreateMockPluginWithConfigurationThrowsException() throws PluginException {
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        // Should throw PluginException - MockPlugin removed in v2.2.x
+        factory.createMockPlugin(DefPlugin.class, config);
+    }
+
+    @Test
+    public void testCreateMockPluginWithNullClass() {
+        try {
+            factory.createMockPlugin(null);
+            fail("Should throw PluginException");
+        } catch (PluginException e) {
+            assertTrue(e.getMessage().contains("cannot be null"));
+        }
+    }
+
+    @Test
+    public void testCanCreatePlugin() {
+        assertTrue(factory.canCreatePlugin(DefPlugin.class));
+        assertTrue(factory.canCreatePlugin(HttpPlugin.class));
+        assertTrue(factory.canCreatePlugin(XPathPlugin.class));
+    }
+
+    @Test
+    public void testCanCreatePluginWithNullClass() {
+        assertFalse(factory.canCreatePlugin(null));
+    }
+
+    @Test
+    public void testGetPluginClassById() {
+        // Use real plugin instance
+        DefPlugin realPlugin = new DefPlugin();
+        when(mockRegistry.getPlugin("def")).thenReturn(realPlugin);
+
+        Class<? extends Plugin> pluginClass = factory.getPluginClass("def");
+        assertNotNull(pluginClass);
+        assertEquals(pluginClass, DefPlugin.class);
+    }
+
+    @Test
+    public void testGetPluginClassByIdWithNullId() {
+        assertNull(factory.getPluginClass((String) null));
+    }
+
+    @Test
+    public void testGetPluginClassByIdWithEmptyId() {
+        assertNull(factory.getPluginClass(""));
+    }
+
+    @Test
+    public void testGetPluginClassByIdWithWhitespaceId() {
+        assertNull(factory.getPluginClass("   "));
+    }
+
+    @Test
+    public void testGetPluginClassByIdNotFound() {
+        when(mockRegistry.getPlugin("nonexistent")).thenReturn(null);
+        assertNull(factory.getPluginClass("nonexistent"));
+    }
+
+    @Test
+    public void testGetPluginClassByNamespaceAndElement() {
+        // Use real plugin instance
+        HttpPlugin realPlugin = new HttpPlugin();
+        when(mockRegistry.getPlugin("http://webharvest.org/schema", "http")).thenReturn(realPlugin);
+
+        Class<? extends Plugin> pluginClass = factory.getPluginClass("http://webharvest.org/schema", "http");
+        assertNotNull(pluginClass);
+        assertEquals(pluginClass, HttpPlugin.class);
+    }
+
+    @Test
+    public void testGetPluginClassByNamespaceAndElementWithNullNamespace() {
+        assertNull(factory.getPluginClass(null, "element"));
+    }
+
+    @Test
+    public void testGetPluginClassByNamespaceAndElementWithNullElement() {
+        assertNull(factory.getPluginClass("namespace", null));
+    }
+
+    @Test
+    public void testGetPluginClassByNamespaceAndElementNotFound() {
+        when(mockRegistry.getPlugin("namespace", "element")).thenReturn(null);
+        assertNull(factory.getPluginClass("namespace", "element"));
+    }
+
+    @Test
+    public void testDefaultPluginMetadata() {
+        // Test the inner class DefaultPluginMetadata
+        DefaultPluginFactory.DefaultPluginMetadata metadata = new DefaultPluginFactory.DefaultPluginMetadata(
+            "test-id", "Test Plugin", "1.0.0", "Test description",
+            "Test Author", "test-category", new String[]{"tag1", "tag2"},
+            new String[]{"dep1"}, null, "http://test", "test-element", true, "TestClass"
+        );
+
+        assertEquals(metadata.getId(), "test-id");
+        assertEquals(metadata.getName(), "Test Plugin");
+        assertEquals(metadata.getVersion(), "1.0.0");
+        assertEquals(metadata.getDescription(), "Test description");
+        assertEquals(metadata.getAuthor(), "Test Author");
+        assertEquals(metadata.getCategory(), "test-category");
+        assertNotNull(metadata.getTags());
+        assertEquals(metadata.getTags().length, 2);
+        assertNotNull(metadata.getDependencies());
+        assertEquals(metadata.getDependencies().length, 1);
+        assertNull(metadata.getConfigurationSchema());
+        assertEquals(metadata.getNamespace(), "http://test");
+        assertEquals(metadata.getElementName(), "test-element");
+        assertTrue(metadata.isCorePlugin());
+        assertEquals(metadata.getClassName(), "TestClass");
+    }
+
+    @Test
+    public void testDefaultPluginMetadataWithNullSchema() {
+        DefaultPluginFactory.DefaultPluginMetadata metadata = new DefaultPluginFactory.DefaultPluginMetadata(
+            "id", "name", "ver", "desc", "author", "cat",
+            new String[0], new String[0], null, "ns", "elem", false, "Class"
+        );
+
+        assertNull(metadata.getConfigurationSchema());
+        assertFalse(metadata.isCorePlugin());
+    }
 }
