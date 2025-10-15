@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <!-- Bug #7: Function Parameter Scope Test -->
+    <!-- Based on original SourceForge bug report example -->
+    
+    <!-- Define function that uses param1 -->
+    <function name="function1">
+        <return>
+            <template>${param1}</template>
+        </return>
+    </function>
+    
+    <!-- Test 1: Call with param1 -->
+    <var-def name="var1"><template>1</template></var-def>
+    
+    <var-def name="newvar1">
+        <call name="function1">
+            <call-param name="param1"><var name="var1"/></call-param>
+        </call>
+    </var-def>
+    
+    <!-- Test 2: Call WITHOUT param1 (should return empty, not '1' from previous call!) -->
+    <var-def name="newvar2">
+        <call name="function1">
+            <!-- NO param1! -->
+        </call>
+    </var-def>
+    
+    <!-- Verification -->
+    <var-def name="test_result">
+        <template>newvar1=${newvar1}, newvar2=${newvar2}</template>
+    </var-def>
+</config>
+
