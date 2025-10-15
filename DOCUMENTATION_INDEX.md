@@ -1,7 +1,7 @@
 # WebHarvest Documentation Index
 
 **Version**: 2.2.0  
-**Last Updated**: October 8, 2025
+**Last Updated**: October 15, 2025
 
 ---
 
@@ -13,60 +13,92 @@
    - What is WebHarvest
    - Features and capabilities
    - Installation and basic usage
+   - Critical bug fixes and IDE overview
 
 2. **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
    - All notable changes by version
    - Breaking changes and migration guides
    - Bug fixes and improvements
 
-3. **[CHANGES.md](CHANGES.md)** - Detailed changes for version 2.2.0
-   - Database module migration details
-   - Test coverage improvements  
-   - Architecture refactoring
-   - Migration guides
-
-4. **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
+3. **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
    - Contribution guidelines
    - Code style and standards
    - Pull request process
 
-5. **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Developer documentation
+4. **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Developer documentation
    - Architecture overview
    - Build instructions
    - Testing guidelines
    - API documentation
 
-6. **[PLUGINS.md](PLUGINS.md)** - Plugin documentation
+5. **[PLUGINS.md](PLUGINS.md)** - Plugin documentation
    - Available plugins
    - Plugin usage examples
    - Custom plugin development
 
+6. **[PLUGIN_DOCS_GENERATION.md](PLUGIN_DOCS_GENERATION.md)** - Plugin documentation generation
+   - How to generate plugin documentation
+   - Documentation structure
+   - Adding new plugins to docs
+
 ---
 
-## 📊 Testing & Quality
+## 🐛 Bug Tracking & Release Notes
 
-7. **[INTEGRATION_TESTS_AND_COVERAGE_REPORT.md](INTEGRATION_TESTS_AND_COVERAGE_REPORT.md)** - Test coverage report
-   - Current coverage metrics
-   - Integration test framework
-   - Coverage improvements
-   - Test statistics
+7. **[BUGS_FIXED.md](BUGS_FIXED.md)** - Comprehensive bug database
+   - All fixed bugs with detailed explanations
+   - Root cause analysis
+   - Test coverage for each fix
+   - TDD implementation details
 
-8. **[MIGRATION_COMPLETE_SUMMARY.md](MIGRATION_COMPLETE_SUMMARY.md)** - Database migration summary
-   - What was migrated
-   - Architecture changes
-   - Verification results
-   - Impact analysis
+8. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Current release notes
+   - Release highlights
+   - Major features and improvements
+   - Known issues and workarounds
+
+---
+
+## 📖 Technical Guides
+
+### Migration Guides
+
+9. **[V3_MIGRATION_GUIDE.md](V3_MIGRATION_GUIDE.md)** - Version 3.x migration guide
+   - Breaking changes in v3.x
+   - Migration steps
+   - Code examples
+
+10. **[HTTPCLIENT5_MIGRATION_GUIDE.md](HTTPCLIENT5_MIGRATION_GUIDE.md)** - HttpClient 5.x migration
+    - Migration from HttpClient 4.x to 5.x
+    - API changes
+    - Testing approach
+
+### User Guides
+
+11. **[PAUSE_RESUME_GUIDE.md](PAUSE_RESUME_GUIDE.md)** - Session management
+    - Pause and resume scraper execution
+    - Session state management
+    - Use cases and examples
+
+12. **[ENHANCED_METRICS_GUIDE.md](ENHANCED_METRICS_GUIDE.md)** - Metrics and monitoring
+    - Execution metrics
+    - Performance monitoring
+    - Event sourcing
+
+13. **[WORKING_XML_SYNTAX_REFERENCE.md](WORKING_XML_SYNTAX_REFERENCE.md)** - XML syntax reference
+    - Configuration file syntax
+    - Plugin usage patterns
+    - Examples and best practices
 
 ---
 
 ## 🚀 Deployment & Operations
 
-9. **[SFTP-UPLOAD-INSTRUCTIONS.md](SFTP-UPLOAD-INSTRUCTIONS.md)** - SourceForge deployment
-   - SFTP upload instructions
-   - File structure on SourceForge
-   - Deployment process
+14. **[SFTP-UPLOAD-INSTRUCTIONS.md](SFTP-UPLOAD-INSTRUCTIONS.md)** - SourceForge deployment
+    - SFTP upload instructions
+    - File structure on SourceForge
+    - Deployment process
 
-10. **[SOURCEFORGE-SETUP.md](SOURCEFORGE-SETUP.md)** - SourceForge project setup
+15. **[SOURCEFORGE-SETUP.md](SOURCEFORGE-SETUP.md)** - SourceForge project setup
     - Project configuration
     - Web hosting setup
     - File release system
@@ -76,34 +108,37 @@
 ## 📖 Documentation Categories
 
 ### For Users
-- README.md - Start here
-- PLUGINS.md - Plugin usage
-- CHANGELOG.md - What's new
+- **README.md** - Start here
+- **PLUGINS.md** - Plugin usage
+- **CHANGELOG.md** - What's new
+- **WORKING_XML_SYNTAX_REFERENCE.md** - XML syntax
 
 ### For Contributors
-- CONTRIBUTING.md - How to contribute
-- DEVELOPER_GUIDE.md - Development setup
-- CHANGES.md - Recent detailed changes
+- **CONTRIBUTING.md** - How to contribute
+- **DEVELOPER_GUIDE.md** - Development setup
+- **BUGS_FIXED.md** - Bug database and fixes
 
 ### For Maintainers
-- INTEGRATION_TESTS_AND_COVERAGE_REPORT.md - Quality metrics
-- MIGRATION_COMPLETE_SUMMARY.md - Architecture changes
-- SFTP-UPLOAD-INSTRUCTIONS.md - Deployment
+- **OCTOBER_2025_RELEASE_NOTES.md** - Current release
+- **ENHANCED_METRICS_GUIDE.md** - Monitoring
+- **SFTP-UPLOAD-INSTRUCTIONS.md** - Deployment
+- **Migration Guides** - Version upgrades
 
 ---
 
 ## 🗂️ Module-Specific Documentation
 
 ### webharvest-core
-```
-webharvest-core/
-├── INTEGRATION_TESTS_STATUS.md (if exists)
-├── PLUGIN_COVERAGE_IMPROVEMENT_PLAN.md (if exists)
-└── (module-specific docs)
-```
+- Module contains additional technical documentation
+- See `webharvest-core/*.md` for details
 
 ### Other Modules
-Check individual module directories for module-specific README files.
+- **webharvest-database/** - Database plugin README
+- **webharvest-ftp/** - FTP plugin README
+- **webharvest-mail/** - Mail plugin README
+- **webharvest-zip/** - Zip plugin README
+- **webharvest-webbrowser/** - Web browser plugin README
+- **webharvest-ide/** - IDE-specific documentation
 
 ---
 
@@ -113,34 +148,58 @@ Check individual module directories for module-specific README files.
 |----------|---------|----------|
 | README | Project overview | Everyone |
 | CHANGELOG | Version history | Users, Developers |
-| CHANGES | Detailed changes | Developers |
 | CONTRIBUTING | Contribution guide | Contributors |
 | DEVELOPER_GUIDE | Development docs | Developers |
 | PLUGINS | Plugin reference | Users, Developers |
-| INTEGRATION_TESTS... | Test coverage | QA, Maintainers |
-| MIGRATION_COMPLETE... | Migration details | Architects |
+| BUGS_FIXED | Bug database | QA, Developers |
+| OCTOBER_2025_RELEASE_NOTES | Current release | Everyone |
+| V3_MIGRATION_GUIDE | Version 3.x migration | Upgraders |
+| HTTPCLIENT5_MIGRATION_GUIDE | HttpClient migration | Developers |
+| PAUSE_RESUME_GUIDE | Session management | Advanced Users |
+| ENHANCED_METRICS_GUIDE | Monitoring | DevOps, Developers |
+| WORKING_XML_SYNTAX_REFERENCE | XML syntax | Users, Developers |
+| PLUGIN_DOCS_GENERATION | Doc generation | Contributors |
 | SFTP/SOURCEFORGE | Deployment | Release Managers |
 
 ---
 
 ## 🔄 Documentation Maintenance
 
-### Last Cleanup
-- **Date**: October 8, 2025
-- **Action**: Removed 25+ temporary/duplicate documentation files
-- **Result**: Clean, organized documentation structure
+### Latest Cleanup
+- **Date**: October 15, 2025
+- **Action**: Major consolidation - removed 28 duplicate/obsolete files
+- **Result**: Reduced from 45 to 17 files (62% reduction)
 
-### Removed (Temporary/Obsolete)
-- Coverage analysis files (multiple versions - superseded)
-- Migration planning files (completed - archived in CHANGES.md)
-- Testing analysis files (superseded by final reports)
-- Duplicate summaries (consolidated)
+### Changes Made
+1. **Deleted 20 duplicates** - Files already archived in `docs/archive/`
+2. **Archived 7 session summaries** - Historical session reports moved to archive
+3. **Consolidated bug documentation** - Bug #24 and Bug #39 details merged into BUGS_FIXED.md
+4. **Removed Polish duplicate** - GENERUJ_DOKUMENTACJE_PLUGINOW.md (English version kept)
+5. **Cleaned obsolete files** - Completed tasks and plans archived
 
-### Kept (Essential)
-- Core project documentation (README, CHANGELOG, etc.)
-- Developer guides
-- Current status reports
-- Deployment instructions
+### Files Removed
+- Architecture proposals and analyses (archived)
+- Session summaries and reports (archived)
+- Implementation summaries (consolidated)
+- Design documents (archived - designs completed)
+- Migration status files (archived - migrations complete)
+- Old architecture documentation (archived)
+
+### Kept (Essential - 17 files)
+- Core project documentation (README, CHANGELOG, CONTRIBUTING, DEVELOPER_GUIDE)
+- Plugin documentation (PLUGINS, PLUGIN_DOCS_GENERATION)
+- Bug tracking (BUGS_FIXED)
+- Current release (OCTOBER_2025_RELEASE_NOTES)
+- Technical guides (3 migration/user guides)
+- Deployment instructions (2 files)
+- This index file
+
+### Archived (docs/archive/)
+- 43+ historical documentation files
+- Session summaries and reports
+- Completed implementation plans
+- Old architecture documentation
+- Design proposals
 
 ---
 
@@ -159,14 +218,28 @@ Check individual module directories for module-specific README files.
 
 ### Updates
 - CHANGELOG.md updated with each release
-- CHANGES.md for detailed change descriptions
-- README.md for major feature changes
-- Module docs for module-specific changes
+- README.md updated for major features
+- BUGS_FIXED.md updated when bugs are fixed
+- Module docs updated for module-specific changes
+- This index updated when documentation structure changes
 
 ---
 
-**Total Documentation Files**: 10 (organized and maintained)  
-**Status**: Clean and up-to-date  
-**Last Review**: October 8, 2025
+## 📂 Archive Policy
+
+Historical documentation is moved to `docs/archive/` when:
+- Implementation/migration is complete
+- Session work is finished
+- Document superseded by newer version
+- Content consolidated into main documentation
+
+Archive preserves historical context while keeping root clean and navigable.
+
+---
+
+**Total Documentation Files**: 17 (streamlined and current)  
+**Archived Files**: 43+ (historical reference)  
+**Status**: Clean, organized, and up-to-date  
+**Last Review**: October 15, 2025
 
 
