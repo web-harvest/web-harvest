@@ -33,7 +33,12 @@
 
 package org.webharvest.plugin;
 
+import com.google.common.eventbus.EventBus;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.events.PluginExecutionStartedEvent;
+import org.webharvest.runtime.session.events.PluginExecutionCompletedEvent;
+import org.webharvest.runtime.session.events.PluginExecutionFailedEvent;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -99,12 +104,61 @@ public abstract class AbstractPlugin implements Plugin {
             throw new IllegalArgumentException("Context cannot be null");
         }
         
+        // Bug #24: Event Sourcing - Get EventBus and Session from context
+        final EventBus eventBus = context.getEventBus();
+        final ScraperSession session = context.getSession();
+        final String pluginName = configuration != null ? configuration.getElementName() : getClass().getSimpleName();
+        final long startTimeMs = System.currentTimeMillis();
+        
+        // Bug #24: Publish PluginExecutionStartedEvent
+        if (eventBus != null && session != null) {
+            try {
+                eventBus.post(new PluginExecutionStartedEvent(session, pluginName, getClass()));
+            } catch (Exception eventEx) {
+                LOGGER.warn("Failed to publish PluginExecutionStartedEvent: {}", eventEx.getMessage());
+                // Don't fail execution due to event publishing error
+            }
+        }
+        
         // Bug #5 Fix: Wrap execution in try-finally to ensure cleanup always runs
+        Variable result = null;
+        Throwable executionError = null;
         try {
-            return doExecute(context);
+            result = doExecute(context);
+            return result;
         } catch (Exception e) {
+            executionError = e;
+            
+            // Bug #24: Publish PluginExecutionFailedEvent
+            if (eventBus != null && session != null) {
+                try {
+                    long executionTimeMs = System.currentTimeMillis() - startTimeMs;
+                    eventBus.post(new PluginExecutionFailedEvent(
+                        session, pluginName, getClass(), executionTimeMs, e));
+                    
+                    // Record metrics
+                    session.getMetrics().recordPluginExecution(pluginName, executionTimeMs);
+                } catch (Exception eventEx) {
+                    LOGGER.warn("Failed to publish PluginExecutionFailedEvent: {}", eventEx.getMessage());
+                }
+            }
+            
             throw new RuntimeException("Plugin execution failed: " + e.getMessage(), e);
         } finally {
+            // Bug #24: Publish PluginExecutionCompletedEvent on success
+            if (executionError == null && eventBus != null && session != null) {
+                try {
+                    long executionTimeMs = System.currentTimeMillis() - startTimeMs;
+                    eventBus.post(new PluginExecutionCompletedEvent(
+                        session, pluginName, getClass(), executionTimeMs, result));
+                    
+                    // Record metrics
+                    session.getMetrics().recordPluginExecution(pluginName, executionTimeMs);
+                } catch (Exception eventEx) {
+                    LOGGER.warn("Failed to publish PluginExecutionCompletedEvent: {}", eventEx.getMessage());
+                }
+            }
+            
             // Bug #5: Cleanup must be called even when doExecute() throws exception
             // This ensures resources are released and metrics are recorded
             try {

@@ -35,14 +35,19 @@ package org.webharvest.runtime;
 
 import java.io.IOException;
 
+import com.google.common.eventbus.EventBus;
 import org.webharvest.Harvester;
 import org.webharvest.definition.Config;
 import org.webharvest.ioc.ContextFactory;
 import org.webharvest.ioc.Scraping;
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.ScraperSessionImpl;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.assistedinject.Assisted;
+
+import java.util.UUID;
 
 /**
  * Default implementation of {@link Harvester} interface aimed to perform data
@@ -77,6 +82,9 @@ public class ScrapingHarvester implements Harvester {
     private final Config config;
 
     private final ContextFactory contextFactory;
+    
+    // Bug #24: EventBus for plugin event publishing (injected from Guice)
+    private final EventBus eventBus;
 
     /**
      * Class constructor expecting Guice
@@ -90,15 +98,19 @@ public class ScrapingHarvester implements Harvester {
      *            reference to a {@link DynamicScopeContext} factory.
      * @param config
      *            reference to the configuration {@link Config}.
+     * @param eventBus
+     *            the EventBus for publishing plugin execution events (Bug #24)
      * @throws IOException
      */
     @Inject
     public ScrapingHarvester(final Provider<WebScraper> scraperProvider,
             final ContextFactory contextFactory,
-            @Assisted final Config config) {
+            @Assisted final Config config,
+            final EventBus eventBus) {
         this.scraperProvider = scraperProvider;
         this.contextFactory = contextFactory;
         this.config = config;
+        this.eventBus = eventBus;
     }
 
     /**
@@ -111,6 +123,18 @@ public class ScrapingHarvester implements Harvester {
 
         final DynamicScopeContext context =
                 contextFactory.create(config);
+        
+        // Bug #24: Set EventBus and Session in context for plugin event publishing
+        // Create a simple session for CLI/IDE (legacy API compatibility)
+        if (eventBus != null) {
+            context.setEventBus(eventBus);
+            
+            // Create legacy session (simple wrapper for CLI/IDE)
+            String sessionId = UUID.randomUUID().toString();
+            ScraperSession session = new ScraperSessionImpl(sessionId, "cli", config, eventBus);
+            context.setSession(session);
+        }
+        
         callback.onSuccess(context);
 
         scraper.execute(context);

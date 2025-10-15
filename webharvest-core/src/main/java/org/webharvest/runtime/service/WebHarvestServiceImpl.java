@@ -169,6 +169,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             DynamicScopeContext context = new ScraperContext();
             context.setConfig(session.getConfig());
             
+            // Bug #24: Set EventBus and Session in context for plugin event publishing
+            context.setEventBus(eventBus);
+            context.setSession(session);
+            
             // Mark as running
             session.markRunning(context);
             

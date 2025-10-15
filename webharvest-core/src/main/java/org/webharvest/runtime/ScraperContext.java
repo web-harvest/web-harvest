@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -62,6 +63,7 @@ import org.webharvest.utils.KeyValuePair;
 import org.webharvest.utils.Stack;
 import org.webharvest.utils.SystemUtilities;
 
+import com.google.common.eventbus.EventBus;
 import com.google.inject.Inject;
 
 /**
@@ -87,6 +89,11 @@ public class ScraperContext implements DynamicScopeContext {
     private String charset;
 
     private Config config;
+    
+    // Bug #24: Event Sourcing for Inter-Processor Communication
+    // These fields are set once during initialization and then immutable
+    private EventBus eventBus;
+    private ScraperSession session;
 
     public ScraperContext() {
         variablesNamesStack.push(new HashSet<String>());
@@ -250,6 +257,38 @@ public class ScraperContext implements DynamicScopeContext {
     @Deprecated
     public void setConfig(final Config config) {
         this.config = config;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public EventBus getEventBus() {
+        return eventBus;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setEventBus(EventBus eventBus) {
+        this.eventBus = eventBus;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ScraperSession getSession() {
+        return session;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSession(ScraperSession session) {
+        this.session = session;
     }
 
 }

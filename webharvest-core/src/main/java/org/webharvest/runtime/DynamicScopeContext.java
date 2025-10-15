@@ -42,9 +42,11 @@ import java.io.File;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import com.google.common.eventbus.EventBus;
 import org.webharvest.definition.Config;
 // REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
@@ -101,5 +103,67 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
 
     @Deprecated
     void setConfig(Config config);
+    
+    /**
+     * Returns the EventBus for publishing plugin execution events.
+     * 
+     * <p>This method is part of Bug #24: Event Sourcing for Inter-Processor Communication.
+     * It provides plugins access to the EventBus for publishing execution events.</p>
+     * 
+     * <h3>Thread Safety:</h3>
+     * <p>The EventBus reference is immutable (set once during context initialization).
+     * EventBus.post() is thread-safe and can be called from multiple threads.</p>
+     * 
+     * @return the EventBus, or null if not set (backwards compatibility)
+     * @since 2.2.0
+     * @see com.google.common.eventbus.EventBus
+     */
+    EventBus getEventBus();
+    
+    /**
+     * Returns the ScraperSession associated with this execution context.
+     * 
+     * <p>This method is part of Bug #24: Event Sourcing for Inter-Processor Communication.
+     * It provides plugins access to session metadata for event publishing.</p>
+     * 
+     * <h3>Thread Safety:</h3>
+     * <p>The ScraperSession reference is immutable (set once during context initialization).
+     * ScraperSession methods are thread-safe (volatile fields, synchronized transitions).</p>
+     * 
+     * @return the ScraperSession, or null if not set (backwards compatibility)
+     * @since 2.2.0
+     * @see org.webharvest.runtime.session.ScraperSession
+     */
+    ScraperSession getSession();
+    
+    /**
+     * Sets the EventBus for this context.
+     * 
+     * <p>This method should be called once during context initialization,
+     * before any plugins are executed.</p>
+     * 
+     * <h3>Thread Safety:</h3>
+     * <p>This method is NOT thread-safe. It must be called during initialization
+     * before the context is shared across threads.</p>
+     * 
+     * @param eventBus the EventBus to use for publishing events
+     * @since 2.2.0
+     */
+    void setEventBus(EventBus eventBus);
+    
+    /**
+     * Sets the ScraperSession for this context.
+     * 
+     * <p>This method should be called once during context initialization,
+     * before any plugins are executed.</p>
+     * 
+     * <h3>Thread Safety:</h3>
+     * <p>This method is NOT thread-safe. It must be called during initialization
+     * before the context is shared across threads.</p>
+     * 
+     * @param session the ScraperSession to associate with this context
+     * @since 2.2.0
+     */
+    void setSession(ScraperSession session);
 
 }
