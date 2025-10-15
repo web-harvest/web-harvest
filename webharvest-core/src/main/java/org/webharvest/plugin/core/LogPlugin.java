@@ -194,13 +194,13 @@ import org.webharvest.runtime.variables.Variable;
  * }</pre>
  * 
  * @author Robert Bala (TDD implementation based on original concept by zsombor)
- * @since 2.2.1
+ * @since 2.2.0
  * @see org.webharvest.plugin.core.EchoPlugin
  */
 @CorePlugin(
     elementName = "log",
     description = "Log plugin that writes text to stdout or stderr",
-    version = "2.2.1"
+    version = "2.2.0"
 )
 public class LogPlugin extends AbstractPlugin {
 
@@ -280,7 +280,7 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public String getVersion() {
-            return "2.2.1";
+            return "2.2.0";
         }
 
         @Override
@@ -395,7 +395,7 @@ public class LogPlugin extends AbstractPlugin {
 
                 @Override
                 public String getVersion() {
-                    return "2.2.1";
+                    return "2.2.0";
                 }
 
                 @Override

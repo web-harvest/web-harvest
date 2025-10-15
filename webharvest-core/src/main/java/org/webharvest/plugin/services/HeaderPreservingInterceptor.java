@@ -45,7 +45,7 @@ import java.util.HashMap;
  * }</pre>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class HeaderPreservingInterceptor implements HttpRequestInterceptor {
     

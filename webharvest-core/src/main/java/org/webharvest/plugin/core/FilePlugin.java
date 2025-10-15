@@ -87,7 +87,7 @@ import java.util.regex.PatternSyntaxException;
  *   <li><strong>list:</strong> List directory contents with optional filtering</li>
  * </ul>
  * 
- * <h3>Binary File Support (Bug #41 - Fixed in v2.2.1)</h3>
+ * <h3>Binary File Support (Bug #41 - Fixed in v2.2.0)</h3>
  * <p>
  * <strong>Issue:</strong> Binary files (images, PDFs, ZIPs, RAR) were corrupted when
  * saved because content was converted to String and back to bytes, causing encoding issues.
@@ -329,13 +329,13 @@ import java.util.regex.PatternSyntaxException;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.1
+ * @version 2.2.0
  * @since 1.0
  */
 @CorePlugin(
     elementName = "file",
     description = "File plugin that provides file operations",
-    version = "2.2.1"
+    version = "2.2.0"
 )
 public class FilePlugin extends AbstractPlugin {
     

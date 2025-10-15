@@ -13,7 +13,7 @@ import static org.testng.Assert.*;
  * retrieves the first group value from the FIRST regex instead of its own groups.
  * 
  * Reported: GitHub Issue #62
- * Fixed in: v2.2.1
+ * Fixed in: v2.2.0
  */
 public class Bug62RegexpGroupIsolationIntegrationTest extends XmlBasedIntegrationTestBase {
 

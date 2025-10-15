@@ -66,7 +66,7 @@ import java.util.Set;
  * {@link javax.script.ScriptContext} instances each time script is evaluated is
  * quite expensive.
  * 
- * <p><b>v2.2.1 CRITICAL FIX (October 2025):</b> Fixed 18-year-old bug in {@link #copyVariables(DynamicScopeContext)}.
+ * <p><b>v2.2.0 CRITICAL FIX (October 2025):</b> Fixed 18-year-old bug in {@link #copyVariables(DynamicScopeContext)}.
  * Previously, {@link Variable} objects were passed directly to BeanShell for non-{@link ScriptingVariable} types,
  * causing "Operator '+' inappropriate for objects" errors. Now always calls {@link Variable#getWrappedObject()}
  * and performs automatic String→Number conversion for arithmetic operations.</p>
@@ -81,7 +81,7 @@ import java.util.Set;
  *
  * @author Piotr Dyraga
  * @since 2.1.0-SNAPSHOT
- * @version 2.2.1
+ * @version 2.2.0
  */
 public final class JSRScriptEngineAdapter implements ScriptEngine {
 
@@ -239,7 +239,7 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
     }
     
     /**
-     * Bug #7 FIX: Clears all bindings from JSR-223 ScriptContext.
+     * Bug #7 FIX (SourceForge Patch #7): Clears all bindings from JSR-223 ScriptContext.
      * 
      * <p>
      * This method removes ALL variables from the script engine's context across all scopes.
@@ -268,26 +268,27 @@ public final class JSRScriptEngineAdapter implements ScriptEngine {
      * clearJSRScriptContextAttributes();  // Remove ALL old variables
      * copyVariables(context);              // Add ONLY current context variables
      * </pre>
-     * Now second call correctly has param1 = undefined/null as expected in v2.0.
+     * This significantly improves isolation, though complete v2.0 semantics may not be
+     * achievable due to BeanShell's internal {@code bsh.NameSpace} architecture.
      * </p>
      * 
-     * <h3>Implementation Details:</h3>
-     * <ul>
-     *   <li>Iterates through ALL scopes in ScriptContext</li>
-     *   <li>Gets Bindings for each scope</li>
-     *   <li>Uses iterator.remove() to safely clear all entries</li>
-     *   <li>Null-safe for testing environments</li>
-     * </ul>
+     * <h3>Implementation:</h3>
+     * <p>
+     * Uses {@code Iterator.remove()} pattern from original Patch #7 to safely clear
+     * all bindings across all scopes. This is the JSR-223 compliant approach.
+     * </p>
      * 
-     * @since 2.2.1
+     * <h3>BeanShell Limitation:</h3>
+     * <p>
+     * BeanShell stores variables in internal {@code bsh.NameSpace} which may persist
+     * beyond JSR-223 Bindings clearing. For complete isolation, use
+     * {@link #detectScopePollution(DynamicScopeContext)} in strict mode or create
+     * fresh ScriptEngine per evaluation (performance trade-off).
+     * </p>
+     * 
+     * @since 2.2.0
      * @see #copyVariables(DynamicScopeContext)
-     */
-    /**
-     * Bug #7 FIX (SourceForge Patch #7): Clears JSR-223 ScriptContext bindings.
-     * 
-     * Original patch by user - uses Iterator.remove() to clear all bindings.
-     * This prevents scope pollution where variables from previous evaluations
-     * remain visible in subsequent calls.
+     * @see #detectScopePollution(DynamicScopeContext)
      */
     private void clearJSRScriptContextAttributes() {
         final javax.script.ScriptContext scriptContext = adaptee.getContext();

@@ -65,7 +65,7 @@ import java.util.List;
  * limit is reached.
  * </p>
  * 
- * <h3>Bug #19 Fix: Memory Leak Prevention (v2.2.1)</h3>
+ * <h3>Bug #19 Fix: Memory Leak Prevention (v2.2.0)</h3>
  * <p>
  * <strong>Problem:</strong> Variables created inside while loop body accumulated in memory,
  * causing {@code OutOfMemoryError} during long-running loops (pagination, API polling).

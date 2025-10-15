@@ -35,14 +35,14 @@ import static org.testng.Assert.*;
  * causing double conversion: byte[] → String → byte[] = CORRUPTION!
  * </p>
  * 
- * <p><strong>Fix (v2.2.1):</strong></p>
+ * <p><strong>Fix (v2.2.0):</strong></p>
  * <p>
  * FilePlugin now uses {@link NodeVariable#toBinary()} which preserves
  * byte[] without String conversion when type="binary".
  * </p>
  * 
  * @author Web-Harvest Team
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class FilePluginBug41Test {
     

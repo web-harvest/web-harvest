@@ -77,7 +77,7 @@ import java.util.regex.Pattern;
  *   <li><strong>Regex flags:</strong> Case-insensitive, multiline, dotall, etc.</li>
  * </ul>
  * 
- * <h3>Captured Group Variables (Bug #62 Fixed in v2.2.1)</h3>
+ * <h3>Captured Group Variables (Bug #62 Fixed in v2.2.0)</h3>
  * <p>
  * Capture groups from pattern matching are automatically stored as variables:
  * </p>
@@ -89,7 +89,7 @@ import java.util.regex.Pattern;
  * </ul>
  * 
  * <p>
- * <strong>Bug #62 Fix:</strong> Prior to v2.2.1, sequential (non-nested) regexp calls
+ * <strong>Bug #62 Fix:</strong> Prior to v2.2.0, sequential (non-nested) regexp calls
  * would incorrectly share group variables. Groups are now properly cleared before each
  * regexp execution, ensuring complete isolation.
  * </p>
@@ -229,7 +229,7 @@ import java.util.regex.Pattern;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.1
+ * @version 2.2.0
  * @since 1.0
  * @see java.util.regex.Pattern
  * @see RegexpPatternPlugin
@@ -238,8 +238,8 @@ import java.util.regex.Pattern;
  */
 @CorePlugin(
     elementName = "regexp",
-    description = "Regular expression plugin with group isolation (Bug #62 fixed in v2.2.1)",
-    version = "2.2.1"
+    description = "Regular expression plugin with group isolation (Bug #62 fixed in v2.2.0)",
+    version = "2.2.0"
 )
 public class RegexpPlugin extends AbstractPlugin {
     

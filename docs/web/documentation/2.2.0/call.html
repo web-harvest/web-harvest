@@ -202,6 +202,34 @@ configurations, and abstraction of complex logic into reusable components.</p>
         </section>
 
         <section class="section">
+            <div class="window warning-window" style="margin: var(--spacing-4) 0; border-left: 4px solid #f59e0b; background: #fffbeb;">
+                <div class="window-header" style="background: #fef3c7; color: #92400e;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>⚠️ Important: Always Provide ALL Function Parameters (Bug #7 Fix)</span>
+                </div>
+                <div class="window-content">
+                    <p><strong>Best Practice:</strong> Always explicitly provide ALL function parameters, even if empty:</p>
+                    <pre class="language-xml" style="margin: var(--spacing-3) 0;"><code>&lt;!-- CORRECT: Explicit parameters --&gt;
+&lt;call name="myFunction"&gt;
+    &lt;call-param name="param1"&gt;value&lt;/call-param&gt;
+    &lt;call-param name="param2"&gt;&lt;/call-param&gt;  &lt;!-- Empty if not used --&gt;
+&lt;/call&gt;
+
+&lt;!-- AVOID: Omitting parameters (may cause warnings) --&gt;
+&lt;call name="myFunction"&gt;
+    &lt;call-param name="param1"&gt;value&lt;/call-param&gt;
+    &lt;!-- param2 omitted - may retain value from previous call! --&gt;
+&lt;/call&gt;</code></pre>
+                    <p style="margin-top: var(--spacing-3);">
+                        v2.2.0 includes <strong>Bug #7 fix</strong> with automatic detection of scope pollution.
+                        See <a href="function.html" style="color: #92400e; text-decoration: underline;">&lt;function&gt; documentation</a>
+                        for details and strict mode configuration.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
             <h2 class="section-title">Related Processors</h2><div class="related-links">
                 <a href="function.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;function&gt;

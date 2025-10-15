@@ -27,7 +27,7 @@ import static org.testng.Assert.*;
  * feature in actual WebHarvest XML configurations and Java integration.</p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"integration", "bugs", "http"})
 public class HttpRedirectIntegrationBug36Test {
@@ -151,7 +151,7 @@ public class HttpRedirectIntegrationBug36Test {
         // Configure HttpService to preserve headers on redirect
         Map<String, String> loginHeaders = new HashMap<>();
         loginHeaders.put("Referer", "https://shop.example.com/login");
-        loginHeaders.put("User-Agent", "WebHarvest/2.2.1");
+        loginHeaders.put("User-Agent", "WebHarvest/2.2.0");
         
         HttpService httpService = new HttpServiceImpl(true, loginHeaders);
         
@@ -273,7 +273,7 @@ public class HttpRedirectIntegrationBug36Test {
         System.out.println("  ✅ Safe: Referer, User-Agent, Accept-Language");
         System.out.println("  ❌ Risky: Cookie, Authorization, X-API-Key (same-domain only)");
         System.out.println("");
-        System.out.println("STATUS: ✅ IMPLEMENTED in v2.2.1");
+        System.out.println("STATUS: ✅ IMPLEMENTED in v2.2.0");
         
         assertTrue(true, "Complete documentation provided");
     }

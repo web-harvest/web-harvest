@@ -60,7 +60,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * headers, parameters, authentication, redirects, proper URL encoding, and binary content.
  * </p>
  * 
- * <h3>Binary Content Support (Bug #39 - Fixed in v2.2.1)</h3>
+ * <h3>Binary Content Support (Bug #39 - Fixed in v2.2.0)</h3>
  * <p>
  * <strong>Issue:</strong> Binary content (images, PDFs, videos) was always converted to String,
  * corrupting binary data. No way to force binary mode for misconfigured servers.
@@ -78,7 +78,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * This prevents corruption of binary data.
  * </p>
  * 
- * <h3>URL Encoding (Bug #55 - Fixed in v2.2.1)</h3>
+ * <h3>URL Encoding (Bug #55 - Fixed in v2.2.0)</h3>
  * <p>
  * <strong>Issue:</strong> Character '#' in URL parameter values was not encoded,
  * causing URL truncation. Everything after '#' was treated as fragment/anchor.
@@ -160,7 +160,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.1
+ * @version 2.2.0
  * @see org.webharvest.utils.CommonUtil#encodeUrl(String, String)
  */
 @CorePlugin(elementName = "http")
@@ -247,7 +247,7 @@ public class HttpPlugin extends AbstractPlugin {
      * 
      * @param contentType the Content-Type header value
      * @return true if binary content, false if text
-     * @since 2.2.1
+     * @since 2.2.0
      */
     private boolean isBinaryContentType(String contentType) {
         if (contentType == null || contentType.isEmpty()) {

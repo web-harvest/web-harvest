@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
  * Tests real-world scenarios with CSS selectors.
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"integration", "bugs", "css"})
 public class CssSelectorIntegrationBug13Test {

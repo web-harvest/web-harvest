@@ -539,7 +539,7 @@ public class CommonUtil {
      * Handles relative links, absolute paths, query parameters, and parent directory references.
      * Links can be full URLs, absolute paths, or relative paths as found in A or IMG tags.
      * 
-     * <h3>Bug #7 Fix (v2.2.1): Parent Directory Normalization</h3>
+     * <h3>Bug #7 Fix (v2.2.0): Parent Directory Normalization</h3>
      * <p>
      * <strong>Issue:</strong> Parent directory references ("..") were not normalized,
      * resulting in URLs like {@code http://example.com/foo/../bar.htm}.
@@ -554,7 +554,7 @@ public class CommonUtil {
      * @param link Relative or absolute link
      * @return Normalized full URL
      * @since 1.0
-     * @version 2.2.1
+     * @version 2.2.0
      */
     public static String fullUrl(String pageUrl, String link) {
         if (isFullUrl(link)) {
@@ -598,7 +598,7 @@ public class CommonUtil {
      * 
      * @param url URL to normalize
      * @return Normalized URL with ".." and "." resolved
-     * @since 2.2.1
+     * @since 2.2.0
      */
     private static String normalizePath(String url) {
         if (url == null || !url.contains("/")) {
@@ -664,7 +664,7 @@ public class CommonUtil {
      * for null it is an EmptyVariable, and for others it is NodeVariable
      * that wraps specified object.
      * 
-     * <h3>Bug #29 Fix (v2.2.1): NativeJavaObject Support</h3>
+     * <h3>Bug #29 Fix (v2.2.0): NativeJavaObject Support</h3>
      * <p>
      * <strong>Issue:</strong> Script processor with JavaScript returns NativeJavaObject,
      * but createVariable didn't unwrap it, causing it to be stored as-is in NodeVariable.
@@ -677,7 +677,7 @@ public class CommonUtil {
      * @param value Object to convert to Variable
      * @return Appropriate Variable instance
      * @since 1.0
-     * @version 2.2.1
+     * @version 2.2.0
      */
     public static Variable createVariable(Object value) {
         if (value instanceof Variable) {

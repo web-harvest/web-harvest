@@ -16,7 +16,7 @@ import java.util.Properties;
 /**
  * Unified settings for WebHarvest CLI and GUI/IDE.
  * 
- * <h3>Bug #39: Synchronize CLI Arguments and GUI Settings (v2.2.1)</h3>
+ * <h3>Bug #39: Synchronize CLI Arguments and GUI Settings (v2.2.0)</h3>
  * <p>
  * This class provides a unified configuration system that can be used by both
  * CLI and GUI/IDE, eliminating the need to configure settings separately.
@@ -55,7 +55,7 @@ import java.util.Properties;
  * </pre>
  * 
  * @author Robert Bala
- * @since 2.2.1 (Bug #39)
+ * @since 2.2.0 (Bug #39)
  */
 public class WebHarvestSettings {
     

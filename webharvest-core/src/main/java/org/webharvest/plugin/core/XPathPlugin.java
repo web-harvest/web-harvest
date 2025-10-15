@@ -80,7 +80,7 @@ import org.xml.sax.InputSource;
  * It requires both content and expression as sub-elements.
  * </p>
  * 
- * <h3>Bug #13 Enhancement: CSS Selector Support (v2.2.1)</h3>
+ * <h3>Bug #13 Enhancement: CSS Selector Support (v2.2.0)</h3>
  * <p>
  * Added support for CSS selectors as a modern alternative to XPath for HTML querying.
  * Use the {@code type="css"} attribute to enable CSS selector mode.

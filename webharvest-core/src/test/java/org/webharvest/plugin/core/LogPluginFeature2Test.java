@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
  * Plugin to write text to stdout or stderr.
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class LogPluginFeature2Test {
 

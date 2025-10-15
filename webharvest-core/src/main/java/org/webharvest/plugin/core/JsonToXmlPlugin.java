@@ -66,7 +66,7 @@ import org.webharvest.runtime.variables.Variable;
  *   <li><strong>Consistent pipeline:</strong> Same processors ({@code <xpath>}) for all data sources</li>
  * </ul>
  * 
- * <h3>Bug #61 Fix (v2.2.1): "content" Key Preservation</h3>
+ * <h3>Bug #61 Fix (v2.2.0): "content" Key Preservation</h3>
  * <p>
  * <strong>Issue:</strong> The org.json.XML library treated the JSON key {@code "content"}
  * specially, stripping it from XML output and using its value as element text content.
@@ -78,7 +78,7 @@ import org.webharvest.runtime.variables.Variable;
  * Output XML: {@code <article>hello world</article>} (content key lost!)
  * </p>
  * <p>
- * <strong>After Fix (v2.2.1):</strong><br>
+ * <strong>After Fix (v2.2.0):</strong><br>
  * Input JSON: {@code {"article": {"content": "hello world"}}}<br>
  * Output XML: {@code <article><content>hello world</content></article>} (preserved!)
  * </p>
@@ -229,7 +229,7 @@ import org.webharvest.runtime.variables.Variable;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.1
+ * @version 2.2.0
  * @since 2.0
  * @see JsonXmlConverter
  */

@@ -15,7 +15,7 @@ import static org.testng.Assert.*;
  * Tests real-world XML configurations with LogPlugin.
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"integration", "features", "log"})
 public class LogPluginIntegrationFeature2Test {

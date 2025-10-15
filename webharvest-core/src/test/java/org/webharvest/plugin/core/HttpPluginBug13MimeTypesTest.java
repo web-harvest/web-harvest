@@ -29,7 +29,7 @@ import static org.testng.Assert.*;
  * <p><strong>Status:</strong> VERIFIED FIXED (by architecture refactoring)</p>
  * 
  * @author Web-Harvest Team
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class HttpPluginBug13MimeTypesTest {
     

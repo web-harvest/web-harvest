@@ -53,7 +53,7 @@ import java.util.List;
  * This implementation uses PluginConfiguration.getChildren() to execute child plugins
  * without relying on the old IElementDef/Processor architecture.
  * 
- * <p><b>v2.2.1 CRITICAL FIX (October 2025):</b> Plugin instances are now created via Guice
+ * <p><b>v2.2.0 CRITICAL FIX (October 2025):</b> Plugin instances are now created via Guice
  * {@link InjectorHelper#getInjector()}.getInstance() instead of reflection ({@code newInstance()}).
  * This ensures that {@code @Inject} dependencies (like {@code HttpService}) are properly injected.
  * Previously, plugins with dependencies would fail with {@code NullPointerException} or 
@@ -61,7 +61,7 @@ import java.util.List;
  * 
  * @author Robert Bala
  * @since 2.2.0
- * @version 2.2.1
+ * @version 2.2.0
  */
 public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     
@@ -140,7 +140,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
         
         try {
-            // v2.2.1 CRITICAL FIX: Use Guice Injector to create plugin instances
+            // v2.2.0 CRITICAL FIX: Use Guice Injector to create plugin instances
             // This ensures @Inject dependencies (like HttpService) are properly injected!
             // OLD: Plugin childPlugin = pluginClass.newInstance(); // ❌ No dependency injection!
             // NEW: Use InjectorHelper to get Guice-managed instance

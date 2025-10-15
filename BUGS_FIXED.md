@@ -15,13 +15,13 @@ Each bug entry includes:
 
 ---
 
-## Version 2.2.1 (In Progress)
+## Version 2.2.0 (In Progress)
 
 ### Bug #40: Allow Plugins from Other Packages to be Autoscanned and Don't Force XML Schema
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #40 (Feature Request)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium (enhancement - improves extensibility)  
 **Component**: `webharvest-core` - Plugin scanning and XML validation
 
@@ -65,7 +65,7 @@ This caused issues when:
 - Server sends incorrect Content-Type headers
 - Development/testing environments where validation overhead not needed
 
-#### Fix (v2.2.1)
+#### Fix (v2.2.0)
 
 **Solution 1: PluginPackageScanner**
 
@@ -256,7 +256,7 @@ java -Dwebharvest.plugin.packages=com.example.plugins \
 - ✗ Cannot use plugins without XSD schemas
 - ✗ No flexibility for different environments
 
-**After Fix (v2.2.1):**
+**After Fix (v2.2.0):**
 - ✅ **Custom package scanning** - plugins discovered automatically
 - ✅ **System property configuration** - no code changes needed
 - ✅ **Schema validation toggle** - enable/disable as needed
@@ -322,7 +322,7 @@ java -jar webharvest.jar config.xml
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #41 + SourceForge Forum  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High (data corruption - related to Bug #39)  
 **Component**: `webharvest-core` - `FilePlugin` binary write handling
 
@@ -364,7 +364,7 @@ if (type.equals("binary")) {
 
 **Result**: RAR/ZIP/PDF files corrupted and unusable!
 
-#### Fix (v2.2.1)
+#### Fix (v2.2.0)
 **Use `NodeVariable.toBinary()`** instead of `toString().getBytes()`:
 
 ```java
@@ -444,7 +444,7 @@ if (type.equals("binary")) {
 - ✗ PDF files corrupted (cannot open)
 - ✗ Large images corrupted
 
-**After Fix** (v2.2.1+):
+**After Fix** (v2.2.0+):
 - ✅ RAR files work
 - ✅ ZIP files work
 - ✅ PDF files work
@@ -473,7 +473,7 @@ if (type.equals("binary")) {
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #27  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High (memory leak + CPU load)  
 **Component**: `webharvest-core` - `AbstractProcessor` exception handling
 
@@ -530,7 +530,7 @@ public Variable run(DynamicScopeContext context) throws InterruptedException {
 > "The fix should be probably to wrap `Variable result = execute(scraper, context);` 
 > with try..finally and only rethrow the exception after unwinding stack."
 
-#### Fix (v2.2.1)
+#### Fix (v2.2.0)
 **Wrapped execution in try-finally** to ensure cleanup ALWAYS happens:
 
 ```java
@@ -601,7 +601,7 @@ public Variable run(DynamicScopeContext context) throws InterruptedException {
 - ✗ 100% CPU load after many exceptions
 - ✗ Eventually: OutOfMemoryError
 
-**After Fix** (v2.2.1+):
+**After Fix** (v2.2.0+):
 - ✅ Log indent stays correct
 - ✅ No memory leaks
 - ✅ No CPU spikes
@@ -624,7 +624,7 @@ public Variable run(DynamicScopeContext context) throws InterruptedException {
 
 **Status**: ✅ FIXED (REGRESSION - Feature Restored)  
 **Reported**: GitHub Issue #33  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High (regression - feature existed before)  
 **Component**: `webharvest-webbrowser` - `WebBrowserPlugin` with HtmlUnit
 
@@ -674,7 +674,7 @@ requests only get initial HTML, missing AJAX-loaded data.
 - ❌ PhantomJS integration NOT migrated
 - ❌ Only placeholder methods: "Simulate browser loading..."
 
-**Restored (v2.2.1, 2025)**:
+**Restored (v2.2.0, 2025)**:
 - ✅ Full reimplementation with HtmlUnit 2.70.0
 - ✅ JavaScript execution
 - ✅ AJAX handling
@@ -688,7 +688,7 @@ During architecture modernization, WebBrowser plugin was recreated but:
 3. `phantomjs_template.js` preserved in resources but unused
 4. Feature effectively LOST for users
 
-#### Fix (v2.2.1)
+#### Fix (v2.2.0)
 **Reimplemented with HtmlUnit** (modern, actively maintained, pure Java):
 
 **1. Added HtmlUnit dependency**:
@@ -819,7 +819,7 @@ During architecture modernization, WebBrowser plugin was recreated but:
 - ✗ Only static HTML scraping
 - ✗ Dynamic websites unsupported
 
-**After Fix** (v2.2.1+):
+**After Fix** (v2.2.0+):
 - ✅ Full JavaScript execution
 - ✅ AJAX requests handled
 - ✅ Wait for dynamic content
@@ -848,7 +848,7 @@ During architecture modernization, WebBrowser plugin was recreated but:
 - Original report: [GitHub Issue #33]
 - Old implementation: r649-r655 (2013-2015), PhantomJS
 - Lost: r695 (2024-10-08), architecture refactoring
-- Restored: v2.2.1 (2025-10-09), HtmlUnit implementation
+- Restored: v2.2.0 (2025-10-09), HtmlUnit implementation
 - HtmlUnit: https://htmlunit.sourceforge.io/
 
 ---
@@ -857,7 +857,7 @@ During architecture modernization, WebBrowser plugin was recreated but:
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #39  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High (data corruption)  
 **Component**: `webharvest-core` - `HttpPlugin`, `HttpResponse`, `HttpServiceImpl`, `HttpResponseImpl`
 
@@ -911,7 +911,7 @@ Original JPEG:  FF D8 FF E0 80 90 A0 F0
 After String:   EF BF BD EF BF BD EF BF  (corrupted!)
 ```
 
-#### Fix Implemented (v2.2.1)
+#### Fix Implemented (v2.2.0)
 
 **Solution**: Auto-detection of binary Content-Type + new `getBodyAsBinary()` API
 
@@ -1050,7 +1050,7 @@ private boolean isBinaryContentType(String contentType) {
 - ✗ Images/PDFs treated as text
 - ✗ Required workarounds (direct file write, external tools)
 
-**After Fix** (v2.2.1+):
+**After Fix** (v2.2.0+):
 - ✅ Auto-detection of binary MIME types
 - ✅ Binary data preserved in NodeVariable (byte[])
 - ✅ Works transparently for all `<http>` elements
@@ -1075,7 +1075,7 @@ private boolean isBinaryContentType(String contentType) {
 #### References
 - Original report: [GitHub Issue #39]
 - Forum: http://sourceforge.net/projects/web-harvest/forums/forum/591299/topic/3855226
-- Implementation: HttpPlugin.java, HttpResponse.java (v2.2.1)
+- Implementation: HttpPlugin.java, HttpResponse.java (v2.2.0)
 
 ---
 
@@ -1084,7 +1084,7 @@ private boolean isBinaryContentType(String contentType) {
 **Status**: ✅ VERIFIED FIXED (Architecture Change)  
 **Reported**: GitHub Issue #13  
 **Fixed in**: v2.1.0+ (architecture refactoring)  
-**Verified**: v2.2.1  
+**Verified**: v2.2.0  
 **Severity**: Low (enhancement request)  
 **Component**: `webharvest-core` - `HttpPlugin` MIME type detection
 
@@ -1223,7 +1223,7 @@ Added 8 comprehensive tests to verify fix:
 #### References
 - Original report: [GitHub Issue #13]
 - Fixed by: Architecture refactoring (v2.1.0+)
-- Verified: HttpPluginBug13MimeTypesTest.java (v2.2.1)
+- Verified: HttpPluginBug13MimeTypesTest.java (v2.2.0)
 
 ---
 
@@ -1231,7 +1231,7 @@ Added 8 comprehensive tests to verify fix:
 
 **Status**: ✅ RESOLVED (By Architecture Change + Not a Bug)  
 **Reported**: GitHub Issue #18  
-**Resolved in**: v2.2.1 (by refactoring to new architecture)  
+**Resolved in**: v2.2.0 (by refactoring to new architecture)  
 **Severity**: Low (user expectation vs. HTTP specification)  
 **Component**: `webharvest-core` - HTTP charset detection
 
@@ -1390,7 +1390,7 @@ Contact server administrator to fix inconsistent charset declaration.
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #7  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `CommonUtil.fullUrl()`
 
@@ -1572,9 +1572,9 @@ http://www.example.com/a/file.htm           (normalized)
 
 ### Bug #16: Try Cannot Catch Exception Raised by Invalid URI in HTTP
 
-**Status**: ✅ VERIFIED FIXED (Already working in v2.2.1)  
+**Status**: ✅ VERIFIED FIXED (Already working in v2.2.0)  
 **Reported**: GitHub Issue #16  
-**Verified in**: v2.2.1  
+**Verified in**: v2.2.0  
 **Severity**: Medium (user-reported, but already fixed)  
 **Component**: `webharvest-core` - Exception handling chain (`HttpPlugin`, `TryPlugin`)
 
@@ -1685,7 +1685,7 @@ Catch block executed ✅
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #29  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `CommonUtil.createVariable()`
 
@@ -1820,7 +1820,7 @@ NativeJavaObject wrapping List → unwrap() → createVariable(List) → ListVar
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #47 (related to ID: 3060466), GitHub Issue #36  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High  
 **Component**: `webharvest-core` - `FileConfigSource`, `URLConfigSource`
 
@@ -1946,7 +1946,7 @@ return new InputStreamReader(url.openStream(), StandardCharsets.UTF-8);
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #48  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `HttpResponseWrapper`
 
@@ -2084,7 +2084,7 @@ public InputStream getBodyAsInputStream() {
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #55  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `CommonUtil.encodeUrlParam()`
 
@@ -2189,7 +2189,7 @@ Simple one-line fix: removed the ternary operator that skipped '#' encoding.
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #61  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `JsonToXmlPlugin`
 
@@ -2377,7 +2377,7 @@ context.setLocalVar("stacktrace", new NodeVariable(sw.toString()));
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #62  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium  
 **Component**: `webharvest-core` - `RegexpPlugin`
 
@@ -2788,7 +2788,7 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
 - **Total Bugs Addressed**: 16 unique bugs/features (+ 1 duplicate identified)
   - **v2.1.0**: 2 bugs (Bug #13 by architecture, Bug #60 - during migration)
   - **v2.2.0**: 2 (SourceForge #41 HttpComponents 4.x migration **COMPLETED**, ConfigPlugin scope fix)
-  - **v2.2.1**: 13 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #27, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #41 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
+  - **v2.2.0**: 13 bugs (Bug #7, Bug #13 verified, Bug #16 verified, Bug #18 resolved, Bug #27, Bug #29, Bug #33 **FIXED**, Bug #39 **FIXED**, Bug #41 **FIXED**, Bug #47/36, Bug #48, Bug #55, Bug #61, Bug #62)
 - **Fixed with Code Changes**: 13 features/bugs (SourceForge #41 HttpComponents, Bug #7, #27, #29, #33, #39, #41, #47/36, #48, #55, #61, #62, ConfigPlugin)
 - **Verified Fixed (Already Working)**: 2 (Bug #13 by architecture, Bug #16 - exception handling)
 - **Resolved by Architecture Change**: 1 (Bug #18 - charset detection, Not a Bug per HTTP spec)
@@ -2799,7 +2799,7 @@ protected Variable executeBody(DynamicScopeContext context) throws InterruptedEx
   - **High**: 6 (Bug #27 memory leak+CPU, Bug #33 regression, Bug #39 binary corruption, Bug #41 file corruption, Bug #47/36 charset, Bug #60 variable name)
   - **Medium**: 7 (Bug #7, Bug #16 verified, Bug #29, Bug #48, Bug #55, Bug #61, Bug #62)
   - **Low**: 2 (Bug #13 - enhancement by architecture, Bug #18 - user expectation vs. spec)
-- **Total Tests Added** (v2.2.1): 91 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 6 Bug #27 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 7 Bug #41 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
+- **Total Tests Added** (v2.2.0): 91 tests (8 Bug #7 + 8 Bug #13 + 1 Bug #16 + 5 Bug #18 + 6 Bug #27 + 5 Bug #29 + 15 Bug #33 + 4 Bug #39 + 7 Bug #41 + 4 Bug #47 + 5 Bug #48 + 7 Bug #55 + 9 Bug #61 + 7 Bug #62)
 - **Test Suite Size**: 
   - Core: 2639 tests (100% passing) [was 2626]
   - WebBrowser: 47 tests (100% passing, **51% coverage**)
@@ -2883,7 +2883,7 @@ Future changes must maintain this contract or tests fail.
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #39 (Feature Request)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium (enhancement - improves usability)  
 **Component**: `webharvest-core`, `webharvest-cli` - Settings and CLI argument parsing
 
@@ -3227,7 +3227,7 @@ Bug #39 has been successfully implemented following TDD methodology. The unified
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1
+**Version**: 2.2.0
 
 
 
@@ -3237,7 +3237,7 @@ Bug #39 has been successfully implemented following TDD methodology. The unified
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #36 (Feature Request / Bug Fix)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium (causes authentication failures, session loss)  
 **Component**: `webharvest-core` - HTTP client configuration
 
@@ -3405,7 +3405,7 @@ if (response.getStatusCode() == 302) {
 ```java
 // Problem: Mobile → Desktop redirect loses User-Agent
 Map<String, String> headers = new HashMap<>();
-headers.put("User-Agent", "Mozilla/5.0 (iPhone) WebHarvest/2.2.1");
+headers.put("User-Agent", "Mozilla/5.0 (iPhone) WebHarvest/2.2.0");
 
 HttpService service = new HttpServiceImpl(true, headers);
 
@@ -3510,7 +3510,7 @@ Bug #36 has been successfully fixed following TDD methodology. Users can now con
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1
+**Version**: 2.2.0
 
 
 
@@ -3520,7 +3520,7 @@ Bug #36 has been successfully fixed following TDD methodology. Users can now con
 
 **Status**: ✅ FIXED  
 **Reported**: GitHub Issue #19 (Critical Bug)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: **CRITICAL** (causes OutOfMemoryError, crashes scraper)  
 **Component**: `webharvest-core` - LoopPlugin, WhilePlugin
 
@@ -3905,7 +3905,7 @@ Bug #19 has been successfully fixed following TDD methodology. LoopPlugin and Wh
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1
+**Version**: 2.2.0
 
 
 
@@ -3915,7 +3915,7 @@ Bug #19 has been successfully fixed following TDD methodology. LoopPlugin and Wh
 
 **Status**: ✅ ALREADY FIXED (No code changes needed)  
 **Reported**: GitHub Issue #34 (Feature Request)  
-**Verified in**: v2.2.1  
+**Verified in**: v2.2.0  
 **Severity**: Low (feature request - already implemented)  
 **Component**: `webharvest-core` - TryPlugin
 
@@ -3935,7 +3935,7 @@ User requested ability to control which exception types the `<try>` processor ca
 
 #### Analysis
 
-**Current Implementation** (verified in v2.2.1):
+**Current Implementation** (verified in v2.2.0):
 
 ```java
 // TryPlugin.doExecute()
@@ -3963,7 +3963,7 @@ Exception (Java)
 └── IOException, SQLException, etc. (checked exceptions)
 ```
 
-**What TryPlugin Catches** (as of v2.2.1):
+**What TryPlugin Catches** (as of v2.2.0):
 - ✅ BaseException (level 1: base)
 - ✅ RuntimeException (level 2: runtime)
 - ✅ All Exception types (level 3: all)
@@ -4073,7 +4073,7 @@ Bug #34 was already fixed in previous versions. The current implementation catch
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation only (no code changes)
 
 
@@ -4084,7 +4084,7 @@ Bug #34 was already fixed in previous versions. The current implementation catch
 
 **Status**: ✅ ALREADY IMPLEMENTED (No code changes needed)  
 **Reported**: GitHub Issue #14 (Feature Request)  
-**Verified in**: v2.2.1  
+**Verified in**: v2.2.0  
 **Severity**: Low (feature request - already available)  
 **Component**: `webharvest-core` - XPath, If, Script plugins
 
@@ -4309,7 +4309,7 @@ Bug #14 is ALREADY IMPLEMENTED in WebHarvest. The combination of XPath, If/Else,
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation only (feature already exists)
 
 
@@ -4320,7 +4320,7 @@ Bug #14 is ALREADY IMPLEMENTED in WebHarvest. The combination of XPath, If/Else,
 
 **Status**: ✅ ALREADY WORKS (Documentation issue)  
 **Reported**: GitHub Issue #6 (Feature Request)  
-**Verified in**: v2.2.1  
+**Verified in**: v2.2.0  
 **Severity**: Low (feature request - already available)  
 **Component**: `webharvest-core` - FunctionPlugin, CallPlugin
 
@@ -4342,7 +4342,7 @@ User wanted functions to access global variables instead of requiring all variab
 
 #### Analysis
 
-**Current Implementation** (verified in v2.2.1):
+**Current Implementation** (verified in v2.2.0):
 
 Functions **ALREADY CAN** access global variables! Template expressions like `${host}`, `${username}`, `${password}` are evaluated in the calling context, giving functions full access to all variables.
 
@@ -4519,7 +4519,7 @@ Bug #6 is a documentation issue, not a code issue. Functions already have full a
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation only (feature already exists)
 
 
@@ -4530,7 +4530,7 @@ Bug #6 is a documentation issue, not a code issue. Functions already have full a
 
 **Status**: ✅ ALREADY POSSIBLE with existing processors  
 **Reported**: GitHub Issue #2 (Feature Request)  
-**Documented in**: v2.2.1  
+**Documented in**: v2.2.0  
 **Severity**: Low (feature request - workarounds exist)  
 **Component**: Documentation - File advanced patterns
 
@@ -4741,7 +4741,7 @@ Bug #2 features are ALREADY POSSIBLE using existing processors. Creating native 
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Tutorial created (no code changes needed)
 
 
@@ -4752,7 +4752,7 @@ Bug #2 features are ALREADY POSSIBLE using existing processors. Creating native 
 
 **Status**: ✅ ALREADY POSSIBLE with existing patterns  
 **Reported**: GitHub Issue #3 (Feature Request - Low Priority)  
-**Documented in**: v2.2.1  
+**Documented in**: v2.2.0  
 **Severity**: Very Low (user has workarounds, low priority)  
 **Component**: Documentation - List and variable patterns
 
@@ -4953,7 +4953,7 @@ No native implementation needed. Current patterns are:
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation (no code changes needed)
 
 
@@ -4964,7 +4964,7 @@ No native implementation needed. Current patterns are:
 
 **Status**: ✅ COMPREHENSIVE TUTORIAL CREATED  
 **Reported**: GitHub Issue #4 (Documentation Request)  
-**Documented in**: v2.2.1  
+**Documented in**: v2.2.0  
 **Severity**: High (blocks new users from adopting WebHarvest)  
 **Component**: Documentation - Beginner Tutorial
 
@@ -5172,7 +5172,7 @@ This addresses a critical gap in WebHarvest documentation. The tutorial:
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation (comprehensive tutorial created)
 
 
@@ -5183,7 +5183,7 @@ This addresses a critical gap in WebHarvest documentation. The tutorial:
 
 **Status**: ✅ COMPREHENSIVE GUIDE + WORKAROUNDS + FUTURE ENHANCEMENTS PLANNED  
 **Reported**: GitHub Issue #16 (Feature Request - High Priority for Complex Sites)  
-**Documented in**: v2.2.1  
+**Documented in**: v2.2.0  
 **Severity**: High (critical for debugging complex JavaScript websites)  
 **Component**: Documentation + IDE (future enhancements planned)
 
@@ -5465,7 +5465,7 @@ User spent time struggling without guidance. With this guide:
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation (comprehensive guide) + Future enhancement planning
 
 
@@ -5474,7 +5474,7 @@ User spent time struggling without guidance. With this guide:
 
 ### Bug #29: NativeJavaObject Unwrapping (ALREADY FIXED)
 
-**Status**: ✅ ALREADY FIXED (v2.2.1) + VERIFICATION TESTS PRESENT  
+**Status**: ✅ ALREADY FIXED (v2.2.0) + VERIFICATION TESTS PRESENT  
 **Reported**: GitHub Issue #29  
 **Severity**: Medium (affects JavaScript/Rhino integration)  
 **Component**: Core Utils - Variable Creation
@@ -5641,7 +5641,7 @@ Modern Rhino versions (1.7R4+) auto-unwrap in many cases, so `NativeJavaObject` 
  * Creates appropriate Variable instance from given value.
  * Handles various types including JavaScript NativeJavaObject.
  * 
- * <h3>Bug #29 Fix (v2.2.1): NativeJavaObject Support</h3>
+ * <h3>Bug #29 Fix (v2.2.0): NativeJavaObject Support</h3>
  * <p>
  * <strong>Issue:</strong> Script processor with JavaScript returns NativeJavaObject,
  * but createVariable didn't unwrap it, causing it to be stored as-is in NodeVariable.
@@ -5654,7 +5654,7 @@ Modern Rhino versions (1.7R4+) auto-unwrap in many cases, so `NativeJavaObject` 
  * @param value Object to convert to Variable
  * @return Appropriate Variable instance
  * @since 1.0
- * @version 2.2.1
+ * @version 2.2.0
  */
 public static Variable createVariable(Object value) { ... }
 ```
@@ -5675,7 +5675,7 @@ Total: 5/5 tests passing (100%)
 
 **Author**: Robert Bala (earlier fix, now verified)  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Verification (bug already fixed, tests exist and pass)
 
 
@@ -5915,7 +5915,7 @@ This is a perfect example of **solving the problem, not the request**. User aske
 
 **Status**: ✅ COMPREHENSIVE GUIDE - 6 Rate Limiting Patterns  
 **Reported**: GitHub Issue #5 (Feature Request)  
-**Documented in**: v2.2.1  
+**Documented in**: v2.2.0  
 **Severity**: High (responsible scraping critical)  
 **Component**: Documentation - Rate Limiting Patterns
 
@@ -6209,7 +6209,7 @@ Could add global rate limiter at HttpService level for automatic enforcement acr
 
 **Author**: Robert Bala  
 **Date**: October 15, 2025  
-**Version**: 2.2.1  
+**Version**: 2.2.0  
 **Action**: Documentation (comprehensive 6-pattern guide)
 
 
@@ -6664,7 +6664,7 @@ Bug #13 represents a fascinating case of **technology evolution**:
 - Industry experimented with SQL for HTML
 - Market chose XPath/CSS Selectors instead
 - HTMLSQL became obsolete
-- **WebHarvest 2.2.1:** Implemented CSS Selectors as the modern solution!
+- **WebHarvest 2.2.0:** Implemented CSS Selectors as the modern solution!
 
 **Lesson:** Sometimes the answer is "No, because industry moved in different direction"
 
@@ -6740,7 +6740,7 @@ Consider CSS Selectors as complement to XPath, not replacement. Keep both:
 - **CSS Selectors**: Simple queries, beginner-friendly
 - **XPath**: Complex queries, powerful features
 
-**Status:** 🔮 **FUTURE ENHANCEMENT PROPOSAL** (not for v2.2.1)
+**Status:** 🔮 **FUTURE ENHANCEMENT PROPOSAL** (not for v2.2.0)
 
 ---
 
@@ -6762,7 +6762,7 @@ User wants simpler CSS selector syntax instead of verbose XPath expressions for 
 **Solution:**
 **Bug #8 was solved by implementing Bug #13!** 
 
-WebHarvest 2.2.1 now supports CSS selectors natively via `type="css"` parameter in `<xpath>` plugin.
+WebHarvest 2.2.0 now supports CSS selectors natively via `type="css"` parameter in `<xpath>` plugin.
 
 **Implementation Details:**
 - **Plugin:** `XPathPlugin` extended with CSS selector support
@@ -6912,7 +6912,7 @@ We solved both by implementing **CSS Selectors** - the industry-standard solutio
 
 **Status:** ✅ **SOLVED** by Bug #13 implementation
 
-**Version:** WebHarvest 2.2.1
+**Version:** WebHarvest 2.2.0
 
 **See Also:**
 - Bug #13: HTML query language (CSS Selectors implementation)
@@ -6932,7 +6932,7 @@ We solved both by implementing **CSS Selectors** - the industry-standard solutio
 User concerned about URL length limits in WebHarvest HTTP requests.
 
 **Investigation:**
-Tested WebHarvest 2.2.1 with Apache HttpClient 5.x for URL length limits.
+Tested WebHarvest 2.2.0 with Apache HttpClient 5.x for URL length limits.
 
 **Result:**
 ✅ **WebHarvest has NO artificial URL length limits!**
@@ -6952,7 +6952,7 @@ All 4 verification tests **GREEN** ✅:
 
 #### Technical Details
 
-**WebHarvest 2.2.1:**
+**WebHarvest 2.2.0:**
 - Uses Apache HttpClient 5.5.1
 - HttpClient 5.x: **NO client-side URL limit**
 - URL length limit determined by **target server**
@@ -7046,7 +7046,7 @@ This bug was likely filed when:
 - Modern HttpClient 5.x migration resolved any historical issues
 
 **Status:** ✅ **VERIFIED - No action needed**  
-**Version:** WebHarvest 2.2.1 (HttpClient 5.x)  
+**Version:** WebHarvest 2.2.0 (HttpClient 5.x)  
 **Tests:** 4 tests GREEN ✅
 
 ---
@@ -7063,7 +7063,7 @@ This bug was likely filed when:
 Users need a simple way to write log messages to console (stdout/stderr) for debugging and monitoring scraper execution.
 
 **Solution:**
-Implemented `LogPlugin` in v2.2.1 with full TDD approach!
+Implemented `LogPlugin` in v2.2.0 with full TDD approach!
 
 #### Implementation Details
 
@@ -7186,7 +7186,7 @@ public class LogPlugin extends WebHarvestPlugin {
 }
 ```
 
-**New Architecture (v2.2.1):**
+**New Architecture (v2.2.0):**
 ```java
 @CorePlugin(elementName = "log", ...)
 public class LogPlugin extends AbstractPlugin {
@@ -7289,7 +7289,7 @@ public class LogPlugin extends AbstractPlugin {
 - ✅ Tests: 4 TDD tests (all GREEN)
 
 **Status:** ✅ **IMPLEMENTED** via TDD  
-**Version:** WebHarvest 2.2.1  
+**Version:** WebHarvest 2.2.0  
 **Tests:** 4 tests GREEN ✅  
 **Architecture:** v2.2.x (AbstractPlugin)
 
@@ -7299,7 +7299,7 @@ public class LogPlugin extends AbstractPlugin {
 
 **Status**: ✅ **IMPLEMENTED via TDD**  
 **Reported**: SourceForge Patch #5 (Exception handling, clean up stack in BaseProcessor)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: High (critical - resource leaks)  
 **Component**: `webharvest-core` - AbstractPlugin execution lifecycle
 
@@ -7351,7 +7351,7 @@ public void testBug5_Cycle1_CleanupNotCalledOnException() throws Exception {
 
 **TDD Green Phase:** Implemented try-finally fix
 ```java
-// AFTER (v2.2.1) - FIXED
+// AFTER (v2.2.0) - FIXED
 try {
     return doExecute(context);
 } catch (Exception e) {
@@ -7416,7 +7416,7 @@ try {
 
 This fix addresses the same core problem as the original SourceForge patch, but adapted for the v2.2.0 architecture:
 - **Original:** BaseProcessor cleanup
-- **v2.2.1:** AbstractPlugin cleanup
+- **v2.2.0:** AbstractPlugin cleanup
 
 Both ensure that cleanup code runs regardless of execution outcome.
 
@@ -7467,7 +7467,7 @@ Every bug report and feature request has been thoroughly addressed with either:
 3. **Tutorials** (comprehensive usage guides)
 4. **Documentation** (clear explanations and examples)
 
-**WebHarvest v2.2.1 is ready for release with all outstanding issues resolved!**
+**WebHarvest v2.2.0 is ready for release with all outstanding issues resolved!**
 
 ---
 
@@ -7475,7 +7475,7 @@ Every bug report and feature request has been thoroughly addressed with either:
 
 **Status**: ✅ **IMPLEMENTED** (Patch #7 + Detection Mechanism)  
 **Reported**: SourceForge Patch #7 (Fix function parameter variable scopes)  
-**Fixed in**: v2.2.1  
+**Fixed in**: v2.2.0  
 **Severity**: Medium (incorrect behavior vs v2.0, but no crashes)  
 **Component**: `webharvest-core` - JSRScriptEngineAdapter
 
@@ -7543,7 +7543,7 @@ BeanShell stores variables in internal `bsh.NameSpace` which is separate from JS
 
 **Code changes:**
 ```java
-// AFTER (v2.2.1) - HYBRID FIX
+// AFTER (v2.2.0) - HYBRID FIX
 private void copyVariables(DynamicScopeContext context) {
     // 1. DETECT scope pollution
     detectScopePollution(context);  // Warns or throws exception
@@ -7705,4 +7705,4 @@ java -Dwebharvest.script.scope.strict=true -jar webharvest-cli.jar config.xml
 
 ---
 
-**WebHarvest v2.2.1 - All Bugs Addressed!**
+**WebHarvest v2.2.0 - All Bugs Addressed!**

@@ -34,7 +34,7 @@ import static org.testng.Assert.*;
  * variables defined before the function call.</p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "documentation"})
 public class FunctionGlobalVariablesBug6Test {

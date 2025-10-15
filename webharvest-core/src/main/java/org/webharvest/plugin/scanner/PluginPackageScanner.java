@@ -47,7 +47,7 @@ import java.util.List;
  * </p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  * @see CorePlugin
  * @see CorePluginRegistry
  */

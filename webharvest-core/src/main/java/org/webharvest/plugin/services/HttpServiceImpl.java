@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  *   <li>Modern Java support</li>
  * </ul>
  * 
- * <h3>Bug #36: Redirect Header Preservation (v2.2.1)</h3>
+ * <h3>Bug #36: Redirect Header Preservation (v2.2.0)</h3>
  * <p>Added support for:</p>
  * <ul>
  *   <li><code>followRedirects</code> - control redirect behavior</li>
@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Robert Bala
  * @since 2.2.0
- * @version 2.2.1
+ * @version 2.2.0
  */
 public class HttpServiceImpl implements HttpService {
     
@@ -110,7 +110,7 @@ public class HttpServiceImpl implements HttpService {
      * 
      * @param followRedirects whether to follow HTTP redirects (301/302)
      * 
-     * @since 2.2.1
+     * @since 2.2.0
      */
     public HttpServiceImpl(boolean followRedirects) {
         this(followRedirects, new HashMap<>());
@@ -132,7 +132,7 @@ public class HttpServiceImpl implements HttpService {
      * @param followRedirects whether to follow HTTP redirects
      * @param defaultHeaders headers to add to ALL requests (initial + redirects)
      * 
-     * @since 2.2.1
+     * @since 2.2.0
      */
     public HttpServiceImpl(boolean followRedirects, Map<String, String> defaultHeaders) {
         LOGGER.debug("Creating HttpServiceImpl: followRedirects={}, defaultHeaders={}", 

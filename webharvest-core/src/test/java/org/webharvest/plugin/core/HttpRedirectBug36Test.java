@@ -36,7 +36,7 @@ import static org.testng.Assert.*;
  * <h3>TDD Approach: RED → GREEN → REFACTOR</h3>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "http"})
 public class HttpRedirectBug36Test {
@@ -80,7 +80,7 @@ public class HttpRedirectBug36Test {
         Map<String, String> headers = new HashMap<>();
         headers.put("Referer", "https://example.com/login");
         headers.put("X-Custom-Auth", "secret-token");
-        headers.put("User-Agent", "WebHarvest/2.2.1");
+        headers.put("User-Agent", "WebHarvest/2.2.0");
         
         HttpService httpService = new HttpServiceImpl();
         
@@ -109,7 +109,7 @@ public class HttpRedirectBug36Test {
         Map<String, String> headers = new HashMap<>();
         headers.put("Referer", "https://example.com/login");
         headers.put("X-Custom-Auth", "secret-token");
-        headers.put("User-Agent", "WebHarvest/2.2.1");
+        headers.put("User-Agent", "WebHarvest/2.2.0");
         
         // After fix, we'll have HttpServiceImpl with custom builder
         // HttpService httpService = new HttpServiceImpl(preserveHeaders: ["Referer", "X-Custom-Auth", "User-Agent"]);

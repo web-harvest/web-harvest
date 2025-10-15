@@ -69,7 +69,7 @@ import static org.testng.Assert.*;
  * </p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class AbstractPluginExceptionBug5Test {
     

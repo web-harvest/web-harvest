@@ -43,7 +43,7 @@ import static org.testng.Assert.*;
  * local variables after each iteration.</p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "memory"})
 public class LoopMemoryLeakBug19Test {

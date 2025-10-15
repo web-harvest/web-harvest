@@ -32,7 +32,7 @@ import static org.testng.Assert.*;
  * 6. Run all HTTP tests to verify no regressions
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class HttpClient5MigrationTest {
 
@@ -104,7 +104,7 @@ public class HttpClient5MigrationTest {
         String url = "https://httpbin.org/headers";
         Map<String, String> headers = new HashMap<>();
         headers.put("X-Test-Header", "HttpClient5Migration");
-        headers.put("User-Agent", "WebHarvest/2.2.1");
+        headers.put("User-Agent", "WebHarvest/2.2.0");
         
         HttpResponse response = httpService.get(url, headers);
         

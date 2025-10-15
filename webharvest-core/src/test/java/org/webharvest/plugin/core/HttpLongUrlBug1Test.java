@@ -12,7 +12,7 @@ import static org.testng.Assert.*;
  * Verifies that WebHarvest can handle long URLs without artificial limits.
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"integration", "bugs", "http"})
 public class HttpLongUrlBug1Test {
@@ -86,7 +86,7 @@ public class HttpLongUrlBug1Test {
         System.out.println("  • Nginx (default):   4KB - 8KB");
         System.out.println("  • IIS:               16KB");
         System.out.println("");
-        System.out.println("WEBHARVEST 2.2.1 (HttpClient 5.x):");
+        System.out.println("WEBHARVEST 2.2.0 (HttpClient 5.x):");
         System.out.println("  ✅ NO CLIENT-SIDE LIMIT");
         System.out.println("  ✅ Accepts any URL length");
         System.out.println("  ✅ Limit determined by TARGET SERVER");

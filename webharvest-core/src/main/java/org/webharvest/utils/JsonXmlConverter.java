@@ -72,8 +72,8 @@ import org.json.JSONObject;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.1
- * @since 2.2.1 (Bug #61 fix)
+ * @version 2.2.0
+ * @since 2.2.0 (Bug #61 fix)
  */
 public class JsonXmlConverter {
 

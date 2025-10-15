@@ -46,7 +46,7 @@ import org.webharvest.utils.HasReader;
  * Implementation of {@link ConfigSource} that uses a HTTP protocol as
  * source of XML configurations.
  * 
- * <h3>Bug #47 Fix (v2.2.1): Charset Encoding</h3>
+ * <h3>Bug #47 Fix (v2.2.0): Charset Encoding</h3>
  * <p>
  * <strong>Issue:</strong> Used {@link InputStreamReader} without explicit charset,
  * relying on platform default (e.g., WIN1250 on Windows instead of UTF-8).
@@ -57,7 +57,7 @@ import org.webharvest.utils.HasReader;
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
- * @version 2.2.1
+ * @version 2.2.0
  * @see ConfigSource
  * @see URL
  */

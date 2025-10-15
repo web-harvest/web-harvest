@@ -40,7 +40,7 @@ import static org.testng.Assert.*;
  * </ul>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "try-catch"})
 public class TryPluginExceptionTypesBug34Test {

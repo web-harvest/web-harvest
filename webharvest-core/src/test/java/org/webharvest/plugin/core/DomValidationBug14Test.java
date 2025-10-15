@@ -34,7 +34,7 @@ import static org.testng.Assert.*;
  * <p>This test demonstrates multiple DOM validation patterns that solve Bug #14.</p>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "documentation"})
 public class DomValidationBug14Test {

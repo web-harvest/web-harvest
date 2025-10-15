@@ -401,7 +401,7 @@ After:  Constant 3MB (cleanup after each iteration) → ✅ 10,000+ items OK
 
 ---
 
-#### Feature #2: Log Plugin - Console Output (NEW IN 2.2.1!)
+#### Feature #2: Log Plugin - Console Output (NEW IN 2.2.0!)
 
 **Status:** ✅ **IMPLEMENTED**
 
@@ -503,7 +503,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 
 - **XML-based Configuration**: Define data extraction workflows using simple XML syntax
 - **Rich Plugin Ecosystem**: 48+ built-in plugins for various data extraction tasks
-- **Extensible Plugin System** (NEW in v2.2.1!): 
+- **Extensible Plugin System** (NEW in v2.2.0!): 
   - **Auto-Discovery**: Scan custom packages for plugins automatically
   - **No Core Modification**: Add plugins without changing core code
   - **Configurable Schema Validation**: Enable/disable XML schema validation

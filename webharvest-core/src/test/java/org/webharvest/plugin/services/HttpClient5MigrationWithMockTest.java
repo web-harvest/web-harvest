@@ -26,7 +26,7 @@ import static org.testng.Assert.*;
  * - No rate limiting issues
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 public class HttpClient5MigrationWithMockTest {
 
@@ -101,7 +101,7 @@ public class HttpClient5MigrationWithMockTest {
         // GIVEN: Mock server
         stubFor(get(urlEqualTo("/headers"))
             .withHeader("X-Custom-Header", equalTo("test-value"))
-            .withHeader("User-Agent", equalTo("WebHarvest/2.2.1"))
+            .withHeader("User-Agent", equalTo("WebHarvest/2.2.0"))
             .willReturn(aResponse()
                 .withStatus(200)
                 .withBody("headers ok")));
@@ -109,7 +109,7 @@ public class HttpClient5MigrationWithMockTest {
         // WHEN: Send request with custom headers
         Map<String, String> headers = new HashMap<>();
         headers.put("X-Custom-Header", "test-value");
-        headers.put("User-Agent", "WebHarvest/2.2.1");
+        headers.put("User-Agent", "WebHarvest/2.2.0");
         
         HttpResponse response = httpService.get(baseUrl + "/headers", headers);
         

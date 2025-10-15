@@ -86,7 +86,7 @@ import org.xml.sax.SAXException;
 /**
  * XML utils - contains common logic for XML handling
  * 
- * <h3>Bug #40: XML Schema Validation Toggle (v2.2.1)</h3>
+ * <h3>Bug #40: XML Schema Validation Toggle (v2.2.0)</h3>
  * <p>
  * Added system property {@code webharvest.schema.validation} to control
  * whether XML schema validation is enabled. Default is TRUE (enabled).
@@ -110,7 +110,7 @@ public class XmlUtil {
      * System property for controlling XML schema validation.
      * Default: true (enabled)
      * 
-     * @since 2.2.1 (Bug #40)
+     * @since 2.2.0 (Bug #40)
      */
     public static final String SCHEMA_VALIDATION_PROPERTY = "webharvest.schema.validation";
 
@@ -248,7 +248,7 @@ public class XmlUtil {
      * Gets a SAXParserFactory with the specified configuration.
      * 
      * <p>
-     * <strong>Bug #40 Fix (v2.2.1):</strong> The validating parameter is now checked
+     * <strong>Bug #40 Fix (v2.2.0):</strong> The validating parameter is now checked
      * against the system property {@code webharvest.schema.validation}. If validation
      * is disabled via system property, a non-validating factory is returned regardless
      * of the validating parameter.
@@ -257,7 +257,7 @@ public class XmlUtil {
      * @param validating whether validation is requested
      * @param nsAware whether namespace awareness is needed
      * @return configured SAXParserFactory
-     * @since 2.2.1 (Bug #40 - validation toggle)
+     * @since 2.2.0 (Bug #40 - validation toggle)
      */
     public static SAXParserFactory getSAXParserFactory(boolean validating, boolean nsAware) {
         // Bug #40 Fix: Check system property for schema validation
@@ -269,7 +269,7 @@ public class XmlUtil {
      * Checks if XML schema validation is enabled.
      * 
      * <p>
-     * <strong>Bug #40 Feature (v2.2.1):</strong> Reads system property 
+     * <strong>Bug #40 Feature (v2.2.0):</strong> Reads system property 
      * {@code webharvest.schema.validation} to determine if schema validation
      * should be enabled. Default is TRUE (enabled).
      * </p>
@@ -281,7 +281,7 @@ public class XmlUtil {
      * </p>
      * 
      * @return true if schema validation is enabled, false otherwise
-     * @since 2.2.1 (Bug #40)
+     * @since 2.2.0 (Bug #40)
      */
     public static boolean isSchemaValidationEnabled() {
         String propertyValue = System.getProperty(SCHEMA_VALIDATION_PROPERTY);

@@ -25,7 +25,7 @@ import static org.testng.Assert.*;
  * <h3>RED Phase Tests - These will FAIL until implementation</h3>
  * 
  * @author Robert Bala
- * @since 2.2.1
+ * @since 2.2.0
  */
 @Test(groups = {"unit", "bugs", "http"})
 public class HttpServiceRedirectBug36Test {
