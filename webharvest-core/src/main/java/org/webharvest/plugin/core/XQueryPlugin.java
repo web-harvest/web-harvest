@@ -378,43 +378,34 @@ public class XQueryPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("XQueryPlugin.doExecute: START");
-        LOGGER.debug("XQueryPlugin.doExecute: START");
         
-        // Get XQuery expression and XML from body content
+        PluginConfiguration config = getConfiguration();
         String xqExpression = "";
-        String xmlContent = "";
+        Map<String, Object> xqParams = new HashMap<>();
         
-        try {
-            // Execute body content to get sub-elements
-            Variable bodyContent = executeBody(context);
-            LOGGER.debug("XQueryPlugin.doExecute: bodyContent=" + bodyContent);
-            
-            if (bodyContent == null || bodyContent instanceof EmptyVariable) {
-                LOGGER.warn("No body content available for XQuery evaluation");
-                return EmptyVariable.INSTANCE;
+        // Parse child elements: <xq-expression> and <xq-param>
+        if (config.hasChildren()) {
+            for (PluginConfiguration child : config.getChildren()) {
+                String elementName = child.getElementName();
+                LOGGER.debug("XQueryPlugin: Processing child element: {}", elementName);
+                
+                if ("xq-expression".equals(elementName)) {
+                    // Get XQuery expression from <xq-expression> element
+                    xqExpression = child.getProperty("_textContent", "");
+                    LOGGER.debug("XQueryPlugin: XQuery expression length: {}", xqExpression.length());
+                } else if ("xq-param".equals(elementName)) {
+                    // Get parameter name, type, and value
+                    String paramName = child.getProperty("name", "");
+                    String paramType = child.getProperty("type", "string");
+                    String paramValue = child.getProperty("_textContent", "");
+                    
+                    LOGGER.debug("XQueryPlugin: Adding parameter: name=" + paramName + ", value=" + paramValue + ", type=" + paramType);
+                    
+                    if (!paramName.isEmpty()) {
+                        xqParams.put(paramName, convertParamValue(paramValue, paramType));
+                    }
+                }
             }
-            
-            // Parse the body content to extract XQuery expression and XML
-            String bodyText = bodyContent.toString();
-            LOGGER.debug("XQueryPlugin.doExecute: bodyText=" + bodyText);
-            
-            // Simple parsing - assume first line is XQuery expression, rest is XML
-            String[] lines = bodyText.split("\n");
-            if (lines.length >= 2) {
-                xqExpression = lines[0].trim();
-                xmlContent = lines[1].trim();
-                LOGGER.debug("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
-                LOGGER.debug("XQueryPlugin.doExecute: Extracted xmlContent=" + xmlContent);
-            } else if (lines.length == 1) {
-                // Only one line - treat as XQuery expression
-                xqExpression = lines[0].trim();
-                LOGGER.debug("XQueryPlugin.doExecute: Extracted xqExpression=" + xqExpression);
-            }
-            
-        } catch (Exception e) {
-            LOGGER.error("Error getting body content for XQuery evaluation", e);
-            LOGGER.debug("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
-            return EmptyVariable.INSTANCE;
         }
         
         if (xqExpression == null || xqExpression.trim().isEmpty()) {
@@ -422,7 +413,7 @@ public class XQueryPlugin extends AbstractPlugin {
             return EmptyVariable.INSTANCE;
         }
         
-        LOGGER.debug("Evaluating XQuery expression with length: {}", xqExpression.length());
+        LOGGER.debug("Evaluating XQuery expression with {} parameters", xqParams.size());
         
         try {
             // Use Saxon for XQuery evaluation - same as original XQueryProcessor
@@ -432,19 +423,27 @@ public class XQueryPlugin extends AbstractPlugin {
             XQueryExpression exp = sqc.compileQuery(xqExpression);
             DynamicQueryContext dynamicContext = new DynamicQueryContext(saxonConfig);
             
-            // Set XML content as context for XQuery evaluation
-            if (xmlContent != null && !xmlContent.trim().isEmpty()) {
-                LOGGER.debug("XQueryPlugin.doExecute: Setting XML content as context");
-                try {
-                    // Parse XML content and set as context item
-                    StringReader reader = new StringReader(xmlContent);
-                    javax.xml.transform.stream.StreamSource streamSource = new javax.xml.transform.stream.StreamSource(reader);
-                    net.sf.saxon.om.Item contextItem = sqc.buildDocument(streamSource);
-                    dynamicContext.setContextItem(contextItem);
-                    LOGGER.debug("XQueryPlugin.doExecute: Successfully set XML content as context");
-                } catch (Exception contextException) {
-                    LOGGER.debug("XQueryPlugin.doExecute: Failed to set XML content as context: " + contextException.getMessage());
-                    // Continue without context - some XQuery expressions might work without it
+            // Bind XQuery parameters
+            for (Map.Entry<String, Object> entry : xqParams.entrySet()) {
+                String paramName = entry.getKey();
+                Object paramValue = entry.getValue();
+                
+                LOGGER.debug("XQueryPlugin: Binding parameter: {} = {}", paramName, paramValue);
+                
+                // Convert to Saxon value
+                if (paramValue instanceof String) {
+                    dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue((String) paramValue));
+                } else if (paramValue instanceof Integer) {
+                    dynamicContext.setParameter(paramName, net.sf.saxon.value.Int64Value.makeIntegerValue((Integer) paramValue));
+                } else if (paramValue instanceof Long) {
+                    dynamicContext.setParameter(paramName, net.sf.saxon.value.Int64Value.makeIntegerValue((Long) paramValue));
+                } else if (paramValue instanceof Double) {
+                    dynamicContext.setParameter(paramName, new net.sf.saxon.value.DoubleValue((Double) paramValue));
+                } else if (paramValue instanceof Boolean) {
+                    dynamicContext.setParameter(paramName, net.sf.saxon.value.BooleanValue.get((Boolean) paramValue));
+                } else {
+                    // Default: convert to string
+                    dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue(paramValue.toString()));
                 }
             }
             
@@ -452,8 +451,34 @@ public class XQueryPlugin extends AbstractPlugin {
             
         } catch (Exception e) {
             LOGGER.error("Failed to evaluate XQuery expression: {}", e.getMessage(), e);
-            LOGGER.debug("XQueryPlugin.doExecute: ERROR: " + e.getMessage());
             throw new ScraperXQueryException("Error executing XQuery expression (XQuery = [" + xqExpression + "])!", e);
+        }
+    }
+    
+    /**
+     * Convert parameter value string to appropriate Java type based on XQuery type.
+     */
+    private Object convertParamValue(String value, String type) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        
+        try {
+            if (type.contains("integer")) {
+                return Integer.parseInt(value.trim());
+            } else if (type.contains("long")) {
+                return Long.parseLong(value.trim());
+            } else if (type.contains("double") || type.contains("float")) {
+                return Double.parseDouble(value.trim());
+            } else if (type.contains("boolean")) {
+                return Boolean.parseBoolean(value.trim());
+            } else {
+                // Default: string
+                return value;
+            }
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Failed to convert parameter value '{}' to type '{}', using as string", value, type);
+            return value;
         }
     }
 }
