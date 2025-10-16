@@ -342,65 +342,51 @@ const EMBEDDED_EXAMPLES = {
         category: 'XML Processing',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- XQuery with math functions and parameters -->
+    <!-- XQuery with simple math calculations -->
+    <def var="number1">10</def>
+    <def var="number2">5</def>
+    
     <def var="xqueryResult">
         <xquery>
-            <xq-param name="logicvalue" type="boolean">true</xq-param>
-            <xq-param name="numbervalue" type="double">12</xq-param>
-            <xq-param name="stringvalue" type="string">ABCDEFGH123456</xq-param>
+            <xq-param name="a" type="integer">10</xq-param>
+            <xq-param name="b" type="integer">5</xq-param>
             <xq-expression>
                 <![CDATA[
-                declare namespace math ="java:java.lang.Math";
-                declare variable $logicvalue as xs:boolean external;
-                declare variable $numbervalue as xs:double external;
-                declare variable $stringvalue as xs:string external;
+                declare variable $a as xs:integer external;
+                declare variable $b as xs:integer external;
 
-                <test>
-                    <logictest>
-                        { if ($logicvalue) then 1 else 2 }
-                    </logictest>
-                    <comparison>
-                        { if ($numbervalue &gt; 15) then "greater" else "smaller" }
-                    </comparison>
-                    <doubletest>
-                        { $numbervalue * 2 + 10 }
-                    </doubletest>
-                    <roundtest>
-                        { round($numbervalue) }
-                    </roundtest>
-                    <stringtest>
-                        { concat($stringvalue, "-", $numbervalue) }
-                    </stringtest>
-                    <mathtest>
-                        { math:sqrt($numbervalue) }
-                    </mathtest>
-                </test>
+                <calculations>
+                    <sum>{$a + $b}</sum>
+                    <difference>{$a - $b}</difference>
+                    <product>{$a * $b}</product>
+                    <quotient>{$a div $b}</quotient>
+                </calculations>
                 ]]>
             </xq-expression>
         </xquery>
     </def>
     
-    <!-- Extract results to show in variables -->
-    <def var="logicResult">
-        <xpath expression="//logictest/text()">
+    <!-- Extract results -->
+    <def var="sum">
+        <xpath expression="//sum/text()">
             <get var="xqueryResult"/>
         </xpath>
     </def>
     
-    <def var="doubleResult">
-        <xpath expression="//doubletest/text()">
+    <def var="difference">
+        <xpath expression="//difference/text()">
             <get var="xqueryResult"/>
         </xpath>
     </def>
     
-    <def var="stringResult">
-        <xpath expression="//stringtest/text()">
+    <def var="product">
+        <xpath expression="//product/text()">
             <get var="xqueryResult"/>
         </xpath>
     </def>
     
-    <def var="mathResult">
-        <xpath expression="//mathtest/text()">
+    <def var="quotient">
+        <xpath expression="//quotient/text()">
             <get var="xqueryResult"/>
         </xpath>
     </def>
