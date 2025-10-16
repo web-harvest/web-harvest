@@ -514,10 +514,8 @@ const EMBEDDED_EXAMPLES = {
         </xpath>
     </def>
     
-    <def var="categoryUrl">https://books.toscrape.com/\${firstCategoryLink}</def>
-    
     <def var="categoryHtml">
-        <http url="\${categoryUrl}"/>
+        <http url="https://books.toscrape.com/catalogue/category/books_1/index.html"/>
     </def>
     
     <def var="categoryPage">
@@ -540,10 +538,8 @@ const EMBEDDED_EXAMPLES = {
         </xpath>
     </def>
     
-    <def var="productUrl">https://books.toscrape.com/catalogue/\${firstProductLink}</def>
-    
     <def var="productHtml">
-        <http url="\${productUrl}"/>
+        <http url="https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"/>
     </def>
     
     <def var="productPage">
