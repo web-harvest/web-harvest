@@ -48,6 +48,48 @@ python3 -m http.server 8000
 
 **Location:** All scripts are in `docs/scripts/` directory
 
+### Maintenance Scripts
+
+#### `fix_javadoc_examples.py` (r830)
+
+Fixes Javadoc examples by adding `<config>` wrapper to all plugin source code examples.
+
+**Purpose:** Ensure all examples in plugin Javadoc are complete, valid XML configurations
+
+**Usage:**
+```bash
+python3 docs/scripts/fix_javadoc_examples.py
+```
+
+**What it does:**
+- Scans all `*Plugin.java` files (core + external)
+- Finds `<pre>{@code ...}` blocks with WebHarvest XML
+- Wraps with `<?xml version...>` and `<config xmlns...>` tags
+- Preserves Javadoc formatting
+
+**Fixed:** 46 core + 8 external plugin files
+
+#### `fix_html_examples.py` (r831)
+
+Fixes HTML tutorial pages by adding `<config>` wrapper to XML examples.
+
+**Purpose:** Ensure tutorial examples can be copy-pasted directly to IDE
+
+**Usage:**
+```bash
+python3 docs/scripts/fix_html_examples.py
+```
+
+**What it does:**
+- Scans tutorial HTML pages
+- Finds `<code class="language-xml">` blocks
+- Wraps with config tags (HTML encoded)
+- Preserves HTML formatting
+
+**Fixed:** 4 tutorial pages (css-selectors, file-advanced-patterns, rate-limiting, tutorial-form-submit)
+
+### Documentation Generators
+
 ### 1. `generate_core_plugin_docs.py`
 
 Generates HTML documentation for **46 core plugins**.
