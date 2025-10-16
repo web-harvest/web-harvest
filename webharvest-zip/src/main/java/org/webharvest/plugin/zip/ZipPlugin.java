@@ -60,6 +60,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Create ZIP archive with scraped data</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <zip path="output/scraped-data.zip">
  *     <zip-entry name="products.xml">
  *         <http url="https://example.com/products"/>
@@ -69,10 +71,13 @@ import org.webharvest.runtime.variables.Variable;
  *         <http url="https://api.example.com/data"/>
  *     </zip-entry>
  * </zip>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Archive multiple pages with loop</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="pages">1,2,3,4,5</def>
  * 
  * <zip path="pages-archive.zip">
@@ -88,10 +93,13 @@ import org.webharvest.runtime.variables.Variable;
  *         </zip-entry>
  *     </loop>
  * </zip>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Archive binary files (images)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <zip path="images.zip">
  *     <loop item="imageUrl">
  *         <xpath expression="//img/@src">
@@ -109,6 +117,7 @@ import org.webharvest.runtime.variables.Variable;
  *         </zip-entry>
  *     </loop>
  * </zip>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

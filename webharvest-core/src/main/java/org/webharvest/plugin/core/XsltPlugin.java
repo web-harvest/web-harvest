@@ -71,6 +71,8 @@ import java.io.StringWriter;
  * 
  * <h4>Example 1: Transform XML to HTML</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="html">
  *   <xslt>
  *     <stylesheet>
@@ -91,16 +93,20 @@ import java.io.StringWriter;
  *     <xml>${productXml}</xml>
  *   </xslt>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: XML to JSON-like structure</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <xslt>
  *   <stylesheet>
  *     <file path="transform.xsl" action="read"/>
  *   </stylesheet>
  *   <xml>${xmlData}</xml>
  * </xslt>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

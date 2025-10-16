@@ -113,7 +113,9 @@ easy access.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;emails&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;emails&quot;&gt;
   &lt;regexp&gt;
     &lt;regexp-pattern&gt;([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})&lt;/regexp-pattern&gt;
     &lt;regexp-source&gt;
@@ -126,7 +128,8 @@ easy access.</p>
   ${emails}
   
   &lt;file path=&quot;emails.txt&quot; action=&quot;append&quot;&gt;${email}&amp;#10;&lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -141,7 +144,9 @@ easy access.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;data&quot;&gt;name:John;email:john@example.com;age:30&lt;/def&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;data&quot;&gt;name:John;email:john@example.com;age:30&lt;/def&gt;
 
 &lt;loop item=&quot;pair&quot;&gt;
   &lt;regexp&gt;
@@ -157,7 +162,8 @@ easy access.</p>
   
   &lt;!-- group1 = key, group2 = value (Bug #62: properly isolated!) --&gt;
   &lt;def var=&quot;${group1}&quot; value=&quot;${group2}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -172,7 +178,9 @@ easy access.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;html&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;html&quot;&gt;
   &lt;http url=&quot;https://example.com/page&quot;/&gt;
 &lt;/def&gt;
 
@@ -183,7 +191,8 @@ easy access.</p>
     &lt;regexp-source&gt;${html}&lt;/regexp-source&gt;
     &lt;regexp-result&gt;https://&lt;/regexp-result&gt;
   &lt;/regexp&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -198,7 +207,9 @@ easy access.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;url&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;url&quot;&gt;
   &lt;regexp&gt;
     &lt;regexp-pattern&gt;https?://([^/]+)(/.*)}&lt;/regexp-pattern&gt;
     &lt;regexp-source&gt;
@@ -212,7 +223,8 @@ easy access.</p>
     Domain: ${group1}
     Path: ${group2}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -227,12 +239,15 @@ easy access.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;regexp flag-caseinsensitive=&quot;true&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp flag-caseinsensitive=&quot;true&quot;&gt;
   &lt;regexp-pattern&gt;error|warning|fail&lt;/regexp-pattern&gt;
   &lt;regexp-source&gt;
     &lt;file path=&quot;log.txt&quot; action=&quot;read&quot;/&gt;
   &lt;/regexp-source&gt;
-&lt;/regexp&gt;</code></pre>
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

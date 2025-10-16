@@ -158,14 +158,17 @@ Included configurations execute in the same context, sharing variables and state
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;environment&quot; value=&quot;production&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;environment&quot; value=&quot;production&quot;/&gt;
 
 &lt;if condition=&quot;${environment == &#x27;production&#x27;}&quot;&gt;
   &lt;include path=&quot;config/prod-settings.xml&quot;/&gt;
 &lt;/if&gt;
 &lt;else&gt;
   &lt;include path=&quot;config/dev-settings.xml&quot;/&gt;
-&lt;/else&gt;</code></pre>
+&lt;/else&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

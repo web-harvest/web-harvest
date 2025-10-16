@@ -113,7 +113,9 @@ limit is reached.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;hasNextPage&quot; value=&quot;true&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;hasNextPage&quot; value=&quot;true&quot;/&gt;
 &lt;def var=&quot;page&quot; value=&quot;1&quot;/&gt;
 
 &lt;while condition=&quot;${hasNextPage}&quot; maxloops=&quot;20&quot;&gt;
@@ -132,7 +134,8 @@ limit is reached.</p>
   &lt;def var=&quot;page&quot;&gt;
     &lt;script&gt;parseInt(context.getVar(&quot;page&quot;)) + 1&lt;/script&gt;
   &lt;/def&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -147,7 +150,9 @@ limit is reached.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;success&quot; value=&quot;false&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;success&quot; value=&quot;false&quot;/&gt;
 &lt;def var=&quot;retryCount&quot; value=&quot;0&quot;/&gt;
 
 &lt;while condition=&quot;${!success &amp;&amp; retryCount &lt; 3}&quot; maxloops=&quot;3&quot;&gt;
@@ -164,7 +169,8 @@ limit is reached.</p>
     &lt;/def&gt;
     &lt;sleep time=&quot;1000&quot;/&gt;  &lt;!-- Wait before retry --&gt;
   &lt;/else&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -179,7 +185,9 @@ limit is reached.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;found&quot; value=&quot;false&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;found&quot; value=&quot;false&quot;/&gt;
 
 &lt;while condition=&quot;${!found}&quot; maxloops=&quot;50&quot; index=&quot;i&quot;&gt;
   &lt;def var=&quot;item&quot;&gt;
@@ -189,7 +197,8 @@ limit is reached.</p>
   &lt;if condition=&quot;${item == &#x27;TARGET&#x27;}&quot;&gt;
     &lt;def var=&quot;found&quot; value=&quot;true&quot;/&gt;
   &lt;/if&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -204,7 +213,9 @@ limit is reached.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;hasMore&quot; value=&quot;true&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;hasMore&quot; value=&quot;true&quot;/&gt;
 &lt;def var=&quot;offset&quot; value=&quot;0&quot;/&gt;
 
 &lt;while test=&quot;${hasMore}&quot; maxloops=&quot;100&quot;&gt;
@@ -227,7 +238,8 @@ limit is reached.</p>
       &lt;script&gt;parseInt(context.getVar(&quot;offset&quot;)) + 100&lt;/script&gt;
     &lt;/def&gt;
   &lt;/else&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

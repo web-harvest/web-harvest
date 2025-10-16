@@ -56,20 +56,26 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * 
  * <h4>Example 1: Check if variable is empty</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <if condition="${empty(apiKey)}">
  *   <file path="error.log" action="append">API key not configured!</file>
  *   <exit/>
  * </if>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Execute for side effects only</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <empty>
  *   <!-- Log activity without storing result -->
  *   <file path="debug.log" action="append">
  *     Processing started at ${_date}
  *   </file>
  * </empty>
+ * </config>
  * }</pre>
  * 
  * <h3>Related Processors</h3>

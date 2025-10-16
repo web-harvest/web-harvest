@@ -112,13 +112,16 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;httpStatus&quot; value=&quot;200&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;httpStatus&quot; value=&quot;200&quot;/&gt;
 
 &lt;if condition=&quot;${httpStatus == &#x27;200&#x27;}&quot;&gt;
   &lt;file path=&quot;success.log&quot; action=&quot;append&quot;&gt;
     Request succeeded at ${_date}
   &lt;/file&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -133,7 +136,9 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;response&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;response&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
 &lt;/def&gt;
 
@@ -144,7 +149,8 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
   &lt;exit/&gt;
 &lt;/if&gt;
 
-&lt;!-- Continue with non-empty response --&gt;</code></pre>
+&lt;!-- Continue with non-empty response --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -159,14 +165,17 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;stock&quot; value=&quot;5&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;stock&quot; value=&quot;5&quot;/&gt;
 
 &lt;if condition=&quot;${stock &gt; 0}&quot;&gt;
   &lt;def var=&quot;status&quot; value=&quot;In Stock&quot;/&gt;
 &lt;/if&gt;
 &lt;else&gt;
   &lt;def var=&quot;status&quot; value=&quot;Out of Stock&quot;/&gt;
-&lt;/else&gt;</code></pre>
+&lt;/else&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -181,7 +190,9 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;product&quot; index=&quot;i&quot; maxloops=&quot;100&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;product&quot; index=&quot;i&quot; maxloops=&quot;100&quot;&gt;
   &lt;xpath expression=&quot;//product&quot;&gt;...&lt;/xpath&gt;
   
   &lt;def var=&quot;price&quot;&gt;
@@ -194,7 +205,8 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
       Product ${i}: $${price}
     &lt;/file&gt;
   &lt;/if&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -209,11 +221,14 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;category&quot; value=&quot;electronics&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;category&quot; value=&quot;electronics&quot;/&gt;
 
 &lt;if condition=&quot;${category == &#x27;electronics&#x27;}&quot;&gt;
   &lt;http url=&quot;https://example.com/electronics&quot;/&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -228,11 +243,14 @@ error handling, data validation, and dynamic behavior in scrapers.</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;if condition=&quot;${empty(apiKey)}&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;if condition=&quot;${empty(apiKey)}&quot;&gt;
   &lt;def var=&quot;apiKey&quot; value=&quot;default-key&quot;/&gt;
 &lt;/if&gt;
 
-&lt;http url=&quot;https://api.example.com?key=${apiKey}&quot;/&gt;</code></pre>
+&lt;http url=&quot;https://api.example.com?key=${apiKey}&quot;/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

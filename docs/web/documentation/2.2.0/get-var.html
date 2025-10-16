@@ -113,7 +113,9 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;apiUrl&quot; value=&quot;https://api.example.com&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;apiUrl&quot; value=&quot;https://api.example.com&quot;/&gt;
 
 &lt;!-- Template syntax (simpler) --&gt;
 &lt;http url=&quot;${apiUrl}/users&quot;/&gt;
@@ -121,7 +123,8 @@ Variable type (binary data, XML structure, lists).</p>
 &lt;!-- Processor syntax (explicit) --&gt;
 &lt;http&gt;
   &lt;get-var var=&quot;apiUrl&quot;/&gt;/users
-&lt;/http&gt;</code></pre>
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -136,7 +139,9 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Download image as binary --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Download image as binary --&gt;
 &lt;def var=&quot;imageData&quot;&gt;
   &lt;http url=&quot;https://example.com/logo.png&quot;/&gt;
 &lt;/def&gt;
@@ -149,7 +154,8 @@ Variable type (binary data, XML structure, lists).</p>
 &lt;!-- WRONG: ${imageData} converts to String, corrupts binary! --&gt;
 &lt;file path=&quot;broken.png&quot; action=&quot;write&quot; type=&quot;binary&quot;&gt;
   ${imageData}  &lt;!-- ❌ Corrupted! --&gt;
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -164,7 +170,9 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;xmlData&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;xmlData&quot;&gt;
   &lt;json-to-xml&gt;
     &lt;http url=&quot;https://api.example.com/data.json&quot;/&gt;
   &lt;/json-to-xml&gt;
@@ -175,7 +183,8 @@ Variable type (binary data, XML structure, lists).</p>
   &lt;xpath expression=&quot;//user/name/text()&quot;&gt;
     &lt;get-var var=&quot;xmlData&quot;/&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -190,7 +199,9 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;productIds&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;productIds&quot;&gt;
   &lt;xpath expression=&quot;//product/@id&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
@@ -203,7 +214,8 @@ Variable type (binary data, XML structure, lists).</p>
   &lt;get-var var=&quot;productIds&quot;/&gt;
   
   &lt;http url=&quot;https://example.com/product/${id}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -218,14 +230,17 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;lang&quot; value=&quot;en&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;lang&quot; value=&quot;en&quot;/&gt;
 &lt;def var=&quot;greeting_en&quot; value=&quot;Hello&quot;/&gt;
 &lt;def var=&quot;greeting_pl&quot; value=&quot;Cześć&quot;/&gt;
 &lt;def var=&quot;greeting_de&quot; value=&quot;Hallo&quot;/&gt;
 
 &lt;!-- Dynamic variable name --&gt;
 &lt;get-var var=&quot;greeting_${lang}&quot;/&gt;
-&lt;!-- Result: Hello (retrieves greeting_en) --&gt;</code></pre>
+&lt;!-- Result: Hello (retrieves greeting_en) --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -240,7 +255,9 @@ Variable type (binary data, XML structure, lists).</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Fetch API data once --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Fetch API data once --&gt;
 &lt;def var=&quot;apiData&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data?key=${apiKey}&quot;/&gt;
 &lt;/def&gt;
@@ -262,7 +279,8 @@ Variable type (binary data, XML structure, lists).</p>
   &lt;xpath expression=&quot;//user/email&quot;&gt;
     &lt;json-to-xml&gt;&lt;get-var var=&quot;apiData&quot;/&gt;&lt;/json-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

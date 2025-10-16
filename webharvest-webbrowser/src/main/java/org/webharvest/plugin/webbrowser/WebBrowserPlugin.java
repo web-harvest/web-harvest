@@ -87,6 +87,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * <h4>Example 1: Render JavaScript-heavy page</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Regular HTTP can't see JavaScript content -->
  * <def var="staticHtml">
  *     <http url="https://spa-app.example.com"/>
@@ -105,10 +107,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *         <html-to-xml>${renderedHtml}</html-to-xml>
  *     </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Single Page Application (SPA) scraping</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Load SPA page -->
  * <web-browser action="load" url="https://spa.example.com/products" page="main" wait="4000"/>
  * 
@@ -130,10 +135,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * <!-- Close browser -->
  * <web-browser action="close" page="main"/>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Execute JavaScript on page</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Load page -->
  * <web-browser action="load" url="http://example.com" page="main" wait="2000"/>
  * 
@@ -151,6 +159,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * </def>
  * 
  * <web-browser action="close" page="main"/>
+ * </config>
  * }</pre>
  * 
  * <h3>When to Use</h3>

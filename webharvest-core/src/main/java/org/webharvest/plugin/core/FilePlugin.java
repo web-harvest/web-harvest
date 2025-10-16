@@ -100,6 +100,8 @@ import java.util.regex.PatternSyntaxException;
  * <p>
  * <strong>Example - Download binary file:</strong>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Download image -->
  * <def var="imageData">
  *   <http url="https://example.com/image.jpg"/>
@@ -109,6 +111,7 @@ import java.util.regex.PatternSyntaxException;
  * <file path="downloaded.jpg" action="write" type="binary">
  *   <get-var var="imageData"/>
  * </file>
+ * </config>
  * }</pre>
  * </p>
  * 
@@ -116,23 +119,31 @@ import java.util.regex.PatternSyntaxException;
  * 
  * <h4>Example 1: Read text file</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="config">
  *   <file path="config.txt" action="read"/>
  * </def>
  * 
  * <!-- File content is now in ${config} variable -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Write text file</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <file path="output.txt" action="write">
  *   This is the file content
  *   with multiple lines
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Write HTML from HTTP response</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="htmlPage">
  *   <http url="https://example.com"/>
  * </def>
@@ -140,19 +151,25 @@ import java.util.regex.PatternSyntaxException;
  * <file path="page.html" action="write" charset="UTF-8">
  *   ${htmlPage}
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Save JSON API response</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <file path="data/products.json" action="write">
  *   <http url="https://api.example.com/products">
  *     <http-header name="Accept">application/json</http-header>
  *   </http>
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Download binary file (image, PDF, ZIP)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <file path="downloads/document.pdf" action="write" type="binary">
  *   <http url="https://example.com/report.pdf"/>
  * </file>
@@ -161,10 +178,13 @@ import java.util.regex.PatternSyntaxException;
  * <file path="archive.zip" action="write" type="binary">
  *   <http url="https://example.com/data.zip"/>
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Append to log file</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="url" index="i">
  *   <def var="urls">http://example.com/page1&#10;http://example.com/page2</def>
  *   
@@ -177,10 +197,13 @@ import java.util.regex.PatternSyntaxException;
  *     Processed ${url} at ${_date}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 7: List directory files</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- List all files in directory -->
  * <def var="fileList">
  *   <file path="downloads/" action="list"/>
@@ -192,10 +215,13 @@ import java.util.regex.PatternSyntaxException;
  *   
  *   <file path="downloads/${filename}" action="read"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 8: List with filter (wildcard pattern)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- List only .xml files -->
  * <def var="xmlFiles">
  *   <file path="configs/" 
@@ -204,10 +230,13 @@ import java.util.regex.PatternSyntaxException;
  *         listfiles="true"
  *         listdirs="false"/>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 9: Recursive directory listing</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- List all Java files recursively -->
  * <def var="javaFiles">
  *   <file path="src/" 
@@ -215,6 +244,7 @@ import java.util.regex.PatternSyntaxException;
  *         listfilter="*.java"
  *         listrecursive="true"/>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>File Paths</h3>
@@ -266,6 +296,8 @@ import java.util.regex.PatternSyntaxException;
  * 
  * <h4>Pattern 1: Scrape and save HTML pages</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="pageNum" index="i" maxloops="10">
  *   <def var="urls">1,2,3,4,5,6,7,8,9,10</def>
  *   
@@ -277,10 +309,13 @@ import java.util.regex.PatternSyntaxException;
  *     ${html}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Pattern 2: Download all images from a page</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="imageUrls">
  *   <xpath expression="//img/@src">
  *     <html-to-xml>
@@ -296,10 +331,13 @@ import java.util.regex.PatternSyntaxException;
  *     <http url="${url}"/>
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Pattern 3: Export to CSV file</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Write CSV header -->
  * <file path="products.csv" action="write">
  *   ID,Name,Price
@@ -319,6 +357,7 @@ import java.util.regex.PatternSyntaxException;
  *     ${id},${name},${price}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Related Processors</h3>

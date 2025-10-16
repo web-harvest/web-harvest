@@ -112,11 +112,14 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;config&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;config&quot;&gt;
   &lt;file path=&quot;config.txt&quot; action=&quot;read&quot;/&gt;
 &lt;/def&gt;
 
-&lt;!-- File content is now in ${config} variable --&gt;</code></pre>
+&lt;!-- File content is now in ${config} variable --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -131,10 +134,13 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;file path=&quot;output.txt&quot; action=&quot;write&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;file path=&quot;output.txt&quot; action=&quot;write&quot;&gt;
   This is the file content
   with multiple lines
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -149,13 +155,16 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;htmlPage&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;htmlPage&quot;&gt;
   &lt;http url=&quot;https://example.com&quot;/&gt;
 &lt;/def&gt;
 
 &lt;file path=&quot;page.html&quot; action=&quot;write&quot; charset=&quot;UTF-8&quot;&gt;
   ${htmlPage}
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -170,11 +179,14 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;file path=&quot;data/products.json&quot; action=&quot;write&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;file path=&quot;data/products.json&quot; action=&quot;write&quot;&gt;
   &lt;http url=&quot;https://api.example.com/products&quot;&gt;
     &lt;http-header name=&quot;Accept&quot;&gt;application/json&lt;/http-header&gt;
   &lt;/http&gt;
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -189,14 +201,17 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;file path=&quot;downloads/document.pdf&quot; action=&quot;write&quot; type=&quot;binary&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;file path=&quot;downloads/document.pdf&quot; action=&quot;write&quot; type=&quot;binary&quot;&gt;
   &lt;http url=&quot;https://example.com/report.pdf&quot;/&gt;
 &lt;/file&gt;
 
 &lt;!-- Works with images, ZIPs, executables, etc. --&gt;
 &lt;file path=&quot;archive.zip&quot; action=&quot;write&quot; type=&quot;binary&quot;&gt;
   &lt;http url=&quot;https://example.com/data.zip&quot;/&gt;
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -211,7 +226,9 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;url&quot; index=&quot;i&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;url&quot; index=&quot;i&quot;&gt;
   &lt;def var=&quot;urls&quot;&gt;http://example.com/page1&amp;#10;http://example.com/page2&lt;/def&gt;
   
   &lt;def var=&quot;page&quot;&gt;
@@ -222,7 +239,8 @@ and listing directory contents with filtering.</p>
   &lt;file path=&quot;scraping.log&quot; action=&quot;append&quot;&gt;
     Processed ${url} at ${_date}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -237,7 +255,9 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-7.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- List all files in directory --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- List all files in directory --&gt;
 &lt;def var=&quot;fileList&quot;&gt;
   &lt;file path=&quot;downloads/&quot; action=&quot;list&quot;/&gt;
 &lt;/def&gt;
@@ -247,7 +267,8 @@ and listing directory contents with filtering.</p>
   ${fileList}
   
   &lt;file path=&quot;downloads/${filename}&quot; action=&quot;read&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -262,14 +283,17 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-8.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- List only .xml files --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- List only .xml files --&gt;
 &lt;def var=&quot;xmlFiles&quot;&gt;
   &lt;file path=&quot;configs/&quot; 
         action=&quot;list&quot; 
         listfilter=&quot;*.xml&quot;
         listfiles=&quot;true&quot;
         listdirs=&quot;false&quot;/&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -284,13 +308,16 @@ and listing directory contents with filtering.</p>
                     <span class="window-title">example-9.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- List all Java files recursively --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- List all Java files recursively --&gt;
 &lt;def var=&quot;javaFiles&quot;&gt;
   &lt;file path=&quot;src/&quot; 
         action=&quot;list&quot;
         listfilter=&quot;*.java&quot;
         listrecursive=&quot;true&quot;/&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

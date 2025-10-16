@@ -111,7 +111,9 @@ Supports XSLT 1.0 and 2.0 for complex XML transformations.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;html&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;html&quot;&gt;
   &lt;xslt&gt;
     &lt;stylesheet&gt;
       &lt;![CDATA[
@@ -130,7 +132,8 @@ Supports XSLT 1.0 and 2.0 for complex XML transformations.</p>
     &lt;/stylesheet&gt;
     &lt;xml&gt;${productXml}&lt;/xml&gt;
   &lt;/xslt&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -145,12 +148,15 @@ Supports XSLT 1.0 and 2.0 for complex XML transformations.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xslt&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xslt&gt;
   &lt;stylesheet&gt;
     &lt;file path=&quot;transform.xsl&quot; action=&quot;read&quot;/&gt;
   &lt;/stylesheet&gt;
   &lt;xml&gt;${xmlData}&lt;/xml&gt;
-&lt;/xslt&gt;</code></pre>
+&lt;/xslt&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

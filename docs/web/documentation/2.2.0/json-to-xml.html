@@ -112,7 +112,9 @@ JSON responses, providing a unified query language for both HTML and JSON source
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;userName&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;userName&quot;&gt;
   &lt;xpath expression=&quot;//user/name/text()&quot;&gt;
     &lt;json-to-xml&gt;
       &lt;http url=&quot;https://api.example.com/user/123&quot;&gt;
@@ -120,7 +122,8 @@ JSON responses, providing a unified query language for both HTML and JSON source
       &lt;/http&gt;
     &lt;/json-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -135,7 +138,9 @@ JSON responses, providing a unified query language for both HTML and JSON source
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- JSON: {&quot;data&quot;: {&quot;users&quot;: [{&quot;id&quot;: 1, &quot;name&quot;: &quot;John&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;Jane&quot;}]}} --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- JSON: {&quot;data&quot;: {&quot;users&quot;: [{&quot;id&quot;: 1, &quot;name&quot;: &quot;John&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;Jane&quot;}]}} --&gt;
 &lt;def var=&quot;userNames&quot;&gt;
   &lt;xpath expression=&quot;//users/item/name/text()&quot;&gt;
     &lt;json-to-xml&gt;
@@ -149,7 +154,8 @@ JSON responses, providing a unified query language for both HTML and JSON source
   ${userNames}
   
   &lt;file path=&quot;names.txt&quot; action=&quot;append&quot;&gt;${name}&amp;#10;&lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -164,7 +170,9 @@ JSON responses, providing a unified query language for both HTML and JSON source
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- JSON: [{&quot;id&quot;: 1, &quot;title&quot;: &quot;Post 1&quot;}, {&quot;id&quot;: 2, &quot;title&quot;: &quot;Post 2&quot;}] --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- JSON: [{&quot;id&quot;: 1, &quot;title&quot;: &quot;Post 1&quot;}, {&quot;id&quot;: 2, &quot;title&quot;: &quot;Post 2&quot;}] --&gt;
 &lt;loop item=&quot;post&quot;&gt;
   &lt;xpath expression=&quot;//item&quot;&gt;
     &lt;json-to-xml&gt;
@@ -178,7 +186,8 @@ JSON responses, providing a unified query language for both HTML and JSON source
   &lt;file path=&quot;posts/post-${postId}.txt&quot; action=&quot;write&quot;&gt;
     ${postTitle}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -193,13 +202,16 @@ JSON responses, providing a unified query language for both HTML and JSON source
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;addresses&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;addresses&quot;&gt;
   &lt;xpath expression=&quot;//users/item[address/city/text()=&#x27;London&#x27;]/address/street/text()&quot;&gt;
     &lt;json-to-xml&gt;
       &lt;http url=&quot;https://api.example.com/users&quot;/&gt;
     &lt;/json-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -214,10 +226,13 @@ JSON responses, providing a unified query language for both HTML and JSON source
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;json-to-xml tag=&quot;root&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;json-to-xml tag=&quot;root&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
 &lt;/json-to-xml&gt;
-&lt;!-- Output: &lt;root&gt;...&lt;/root&gt; instead of default &lt;json&gt;...&lt;/json&gt; --&gt;</code></pre>
+&lt;!-- Output: &lt;root&gt;...&lt;/root&gt; instead of default &lt;json&gt;...&lt;/json&gt; --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

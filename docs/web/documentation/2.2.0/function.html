@@ -113,13 +113,16 @@ modular and maintainable scraper configurations.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;getCurrentDate&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;getCurrentDate&quot;&gt;
   ${_date}
 &lt;/function&gt;
 
 &lt;def var=&quot;timestamp&quot;&gt;
   &lt;call name=&quot;getCurrentDate&quot;/&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -134,7 +137,9 @@ modular and maintainable scraper configurations.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;fetchProduct&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;fetchProduct&quot;&gt;
   &lt;def var=&quot;productId&quot;&gt;&lt;call-param name=&quot;productId&quot;/&gt;&lt;/def&gt;
   
   &lt;http url=&quot;https://api.example.com/product/${productId}&quot;/&gt;
@@ -142,7 +147,8 @@ modular and maintainable scraper configurations.</p>
 
 &lt;!-- Call with different IDs --&gt;
 &lt;def var=&quot;product1&quot;&gt;&lt;call name=&quot;fetchProduct&quot;&gt;&lt;call-param name=&quot;productId&quot;&gt;123&lt;/call-param&gt;&lt;/call&gt;&lt;/def&gt;
-&lt;def var=&quot;product2&quot;&gt;&lt;call name=&quot;fetchProduct&quot;&gt;&lt;call-param name=&quot;productId&quot;&gt;456&lt;/call-param&gt;&lt;/call&gt;&lt;/def&gt;</code></pre>
+&lt;def var=&quot;product2&quot;&gt;&lt;call name=&quot;fetchProduct&quot;&gt;&lt;call-param name=&quot;productId&quot;&gt;456&lt;/call-param&gt;&lt;/call&gt;&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -157,7 +163,9 @@ modular and maintainable scraper configurations.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;extractProductInfo&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;extractProductInfo&quot;&gt;
   &lt;def var=&quot;html&quot;&gt;&lt;call-param name=&quot;html&quot;/&gt;&lt;/def&gt;
   
   &lt;def var=&quot;name&quot;&gt;
@@ -184,7 +192,8 @@ modular and maintainable scraper configurations.</p>
       &lt;call-param name=&quot;html&quot;&gt;${page}&lt;/call-param&gt;
     &lt;/call&gt;
   &lt;/def&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

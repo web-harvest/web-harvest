@@ -111,10 +111,13 @@ and (2) Execute processors for their side effects without producing output.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;if condition=&quot;${empty(apiKey)}&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;if condition=&quot;${empty(apiKey)}&quot;&gt;
   &lt;file path=&quot;error.log&quot; action=&quot;append&quot;&gt;API key not configured!&lt;/file&gt;
   &lt;exit/&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -129,12 +132,15 @@ and (2) Execute processors for their side effects without producing output.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;empty&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;empty&gt;
   &lt;!-- Log activity without storing result --&gt;
   &lt;file path=&quot;debug.log&quot; action=&quot;append&quot;&gt;
     Processing started at ${_date}
   &lt;/file&gt;
-&lt;/empty&gt;</code></pre>
+&lt;/empty&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

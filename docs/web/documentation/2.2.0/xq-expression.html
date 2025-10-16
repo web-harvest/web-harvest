@@ -111,7 +111,9 @@ Must be used as a child element of <code><xquery></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xquery&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xquery&gt;
   &lt;xq-expression&gt;
     &lt;![CDATA[
       for $p in //product
@@ -120,7 +122,8 @@ Must be used as a child element of <code><xquery></code>.</p>
     ]]&gt;
   &lt;/xq-expression&gt;
   &lt;xq-param name=&quot;xmlDoc&quot;&gt;${productXml}&lt;/xq-param&gt;
-&lt;/xquery&gt;</code></pre>
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

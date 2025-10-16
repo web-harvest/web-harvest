@@ -111,13 +111,16 @@ headers, parameters, authentication, redirects, proper URL encoding, and binary 
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;url&quot;&gt;https://httpbin.org/get&lt;/def&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;url&quot;&gt;https://httpbin.org/get&lt;/def&gt;
 &lt;def var=&quot;response&quot;&gt;
     &lt;http url=&quot;${url}&quot;/&gt;
 &lt;/def&gt;
 &lt;file action=&quot;write&quot; path=&quot;target/http_output.txt&quot;&gt;
     &lt;get var=&quot;response&quot;/&gt;
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -132,11 +135,14 @@ headers, parameters, authentication, redirects, proper URL encoding, and binary 
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;http url=&quot;https://api.example.com/users&quot; method=&quot;POST&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://api.example.com/users&quot; method=&quot;POST&quot;&gt;
   &lt;http-header name=&quot;Content-Type&quot;&gt;application/json&lt;/http-header&gt;
   &lt;http-header name=&quot;Authorization&quot;&gt;Bearer ${apiToken}&lt;/http-header&gt;
   &lt;http-param name=&quot;data&quot;&gt;{&quot;name&quot;: &quot;John&quot;, &quot;age&quot;: 30}&lt;/http-param&gt;
-&lt;/http&gt;</code></pre>
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -151,8 +157,11 @@ headers, parameters, authentication, redirects, proper URL encoding, and binary 
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;http url=&quot;http://example.com/image.jpg&quot;/&gt;
-&lt;file action=&quot;write&quot; path=&quot;downloaded_image.jpg&quot; type=&quot;binary&quot;&gt;${http}&lt;/file&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;http://example.com/image.jpg&quot;/&gt;
+&lt;file action=&quot;write&quot; path=&quot;downloaded_image.jpg&quot; type=&quot;binary&quot;&gt;${http}&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -167,8 +176,11 @@ headers, parameters, authentication, redirects, proper URL encoding, and binary 
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Color parameter #FF0000 is automatically encoded as %23FF0000 --&gt;
-&lt;http url=&quot;http://example.com/api?color=#FF0000&amp;amp;size=large&quot;/&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Color parameter #FF0000 is automatically encoded as %23FF0000 --&gt;
+&lt;http url=&quot;http://example.com/api?color=#FF0000&amp;amp;size=large&quot;/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

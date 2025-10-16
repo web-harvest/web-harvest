@@ -54,6 +54,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <xquery>
  *   <xq-expression>
  *     declare variable $minPrice external;
@@ -61,6 +63,7 @@ import org.webharvest.runtime.variables.Variable;
  *   </xq-expression>
  *   <xq-param name="minPrice" type="xs:integer">100</xq-param>
  * </xquery>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

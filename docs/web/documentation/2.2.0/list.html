@@ -111,7 +111,9 @@ Useful for creating explicit lists or combining multiple values.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;urls&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;urls&quot;&gt;
   &lt;list&gt;
     &lt;text&gt;https://example.com/page1&lt;/text&gt;
     &lt;text&gt;https://example.com/page2&lt;/text&gt;
@@ -122,7 +124,8 @@ Useful for creating explicit lists or combining multiple values.</p>
 &lt;loop item=&quot;url&quot;&gt;
   ${urls}
   &lt;http url=&quot;${url}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -137,12 +140,15 @@ Useful for creating explicit lists or combining multiple values.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;allLinks&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;allLinks&quot;&gt;
   &lt;list&gt;
     &lt;xpath expression=&quot;//a/@href&quot;&gt;${page1}&lt;/xpath&gt;
     &lt;xpath expression=&quot;//a/@href&quot;&gt;${page2}&lt;/xpath&gt;
   &lt;/list&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

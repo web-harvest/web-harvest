@@ -90,16 +90,21 @@ import org.xml.sax.InputSource;
  * 
  * <h4>XPath Mode (default):</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Extract single element text -->
  * <xpath expression="//title/text()">
  *   <html-to-xml>
  *     <http url="https://example.com"/>
  *   </html-to-xml>
  * </xpath>
+ * </config>
  * }</pre>
  * 
  * <h4>CSS Selector Mode (Bug #13 - NEW!):</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Extract links with class 'link' -->
  * <xpath type="css" expression="a.link">
  *   <html-to-xml>
@@ -139,6 +144,7 @@ import org.xml.sax.InputSource;
  *     </html-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

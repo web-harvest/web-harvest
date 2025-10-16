@@ -113,7 +113,9 @@ designed specifically for XML data.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;expensiveProducts&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;expensiveProducts&quot;&gt;
   &lt;xquery&gt;
     &lt;![CDATA[
       for $product in //product
@@ -125,7 +127,8 @@ designed specifically for XML data.</p>
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
     &lt;/html-to-xml&gt;
   &lt;/xquery&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -140,7 +143,9 @@ designed specifically for XML data.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;transformedXml&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;transformedXml&quot;&gt;
   &lt;xquery&gt;
     &lt;![CDATA[
       &lt;products&gt;
@@ -159,7 +164,8 @@ designed specifically for XML data.</p>
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
     &lt;/html-to-xml&gt;
   &lt;/xquery&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -174,7 +180,9 @@ designed specifically for XML data.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;totalPrice&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;totalPrice&quot;&gt;
   &lt;xquery&gt;
     &lt;![CDATA[
       sum(//product/price)
@@ -183,7 +191,89 @@ designed specifically for XML data.</p>
       &lt;http url=&quot;https://api.example.com/products&quot;/&gt;
     &lt;/json-to-xml&gt;
   &lt;/xquery&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: XQuery with node() parameter (v2.2.0 - Fixed r825)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Create sample XML data --&gt;
+&lt;def var=&quot;productsXml&quot;&gt;
+  &lt;template&gt;&lt;![CDATA[
+    &lt;products&gt;
+      &lt;product&gt;&lt;name&gt;Book A&lt;/name&gt;&lt;price&gt;25.50&lt;/price&gt;&lt;/product&gt;
+      &lt;product&gt;&lt;name&gt;Book B&lt;/name&gt;&lt;price&gt;18.99&lt;/price&gt;&lt;/product&gt;
+    &lt;/products&gt;
+  ]]&gt;&lt;/template&gt;
+&lt;/def&gt;
+
+&lt;!-- Process with XQuery using node() parameter --&gt;
+&lt;def var=&quot;analysis&quot;&gt;
+  &lt;xquery&gt;
+    &lt;xq-param name=&quot;data&quot; type=&quot;node()&quot;&gt;
+      &lt;get var=&quot;productsXml&quot;/&gt;
+    &lt;/xq-param&gt;
+    &lt;xq-expression&gt;
+      &lt;![CDATA[
+      declare variable $data as node() external;
+      
+      let $count := count($data//product)
+      let $total := sum($data//product/price)
+      
+      return
+      &lt;analysis&gt;
+        &lt;total_products&gt;{$count}&lt;/total_products&gt;
+        &lt;total_value&gt;{$total}&lt;/total_value&gt;
+      &lt;/analysis&gt;
+      ]]&gt;
+    &lt;/xq-expression&gt;
+  &lt;/xquery&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 5: XQuery with typed parameters</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-5.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xquery&gt;
+  &lt;xq-param name=&quot;a&quot; type=&quot;integer&quot;&gt;10&lt;/xq-param&gt;
+  &lt;xq-param name=&quot;b&quot; type=&quot;integer&quot;&gt;5&lt;/xq-param&gt;
+  &lt;xq-expression&gt;
+    &lt;![CDATA[
+    declare variable $a as xs:integer external;
+    declare variable $b as xs:integer external;
+    
+    &lt;calculations&gt;
+      &lt;sum&gt;{$a + $b}&lt;/sum&gt;
+      &lt;product&gt;{$a * $b}&lt;/product&gt;
+    &lt;/calculations&gt;
+    ]]&gt;
+  &lt;/xq-expression&gt;
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -192,11 +282,17 @@ designed specifically for XML data.</p>
         
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Saxon engine:: Uses Saxon XQuery processor</li><li>CDATA required:: Wrap XQuery in <code><![CDATA[...]]></code></li><li>Input XML:: Provided as child processor result</li><li>Returns ListVariable:: Result can be single or multiple items</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Saxon engine:: Uses Saxon XQuery processor</li><li>CDATA required:: Wrap XQuery in <code><![CDATA[...]]></code></li><li>Child elements:: v2.2.0 supports <code><xq-param></code> and <code><xq-expression></code></li><li>Node parameters:: Use <code>type="node()"</code> with <code><get></code> to pass XML variables</li><li>Returns ListVariable:: Result can be single or multiple items</li></ul>
         </section>
 
         <section class="section">
             <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="xq-param.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;xq-param&gt;
+                </a>
+                <a href="xq-expression.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;xq-expression&gt;
+                </a>
                 <a href="xpath.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;xpath&gt;
                 </a>

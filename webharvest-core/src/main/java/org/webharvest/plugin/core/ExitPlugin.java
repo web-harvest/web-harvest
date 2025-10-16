@@ -62,6 +62,8 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h4>Example 1: Exit on error</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="response">
  *   <http url="https://api.example.com/data"/>
  * </def>
@@ -69,10 +71,13 @@ import org.webharvest.utils.CommonUtil;
  * <if condition="${empty(response)}">
  *   <exit message="API returned empty response - terminating"/>
  * </if>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Exit when target found</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="item" maxloops="1000">
  *   <xpath expression="//item">...</xpath>
  *   
@@ -81,10 +86,13 @@ import org.webharvest.utils.CommonUtil;
  *     <exit message="Target item found, stopping search"/>
  *   </if>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Conditional exit based on quota</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="requestCount" value="0"/>
  * 
  * <while condition="${hasMore}">
@@ -98,6 +106,7 @@ import org.webharvest.utils.CommonUtil;
  *     <exit message="Request quota reached (100 requests)"/>
  *   </if>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

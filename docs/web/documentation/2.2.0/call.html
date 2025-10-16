@@ -112,7 +112,9 @@ configurations, and abstraction of complex logic into reusable components.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Define function --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Define function --&gt;
 &lt;function name=&quot;fetchUser&quot;&gt;
   &lt;def var=&quot;userId&quot;&gt;&lt;call-param name=&quot;userId&quot;/&gt;&lt;/def&gt;
   
@@ -124,7 +126,8 @@ configurations, and abstraction of complex logic into reusable components.</p>
   &lt;call name=&quot;fetchUser&quot;&gt;
     &lt;call-param name=&quot;userId&quot;&gt;123&lt;/call-param&gt;
   &lt;/call&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -139,7 +142,9 @@ configurations, and abstraction of complex logic into reusable components.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;buildUrl&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;buildUrl&quot;&gt;
   &lt;def var=&quot;base&quot;&gt;&lt;call-param name=&quot;baseUrl&quot;/&gt;&lt;/def&gt;
   &lt;def var=&quot;path&quot;&gt;&lt;call-param name=&quot;path&quot;/&gt;&lt;/def&gt;
   &lt;def var=&quot;query&quot;&gt;&lt;call-param name=&quot;query&quot;/&gt;&lt;/def&gt;
@@ -151,7 +156,8 @@ configurations, and abstraction of complex logic into reusable components.</p>
   &lt;call-param name=&quot;baseUrl&quot;&gt;https://api.example.com&lt;/call-param&gt;
   &lt;call-param name=&quot;path&quot;&gt;/users&lt;/call-param&gt;
   &lt;call-param name=&quot;query&quot;&gt;limit=10&amp;offset=0&lt;/call-param&gt;
-&lt;/call&gt;</code></pre>
+&lt;/call&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -166,7 +172,9 @@ configurations, and abstraction of complex logic into reusable components.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;scrapePage&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;scrapePage&quot;&gt;
   &lt;def var=&quot;url&quot;&gt;&lt;call-param name=&quot;url&quot;/&gt;&lt;/def&gt;
   
   &lt;def var=&quot;title&quot;&gt;
@@ -189,7 +197,8 @@ configurations, and abstraction of complex logic into reusable components.</p>
       &lt;call-param name=&quot;url&quot;&gt;${pageUrl}&lt;/call-param&gt;
     &lt;/call&gt;
   &lt;/def&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

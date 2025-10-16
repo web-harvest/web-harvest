@@ -106,6 +106,8 @@ import javax.xml.transform.stream.StreamSource;
  * 
  * <h4>Example 1: FLWOR expression (For-Let-Where-Order-Return)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="expensiveProducts">
  *   <xquery>
  *     <![CDATA[
@@ -119,10 +121,13 @@ import javax.xml.transform.stream.StreamSource;
  *     </html-to-xml>
  *   </xquery>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: XML transformation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="transformedXml">
  *   <xquery>
  *     <![CDATA[
@@ -143,10 +148,13 @@ import javax.xml.transform.stream.StreamSource;
  *     </html-to-xml>
  *   </xquery>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Aggregation (count, sum, avg)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="totalPrice">
  *   <xquery>
  *     <![CDATA[
@@ -157,10 +165,13 @@ import javax.xml.transform.stream.StreamSource;
  *     </json-to-xml>
  *   </xquery>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: XQuery with node() parameter (v2.2.0 - Fixed r825)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Create sample XML data -->
  * <def var="productsXml">
  *   <template><![CDATA[
@@ -193,10 +204,13 @@ import javax.xml.transform.stream.StreamSource;
  *     </xq-expression>
  *   </xquery>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: XQuery with typed parameters</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <xquery>
  *   <xq-param name="a" type="integer">10</xq-param>
  *   <xq-param name="b" type="integer">5</xq-param>
@@ -212,6 +226,7 @@ import javax.xml.transform.stream.StreamSource;
  *     ]]>
  *   </xq-expression>
  * </xquery>
+ * </config>
  * }</pre>
  * 
  * <h3>Child Elements (v2.2.0)</h3>

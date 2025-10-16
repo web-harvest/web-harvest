@@ -124,6 +124,8 @@ import java.io.StringReader;
  * 
  * <h4>Example 1: Convert HTTP response to XML for XPath</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="productName">
  *   <xpath expression="//h1[@class='product-title']/text()">
  *     <html-to-xml>
@@ -131,10 +133,13 @@ import java.io.StringReader;
  *     </html-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Extract multiple fields from page</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Fetch page once -->
  * <def var="htmlPage">
  *   <http url="https://example.com/article/456"/>
@@ -163,10 +168,13 @@ import java.io.StringReader;
  *     ${xmlPage}
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Extract all links from page</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="links">
  *   <xpath expression="//a/@href">
  *     <html-to-xml>
@@ -181,10 +189,13 @@ import java.io.StringReader;
  *   
  *   <http url="${link}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Extract table data</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="rows">
  *   <xpath expression="//table[@id='products']/tr">
  *     <html-to-xml>
@@ -205,10 +216,13 @@ import java.io.StringReader;
  *   
  *   <!-- Save to file/database -->
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Complex selector with namespaces</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="articles">
  *   <xpath expression="//article[contains(@class, 'news-item')]//h2/text()">
  *     <html-to-xml>
@@ -216,21 +230,27 @@ import java.io.StringReader;
  *     </html-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Handling malformed HTML</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Even badly broken HTML works -->
  * <def var="brokenHtml" value="<p>Unclosed paragraph<div>No closing div<b>Bold"/>
  * 
  * <html-to-xml>${brokenHtml}</html-to-xml>
  * <!-- Result: Well-formed XML with auto-closed tags -->
+ * </config>
  * }</pre>
  * 
  * <h3>Common Patterns</h3>
  * 
  * <h4>Pattern 1: Fetch → Convert → Extract</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- 1. Fetch HTML -->
  * <def var="page">
  *   <http url="https://example.com"/>
@@ -247,10 +267,13 @@ import java.io.StringReader;
  *     ${xml}
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Pattern 2: Inline conversion (compact)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="title">
  *   <xpath expression="//title/text()">
  *     <html-to-xml>
@@ -258,6 +281,7 @@ import java.io.StringReader;
  *     </html-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>Technical Details</h3>

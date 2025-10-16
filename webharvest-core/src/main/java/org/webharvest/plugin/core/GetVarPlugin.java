@@ -90,6 +90,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Simple text retrieval (both syntaxes work)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="apiUrl" value="https://api.example.com"/>
  * 
  * <!-- Template syntax (simpler) -->
@@ -99,10 +101,13 @@ import org.slf4j.LoggerFactory;
  * <http>
  *   <get-var var="apiUrl"/>/users
  * </http>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Preserving binary data (use get-var!)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Download image as binary -->
  * <def var="imageData">
  *   <http url="https://example.com/logo.png"/>
@@ -117,10 +122,13 @@ import org.slf4j.LoggerFactory;
  * <file path="broken.png" action="write" type="binary">
  *   ${imageData}  <!-- ❌ Corrupted! -->
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Preserving XML structure</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="xmlData">
  *   <json-to-xml>
  *     <http url="https://api.example.com/data.json"/>
@@ -133,10 +141,13 @@ import org.slf4j.LoggerFactory;
  *     <get-var var="xmlData"/>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Working with lists</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="productIds">
  *   <xpath expression="//product/@id">
  *     <html-to-xml>
@@ -151,10 +162,13 @@ import org.slf4j.LoggerFactory;
  *   
  *   <http url="https://example.com/product/${id}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Dynamic variable names with template interpolation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="lang" value="en"/>
  * <def var="greeting_en" value="Hello"/>
  * <def var="greeting_pl" value="Cześć"/>
@@ -163,10 +177,13 @@ import org.slf4j.LoggerFactory;
  * <!-- Dynamic variable name -->
  * <get-var var="greeting_${lang}"/>
  * <!-- Result: Hello (retrieves greeting_en) -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Reusing expensive HTTP calls</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Fetch API data once -->
  * <def var="apiData">
  *   <http url="https://api.example.com/data?key=${apiKey}"/>
@@ -190,6 +207,7 @@ import org.slf4j.LoggerFactory;
  *     <json-to-xml><get-var var="apiData"/></json-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>When to Use</h3>
@@ -223,12 +241,15 @@ import org.slf4j.LoggerFactory;
  * the execution. To handle optional variables, use {@code <if>}:
  * </p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <if condition="${empty(optionalVar)}">
  *   <!-- Variable doesn't exist, use default -->
  *   <def var="optionalVar" value="default"/>
  * </if>
  * 
  * <get-var var="optionalVar"/>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

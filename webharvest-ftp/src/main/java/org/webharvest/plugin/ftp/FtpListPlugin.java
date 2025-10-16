@@ -61,6 +61,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <ftp host="ftp.example.com" username="user" password="pass">
  *     <def var="fileList">
  *         <ftp-list path="/data/"/>
@@ -71,6 +73,7 @@ import org.slf4j.LoggerFactory;
  *         <ftp-get path="/data/${filename}"/>
  *     </loop>
  * </ftp>
+ * </config>
  * }</pre>
  * 
  * <p>See {@link FtpPlugin} for complete FTP examples.</p>

@@ -111,7 +111,9 @@ execution context. This is a legacy processor maintained for backward compatibil
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
 
 &lt;loop maxloops=&quot;10&quot;&gt;
   &lt;!-- Legacy: set-var --&gt;
@@ -119,7 +121,8 @@ execution context. This is a legacy processor maintained for backward compatibil
   
   &lt;!-- Modern: use def instead --&gt;
   &lt;def var=&quot;counter&quot; value=&quot;${counter}1&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -134,11 +137,14 @@ execution context. This is a legacy processor maintained for backward compatibil
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;count&quot; value=&quot;5&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;count&quot; value=&quot;5&quot;/&gt;
 
 &lt;!-- set-var has basic arithmetic --&gt;
 &lt;set-var name=&quot;count&quot;&gt;${count + 1}&lt;/set-var&gt;
-&lt;set-var name=&quot;count&quot;&gt;${count - 1}&lt;/set-var&gt;</code></pre>
+&lt;set-var name=&quot;count&quot;&gt;${count - 1}&lt;/set-var&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -153,7 +159,9 @@ execution context. This is a legacy processor maintained for backward compatibil
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;totalItems&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;totalItems&quot; value=&quot;0&quot;/&gt;
 
 &lt;loop item=&quot;page&quot; maxloops=&quot;5&quot;&gt;
   &lt;def var=&quot;pageItems&quot;&gt;
@@ -164,7 +172,8 @@ execution context. This is a legacy processor maintained for backward compatibil
   
   &lt;!-- Add to total (string concatenation, not arithmetic!) --&gt;
   &lt;set-var name=&quot;totalItems&quot;&gt;${totalItems}${pageItems}&lt;/set-var&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

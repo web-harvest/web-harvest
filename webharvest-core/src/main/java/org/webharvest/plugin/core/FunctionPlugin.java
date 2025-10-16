@@ -60,6 +60,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Simple function</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="getCurrentDate">
  *   ${_date}
  * </function>
@@ -67,10 +69,13 @@ import org.webharvest.runtime.variables.Variable;
  * <def var="timestamp">
  *   <call name="getCurrentDate"/>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Function with parameters</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="fetchProduct">
  *   <def var="productId"><call-param name="productId"/></def>
  *   
@@ -80,10 +85,13 @@ import org.webharvest.runtime.variables.Variable;
  * <!-- Call with different IDs -->
  * <def var="product1"><call name="fetchProduct"><call-param name="productId">123</call-param></call></def>
  * <def var="product2"><call name="fetchProduct"><call-param name="productId">456</call-param></call></def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Reusable extraction logic</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="extractProductInfo">
  *   <def var="html"><call-param name="html"/></def>
  *   
@@ -112,6 +120,7 @@ import org.webharvest.runtime.variables.Variable;
  *     </call>
  *   </def>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

@@ -62,11 +62,14 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <p>Inside the function, access parameters with:</p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="fetchProduct">
  *   <def var="id"><call-param name="productId"/></def>
  *   <def var="reviews"><call-param name="includeReviews"/></def>
  *   <!-- Function logic -->
  * </function>
+ * </config>
  * }</pre>
  * 
  * @author WebHarvest Team

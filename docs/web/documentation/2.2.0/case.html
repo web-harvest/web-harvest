@@ -112,7 +112,9 @@ syntax for multiple conditions.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;case&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;case&gt;
   &lt;if condition=&quot;${httpStatus == &#x27;200&#x27;}&quot;&gt;
     &lt;def var=&quot;result&quot; value=&quot;success&quot;/&gt;
   &lt;/if&gt;
@@ -125,7 +127,8 @@ syntax for multiple conditions.</p>
   &lt;else&gt;
     &lt;def var=&quot;result&quot; value=&quot;unknown&quot;/&gt;
   &lt;/else&gt;
-&lt;/case&gt;</code></pre>
+&lt;/case&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

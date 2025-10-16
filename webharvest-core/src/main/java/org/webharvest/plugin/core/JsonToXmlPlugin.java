@@ -91,6 +91,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Parse JSON API response</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="userName">
  *   <xpath expression="//user/name/text()">
  *     <json-to-xml>
@@ -100,10 +102,13 @@ import org.webharvest.runtime.variables.Variable;
  *     </json-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Extract from nested JSON</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- JSON: {"data": {"users": [{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]}} -->
  * <def var="userNames">
  *   <xpath expression="//users/item/name/text()">
@@ -119,10 +124,13 @@ import org.webharvest.runtime.variables.Variable;
  *   
  *   <file path="names.txt" action="append">${name}&#10;</file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: JSON array processing</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- JSON: [{"id": 1, "title": "Post 1"}, {"id": 2, "title": "Post 2"}] -->
  * <loop item="post">
  *   <xpath expression="//item">
@@ -138,10 +146,13 @@ import org.webharvest.runtime.variables.Variable;
  *     ${postTitle}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Complex nested data extraction</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="addresses">
  *   <xpath expression="//users/item[address/city/text()='London']/address/street/text()">
  *     <json-to-xml>
@@ -149,14 +160,18 @@ import org.webharvest.runtime.variables.Variable;
  *     </json-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Custom root tag name</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <json-to-xml tag="root">
  *   <http url="https://api.example.com/data"/>
  * </json-to-xml>
  * <!-- Output: <root>...</root> instead of default <json>...</json> -->
+ * </config>
  * }</pre>
  * 
  * <h3>JSON to XML Mapping</h3>

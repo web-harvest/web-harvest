@@ -72,6 +72,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Download file from FTP</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <ftp host="ftp.example.com" 
  *      username="user" 
  *      password="pass">
@@ -84,10 +86,13 @@ import org.slf4j.LoggerFactory;
  *         ${fileContent}
  *     </file>
  * </ftp>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Upload scraped data to FTP</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="scrapedData">
  *     <http url="https://example.com/api/data"/>
  * </def>
@@ -100,10 +105,13 @@ import org.slf4j.LoggerFactory;
  *         ${scrapedData}
  *     </ftp-put>
  * </ftp>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: List and download all files</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <ftp host="ftp.example.com" username="user" password="pass">
  *     
  *     <def var="fileList">
@@ -116,6 +124,7 @@ import org.slf4j.LoggerFactory;
  *         <ftp-get path="/data/${filename}"/>
  *     </loop>
  * </ftp>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

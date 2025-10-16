@@ -111,11 +111,14 @@ Must be used as a child element of <code><http></code>. Used for POST/PUT form d
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;http url=&quot;https://example.com/login&quot; method=&quot;POST&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://example.com/login&quot; method=&quot;POST&quot;&gt;
   &lt;http-param name=&quot;username&quot;&gt;john_doe&lt;/http-param&gt;
   &lt;http-param name=&quot;password&quot;&gt;secret123&lt;/http-param&gt;
   &lt;http-param name=&quot;remember&quot;&gt;true&lt;/http-param&gt;
-&lt;/http&gt;</code></pre>
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

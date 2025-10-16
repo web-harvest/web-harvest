@@ -57,6 +57,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Fixed delay between requests</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="url" maxloops="100">
  *   <tokenize>${urls}</tokenize>
  *   
@@ -65,10 +67,13 @@ import org.webharvest.runtime.variables.Variable;
  *   <!-- Wait 2 seconds between requests -->
  *   <sleep milliseconds="2000"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Retry with exponential backoff</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="retryCount" value="0"/>
  * <def var="success" value="false"/>
  * 
@@ -91,10 +96,13 @@ import org.webharvest.runtime.variables.Variable;
  *     <def var="success" value="true"/>
  *   </else>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Respect rate limits</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- API allows 10 requests per minute -->
  * <loop item="endpoint" maxloops="10">
  *   <tokenize>${endpoints}</tokenize>
@@ -104,6 +112,7 @@ import org.webharvest.runtime.variables.Variable;
  *   <!-- 6 seconds = 10 requests/minute -->
  *   <sleep milliseconds="6000"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

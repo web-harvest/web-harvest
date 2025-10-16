@@ -113,7 +113,9 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;text&quot; value=&quot;apple banana cherry date elderberry&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;text&quot; value=&quot;apple banana cherry date elderberry&quot;/&gt;
 
 &lt;loop item=&quot;fruit&quot;&gt;
   &lt;tokenize&gt;${text}&lt;/tokenize&gt;
@@ -122,7 +124,8 @@ scenario requiring text segmentation.</p>
     ${fruit}
   &lt;/file&gt;
 &lt;/loop&gt;
-&lt;!-- Processes: apple, banana, cherry, date, elderberry --&gt;</code></pre>
+&lt;!-- Processes: apple, banana, cherry, date, elderberry --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -137,14 +140,17 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;csvLine&quot; value=&quot;John,Doe,john@example.com,30&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;csvLine&quot; value=&quot;John,Doe,john@example.com,30&quot;/&gt;
 
 &lt;loop item=&quot;field&quot; index=&quot;i&quot;&gt;
   &lt;tokenize delimiters=&quot;,&quot;&gt;${csvLine}&lt;/tokenize&gt;
   
   &lt;def var=&quot;field${i}&quot; value=&quot;${field}&quot;/&gt;
 &lt;/loop&gt;
-&lt;!-- field0=John, field1=Doe, field2=john@example.com, field3=30 --&gt;</code></pre>
+&lt;!-- field0=John, field1=Doe, field2=john@example.com, field3=30 --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -159,7 +165,9 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;urls&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;urls&quot;&gt;
   https://example.com/page1
   https://example.com/page2
   https://example.com/page3
@@ -169,7 +177,8 @@ scenario requiring text segmentation.</p>
   &lt;tokenize delimiters=&quot;&amp;#10;&quot;&gt;${urls}&lt;/tokenize&gt;
   
   &lt;http url=&quot;${url}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -184,7 +193,9 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;data&quot; value=&quot;id:123;name:Product A;price:99.99&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;data&quot; value=&quot;id:123;name:Product A;price:99.99&quot;/&gt;
 
 &lt;loop item=&quot;pair&quot;&gt;
   &lt;tokenize delimiters=&quot;;&quot;&gt;${data}&lt;/tokenize&gt;
@@ -193,7 +204,8 @@ scenario requiring text segmentation.</p>
   &lt;def var=&quot;key&quot;&gt;
     &lt;tokenize delimiters=&quot;:&quot;&gt;${pair}&lt;/tokenize&gt;
   &lt;/def&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -208,7 +220,9 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;text&quot; value=&quot;  apple  ,  banana  ,  cherry  &quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;text&quot; value=&quot;  apple  ,  banana  ,  cherry  &quot;/&gt;
 
 &lt;!-- With trimming (default) --&gt;
 &lt;tokenize delimiters=&quot;,&quot; trimtokens=&quot;true&quot;&gt;${text}&lt;/tokenize&gt;
@@ -216,7 +230,8 @@ scenario requiring text segmentation.</p>
 
 &lt;!-- Without trimming --&gt;
 &lt;tokenize delimiters=&quot;,&quot; trimtokens=&quot;false&quot;&gt;${text}&lt;/tokenize&gt;
-&lt;!-- Result: [&quot;  apple  &quot;, &quot;  banana  &quot;, &quot;  cherry  &quot;] --&gt;</code></pre>
+&lt;!-- Result: [&quot;  apple  &quot;, &quot;  banana  &quot;, &quot;  cherry  &quot;] --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -231,7 +246,9 @@ scenario requiring text segmentation.</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;data&quot; value=&quot;apple,,cherry,,elderberry&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;data&quot; value=&quot;apple,,cherry,,elderberry&quot;/&gt;
 
 &lt;!-- Skip empty tokens (default) --&gt;
 &lt;tokenize delimiters=&quot;,&quot; allowemptytokens=&quot;false&quot;&gt;${data}&lt;/tokenize&gt;
@@ -239,7 +256,8 @@ scenario requiring text segmentation.</p>
 
 &lt;!-- Keep empty tokens --&gt;
 &lt;tokenize delimiters=&quot;,&quot; allowemptytokens=&quot;true&quot;&gt;${data}&lt;/tokenize&gt;
-&lt;!-- Result: [&quot;apple&quot;, &quot;&quot;, &quot;cherry&quot;, &quot;&quot;, &quot;elderberry&quot;] --&gt;</code></pre>
+&lt;!-- Result: [&quot;apple&quot;, &quot;&quot;, &quot;cherry&quot;, &quot;&quot;, &quot;elderberry&quot;] --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

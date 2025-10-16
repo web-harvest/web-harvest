@@ -65,18 +65,24 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Explicit text content</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="message">
  *   <text>This is plain text content</text>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Charset conversion</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="latinText">
  *   <text charset="ISO-8859-1">
  *     <file path="legacy-file.txt" action="read"/>
  *   </text>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>Note</h3>

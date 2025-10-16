@@ -113,7 +113,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;username&quot; value=&quot;john_doe&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;username&quot; value=&quot;john_doe&quot;/&gt;
 &lt;def var=&quot;apiKey&quot; value=&quot;abc123&quot;/&gt;
 
 &lt;!-- Automatic template interpolation in attributes --&gt;
@@ -123,7 +125,8 @@ string building, and simple computations.</p>
 &lt;def var=&quot;url&quot;&gt;
   &lt;template&gt;https://api.example.com/user/${username}?key=${apiKey}&lt;/template&gt;
 &lt;/def&gt;
-&lt;http url=&quot;${url}&quot;/&gt;</code></pre>
+&lt;http url=&quot;${url}&quot;/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -138,7 +141,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;firstName&quot; value=&quot;John&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;firstName&quot; value=&quot;John&quot;/&gt;
 &lt;def var=&quot;lastName&quot; value=&quot;Doe&quot;/&gt;
 &lt;def var=&quot;age&quot; value=&quot;30&quot;/&gt;
 
@@ -148,7 +153,8 @@ string building, and simple computations.</p>
     You are ${age} years old.
     Next year you will be ${parseInt(age) + 1}.
   &lt;/template&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -163,7 +169,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;product&quot; index=&quot;i&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;product&quot; index=&quot;i&quot;&gt;
   &lt;xpath expression=&quot;//product&quot;&gt;...&lt;/xpath&gt;
   
   &lt;def var=&quot;name&quot;&gt;&lt;xpath expression=&quot;.//name/text()&quot;&gt;${product}&lt;/xpath&gt;&lt;/def&gt;
@@ -182,7 +190,8 @@ string building, and simple computations.</p>
   &lt;/def&gt;
   
   &lt;file path=&quot;products.html&quot; action=&quot;append&quot;&gt;${html}&lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -197,7 +206,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;userId&quot; value=&quot;123&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;userId&quot; value=&quot;123&quot;/&gt;
 &lt;def var=&quot;userName&quot; value=&quot;John Doe&quot;/&gt;
 &lt;def var=&quot;userEmail&quot; value=&quot;john@example.com&quot;/&gt;
 
@@ -215,7 +226,8 @@ string building, and simple computations.</p>
   &lt;/template&gt;
 &lt;/def&gt;
 
-&lt;file path=&quot;user-${userId}.json&quot; action=&quot;write&quot;&gt;${jsonOutput}&lt;/file&gt;</code></pre>
+&lt;file path=&quot;user-${userId}.json&quot; action=&quot;write&quot;&gt;${jsonOutput}&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -230,7 +242,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- CSV header --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- CSV header --&gt;
 &lt;file path=&quot;products.csv&quot; action=&quot;write&quot;&gt;ID,Name,Price,Stock&lt;/file&gt;
 
 &lt;!-- CSV rows with template --&gt;
@@ -245,7 +259,8 @@ string building, and simple computations.</p>
   &lt;file path=&quot;products.csv&quot; action=&quot;append&quot;&gt;
     &lt;template&gt;${id},&quot;${name}&quot;,${price},${stock}&lt;/template&gt;
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -260,7 +275,9 @@ string building, and simple computations.</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;customerName&quot; value=&quot;Jane Smith&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;customerName&quot; value=&quot;Jane Smith&quot;/&gt;
 &lt;def var=&quot;orderTotal&quot; value=&quot;299.99&quot;/&gt;
 &lt;def var=&quot;orderId&quot; value=&quot;ORD-98765&quot;/&gt;
 
@@ -282,7 +299,8 @@ string building, and simple computations.</p>
     The Team
     ]]&gt;
   &lt;/template&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

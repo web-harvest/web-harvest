@@ -65,6 +65,8 @@ import java.util.concurrent.Callable;
  * 
  * <h4>Example 1: Simple function call</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Define function -->
  * <function name="fetchUser">
  *   <def var="userId"><call-param name="userId"/></def>
@@ -78,10 +80,13 @@ import java.util.concurrent.Callable;
  *     <call-param name="userId">123</call-param>
  *   </call>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Function with multiple parameters</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="buildUrl">
  *   <def var="base"><call-param name="baseUrl"/></def>
  *   <def var="path"><call-param name="path"/></def>
@@ -95,10 +100,13 @@ import java.util.concurrent.Callable;
  *   <call-param name="path">/users</call-param>
  *   <call-param name="query">limit=10&offset=0</call-param>
  * </call>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Reusable scraping function</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="scrapePage">
  *   <def var="url"><call-param name="url"/></def>
  *   
@@ -123,6 +131,7 @@ import java.util.concurrent.Callable;
  *     </call>
  *   </def>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

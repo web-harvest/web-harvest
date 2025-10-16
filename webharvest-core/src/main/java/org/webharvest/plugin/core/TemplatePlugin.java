@@ -80,6 +80,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Simple variable interpolation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="username" value="john_doe"/>
  * <def var="apiKey" value="abc123"/>
  * 
@@ -91,10 +93,13 @@ import org.slf4j.LoggerFactory;
  *   <template>https://api.example.com/user/${username}?key=${apiKey}</template>
  * </def>
  * <http url="${url}"/>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Building complex strings</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="firstName" value="John"/>
  * <def var="lastName" value="Doe"/>
  * <def var="age" value="30"/>
@@ -106,10 +111,13 @@ import org.slf4j.LoggerFactory;
  *     Next year you will be ${parseInt(age) + 1}.
  *   </template>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: HTML generation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="product" index="i">
  *   <xpath expression="//product">...</xpath>
  *   
@@ -130,10 +138,13 @@ import org.slf4j.LoggerFactory;
  *   
  *   <file path="products.html" action="append">${html}</file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: JSON generation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="userId" value="123"/>
  * <def var="userName" value="John Doe"/>
  * <def var="userEmail" value="john@example.com"/>
@@ -153,10 +164,13 @@ import org.slf4j.LoggerFactory;
  * </def>
  * 
  * <file path="user-${userId}.json" action="write">${jsonOutput}</file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: CSV generation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- CSV header -->
  * <file path="products.csv" action="write">ID,Name,Price,Stock</file>
  * 
@@ -173,10 +187,13 @@ import org.slf4j.LoggerFactory;
  *     <template>${id},"${name}",${price},${stock}</template>
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Email body generation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="customerName" value="Jane Smith"/>
  * <def var="orderTotal" value="299.99"/>
  * <def var="orderId" value="ORD-98765"/>
@@ -200,6 +217,7 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </template>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 7: XML document generation</h4>
@@ -247,11 +265,14 @@ import org.slf4j.LoggerFactory;
  * 
  * <p><strong>Automatic (most common):</strong></p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Templates work automatically in text and attributes -->
  * <http url="https://example.com/user/${userId}"/>
  * <file path="output-${timestamp}.txt" action="write">
  *   User: ${userName}
  * </file>
+ * </config>
  * }</pre>
  * 
  * <p><strong>Explicit {@code <template>} when:</strong></p>

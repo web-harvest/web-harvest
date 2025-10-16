@@ -65,6 +65,8 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h4>Example 1: Route by HTTP status</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <case>
  *   <if condition="${httpStatus == '200'}">
  *     <def var="result" value="success"/>
@@ -79,6 +81,7 @@ import org.webharvest.utils.CommonUtil;
  *     <def var="result" value="unknown"/>
  *   </else>
  * </case>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

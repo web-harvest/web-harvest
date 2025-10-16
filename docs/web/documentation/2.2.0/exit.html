@@ -112,13 +112,16 @@ or when specific data is found.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;response&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;response&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
 &lt;/def&gt;
 
 &lt;if condition=&quot;${empty(response)}&quot;&gt;
   &lt;exit message=&quot;API returned empty response - terminating&quot;/&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -133,14 +136,17 @@ or when specific data is found.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;item&quot; maxloops=&quot;1000&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;item&quot; maxloops=&quot;1000&quot;&gt;
   &lt;xpath expression=&quot;//item&quot;&gt;...&lt;/xpath&gt;
   
   &lt;if condition=&quot;${item == &#x27;TARGET&#x27;}&quot;&gt;
     &lt;file path=&quot;found.txt&quot; action=&quot;write&quot;&gt;Found target: ${item}&lt;/file&gt;
     &lt;exit message=&quot;Target item found, stopping search&quot;/&gt;
   &lt;/if&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -155,7 +161,9 @@ or when specific data is found.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;requestCount&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;requestCount&quot; value=&quot;0&quot;/&gt;
 
 &lt;while condition=&quot;${hasMore}&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
@@ -167,7 +175,8 @@ or when specific data is found.</p>
   &lt;if condition=&quot;${requestCount &gt;= 100}&quot;&gt;
     &lt;exit message=&quot;Request quota reached (100 requests)&quot;/&gt;
   &lt;/if&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

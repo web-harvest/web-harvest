@@ -93,14 +93,19 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Simple string value</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="apiKey" value="abc123xyz"/>
  * 
  * <!-- Use the variable -->
  * <http url="https://api.example.com?key=${apiKey}"/>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Value from child processor (HTTP response)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="htmlContent">
  *   <http url="https://example.com"/>
  * </def>
@@ -111,38 +116,50 @@ import org.slf4j.LoggerFactory;
  *     <html-to-xml>${htmlContent}</html-to-xml>
  *   </xpath>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Template interpolation in value attribute</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="baseUrl" value="https://example.com"/>
  * <def var="apiPath" value="/api/v1"/>
  * 
  * <!-- Combine variables -->
  * <def var="fullUrl" value="${baseUrl}${apiPath}/users"/>
  * <!-- Result: https://example.com/api/v1/users -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Text content with interpolation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="firstName" value="John"/>
  * <def var="lastName" value="Doe"/>
  * 
  * <def var="fullName">Hello, ${firstName} ${lastName}!</def>
  * <!-- Result: Hello, John Doe! -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Complex value from multiple processors</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="productData">
  *   <http url="https://api.example.com/product/123"/>
  *   <json-to-xml>${http}</json-to-xml>
  *   <xpath expression="//product/name/text()"/>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Updating existing variables</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="counter" value="0"/>
  * 
  * <loop item="product" index="i" maxloops="100">
@@ -151,6 +168,7 @@ import org.slf4j.LoggerFactory;
  *   <!-- Update counter (concatenation, not arithmetic) -->
  *   <def var="counter" value="${counter}1"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Common Patterns</h3>
@@ -170,6 +188,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Data Accumulation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="allProducts" value=""/>
  * 
  * <loop item="page" index="i" maxloops="10">
@@ -180,6 +200,7 @@ import org.slf4j.LoggerFactory;
  *   <!-- Accumulate results -->
  *   <def var="allProducts" value="${allProducts}${pageData}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

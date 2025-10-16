@@ -112,7 +112,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;price&quot; value=&quot;99.99&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;price&quot; value=&quot;99.99&quot;/&gt;
 &lt;def var=&quot;quantity&quot; value=&quot;5&quot;/&gt;
 
 &lt;def var=&quot;total&quot;&gt;
@@ -123,7 +125,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
       price * qty;  // Returns: 499.95
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -138,7 +141,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;email&quot; value=&quot;USER@EXAMPLE.COM&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;email&quot; value=&quot;USER@EXAMPLE.COM&quot;/&gt;
 
 &lt;def var=&quot;normalizedEmail&quot;&gt;
   &lt;script&gt;
@@ -147,7 +152,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
       email.toLowerCase();  // Returns: user@example.com
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -162,7 +168,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;httpStatus&quot; value=&quot;404&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;httpStatus&quot; value=&quot;404&quot;/&gt;
 
 &lt;def var=&quot;shouldRetry&quot;&gt;
   &lt;script&gt;
@@ -183,7 +191,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
 &lt;if condition=&quot;${shouldRetry}&quot;&gt;
   &lt;sleep time=&quot;5000&quot;/&gt;
   &lt;http url=&quot;${url}&quot;/&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -198,7 +207,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;jsonData&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;jsonData&quot;&gt;
   &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
 &lt;/def&gt;
 
@@ -210,7 +221,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
       obj.users[0].name;  // Extract nested value
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -225,7 +237,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;timestamp&quot; value=&quot;1609459200000&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;timestamp&quot; value=&quot;1609459200000&quot;/&gt;
 
 &lt;def var=&quot;formattedDate&quot;&gt;
   &lt;script&gt;
@@ -235,7 +249,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
       date.toISOString();  // Returns: 2021-01-01T00:00:00.000Z
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -250,7 +265,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;baseUrl&quot; value=&quot;https://api.example.com&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;baseUrl&quot; value=&quot;https://api.example.com&quot;/&gt;
 &lt;def var=&quot;endpoint&quot; value=&quot;users&quot;/&gt;
 &lt;def var=&quot;userId&quot; value=&quot;123&quot;/&gt;
 &lt;def var=&quot;fields&quot;&gt;name,email,age&lt;/def&gt;
@@ -267,7 +284,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
       // Returns: https://api.example.com/users/123?fields=name%2Cemail%2Cage
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -282,14 +300,17 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-7.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;uuid&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;uuid&quot;&gt;
   &lt;script language=&quot;groovy&quot;&gt;
     &lt;![CDATA[
       import java.util.UUID
       UUID.randomUUID().toString()
     ]]&gt;
   &lt;/script&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -304,7 +325,9 @@ API calls, conditional logic, and any processing that's difficult to express in 
                     <span class="window-title">example-8.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
 
 &lt;loop maxloops=&quot;10&quot;&gt;
   &lt;!-- Real arithmetic increment --&gt;
@@ -318,7 +341,8 @@ API calls, conditional logic, and any processing that's difficult to express in 
   &lt;/def&gt;
   
   &lt;http url=&quot;https://example.com/page/${counter}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

@@ -85,6 +85,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 3: Conditional include</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="environment" value="production"/>
  * 
  * <if condition="${environment == 'production'}">
@@ -93,6 +95,7 @@ import org.webharvest.runtime.variables.Variable;
  * <else>
  *   <include path="config/dev-settings.xml"/>
  * </else>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

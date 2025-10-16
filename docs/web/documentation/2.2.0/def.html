@@ -112,10 +112,13 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;apiKey&quot; value=&quot;abc123xyz&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;apiKey&quot; value=&quot;abc123xyz&quot;/&gt;
 
 &lt;!-- Use the variable --&gt;
-&lt;http url=&quot;https://api.example.com?key=${apiKey}&quot;/&gt;</code></pre>
+&lt;http url=&quot;https://api.example.com?key=${apiKey}&quot;/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -130,7 +133,9 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;htmlContent&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;htmlContent&quot;&gt;
   &lt;http url=&quot;https://example.com&quot;/&gt;
 &lt;/def&gt;
 
@@ -139,7 +144,8 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
   &lt;xpath expression=&quot;//title/text()&quot;&gt;
     &lt;html-to-xml&gt;${htmlContent}&lt;/html-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -154,12 +160,15 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;baseUrl&quot; value=&quot;https://example.com&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;baseUrl&quot; value=&quot;https://example.com&quot;/&gt;
 &lt;def var=&quot;apiPath&quot; value=&quot;/api/v1&quot;/&gt;
 
 &lt;!-- Combine variables --&gt;
 &lt;def var=&quot;fullUrl&quot; value=&quot;${baseUrl}${apiPath}/users&quot;/&gt;
-&lt;!-- Result: https://example.com/api/v1/users --&gt;</code></pre>
+&lt;!-- Result: https://example.com/api/v1/users --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -174,11 +183,14 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;firstName&quot; value=&quot;John&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;firstName&quot; value=&quot;John&quot;/&gt;
 &lt;def var=&quot;lastName&quot; value=&quot;Doe&quot;/&gt;
 
 &lt;def var=&quot;fullName&quot;&gt;Hello, ${firstName} ${lastName}!&lt;/def&gt;
-&lt;!-- Result: Hello, John Doe! --&gt;</code></pre>
+&lt;!-- Result: Hello, John Doe! --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -193,11 +205,14 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;productData&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;productData&quot;&gt;
   &lt;http url=&quot;https://api.example.com/product/123&quot;/&gt;
   &lt;json-to-xml&gt;${http}&lt;/json-to-xml&gt;
   &lt;xpath expression=&quot;//product/name/text()&quot;/&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -212,14 +227,17 @@ subsequent processors through variable references (<code>${varname</code>}).</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;counter&quot; value=&quot;0&quot;/&gt;
 
 &lt;loop item=&quot;product&quot; index=&quot;i&quot; maxloops=&quot;100&quot;&gt;
   &lt;http url=&quot;https://api.example.com/products&quot;/&gt;
   
   &lt;!-- Update counter (concatenation, not arithmetic) --&gt;
   &lt;def var=&quot;counter&quot; value=&quot;${counter}1&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

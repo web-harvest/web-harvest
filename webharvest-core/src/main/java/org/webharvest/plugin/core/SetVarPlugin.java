@@ -97,6 +97,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Basic variable update (legacy syntax)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="counter" value="0"/>
  * 
  * <loop maxloops="10">
@@ -106,19 +108,25 @@ import org.slf4j.LoggerFactory;
  *   <!-- Modern: use def instead -->
  *   <def var="counter" value="${counter}1"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Arithmetic expressions (limited support)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="count" value="5"/>
  * 
  * <!-- set-var has basic arithmetic -->
  * <set-var name="count">${count + 1}</set-var>
  * <set-var name="count">${count - 1}</set-var>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Updating with processor result</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="totalItems" value="0"/>
  * 
  * <loop item="page" maxloops="5">
@@ -131,22 +139,31 @@ import org.slf4j.LoggerFactory;
  *   <!-- Add to total (string concatenation, not arithmetic!) -->
  *   <set-var name="totalItems">${totalItems}${pageItems}</set-var>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Migration to {@code <def>}</h3>
  * 
  * <p><strong>Old (set-var):</strong></p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <set-var name="counter">${counter + 1}</set-var>
+ * </config>
  * }</pre>
  * 
  * <p><strong>New (def):</strong></p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="counter" value="${counter}1"/>
+ * </config>
  * }</pre>
  * 
  * <p><strong>Or with script for real arithmetic:</strong></p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="counter">
  *   <script>
  *     <![CDATA[
@@ -155,6 +172,7 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>Limitations</h3>

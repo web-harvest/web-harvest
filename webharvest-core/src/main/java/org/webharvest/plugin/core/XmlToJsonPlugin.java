@@ -68,6 +68,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Convert extracted data to JSON</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Extract product data as XML -->
  * <def var="productXml">
  *   <xpath expression="//div[@class='product']">
@@ -86,10 +88,13 @@ import org.webharvest.runtime.variables.Variable;
  * <file path="products.json" action="write">
  *   ${productJson}
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: POST JSON to API</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Build XML structure -->
  * <def var="userData">
  *   <template>
@@ -113,10 +118,13 @@ import org.webharvest.runtime.variables.Variable;
  *   <http-header name="Content-Type">application/json</http-header>
  *   <template>${userJson}</template>
  * </http>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Scrape HTML → Export JSON</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Scrape product list -->
  * <def var="products">
  *   <xpath expression="//div[@class='product']">
@@ -161,6 +169,7 @@ import org.webharvest.runtime.variables.Variable;
  * <file path="products.json" action="write">
  *   ${productsJson}
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h3>XML to JSON Mapping</h3>

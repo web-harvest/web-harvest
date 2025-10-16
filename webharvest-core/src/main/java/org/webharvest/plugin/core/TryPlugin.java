@@ -64,6 +64,8 @@ import java.util.List;
  * 
  * <h4>Example 1: Handle HTTP errors gracefully</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <try>
  *   <def var="data">
  *     <http url="https://api.example.com/data"/>
@@ -76,10 +78,13 @@ import java.util.List;
  *   </file>
  *   <def var="data" value=""/>  <!-- Use empty default -->
  * </catch>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Retry on failure</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="success" value="false"/>
  * <def var="retries" value="0"/>
  * 
@@ -95,10 +100,13 @@ import java.util.List;
  *     <sleep milliseconds="2000"/>
  *   </catch>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Continue processing on XPath failure</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="product">
  *   <xpath expression="//product">...</xpath>
  *   
@@ -115,6 +123,7 @@ import java.util.List;
  *     Product price: ${price}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Error Variable</h3>

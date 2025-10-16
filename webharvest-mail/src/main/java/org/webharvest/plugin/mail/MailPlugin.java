@@ -86,6 +86,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 2: HTML email with scraping results</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="products">
  *   <xpath expression="//product">
  *     <html-to-xml>
@@ -115,10 +117,13 @@ import org.slf4j.LoggerFactory;
  *       ]]>
  *     </template>
  * </mail>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Error notification email</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <try>
  *   <http url="https://api.example.com/data"/>
  * </try>
@@ -135,6 +140,7 @@ import org.slf4j.LoggerFactory;
  *   </mail>
  *   <exit/>
  * </catch>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

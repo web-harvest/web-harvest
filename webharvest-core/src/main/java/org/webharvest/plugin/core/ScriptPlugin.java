@@ -87,6 +87,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Arithmetic operations (real math, not string concat)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="price" value="99.99"/>
  * <def var="quantity" value="5"/>
  * 
@@ -99,10 +101,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: String manipulation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="email" value="USER@EXAMPLE.COM"/>
  * 
  * <def var="normalizedEmail">
@@ -113,10 +118,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Conditional logic</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="httpStatus" value="404"/>
  * 
  * <def var="shouldRetry">
@@ -139,10 +147,13 @@ import org.slf4j.LoggerFactory;
  *   <sleep time="5000"/>
  *   <http url="${url}"/>
  * </if>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: JSON parsing and manipulation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="jsonData">
  *   <http url="https://api.example.com/data"/>
  * </def>
@@ -156,10 +167,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Date formatting</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="timestamp" value="1609459200000"/>
  * 
  * <def var="formattedDate">
@@ -171,10 +185,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Complex URL building</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="baseUrl" value="https://api.example.com"/>
  * <def var="endpoint" value="users"/>
  * <def var="userId" value="123"/>
@@ -193,10 +210,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 7: Groovy for Java library access</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="uuid">
  *   <script language="groovy">
  *     <![CDATA[
@@ -205,10 +225,13 @@ import org.slf4j.LoggerFactory;
  *     ]]>
  *   </script>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 8: Counter with real increment</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="counter" value="0"/>
  * 
  * <loop maxloops="10">
@@ -224,12 +247,15 @@ import org.slf4j.LoggerFactory;
  *   
  *   <http url="https://example.com/page/${counter}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Language Selection</h3>
  * 
  * <p>Set language via attribute or config default:</p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- JavaScript (default) -->
  * <script>
  *   var x = 42;
@@ -244,6 +270,7 @@ import org.slf4j.LoggerFactory;
  * <script language="beanshell">
  *   int x = 42;
  * </script>
+ * </config>
  * }</pre>
  * 
  * <h3>Return Values</h3>

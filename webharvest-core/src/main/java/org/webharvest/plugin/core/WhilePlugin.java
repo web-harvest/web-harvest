@@ -92,6 +92,8 @@ import java.util.List;
  * 
  * <h4>Example 1: Pagination with has-next indicator</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="hasNextPage" value="true"/>
  * <def var="page" value="1"/>
  * 
@@ -112,10 +114,13 @@ import java.util.List;
  *     <script>parseInt(context.getVar("page")) + 1</script>
  *   </def>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Retry logic with backoff</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="success" value="false"/>
  * <def var="retryCount" value="0"/>
  * 
@@ -134,10 +139,13 @@ import java.util.List;
  *     <sleep time="1000"/>  <!-- Wait before retry -->
  *   </else>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Process until specific value found</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="found" value="false"/>
  * 
  * <while condition="${!found}" maxloops="50" index="i">
@@ -149,10 +157,13 @@ import java.util.List;
  *     <def var="found" value="true"/>
  *   </if>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Dynamic pagination (unknown page count)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="hasMore" value="true"/>
  * <def var="offset" value="0"/>
  * 
@@ -177,6 +188,7 @@ import java.util.List;
  *     </def>
  *   </else>
  * </while>
+ * </config>
  * }</pre>
  * 
  * <h3>Condition vs Loop</h3>

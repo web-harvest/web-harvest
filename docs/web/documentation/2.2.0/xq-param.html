@@ -111,13 +111,16 @@ Must be used as a child element of <code><xquery></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xquery&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xquery&gt;
   &lt;xq-expression&gt;
     declare variable $minPrice external;
     //product[price &gt; $minPrice]
   &lt;/xq-expression&gt;
   &lt;xq-param name=&quot;minPrice&quot; type=&quot;xs:integer&quot;&gt;100&lt;/xq-param&gt;
-&lt;/xquery&gt;</code></pre>
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -141,6 +144,9 @@ Must be used as a child element of <code><xquery></code>.</p>
                 </a>
                 <a href="var.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;var&gt;
+                </a>
+                <a href="get.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;get&gt;
                 </a></div>
         </section>
     </div>

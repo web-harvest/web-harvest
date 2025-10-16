@@ -61,6 +61,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * 
  * <h4>Example 1: Early return from function</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="findProduct">
  *   <def var="query"><call-param name="query"/></def>
  *   
@@ -77,10 +79,13 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  *   <!-- Not found -->
  *   <return>NOT_FOUND</return>
  * </function>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Conditional return</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="validateEmail">
  *   <def var="email"><call-param name="email"/></def>
  *   
@@ -99,6 +104,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  *   
  *   <return>false</return>
  * </function>
+ * </config>
  * }</pre>
  * 
  * <h3>Important Notes</h3>

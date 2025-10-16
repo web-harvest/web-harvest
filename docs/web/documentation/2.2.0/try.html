@@ -112,7 +112,9 @@ with error details available in the <code>${_error</code>} variable.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;try&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;try&gt;
   &lt;def var=&quot;data&quot;&gt;
     &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
   &lt;/def&gt;
@@ -123,7 +125,8 @@ with error details available in the <code>${_error</code>} variable.</p>
     Timestamp: ${_date}
   &lt;/file&gt;
   &lt;def var=&quot;data&quot; value=&quot;&quot;/&gt;  &lt;!-- Use empty default --&gt;
-&lt;/catch&gt;</code></pre>
+&lt;/catch&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -138,7 +141,9 @@ with error details available in the <code>${_error</code>} variable.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;success&quot; value=&quot;false&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;success&quot; value=&quot;false&quot;/&gt;
 &lt;def var=&quot;retries&quot; value=&quot;0&quot;/&gt;
 
 &lt;while condition=&quot;${!success &amp;&amp; retries &lt; 3}&quot;&gt;
@@ -152,7 +157,8 @@ with error details available in the <code>${_error</code>} variable.</p>
     &lt;/def&gt;
     &lt;sleep milliseconds=&quot;2000&quot;/&gt;
   &lt;/catch&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -167,7 +173,9 @@ with error details available in the <code>${_error</code>} variable.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;product&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;product&quot;&gt;
   &lt;xpath expression=&quot;//product&quot;&gt;...&lt;/xpath&gt;
   
   &lt;try&gt;
@@ -182,7 +190,8 @@ with error details available in the <code>${_error</code>} variable.</p>
   &lt;file path=&quot;products.txt&quot; action=&quot;append&quot;&gt;
     Product price: ${price}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

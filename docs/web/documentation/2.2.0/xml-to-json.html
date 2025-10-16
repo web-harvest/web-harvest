@@ -112,7 +112,9 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Extract product data as XML --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Extract product data as XML --&gt;
 &lt;def var=&quot;productXml&quot;&gt;
   &lt;xpath expression=&quot;//div[@class=&#x27;product&#x27;]&quot;&gt;
     &lt;html-to-xml&gt;
@@ -129,7 +131,8 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
 &lt;!-- Save as JSON file --&gt;
 &lt;file path=&quot;products.json&quot; action=&quot;write&quot;&gt;
   ${productJson}
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -144,7 +147,9 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Build XML structure --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Build XML structure --&gt;
 &lt;def var=&quot;userData&quot;&gt;
   &lt;template&gt;
     &lt;![CDATA[
@@ -166,7 +171,8 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
 &lt;http url=&quot;https://api.example.com/users&quot; method=&quot;POST&quot;&gt;
   &lt;http-header name=&quot;Content-Type&quot;&gt;application/json&lt;/http-header&gt;
   &lt;template&gt;${userJson}&lt;/template&gt;
-&lt;/http&gt;</code></pre>
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -181,7 +187,9 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Scrape product list --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Scrape product list --&gt;
 &lt;def var=&quot;products&quot;&gt;
   &lt;xpath expression=&quot;//div[@class=&#x27;product&#x27;]&quot;&gt;
     &lt;html-to-xml&gt;
@@ -224,7 +232,8 @@ that expects JSON input. It's the reverse operation of <code><json-to-xml></code
 
 &lt;file path=&quot;products.json&quot; action=&quot;write&quot;&gt;
   ${productsJson}
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

@@ -79,6 +79,8 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h4>Example 1: Loop over XPath results</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="product" index="i" maxloops="50">
  *   <xpath expression="//div[@class='product']">
  *     <html-to-xml>
@@ -99,10 +101,13 @@ import org.webharvest.runtime.variables.Variable;
  *     {"name": "${name}", "price": "${price}"}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Loop over delimited list</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="urls">
  *   http://example.com/page1
  *   http://example.com/page2
@@ -114,10 +119,13 @@ import org.webharvest.runtime.variables.Variable;
  *   
  *   <http url="${url}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Pagination scraping</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="pageNumbers">1,2,3,4,5,6,7,8,9,10</def>
  * 
  * <loop item="pageNum" index="i" delimiter=",">
@@ -131,10 +139,13 @@ import org.webharvest.runtime.variables.Variable;
  *     ${pageContent}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Loop with index and counter</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="totalCount" value="0"/>
  * 
  * <loop item="item" index="idx" maxloops="100">
@@ -157,10 +168,13 @@ import org.webharvest.runtime.variables.Variable;
  * <file path="summary.txt" action="write">
  *   Processed ${totalCount} items
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Filtered loop (skip empty items)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="link" empty="true">
  *   <xpath expression="//a/@href">
  *     <html-to-xml>
@@ -171,10 +185,13 @@ import org.webharvest.runtime.variables.Variable;
  *   <!-- Only non-empty links are processed -->
  *   <http url="${link}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Nested loops (products and variants)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="product" index="i">
  *   <xpath expression="//div[@class='product']">
  *     <html-to-xml>
@@ -199,12 +216,15 @@ import org.webharvest.runtime.variables.Variable;
  *     </file>
  *   </loop>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Loop Control</h3>
  * 
  * <p><strong>maxloops:</strong> Safety limit to prevent infinite loops</p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Default limit: 100 iterations -->
  * <loop item="item">...</loop>
  * 
@@ -213,10 +233,13 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <!-- No limit (use with caution!) -->
  * <loop item="item" maxloops="-1">...</loop>
+ * </config>
  * }</pre>
  * 
  * <p><strong>Breaking out of loop:</strong></p>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="item" maxloops="1000">
  *   <xpath expression="//item">...</xpath>
  *   
@@ -225,6 +248,7 @@ import org.webharvest.runtime.variables.Variable;
  *     <exit/>
  *   </if>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h3>Performance Considerations</h3>

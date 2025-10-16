@@ -98,6 +98,8 @@ import java.util.regex.Pattern;
  * 
  * <h4>Example 1: Extract email addresses</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="emails">
  *   <regexp>
  *     <regexp-pattern>([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})</regexp-pattern>
@@ -112,10 +114,13 @@ import java.util.regex.Pattern;
  *   
  *   <file path="emails.txt" action="append">${email}&#10;</file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Parse key-value pairs with capture groups</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="data">name:John;email:john@example.com;age:30</def>
  * 
  * <loop item="pair">
@@ -133,10 +138,13 @@ import java.util.regex.Pattern;
  *   <!-- group1 = key, group2 = value (Bug #62: properly isolated!) -->
  *   <def var="${group1}" value="${group2}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Find and replace</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="html">
  *   <http url="https://example.com/page"/>
  * </def>
@@ -149,10 +157,13 @@ import java.util.regex.Pattern;
  *     <regexp-result>https://</regexp-result>
  *   </regexp>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Extract URLs with named groups</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="url">
  *   <regexp>
  *     <regexp-pattern>https?://([^/]+)(/.*)}</regexp-pattern>
@@ -168,16 +179,20 @@ import java.util.regex.Pattern;
  *     Path: ${group2}
  *   </file>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Case-insensitive search</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <regexp flag-caseinsensitive="true">
  *   <regexp-pattern>error|warning|fail</regexp-pattern>
  *   <regexp-source>
  *     <file path="log.txt" action="read"/>
  *   </regexp-source>
  * </regexp>
+ * </config>
  * }</pre>
  * 
  * <h3>Child Elements</h3>

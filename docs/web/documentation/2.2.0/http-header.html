@@ -111,11 +111,14 @@ as a child element of <code><http></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;http url=&quot;https://api.example.com/data&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://api.example.com/data&quot;&gt;
   &lt;http-header name=&quot;Authorization&quot;&gt;Bearer ${apiKey}&lt;/http-header&gt;
   &lt;http-header name=&quot;Accept&quot;&gt;application/json&lt;/http-header&gt;
   &lt;http-header name=&quot;User-Agent&quot;&gt;WebHarvest/2.2&lt;/http-header&gt;
-&lt;/http&gt;</code></pre>
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

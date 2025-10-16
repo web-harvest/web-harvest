@@ -56,12 +56,15 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <if condition="${stock > 0}">
  *   <def var="status" value="In Stock"/>
  * </if>
  * <else>
  *   <def var="status" value="Out of Stock"/>
  * </else>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

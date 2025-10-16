@@ -96,6 +96,8 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * 
  * <h4>Example 1: Simple GET Request</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="url">https://httpbin.org/get</def>
  * <def var="response">
  *     <http url="${url}"/>
@@ -103,27 +105,37 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * <file action="write" path="target/http_output.txt">
  *     <get var="response"/>
  * </file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: POST with JSON</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <http url="https://api.example.com/users" method="POST">
  *   <http-header name="Content-Type">application/json</http-header>
  *   <http-header name="Authorization">Bearer ${apiToken}</http-header>
  *   <http-param name="data">{"name": "John", "age": 30}</http-param>
  * </http>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Binary Content (Images, PDFs)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <http url="http://example.com/image.jpg"/>
  * <file action="write" path="downloaded_image.jpg" type="binary">${http}</file>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: URL with Special Characters</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Color parameter #FF0000 is automatically encoded as %23FF0000 -->
  * <http url="http://example.com/api?color=#FF0000&amp;size=large"/>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

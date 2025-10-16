@@ -112,13 +112,16 @@ and enables graceful error handling, logging, and recovery.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;try&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;try&gt;
   &lt;http url=&quot;https://unreliable-api.com/data&quot;/&gt;
 &lt;/try&gt;
 &lt;catch&gt;
   &lt;log message=&quot;API request failed: ${_error}&quot;/&gt;
   &lt;var name=&quot;fallback_data&quot;&gt;Default data&lt;/var&gt;
-&lt;/catch&gt;</code></pre>
+&lt;/catch&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

@@ -113,13 +113,16 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;productName&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;productName&quot;&gt;
   &lt;xpath expression=&quot;//h1[@class=&#x27;product-title&#x27;]/text()&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/product/123&quot;/&gt;
     &lt;/html-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -134,7 +137,9 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Fetch page once --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Fetch page once --&gt;
 &lt;def var=&quot;htmlPage&quot;&gt;
   &lt;http url=&quot;https://example.com/article/456&quot;/&gt;
 &lt;/def&gt;
@@ -161,7 +166,8 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
   &lt;xpath expression=&quot;//div[@class=&#x27;content&#x27;]&quot;&gt;
     ${xmlPage}
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -176,7 +182,9 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;links&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;links&quot;&gt;
   &lt;xpath expression=&quot;//a/@href&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/links&quot;/&gt;
@@ -189,7 +197,8 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
   ${links}
   
   &lt;http url=&quot;${link}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -204,7 +213,9 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;rows&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;rows&quot;&gt;
   &lt;xpath expression=&quot;//table[@id=&#x27;products&#x27;]/tr&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
@@ -223,7 +234,8 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
   &lt;/def&gt;
   
   &lt;!-- Save to file/database --&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -238,13 +250,16 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;articles&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;articles&quot;&gt;
   &lt;xpath expression=&quot;//article[contains(@class, &#x27;news-item&#x27;)]//h2/text()&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://news.example.com&quot;/&gt;
     &lt;/html-to-xml&gt;
   &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -259,11 +274,14 @@ invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.</p>
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Even badly broken HTML works --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Even badly broken HTML works --&gt;
 &lt;def var=&quot;brokenHtml&quot; value=&quot;&lt;p&gt;Unclosed paragraph&lt;div&gt;No closing div&lt;b&gt;Bold&quot;/&gt;
 
 &lt;html-to-xml&gt;${brokenHtml}&lt;/html-to-xml&gt;
-&lt;!-- Result: Well-formed XML with auto-closed tags --&gt;</code></pre>
+&lt;!-- Result: Well-formed XML with auto-closed tags --&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

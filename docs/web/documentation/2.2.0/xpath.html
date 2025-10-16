@@ -111,12 +111,15 @@ It requires both content and expression as sub-elements.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Extract single element text --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- Extract single element text --&gt;
 &lt;xpath expression=&quot;//title/text()&quot;&gt;
   &lt;html-to-xml&gt;
     &lt;http url=&quot;https://example.com&quot;/&gt;
   &lt;/html-to-xml&gt;
-&lt;/xpath&gt;</code></pre>
+&lt;/xpath&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

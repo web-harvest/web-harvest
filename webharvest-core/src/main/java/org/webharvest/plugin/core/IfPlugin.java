@@ -71,6 +71,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Basic conditional execution</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="httpStatus" value="200"/>
  * 
  * <if condition="${httpStatus == '200'}">
@@ -78,10 +80,13 @@ import org.slf4j.LoggerFactory;
  *     Request succeeded at ${_date}
  *   </file>
  * </if>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Error handling</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="response">
  *   <http url="https://api.example.com/data"/>
  * </def>
@@ -94,10 +99,13 @@ import org.slf4j.LoggerFactory;
  * </if>
  * 
  * <!-- Continue with non-empty response -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: If-else pattern with {@code <else>}</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="stock" value="5"/>
  * 
  * <if condition="${stock > 0}">
@@ -106,10 +114,13 @@ import org.slf4j.LoggerFactory;
  * <else>
  *   <def var="status" value="Out of Stock"/>
  * </else>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Numeric comparison</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="product" index="i" maxloops="100">
  *   <xpath expression="//product">...</xpath>
  *   
@@ -124,24 +135,31 @@ import org.slf4j.LoggerFactory;
  *     </file>
  *   </if>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: String matching</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="category" value="electronics"/>
  * 
  * <if condition="${category == 'electronics'}">
  *   <http url="https://example.com/electronics"/>
  * </if>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Variable existence check</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <if condition="${empty(apiKey)}">
  *   <def var="apiKey" value="default-key"/>
  * </if>
  * 
  * <http url="https://api.example.com?key=${apiKey}"/>
+ * </config>
  * }</pre>
  * 
  * <h3>Condition Evaluation</h3>

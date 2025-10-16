@@ -112,14 +112,17 @@ dynamic content, retry backoff strategies, and avoiding server overload.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;url&quot; maxloops=&quot;100&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;url&quot; maxloops=&quot;100&quot;&gt;
   &lt;tokenize&gt;${urls}&lt;/tokenize&gt;
   
   &lt;http url=&quot;${url}&quot;/&gt;
   
   &lt;!-- Wait 2 seconds between requests --&gt;
   &lt;sleep milliseconds=&quot;2000&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -134,7 +137,9 @@ dynamic content, retry backoff strategies, and avoiding server overload.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;retryCount&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;retryCount&quot; value=&quot;0&quot;/&gt;
 &lt;def var=&quot;success&quot; value=&quot;false&quot;/&gt;
 
 &lt;while condition=&quot;${!success &amp;&amp; retryCount &lt; 5}&quot;&gt;
@@ -155,7 +160,8 @@ dynamic content, retry backoff strategies, and avoiding server overload.</p>
   &lt;else&gt;
     &lt;def var=&quot;success&quot; value=&quot;true&quot;/&gt;
   &lt;/else&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -170,7 +176,9 @@ dynamic content, retry backoff strategies, and avoiding server overload.</p>
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- API allows 10 requests per minute --&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- API allows 10 requests per minute --&gt;
 &lt;loop item=&quot;endpoint&quot; maxloops=&quot;10&quot;&gt;
   &lt;tokenize&gt;${endpoints}&lt;/tokenize&gt;
   
@@ -178,7 +186,8 @@ dynamic content, retry backoff strategies, and avoiding server overload.</p>
   
   &lt;!-- 6 seconds = 10 requests/minute --&gt;
   &lt;sleep milliseconds=&quot;6000&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

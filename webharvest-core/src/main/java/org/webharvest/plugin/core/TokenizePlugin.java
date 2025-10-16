@@ -68,6 +68,8 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h4>Example 1: Split by default delimiters (whitespace)</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="text" value="apple banana cherry date elderberry"/>
  * 
  * <loop item="fruit">
@@ -78,10 +80,13 @@ import org.webharvest.utils.CommonUtil;
  *   </file>
  * </loop>
  * <!-- Processes: apple, banana, cherry, date, elderberry -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Split CSV line</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="csvLine" value="John,Doe,john@example.com,30"/>
  * 
  * <loop item="field" index="i">
@@ -90,10 +95,13 @@ import org.webharvest.utils.CommonUtil;
  *   <def var="field${i}" value="${field}"/>
  * </loop>
  * <!-- field0=John, field1=Doe, field2=john@example.com, field3=30 -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 3: Process multiline text</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="urls">
  *   https://example.com/page1
  *   https://example.com/page2
@@ -105,10 +113,13 @@ import org.webharvest.utils.CommonUtil;
  *   
  *   <http url="${url}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 4: Parse semicolon-separated values</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="data" value="id:123;name:Product A;price:99.99"/>
  * 
  * <loop item="pair">
@@ -119,10 +130,13 @@ import org.webharvest.utils.CommonUtil;
  *     <tokenize delimiters=":">${pair}</tokenize>
  *   </def>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 5: Trim vs no-trim</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="text" value="  apple  ,  banana  ,  cherry  "/>
  * 
  * <!-- With trimming (default) -->
@@ -132,10 +146,13 @@ import org.webharvest.utils.CommonUtil;
  * <!-- Without trimming -->
  * <tokenize delimiters="," trimtokens="false">${text}</tokenize>
  * <!-- Result: ["  apple  ", "  banana  ", "  cherry  "] -->
+ * </config>
  * }</pre>
  * 
  * <h4>Example 6: Allow empty tokens</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="data" value="apple,,cherry,,elderberry"/>
  * 
  * <!-- Skip empty tokens (default) -->
@@ -145,6 +162,7 @@ import org.webharvest.utils.CommonUtil;
  * <!-- Keep empty tokens -->
  * <tokenize delimiters="," allowemptytokens="true">${data}</tokenize>
  * <!-- Result: ["apple", "", "cherry", "", "elderberry"] -->
+ * </config>
  * }</pre>
  * 
  * <h3>Common Use Cases</h3>

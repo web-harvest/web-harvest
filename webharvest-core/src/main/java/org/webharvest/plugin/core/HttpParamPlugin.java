@@ -57,11 +57,14 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <http url="https://example.com/login" method="POST">
  *   <http-param name="username">john_doe</http-param>
  *   <http-param name="password">secret123</http-param>
  *   <http-param name="remember">true</http-param>
  * </http>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

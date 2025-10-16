@@ -64,6 +64,8 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <zip path="archive.zip">
  *     <zip-entry name="products.xml">
  *         <http url="https://example.com/products"/>
@@ -73,6 +75,7 @@ import org.webharvest.utils.CommonUtil;
  *         <http url="https://example.com/logo.jpg"/>
  *     </zip-entry>
  * </zip>
+ * </config>
  * }</pre>
  * 
  * <p>See {@link ZipPlugin} for complete ZIP examples.</p>

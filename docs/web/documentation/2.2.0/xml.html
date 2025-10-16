@@ -111,13 +111,16 @@ Rarely needed - most XML is processed directly without this wrapper.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;xmlData&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;xmlData&quot;&gt;
   &lt;xml&gt;
     &lt;products&gt;
       &lt;product id=&quot;1&quot;&gt;Item&lt;/product&gt;
     &lt;/products&gt;
   &lt;/xml&gt;
-&lt;/def&gt;</code></pre>
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

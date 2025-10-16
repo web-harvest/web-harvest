@@ -62,6 +62,8 @@ import java.util.List;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <try>
  *   <http url="https://unreliable-api.com/data"/>
  * </try>
@@ -69,6 +71,7 @@ import java.util.List;
  *   <log message="API request failed: ${_error}"/>
  *   <var name="fallback_data">Default data</var>
  * </catch>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>

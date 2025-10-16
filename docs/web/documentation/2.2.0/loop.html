@@ -112,7 +112,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;product&quot; index=&quot;i&quot; maxloops=&quot;50&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;product&quot; index=&quot;i&quot; maxloops=&quot;50&quot;&gt;
   &lt;xpath expression=&quot;//div[@class=&#x27;product&#x27;]&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
@@ -131,7 +133,8 @@ It executes its body content once for each item, with optional index tracking an
   &lt;file path=&quot;products/product-${i}.json&quot; action=&quot;write&quot;&gt;
     {&quot;name&quot;: &quot;${name}&quot;, &quot;price&quot;: &quot;${price}&quot;}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -146,7 +149,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;urls&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;urls&quot;&gt;
   http://example.com/page1
   http://example.com/page2
   http://example.com/page3
@@ -156,7 +161,8 @@ It executes its body content once for each item, with optional index tracking an
   ${urls}
   
   &lt;http url=&quot;${url}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -171,7 +177,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-3.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;pageNumbers&quot;&gt;1,2,3,4,5,6,7,8,9,10&lt;/def&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;pageNumbers&quot;&gt;1,2,3,4,5,6,7,8,9,10&lt;/def&gt;
 
 &lt;loop item=&quot;pageNum&quot; index=&quot;i&quot; delimiter=&quot;,&quot;&gt;
   ${pageNumbers}
@@ -183,7 +191,8 @@ It executes its body content once for each item, with optional index tracking an
   &lt;file path=&quot;pages/page-${pageNum}.html&quot; action=&quot;write&quot;&gt;
     ${pageContent}
   &lt;/file&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -198,7 +207,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-4.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var=&quot;totalCount&quot; value=&quot;0&quot;/&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;totalCount&quot; value=&quot;0&quot;/&gt;
 
 &lt;loop item=&quot;item&quot; index=&quot;idx&quot; maxloops=&quot;100&quot;&gt;
   &lt;xpath expression=&quot;//li&quot;&gt;
@@ -219,7 +230,8 @@ It executes its body content once for each item, with optional index tracking an
 &lt;!-- Final count --&gt;
 &lt;file path=&quot;summary.txt&quot; action=&quot;write&quot;&gt;
   Processed ${totalCount} items
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -234,7 +246,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-5.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;link&quot; empty=&quot;true&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;link&quot; empty=&quot;true&quot;&gt;
   &lt;xpath expression=&quot;//a/@href&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/links&quot;/&gt;
@@ -243,7 +257,8 @@ It executes its body content once for each item, with optional index tracking an
   
   &lt;!-- Only non-empty links are processed --&gt;
   &lt;http url=&quot;${link}&quot;/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -258,7 +273,9 @@ It executes its body content once for each item, with optional index tracking an
                     <span class="window-title">example-6.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item=&quot;product&quot; index=&quot;i&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;loop item=&quot;product&quot; index=&quot;i&quot;&gt;
   &lt;xpath expression=&quot;//div[@class=&#x27;product&#x27;]&quot;&gt;
     &lt;html-to-xml&gt;
       &lt;http url=&quot;https://example.com/products&quot;/&gt;
@@ -281,7 +298,8 @@ It executes its body content once for each item, with optional index tracking an
       ${productName} - Size: ${size}
     &lt;/file&gt;
   &lt;/loop&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

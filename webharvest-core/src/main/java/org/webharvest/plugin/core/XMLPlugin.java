@@ -58,6 +58,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="xmlData">
  *   <xml>
  *     <products>
@@ -65,6 +67,7 @@ import org.slf4j.LoggerFactory;
  *     </products>
  *   </xml>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <p><strong>Note:</strong> Usually unnecessary - direct XML content works in most contexts.</p>

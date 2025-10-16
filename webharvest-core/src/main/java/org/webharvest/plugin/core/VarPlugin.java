@@ -58,11 +58,14 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h3>Usage</h3>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <!-- Legacy syntax -->
  * <var name="apiUrl">https://api.example.com</var>
  * 
  * <!-- Modern syntax (preferred) -->
  * <def var="apiUrl">https://api.example.com</def>
+ * </config>
  * }</pre>
  * 
  * <p><strong>Recommendation:</strong> Use {@code <def var="...">} for new configurations.</p>

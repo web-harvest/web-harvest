@@ -112,7 +112,9 @@ function returns the result of its last expression.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;findProduct&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;findProduct&quot;&gt;
   &lt;def var=&quot;query&quot;&gt;&lt;call-param name=&quot;query&quot;/&gt;&lt;/def&gt;
   
   &lt;loop item=&quot;product&quot; maxloops=&quot;100&quot;&gt;
@@ -127,7 +129,8 @@ function returns the result of its last expression.</p>
   
   &lt;!-- Not found --&gt;
   &lt;return&gt;NOT_FOUND&lt;/return&gt;
-&lt;/function&gt;</code></pre>
+&lt;/function&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -142,7 +145,9 @@ function returns the result of its last expression.</p>
                     <span class="window-title">example-2.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;function name=&quot;validateEmail&quot;&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;validateEmail&quot;&gt;
   &lt;def var=&quot;email&quot;&gt;&lt;call-param name=&quot;email&quot;/&gt;&lt;/def&gt;
   
   &lt;if condition=&quot;${empty(email)}&quot;&gt;
@@ -159,7 +164,8 @@ function returns the result of its last expression.</p>
   &lt;/if&gt;
   
   &lt;return&gt;false&lt;/return&gt;
-&lt;/function&gt;</code></pre>
+&lt;/function&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 

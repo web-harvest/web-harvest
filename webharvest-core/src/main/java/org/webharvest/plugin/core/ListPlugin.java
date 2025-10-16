@@ -58,6 +58,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h4>Example 1: Create explicit list</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="urls">
  *   <list>
  *     <text>https://example.com/page1</text>
@@ -70,16 +72,20 @@ import org.slf4j.LoggerFactory;
  *   ${urls}
  *   <http url="${url}"/>
  * </loop>
+ * </config>
  * }</pre>
  * 
  * <h4>Example 2: Combine XPath results</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="allLinks">
  *   <list>
  *     <xpath expression="//a/@href">${page1}</xpath>
  *     <xpath expression="//a/@href">${page2}</xpath>
  *   </list>
  * </def>
+ * </config>
  * }</pre>
  * 
  * <h3>Note</h3>
