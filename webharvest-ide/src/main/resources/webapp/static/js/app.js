@@ -12,94 +12,87 @@
  * Embedded example configurations
  */
 const EMBEDDED_EXAMPLES = {
-    'amazon_test.xml': {
-        title: 'Amazon Product Search',
-        icon: 'shopping-cart',
-        category: 'E-commerce',
+    'quotes_scraping.xml': {
+        title: 'Quotes Content Scraper',
+        icon: 'quote-left',
+        category: 'Content Extraction',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- Test with Amazon search -->
-    <def var="content">
-        <html-to-xml advancedxmlescape="true" specialentities="true" allowmultiwordattributes="true" omitunknowntags="true" unicodechars="true" treatunknowntagsascontent="true" omitdeprtags="true" treatdeprtagsascontent="true" omitcomments="true" omitdoctypedeclaration="true" omitxmlns="true" omitxmlprocessinginstruction="true">
-            <http url="https://www.amazon.com/s?k=canon+camera"/>
+    <!-- Business Scenario: Extract quotes and authors for content database -->
+    <def var="url">https://quotes.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${url}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
         </html-to-xml>
     </def>
-    <!-- Extract product titles -->
-    <!-- Note: Use /text() to extract TEXT content from span elements -->
-    <def var="products">
-        <xpath expression="//h2[contains(@class, 's-size-small')]//span/text()">
-            <get var="content"/>
+    
+    <!-- Extract all quotes (use /text() to get text content only) -->
+    <def var="quotes">
+        <xpath expression="//div[@class='quote']//span[@class='text']/text()">
+            <get var="page"/>
         </xpath>
     </def>
-    <!-- Save result -->
-    <file action="write" path="amazon_products.html" charset="UTF-8">
-        <get var="content"/>
-    </file>
-    <!-- Save product list -->
-    <file action="write" path="products.txt" charset="UTF-8">
-        <get var="products"/>
-    </file>
+    
+    <!-- Extract all authors (use /text() to get text content only) -->
+    <def var="authors">
+        <xpath expression="//div[@class='quote']//small[@class='author']/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Count quotes -->
+    <def var="quoteCount">
+        <xpath expression="count(//div[@class='quote'])">
+            <get var="page"/>
+        </xpath>
+    </def>
 </config>`
     },
 
-    'modern_web_scraping.xml': {
-        title: 'Modern Web Scraping',
+    'example_com_scraping.xml': {
+        title: 'Simple HTTP + XPath',
         icon: 'globe',
         category: 'Web Scraping',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-    <def var="searchTerm">artificial intelligence</def>
-    <def var="maxResults">5</def>
+    <!-- Simple example using example.com -->
+    <def var="url">https://example.com</def>
     
-    <!-- Modern web scraping using improved html-to-xml -->
-    <def var="searchResults">
-        <html-to-xml 
-            advancedxmlescape="true" 
-            specialentities="true" 
-            unicodechars="true" 
-            allowmultiwordattributes="true" 
-            omitunknowntags="true"
-            treatunknowntagsascontent="true">
-            <http url="https://httpbin.org/html"/>
+    <def var="html">
+        <http url="\${url}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
         </html-to-xml>
     </def>
     
-    <!-- Extract content using XPath -->
-    <def var="pageTitle">
-        <xpath expression="//title">
-            <script>searchResults</script>
+    <!-- Extract title (use /text() to get text content only) -->
+    <def var="title">
+        <xpath expression="//title/text()">
+            <get var="page"/>
         </xpath>
     </def>
     
-    <def var="pageContent">
-        <xpath expression="//body">
-            <script>searchResults</script>
+    <!-- Extract heading (use /text() to get text content only) -->
+    <def var="heading">
+        <xpath expression="//h1/text()">
+            <get var="page"/>
         </xpath>
     </def>
     
-    <!-- Save results to file -->
-    <file path="modern_search_results.xml" action="write">
-        <template>
-            <![CDATA[
-            <search_results>
-                <query>\${searchTerm}</query>
-                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
-                <page_title>\${pageTitle}</page_title>
-                <page_content>
-                    <script>pageContent</script>
-                </page_content>
-                <extraction_method>html-to-xml with advanced options</extraction_method>
-                <features>
-                    <feature>Advanced XML escaping</feature>
-                    <feature>Special entities handling</feature>
-                    <feature>Unicode character support</feature>
-                    <feature>Multi-word attributes</feature>
-                    <feature>Unknown tags handling</feature>
-                </features>
-            </search_results>
-            ]]>
-        </template>
-    </file>
+    <!-- Extract all paragraphs -->
+    <def var="paragraphs">
+        <xpath expression="//p/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
 </config>`
     },
 
@@ -208,255 +201,209 @@ const EMBEDDED_EXAMPLES = {
 </config>`
     },
 
-    'data_processing_pipeline.xml': {
-        title: 'Data Processing Pipeline',
-        icon: 'cogs',
-        category: 'Data Processing',
+    'books_price_monitoring.xml': {
+        title: 'Books Price Monitoring',
+        icon: 'dollar-sign',
+        category: 'E-commerce',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Advanced data processing pipeline example -->
-    <def var="inputFile">data_input.csv</def>
-    <def var="outputFile">processed_data.xml</def>
-    <!-- Create sample input data -->
-    <file path="\${inputFile}" action="write">
-        <template>
-            <![CDATA[
-            Name,Age,Department,Salary,Performance
-            John Doe,30,Engineering,75000,Excellent
-            Jane Smith,28,Marketing,65000,Good
-            Bob Johnson,35,Engineering,80000,Excellent
-            Alice Brown,32,Sales,70000,Good
-            Charlie Wilson,29,Engineering,72000,Good
-            Diana Davis,31,Marketing,68000,Excellent
-            ]]>
-        </template>
-    </file>
-    <!-- Read and parse CSV data -->
-    <def var="csvData">
-        <file path="\${inputFile}"/>
+    <!-- Monitor book prices from real bookstore -->
+    <def var="url">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${url}"/>
     </def>
-    <!-- Convert CSV to XML -->
-    <def var="xmlData">
-        <template>
-            <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
-<employees>
-<employee>
-<name>John Doe</name>
-<age>30</age>
-<department>Engineering</department>
-<salary>75000</salary>
-<performance>Excellent</performance>
-</employee>
-<employee>
-<name>Jane Smith</name>
-<age>28</age>
-<department>Marketing</department>
-<salary>65000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Bob Johnson</name>
-<age>35</age>
-<department>Engineering</department>
-<salary>80000</salary>
-<performance>Excellent</performance>
-</employee>
-<employee>
-<name>Alice Brown</name>
-<age>32</age>
-<department>Sales</department>
-<salary>70000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Charlie Wilson</name>
-<age>29</age>
-<department>Engineering</department>
-<salary>72000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Diana Davis</name>
-<age>31</age>
-<department>Marketing</department>
-<salary>68000</salary>
-<performance>Excellent</performance>
-</employee>
-</employees>]]>
-        </template>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
     </def>
-    <!-- Process and analyze data -->
-    <def var="analysisResults">
+    
+    <!-- Build price data with XQuery -->
+    <def var="priceData">
         <xquery>
-            <xq-param name="employees">
-                <get var="xmlData"/>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
             </xq-param>
             <xq-expression>
                 <![CDATA[
-                declare variable $employees as node() external;
+                declare variable $content as node() external;
                 
-                let $totalEmployees := count($employees//employee)
-                let $avgSalary := avg($employees//employee/salary)
-                let $maxSalary := max($employees//employee/salary)
-                let $minSalary := min($employees//employee/salary)
+                let $prices := 
+                    for $priceText in $content//article[@class="product_pod"]//p[@class="price_color"]
+                    let $price := number(substring-after(normalize-space($priceText), "£"))
+                    where $price > 0
+                    return $price
+                
+                let $count := count($prices)
+                let $avg := if ($count > 0) then round(sum($prices) div $count * 100) div 100 else 0
+                let $min := min($prices)
+                let $max := max($prices)
                 
                 return
-                <analysis>
-                    <summary>
-                        <total_employees>{$totalEmployees}</total_employees>
-                        <average_salary>{round($avgSalary)}</average_salary>
-                        <max_salary>{$maxSalary}</max_salary>
-                        <min_salary>{$minSalary}</min_salary>
-                    </summary>
-                </analysis>
+                <price_monitoring>
+                    <total_products>{$count}</total_products>
+                    <average_price>{$avg}</average_price>
+                    <min_price>{$min}</min_price>
+                    <max_price>{$max}</max_price>
+                </price_monitoring>
                 ]]>
             </xq-expression>
         </xquery>
     </def>
     
-    <!-- Generate final output -->
-    <file path="\${outputFile}" action="write">
-        <template>
-            <![CDATA[
-            <?xml version="1.0" encoding="UTF-8"?>
-            <processed_data>
-                <metadata>
-                    <processing_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</processing_date>
-                    <input_file>\${inputFile}</input_file>
-                </metadata>
-                <analysis>
-                    <get var="analysisResults"/>
-                </analysis>
-            </processed_data>
-            ]]>
-        </template>
-    </file>
+    <!-- Extract metrics -->
+    <def var="totalProducts">
+        <xpath expression="//total_products/text()">
+            <get var="priceData"/>
+        </xpath>
+    </def>
+    
+    <def var="avgPrice">
+        <xpath expression="//average_price/text()">
+            <get var="priceData"/>
+        </xpath>
+    </def>
+    
+    <def var="minPrice">
+        <xpath expression="//min_price/text()">
+            <get var="priceData"/>
+        </xpath>
+    </def>
+    
+    <def var="maxPrice">
+        <xpath expression="//max_price/text()">
+            <get var="priceData"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate JSON report -->
+    <def var="jsonReport">
+        <template>{
+  "monitoring_date": "\${sys.fullDateTime}",
+  "store_url": "\${url}",
+  "price_statistics": {
+    "total_products": \${totalProducts},
+    "average_price_gbp": \${avgPrice},
+    "min_price_gbp": \${minPrice},
+    "max_price_gbp": \${maxPrice}
+  },
+  "status": "MONITORED"
+}</template>
+    </def>
 </config>`
     },
 
-    'product_catalog.xml': {
-        title: 'Product Catalog Scraper',
+    'books_catalog_scraper.xml': {
+        title: 'Books Catalog with XQuery',
         icon: 'book',
         category: 'E-commerce',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- Product catalog scraping example -->
+    <!-- Scrape books catalog and process with XQuery -->
+    <def var="url">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${url}"/>
+    </def>
+    
     <def var="products">
         <html-to-xml>
-            <http url="https://books.toscrape.com/"/>
+            <get var="html"/>
         </html-to-xml>
     </def>
     
-    <!-- Extract product information from the page -->
-    <file action="write" path="product_catalog/catalog.xml" charset="UTF-8">
-        <![CDATA[ <catalog> ]]>
-        <xquery>
-            <xq-param name="content" type="node()">
-                <get var="products"/>
-            </xq-param>
-            <xq-expression>
-                <![CDATA[
-                    declare variable $content as node() external;
-                    
-                    for $product in $content//article[@class="product_pod"]
-                    return
-                        <product>
-                            <title>{normalize-space($product//h3/a/@title)}</title>
-                            <price>{normalize-space($product//p[@class="price_color"])}</price>
-                            <rating>{normalize-space($product//p[@class="star-rating"]/@class)}</rating>
-                            <availability>{normalize-space($product//p[@class="instock availability"])}</availability>
-                        </product>
-                ]]>
-            </xq-expression>
-        </xquery>
-        <![CDATA[ </catalog> ]]>
-    </file>
+    <!-- Extract simple product list first -->
+    <def var="productTitles">
+        <xpath expression="//article[@class='product_pod']//h3/a/@title">
+            <get var="products"/>
+        </xpath>
+    </def>
+    
+    <def var="productPrices">
+        <xpath expression="//article[@class='product_pod']//p[@class='price_color']/text()">
+            <get var="products"/>
+        </xpath>
+    </def>
+    
+    <!-- Count products -->
+    <def var="totalProducts">
+        <xpath expression="count(//article[@class='product_pod'])">
+            <get var="products"/>
+        </xpath>
+    </def>
 </config>`
     },
 
-    'xquery.xml': {
-        title: 'XQuery Examples',
-        icon: 'code',
+    'xquery_math_demo.xml': {
+        title: 'XQuery Math & Functions',
+        icon: 'calculator',
         category: 'XML Processing',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <file action="write" path="xquerytest.xml">
+    <!-- XQuery with math functions and parameters -->
+    <def var="xqueryResult">
         <xquery>
             <xq-param name="logicvalue" type="boolean">true</xq-param>
             <xq-param name="numbervalue" type="double">12</xq-param>
-            <xq-param name="intseq" type="integer*">
-                3
-                7
-                14
-                18
-                27
-            </xq-param>
             <xq-param name="stringvalue" type="string">ABCDEFGH123456</xq-param>
-            <xq-param name="doc">
-                <![CDATA[
-               <table>
-                    <tr>
-                        <td>one</td>
-                        <td>two</td>
-                        <td>tree</td>
-                    </tr>
-                    <tr>
-                        <td>four</td>
-                        <td>five</td>
-                        <td>six</td>
-                    </tr>
-               </table>
-            ]]>
-            </xq-param>
             <xq-expression>
                 <![CDATA[
-                (: example of external namespace and usage of Java function library inside the XQuery :)
                 declare namespace math ="java:java.lang.Math";
-
-                (: declare namespace for user-defined functions :)
-                declare namespace fn ="f:ns";
-
-                (: declaration of external variables with names and types matching to those in xq-param :)
                 declare variable $logicvalue as xs:boolean external;
                 declare variable $numbervalue as xs:double external;
-                declare variable $intseq as xs:integer* external;
                 declare variable $stringvalue as xs:string external;
-                declare variable $doc as node()* external;
 
-                (: user-defined function inside XQuery :)
-                declare function fn:myFunc($items as xs:integer*) as node()* {
-                    for $num in $items return
-                        <value>
-                            { math:sqrt($num) + 1 }
-                        </value>
-                };
-
-                (: resuting XML :)
                 <test>
                     <logictest>
-                        { if ($logicvalue) then 1 else 2 },
-                        { $logicvalue eq ($numbervalue gt 15) }
+                        { if ($logicvalue) then 1 else 2 }
                     </logictest>
+                    <comparison>
+                        { if ($numbervalue &gt; 15) then "greater" else "smaller" }
+                    </comparison>
                     <doubletest>
-                        { $numbervalue * 2 + 10 },
-                        { $numbervalue instance of xs:float },
-                        { round($numbervalue) }
+                        { $numbervalue * 2 + 10 }
                     </doubletest>
+                    <roundtest>
+                        { round($numbervalue) }
+                    </roundtest>
                     <stringtest>
-                        { concat($stringvalue, $logicvalue, $numbervalue) }
+                        { concat($stringvalue, "-", $numbervalue) }
                     </stringtest>
-                    <numberseqtest>
-                        { fn:myFunc($intseq) }
-                        { concat($intseq[1], "mama") }
-                    </numberseqtest>
-                    <doctest>
-                        { for $td in $doc//td return $td }
-                    </doctest>
+                    <mathtest>
+                        { math:sqrt($numbervalue) }
+                    </mathtest>
                 </test>
-            ]]>
+                ]]>
             </xq-expression>
         </xquery>
-    </file>
+    </def>
+    
+    <!-- Extract results to show in variables -->
+    <def var="logicResult">
+        <xpath expression="//logictest/text()">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <def var="doubleResult">
+        <xpath expression="//doubletest/text()">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <def var="stringResult">
+        <xpath expression="//stringtest/text()">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <def var="mathResult">
+        <xpath expression="//mathtest/text()">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
 </config>`
     },
 
@@ -518,71 +465,114 @@ const EMBEDDED_EXAMPLES = {
         </xquery>
     </def>
     
-    <!-- Generate analytics report -->
-    <file path="social_analytics_report.xml" action="write">
-        <template>
-            <![CDATA[
-            <social_media_analytics>
-                <hashtag>\${hashtag}</hashtag>
-                <analysis_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</analysis_date>
-                <sentiment_analysis>
-                    <script>sentimentAnalysis</script>
-                </sentiment_analysis>
-            </social_media_analytics>
-            ]]>
-        </template>
-    </file>
+    <!-- Extract metrics for display -->
+    <def var="totalPosts">
+        <xpath expression="//total_posts/text()">
+            <get var="sentimentAnalysis"/>
+        </xpath>
+    </def>
+    
+    <def var="positivePosts">
+        <xpath expression="//positive_posts/text()">
+            <get var="sentimentAnalysis"/>
+        </xpath>
+    </def>
+    
+    <def var="positivePercentage">
+        <xpath expression="//positive_percentage/text()">
+            <get var="sentimentAnalysis"/>
+        </xpath>
+    </def>
 </config>`
     },
 
-    'ecommerce_monitoring.xml': {
-        title: 'E-commerce Price Monitoring',
-        icon: 'dollar-sign',
-        category: 'E-commerce',
+    'multi_level_crawler.xml': {
+        title: 'Multi-Level Catalog Crawler',
+        icon: 'sitemap',
+        category: 'Web Crawling',
         content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- E-commerce price monitoring example -->
-    <def var="productUrl">https://httpbin.org/json</def>
-    <def var="priceThreshold">100.00</def>
-    <!-- Monitor product prices -->
-    <def var="productData">
-        <template>
-            <![CDATA[
-            {
-                "name": "Sample Product",
-                "price": 89.99,
-                "availability": "In Stock",
-                "rating": 4.5,
-                "reviews": 127
-            }
-            ]]>
-        </template>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business: Crawl catalog -> category -> product details -->
+    
+    <!-- Level 1: Main catalog page -->
+    <def var="catalogUrl">https://books.toscrape.com/</def>
+    
+    <def var="catalogHtml">
+        <http url="\${catalogUrl}"/>
     </def>
-    <!-- Process the data - simplified approach -->
-    <def var="currentPrice">89.99</def>
-    <!-- Check if price is below threshold -->
-    <file path="price_check.txt" action="write">
-        <template>
-            <![CDATA[
-                Price Check: $\${currentPrice} (threshold: $\${priceThreshold})
-                Status: Price is below threshold - ALERT!
-                ]]>
-        </template>
-    </file>
-    <!-- Generate monitoring report -->
-    <file path="monitoring_report.xml" action="write">
-        <template>
-            <![CDATA[
-            <monitoring_report>
-                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
-                <product_url>\${productUrl}</product_url>
-                <price_threshold>\${priceThreshold}</price_threshold>
-                <current_price>\${currentPrice}</current_price>
-                <status>ALERT_TRIGGERED</status>
-            </monitoring_report>
-            ]]>
-        </template>
-    </file>
+    
+    <def var="catalogPage">
+        <html-to-xml>
+            <get var="catalogHtml"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Level 2: Get first category link -->
+    <def var="firstCategoryLink">
+        <xpath expression="(//ul[@class='nav nav-list']//ul//a/@href)[1]">
+            <get var="catalogPage"/>
+        </xpath>
+    </def>
+    
+    <def var="categoryUrl">https://books.toscrape.com/\${firstCategoryLink}</def>
+    
+    <def var="categoryHtml">
+        <http url="\${categoryUrl}"/>
+    </def>
+    
+    <def var="categoryPage">
+        <html-to-xml>
+            <get var="categoryHtml"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract products from category -->
+    <def var="productsInCategory">
+        <xpath expression="count(//article[@class='product_pod'])">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Level 3: Get first product details link -->
+    <def var="firstProductLink">
+        <xpath expression="(//article[@class='product_pod']//h3/a/@href)[1]">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <def var="productUrl">https://books.toscrape.com/catalogue/\${firstProductLink}</def>
+    
+    <def var="productHtml">
+        <http url="\${productUrl}"/>
+    </def>
+    
+    <def var="productPage">
+        <html-to-xml>
+            <get var="productHtml"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract product details -->
+    <def var="productTitle">
+        <xpath expression="//h1/text()">
+            <get var="productPage"/>
+        </xpath>
+    </def>
+    
+    <def var="productPrice">
+        <xpath expression="//p[@class='price_color']/text()">
+            <get var="productPage"/>
+        </xpath>
+    </def>
+    
+    <def var="productDescription">
+        <xpath expression="//div[@id='product_description']/following-sibling::p/text()">
+            <get var="productPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Summary of crawling -->
+    <def var="crawlSummary">Crawled 3 levels: catalog -> category (\${productsInCategory} products) -> product details</def>
 </config>`
     }
 };
