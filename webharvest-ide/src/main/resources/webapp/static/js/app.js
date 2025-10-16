@@ -117,7 +117,7 @@ const EMBEDDED_EXAMPLES = {
     <!-- Process JSON response -->
     <def var="processedData">
         <json-to-xml tag="api_response">
-            <script>userData</script>
+            <get var="userData"/>
         </json-to-xml>
     </def>
     
@@ -125,13 +125,13 @@ const EMBEDDED_EXAMPLES = {
     <!-- Note: Use /text() to extract TEXT content, not the element -->
     <def var="userName">
         <xpath expression="//slideshow/title/text()">
-            <script>processedData</script>
+            <get var="processedData"/>
         </xpath>
     </def>
     
     <def var="userEmail">
         <xpath expression="//slideshow/date/text()">
-            <script>processedData</script>
+            <get var="processedData"/>
         </xpath>
     </def>
     
@@ -139,7 +139,7 @@ const EMBEDDED_EXAMPLES = {
     <def var="transformedData">
         <xslt>
             <xml>
-                <script>processedData</script>
+                <get var="processedData"/>
             </xml>
             <stylesheet>
                 <![CDATA[
@@ -166,7 +166,7 @@ const EMBEDDED_EXAMPLES = {
         <http method="post" url="\${baseUrl}/post">
             <http-header name="Content-Type">application/json</http-header>
             <http-param name="data">
-                <script>transformedData</script>
+                <get var="transformedData"/>
             </http-param>
         </http>
     </def>
@@ -174,7 +174,7 @@ const EMBEDDED_EXAMPLES = {
     <!-- Process API response -->
     <def var="responseData">
         <json-to-xml tag="response">
-            <script>apiResponse</script>
+            <get var="apiResponse"/>
         </json-to-xml>
     </def>
     
@@ -192,7 +192,7 @@ const EMBEDDED_EXAMPLES = {
                     <user_email>\${userEmail}</user_email>
                 </data_processed>
                 <api_response>
-                    <script>responseData</script>
+                    \${responseData}
                 </api_response>
             </api_integration_report>
             ]]>

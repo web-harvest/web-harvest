@@ -1,8 +1,30 @@
 # WebHarvest
 
-## 🐛 **CRITICAL BUG FIXES - October 10, 2025**
+## 🐛 **CRITICAL BUG FIXES - October 2025**
 
-### ✅ **Two Critical Bugs Fixed Using TDD!**
+### ✅ **XQuery node() Parameter Fix (r822-r825) - October 16, 2025**
+
+**Problem:** XQuery examples with `node()` parameters failed with empty variables
+- XQParamPlugin returned `EmptyVariable.INSTANCE` instead of executing child `<get>` elements
+- XQueryPlugin didn't parse `<xq-param>` and `<xq-expression>` child elements
+- All XQuery examples with XML data processing failed
+
+**Solution (TDD + 3 commits):**
+- **r822:** Added 22 TDD unit tests for XQuery, Def, GetVar, Template, Loop plugins
+- **r823:** Refactored XQueryPlugin to parse child configurations (following RegexpPlugin pattern)
+- **r824:** Added `executeChildElements()` to execute nested `<get>` in `<xq-param>`
+- **r825:** Fixed XQParamPlugin.doExecute() to return `super.executeBody(context)` (1 line fix!)
+
+**Test Results:**
+- ✅ Integration test `XQueryNodeParameterTest` passes
+- ✅ `totalProducts = 3`, `totalValue = 77.24`, `averagePrice = 25.75`
+- ✅ All XQuery IDE examples now work (xquery_math_demo.xml, xquery_demo.xml)
+
+See `XQUERY_FIX_SUMMARY.md` for complete technical details.
+
+---
+
+### ✅ **Two Critical Bugs Fixed Using TDD! - October 10, 2025**
 
 **TDD Approach Success:** Fixed two critical bugs discovered through comprehensive testing!
 

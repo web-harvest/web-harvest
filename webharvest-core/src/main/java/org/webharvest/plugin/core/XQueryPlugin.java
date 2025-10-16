@@ -159,16 +159,98 @@ import javax.xml.transform.stream.StreamSource;
  * </def>
  * }</pre>
  * 
+ * <h4>Example 4: XQuery with node() parameter (v2.2.0 - Fixed r825)</h4>
+ * <pre>{@code
+ * <!-- Create sample XML data -->
+ * <def var="productsXml">
+ *   <template><![CDATA[
+ *     <products>
+ *       <product><name>Book A</name><price>25.50</price></product>
+ *       <product><name>Book B</name><price>18.99</price></product>
+ *     </products>
+ *   ]]></template>
+ * </def>
+ * 
+ * <!-- Process with XQuery using node() parameter -->
+ * <def var="analysis">
+ *   <xquery>
+ *     <xq-param name="data" type="node()">
+ *       <get var="productsXml"/>
+ *     </xq-param>
+ *     <xq-expression>
+ *       <![CDATA[
+ *       declare variable $data as node() external;
+ *       
+ *       let $count := count($data//product)
+ *       let $total := sum($data//product/price)
+ *       
+ *       return
+ *       <analysis>
+ *         <total_products>{$count}</total_products>
+ *         <total_value>{$total}</total_value>
+ *       </analysis>
+ *       ]]>
+ *     </xq-expression>
+ *   </xquery>
+ * </def>
+ * }</pre>
+ * 
+ * <h4>Example 5: XQuery with typed parameters</h4>
+ * <pre>{@code
+ * <xquery>
+ *   <xq-param name="a" type="integer">10</xq-param>
+ *   <xq-param name="b" type="integer">5</xq-param>
+ *   <xq-expression>
+ *     <![CDATA[
+ *     declare variable $a as xs:integer external;
+ *     declare variable $b as xs:integer external;
+ *     
+ *     <calculations>
+ *       <sum>{$a + $b}</sum>
+ *       <product>{$a * $b}</product>
+ *     </calculations>
+ *     ]]>
+ *   </xq-expression>
+ * </xquery>
+ * }</pre>
+ * 
+ * <h3>Child Elements (v2.2.0)</h3>
+ * <ul>
+ *   <li><strong>{@code <xq-expression>}:</strong> XQuery expression (required) - Use CDATA for complex queries</li>
+ *   <li><strong>{@code <xq-param>}:</strong> XQuery parameter binding (optional, multiple allowed)</li>
+ * </ul>
+ * 
+ * <h3>Parameter Types</h3>
+ * <p>The {@code <xq-param>} element supports the following types:</p>
+ * <ul>
+ *   <li><strong>node():</strong> XML node from variable (use {@code <get var="..."/>})</li>
+ *   <li><strong>integer:</strong> Integer value</li>
+ *   <li><strong>long:</strong> Long integer value</li>
+ *   <li><strong>double/float:</strong> Decimal value</li>
+ *   <li><strong>boolean:</strong> Boolean value (true/false)</li>
+ *   <li><strong>string:</strong> Text value (default)</li>
+ * </ul>
+ * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Saxon engine:</strong> Uses Saxon XQuery processor</li>
  *   <li><strong>CDATA required:</strong> Wrap XQuery in {@code <![CDATA[...]]>}</li>
- *   <li><strong>Input XML:</strong> Provided as child processor result</li>
+ *   <li><strong>Child elements:</strong> v2.2.0 supports {@code <xq-param>} and {@code <xq-expression>}</li>
+ *   <li><strong>Node parameters:</strong> Use {@code type="node()"} with {@code <get>} to pass XML variables</li>
  *   <li><strong>Returns ListVariable:</strong> Result can be single or multiple items</li>
+ * </ul>
+ * 
+ * <h3>Bug Fixes</h3>
+ * <ul>
+ *   <li><strong>r825 (Oct 2025):</strong> Fixed XQParamPlugin to execute child elements (node() parameters)</li>
+ *   <li><strong>r824 (Oct 2025):</strong> Added executeChildElements() for nested {@code <get>} support</li>
+ *   <li><strong>r823 (Oct 2025):</strong> Refactored to parse {@code <xq-param>} and {@code <xq-expression>} children</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
  * <ul>
+ *   <li>{@code <xq-param>} - XQuery parameter definition</li>
+ *   <li>{@code <xq-expression>} - XQuery expression definition</li>
  *   <li>{@code <xpath>} - Simpler XML querying</li>
  *   <li>{@code <xslt>} - XSLT transformations</li>
  * </ul>
@@ -490,7 +572,23 @@ public class XQueryPlugin extends AbstractPlugin {
     
     /**
      * Execute child elements of a configuration to get their result.
-     * Used for <xq-param> elements that contain <get> or other processors.
+     * 
+     * <p>
+     * Used for {@code <xq-param>} elements that contain nested processors like
+     * {@code <get>}, {@code <http>}, {@code <xpath>}, etc.
+     * </p>
+     * 
+     * <p>
+     * This method creates an XQParamPlugin instance and executes it with the child
+     * configuration. The XQParamPlugin in turn calls executeBody() which executes
+     * all nested child elements and returns their result.
+     * </p>
+     * 
+     * @param config The plugin configuration containing child elements
+     * @param context The execution context
+     * @return Variable result from child element execution, or EmptyVariable if execution fails
+     * @throws InterruptedException If execution is interrupted
+     * @since 2.2.0 (r824)
      */
     private Variable executeChildElements(PluginConfiguration config, DynamicScopeContext context) throws InterruptedException {
         if (!config.hasChildren()) {
@@ -515,6 +613,16 @@ public class XQueryPlugin extends AbstractPlugin {
     
     /**
      * Convert parameter value string to appropriate Java type based on XQuery type.
+     * 
+     * <p>
+     * Converts string parameter values to proper Java types for XQuery parameter binding.
+     * Supports integer, long, double, float, boolean, and string types.
+     * </p>
+     * 
+     * @param value The parameter value as string
+     * @param type The XQuery type (e.g., "integer", "double", "boolean", "string")
+     * @return Converted value as appropriate Java type (Integer, Double, Boolean, or String)
+     * @since 2.2.0 (r823)
      */
     private Object convertParamValue(String value, String type) {
         if (value == null || value.isEmpty()) {

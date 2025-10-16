@@ -51,7 +51,12 @@
    - Test coverage for each fix
    - TDD implementation details
 
-8. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Current release notes
+8. **[XQUERY_FIX_SUMMARY.md](XQUERY_FIX_SUMMARY.md)** - XQuery node() parameter fix (r822-r825)
+   - Critical fix for XQParamPlugin and XQueryPlugin
+   - TDD approach with integration tests
+   - Complete technical analysis and examples
+
+9. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Current release notes
    - Release highlights
    - Major features and improvements
    - Known issues and workarounds

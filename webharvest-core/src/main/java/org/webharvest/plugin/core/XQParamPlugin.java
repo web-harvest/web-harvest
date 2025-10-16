@@ -83,7 +83,15 @@ import org.webharvest.runtime.variables.Variable;
  *   <li>{@code <xquery>} - Main XQuery processor</li>
  *   <li>{@code <xq-expression>} - XQuery expression definition</li>
  *   <li>{@code <var>} - Variable definition for dynamic values</li>
+ *   <li>{@code <get>} - Retrieve variable value for node() parameters</li>
  * </ul>
+ * 
+ * <h3>Bug Fix (r825 - Oct 2025)</h3>
+ * <p>
+ * <strong>Critical Fix:</strong> XQParamPlugin.doExecute() now properly executes child elements
+ * like {@code <get>} instead of returning EmptyVariable. This enables node() type parameters
+ * to receive actual XML data from context variables.
+ * </p>
  * 
  * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
  * 
