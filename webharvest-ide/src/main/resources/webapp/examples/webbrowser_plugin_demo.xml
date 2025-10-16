@@ -14,7 +14,7 @@
         <!-- Extract content using JavaScript -->
         <def var="browserContent">
             <body>
-                <script>
+                <script><![CDATA[
                     // JavaScript code to extract content
                     var title = document.title;
                     var headings = [];
@@ -50,7 +50,7 @@
                         links: links,
                         timestamp: new Date().toISOString()
                     };
-                </script>
+                ]]></script>
             </body>
         </def>
     </web-browser>
