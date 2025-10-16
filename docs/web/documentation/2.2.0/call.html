@@ -64,7 +64,7 @@
             </a>
             <nav class="main-nav">
                 <a href="../../about.html">About</a>
-                <a href="../getting-started.html" style="color: var(--lime); font-weight: 600;"><i class="fas fa-rocket"></i> Get Started</a>
+                <a href="../getting-started.html" style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i class="fas fa-rocket"></i> Get Started</a>
                 <a href="../../plugins.html">Plugins</a>
                 <a href="../../ide.html">IDE</a>
                 <a href="../../examples/">Examples</a>
@@ -199,34 +199,6 @@ configurations, and abstraction of complex logic into reusable components.</p>
 
         <section class="section">
             <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Function scope:: Functions must be defined before calling</li><li>Parameters:: Passed via <code><call-param></code> child elements</li><li>Return value:: Function returns last expression result</li><li>Variable scope:: Function parameters are local to function body</li></ul>
-        </section>
-
-        <section class="section">
-            <div class="window warning-window" style="margin: var(--spacing-4) 0; border-left: 4px solid #f59e0b; background: #fffbeb;">
-                <div class="window-header" style="background: #fef3c7; color: #92400e;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>⚠️ Important: Always Provide ALL Function Parameters (Bug #7 Fix)</span>
-                </div>
-                <div class="window-content">
-                    <p><strong>Best Practice:</strong> Always explicitly provide ALL function parameters, even if empty:</p>
-                    <pre class="language-xml" style="margin: var(--spacing-3) 0;"><code>&lt;!-- CORRECT: Explicit parameters --&gt;
-&lt;call name="myFunction"&gt;
-    &lt;call-param name="param1"&gt;value&lt;/call-param&gt;
-    &lt;call-param name="param2"&gt;&lt;/call-param&gt;  &lt;!-- Empty if not used --&gt;
-&lt;/call&gt;
-
-&lt;!-- AVOID: Omitting parameters (may cause warnings) --&gt;
-&lt;call name="myFunction"&gt;
-    &lt;call-param name="param1"&gt;value&lt;/call-param&gt;
-    &lt;!-- param2 omitted - may retain value from previous call! --&gt;
-&lt;/call&gt;</code></pre>
-                    <p style="margin-top: var(--spacing-3);">
-                        v2.2.0 includes <strong>Bug #7 fix</strong> with automatic detection of scope pollution.
-                        See <a href="function.html" style="color: #92400e; text-decoration: underline;">&lt;function&gt; documentation</a>
-                        for details and strict mode configuration.
-                    </p>
-                </div>
-            </div>
         </section>
 
         <section class="section">

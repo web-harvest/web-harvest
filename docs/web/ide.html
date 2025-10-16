@@ -23,7 +23,8 @@
             </a>
             <nav class="main-nav">
                 <a href="about.html">About</a>
-                <a href="documentation/getting-started.html" style="color: var(--lime); font-weight: 600;"><i
+                <a href="documentation/getting-started.html"
+                    style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i
                         class="fas fa-rocket"></i> Get Started</a>
                 <a href="plugins.html">Plugins</a>
                 <a href="ide.html" class="active">IDE</a>
@@ -192,9 +193,8 @@
                             <span class="window-title">terminal</span>
                         </div>
                         <div class="window-content">
-                            <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webharvest-ide-2.2.0.zip
-unzip webharvest-ide-2.2.0.zip
-cd webharvest-ide-2.2.0</code></pre>
+                            <pre><code class="language-bash">wget https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/webharvest-ide-2.2.0.jar/download -O webharvest-ide-2.2.0.jar
+java -jar webharvest-ide-2.2.0.jar</code></pre>
                         </div>
                     </div>
                 </div>
@@ -657,9 +657,10 @@ export JAVA_OPTS="-Xmx2g -Xms512m"
             <h2>Ready to Start?</h2>
             <p>Download WebHarvest IDE and experience professional web scraping development</p>
             <div class="download-buttons">
-                <a class="btn btn-primary btn-large" href="https://sourceforge.net/projects/web-harvest/files/">
-                    <i class="fas fa-download"></i>
-                    Download IDE v2.2.0
+                <a class="btn btn-primary btn-large"
+                    href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/webharvest-ide-2.2.0.jar/download">
+                    <i class="fas fa-desktop"></i>
+                    Download IDE v2.2.0 (JAR)
                 </a>
                 <a class="btn btn-secondary btn-large" href="examples/">
                     <i class="fas fa-code"></i>

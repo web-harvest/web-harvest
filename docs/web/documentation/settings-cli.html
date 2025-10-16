@@ -1,433 +1,209 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings & CLI - WebHarvest Documentation</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/processors.css">
-    <style>
-        .feature-highlight {
-            background: #f0f9ff;
-            border-left: 4px solid #0ea5e9;
-            padding: 1rem;
-            margin: 1rem 0;
-        }
-        
-        .cli-example {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            font-family: 'Courier New', monospace;
-            overflow-x: auto;
-        }
-        
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-        
-        .comparison-table th,
-        .comparison-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        
-        .comparison-table th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .badge-success { background-color: #dcfce7; color: #166534; }
-        .badge-info { background-color: #dbeafe; color: #1e40af; }
-        .badge-warning { background-color: #fef3c7; color: #92400e; }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings & CLI - WebHarvest</title>
+    <link rel="stylesheet" href="../css/enterprise.css" />
+    <link rel="stylesheet" href="../css/prism.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
-    <header>
-        <div class="container">
-            <h1>⚙️ Settings & Command-Line Interface</h1>
-            <p class="subtitle">Unified configuration system for WebHarvest CLI and GUI</p>
-            <div style="margin-top: 1rem;">
-                <span class="badge badge-success">✅ New in v2.2.0</span>
-                <span class="badge badge-info">Bug #39 Fix</span>
-            </div>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="../index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+                <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest</span>
+            </a>
+            <nav class="main-nav">
+                <a href="../about.html">About</a>
+                <a href="getting-started.html"
+                    style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i
+                        class="fas fa-rocket"></i> Get Started</a>
+                <a href="../plugins.html">Plugins</a>
+                <a href="../ide.html">IDE</a>
+                <a href="../examples/">Examples</a>
+                <a href="./" class="active">Docs</a>
+                <a href="../news.html">News</a>
+                <a href="../support.html">Support</a>
+                <a class="cta" href="../index.html#download">Download</a>
+            </nav>
         </div>
     </header>
 
-    <main class="container">
-        <nav class="doc-nav">
-            <a href="index.html">← Back to Documentation</a>
-        </nav>
-
-        <!-- Overview -->
-        <section>
-            <h2>📋 Overview</h2>
-            <div class="feature-highlight">
-                <p><strong>Problem Solved:</strong> Previously, WebHarvest required maintaining separate configurations for GUI (<code>webharvest.properties</code>) and CLI (command-line arguments). This caused duplication and maintenance burden.</p>
-                <p><strong>Solution:</strong> WebHarvest v2.2.0 introduces a unified settings system where both GUI and CLI share the same configuration source, with CLI arguments able to override file settings when needed.</p>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container hero-inner">
+            <div class="hero-content">
+                <h1>Settings &<br />Command-Line Interface</h1>
+                <p class="lead">Unified configuration system</p>
+                <p class="hero-description">
+                    WebHarvest 2.2.0 introduces a unified settings system that works for both CLI and GUI,
+                    eliminating the need for separate configuration files.
+                </p>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <!-- Quick Start -->
-        <section>
-            <h2>🚀 Quick Start</h2>
-            
-            <h3>1. Create Settings File</h3>
-            <p>Create <code>~/.webharvest/webharvest.properties</code>:</p>
-            <div class="cli-example">
-# WebHarvest Settings
-workdir=/projects/scraping
-debug=false
-loglevel=INFO
-proxyhost=proxy.company.com
-proxyport=8080
-            </div>
+    <!-- Overview -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2>What's New in v2.2.0</h2>
+            <p class="section-subtitle">Bug #39 fix - unified configuration</p>
+        </div>
 
-            <h3>2. Run CLI</h3>
-            <p>Settings are automatically loaded:</p>
-            <div class="cli-example">
-java -jar webharvest-cli.jar -c scraper.xml
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <div class="note">
+                <strong>Problem Solved:</strong> Previously, WebHarvest required maintaining separate configurations
+                for GUI (<code>webharvest.properties</code>) and CLI (command-line arguments). This caused
+                synchronization issues and confusion.
             </div>
 
-            <h3>3. Override When Needed</h3>
-            <p>Command-line arguments override file settings:</p>
-            <div class="cli-example">
-java -jar webharvest-cli.jar -c scraper.xml -w /tmp --loglevel DEBUG
-            </div>
-        </section>
-
-        <!-- Settings File -->
-        <section>
-            <h2>📄 Settings File</h2>
-            
-            <h3>Discovery Locations</h3>
-            <p>WebHarvest automatically searches for settings in this order:</p>
-            <ol>
-                <li><strong>System Property:</strong> <code>-Dwebharvest.settings=/path/to/settings.properties</code></li>
-                <li><strong>User Home:</strong> <code>~/.webharvest/webharvest.properties</code></li>
-                <li><strong>Current Directory:</strong> <code>./webharvest.properties</code></li>
-            </ol>
-
-            <h3>Supported Properties</h3>
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Property</th>
-                        <th>Description</th>
-                        <th>Example</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>workdir</code></td>
-                        <td>Working directory for file operations</td>
-                        <td><code>/projects/scraping</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>debug</code></td>
-                        <td>Enable debug mode</td>
-                        <td><code>true</code> or <code>false</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>loglevel</code></td>
-                        <td>Logging level</td>
-                        <td><code>TRACE, DEBUG, INFO, WARN, ERROR, FATAL</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>logpropsfile</code></td>
-                        <td>Custom Log4j properties file</td>
-                        <td><code>/etc/log4j.properties</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxyhost</code></td>
-                        <td>HTTP proxy server host</td>
-                        <td><code>proxy.company.com</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxyport</code></td>
-                        <td>HTTP proxy server port</td>
-                        <td><code>8080</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxyuser</code></td>
-                        <td>Proxy authentication username</td>
-                        <td><code>john.doe</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxypassword</code></td>
-                        <td>Proxy authentication password</td>
-                        <td><code>secret123</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxynthost</code></td>
-                        <td>NT proxy host (for NTLM authentication)</td>
-                        <td><code>WORKSTATION01</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>proxyntdomain</code></td>
-                        <td>NT proxy domain</td>
-                        <td><code>COMPANY</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>dbdrivers</code></td>
-                        <td>Database JDBC drivers (comma-separated)</td>
-                        <td><code>org.postgresql.Driver,com.mysql.cj.jdbc.Driver</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>plugins</code></td>
-                        <td>Plugin packages to auto-scan</td>
-                        <td><code>com.example.plugins,org.custom.webharvest</code></td>
-                    </tr>
-                </tbody>
-            </table>
-        </section>
-
-        <!-- CLI Arguments -->
-        <section>
-            <h2>💻 Command-Line Arguments</h2>
-            
-            <h3>Modern Format (Recommended)</h3>
-            <p>WebHarvest v2.2.0 uses Apache Commons CLI for modern, intuitive syntax:</p>
-            
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>Short</th>
-                        <th>Long</th>
-                        <th>Description</th>
-                        <th>Example</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>-h</code></td>
-                        <td><code>--help</code></td>
-                        <td>Show help message</td>
-                        <td><code>-h</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>-c</code></td>
-                        <td><code>--config</code></td>
-                        <td>Configuration file path or URL</td>
-                        <td><code>-c scraper.xml</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>-w</code></td>
-                        <td><code>--workdir</code></td>
-                        <td>Working directory</td>
-                        <td><code>-w /tmp</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>-d</code></td>
-                        <td><code>--debug</code></td>
-                        <td>Enable debug mode</td>
-                        <td><code>-d</code></td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td><code>--loglevel</code></td>
-                        <td>Set log level</td>
-                        <td><code>--loglevel DEBUG</code></td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td><code>--proxyhost</code></td>
-                        <td>Proxy server host</td>
-                        <td><code>--proxyhost proxy.com</code></td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td><code>--proxyport</code></td>
-                        <td>Proxy server port</td>
-                        <td><code>--proxyport 8080</code></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>Legacy Format (Backward Compatible)</h3>
-            <p>The old <code>option=value</code> format is still supported:</p>
-            <div class="cli-example">
-java -jar webharvest-cli.jar config=scraper.xml workdir=/tmp debug=true
-            </div>
-            <p><span class="badge badge-warning">⚠️ Note:</span> Don't mix modern and legacy formats in the same invocation. Use one format consistently.</p>
-        </section>
-
-        <!-- Override Priority -->
-        <section>
-            <h2>⚡ Settings Override Priority</h2>
-            <p>Settings are applied in this order (later overrides earlier):</p>
-            <ol>
-                <li><strong>Defaults</strong> - Hard-coded fallback values (lowest priority)</li>
-                <li><strong>Settings File</strong> - <code>webharvest.properties</code></li>
-                <li><strong>CLI Arguments</strong> - Command-line options (highest priority)</li>
-            </ol>
-
-            <h3>Example</h3>
-            <p><strong>Settings file:</strong></p>
-            <div class="cli-example">
-workdir=/default/path
-debug=false
-proxyhost=proxy.company.com
-            </div>
-
-            <p><strong>Command:</strong></p>
-            <div class="cli-example">
-java -jar webharvest-cli.jar -c scraper.xml -w /tmp -d
-            </div>
-
-            <p><strong>Final configuration:</strong></p>
-            <ul>
-                <li><code>workdir = /tmp</code> (overridden by CLI)</li>
-                <li><code>debug = true</code> (overridden by CLI)</li>
-                <li><code>proxyhost = proxy.company.com</code> (from file)</li>
-            </ul>
-        </section>
-
-        <!-- Usage Examples -->
-        <section>
-            <h2>📚 Usage Examples</h2>
-            
-            <h3>Example 1: Basic Usage</h3>
-            <div class="cli-example">
-# Use settings from ~/.webharvest/webharvest.properties
-java -jar webharvest-cli.jar -c scraper.xml
-            </div>
-
-            <h3>Example 2: Override Work Directory</h3>
-            <div class="cli-example">
-# Override workdir from settings file
-java -jar webharvest-cli.jar -c scraper.xml -w /custom/output
-            </div>
-
-            <h3>Example 3: Debug Mode</h3>
-            <div class="cli-example">
-# Enable debug mode and set log level
-java -jar webharvest-cli.jar -c scraper.xml -d --loglevel DEBUG
-            </div>
-
-            <h3>Example 4: Proxy Configuration</h3>
-            <div class="cli-example">
-# Override proxy settings
-java -jar webharvest-cli.jar -c scraper.xml \
-  --proxyhost proxy.example.com \
-  --proxyport 8080 \
-  --proxyuser john.doe \
-  --proxypassword secret123
-            </div>
-
-            <h3>Example 5: Custom Settings File</h3>
-            <div class="cli-example">
-# Use specific settings file
-java -Dwebharvest.settings=/path/to/custom.properties \
-  -jar webharvest-cli.jar -c scraper.xml
-            </div>
-
-            <h3>Example 6: Legacy Format</h3>
-            <div class="cli-example">
-# Backward compatible with old syntax
-java -jar webharvest-cli.jar \
-  config=scraper.xml \
-  workdir=/tmp \
-  debug=true \
-  loglevel=INFO
-            </div>
-        </section>
-
-        <!-- Developer API -->
-        <section>
-            <h2>👨‍💻 Developer API</h2>
-            
-            <h3>Loading Settings</h3>
-            <pre><code>// Load from default locations
-WebHarvestSettings settings = WebHarvestSettings.loadDefault();
-
-// Load from specific file
-WebHarvestSettings settings = WebHarvestSettings.loadFromFile(new File("/path/to/settings.properties"));
-
-// Create from Properties object
-Properties props = new Properties();
-props.setProperty("workdir", "/tmp");
-props.setProperty("debug", "true");
-WebHarvestSettings settings = new WebHarvestSettings(props);</code></pre>
-
-            <h3>Building Custom Settings</h3>
-            <pre><code>// Load base settings
-WebHarvestSettings baseSettings = WebHarvestSettings.loadDefault();
-
-// Override specific properties
-WebHarvestSettings customSettings = new WebHarvestSettings.Builder(baseSettings)
-    .workDir("/custom/path")
-    .debug(true)
-    .logLevel("DEBUG")
-    .proxyHost("proxy.example.com")
-    .proxyPort(8080)
-    .build();</code></pre>
-
-            <h3>Parsing CLI Arguments</h3>
-            <pre><code>// Parse arguments with base settings
-CommandLineParser parser = new CommandLineParser(baseSettings);
-WebHarvestSettings finalSettings = parser.parse(args);
-
-// Get parsed configuration file
-String configFile = parser.getConfigFile();
-
-// Check if help was requested
-if (parser.isHelpRequested()) {
-    parser.printHelp();
-    System.exit(0);
-}</code></pre>
-        </section>
-
-        <!-- Benefits -->
-        <section>
-            <h2>✨ Benefits</h2>
-            <ul>
-                <li>✅ <strong>No Configuration Duplication</strong> - Configure once, use everywhere</li>
-                <li>✅ <strong>CLI Override Capability</strong> - Override file settings when needed</li>
-                <li>✅ <strong>Modern CLI Syntax</strong> - Intuitive <code>-option value</code> format</li>
-                <li>✅ <strong>Backward Compatible</strong> - Legacy <code>option=value</code> still works</li>
-                <li>✅ <strong>Automatic Discovery</strong> - Settings file auto-discovered from standard locations</li>
-                <li>✅ <strong>GUI/CLI Synchronization</strong> - Both use same settings source</li>
-                <li>✅ <strong>Type-Safe API</strong> - Builder pattern with validation</li>
-                <li>✅ <strong>Well Documented</strong> - Comprehensive JavaDoc and examples</li>
-            </ul>
-        </section>
-
-        <!-- See Also -->
-        <section>
-            <h2>🔗 See Also</h2>
-            <ul>
-                <li><a href="getting-started.html">Getting Started Guide</a></li>
-                <li><a href="../examples/index.html">Configuration Examples</a></li>
-                <li><a href="architecture.html">Architecture Overview</a></li>
-                <li><a href="../index.html">WebHarvest Home</a></li>
-            </ul>
-        </section>
-    </main>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2006-2025 WebHarvest Project. Licensed under Apache License 2.0.</p>
-            <p>
-                <a href="../index.html">Home</a> | 
-                <a href="index.html">Documentation</a> | 
-                <a href="../support.html">Support</a> |
-                <a href="https://github.com/webharvest/webharvest">GitHub</a>
+            <p style="font-size: 1.05rem; line-height: 1.7; margin-top: var(--spacing-6);">
+                <strong>Now:</strong> Single unified configuration system. All settings work in both CLI and GUI.
             </p>
         </div>
-    </footer>
-</body>
-</html>
+    </section>
 
+    <!-- CLI Options -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Command-Line Options</h2>
+            <p class="section-subtitle">Available arguments for webharvest-cli</p>
+        </div>
+
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">Terminal</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-bash"># Basic usage
+java -jar webharvest-cli-2.2.0.jar config.xml
+
+# With HTTP proxy
+java -jar webharvest-cli-2.2.0.jar config.xml \
+  --proxy-host=proxy.example.com \
+  --proxy-port=8080
+
+# With authentication
+java -jar webharvest-cli-2.2.0.jar config.xml \
+  --proxy-user=username \
+  --proxy-password=password
+
+# Custom user agent
+java -jar webharvest-cli-2.2.0.jar config.xml \
+  --user-agent="MyBot/1.0"
+
+# Output directory
+java -jar webharvest-cli-2.2.0.jar config.xml \
+  --output-dir=/path/to/output</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Available Settings -->
+    <section class="container" style="margin-top: 6rem; margin-bottom: 6rem;">
+        <div class="section-header">
+            <h2>Available Settings</h2>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>HTTP Proxy</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li><code>--proxy-host</code></li>
+                    <li><code>--proxy-port</code></li>
+                    <li><code>--proxy-user</code></li>
+                    <li><code>--proxy-password</code></li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>HTTP Settings</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li><code>--user-agent</code></li>
+                    <li><code>--timeout</code></li>
+                    <li><code>--follow-redirects</code></li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>Output</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li><code>--output-dir</code></li>
+                    <li><code>--working-dir</code></li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>Execution</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li><code>--debug</code></li>
+                    <li><code>--verbose</code></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Related Resources -->
+    <section class="container" style="margin-top: 6rem; margin-bottom: 6rem;">
+        <div class="section-header">
+            <h2>Related Resources</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem;">
+            <div class="feature-card" style="background: var(--gray-50);">
+                <h3><i class="fas fa-book" style="color: var(--primary);"></i> Plugin Reference</h3>
+                <ul style="color: var(--gray-700); line-height: 1.8; margin-left: 1.5rem;">
+                    <li><a href="2.2.0/config.html" style="color: var(--primary);">Config Plugin</a></li>
+                    <li><a href="2.2.0/def.html" style="color: var(--primary);">Def Plugin</a></li>
+                    <li><a href="2.2.0/set-var.html" style="color: var(--primary);">Set-Var Plugin</a></li>
+                    <li><a href="2.2.0/get-var.html" style="color: var(--primary);">Get-Var Plugin</a></li>
+                </ul>
+            </div>
+
+            <div class="feature-card" style="background: var(--gray-50);">
+                <h3><i class="fas fa-graduation-cap" style="color: var(--lime);"></i> More Tutorials</h3>
+                <ul style="color: var(--gray-700); line-height: 1.8; margin-left: 1.5rem;">
+                    <li><a href="getting-started.html" style="color: var(--primary);">Getting Started</a></li>
+                    <li><a href="debugging-guide.html" style="color: var(--primary);">Debugging Guide</a></li>
+                    <li><a href="../ide.html" style="color: var(--primary);">IDE Guide</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div class="footer-links">
+                <a href="../about.html">About</a>
+                <a href="2.2.0/">Plugins</a>
+                <a href="./">Documentation</a>
+                <a href="../examples/">Examples</a>
+                <a href="../support.html">Support</a>
+                <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+            </div>
+            <div class="footer-legal">
+                <p>Copyright © 2006-2025 WebHarvest Contributors. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/prism.js"></script>
+</body>
+
+</html>

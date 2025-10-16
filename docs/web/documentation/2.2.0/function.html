@@ -64,7 +64,7 @@
             </a>
             <nav class="main-nav">
                 <a href="../../about.html">About</a>
-                <a href="../getting-started.html" style="color: var(--lime); font-weight: 600;"><i class="fas fa-rocket"></i> Get Started</a>
+                <a href="../getting-started.html" style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i class="fas fa-rocket"></i> Get Started</a>
                 <a href="../../plugins.html">Plugins</a>
                 <a href="../../ide.html">IDE</a>
                 <a href="../../examples/">Examples</a>
@@ -194,86 +194,6 @@ modular and maintainable scraper configurations.</p>
 
         <section class="section">
             <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Define before use:: Functions must be defined before calling</li><li>Parameters:: Retrieved via <code><call-param></code> inside function body</li><li>Return value:: Last expression in function body is returned</li><li>Variable scope:: Function has local scope for variables</li></ul>
-        </section>
-
-        <section class="section">
-            <h2 class="section-title">⚠️ Best Practices & Known Issues (v2.2.0)</h2>
-            
-            <div class="window warning-window" style="margin: var(--spacing-4) 0; border-left: 4px solid #f59e0b; background: #fffbeb;">
-                <div class="window-header" style="background: #fef3c7; color: #92400e;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Bug #7 Fix: Function Parameter Scope Pollution</span>
-                </div>
-                <div class="window-content">
-                    <p style="margin-bottom: var(--spacing-3);"><strong>Problem (v2.1 - v2.2.0):</strong></p>
-                    <p style="margin-bottom: var(--spacing-3);">
-                        Function parameters could "leak" between function calls. If you omitted a parameter 
-                        in the second call, it would still have the value from the first call!
-                    </p>
-                    
-                    <p style="margin-bottom: var(--spacing-2);"><strong>Example of the bug:</strong></p>
-                    <pre class="language-xml"><code>&lt;function name="greet"&gt;
-    &lt;return&gt;&lt;template&gt;Hello ${name}!&lt;/template&gt;&lt;/return&gt;
-&lt;/function&gt;
-
-&lt;!-- First call WITH name --&gt;
-&lt;call name="greet"&gt;
-    &lt;call-param name="name"&gt;Alice&lt;/call-param&gt;
-&lt;/call&gt;
-&lt;!-- Result: "Hello Alice!" ✓ --&gt;
-
-&lt;!-- Second call WITHOUT name --&gt;
-&lt;call name="greet"&gt;
-    &lt;!-- Oops! Forgot to pass name --&gt;
-&lt;/call&gt;
-&lt;!-- v2.0: "Hello !" (empty) --&gt;
-&lt;!-- v2.1-2.2.0: "Hello Alice!" (from first call!) ❌ --&gt;
-&lt;!-- v2.2.0: "Hello !" + WARNING in log ✅ --&gt;</code></pre>
-
-                    <p style="margin: var(--spacing-4) 0 var(--spacing-2);"><strong>Solution (v2.2.0):</strong></p>
-                    <ul style="line-height: 1.8; margin-left: var(--spacing-4);">
-                        <li><strong>Automatic Fix:</strong> Bindings cleared before each function call</li>
-                        <li><strong>Detection:</strong> Warns when scope pollution detected</li>
-                        <li><strong>Strict Mode:</strong> Optional exception throwing</li>
-                    </ul>
-                    
-                    <p style="margin: var(--spacing-4) 0 var(--spacing-2);"><strong>✅ Best Practice - Always provide ALL parameters:</strong></p>
-                    <pre class="language-xml"><code>&lt;!-- GOOD: Explicit empty parameter --&gt;
-&lt;call name="greet"&gt;
-    &lt;call-param name="name"&gt;&lt;/call-param&gt;  &lt;!-- Empty value --&gt;
-&lt;/call&gt;
-
-&lt;!-- BETTER: Check if parameter exists --&gt;
-&lt;function name="greet"&gt;
-    &lt;return&gt;
-        &lt;case&gt;
-            &lt;if condition="${name != void}"&gt;
-                &lt;template&gt;Hello ${name}!&lt;/template&gt;
-            &lt;/if&gt;
-            &lt;else&gt;
-                &lt;template&gt;Hello Guest!&lt;/template&gt;
-            &lt;/else&gt;
-        &lt;/case&gt;
-    &lt;/return&gt;
-&lt;/function&gt;</code></pre>
-
-                    <p style="margin-top: var(--spacing-4);"><strong>Strict Mode (Testing/Debugging):</strong></p>
-                    <pre class="language-bash"><code># Enable strict mode to catch scope issues early
-java -Dwebharvest.script.scope.strict=true -jar webharvest-cli.jar config.xml
-
-# Default (lenient) - warnings in log only
-java -jar webharvest-cli.jar config.xml</code></pre>
-
-                    <p style="margin-top: var(--spacing-4); padding: var(--spacing-3); background: #fef3c7; border-radius: var(--radius-md);">
-                        <strong>Note:</strong> Due to BeanShell's internal architecture, complete v2.0 scope semantics 
-                        may not be achievable in all edge cases. The detection mechanism provides a safety net 
-                        and helps identify potential issues. See 
-                        <a href="../bug-fixes-v2.2.0.html#bug7" style="color: #92400e; text-decoration: underline;">
-                            Bug #7 documentation
-                        </a> for technical details.
-                    </p>
-                </div>
-            </div>
         </section>
 
         <section class="section">

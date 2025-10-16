@@ -1,104 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debugging Guide - WebHarvest v2.2</title>
-    <link rel="stylesheet" href="../css/webharvest.css">
-    <link rel="stylesheet" href="../css/documentation.css">
-    <style>
-        .debug-pattern {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            margin: 30px 0 20px 0;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .code-block {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 20px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 15px 0;
-            border-left: 4px solid #667eea;
-        }
-
-        .tip {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-        }
-
-        .warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-        }
-
-        .future {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 4px;
-        }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Debugging Guide - WebHarvest</title>
+    <link rel="stylesheet" href="../css/enterprise.css" />
+    <link rel="stylesheet" href="../css/prism.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <h1>🐛 Debugging Complex Scrapers</h1>
-            <p class="subtitle">Complete guide to debugging WebHarvest configurations for complex websites</p>
-        </header>
 
-        <nav class="breadcrumb">
-            <a href="../index.html">Home</a> &raquo;
-            <a href="index.html">Documentation</a> &raquo;
-            <span>Debugging Guide</span>
-        </nav>
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="../index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+                <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest</span>
+            </a>
+            <nav class="main-nav">
+                <a href="../about.html">About</a>
+                <a href="getting-started.html"
+                    style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i
+                        class="fas fa-rocket"></i> Get Started</a>
+                <a href="../plugins.html">Plugins</a>
+                <a href="../ide.html">IDE</a>
+                <a href="../examples/">Examples</a>
+                <a href="./" class="active">Docs</a>
+                <a href="../news.html">News</a>
+                <a href="../support.html">Support</a>
+                <a class="cta" href="../index.html#download">Download</a>
+            </nav>
+        </div>
+    </header>
 
-        <section class="intro">
-            <h2>📖 The Problem</h2>
-            <blockquote style="border-left: 4px solid #667eea; padding-left: 20px; font-style: italic; color: #666;">
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container hero-inner">
+            <div class="hero-content">
+                <h1>Debugging<br />Complex Scrapers</h1>
+                <p class="lead">Complete guide to debugging WebHarvest configurations</p>
+                <p class="hero-description">
+                    Learn 5 powerful debugging patterns to inspect responses, variables, and execution flow
+                    when scraping complex websites.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Problem -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2>The Problem</h2>
+            <p class="section-subtitle">Common debugging challenges in web scraping</p>
+        </div>
+
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <blockquote
+                style="border-left: 4px solid var(--purple); padding-left: var(--spacing-5); font-style: italic; color: var(--gray-600); margin: var(--spacing-6) 0;">
                 "I am developing a scraping tool for a complex javascript website...
                 frequently, I am getting the wrong response. However, it is not easy to spot such instances.
                 <strong>Debugging a configuration is really complicated without having a possibility to look
                     at what WebHarvest is actually processing.</strong>"
-                <footer>— GitHub Issue #16</footer>
+                <footer style="margin-top: var(--spacing-3); font-size: 0.875rem;">— GitHub Issue #16</footer>
             </blockquote>
 
             <h3>Common Debugging Challenges</h3>
-            <ul>
-                <li>❌ Can't see the actual HTML response being processed</li>
-                <li>❌ Don't know if HTTP request succeeded or returned error page</li>
-                <li>❌ Variable values are opaque - hard to inspect</li>
-                <li>❌ No way to pause and examine state mid-execution</li>
-                <li>❌ Log is verbose but doesn't show actual data</li>
+            <ul style="line-height: 1.8; font-size: 1.05rem;">
+                <li>Can't see the actual HTML response being processed</li>
+                <li>Don't know if HTTP request succeeded or returned error page</li>
+                <li>Variable values are opaque - hard to inspect</li>
+                <li>No way to pause and examine state mid-execution</li>
+                <li>Log is verbose but doesn't show actual data</li>
             </ul>
 
-            <div class="tip">
+            <div class="note">
                 <strong>💡 Good News!</strong> WebHarvest has powerful debugging capabilities built-in.
                 This guide shows you <strong>5 debugging patterns</strong> you can use RIGHT NOW.
             </div>
-        </section>
+        </div>
+    </section>
 
-        <div class="debug-pattern">🔍 PATTERN 1: Save Responses to Debug Files</div>
-        <section>
-            <h3>The Workaround That Saves Lives</h3>
-            <p>The simplest and most effective debugging technique: <strong>save every response to a file</strong> so
-                you can inspect it.</p>
+    <!-- Pattern 1 -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Pattern 1: Save Responses to Debug Files</h2>
+            <p class="section-subtitle">The simplest and most effective debugging technique</p>
+        </div>
 
-            <div class="code-block"><code>&lt;!-- Fetch page --&gt;
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <p style="font-size: 1.05rem; line-height: 1.7;">
+                Save every response to a file so you can inspect it in your browser or text editor.
+                This lets you see exactly what HTML WebHarvest is processing.
+            </p>
+
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">debug-save-response.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;!-- Fetch page --&gt;
 &lt;def var="response"&gt;
     &lt;http url="https://complex-website.com/api/data"&gt;
         &lt;http-header name="X-API-Key" value="${apiKey}"/&gt;
@@ -115,399 +124,286 @@
     &lt;xpath expression="//div[@class='result']"&gt;
         &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
     &lt;/xpath&gt;
-&lt;/def&gt;</code></div>
-
-            <div class="tip">
-                <strong>💡 Pro Tip:</strong> Use <code>${sys.timestamp()}</code> or <code>${index}</code> to create
-                unique filenames for each request.
-                This prevents overwriting and lets you see the sequence of requests.
+&lt;/def&gt;</code></pre>
+                </div>
             </div>
 
-            <h4>Advanced: Conditional Debug Saves</h4>
-            <div class="code-block"><code>&lt;!-- Only save when something looks wrong --&gt;
-&lt;def var="statusCode"&gt;
-    &lt;xpath expression="//meta[@name='http-status']/@content"&gt;
-        &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
-    &lt;/xpath&gt;
-&lt;/def&gt;
+            <div class="note">
+                <strong>💡 Pro Tip:</strong> Use <code>${sys.timestamp()}</code> or <code>${index}</code> to create
+                unique filenames for each request. This prevents overwriting and lets you see the sequence of requests.
+            </div>
+        </div>
+    </section>
 
-&lt;if condition="${statusCode != '200'}"&gt;
-    &lt;!-- 🚨 ERROR RESPONSE - Save for inspection! --&gt;
-    &lt;file path="debug/ERROR-${sys.timestamp()}.html" action="write"&gt;
-        &lt;!-- Add metadata header --&gt;
-        &lt;text&gt;&lt;!-- DEBUG INFO
-Status: ${statusCode}
-URL: https://complex-website.com/api/data
-Timestamp: ${sys.timestamp()}
---&gt;
-&lt;/text&gt;
-        ${response}
-    &lt;/file&gt;
-    
-    &lt;log message="ERROR RESPONSE SAVED - Check debug/ERROR-*.html"/&gt;
-&lt;/if&gt;</code></div>
-        </section>
+    <!-- Pattern 2 -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Pattern 2: Variable Inspection with Log</h2>
+            <p class="section-subtitle">See what's actually in your variables</p>
+        </div>
 
-        <div class="debug-pattern">📊 PATTERN 2: Variable Inspection with Log</div>
-        <section>
-            <h3>See What's Actually in Your Variables</h3>
-            <p>Use <code>&lt;log&gt;</code> to print variable values at key points:</p>
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <p style="font-size: 1.05rem; line-height: 1.7;">
+                Use <code>&lt;log&gt;</code> to print variable values at key points in your scraper.
+            </p>
 
-            <div class="code-block"><code>&lt;!-- Extract data --&gt;
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">debug-variables.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;!-- Extract data --&gt;
 &lt;def var="productName"&gt;
     &lt;xpath expression="//h1[@class='product-title']/text()"&gt;${page}&lt;/xpath&gt;
 &lt;/def&gt;
 
-&lt;!-- 🐛 DEBUG: Check what we extracted --&gt;
-&lt;log message="Product name extracted: '${productName}'"/&gt;
+&lt;!-- 🐛 DEBUG: Print variable --&gt;
+&lt;log message="Product name: ${productName}"/&gt;
 
-&lt;def var="price"&gt;
-    &lt;xpath expression="//span[@class='price']/text()"&gt;${page}&lt;/xpath&gt;
-&lt;/def&gt;
-
-&lt;!-- 🐛 DEBUG: Verify price format --&gt;
-&lt;log message="Price extracted: '${price}' (length: ${sys.length(price)})"/&gt;
-
-&lt;!-- Validate data --&gt;
-&lt;if condition="${sys.length(productName) == 0}"&gt;
-    &lt;log level="ERROR" message="PROBLEM: Product name is empty!"/&gt;
-    &lt;log message="Page content preview: ${sys.substring(page, 0, 200)}..."/&gt;
-&lt;/if&gt;</code></div>
-
-            <h4>Log Levels Available</h4>
-            <div class="code-block"><code>&lt;log level="DEBUG" message="Detailed trace information"/&gt;
-&lt;log level="INFO" message="General information (default)"/&gt;
-&lt;log level="WARN" message="Warning - something unexpected"/&gt;
-&lt;log level="ERROR" message="Error - operation failed"/&gt;</code></div>
-
-            <div class="tip">
-                <strong>💡 Configure log4j.properties</strong> to control which levels are shown:
-                <pre style="background:#f5f5f5; padding:10px; margin-top:10px; border-radius:4px;">log4j.rootLogger=<strong>DEBUG</strong>, stdout  <em># Show DEBUG and above</em>
-log4j.rootLogger=<strong>INFO</strong>, stdout   <em># Show INFO and above (default)</em>
-log4j.rootLogger=<strong>WARN</strong>, stdout   <em># Only WARN and ERROR</em></pre>
+&lt;!-- Continue processing... --&gt;</code></pre>
+                </div>
             </div>
-        </section>
 
-        <div class="debug-pattern">🔬 PATTERN 3: Step-by-Step Variable Tracking</div>
-        <section>
-            <h3>Track Variable Transformations</h3>
-            <p>When data goes through multiple transformations, save each step:</p>
+            <div class="note">
+                <strong>💡 Tip:</strong> Log variables before and after transformations to see where data gets
+                corrupted.
+            </div>
+        </div>
+    </section>
 
-            <div class="code-block"><code>&lt;!-- STEP 1: Fetch raw HTML --&gt;
-&lt;def var="rawHtml"&gt;
-    &lt;http url="https://example.com/products"/&gt;
+    <!-- Pattern 3 -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Pattern 3: Multi-Step Pipeline Debugging</h2>
+            <p class="section-subtitle">Save output at each transformation step</p>
+        </div>
+
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <p style="font-size: 1.05rem; line-height: 1.7;">
+                For complex pipelines (fetch → parse → transform → extract), save output after each step.
+            </p>
+
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">debug-pipeline.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;!-- Step 1: Fetch --&gt;
+&lt;def var="raw"&gt;
+    &lt;http url="https://example.com"/&gt;
 &lt;/def&gt;
-&lt;file path="debug/1-raw.html" action="write"&gt;${rawHtml}&lt;/file&gt;
+&lt;file path="debug/1-raw.html" action="write"&gt;${raw}&lt;/file&gt;
 
-&lt;!-- STEP 2: Convert to XML --&gt;
-&lt;def var="xmlDoc"&gt;
-    &lt;html-to-xml&gt;${rawHtml}&lt;/html-to-xml&gt;
+&lt;!-- Step 2: Parse HTML to XML --&gt;
+&lt;def var="xml"&gt;
+    &lt;html-to-xml&gt;${raw}&lt;/html-to-xml&gt;
 &lt;/def&gt;
-&lt;file path="debug/2-xml.xml" action="write"&gt;${xmlDoc}&lt;/file&gt;
+&lt;file path="debug/2-xml.xml" action="write"&gt;${xml}&lt;/file&gt;
 
-&lt;!-- STEP 3: Extract with XPath --&gt;
-&lt;def var="products"&gt;
-    &lt;xpath expression="//div[@class='product']"&gt;${xmlDoc}&lt;/xpath&gt;
+&lt;!-- Step 3: Extract data --&gt;
+&lt;def var="data"&gt;
+    &lt;xpath expression="//div[@class='result']"&gt;${xml}&lt;/xpath&gt;
 &lt;/def&gt;
-&lt;file path="debug/3-products.txt" action="write"&gt;${products}&lt;/file&gt;
-&lt;log message="Extracted ${sys.count(products)} products"/&gt;
+&lt;file path="debug/3-data.txt" action="write"&gt;${data}&lt;/file&gt;
 
-&lt;!-- STEP 4: Clean/transform --&gt;
-&lt;def var="cleaned"&gt;
-    &lt;replace regex="\s+" by=" "&gt;${products}&lt;/replace&gt;
+&lt;!-- Step 4: Transform --&gt;
+&lt;def var="clean"&gt;
+    &lt;regexp pattern="&lt;[^&gt;]+&gt;" replace=""&gt;${data}&lt;/regexp&gt;
 &lt;/def&gt;
-&lt;file path="debug/4-cleaned.txt" action="write"&gt;${cleaned}&lt;/file&gt;</code></div>
+&lt;file path="debug/4-clean.txt" action="write"&gt;${clean}&lt;/file&gt;</code></pre>
+                </div>
+            </div>
 
-            <div class="tip">
+            <div class="note">
                 <strong>💡 Result:</strong> You get a "paper trail" showing exactly where data gets corrupted or lost.
                 Open files 1, 2, 3, 4 and see which step breaks!
             </div>
-        </section>
+        </div>
+    </section>
 
-        <div class="debug-pattern">🎯 PATTERN 4: HTTP Request/Response Debugging</div>
-        <section>
-            <h3>Debug Complex HTTP Interactions</h3>
-            <p>For AJAX/API calls, JavaScript-heavy sites, and authentication flows:</p>
+    <!-- Pattern 4 -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Pattern 4: Conditional Logging for Edge Cases</h2>
+            <p class="section-subtitle">Log only when something unexpected happens</p>
+        </div>
 
-            <div class="code-block"><code>&lt;!-- Create debug HTTP wrapper --&gt;
-&lt;function name="debugHttp"&gt;
-    &lt;param name="url"/&gt;
-    &lt;param name="method" value="GET"/&gt;
-    &lt;param name="label" value="request"/&gt;
-    
-    &lt;!-- Log request --&gt;
-    &lt;log message="[${label}] ${method} ${url}"/&gt;
-    
-    &lt;!-- Make request --&gt;
-    &lt;def var="response"&gt;
-        &lt;http url="${url}" method="${method}"&gt;
-            &lt;body&gt;${requestBody}&lt;/body&gt;
-        &lt;/http&gt;
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <p style="font-size: 1.05rem; line-height: 1.7;">
+                Use <code>&lt;if&gt;</code> to log only when conditions fail, reducing noise.
+            </p>
+
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">debug-conditional.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;!-- Extract product price --&gt;
+&lt;def var="price"&gt;
+    &lt;xpath expression="//span[@class='price']/text()"&gt;${page}&lt;/xpath&gt;
     &lt;/def&gt;
     
-    &lt;!-- Save response --&gt;
-    &lt;file path="debug/http-${label}-${sys.timestamp()}.html" action="write"&gt;
-        &lt;text&gt;&lt;!-- 
-REQUEST: ${method} ${url}
-TIMESTAMP: ${sys.timestamp()}
---&gt;
-&lt;/text&gt;
-        ${response}
-    &lt;/file&gt;
-    
-    &lt;!-- Check status --&gt;
-    &lt;def var="hasError"&gt;
-        &lt;xpath expression="contains(., 'error') or contains(., '404') or contains(., '500')"&gt;
-            &lt;text&gt;${response}&lt;/text&gt;
-        &lt;/xpath&gt;
-    &lt;/def&gt;
-    
-    &lt;if condition="${hasError}"&gt;
-        &lt;log level="WARN" message="[${label}] Response may contain errors - check debug file"/&gt;
-    &lt;/if&gt;
-    
-    &lt;return&gt;${response}&lt;/return&gt;
-&lt;/function&gt;
+&lt;!-- 🐛 DEBUG: Log if price is empty or invalid --&gt;
+&lt;if condition="${empty(price) or price == ''}"&gt;
+    &lt;log level="ERROR" message="⚠️ Price extraction failed!"/&gt;
+    &lt;file path="debug/failed-page.html" action="write"&gt;${page}&lt;/file&gt;
+&lt;/if&gt;</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
 
-&lt;!-- Use it --&gt;
-&lt;def var="loginResult"&gt;
-    &lt;call name="debugHttp"&gt;
-        &lt;call-param name="url"&gt;https://example.com/login&lt;/call-param&gt;
-        &lt;call-param name="method"&gt;POST&lt;/call-param&gt;
-        &lt;call-param name="label"&gt;login&lt;/call-param&gt;
-    &lt;/call&gt;
-&lt;/def&gt;</code></div>
-        </section>
+    <!-- Pattern 5 -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Pattern 5: Debug Mode Configuration</h2>
+            <p class="section-subtitle">Toggle debugging on/off with a single variable</p>
+        </div>
 
-        <div class="debug-pattern">🧪 PATTERN 5: Try/Catch with Detailed Error Logging</div>
-        <section>
-            <h3>Graceful Error Handling with Full Context</h3>
-            <p>When things go wrong, capture ALL the context:</p>
+        <div style="max-width: 900px; margin: 2rem auto;">
+            <p style="font-size: 1.05rem; line-height: 1.7;">
+                Create a DEBUG_MODE variable to control all debugging output.
+            </p>
 
-            <div class="code-block"><code>&lt;try&gt;
-    &lt;body&gt;
-        &lt;!-- Attempt risky operation --&gt;
-        &lt;def var="data"&gt;
-            &lt;xpath expression="//div[@class='data']/text()"&gt;
-                &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
-            &lt;/xpath&gt;
-        &lt;/def&gt;
-    &lt;/body&gt;
-    
-    &lt;catch&gt;
-        &lt;!-- 🚨 Something failed - save EVERYTHING --&gt;
-        &lt;log level="ERROR" message="XPath extraction failed!"/&gt;
-        
-        &lt;!-- Save the problematic response --&gt;
-        &lt;file path="debug/FAILED-${sys.timestamp()}.html" action="write"&gt;
-            &lt;text&gt;&lt;!-- ERROR CONTEXT
-Timestamp: ${sys.timestamp()}
-XPath: //div[@class='data']/text()
-Response length: ${sys.length(response)}
-Response preview:
---&gt;
-&lt;/text&gt;
-            ${response}
-        &lt;/file&gt;
-        
-        &lt;!-- Log error details --&gt;
-        &lt;log level="ERROR" message="Response saved to debug/FAILED-${sys.timestamp()}.html"/&gt;
-        &lt;log level="ERROR" message="Response preview: ${sys.substring(response, 0, 500)}"/&gt;
-        
-        &lt;!-- Set fallback value --&gt;
-        &lt;def var="data"&gt;ERROR&lt;/def&gt;
-    &lt;/catch&gt;
-&lt;/try&gt;</code></div>
-        </section>
-
-        <section>
-            <h2>🛠️ Complete Debug Configuration Template</h2>
-            <p>Here's a ready-to-use template with ALL debugging patterns built-in:</p>
-
-            <div class="code-block"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;config&gt;
-
-    &lt;!-- ================== DEBUG CONFIGURATION ================== --&gt;
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">debug-mode.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;!-- Set debug mode (true/false) --&gt;
     &lt;def var="DEBUG_MODE"&gt;true&lt;/def&gt;
-    &lt;def var="DEBUG_DIR"&gt;debug/${sys.timestamp()}&lt;/def&gt;
-    
-    &lt;!-- Create debug directory --&gt;
-    &lt;if condition="${DEBUG_MODE}"&gt;
-        &lt;log message="🐛 DEBUG MODE ENABLED - Saving responses to ${DEBUG_DIR}/"/&gt;
-    &lt;/if&gt;
-    
-    &lt;!-- Debug function wrapper --&gt;
-    &lt;function name="debugSave"&gt;
-        &lt;param name="content"/&gt;
-        &lt;param name="filename"/&gt;
-        &lt;param name="label" value="debug"/&gt;
-        
+
+&lt;!-- Your scraper logic --&gt;
+&lt;def var="data"&gt;
+    &lt;http url="https://example.com"/&gt;
+&lt;/def&gt;
+
+&lt;!-- Conditional debug save --&gt;
         &lt;if condition="${DEBUG_MODE}"&gt;
-            &lt;file path="${DEBUG_DIR}/${filename}" action="write"&gt;
-                ${content}
-            &lt;/file&gt;
-            &lt;log message="[${label}] Saved ${DEBUG_DIR}/${filename}"/&gt;
-        &lt;/if&gt;
-        
-        &lt;return&gt;${content}&lt;/return&gt;
-    &lt;/function&gt;
-    
-    &lt;!-- ================== ACTUAL SCRAPING ================== --&gt;
-    
-    &lt;!-- 1. Login --&gt;
-    &lt;def var="loginPage"&gt;
-        &lt;http url="https://complex-website.com/login"/&gt;
-    &lt;/def&gt;
-    &lt;call name="debugSave"&gt;
-        &lt;call-param name="content"&gt;${loginPage}&lt;/call-param&gt;
-        &lt;call-param name="filename"&gt;1-login-page.html&lt;/call-param&gt;
-        &lt;call-param name="label"&gt;LOGIN&lt;/call-param&gt;
-    &lt;/call&gt;
-    
-    &lt;!-- 2. Submit credentials --&gt;
-    &lt;def var="authResult"&gt;
-        &lt;http url="https://complex-website.com/auth" method="POST"&gt;
-            &lt;http-param name="user" value="test"/&gt;
-            &lt;http-param name="pass" value="secret"/&gt;
-        &lt;/http&gt;
-    &lt;/def&gt;
-    &lt;call name="debugSave"&gt;
-        &lt;call-param name="content"&gt;${authResult}&lt;/call-param&gt;
-        &lt;call-param name="filename"&gt;2-auth-result.html&lt;/call-param&gt;
-        &lt;call-param name="label"&gt;AUTH&lt;/call-param&gt;
-    &lt;/call&gt;
-    
-    &lt;!-- 3. Check if logged in --&gt;
-    &lt;def var="isLoggedIn"&gt;
-        &lt;xpath expression="contains(., 'Welcome')"&gt;
-            &lt;text&gt;${authResult}&lt;/text&gt;
-        &lt;/xpath&gt;
-    &lt;/def&gt;
-    &lt;log message="Login status: ${isLoggedIn}"/&gt;
-    
-    &lt;if condition="${!isLoggedIn}"&gt;
-        &lt;log level="ERROR" message="LOGIN FAILED - Check debug files!"/&gt;
-        &lt;stop/&gt;
-    &lt;/if&gt;
-    
-    &lt;!-- 4. Fetch data --&gt;
-    &lt;def var="dataPage"&gt;
-        &lt;http url="https://complex-website.com/data"/&gt;
-    &lt;/def&gt;
-    &lt;call name="debugSave"&gt;
-        &lt;call-param name="content"&gt;${dataPage}&lt;/call-param&gt;
-        &lt;call-param name="filename"&gt;3-data-page.html&lt;/call-param&gt;
-        &lt;call-param name="label"&gt;DATA&lt;/call-param&gt;
-    &lt;/call&gt;
-    
-    &lt;!-- 5. Extract with error handling --&gt;
-    &lt;try&gt;
-        &lt;body&gt;
-            &lt;def var="results"&gt;
-                &lt;xpath expression="//div[@class='result']"&gt;
-                    &lt;html-to-xml&gt;${dataPage}&lt;/html-to-xml&gt;
-                &lt;/xpath&gt;
-            &lt;/def&gt;
-            &lt;log message="Extracted ${sys.count(results)} results"/&gt;
-        &lt;/body&gt;
-        &lt;catch&gt;
-            &lt;log level="ERROR" message="XPath extraction failed"/&gt;
-            &lt;file path="${DEBUG_DIR}/ERROR-extraction.html" action="write"&gt;
-                ${dataPage}
-            &lt;/file&gt;
-        &lt;/catch&gt;
-    &lt;/try&gt;
+    &lt;file path="debug/response.html" action="write"&gt;${data}&lt;/file&gt;
+    &lt;log message="DEBUG: Saved response to debug/response.html"/&gt;
+&lt;/if&gt;</code></pre>
+                </div>
+            </div>
 
-&lt;/config&gt;</code></div>
-
-            <div class="tip">
+            <div class="note">
                 <strong>✅ How to Use:</strong>
                 <ol>
-                    <li>Set <code>DEBUG_MODE</code> to <code>true</code></li>
-                    <li>Run your scraper</li>
-                    <li>Check <code>debug/[timestamp]/</code> directory</li>
-                    <li>Open HTML files in browser to see what WebHarvest actually received</li>
-                    <li>Compare expected vs actual responses</li>
-                    <li>Fix XPath expressions based on real data</li>
+                    <li>Set <code>DEBUG_MODE</code> to <code>true</code> during development</li>
+                    <li>Set to <code>false</code> in production</li>
+                    <li>All debug saves/logs controlled by single variable</li>
                 </ol>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section>
-            <h2>🔧 Advanced: log4j.properties Configuration</h2>
-            <p>Control logging verbosity at the system level:</p>
+    <!-- Best Practices -->
+    <section class="container" style="margin-top: 6rem;">
+        <div class="section-header">
+            <h2>Debugging Checklist</h2>
+            <p class="section-subtitle">Essential steps when debugging complex websites</p>
+        </div>
 
-            <div class="code-block"><code># Root logger level (DEBUG shows everything)
-log4j.rootLogger=DEBUG, stdout
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-save"></i>
+                </div>
+                <h3>Save Responses</h3>
+                <p>Always save HTTP responses to files using <code>&lt;file path="debug/..."&gt;</code></p>
+            </div>
 
-# Console appender
-log4j.appender.stdout=org.apache.log4j.ConsoleAppender
-log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
-log4j.appender.stdout.layout.ConversionPattern=%d{HH:mm:ss} %-5p %c{1} - %m%n
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bug"></i>
+                </div>
+                <h3>Log Variables</h3>
+                <p>Use <code>&lt;log&gt;</code> to print variable values at key transformation points</p>
+            </div>
 
-# Fine-tune specific packages
-log4j.logger.org.webharvest.plugin=DEBUG
-log4j.logger.org.webharvest.runtime=INFO
-log4j.logger.org.apache.http=WARN
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-stream"></i>
+                </div>
+                <h3>Pipeline Debugging</h3>
+                <p>Save output after each step in complex transformation pipelines</p>
+            </div>
 
-# File appender for permanent logs
-log4j.appender.file=org.apache.log4j.FileAppender
-log4j.appender.file.File=webharvest-debug.log
-log4j.appender.file.layout=org.apache.log4j.PatternLayout
-log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1} - %m%n</code></div>
-        </section>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-toggle-on"></i>
+                </div>
+                <h3>Debug Mode</h3>
+                <p>Use DEBUG_MODE variable to control all debugging output</p>
+            </div>
+        </div>
+    </section>
 
-        <section>
-            <h2>📋 Debugging Checklist</h2>
-            <div class="tip">
-                <strong>When debugging complex websites, always:</strong>
-                <ul style="margin-top:10px;">
-                    <li>✅ Save responses to files (<code>&lt;file path="debug/..."&gt;</code>)</li>
-                    <li>✅ Use unique filenames (<code>${sys.timestamp()}</code>)</li>
-                    <li>✅ Log variable values at key points (<code>&lt;log&gt;</code>)</li>
-                    <li>✅ Wrap risky operations in <code>&lt;try&gt;/&lt;catch&gt;</code></li>
-                    <li>✅ Check HTTP status codes and error messages</li>
-                    <li>✅ Verify authentication succeeded before proceeding</li>
-                    <li>✅ Use <code>${sys.count(variable)}</code> to check list sizes</li>
-                    <li>✅ Test XPath expressions on ACTUAL responses, not assumptions</li>
+    <!-- Related Resources -->
+    <section class="container" style="margin-top: 6rem; margin-bottom: 6rem;">
+        <div class="section-header">
+            <h2>Related Resources</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem;">
+            <div class="feature-card" style="background: var(--gray-50);">
+                <h3><i class="fas fa-book" style="color: var(--primary);"></i> Documentation</h3>
+                <ul style="color: var(--gray-700); line-height: 1.8; margin-left: 1.5rem;">
+                    <li><a href="2.2.0/file.html" style="color: var(--primary);">File Plugin Reference</a></li>
+                    <li><a href="2.2.0/http.html" style="color: var(--primary);">HTTP Plugin Reference</a></li>
+                    <li><a href="2.2.0/xpath.html" style="color: var(--primary);">XPath Plugin Reference</a></li>
                 </ul>
             </div>
-        </section>
 
-        <section>
-            <h2>🚀 Future Enhancements (Planned)</h2>
-            <div class="future">
-                <strong>📌 GitHub Issue #16 Requests:</strong>
-                <ul style="margin-top:10px;">
-                    <li>🔮 <strong>IDE Response Viewer</strong> - Built-in HTML render view</li>
-                    <li>🔮 <strong>Clickable Log Links</strong> - Click to view response in IDE</li>
-                    <li>🔮 <strong>Downloads Tab</strong> - Separate tab showing all HTTP responses</li>
-                    <li>🔮 <strong>Source View Window</strong> - Dedicated window for inspecting HTML</li>
-                    <li>✅ <strong>Log Levels</strong> - ALREADY IMPLEMENTED! (DEBUG, INFO, WARN, ERROR)</li>
+            <div class="feature-card" style="background: var(--gray-50);">
+                <h3><i class="fas fa-graduation-cap" style="color: var(--lime);"></i> Tutorials</h3>
+                <ul style="color: var(--gray-700); line-height: 1.8; margin-left: 1.5rem;">
+                    <li><a href="getting-started.html" style="color: var(--primary);">Getting Started</a></li>
+                    <li><a href="tutorial-form-submit-pagination.html" style="color: var(--primary);">Form Submit &
+                            Pagination</a></li>
                 </ul>
-                <p style="margin-top:15px;">
-                    <em>These features are planned for future WebHarvest IDE releases.
-                        For now, use the 5 debugging patterns above - they are very effective!</em>
-                </p>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="related">
-            <h2>📚 Related Documentation</h2>
-            <ul>
-                <li><a href="processor-file.html">File Processor Reference</a></li>
-                <li><a href="processor-log.html">Log Processor Reference</a></li>
-                <li><a href="processor-try.html">Try/Catch Processor Reference</a></li>
-                <li><a href="tutorial-form-submit-pagination.html">Form Submit & Pagination Tutorial</a></li>
-            </ul>
-        </section>
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <div class="footer-links">
+                <a href="../about.html">About</a>
+                <a href="2.2.0/">Plugins</a>
+                <a href="./">Documentation</a>
+                <a href="../examples/">Examples</a>
+                <a href="../support.html">Support</a>
+                <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+            </div>
+            <div class="footer-legal">
+                <p>Copyright © 2006-2025 WebHarvest Contributors. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
 
-        <footer class="doc-footer">
-            <p><strong>Author:</strong> WebHarvest Team | <strong>Version:</strong> 2.2.0 | <strong>Date:</strong>
-                October 15, 2025</p>
-            <p><em>This guide addresses GitHub Issue #16: "More detailed log mode"</em></p>
-        </footer>
-    </div>
+    <script src="../js/prism.js"></script>
 </body>
 
 </html>

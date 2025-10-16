@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>&lt;xpath&gt; - XPath plugin that provides XPath expression evaluation functionality | WebHarvest v2.2.0</title>
+    <title>&lt;xpath&gt; - XPath/CSS Selector plugin that provides expression evaluation functionality | WebHarvest v2.2.0</title>
     <link rel="stylesheet" href="../../css/enterprise.css">
     <link rel="stylesheet" href="../../css/prism.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -64,7 +64,7 @@
             </a>
             <nav class="main-nav">
                 <a href="../../about.html">About</a>
-                <a href="../getting-started.html" style="color: var(--lime); font-weight: 600;"><i class="fas fa-rocket"></i> Get Started</a>
+                <a href="../getting-started.html" style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i class="fas fa-rocket"></i> Get Started</a>
                 <a href="../../plugins.html">Plugins</a>
                 <a href="../../ide.html">IDE</a>
                 <a href="../../examples/">Examples</a>
@@ -81,7 +81,7 @@
         <div class="container hero-inner">
             <div class="hero-content">
                 <h1>&lt;xpath&gt;</h1>
-                <p class="lead">XPath plugin that provides XPath expression evaluation functionality</p>
+                <p class="lead">XPath/CSS Selector plugin that provides expression evaluation functionality</p>
                 <p class="hero-description">
                     <span style="display: inline-block; margin-right: 1rem;"><i class="fas fa-cube"></i> Core</span>
                     <span style="display: inline-block;">v2.2.0</span>
@@ -93,8 +93,8 @@
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The XPath plugin evaluates XPath expressions against XML content.
-It requires both XML content and XPath expression as sub-elements.</p>
+            <p>The XPath plugin evaluates XPath expressions OR CSS selectors against XML/HTML content.
+It requires both content and expression as sub-elements.</p>
         </section>
 
         <section class="section">
@@ -116,37 +116,14 @@ It requires both XML content and XPath expression as sub-elements.</p>
   &lt;html-to-xml&gt;
     &lt;http url=&quot;https://example.com&quot;/&gt;
   &lt;/html-to-xml&gt;
-&lt;/xpath&gt;
-
-&lt;!-- Extract all links --&gt;
-&lt;xpath expression=&quot;//a/@href&quot;&gt;
-  &lt;html-to-xml&gt;
-    &lt;http url=&quot;https://example.com&quot;/&gt;
-  &lt;/html-to-xml&gt;
-&lt;/xpath&gt;
-
-&lt;!-- Extract specific div content --&gt;
-&lt;xpath expression=&quot;//div[@class=&#x27;content&#x27;]//p&quot;&gt;
-  &lt;html-to-xml&gt;
-    &lt;http url=&quot;https://example.com&quot;/&gt;
-  &lt;/html-to-xml&gt;
-&lt;/xpath&gt;
-
-&lt;!-- Store result in variable --&gt;
-&lt;def var=&quot;title&quot;&gt;
-  &lt;xpath expression=&quot;//h1/text()&quot;&gt;
-    &lt;html-to-xml&gt;
-      &lt;http url=&quot;https://example.com&quot;/&gt;
-    &lt;/html-to-xml&gt;
-  &lt;/xpath&gt;
-&lt;/def&gt;</code></pre>
+&lt;/xpath&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>expression</strong>: (required): The XPath expression to evaluate</li><li><strong>xml-content</strong>: (required): XML content to evaluate against (as sub-element)</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>expression</strong>: (required): The XPath expression OR CSS selector to evaluate</li><li><strong>type</strong>: (optional): Query type - "xpath" (default) or "css" (Bug #13)</li><li><strong>xml-content</strong>: (required): XML/HTML content to evaluate against (as sub-element)</li></ul>
         </section>
 
         <section class="section">

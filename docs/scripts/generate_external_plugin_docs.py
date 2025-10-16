@@ -225,7 +225,7 @@ def generate_html(element_name: str, data: Dict, plugin_type: str) -> str:
             </a>
             <nav class="main-nav">
                 <a href="../../../about.html">About</a>
-                <a href="../../getting-started.html" style="color: var(--lime); font-weight: 600;"><i class="fas fa-rocket"></i> Get Started</a>
+                <a href="../../getting-started.html" style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i class="fas fa-rocket"></i> Get Started</a>
                 <a href="../../../plugins.html">Plugins</a>
                 <a href="../../../ide.html">IDE</a>
                 <a href="../../../examples/">Examples</a>
@@ -299,7 +299,7 @@ def main():
     print("=" * 60)
     
     # Paths
-    base_dir = Path(__file__).parent
+    base_dir = Path(__file__).parent.parent.parent  # Project root (2 levels up from docs/scripts/)
     version = "2.2.0"  # Full version
     output_dir = base_dir / "docs" / "web" / "documentation" / version / "external"
     
