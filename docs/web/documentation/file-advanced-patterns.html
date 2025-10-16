@@ -73,31 +73,34 @@
                     <span class="window-title">csv-split.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Read CSV file --&gt;
-&lt;def var="csvContent"&gt;
-  &lt;file path="data.csv" action="read"/&gt;
-&lt;/def&gt;
-
-&lt;!-- Split by newline into list of lines --&gt;
-&lt;def var="lines"&gt;
-  &lt;tokenize delimiters="\n"&gt;${csvContent}&lt;/tokenize&gt;
-&lt;/def&gt;
-
-&lt;!-- Process each line --&gt;
-&lt;loop item="line" index="i"&gt;
-  ${lines}
-  
-  &lt;!-- Skip header line --&gt;
-  &lt;if condition="${i > 0}"&gt;
-    &lt;!-- Split line into fields --&gt;
-    &lt;def var="fields"&gt;
-      &lt;tokenize delimiters=","&gt;${line}&lt;/tokenize&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+    &lt;!-- Read CSV file --&gt;
+    &lt;def var="csvContent"&gt;
+        &lt;file path="data.csv" action="read"/&gt;
     &lt;/def&gt;
-    
-        &lt;!-- Access individual fields --&gt;
-        &lt;log message="Field 1: ${fields[0]}, Field 2: ${fields[1]}"/&gt;
-  &lt;/if&gt;
-&lt;/loop&gt;</code></pre>
+
+    &lt;!-- Split by newline into list of lines --&gt;
+    &lt;def var="lines"&gt;
+        &lt;tokenize delimiters="\n"&gt;${csvContent}&lt;/tokenize&gt;
+    &lt;/def&gt;
+
+    &lt;!-- Process each line --&gt;
+    &lt;loop item="line" index="i"&gt;
+        ${lines}
+        
+        &lt;!-- Skip header line --&gt;
+        &lt;if condition="${i > 0}"&gt;
+            &lt;!-- Split line into fields --&gt;
+            &lt;def var="fields"&gt;
+                &lt;tokenize delimiters=","&gt;${line}&lt;/tokenize&gt;
+            &lt;/def&gt;
+            
+            &lt;!-- Access individual fields --&gt;
+            &lt;log message="Field 1: ${fields[0]}, Field 2: ${fields[1]}"/&gt;
+        &lt;/if&gt;
+    &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>
@@ -125,7 +128,9 @@
                     <span class="window-title">file-age-check.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Check if cache file is fresh (younger than 2 hours) --&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;!-- Check if cache file is fresh (younger than 2 hours) --&gt;
 &lt;def var="cacheFile"&gt;cache/data.txt&lt;/def&gt;
 &lt;def var="maxAgeMs"&gt;7200000&lt;/def&gt; &lt;!-- 2 hours --&gt;
 
@@ -153,7 +158,8 @@
     &lt;/def&gt;
     &lt;file path="${cacheFile}" action="write"&gt;${freshData}&lt;/file&gt;
 &lt;/else&gt;
-&lt;/if&gt;</code></pre>
+&lt;/if&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>

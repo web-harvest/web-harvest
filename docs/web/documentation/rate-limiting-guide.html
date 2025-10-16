@@ -115,7 +115,9 @@
                     <span class="window-title">rate-limit-sleep.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item="url"&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;loop item="url"&gt;
     ${urlList}
     
     &lt;!-- Fetch page --&gt;
@@ -123,7 +125,8 @@
     
     &lt;!-- ⏱️ WAIT 2 seconds before next request --&gt;
     &lt;sleep time="2000"/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -156,7 +159,9 @@
                     <span class="window-title">rate-limit-random.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;loop item="url"&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;loop item="url"&gt;
     ${urlList}
     
     &lt;http url="${url}"/&gt;
@@ -167,7 +172,8 @@
     &lt;/def&gt;
     
     &lt;sleep time="${randomDelay}"/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>

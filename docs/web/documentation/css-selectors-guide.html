@@ -111,7 +111,9 @@
                     <span class="window-title">css-selector-basic.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- CSS Selector Mode: type="css" --&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;!-- CSS Selector Mode: type="css" --&gt;
 &lt;xpath type="css" expression="a.product-link"&gt;
     ${html}
 &lt;/xpath&gt;
@@ -124,7 +126,8 @@
 &lt;!-- Get attribute value --&gt;
 &lt;xpath type="css" expression="img.product" attribute="src"&gt;
     ${html}
-&lt;/xpath&gt;</code></pre>
+&lt;/xpath&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -154,8 +157,11 @@
                     <span class="window-title">selector-by-class.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xpath type="css" expression=".product-title"&gt;${html}&lt;/xpath&gt;
-&lt;xpath type="css" expression="div.result"&gt;${html}&lt;/xpath&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;xpath type="css" expression=".product-title"&gt;${html}&lt;/xpath&gt;
+&lt;xpath type="css" expression="div.result"&gt;${html}&lt;/xpath&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -170,7 +176,10 @@
                     <span class="window-title">selector-by-id.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xpath type="css" expression="#main-content"&gt;${html}&lt;/xpath&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;xpath type="css" expression="#main-content"&gt;${html}&lt;/xpath&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -185,8 +194,11 @@
                     <span class="window-title">selector-by-attribute.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xpath type="css" expression="a[href*='product']"&gt;${html}&lt;/xpath&gt;
-&lt;xpath type="css" expression="input[type='submit']"&gt;${html}&lt;/xpath&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;xpath type="css" expression="a[href*='product']"&gt;${html}&lt;/xpath&gt;
+&lt;xpath type="css" expression="input[type='submit']"&gt;${html}&lt;/xpath&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>

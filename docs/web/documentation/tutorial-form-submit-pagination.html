@@ -111,7 +111,9 @@
                     <span class="window-title">step1-login.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Submit login form --&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;!-- Submit login form --&gt;
 &lt;def var="loginResponse"&gt;
     &lt;http url="https://example.com/login" method="POST"&gt;
         &lt;http-param name="username" value="myuser"/&gt;
@@ -122,7 +124,8 @@
 &lt;!-- Save for debugging --&gt;
 &lt;file path="output/login-response.html" action="write"&gt;
     ${loginResponse}
-&lt;/file&gt;</code></pre>
+&lt;/file&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
@@ -151,7 +154,9 @@
                     <span class="window-title">step2-extract-links.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Fetch results page --&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;!-- Fetch results page --&gt;
 &lt;def var="resultsPage"&gt;
     &lt;http url="https://example.com/products"/&gt;
 &lt;/def&gt;
@@ -163,7 +168,8 @@
     &lt;/xpath&gt;
 &lt;/def&gt;
 
-&lt;log message="Found ${productLinks.length} product links"/&gt;</code></pre>
+&lt;log message="Found ${productLinks.length} product links"/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>
@@ -187,7 +193,9 @@
                     <span class="window-title">step3-detail-pages.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;!-- Loop through each product link --&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;!-- Loop through each product link --&gt;
 &lt;loop item="link" index="i"&gt;
     ${productLinks}
     
@@ -217,7 +225,8 @@
     
     &lt;!-- Be polite - wait 2 seconds --&gt;
     &lt;sleep time="2000"/&gt;
-&lt;/loop&gt;</code></pre>
+&lt;/loop&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
         </div>
@@ -241,7 +250,9 @@
                     <span class="window-title">step4-pagination.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;def var="currentPage"&gt;1&lt;/def&gt;
+                    <pre><code class="language-xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://org.webharvest/schema/2.1/core"&gt;
+&lt;def var="currentPage"&gt;1&lt;/def&gt;
 &lt;def var="hasNextPage"&gt;true&lt;/def&gt;
 
 &lt;while condition="${hasNextPage}"&gt;
@@ -271,7 +282,8 @@
     &lt;/set-var&gt;
     
     &lt;sleep time="2000"/&gt;
-&lt;/while&gt;</code></pre>
+&lt;/while&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
