@@ -3,7 +3,7 @@
 WebHarvest Core Plugin Documentation Generator
 Generates HTML documentation pages from JavaDoc comments in core plugin classes.
 
-Core Plugins: 46 built-in plugins with @CorePlugin annotation
+Core Plugins: 47 built-in plugins with @CorePlugin annotation
 """
 
 import re
@@ -19,7 +19,7 @@ CATEGORIES = {
     'IMPORTANT': ['DefPlugin', 'GetVarPlugin', 'SetVarPlugin', 'LoopPlugin', 
                   'ScriptPlugin', 'TemplatePlugin', 'JsonToXmlPlugin', 'XmlToJsonPlugin', 'IfPlugin', 'XQueryPlugin', 'IncludePlugin'],
     'COMMON': ['EmptyPlugin', 'SleepPlugin', 'ExitPlugin', 'TryPlugin', 'CatchPlugin',
-               'ReturnPlugin', 'TextPlugin', 'CasePlugin', 'ConstantPlugin', 'VarPlugin'],
+               'ReturnPlugin', 'TextPlugin', 'CasePlugin', 'ConstantPlugin', 'VarPlugin', 'LogPlugin'],
     'ADVANCED': ['ConfigPlugin', 'ValueOfPlugin', 'XMLPlugin', 'XQExpressionPlugin', 
                  'XQParamPlugin', 'XsltPlugin', 'StylesheetPlugin', 'HttpHeaderPlugin',
                  'HttpParamPlugin', 'CallParamPlugin', 'ElsePlugin', 'RegexpPatternPlugin',
@@ -56,6 +56,7 @@ PLUGIN_NAMES = {
     'CasePlugin': 'case',
     'ConstantPlugin': 'constant',
     'VarPlugin': 'var',
+    'LogPlugin': 'log',
     'ConfigPlugin': 'config',
     'ValueOfPlugin': 'value-of',
     'XMLPlugin': 'xml',
@@ -258,12 +259,64 @@ def generate_html(processor_name: str, element_name: str, data: Dict, category: 
                 </a>"""
         related_html += "</div>"
     
+    # Generate SEO-optimized meta tags
+    seo_description = f"WebHarvest {element_name} plugin: {data['title']}. Core processor for web scraping and data extraction with XML configuration. Examples, usage, and documentation."
+    seo_keywords = f"webharvest {element_name}, {element_name} plugin, web scraping, data extraction, XML configuration, core processor, webharvest plugin documentation"
+    
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>&lt;{element_name}&gt; - {data['title']} | WebHarvest v{data['version']}</title>
+    <meta name="description" content="{seo_description}" />
+    <meta name="keywords" content="{seo_keywords}" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="WebHarvest Team" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="&lt;{element_name}&gt; - {data['title']}" />
+    <meta property="og:description" content="{data['description'][:160]}..." />
+    <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/{element_name}.html" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="&lt;{element_name}&gt; - {data['title']}" />
+    <meta property="twitter:description" content="{data['description'][:160]}..." />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {{
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "&lt;{element_name}&gt; - {data['title']}",
+      "description": "{data['description']}",
+      "author": {{
+        "@type": "Organization",
+        "name": "WebHarvest Team"
+      }},
+      "datePublished": "2025-01-01",
+      "dateModified": "2025-01-01",
+      "publisher": {{
+        "@type": "Organization",
+        "name": "WebHarvest",
+        "logo": {{
+          "@type": "ImageObject",
+          "url": "https://webharvest.sourceforge.net/images/logo.png"
+        }}
+      }},
+      "mainEntityOfPage": {{
+        "@type": "WebPage",
+        "@id": "https://webharvest.sourceforge.net/documentation/2.2.0/{element_name}.html"
+      }},
+      "about": {{
+        "@type": "SoftwareApplication",
+        "name": "WebHarvest",
+        "applicationCategory": "DeveloperApplication"
+      }}
+    }}
+    </script>
     <link rel="stylesheet" href="../../css/enterprise.css">
     <link rel="stylesheet" href="../../css/prism.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -319,7 +372,7 @@ def generate_html(processor_name: str, element_name: str, data: Dict, category: 
     <header class="site-header">
         <div class="container header-inner">
             <a href="../../index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
-                <img src="../../images/logo.png" alt="WebHarvest" class="logo" />
+                <img src="../../images/logo.png" alt="WebHarvest Logo - Enterprise Web Scraping Framework" class="logo" />
                 <span class="project-name">WebHarvest</span>
             </a>
             <nav class="main-nav">
@@ -445,7 +498,7 @@ def main():
     print("\n" + "=" * 60)
     print(f"✅ Generated {generated_count} core plugin HTML pages successfully!")
     print(f"📂 Output directory: {output_dir}")
-    print(f"\n💡 Total: {generated_count}/46 core plugins documented")
+    print(f"\n💡 Total: {generated_count}/47 core plugins documented")
 
 if __name__ == "__main__":
     main()

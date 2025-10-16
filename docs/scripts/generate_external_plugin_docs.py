@@ -148,9 +148,10 @@ def generate_html(element_name: str, data: Dict, plugin_type: str) -> str:
     if data['related']:
         related_html = "<h2 class=\"section-title\">Related Processors</h2><div class=\"related-links\">"
         for rel in data['related']:
-            # Link to processors/ or same directory based on element name
-            if rel in ['http', 'xpath', 'file', 'html-to-xml', 'loop', 'def']:
-                link_path = f"../processors/{rel}.html"
+            # All core plugins are in parent directory (../)
+            # External plugins are in current directory
+            if rel in ['http', 'xpath', 'file', 'html-to-xml', 'loop', 'def', 'template', 'get-var']:
+                link_path = f"../{rel}.html"
             else:
                 link_path = f"{rel}.html"
             related_html += f"""
@@ -159,12 +160,64 @@ def generate_html(element_name: str, data: Dict, plugin_type: str) -> str:
                 </a>"""
         related_html += "</div>"
     
+    # Generate SEO-optimized meta tags for external plugins
+    seo_description = f"WebHarvest {element_name} plugin: {data['title']}. External processor for {plugin_type.lower()} operations in web scraping and data extraction. Examples, usage, and documentation."
+    seo_keywords = f"webharvest {element_name}, {element_name} plugin, {plugin_type.lower()} plugin, web scraping, data extraction, XML configuration, external processor, webharvest plugin documentation"
+    
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>&lt;{element_name}&gt; - {data['title']} | WebHarvest v{data['version']}</title>
+    <meta name="description" content="{seo_description}" />
+    <meta name="keywords" content="{seo_keywords}" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="WebHarvest Team" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="&lt;{element_name}&gt; - {data['title']}" />
+    <meta property="og:description" content="{data['description'][:160]}..." />
+    <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/external/{element_name}.html" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="&lt;{element_name}&gt; - {data['title']}" />
+    <meta property="twitter:description" content="{data['description'][:160]}..." />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {{
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "&lt;{element_name}&gt; - {data['title']}",
+      "description": "{data['description']}",
+      "author": {{
+        "@type": "Organization",
+        "name": "WebHarvest Team"
+      }},
+      "datePublished": "2025-01-01",
+      "dateModified": "2025-01-01",
+      "publisher": {{
+        "@type": "Organization",
+        "name": "WebHarvest",
+        "logo": {{
+          "@type": "ImageObject",
+          "url": "https://webharvest.sourceforge.net/images/logo.png"
+        }}
+      }},
+      "mainEntityOfPage": {{
+        "@type": "WebPage",
+        "@id": "https://webharvest.sourceforge.net/documentation/2.2.0/external/{element_name}.html"
+      }},
+      "about": {{
+        "@type": "SoftwareApplication",
+        "name": "WebHarvest",
+        "applicationCategory": "DeveloperApplication"
+      }}
+    }}
+    </script>
     <link rel="stylesheet" href="../../../css/enterprise.css">
     <link rel="stylesheet" href="../../../css/prism.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -220,7 +273,7 @@ def generate_html(element_name: str, data: Dict, plugin_type: str) -> str:
     <header class="site-header">
         <div class="container header-inner">
             <a href="../../../index.html" class="brand" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
-                <img src="../../../images/logo.png" alt="WebHarvest" class="logo" />
+                <img src="../../../images/logo.png" alt="WebHarvest Logo - Enterprise Web Scraping Framework" class="logo" />
                 <span class="project-name">WebHarvest</span>
             </a>
             <nav class="main-nav">

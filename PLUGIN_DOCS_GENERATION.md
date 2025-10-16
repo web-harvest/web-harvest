@@ -8,32 +8,32 @@ WebHarvest 2.2 includes automated documentation generators that create HTML docu
 
 ### Plugin Architecture
 
-- **46 Core Plugins** - Built-in plugins with `@CorePlugin` annotation (in `webharvest-core`)
+- **47 Core Plugins** - Built-in plugins with `@CorePlugin` annotation (in `webharvest-core`)
 - **8 External Plugins** - Separate modules: mail, ftp, zip, webbrowser (separate dependencies)
-- **Total: 54 Plugins**
+- **Total: 55 Plugins**
 
 ## 🚀 Quick Start
 
-### Generate All Documentation (Recommended)
+### Generate All Documentation with SEO (Recommended)
 
 ```bash
 cd docs/scripts
-python3 generate_all_plugin_docs.py
+python3 regenerate_all_with_seo.py
 ```
 
 Or from project root:
 ```bash
-python3 docs/scripts/generate_all_plugin_docs.py
+python3 docs/scripts/regenerate_all_with_seo.py
 ```
 
-This master script runs all generators in correct order:
-1. Core plugin pages (46 files)
+This master script runs all generators with SEO optimizations:
+1. Core plugin pages (47 files)
 2. External plugin pages (8 files)
 3. Plugins index page
 
 **Output:**
-- `docs/web/documentation/2.2.0/index.html` - Main index with all 54 plugins
-- `docs/web/documentation/2.2.0/*.html` - 46 core plugin pages
+- `docs/web/documentation/2.2.0/index.html` - Main index with all 55 plugins
+- `docs/web/documentation/2.2.0/*.html` - 47 core plugin pages
 - `docs/web/documentation/2.2.0/external/*.html` - 8 external plugin pages
 
 ### View Documentation
@@ -377,12 +377,40 @@ CATEGORY_INFO = {
 - `docs/web/plugins/index.html` - Generated index page
 - `docs/web/css/enterprise.css` - Stylesheet
 
+## 🔍 SEO Optimization
+
+### Complete SEO Regeneration (`regenerate_all_with_seo.py`)
+
+**Purpose**: Regenerates all documentation with SEO optimizations
+**Usage**: `python3 docs/scripts/regenerate_all_with_seo.py`
+
+**SEO Features Applied**:
+- **Meta Tags**: Descriptions, keywords, robots directives
+- **Open Graph**: Facebook/social media optimization
+- **Twitter Cards**: Twitter sharing optimization  
+- **Structured Data**: JSON-LD schema markup
+- **Canonical URLs**: Duplicate content prevention
+- **Alt Texts**: Descriptive image alt attributes
+- **Sitemap**: XML sitemap with 91 URLs
+- **Robots.txt**: Search engine crawling instructions
+
+### Generate Sitemap (`generate_sitemap.py`)
+
+**Purpose**: Creates sitemap.xml for search engine indexing
+**Usage**: `python3 docs/scripts/generate_sitemap.py`
+
+**What it does**:
+- Generates XML sitemap with 91 URLs
+- Includes all main pages, documentation, and processors
+- Sets proper priorities and change frequencies
+- Optimized for search engine crawling
+
 ## 📄 License
 
 All documentation generators are part of WebHarvest and licensed under BSD License.
 
 ---
 
-**Last Updated**: October 14, 2025  
+**Last Updated**: January 15, 2025  
 **WebHarvest Version**: 2.2.0
 
