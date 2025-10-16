@@ -32,30 +32,20 @@ const app = {
     },
 
     /**
-     * Load example configurations as tabs
+     * Load initial empty tab
      */
     loadExampleTabs() {
-        console.log('Loading example tabs...');
+        console.log('Loading initial empty tab...');
 
-        // Example 1: Simple HTTP + XPath
-        this.addTab('01_http_xpath.xml', this.getHttpXPathExample());
-        console.log('  Added tab 1: HTTP + XPath');
+        // Start with one empty tab
+        const emptyContent = `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.2.0/core">
+    <!-- Your configuration goes here -->
+    
+</config>`;
 
-        // Example 2: Quotes Scraping
-        this.addTab('02_quotes_scraping.xml', this.getQuotesExample());
-        console.log('  Added tab 2: Quotes Scraping');
-
-        // Example 3: JSON API
-        this.addTab('03_json_api.xml', this.getJsonApiExample());
-        console.log('  Added tab 3: JSON API');
-
-        // Example 4: Wikipedia
-        this.addTab('04_wikipedia.xml', this.getWikipediaExample());
-        console.log('  Added tab 4: Wikipedia');
-
-        // Example 5: Complex Pipeline
-        this.addTab('05_data_pipeline.xml', this.getDataPipelineExample());
-        console.log('  Added tab 5: Data Pipeline');
+        this.addTab('untitled.xml', emptyContent);
+        console.log('  Added empty tab: untitled.xml');
 
         console.log('Total tabs loaded:', this.tabs.length);
     },
