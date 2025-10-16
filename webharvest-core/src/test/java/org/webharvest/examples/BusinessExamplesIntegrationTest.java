@@ -953,12 +953,136 @@ public class BusinessExamplesIntegrationTest extends ScraperTestBase {
     }
 
     /**
-     * Test 8: XQuery Business Report
-     * Business: Complex XQuery transformations for business reporting
-     * Variables: xqueryResult, targetMet, quarterCount, regionCount
+     * Test 8: XQuery Data Processing
+     * Business: Process product data with XQuery calculations
+     * Variables: productsXml, analysis, totalProducts, totalValue, averagePrice, totalStock
      */
-    @Test(description = "XQuery processes business data with math functions")
-    public void testXQueryBusinessReport() throws Exception {
+    @Test(description = "XQuery processes product data and calculates statistics")
+    public void testXQueryDataProcessing() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "    <!-- Create sample product XML -->\n" +
+            "    <def var=\"productsXml\">\n" +
+            "        <template><![CDATA[<products>\n" +
+            "    <product>\n" +
+            "        <name>Book A</name>\n" +
+            "        <price>25.50</price>\n" +
+            "        <stock>15</stock>\n" +
+            "    </product>\n" +
+            "    <product>\n" +
+            "        <name>Book B</name>\n" +
+            "        <price>18.99</price>\n" +
+            "        <stock>8</stock>\n" +
+            "    </product>\n" +
+            "    <product>\n" +
+            "        <name>Book C</name>\n" +
+            "        <price>32.75</price>\n" +
+            "        <stock>22</stock>\n" +
+            "    </product>\n" +
+            "</products>]]></template>\n" +
+            "    </def>\n" +
+            "    \n" +
+            "    <!-- Process with XQuery -->\n" +
+            "    <def var=\"analysis\">\n" +
+            "        <xquery>\n" +
+            "            <xq-param name=\"data\" type=\"node()\">\n" +
+            "                <get var=\"productsXml\"/>\n" +
+            "            </xq-param>\n" +
+            "            <xq-expression>\n" +
+            "                <![CDATA[\n" +
+            "                declare variable $data as node() external;\n" +
+            "                \n" +
+            "                let $count := count($data//product)\n" +
+            "                let $totalValue := sum($data//product/price)\n" +
+            "                let $avgPrice := round($totalValue div $count * 100) div 100\n" +
+            "                let $totalStock := sum($data//product/stock)\n" +
+            "                \n" +
+            "                return\n" +
+            "                <analysis>\n" +
+            "                    <total_products>{$count}</total_products>\n" +
+            "                    <total_value>{$totalValue}</total_value>\n" +
+            "                    <average_price>{$avgPrice}</average_price>\n" +
+            "                    <total_stock>{$totalStock}</total_stock>\n" +
+            "                </analysis>\n" +
+            "                ]]>\n" +
+            "            </xq-expression>\n" +
+            "        </xquery>\n" +
+            "    </def>\n" +
+            "    \n" +
+            "    <!-- Extract analysis results -->\n" +
+            "    <def var=\"totalProducts\">\n" +
+            "        <xpath expression=\"//total_products/text()\">\n" +
+            "            <get var=\"analysis\"/>\n" +
+            "        </xpath>\n" +
+            "    </def>\n" +
+            "    \n" +
+            "    <def var=\"totalValue\">\n" +
+            "        <xpath expression=\"//total_value/text()\">\n" +
+            "            <get var=\"analysis\"/>\n" +
+            "        </xpath>\n" +
+            "    </def>\n" +
+            "    \n" +
+            "    <def var=\"averagePrice\">\n" +
+            "        <xpath expression=\"//average_price/text()\">\n" +
+            "            <get var=\"analysis\"/>\n" +
+            "        </xpath>\n" +
+            "    </def>\n" +
+            "    \n" +
+            "    <def var=\"totalStock\">\n" +
+            "        <xpath expression=\"//total_stock/text()\">\n" +
+            "            <get var=\"analysis\"/>\n" +
+            "        </xpath>\n" +
+            "    </def>\n" +
+            "</config>";
+        
+        DynamicScopeContext context = executeXmlString(xml);
+        
+        // Verify products XML created
+        Variable productsXml = context.getVar("productsXml");
+        assertNotNull(productsXml, "productsXml must be created");
+        assertTrue(productsXml.toString().contains("<products>"));
+        assertTrue(productsXml.toString().contains("Book A"));
+        
+        // Verify XQuery analysis executed
+        Variable analysis = context.getVar("analysis");
+        assertNotNull(analysis, "analysis must be generated by XQuery");
+        assertTrue(analysis.toString().contains("<analysis>"), 
+                  "Analysis should contain analysis element, got: " + analysis.toString());
+        
+        // Verify total products calculated
+        Variable totalProducts = context.getVar("totalProducts");
+        assertNotNull(totalProducts, "totalProducts must be extracted");
+        assertEquals(totalProducts.toString().trim(), "3", 
+                    "Should count 3 products");
+        
+        // Verify total value calculated  
+        Variable totalValue = context.getVar("totalValue");
+        assertNotNull(totalValue, "totalValue must be calculated");
+        double value = Double.parseDouble(totalValue.toString().trim());
+        assertEquals(value, 77.24, 0.01, 
+                    "Total value should be 25.50 + 18.99 + 32.75 = 77.24");
+        
+        // Verify average price calculated
+        Variable averagePrice = context.getVar("averagePrice");
+        assertNotNull(averagePrice, "averagePrice must be calculated");
+        double avg = Double.parseDouble(averagePrice.toString().trim());
+        assertEquals(avg, 25.75, 0.01, 
+                    "Average price should be 77.24 / 3 = 25.75");
+        
+        // Verify total stock calculated
+        Variable totalStock = context.getVar("totalStock");
+        assertNotNull(totalStock, "totalStock must be calculated");
+        int stock = Integer.parseInt(totalStock.toString().trim());
+        assertEquals(stock, 45, 
+                    "Total stock should be 15 + 8 + 22 = 45");
+    }
+
+    /**
+     * Test OLD: XQuery Business Report (deprecated)
+     * This test is kept for backwards compatibility but uses old complex XQuery
+     */
+    @Test(description = "XQuery processes business data with math functions", enabled = false)
+    public void testXQueryBusinessReportOld() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
             "    <def var=\"xqueryResult\">\n" +

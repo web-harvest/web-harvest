@@ -336,58 +336,84 @@ const EMBEDDED_EXAMPLES = {
 </config>`
     },
 
-    'xquery_math_demo.xml': {
-        title: 'XQuery Math & Functions',
-        icon: 'calculator',
+    'xquery_demo.xml': {
+        title: 'XQuery Data Processing',
+        icon: 'code',
         category: 'XML Processing',
         content: `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- XQuery with simple math calculations -->
-    <def var="number1">10</def>
-    <def var="number2">5</def>
+    <!-- XQuery for processing product data -->
     
-    <def var="xqueryResult">
+    <!-- Create sample product XML -->
+    <def var="productsXml">
+        <template><![CDATA[<products>
+    <product>
+        <name>Book A</name>
+        <price>25.50</price>
+        <stock>15</stock>
+    </product>
+    <product>
+        <name>Book B</name>
+        <price>18.99</price>
+        <stock>8</stock>
+    </product>
+    <product>
+        <name>Book C</name>
+        <price>32.75</price>
+        <stock>22</stock>
+    </product>
+</products>]]></template>
+    </def>
+    
+    <!-- Process with XQuery -->
+    <def var="analysis">
         <xquery>
-            <xq-param name="a" type="integer">10</xq-param>
-            <xq-param name="b" type="integer">5</xq-param>
+            <xq-param name="data" type="node()">
+                <get var="productsXml"/>
+            </xq-param>
             <xq-expression>
                 <![CDATA[
-                declare variable $a as xs:integer external;
-                declare variable $b as xs:integer external;
-
-                <calculations>
-                    <sum>{$a + $b}</sum>
-                    <difference>{$a - $b}</difference>
-                    <product>{$a * $b}</product>
-                    <quotient>{$a div $b}</quotient>
-                </calculations>
+                declare variable $data as node() external;
+                
+                let $count := count($data//product)
+                let $totalValue := sum($data//product/price)
+                let $avgPrice := round($totalValue div $count * 100) div 100
+                let $totalStock := sum($data//product/stock)
+                
+                return
+                <analysis>
+                    <total_products>{$count}</total_products>
+                    <total_value>{$totalValue}</total_value>
+                    <average_price>{$avgPrice}</average_price>
+                    <total_stock>{$totalStock}</total_stock>
+                </analysis>
                 ]]>
             </xq-expression>
         </xquery>
     </def>
     
-    <!-- Extract results -->
-    <def var="sum">
-        <xpath expression="//sum/text()">
-            <get var="xqueryResult"/>
+    <!-- Extract analysis results -->
+    <def var="totalProducts">
+        <xpath expression="//total_products/text()">
+            <get var="analysis"/>
         </xpath>
     </def>
     
-    <def var="difference">
-        <xpath expression="//difference/text()">
-            <get var="xqueryResult"/>
+    <def var="totalValue">
+        <xpath expression="//total_value/text()">
+            <get var="analysis"/>
         </xpath>
     </def>
     
-    <def var="product">
-        <xpath expression="//product/text()">
-            <get var="xqueryResult"/>
+    <def var="averagePrice">
+        <xpath expression="//average_price/text()">
+            <get var="analysis"/>
         </xpath>
     </def>
     
-    <def var="quotient">
-        <xpath expression="//quotient/text()">
-            <get var="xqueryResult"/>
+    <def var="totalStock">
+        <xpath expression="//total_stock/text()">
+            <get var="analysis"/>
         </xpath>
     </def>
 </config>`
