@@ -262,43 +262,67 @@
     <!-- Core Plugins Quick View -->
     <section class="plugins container" id="plugins">
         <div class="section-header">
-            <h2>47 Built-in Core Plugins</h2>
+            <h2>12 Essential Core Plugins</h2>
             <p class="section-subtitle">
-                All included in webharvest-core - no external dependencies required
+                Most commonly used processors - all included in webharvest-core
             </p>
         </div>
 
         <div class="processor-grid">
-            <a href="documentation/2.2.0/http.html" class="processor-card">
-                <div class="processor-icon">
+            <a href="documentation/2.2.0/http.html" class="processor-card" style="border-left: 4px solid var(--lime);">
+                <div class="processor-icon" style="background: linear-gradient(135deg, var(--lime), var(--green-600));">
                     <i class="fas fa-globe"></i>
                 </div>
                 <h4>HTTP</h4>
-                <p>Complete HTTP client</p>
+                <p>Fetch web pages & APIs</p>
             </a>
 
-            <a href="documentation/2.2.0/xpath.html" class="processor-card">
-                <div class="processor-icon">
+            <a href="documentation/2.2.0/html-to-xml.html" class="processor-card" style="border-left: 4px solid var(--lime);">
+                <div class="processor-icon" style="background: linear-gradient(135deg, var(--lime), var(--green-600));">
+                    <i class="fas fa-file-code"></i>
+                </div>
+                <h4>HTML-to-XML</h4>
+                <p>Parse HTML content</p>
+            </a>
+
+            <a href="documentation/2.2.0/xpath.html" class="processor-card" style="border-left: 4px solid var(--lime);">
+                <div class="processor-icon" style="background: linear-gradient(135deg, var(--lime), var(--green-600));">
                     <i class="fas fa-code-branch"></i>
                 </div>
                 <h4>XPath</h4>
-                <p>Data extraction</p>
+                <p>Extract data from XML</p>
             </a>
 
             <a href="documentation/2.2.0/json-to-xml.html" class="processor-card">
                 <div class="processor-icon">
-                    <i class="fas fa-file-code"></i>
+                    <i class="fas fa-brackets-curly"></i>
                 </div>
-                <h4>JSON</h4>
-                <p>JSON processing</p>
+                <h4>JSON-to-XML</h4>
+                <p>Parse JSON data</p>
             </a>
 
-            <a href="documentation/2.2.0/regexp.html" class="processor-card">
+            <a href="documentation/2.2.0/def.html" class="processor-card">
                 <div class="processor-icon">
-                    <i class="fas fa-search"></i>
+                    <i class="fas fa-tag"></i>
                 </div>
-                <h4>Regex</h4>
-                <p>Pattern matching</p>
+                <h4>Def</h4>
+                <p>Define variables</p>
+            </a>
+
+            <a href="documentation/2.2.0/get.html" class="processor-card">
+                <div class="processor-icon">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <h4>Get</h4>
+                <p>Retrieve variables</p>
+            </a>
+
+            <a href="documentation/2.2.0/template.html" class="processor-card">
+                <div class="processor-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h4>Template</h4>
+                <p>Generate output</p>
             </a>
 
             <a href="documentation/2.2.0/loop.html" class="processor-card">
@@ -306,42 +330,53 @@
                     <i class="fas fa-repeat"></i>
                 </div>
                 <h4>Loop</h4>
-                <p>Iterations</p>
+                <p>Iterate collections</p>
+            </a>
+
+            <a href="documentation/2.2.0/xquery.html" class="processor-card">
+                <div class="processor-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h4>XQuery</h4>
+                <p>Advanced XML queries</p>
+            </a>
+
+            <a href="documentation/2.2.0/regexp.html" class="processor-card">
+                <div class="processor-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h4>Regexp</h4>
+                <p>Pattern matching</p>
             </a>
 
             <a href="documentation/2.2.0/script.html" class="processor-card">
                 <div class="processor-icon">
-                    <i class="fas fa-file-code"></i>
-                </div>
-                <h4>Script</h4>
-                <p>JavaScript/Groovy</p>
-            </a>
-
-            <a href="documentation/2.2.0/" class="processor-card">
-                <div class="processor-icon">
                     <i class="fas fa-code"></i>
                 </div>
                 <h4>Script</h4>
-                <p>JavaScript, Groovy</p>
+                <p>JavaScript & Groovy</p>
             </a>
 
-            <a href="documentation/2.2.0/" class="processor-card">
+            <a href="documentation/2.2.0/file.html" class="processor-card">
                 <div class="processor-icon">
-                    <i class="fas fa-file-code"></i>
+                    <i class="fas fa-file"></i>
                 </div>
-                <h4>Template</h4>
-                <p>Dynamic content</p>
+                <h4>File</h4>
+                <p>Read & write files</p>
             </a>
         </div>
 
         <div style="text-align: center; margin-top: 3rem;">
+            <p style="font-size: 1rem; opacity: 0.8; margin-bottom: 1.5rem;">
+                Plus 35 more: if, while, xslt, xml-to-json, tokenize, case, try-catch, function, include, and more
+            </p>
             <a href="documentation/2.2.0/" class="btn btn-outline">
                 <i class="fas fa-th"></i>
                 View All 47 Core Processors
             </a>
             <a href="documentation/2.2.0/" class="btn btn-primary" style="margin-left: 1rem;">
                 <i class="fas fa-plug"></i>
-                External Plugins
+                10 External Plugins
             </a>
         </div>
     </section>
