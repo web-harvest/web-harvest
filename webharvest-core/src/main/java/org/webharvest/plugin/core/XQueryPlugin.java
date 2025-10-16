@@ -394,15 +394,33 @@ public class XQueryPlugin extends AbstractPlugin {
                     xqExpression = child.getProperty("_textContent", "");
                     LOGGER.debug("XQueryPlugin: XQuery expression length: {}", xqExpression.length());
                 } else if ("xq-param".equals(elementName)) {
-                    // Get parameter name, type, and value
+                    // Get parameter name and type
                     String paramName = child.getProperty("name", "");
                     String paramType = child.getProperty("type", "string");
-                    String paramValue = child.getProperty("_textContent", "");
                     
-                    LOGGER.debug("XQueryPlugin: Adding parameter: name=" + paramName + ", value=" + paramValue + ", type=" + paramType);
+                    LOGGER.debug("XQueryPlugin: Processing xq-param: name=" + paramName + ", type=" + paramType);
                     
                     if (!paramName.isEmpty()) {
-                        xqParams.put(paramName, convertParamValue(paramValue, paramType));
+                        // Execute child elements (like <get>) to get parameter value
+                        // Use the same approach as DefPlugin: create a temporary plugin to execute children
+                        Variable paramValue = executeChildElements(child, context);
+                        
+                        if (paramValue != null && !(paramValue instanceof EmptyVariable)) {
+                            LOGGER.debug("XQueryPlugin: Parameter value from child execution: " + paramValue.toString().substring(0, Math.min(100, paramValue.toString().length())));
+                            
+                            // Convert based on type
+                            if ("node()".equals(paramType)) {
+                                // For node() type, pass the Variable directly
+                                xqParams.put(paramName, paramValue);
+                            } else {
+                                // For other types, convert to string first
+                                String stringValue = paramValue.toString();
+                                xqParams.put(paramName, convertParamValue(stringValue, paramType));
+                            }
+                        } else {
+                            LOGGER.warn("XQueryPlugin: No value obtained for parameter: " + paramName);
+                            xqParams.put(paramName, "");
+                        }
                     }
                 }
             }
@@ -428,10 +446,25 @@ public class XQueryPlugin extends AbstractPlugin {
                 String paramName = entry.getKey();
                 Object paramValue = entry.getValue();
                 
-                LOGGER.debug("XQueryPlugin: Binding parameter: {} = {}", paramName, paramValue);
+                LOGGER.debug("XQueryPlugin: Binding parameter: {} = {}", paramName, paramValue.getClass().getSimpleName());
                 
                 // Convert to Saxon value
-                if (paramValue instanceof String) {
+                if (paramValue instanceof Variable) {
+                    // Handle node() type - convert Variable to Saxon node
+                    Variable var = (Variable) paramValue;
+                    try {
+                        String xmlContent = var.toString();
+                        StringReader reader = new StringReader(xmlContent);
+                        javax.xml.transform.stream.StreamSource streamSource = new javax.xml.transform.stream.StreamSource(reader);
+                        net.sf.saxon.om.Item contextItem = sqc.buildDocument(streamSource);
+                        dynamicContext.setParameter(paramName, contextItem);
+                        LOGGER.debug("XQueryPlugin: Bound node() parameter: " + paramName);
+                    } catch (Exception e) {
+                        LOGGER.warn("XQueryPlugin: Failed to bind node() parameter " + paramName + ": " + e.getMessage());
+                        // Fallback to string
+                        dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue(paramValue.toString()));
+                    }
+                } else if (paramValue instanceof String) {
                     dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue((String) paramValue));
                 } else if (paramValue instanceof Integer) {
                     dynamicContext.setParameter(paramName, net.sf.saxon.value.Int64Value.makeIntegerValue((Integer) paramValue));
@@ -452,6 +485,31 @@ public class XQueryPlugin extends AbstractPlugin {
         } catch (Exception e) {
             LOGGER.error("Failed to evaluate XQuery expression: {}", e.getMessage(), e);
             throw new ScraperXQueryException("Error executing XQuery expression (XQuery = [" + xqExpression + "])!", e);
+        }
+    }
+    
+    /**
+     * Execute child elements of a configuration to get their result.
+     * Used for <xq-param> elements that contain <get> or other processors.
+     */
+    private Variable executeChildElements(PluginConfiguration config, DynamicScopeContext context) throws InterruptedException {
+        if (!config.hasChildren()) {
+            return EmptyVariable.INSTANCE;
+        }
+        
+        try {
+            // Create and execute XQParamPlugin instance to handle child elements
+            XQParamPlugin paramPlugin = new XQParamPlugin();
+            paramPlugin.initialize(config);
+            Variable result = paramPlugin.execute(context);
+            
+            LOGGER.debug("XQueryPlugin: XQParamPlugin execution returned: " + (result != null ? result.getClass().getSimpleName() : "null"));
+            
+            return result != null ? result : EmptyVariable.INSTANCE;
+            
+        } catch (Exception e) {
+            LOGGER.warn("XQueryPlugin: Failed to execute child elements: " + e.getMessage());
+            return EmptyVariable.INSTANCE;
         }
     }
     
