@@ -9,20 +9,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.BufferConfigSource;
-import org.webharvest.Harvest;
-import org.webharvest.Harvester;
-import org.webharvest.HarvestLoadCallback;
+import org.webharvest.definition.Config;
+import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
-// v2.2.x: IElementDef removed
-// import org.webharvest.definition.IElementDef;
-// HttpModule removed during HttpComponents 4.x migration
 import org.webharvest.ioc.ScraperModule;
-// HttpClientManager removed during HttpComponents 4.x migration
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * REST API for configuration operations
@@ -36,15 +30,14 @@ public class ConfigServlet extends HttpServlet {
     
     private static final Logger LOG = LoggerFactory.getLogger(ConfigServlet.class);
     private final Gson gson = new Gson();
-    private final Harvest harvest;
+    private final ConfigFactory configFactory;
     
     public ConfigServlet() {
         LOG.info("Initializing ConfigServlet...");
-        // Note: HttpModule removed during HttpComponents 4.x migration
         Injector injector = Guice.createInjector(
             new ScraperModule(".")
         );
-        this.harvest = injector.getInstance(Harvest.class);
+        this.configFactory = injector.getInstance(ConfigFactory.class);
         LOG.info("ConfigServlet initialized successfully");
     }
     
@@ -88,24 +81,19 @@ public class ConfigServlet extends HttpServlet {
                 LOG.debug("Validating configuration: {} bytes", xmlContent.length());
             }
             
-            // Validate by trying to parse configuration
+            // Validate by trying to parse configuration (v2.2 API)
             ConfigSource configSource = new BufferConfigSource(xmlContent);
-            
-            // Try to create harvester (this validates the XML)
-            harvest.getHarvester(configSource, new HarvestLoadCallback() {
-                // v2.2.x: IElementDef removed - onSuccess() method removed
-                // @Override
-                // public void onSuccess(List<IElementDef> elements) {
-                //     if (LOG.isDebugEnabled()) {
-                //         LOG.debug("Configuration validated successfully: {} elements", elements.size());
-                //     }
-                // }
-            });
+            Config config = configFactory.create(configSource);
+            config.reload(); // Load and validate the configuration tree
             
             // If no exception thrown, config is valid
             JsonObject response = new JsonObject();
             response.addProperty("valid", true);
             response.addProperty("message", "Configuration is valid");
+            
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Configuration validated successfully");
+            }
             
             sendJsonResponse(resp, HttpServletResponse.SC_OK, response);
             

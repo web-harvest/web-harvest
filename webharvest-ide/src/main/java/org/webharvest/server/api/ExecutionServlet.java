@@ -94,6 +94,11 @@ public class ExecutionServlet extends HttpServlet {
                     .reduce("", (acc, line) -> acc + line + "\n");
             
             JsonObject requestJson = gson.fromJson(requestBody, JsonObject.class);
+            
+            if (requestJson == null || !requestJson.has("configXml")) {
+                throw new IllegalArgumentException("Missing required parameter: configXml");
+            }
+            
             String configXml = requestJson.get("configXml").getAsString();
             String configName = requestJson.has("configName") 
                     ? requestJson.get("configName").getAsString() 

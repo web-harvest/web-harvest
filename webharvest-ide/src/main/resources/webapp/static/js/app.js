@@ -8,6 +8,585 @@
  * - Concurrent scraper execution
  */
 
+/**
+ * Embedded example configurations
+ */
+const EMBEDDED_EXAMPLES = {
+    'amazon_test.xml': {
+        title: 'Amazon Product Search',
+        icon: 'shopping-cart',
+        category: 'E-commerce',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Test with Amazon search -->
+    <def var="content">
+        <html-to-xml advancedxmlescape="true" specialentities="true" allowmultiwordattributes="true" omitunknowntags="true" unicodechars="true" treatunknowntagsascontent="true" omitdeprtags="true" treatdeprtagsascontent="true" omitcomments="true" omitdoctypedeclaration="true" omitxmlns="true" omitxmlprocessinginstruction="true">
+            <http url="https://www.amazon.com/s?k=canon+camera"/>
+        </html-to-xml>
+    </def>
+    <!-- Extract product titles -->
+    <!-- Note: Use /text() to extract TEXT content from span elements -->
+    <def var="products">
+        <xpath expression="//h2[contains(@class, 's-size-small')]//span/text()">
+            <get var="content"/>
+        </xpath>
+    </def>
+    <!-- Save result -->
+    <file action="write" path="amazon_products.html" charset="UTF-8">
+        <get var="content"/>
+    </file>
+    <!-- Save product list -->
+    <file action="write" path="products.txt" charset="UTF-8">
+        <get var="products"/>
+    </file>
+</config>`
+    },
+
+    'modern_web_scraping.xml': {
+        title: 'Modern Web Scraping',
+        icon: 'globe',
+        category: 'Web Scraping',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="searchTerm">artificial intelligence</def>
+    <def var="maxResults">5</def>
+    
+    <!-- Modern web scraping using improved html-to-xml -->
+    <def var="searchResults">
+        <html-to-xml 
+            advancedxmlescape="true" 
+            specialentities="true" 
+            unicodechars="true" 
+            allowmultiwordattributes="true" 
+            omitunknowntags="true"
+            treatunknowntagsascontent="true">
+            <http url="https://httpbin.org/html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract content using XPath -->
+    <def var="pageTitle">
+        <xpath expression="//title">
+            <script>searchResults</script>
+        </xpath>
+    </def>
+    
+    <def var="pageContent">
+        <xpath expression="//body">
+            <script>searchResults</script>
+        </xpath>
+    </def>
+    
+    <!-- Save results to file -->
+    <file path="modern_search_results.xml" action="write">
+        <template>
+            <![CDATA[
+            <search_results>
+                <query>\${searchTerm}</query>
+                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <page_title>\${pageTitle}</page_title>
+                <page_content>
+                    <script>pageContent</script>
+                </page_content>
+                <extraction_method>html-to-xml with advanced options</extraction_method>
+                <features>
+                    <feature>Advanced XML escaping</feature>
+                    <feature>Special entities handling</feature>
+                    <feature>Unicode character support</feature>
+                    <feature>Multi-word attributes</feature>
+                    <feature>Unknown tags handling</feature>
+                </features>
+            </search_results>
+            ]]>
+        </template>
+    </file>
+</config>`
+    },
+
+    'api_integration.xml': {
+        title: 'API Integration',
+        icon: 'plug',
+        category: 'APIs',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- API integration and data processing example -->
+    <def var="apiKey">demo_key_12345</def>
+    <def var="baseUrl">https://httpbin.org</def>
+    
+    <!-- Fetch data from REST API -->
+    <def var="userData">
+        <http url="\${baseUrl}/json">
+            <http-header name="Authorization">Bearer \${apiKey}</http-header>
+            <http-header name="Content-Type">application/json</http-header>
+        </http>
+    </def>
+    
+    <!-- Process JSON response -->
+    <def var="processedData">
+        <json-to-xml tag="api_response">
+            <script>userData</script>
+        </json-to-xml>
+    </def>
+    
+    <!-- Extract specific fields -->
+    <!-- Note: Use /text() to extract TEXT content, not the element -->
+    <def var="userName">
+        <xpath expression="//slideshow/title/text()">
+            <script>processedData</script>
+        </xpath>
+    </def>
+    
+    <def var="userEmail">
+        <xpath expression="//slideshow/date/text()">
+            <script>processedData</script>
+        </xpath>
+    </def>
+    
+    <!-- Transform data using XSLT -->
+    <def var="transformedData">
+        <xslt>
+            <xml>
+                <script>processedData</script>
+            </xml>
+            <stylesheet>
+                <![CDATA[
+                <?xml version="1.0" encoding="UTF-8"?>
+                <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+                    <xsl:template match="/">
+                        <user_profile>
+                            <xsl:for-each select="//slideshow">
+                                <name><xsl:value-of select="title"/></name>
+                                <email><xsl:value-of select="date"/></email>
+                                <status>active</status>
+                                <last_updated><xsl:value-of select="date"/></last_updated>
+                            </xsl:for-each>
+                        </user_profile>
+                    </xsl:template>
+                </xsl:stylesheet>
+                ]]>
+            </stylesheet>
+        </xslt>
+    </def>
+    
+    <!-- Send data to another API endpoint -->
+    <def var="apiResponse">
+        <http method="post" url="\${baseUrl}/post">
+            <http-header name="Content-Type">application/json</http-header>
+            <http-param name="data">
+                <script>transformedData</script>
+            </http-param>
+        </http>
+    </def>
+    
+    <!-- Process API response -->
+    <def var="responseData">
+        <json-to-xml tag="response">
+            <script>apiResponse</script>
+        </json-to-xml>
+    </def>
+    
+    <!-- Generate integration report -->
+    <file path="api_integration_report.xml" action="write">
+        <template>
+            <![CDATA[
+            <api_integration_report>
+                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <source_api>\${baseUrl}/json</source_api>
+                <target_api>\${baseUrl}/post</target_api>
+                <status>success</status>
+                <data_processed>
+                    <user_name>\${userName}</user_name>
+                    <user_email>\${userEmail}</user_email>
+                </data_processed>
+                <api_response>
+                    <script>responseData</script>
+                </api_response>
+            </api_integration_report>
+            ]]>
+        </template>
+    </file>
+</config>`
+    },
+
+    'data_processing_pipeline.xml': {
+        title: 'Data Processing Pipeline',
+        icon: 'cogs',
+        category: 'Data Processing',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Advanced data processing pipeline example -->
+    <def var="inputFile">data_input.csv</def>
+    <def var="outputFile">processed_data.xml</def>
+    <!-- Create sample input data -->
+    <file path="\${inputFile}" action="write">
+        <template>
+            <![CDATA[
+            Name,Age,Department,Salary,Performance
+            John Doe,30,Engineering,75000,Excellent
+            Jane Smith,28,Marketing,65000,Good
+            Bob Johnson,35,Engineering,80000,Excellent
+            Alice Brown,32,Sales,70000,Good
+            Charlie Wilson,29,Engineering,72000,Good
+            Diana Davis,31,Marketing,68000,Excellent
+            ]]>
+        </template>
+    </file>
+    <!-- Read and parse CSV data -->
+    <def var="csvData">
+        <file path="\${inputFile}"/>
+    </def>
+    <!-- Convert CSV to XML -->
+    <def var="xmlData">
+        <template>
+            <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<employees>
+<employee>
+<name>John Doe</name>
+<age>30</age>
+<department>Engineering</department>
+<salary>75000</salary>
+<performance>Excellent</performance>
+</employee>
+<employee>
+<name>Jane Smith</name>
+<age>28</age>
+<department>Marketing</department>
+<salary>65000</salary>
+<performance>Good</performance>
+</employee>
+<employee>
+<name>Bob Johnson</name>
+<age>35</age>
+<department>Engineering</department>
+<salary>80000</salary>
+<performance>Excellent</performance>
+</employee>
+<employee>
+<name>Alice Brown</name>
+<age>32</age>
+<department>Sales</department>
+<salary>70000</salary>
+<performance>Good</performance>
+</employee>
+<employee>
+<name>Charlie Wilson</name>
+<age>29</age>
+<department>Engineering</department>
+<salary>72000</salary>
+<performance>Good</performance>
+</employee>
+<employee>
+<name>Diana Davis</name>
+<age>31</age>
+<department>Marketing</department>
+<salary>68000</salary>
+<performance>Excellent</performance>
+</employee>
+</employees>]]>
+        </template>
+    </def>
+    <!-- Process and analyze data -->
+    <def var="analysisResults">
+        <xquery>
+            <xq-param name="employees">
+                <get var="xmlData"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $employees as node() external;
+                
+                let $totalEmployees := count($employees//employee)
+                let $avgSalary := avg($employees//employee/salary)
+                let $maxSalary := max($employees//employee/salary)
+                let $minSalary := min($employees//employee/salary)
+                
+                return
+                <analysis>
+                    <summary>
+                        <total_employees>{$totalEmployees}</total_employees>
+                        <average_salary>{round($avgSalary)}</average_salary>
+                        <max_salary>{$maxSalary}</max_salary>
+                        <min_salary>{$minSalary}</min_salary>
+                    </summary>
+                </analysis>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Generate final output -->
+    <file path="\${outputFile}" action="write">
+        <template>
+            <![CDATA[
+            <?xml version="1.0" encoding="UTF-8"?>
+            <processed_data>
+                <metadata>
+                    <processing_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</processing_date>
+                    <input_file>\${inputFile}</input_file>
+                </metadata>
+                <analysis>
+                    <get var="analysisResults"/>
+                </analysis>
+            </processed_data>
+            ]]>
+        </template>
+    </file>
+</config>`
+    },
+
+    'product_catalog.xml': {
+        title: 'Product Catalog Scraper',
+        icon: 'book',
+        category: 'E-commerce',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Product catalog scraping example -->
+    <def var="products">
+        <html-to-xml>
+            <http url="https://books.toscrape.com/"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract product information from the page -->
+    <file action="write" path="product_catalog/catalog.xml" charset="UTF-8">
+        <![CDATA[ <catalog> ]]>
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="products"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                    declare variable $content as node() external;
+                    
+                    for $product in $content//article[@class="product_pod"]
+                    return
+                        <product>
+                            <title>{normalize-space($product//h3/a/@title)}</title>
+                            <price>{normalize-space($product//p[@class="price_color"])}</price>
+                            <rating>{normalize-space($product//p[@class="star-rating"]/@class)}</rating>
+                            <availability>{normalize-space($product//p[@class="instock availability"])}</availability>
+                        </product>
+                ]]>
+            </xq-expression>
+        </xquery>
+        <![CDATA[ </catalog> ]]>
+    </file>
+</config>`
+    },
+
+    'xquery.xml': {
+        title: 'XQuery Examples',
+        icon: 'code',
+        category: 'XML Processing',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <file action="write" path="xquerytest.xml">
+        <xquery>
+            <xq-param name="logicvalue" type="boolean">true</xq-param>
+            <xq-param name="numbervalue" type="double">12</xq-param>
+            <xq-param name="intseq" type="integer*">
+                3
+                7
+                14
+                18
+                27
+            </xq-param>
+            <xq-param name="stringvalue" type="string">ABCDEFGH123456</xq-param>
+            <xq-param name="doc">
+                <![CDATA[
+               <table>
+                    <tr>
+                        <td>one</td>
+                        <td>two</td>
+                        <td>tree</td>
+                    </tr>
+                    <tr>
+                        <td>four</td>
+                        <td>five</td>
+                        <td>six</td>
+                    </tr>
+               </table>
+            ]]>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                (: example of external namespace and usage of Java function library inside the XQuery :)
+                declare namespace math ="java:java.lang.Math";
+
+                (: declare namespace for user-defined functions :)
+                declare namespace fn ="f:ns";
+
+                (: declaration of external variables with names and types matching to those in xq-param :)
+                declare variable $logicvalue as xs:boolean external;
+                declare variable $numbervalue as xs:double external;
+                declare variable $intseq as xs:integer* external;
+                declare variable $stringvalue as xs:string external;
+                declare variable $doc as node()* external;
+
+                (: user-defined function inside XQuery :)
+                declare function fn:myFunc($items as xs:integer*) as node()* {
+                    for $num in $items return
+                        <value>
+                            { math:sqrt($num) + 1 }
+                        </value>
+                };
+
+                (: resuting XML :)
+                <test>
+                    <logictest>
+                        { if ($logicvalue) then 1 else 2 },
+                        { $logicvalue eq ($numbervalue gt 15) }
+                    </logictest>
+                    <doubletest>
+                        { $numbervalue * 2 + 10 },
+                        { $numbervalue instance of xs:float },
+                        { round($numbervalue) }
+                    </doubletest>
+                    <stringtest>
+                        { concat($stringvalue, $logicvalue, $numbervalue) }
+                    </stringtest>
+                    <numberseqtest>
+                        { fn:myFunc($intseq) }
+                        { concat($intseq[1], "mama") }
+                    </numberseqtest>
+                    <doctest>
+                        { for $td in $doc//td return $td }
+                    </doctest>
+                </test>
+            ]]>
+            </xq-expression>
+        </xquery>
+    </file>
+</config>`
+    },
+
+    'social_media_analytics.xml': {
+        title: 'Social Media Analytics',
+        icon: 'chart-line',
+        category: 'Analytics',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Social media analytics and sentiment analysis -->
+    <def var="hashtag">#technology</def>
+    <def var="maxPosts">10</def>
+    
+    <!-- Simulate social media data extraction -->
+    <def var="socialData">
+        <template>
+            <![CDATA[
+            [
+                {"platform": "Twitter", "user": "@techuser1", "content": "Great new AI developments! #technology #AI", "likes": 45, "retweets": 12, "sentiment": "positive"},
+                {"platform": "Twitter", "user": "@techuser2", "content": "Technology is changing everything #technology", "likes": 23, "retweets": 8, "sentiment": "positive"},
+                {"platform": "LinkedIn", "user": "Tech Professional", "content": "Latest tech trends are amazing #technology", "likes": 67, "retweets": 15, "sentiment": "positive"}
+            ]
+            ]]>
+        </template>
+    </def>
+    
+    <!-- Convert JSON to XML for processing -->
+    <def var="postsXml">
+        <json-to-xml>
+            <script>socialData</script>
+        </json-to-xml>
+    </def>
+    
+    <!-- Analyze sentiment -->
+    <def var="sentimentAnalysis">
+        <xquery>
+            <xq-param name="posts">
+                <script>postsXml</script>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $posts as node() external;
+                
+                let $positive := count($posts//item[sentiment = "positive"])
+                let $negative := count($posts//item[sentiment = "negative"])
+                let $neutral := count($posts//item[sentiment = "neutral"])
+                let $total := count($posts//item)
+                
+                return
+                <sentiment_analysis>
+                    <total_posts>{$total}</total_posts>
+                    <positive_posts>{$positive}</positive_posts>
+                    <negative_posts>{$negative}</negative_posts>
+                    <neutral_posts>{$neutral}</neutral_posts>
+                    <positive_percentage>{if ($total > 0) then round($positive div $total * 100) else 0}</positive_percentage>
+                </sentiment_analysis>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Generate analytics report -->
+    <file path="social_analytics_report.xml" action="write">
+        <template>
+            <![CDATA[
+            <social_media_analytics>
+                <hashtag>\${hashtag}</hashtag>
+                <analysis_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</analysis_date>
+                <sentiment_analysis>
+                    <script>sentimentAnalysis</script>
+                </sentiment_analysis>
+            </social_media_analytics>
+            ]]>
+        </template>
+    </file>
+</config>`
+    },
+
+    'ecommerce_monitoring.xml': {
+        title: 'E-commerce Price Monitoring',
+        icon: 'dollar-sign',
+        category: 'E-commerce',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- E-commerce price monitoring example -->
+    <def var="productUrl">https://httpbin.org/json</def>
+    <def var="priceThreshold">100.00</def>
+    <!-- Monitor product prices -->
+    <def var="productData">
+        <template>
+            <![CDATA[
+            {
+                "name": "Sample Product",
+                "price": 89.99,
+                "availability": "In Stock",
+                "rating": 4.5,
+                "reviews": 127
+            }
+            ]]>
+        </template>
+    </def>
+    <!-- Process the data - simplified approach -->
+    <def var="currentPrice">89.99</def>
+    <!-- Check if price is below threshold -->
+    <file path="price_check.txt" action="write">
+        <template>
+            <![CDATA[
+                Price Check: $\${currentPrice} (threshold: $\${priceThreshold})
+                Status: Price is below threshold - ALERT!
+                ]]>
+        </template>
+    </file>
+    <!-- Generate monitoring report -->
+    <file path="monitoring_report.xml" action="write">
+        <template>
+            <![CDATA[
+            <monitoring_report>
+                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <product_url>\${productUrl}</product_url>
+                <price_threshold>\${priceThreshold}</price_threshold>
+                <current_price>\${currentPrice}</current_price>
+                <status>ALERT_TRIGGERED</status>
+            </monitoring_report>
+            ]]>
+        </template>
+    </file>
+</config>`
+    }
+};
+
 const app = {
     editor: null,
     tabs: [],
@@ -1135,15 +1714,13 @@ Data aggregated from 2 API sources!
     async loadExamplesList() {
         const grid = document.getElementById('examplesGrid');
 
-        // Example configurations
-        const examples = [
-            { file: 'simple_test.xml', title: 'Simple HTTP Test', icon: 'vial', category: 'Web & HTTP' },
-            { file: 'amazon_test.xml', title: 'Amazon Scraper', icon: 'shopping-cart', category: 'Web & HTTP' },
-            { file: 'xpath_test.xml', title: 'XPath Examples', icon: 'code-branch', category: 'Data Extraction' },
-            { file: 'regexp_test.xml', title: 'Regex Matching', icon: 'search', category: 'Data Extraction' },
-            { file: 'json_api.xml', title: 'JSON API', icon: 'file-code', category: 'Data Transformation' },
-            { file: 'loop_pagination.xml', title: 'Loop & Pagination', icon: 'repeat', category: 'Control Flow' }
-        ];
+        // Build examples array from embedded examples
+        const examples = Object.keys(EMBEDDED_EXAMPLES).map(file => ({
+            file: file,
+            title: EMBEDDED_EXAMPLES[file].title,
+            icon: EMBEDDED_EXAMPLES[file].icon,
+            category: EMBEDDED_EXAMPLES[file].category
+        }));
 
         grid.innerHTML = examples.map(ex => `
             <div class="example-card" data-file="${ex.file}" onclick="app.selectExample('${ex.file}')">
@@ -1168,8 +1745,13 @@ Data aggregated from 2 API sources!
         }
 
         try {
-            const response = await fetch(`/examples/${this.selectedExample}`);
-            const content = await response.text();
+            // Get content from embedded examples
+            const example = EMBEDDED_EXAMPLES[this.selectedExample];
+            if (!example) {
+                throw new Error(`Example ${this.selectedExample} not found`);
+            }
+
+            const content = example.content;
             this.addTab(this.selectedExample, content);
             this.hideExamplesModal();
             this.addLog('info', `Loaded example: ${this.selectedExample}`);
@@ -1610,14 +2192,14 @@ Data aggregated from 2 API sources!
             alert('No active execution to pause');
             return;
         }
-        
+
         console.log('[pauseExecution] Pausing:', tab.executionId);
-        
+
         try {
             const response = await fetch(`/api/execution/${tab.executionId}/pause`, {
                 method: 'POST'
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
                 console.log('[pauseExecution] Paused:', result);
@@ -1641,14 +2223,14 @@ Data aggregated from 2 API sources!
             alert('No paused execution to resume');
             return;
         }
-        
+
         console.log('[resumeExecution] Resuming:', tab.executionId);
-        
+
         try {
             const response = await fetch(`/api/execution/${tab.executionId}/resume`, {
                 method: 'POST'
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
                 console.log('[resumeExecution] Resumed:', result);
@@ -1672,18 +2254,18 @@ Data aggregated from 2 API sources!
             alert('No execution to stop');
             return;
         }
-        
+
         if (!confirm('Are you sure you want to stop this execution?')) {
             return;
         }
-        
+
         console.log('[stopExecution] Stopping:', tab.executionId);
-        
+
         try {
             const response = await fetch(`/api/execution/${tab.executionId}/stop`, {
                 method: 'POST'
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
                 console.log('[stopExecution] Stopped:', result);
@@ -1703,7 +2285,7 @@ Data aggregated from 2 API sources!
             console.warn('[showSessionDetails] Session not found:', index);
             return;
         }
-        
+
         const session = this.sessionHistory[index];
         console.log('[showSessionDetails] Showing session:', session.sessionId);
 

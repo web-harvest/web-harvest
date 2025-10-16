@@ -5,14 +5,15 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webharvest.Harvest;
-import org.webharvest.Harvester;
-import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.Config;
+import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
+import com.google.common.eventbus.EventBus;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.Scraper;
+import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 import org.webharvest.server.IDEClientContext;
@@ -50,7 +51,6 @@ public class ExecutionManager {
     private final Map<String, ExecutionJob> completedExecutions;  // v2.2: Keep completed jobs
     private final Map<String, org.eclipse.jetty.websocket.api.Session> webSocketSessions;
     private final Injector injector;
-    private final Harvest harvest;
     
     private ExecutionManager() {
         LOG.info("Initializing ExecutionManager...");
@@ -60,14 +60,13 @@ public class ExecutionManager {
         this.completedExecutions = new ConcurrentHashMap<>();  // v2.2: Store completed jobs
         this.webSocketSessions = new ConcurrentHashMap<>();
         
-        LOG.info("Creating Guice injector for Harvest API...");
+        LOG.info("Creating Guice injector for v2.2 API...");
         
         // Initialize Guice injector
         // Note: HttpModule removed during HttpComponents 4.x migration
         this.injector = Guice.createInjector(
             new ScraperModule(".")
         );
-        this.harvest = injector.getInstance(Harvest.class);
         
         LOG.info("ExecutionManager initialized successfully");
         LOG.info("Thread pool size: 5, max concurrent executions: 5");
@@ -197,43 +196,37 @@ public class ExecutionManager {
             sendLog(job.getId(), "INFO", "Creating configuration source...");
             sendUpdate(job.getId(), "STARTED", "Initializing scraper...", 0, null);
             
-            // Create config source from XML string
+            // v2.2: Use new Scraper API instead of Harvester
             sendLog(job.getId(), "INFO", "Parsing XML configuration...");
+            
+            // Parse config
             ConfigSource configSource = new BufferConfigSource(job.getConfigXml());
+            Config config = injector.getInstance(ConfigFactory.class).create(configSource);
             
-            // Create load callback
-            HarvestLoadCallback loadCallback = new HarvestLoadCallback() {
-                // v2.2.x: IElementDef removed - onSuccess() method removed
-                // @Override
-                // public void onSuccess(List<IElementDef> elements) {
-                //     LOG.info("Configuration loaded with {} elements", elements.size());
-                //     sendLog(job.getId(), "SUCCESS", "Configuration loaded: " + elements.size() + " elements");
-                // }
-            };
+            // CRITICAL: Reload config to parse and load configuration tree
+            config.reload();
             
-            // Get harvester instance
-            sendLog(job.getId(), "INFO", "Creating harvester instance...");
-            Harvester harvester = harvest.getHarvester(configSource, loadCallback);
-            sendLog(job.getId(), "INFO", "Harvester created, starting execution...");
+            // Create execution context
+            DynamicScopeContext context = new ScraperContext();
+            context.setConfig(config);
             
-            // Execute with session tracking callback
-            DynamicScopeContext context = harvester.execute(new Harvester.ContextInitCallback() {
-                @Override
-                public void onSuccess(DynamicScopeContext ctx) {
-                    LOG.info("Execution starting for: {}", job.getId());
-                    sendLog(job.getId(), "INFO", "Configuration loaded, executing...");
-                    
-                    // v2.2: Create and start session tracking
-                    try {
-                        Config config = ctx.getConfig();
-                        job.setSession(new ScraperSessionImpl(job.getId(), "ide-client", config));
-                        job.getSession().markRunning(ctx);
-                        LOG.info("✓ Session tracking started: {}", job.getSession().getSessionId());
-                    } catch (Exception e) {
-                        LOG.warn("Failed to create session: {}", e.getMessage());
-                    }
-                }
-            });
+            // Create session for tracking
+            sendLog(job.getId(), "INFO", "Creating session...");
+            ScraperSessionImpl session = new ScraperSessionImpl(job.getId(), "ide-client", config);
+            job.setSession(session);
+            
+            // Set session in context for event publishing
+            context.setEventBus(new EventBus());
+            context.setSession(session);
+            
+            // Mark session as running
+            session.markRunning(context);
+            LOG.info("✓ Session tracking started: {}", session.getSessionId());
+            
+            // Create and execute scraper
+            sendLog(job.getId(), "INFO", "Starting execution...");
+            Scraper scraper = new Scraper(context.getEventBus());
+            scraper.execute(context);
             
             // v2.2: Check if execution was stopped during run
             if (job.isStopped()) {

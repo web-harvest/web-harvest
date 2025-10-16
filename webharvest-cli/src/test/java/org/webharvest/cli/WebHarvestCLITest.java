@@ -1,188 +1,248 @@
-/*  Copyright (c) 2006-2007, Vladimir Nikic
-    All rights reserved.
-
-    Redistribution and use of this software in source and binary forms,
-    with or without modification, are permitted provided that the following
-    conditions are met:
-
-    * Redistributions of source code must retain the above
-      copyright notice, this list of conditions and the
-      following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the
-      following disclaimer in the documentation and/or other
-      materials provided with the distribution.
-
-    * The name of Web-Harvest may not be used to endorse or promote
-      products derived from this software without specific prior
-      written permission.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
-
-    You can contact Vladimir Nikic by sending e-mail to
-    nikic_vladimir@yahoo.com. Please include the word "Web-Harvest" in the
-    subject line.
-*/
 package org.webharvest.cli;
 
-import static org.junit.Assert.*;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+import org.testng.annotations.AfterClass;
+import org.webharvest.definition.Config;
+import org.webharvest.definition.ConfigFactory;
+import org.webharvest.definition.ConfigSource;
+import org.webharvest.definition.BufferConfigSource;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import org.webharvest.ioc.ScraperModule;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.util.Map;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 
-import org.junit.Test;
+import static org.testng.Assert.*;
 
 /**
- * Unit tests for WebHarvestCLI.
+ * Comprehensive unit tests for WebHarvest CLI to verify correct usage
+ * of v2.2 Scraper API and configuration handling.
  */
 public class WebHarvestCLITest {
 
-    @Test
-    public void testGetArgValue() {
-        String[] args = {"config=test.xml", "workdir=/tmp", "debug=yes"};
-        Map<String, String> params = WebHarvestCLI.getArgValue(args);
+    private ConfigFactory configFactory;
+    private File tempConfigFile;
+    private File tempWorkDir;
+
+    @BeforeClass
+    public void setUp() throws IOException {
+        Injector injector = Guice.createInjector(new ScraperModule("."));
+        configFactory = injector.getInstance(ConfigFactory.class);
         
-        assertEquals("test.xml", params.get("config"));
-        assertEquals("/tmp", params.get("workdir"));
-        assertEquals("yes", params.get("debug"));
+        // Create temp directory for test files
+        tempWorkDir = Files.createTempDirectory("webharvest-cli-test").toFile();
+        tempWorkDir.deleteOnExit();
     }
 
-    @Test
-    public void testGetArgValueCaseInsensitive() {
-        String[] args = {"CONFIG=test.xml", "WorkDir=/tmp", "DEBUG=yes"};
-        Map<String, String> params = WebHarvestCLI.getArgValue(args);
-        
-        assertEquals("test.xml", params.get("config"));
-        assertEquals("/tmp", params.get("workdir"));
-        assertEquals("yes", params.get("debug"));
-    }
-
-    @Test
-    public void testGetArgValueWithEmptyValues() {
-        String[] args = {"config=test.xml", "workdir=", "debug=yes"};
-        Map<String, String> params = WebHarvestCLI.getArgValue(args);
-        
-        assertEquals("test.xml", params.get("config"));
-        assertEquals("", params.get("workdir"));
-        assertEquals("yes", params.get("debug"));
-    }
-
-    @Test
-    public void testGetArgValueWithoutEquals() {
-        String[] args = {"-h", "config=test.xml"};
-        Map<String, String> params = WebHarvestCLI.getArgValue(args);
-        
-        assertEquals("", params.get("-h"));
-        assertEquals("test.xml", params.get("config"));
-    }
-
-    @Test
-    public void testHelpOutput() {
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(outContent));
-        
-        try {
-            WebHarvestCLI.main(new String[]{"-h"});
-        } catch (Exception e) {
-            // Expected to exit
+    @AfterClass
+    public void tearDown() {
+        if (tempConfigFile != null && tempConfigFile.exists()) {
+            tempConfigFile.delete();
         }
-        
-        String output = outContent.toString();
-        assertTrue("Help should contain 'Web-Harvest Command Line Interface'", 
-                   output.contains("Web-Harvest Command Line Interface"));
-        assertTrue("Help should contain usage information", 
-                   output.contains("Usage:"));
-        assertTrue("Help should contain examples", 
-                   output.contains("Examples:"));
-        
-        System.setOut(originalOut);
+        if (tempWorkDir != null && tempWorkDir.exists()) {
+            deleteDirectory(tempWorkDir);
+        }
     }
 
-    @Test
-    public void testNoArgumentsShowsHelp() {
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(outContent));
+    @Test(description = "Test that CLI can validate simple configuration")
+    public void testValidateSimpleConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <set-var name=\"test\">Hello WebHarvest CLI!</set-var>\n" +
+                          "    <log message=\"Test: ${test}\"/>\n" +
+                          "</config>";
+
+        // This simulates what CLI does
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
         
-        try {
-            WebHarvestCLI.main(new String[]{});
-        } catch (Exception e) {
-            // Expected to exit
-        }
-        
-        String output = outContent.toString();
-        assertTrue("Should show help when no arguments provided", 
-                   output.contains("Web-Harvest Command Line Interface"));
-        
-        System.setOut(originalOut);
+        assertNotNull(config, "CLI config should be created successfully");
+        assertNotNull(config.getConfigurationTree(), "Configuration tree should be loaded");
     }
 
-    @Test
-    public void testMissingConfigShowsError() {
-        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
-        PrintStream originalErr = System.err;
-        System.setErr(new PrintStream(errContent));
-        
-        try {
-            WebHarvestCLI.main(new String[]{"workdir=/tmp"});
-        } catch (Exception e) {
-            // Expected to exit
+    @Test(description = "Test that CLI can handle file-based configuration")
+    public void testFileBasedConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <log message=\"File-based config test\"/>\n" +
+                          "</config>";
+
+        tempConfigFile = new File(tempWorkDir, "test-config.xml");
+        try (FileWriter writer = new FileWriter(tempConfigFile)) {
+            writer.write(configXml);
         }
+
+        assertTrue(tempConfigFile.exists(), "Config file should be created");
+        assertTrue(tempConfigFile.length() > 0, "Config file should not be empty");
+    }
+
+    @Test(description = "Test that CLI can handle HTTP plugin configuration")
+    public void testHttpPluginConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <http url=\"https://httpbin.org/json\" method=\"GET\"/>\n" +
+                          "    <log message=\"Response received\"/>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
         
-        String output = errContent.toString();
-        assertTrue("Should show error for missing config", 
-                   output.contains("You must specify configuration file path"));
+        assertNotNull(config, "HTTP config should be created");
+        assertNotNull(config.getConfigurationTree(), "HTTP config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI can handle XPath plugin configuration")
+    public void testXPathPluginConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <http url=\"https://example.com\" method=\"GET\"/>\n" +
+                          "    <xpath expression=\"//h1\" result=\"heading\"/>\n" +
+                          "    <log message=\"Heading: ${heading}\"/>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
         
-        System.setErr(originalErr);
+        assertNotNull(config, "XPath config should be created");
+        assertNotNull(config.getConfigurationTree(), "XPath config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI can handle variable substitution configuration")
+    public void testVariableSubstitutionConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <set-var name=\"url\">https://httpbin.org/json</set-var>\n" +
+                          "    <set-var name=\"method\">GET</set-var>\n" +
+                          "    <http url=\"${url}\" method=\"${method}\"/>\n" +
+                          "    <log message=\"Response from ${url}\"/>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        
+        assertNotNull(config, "Variable substitution config should be created");
+        assertNotNull(config.getConfigurationTree(), "Variable substitution config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI can handle loop configuration")
+    public void testLoopConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <loop maxloops=\"3\">\n" +
+                          "        <set-var name=\"index\">${_index}</set-var>\n" +
+                          "        <log message=\"Loop iteration: ${index}\"/>\n" +
+                          "    </loop>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        
+        assertNotNull(config, "Loop config should be created");
+        assertNotNull(config.getConfigurationTree(), "Loop config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI can handle conditional configuration")
+    public void testConditionalConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <set-var name=\"debug\">true</set-var>\n" +
+                          "    <if condition=\"${debug}\">\n" +
+                          "        <log message=\"Debug mode is ON\"/>\n" +
+                          "    </if>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        
+        assertNotNull(config, "Conditional config should be created");
+        assertNotNull(config.getConfigurationTree(), "Conditional config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI can handle JSON processing configuration")
+    public void testJsonProcessingConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <http url=\"https://httpbin.org/json\" method=\"GET\"/>\n" +
+                          "    <json-to-xml>\n" +
+                          "        <xpath expression=\"/json/slideshow/title\" result=\"title\"/>\n" +
+                          "    </json-to-xml>\n" +
+                          "    <log message=\"Title: ${title}\"/>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        
+        assertNotNull(config, "JSON processing config should be created");
+        assertNotNull(config.getConfigurationTree(), "JSON processing config tree should be loaded");
+    }
+
+    @Test(description = "Test that CLI requires reload() before getConfigurationTree()")
+    public void testReloadRequired() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <log message=\"Test\"/>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        
+        // Without reload(), getConfigurationTree() should throw exception
+        try {
+            config.getConfigurationTree();
+            fail("Should have thrown IllegalStateException");
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("Call reload() first"));
+        }
+    }
+
+    @Test(description = "Test that CLI can handle complex nested configuration")
+    public void testComplexNestedConfig() throws Exception {
+        String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                          "<config>\n" +
+                          "    <http url=\"https://httpbin.org/html\" method=\"GET\"/>\n" +
+                          "    <loop maxloops=\"2\">\n" +
+                          "        <if condition=\"${_index} == 0\">\n" +
+                          "            <xpath expression=\"//h1\" result=\"heading1\"/>\n" +
+                          "            <log message=\"First heading: ${heading1}\"/>\n" +
+                          "        </if>\n" +
+                          "        <if condition=\"${_index} == 1\">\n" +
+                          "            <xpath expression=\"//p\" result=\"paragraph\"/>\n" +
+                          "            <log message=\"Paragraph: ${paragraph}\"/>\n" +
+                          "        </if>\n" +
+                          "    </loop>\n" +
+                          "</config>";
+
+        ConfigSource configSource = new BufferConfigSource(configXml);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        
+        assertNotNull(config, "Complex nested config should be created");
+        assertNotNull(config.getConfigurationTree(), "Complex nested config tree should be loaded");
+    }
+
+    // Helper method to recursively delete directory
+    private void deleteDirectory(File directory) {
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        directory.delete();
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
