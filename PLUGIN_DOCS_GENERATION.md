@@ -17,7 +17,13 @@ WebHarvest 2.2 includes automated documentation generators that create HTML docu
 ### Generate All Documentation (Recommended)
 
 ```bash
+cd docs/scripts
 python3 generate_all_plugin_docs.py
+```
+
+Or from project root:
+```bash
+python3 docs/scripts/generate_all_plugin_docs.py
 ```
 
 This master script runs all generators in correct order:
@@ -40,6 +46,8 @@ python3 -m http.server 8000
 
 ## 📂 Generator Scripts
 
+**Location:** All scripts are in `docs/scripts/` directory
+
 ### 1. `generate_core_plugin_docs.py`
 
 Generates HTML documentation for **46 core plugins**.
@@ -59,6 +67,7 @@ Generates HTML documentation for **46 core plugins**.
 
 **Usage:**
 ```bash
+cd docs/scripts
 python3 generate_core_plugin_docs.py
 ```
 
@@ -81,6 +90,7 @@ Generates HTML documentation for **8 external plugins**.
 
 **Usage:**
 ```bash
+cd docs/scripts
 python3 generate_external_plugin_docs.py
 ```
 
@@ -103,6 +113,7 @@ Generates the main plugins index page with all 54 plugins organized by category.
 
 **Usage:**
 ```bash
+cd docs/scripts
 python3 generate_plugins_index.py
 ```
 

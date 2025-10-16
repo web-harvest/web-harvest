@@ -2,16 +2,33 @@
 
 # Web-Harvest Release Publisher
 # Publishes IDE and CLI JAR files to SourceForge
+# 
+# Features:
+# - Automatically extracts version from pom.xml
+# - Checks if version already exists on SourceForge
+# - Asks for permission before overwriting existing release
+# - Generates comprehensive release notes from CHANGELOG.md
 
 set -e
 
-VERSION="2.1.0"
 PROJECT_NAME="web-harvest"
 SF_USER="rbala"
 SF_HOST="frs.sourceforge.net"
+
+# Extract version from main pom.xml
+echo "📖 Reading version from pom.xml..."
+VERSION=$(grep -m 1 "<version>" pom.xml | sed -e 's/.*<version>\(.*\)<\/version>.*/\1/' | tr -d '[:space:]')
+
+if [ -z "$VERSION" ]; then
+    echo "❌ Error: Could not extract version from pom.xml"
+    exit 1
+fi
+
+echo "✅ Detected version: ${VERSION}"
+
 SF_PATH="/home/frs/project/${PROJECT_NAME}/webhervest/${VERSION}/"
 
-echo "🚀 Publishing Web-Harvest ${VERSION} to SourceForge..."
+echo "🚀 Publishing WebHarvest ${VERSION} to SourceForge..."
 echo "📁 Target path: ${SF_PATH}"
 
 # Check if JAR files exist
@@ -34,6 +51,35 @@ echo "✅ Found JAR files:"
 echo "   - IDE: $IDE_JAR ($(du -h "$IDE_JAR" | cut -f1))"
 echo "   - CLI: $CLI_JAR ($(du -h "$CLI_JAR" | cut -f1))"
 
+# Check if version already exists on SourceForge
+echo ""
+echo "🔍 Checking if version ${VERSION} already exists on SourceForge..."
+
+# Test SSH connection and check if directory exists
+if ssh -i ~/.ssh/sourceforge_rsa -o ConnectTimeout=10 "${SF_USER}@${SF_HOST}" "test -d ${SF_PATH}" 2>/dev/null; then
+    echo ""
+    echo "⚠️  WARNING: Version ${VERSION} already exists on SourceForge!"
+    echo "📁 Path: ${SF_PATH}"
+    echo ""
+    echo "Existing files:"
+    ssh -i ~/.ssh/sourceforge_rsa "${SF_USER}@${SF_HOST}" "ls -lh ${SF_PATH}" 2>/dev/null | grep -E "\.(jar|txt)$" || echo "  (could not list files)"
+    echo ""
+    
+    # Ask for confirmation
+    read -p "❓ Do you want to OVERWRITE the existing release? (yes/no): " -r
+    echo
+    
+    if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+        echo "❌ Upload cancelled by user."
+        echo "💡 To publish a new version, update the version in pom.xml first."
+        exit 1
+    fi
+    
+    echo "✅ User confirmed overwrite. Proceeding with upload..."
+else
+    echo "✅ Version ${VERSION} does not exist yet. Creating new release..."
+fi
+
 # Create temporary directory for upload
 TEMP_DIR=$(mktemp -d)
 echo "📂 Created temp directory: $TEMP_DIR"
@@ -42,42 +88,92 @@ echo "📂 Created temp directory: $TEMP_DIR"
 cp "$IDE_JAR" "$TEMP_DIR/"
 cp "$CLI_JAR" "$TEMP_DIR/"
 
-# Create release notes
-cat > "$TEMP_DIR/RELEASE-NOTES.txt" << EOF
-Web-Harvest ${VERSION} Release Notes
+# Generate release notes from CHANGELOG.md
+echo "📝 Generating release notes from CHANGELOG.md..."
+
+if [ -f "CHANGELOG.md" ]; then
+    # Extract section for current version from CHANGELOG.md
+    # This extracts content between ## [VERSION] and next ## heading
+    VERSION_SECTION=$(awk "/^## \[${VERSION}\]/,/^## \[/" CHANGELOG.md | sed '$d')
+    
+    if [ -n "$VERSION_SECTION" ]; then
+        cat > "$TEMP_DIR/RELEASE-NOTES.txt" << EOF
+WebHarvest ${VERSION} Release Notes
 ====================================
 
-Major Updates:
-- Migrated XML namespace from web-harvest.sourceforge.net to org.webharvest
-- Updated all XSD schemas with new namespace structure
-- Enhanced website with modern design and consistent branding
-- Added comprehensive API documentation
-- Published examples to website with proper permissions
-- Updated IDE welcome screen with modern styling
-- Fixed all IDE links to point to correct URLs
-- Synchronized color palette across all documentation
+${VERSION_SECTION}
 
-Files:
-- webharvest-ide-${VERSION}.jar: IDE application
+Files Included:
+- webharvest-ide-${VERSION}.jar: Web-based IDE with embedded Jetty server
 - webharvest-cli-${VERSION}.jar: Command-line interface
 
 System Requirements:
 - Java 8 or higher
 - Minimum 512MB RAM
-- 50MB disk space
+- 100MB disk space
 
 Installation:
-1. Download the appropriate JAR file for your needs
-2. For IDE: java -jar webharvest-ide-${VERSION}.jar
-3. For CLI: java -jar webharvest-cli-${VERSION}.jar --help
 
-Documentation: https://web-harvest.sourceforge.net/
-Examples: https://web-harvest.sourceforge.net/examples/
+IDE (Web Interface):
+  java -jar webharvest-ide-${VERSION}.jar
+  # Opens browser at http://localhost:8080
 
-Release Date: $(date)
+CLI (Command Line):
+  java -jar webharvest-cli-${VERSION}.jar --help
+  java -jar webharvest-cli-${VERSION}.jar config.xml
+
+Documentation: https://web-harvest.sourceforge.io/
+SourceForge: https://sourceforge.net/projects/web-harvest/
+SVN Repository: https://svn.code.sf.net/p/web-harvest/code/
+
+Release Date: $(date +"%B %d, %Y")
 EOF
+        echo "✅ Release notes generated from CHANGELOG.md"
+    else
+        echo "⚠️  Warning: Could not find version ${VERSION} in CHANGELOG.md"
+        echo "💡 Using generic release notes"
+        
+        cat > "$TEMP_DIR/RELEASE-NOTES.txt" << EOF
+WebHarvest ${VERSION} Release Notes
+====================================
 
-echo "📝 Created release notes"
+For detailed release notes, see CHANGELOG.md in the repository.
+
+Files Included:
+- webharvest-ide-${VERSION}.jar: Web-based IDE
+- webharvest-cli-${VERSION}.jar: Command-line interface
+
+System Requirements:
+- Java 8 or higher
+- Minimum 512MB RAM
+- 100MB disk space
+
+Installation:
+  IDE: java -jar webharvest-ide-${VERSION}.jar
+  CLI: java -jar webharvest-cli-${VERSION}.jar --help
+
+Documentation: https://web-harvest.sourceforge.io/
+Release Date: $(date +"%B %d, %Y")
+EOF
+    fi
+else
+    echo "⚠️  Warning: CHANGELOG.md not found"
+    echo "💡 Using minimal release notes"
+    
+    cat > "$TEMP_DIR/RELEASE-NOTES.txt" << EOF
+WebHarvest ${VERSION} Release Notes
+====================================
+
+Files Included:
+- webharvest-ide-${VERSION}.jar
+- webharvest-cli-${VERSION}.jar
+
+Documentation: https://web-harvest.sourceforge.io/
+Release Date: $(date +"%B %d, %Y")
+EOF
+fi
+
+echo "📝 Release notes created: $TEMP_DIR/RELEASE-NOTES.txt"
 
 # Upload files to SourceForge
 echo "🌐 Uploading files to SourceForge..."

@@ -1,7 +1,7 @@
 # WebHarvest Documentation Index
 
 **Version**: 2.2.0  
-**Last Updated**: October 15, 2025
+**Last Updated**: October 16, 2025
 
 ---
 
@@ -62,29 +62,24 @@
 
 ### Migration Guides
 
-9. **[V3_MIGRATION_GUIDE.md](V3_MIGRATION_GUIDE.md)** - Version 3.x migration guide
-   - Breaking changes in v3.x
-   - Migration steps
-   - Code examples
-
-10. **[HTTPCLIENT5_MIGRATION_GUIDE.md](HTTPCLIENT5_MIGRATION_GUIDE.md)** - HttpClient 5.x migration
-    - Migration from HttpClient 4.x to 5.x
-    - API changes
-    - Testing approach
+9. **[HTTPCLIENT5_MIGRATION_GUIDE.md](HTTPCLIENT5_MIGRATION_GUIDE.md)** - HttpClient 5.x migration
+   - Migration from HttpClient 4.x to 5.x
+   - API changes
+   - Testing approach
 
 ### User Guides
 
-11. **[PAUSE_RESUME_GUIDE.md](PAUSE_RESUME_GUIDE.md)** - Session management
+10. **[PAUSE_RESUME_GUIDE.md](PAUSE_RESUME_GUIDE.md)** - Session management
     - Pause and resume scraper execution
     - Session state management
     - Use cases and examples
 
-12. **[ENHANCED_METRICS_GUIDE.md](ENHANCED_METRICS_GUIDE.md)** - Metrics and monitoring
+11. **[ENHANCED_METRICS_GUIDE.md](ENHANCED_METRICS_GUIDE.md)** - Metrics and monitoring
     - Execution metrics
     - Performance monitoring
     - Event sourcing
 
-13. **[WORKING_XML_SYNTAX_REFERENCE.md](WORKING_XML_SYNTAX_REFERENCE.md)** - XML syntax reference
+12. **[WORKING_XML_SYNTAX_REFERENCE.md](WORKING_XML_SYNTAX_REFERENCE.md)** - XML syntax reference
     - Configuration file syntax
     - Plugin usage patterns
     - Examples and best practices
@@ -93,15 +88,45 @@
 
 ## 🚀 Deployment & Operations
 
-14. **[SFTP-UPLOAD-INSTRUCTIONS.md](SFTP-UPLOAD-INSTRUCTIONS.md)** - SourceForge deployment
-    - SFTP upload instructions
-    - File structure on SourceForge
-    - Deployment process
+13. **[SFTP-UPLOAD-INSTRUCTIONS.md](SFTP-UPLOAD-INSTRUCTIONS.md)** - SourceForge deployment
+    - Release publishing (JARs + release notes)
+    - Documentation upload (website only, no javadoc)
+    - Troubleshooting guide
+    - Complete release checklist
 
-15. **[SOURCEFORGE-SETUP.md](SOURCEFORGE-SETUP.md)** - SourceForge project setup
+14. **[SOURCEFORGE-SETUP.md](SOURCEFORGE-SETUP.md)** - SourceForge project setup
     - Project configuration
     - Web hosting setup
     - File release system
+
+15. **[RELEASE_SCRIPTS_ENHANCEMENT.md](RELEASE_SCRIPTS_ENHANCEMENT.md)** - Release automation improvements
+    - Dynamic version extraction from pom.xml
+    - Overwrite protection for existing releases
+    - Automatic release notes from CHANGELOG.md
+
+16. **[DOCS_UPLOAD_SIMPLIFICATION.md](DOCS_UPLOAD_SIMPLIFICATION.md)** - Documentation upload policy
+    - Javadoc policy (not published to website)
+    - Simplified upload workflow
+    - Directory structure clarification
+
+---
+
+## 📂 Scripts & Automation
+
+17. **[docs/scripts/](docs/scripts/)** - Documentation generation scripts
+    - `generate_all_plugin_docs.py` - Master script (all plugins)
+    - `generate_core_plugin_docs.py` - 46 core plugins
+    - `generate_external_plugin_docs.py` - 8 external plugins
+    - `generate_plugins_index.py` - Plugin index page
+
+18. **[publish-release.sh](publish-release.sh)** - Release publishing script
+    - Uploads JARs to SourceForge Files
+    - Dynamic version from pom.xml
+    - Overwrite protection
+
+19. **[upload-docs.sh](upload-docs.sh)** - Documentation upload script
+    - Uploads docs/web/ to SourceForge website
+    - Supports --dry-run and --clean-remote modes
 
 ---
 
@@ -153,29 +178,36 @@
 | PLUGINS | Plugin reference | Users, Developers |
 | BUGS_FIXED | Bug database | QA, Developers |
 | OCTOBER_2025_RELEASE_NOTES | Current release | Everyone |
-| V3_MIGRATION_GUIDE | Version 3.x migration | Upgraders |
 | HTTPCLIENT5_MIGRATION_GUIDE | HttpClient migration | Developers |
 | PAUSE_RESUME_GUIDE | Session management | Advanced Users |
 | ENHANCED_METRICS_GUIDE | Monitoring | DevOps, Developers |
 | WORKING_XML_SYNTAX_REFERENCE | XML syntax | Users, Developers |
 | PLUGIN_DOCS_GENERATION | Doc generation | Contributors |
-| SFTP/SOURCEFORGE | Deployment | Release Managers |
+| SFTP-UPLOAD-INSTRUCTIONS | Deployment guide | Release Managers |
+| RELEASE_SCRIPTS_ENHANCEMENT | Release automation | Maintainers |
+| DOCS_UPLOAD_SIMPLIFICATION | Docs upload policy | Maintainers |
+| docs/scripts/*.py | Plugin doc generation | Contributors |
+| publish-release.sh | Release publishing | Release Managers |
+| upload-docs.sh | Website upload | Release Managers |
 
 ---
 
 ## 🔄 Documentation Maintenance
 
 ### Latest Cleanup
-- **Date**: October 15, 2025
-- **Action**: Major consolidation - removed 28 duplicate/obsolete files
-- **Result**: Reduced from 45 to 17 files (62% reduction)
+- **Date**: October 16, 2025
+- **Action**: Major consolidation + infrastructure cleanup
+- **Result**: Reduced from 45 to 19 files, organized scripts
 
 ### Changes Made
 1. **Deleted 20 duplicates** - Files already archived in `docs/archive/`
 2. **Archived 7 session summaries** - Historical session reports moved to archive
-3. **Consolidated bug documentation** - Bug #24 and Bug #39 details merged into BUGS_FIXED.md
-4. **Removed Polish duplicate** - GENERUJ_DOKUMENTACJE_PLUGINOW.md (English version kept)
-5. **Cleaned obsolete files** - Completed tasks and plans archived
+3. **Consolidated bug documentation** - Bug details merged into BUGS_FIXED.md
+4. **Removed obsolete guides** - V3_MIGRATION_GUIDE.md (v3.0 doesn't exist)
+5. **Removed obsolete directories** - web-harvest-docs-upload/ (733 javadoc files)
+6. **Organized Python scripts** - Moved to docs/scripts/ (4 files)
+7. **Enhanced release scripts** - publish-release.sh, upload-docs.sh
+8. **Cleaned temporary files** - 15 files (.txt, .log, .batch) from project root
 
 ### Files Removed
 - Architecture proposals and analyses (archived)
@@ -185,13 +217,14 @@
 - Migration status files (archived - migrations complete)
 - Old architecture documentation (archived)
 
-### Kept (Essential - 17 files)
+### Kept (Essential - 19 files)
 - Core project documentation (README, CHANGELOG, CONTRIBUTING, DEVELOPER_GUIDE)
 - Plugin documentation (PLUGINS, PLUGIN_DOCS_GENERATION)
 - Bug tracking (BUGS_FIXED)
 - Current release (OCTOBER_2025_RELEASE_NOTES)
-- Technical guides (3 migration/user guides)
-- Deployment instructions (2 files)
+- Technical guides (4 migration/user guides)
+- Deployment & automation (5 files: SFTP-UPLOAD-INSTRUCTIONS, SOURCEFORGE-SETUP, RELEASE_SCRIPTS_ENHANCEMENT, DOCS_UPLOAD_SIMPLIFICATION, DOCUMENTATION_CONSOLIDATION_SUMMARY)
+- Planning docs (2 files: DOCUMENTATION_CONSOLIDATION_PLAN, COVERAGE_IMPROVEMENT_PLAN)
 - This index file
 
 ### Archived (docs/archive/)
@@ -237,9 +270,11 @@ Archive preserves historical context while keeping root clean and navigable.
 
 ---
 
-**Total Documentation Files**: 17 (streamlined and current)  
+**Total Documentation Files**: 19 (streamlined and current)  
+**Python Scripts**: 4 (in docs/scripts/)  
+**Shell Scripts**: 2 (publish-release.sh, upload-docs.sh)  
 **Archived Files**: 43+ (historical reference)  
 **Status**: Clean, organized, and up-to-date  
-**Last Review**: October 15, 2025
+**Last Review**: October 16, 2025
 
 

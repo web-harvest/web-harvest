@@ -48,8 +48,13 @@ docs/
 │   │       ├── *.html           # 46 core plugin pages
 │   │       └── external/        # 8 external plugin pages
 │   ├── examples/                # Example configurations
-│   └── api/                     # API documentation
-├── src/main/java/               # Documentation generators
+│   └── api/                     # API documentation (placeholder)
+├── scripts/                      # Documentation generation scripts
+│   ├── generate_all_plugin_docs.py       # Master script (runs all)
+│   ├── generate_core_plugin_docs.py      # Core plugins (46 files)
+│   ├── generate_external_plugin_docs.py  # External plugins (8 files)
+│   └── generate_plugins_index.py         # Plugin index page
+├── src/main/java/               # Documentation generators (Maven)
 ├── src/main/assembly/           # Maven assembly descriptors
 ├── pom.xml                      # Maven configuration
 └── README.md                    # This file
@@ -81,8 +86,23 @@ docs/
 
 ### Adding New Plugins
 1. Add plugin class with `@CorePlugin` or `@Definition` annotation
-2. Run `python3 generate_all_plugin_docs.py` to regenerate documentation
+2. Run `python3 scripts/generate_all_plugin_docs.py` to regenerate documentation
 3. Documentation is auto-generated from JavaDoc comments
+
+**Generating Plugin Documentation:**
+```bash
+# From docs/ directory
+cd scripts
+python3 generate_all_plugin_docs.py
+
+# Or from project root
+python3 docs/scripts/generate_all_plugin_docs.py
+```
+
+This will generate:
+- 46 core plugin pages in `web/documentation/2.2.0/*.html`
+- 8 external plugin pages in `web/documentation/2.2.0/external/*.html`
+- Main plugin index in `web/documentation/2.2.0/index.html`
 
 ### Adding New Examples
 1. Create XML configuration in `../examples/`
@@ -160,9 +180,9 @@ mvn clean site
 - Verify CSS and JS files are accessible
 
 **Plugin documentation missing:**
-- Run `python3 generate_all_plugin_docs.py` from project root
+- Run `python3 scripts/generate_all_plugin_docs.py` from docs/ directory
 - Check plugin JavaDoc comments
-- Verify Python scripts in root directory
+- Verify Python scripts in `docs/scripts/` directory
 
 ### Getting Help
 
