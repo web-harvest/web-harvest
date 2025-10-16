@@ -643,10 +643,9 @@ public class XQParamPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // This is a simplified implementation for the plugin architecture
-        // The actual XQuery parameter processing would need to be implemented based on the specific requirements
-        // For now, return empty variable as a placeholder
-        return EmptyVariable.INSTANCE;
+        // Execute child elements (like <get>) to get parameter value
+        // This is used by XQueryPlugin when binding node() parameters
+        return super.executeBody(context);
     }
 }
 

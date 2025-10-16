@@ -86,5 +86,19 @@ public abstract class ScraperTestBase {
         
         return context;
     }
+    
+    /**
+     * Executes an XML configuration and returns the value of a specific variable.
+     * Uses v2.2 Scraper API.
+     * 
+     * @param xmlString The XML configuration as a String
+     * @param variableName The name of the variable to retrieve
+     * @return The variable value
+     * @throws Exception If execution fails
+     */
+    protected org.webharvest.runtime.variables.Variable executeAndGetVariable(String xmlString, String variableName) throws Exception {
+        DynamicScopeContext context = executeXmlString(xmlString);
+        return context.getVar(variableName);
+    }
 }
 
