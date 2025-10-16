@@ -1,1425 +1,27 @@
 /**
- * Web-Harvest IDE - Modern Web Application
- * 
- * Features:
- * - Monaco Editor (VS Code editor)
- * - Multi-tab editing
- * - Real-time execution updates via WebSocket
- * - Concurrent scraper execution
+ * WebHarvest IDE - Modern Web-Based Configuration Editor
+ * v2.2.0 - October 2025
  */
+
+// Global state
+let currentTheme = 'vs-dark';
+let currentExecutionId = null;
+let webSocket = null;
 
 /**
  * Embedded example configurations
  */
 const EMBEDDED_EXAMPLES = {
-    'amazon_test.xml': {
-        title: 'Amazon Product Search',
-        icon: 'shopping-cart',
-        category: 'E-commerce',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- Test with Amazon search -->
-    <def var="content">
-        <html-to-xml advancedxmlescape="true" specialentities="true" allowmultiwordattributes="true" omitunknowntags="true" unicodechars="true" treatunknowntagsascontent="true" omitdeprtags="true" treatdeprtagsascontent="true" omitcomments="true" omitdoctypedeclaration="true" omitxmlns="true" omitxmlprocessinginstruction="true">
-            <http url="https://www.amazon.com/s?k=canon+camera"/>
-        </html-to-xml>
-    </def>
-    <!-- Extract product titles -->
-    <!-- Note: Use /text() to extract TEXT content from span elements -->
-    <def var="products">
-        <xpath expression="//h2[contains(@class, 's-size-small')]//span/text()">
-            <get var="content"/>
-        </xpath>
-    </def>
-    <!-- Save result -->
-    <file action="write" path="amazon_products.html" charset="UTF-8">
-        <get var="content"/>
-    </file>
-    <!-- Save product list -->
-    <file action="write" path="products.txt" charset="UTF-8">
-        <get var="products"/>
-    </file>
-</config>`
-    },
-
-    'modern_web_scraping.xml': {
-        title: 'Modern Web Scraping',
-        icon: 'globe',
-        category: 'Web Scraping',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <def var="searchTerm">artificial intelligence</def>
-    <def var="maxResults">5</def>
-    
-    <!-- Modern web scraping using improved html-to-xml -->
-    <def var="searchResults">
-        <html-to-xml 
-            advancedxmlescape="true" 
-            specialentities="true" 
-            unicodechars="true" 
-            allowmultiwordattributes="true" 
-            omitunknowntags="true"
-            treatunknowntagsascontent="true">
-            <http url="https://httpbin.org/html"/>
-        </html-to-xml>
-    </def>
-    
-    <!-- Extract content using XPath -->
-    <def var="pageTitle">
-        <xpath expression="//title">
-            <script>searchResults</script>
-        </xpath>
-    </def>
-    
-    <def var="pageContent">
-        <xpath expression="//body">
-            <script>searchResults</script>
-        </xpath>
-    </def>
-    
-    <!-- Save results to file -->
-    <file path="modern_search_results.xml" action="write">
-        <template>
-            <![CDATA[
-            <search_results>
-                <query>\${searchTerm}</query>
-                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
-                <page_title>\${pageTitle}</page_title>
-                <page_content>
-                    <script>pageContent</script>
-                </page_content>
-                <extraction_method>html-to-xml with advanced options</extraction_method>
-                <features>
-                    <feature>Advanced XML escaping</feature>
-                    <feature>Special entities handling</feature>
-                    <feature>Unicode character support</feature>
-                    <feature>Multi-word attributes</feature>
-                    <feature>Unknown tags handling</feature>
-                </features>
-            </search_results>
-            ]]>
-        </template>
-    </file>
-</config>`
-    },
-
-    'api_integration.xml': {
-        title: 'API Integration',
-        icon: 'plug',
-        category: 'APIs',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- API integration and data processing example -->
-    <def var="apiKey">demo_key_12345</def>
-    <def var="baseUrl">https://httpbin.org</def>
-    
-    <!-- Fetch data from REST API -->
-    <def var="userData">
-        <http url="\${baseUrl}/json">
-            <http-header name="Authorization">Bearer \${apiKey}</http-header>
-            <http-header name="Content-Type">application/json</http-header>
-        </http>
-    </def>
-    
-    <!-- Process JSON response -->
-    <def var="processedData">
-        <json-to-xml tag="api_response">
-            <script>userData</script>
-        </json-to-xml>
-    </def>
-    
-    <!-- Extract specific fields -->
-    <!-- Note: Use /text() to extract TEXT content, not the element -->
-    <def var="userName">
-        <xpath expression="//slideshow/title/text()">
-            <script>processedData</script>
-        </xpath>
-    </def>
-    
-    <def var="userEmail">
-        <xpath expression="//slideshow/date/text()">
-            <script>processedData</script>
-        </xpath>
-    </def>
-    
-    <!-- Transform data using XSLT -->
-    <def var="transformedData">
-        <xslt>
-            <xml>
-                <script>processedData</script>
-            </xml>
-            <stylesheet>
-                <![CDATA[
-                <?xml version="1.0" encoding="UTF-8"?>
-                <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-                    <xsl:template match="/">
-                        <user_profile>
-                            <xsl:for-each select="//slideshow">
-                                <name><xsl:value-of select="title"/></name>
-                                <email><xsl:value-of select="date"/></email>
-                                <status>active</status>
-                                <last_updated><xsl:value-of select="date"/></last_updated>
-                            </xsl:for-each>
-                        </user_profile>
-                    </xsl:template>
-                </xsl:stylesheet>
-                ]]>
-            </stylesheet>
-        </xslt>
-    </def>
-    
-    <!-- Send data to another API endpoint -->
-    <def var="apiResponse">
-        <http method="post" url="\${baseUrl}/post">
-            <http-header name="Content-Type">application/json</http-header>
-            <http-param name="data">
-                <script>transformedData</script>
-            </http-param>
-        </http>
-    </def>
-    
-    <!-- Process API response -->
-    <def var="responseData">
-        <json-to-xml tag="response">
-            <script>apiResponse</script>
-        </json-to-xml>
-    </def>
-    
-    <!-- Generate integration report -->
-    <file path="api_integration_report.xml" action="write">
-        <template>
-            <![CDATA[
-            <api_integration_report>
-                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
-                <source_api>\${baseUrl}/json</source_api>
-                <target_api>\${baseUrl}/post</target_api>
-                <status>success</status>
-                <data_processed>
-                    <user_name>\${userName}</user_name>
-                    <user_email>\${userEmail}</user_email>
-                </data_processed>
-                <api_response>
-                    <script>responseData</script>
-                </api_response>
-            </api_integration_report>
-            ]]>
-        </template>
-    </file>
-</config>`
-    },
-
-    'data_processing_pipeline.xml': {
-        title: 'Data Processing Pipeline',
-        icon: 'cogs',
-        category: 'Data Processing',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Advanced data processing pipeline example -->
-    <def var="inputFile">data_input.csv</def>
-    <def var="outputFile">processed_data.xml</def>
-    <!-- Create sample input data -->
-    <file path="\${inputFile}" action="write">
-        <template>
-            <![CDATA[
-            Name,Age,Department,Salary,Performance
-            John Doe,30,Engineering,75000,Excellent
-            Jane Smith,28,Marketing,65000,Good
-            Bob Johnson,35,Engineering,80000,Excellent
-            Alice Brown,32,Sales,70000,Good
-            Charlie Wilson,29,Engineering,72000,Good
-            Diana Davis,31,Marketing,68000,Excellent
-            ]]>
-        </template>
-    </file>
-    <!-- Read and parse CSV data -->
-    <def var="csvData">
-        <file path="\${inputFile}"/>
-    </def>
-    <!-- Convert CSV to XML -->
-    <def var="xmlData">
-        <template>
-            <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
-<employees>
-<employee>
-<name>John Doe</name>
-<age>30</age>
-<department>Engineering</department>
-<salary>75000</salary>
-<performance>Excellent</performance>
-</employee>
-<employee>
-<name>Jane Smith</name>
-<age>28</age>
-<department>Marketing</department>
-<salary>65000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Bob Johnson</name>
-<age>35</age>
-<department>Engineering</department>
-<salary>80000</salary>
-<performance>Excellent</performance>
-</employee>
-<employee>
-<name>Alice Brown</name>
-<age>32</age>
-<department>Sales</department>
-<salary>70000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Charlie Wilson</name>
-<age>29</age>
-<department>Engineering</department>
-<salary>72000</salary>
-<performance>Good</performance>
-</employee>
-<employee>
-<name>Diana Davis</name>
-<age>31</age>
-<department>Marketing</department>
-<salary>68000</salary>
-<performance>Excellent</performance>
-</employee>
-</employees>]]>
-        </template>
-    </def>
-    <!-- Process and analyze data -->
-    <def var="analysisResults">
-        <xquery>
-            <xq-param name="employees">
-                <get var="xmlData"/>
-            </xq-param>
-            <xq-expression>
-                <![CDATA[
-                declare variable $employees as node() external;
-                
-                let $totalEmployees := count($employees//employee)
-                let $avgSalary := avg($employees//employee/salary)
-                let $maxSalary := max($employees//employee/salary)
-                let $minSalary := min($employees//employee/salary)
-                
-                return
-                <analysis>
-                    <summary>
-                        <total_employees>{$totalEmployees}</total_employees>
-                        <average_salary>{round($avgSalary)}</average_salary>
-                        <max_salary>{$maxSalary}</max_salary>
-                        <min_salary>{$minSalary}</min_salary>
-                    </summary>
-                </analysis>
-                ]]>
-            </xq-expression>
-        </xquery>
-    </def>
-    
-    <!-- Generate final output -->
-    <file path="\${outputFile}" action="write">
-        <template>
-            <![CDATA[
-            <?xml version="1.0" encoding="UTF-8"?>
-            <processed_data>
-                <metadata>
-                    <processing_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</processing_date>
-                    <input_file>\${inputFile}</input_file>
-                </metadata>
-                <analysis>
-                    <get var="analysisResults"/>
-                </analysis>
-            </processed_data>
-            ]]>
-        </template>
-    </file>
-</config>`
-    },
-
-    'product_catalog.xml': {
-        title: 'Product Catalog Scraper',
-        icon: 'book',
-        category: 'E-commerce',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <!-- Product catalog scraping example -->
-    <def var="products">
-        <html-to-xml>
-            <http url="https://books.toscrape.com/"/>
-        </html-to-xml>
-    </def>
-    
-    <!-- Extract product information from the page -->
-    <file action="write" path="product_catalog/catalog.xml" charset="UTF-8">
-        <![CDATA[ <catalog> ]]>
-        <xquery>
-            <xq-param name="content" type="node()">
-                <get var="products"/>
-            </xq-param>
-            <xq-expression>
-                <![CDATA[
-                    declare variable $content as node() external;
-                    
-                    for $product in $content//article[@class="product_pod"]
-                    return
-                        <product>
-                            <title>{normalize-space($product//h3/a/@title)}</title>
-                            <price>{normalize-space($product//p[@class="price_color"])}</price>
-                            <rating>{normalize-space($product//p[@class="star-rating"]/@class)}</rating>
-                            <availability>{normalize-space($product//p[@class="instock availability"])}</availability>
-                        </product>
-                ]]>
-            </xq-expression>
-        </xquery>
-        <![CDATA[ </catalog> ]]>
-    </file>
-</config>`
-    },
-
-    'xquery.xml': {
-        title: 'XQuery Examples',
-        icon: 'code',
-        category: 'XML Processing',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-    <file action="write" path="xquerytest.xml">
-        <xquery>
-            <xq-param name="logicvalue" type="boolean">true</xq-param>
-            <xq-param name="numbervalue" type="double">12</xq-param>
-            <xq-param name="intseq" type="integer*">
-                3
-                7
-                14
-                18
-                27
-            </xq-param>
-            <xq-param name="stringvalue" type="string">ABCDEFGH123456</xq-param>
-            <xq-param name="doc">
-                <![CDATA[
-               <table>
-                    <tr>
-                        <td>one</td>
-                        <td>two</td>
-                        <td>tree</td>
-                    </tr>
-                    <tr>
-                        <td>four</td>
-                        <td>five</td>
-                        <td>six</td>
-                    </tr>
-               </table>
-            ]]>
-            </xq-param>
-            <xq-expression>
-                <![CDATA[
-                (: example of external namespace and usage of Java function library inside the XQuery :)
-                declare namespace math ="java:java.lang.Math";
-
-                (: declare namespace for user-defined functions :)
-                declare namespace fn ="f:ns";
-
-                (: declaration of external variables with names and types matching to those in xq-param :)
-                declare variable $logicvalue as xs:boolean external;
-                declare variable $numbervalue as xs:double external;
-                declare variable $intseq as xs:integer* external;
-                declare variable $stringvalue as xs:string external;
-                declare variable $doc as node()* external;
-
-                (: user-defined function inside XQuery :)
-                declare function fn:myFunc($items as xs:integer*) as node()* {
-                    for $num in $items return
-                        <value>
-                            { math:sqrt($num) + 1 }
-                        </value>
-                };
-
-                (: resuting XML :)
-                <test>
-                    <logictest>
-                        { if ($logicvalue) then 1 else 2 },
-                        { $logicvalue eq ($numbervalue gt 15) }
-                    </logictest>
-                    <doubletest>
-                        { $numbervalue * 2 + 10 },
-                        { $numbervalue instance of xs:float },
-                        { round($numbervalue) }
-                    </doubletest>
-                    <stringtest>
-                        { concat($stringvalue, $logicvalue, $numbervalue) }
-                    </stringtest>
-                    <numberseqtest>
-                        { fn:myFunc($intseq) }
-                        { concat($intseq[1], "mama") }
-                    </numberseqtest>
-                    <doctest>
-                        { for $td in $doc//td return $td }
-                    </doctest>
-                </test>
-            ]]>
-            </xq-expression>
-        </xquery>
-    </file>
-</config>`
-    },
-
-    'social_media_analytics.xml': {
-        title: 'Social Media Analytics',
-        icon: 'chart-line',
-        category: 'Analytics',
-        content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Social media analytics and sentiment analysis -->
-    <def var="hashtag">#technology</def>
-    <def var="maxPosts">10</def>
-    
-    <!-- Simulate social media data extraction -->
-    <def var="socialData">
-        <template>
-            <![CDATA[
-            [
-                {"platform": "Twitter", "user": "@techuser1", "content": "Great new AI developments! #technology #AI", "likes": 45, "retweets": 12, "sentiment": "positive"},
-                {"platform": "Twitter", "user": "@techuser2", "content": "Technology is changing everything #technology", "likes": 23, "retweets": 8, "sentiment": "positive"},
-                {"platform": "LinkedIn", "user": "Tech Professional", "content": "Latest tech trends are amazing #technology", "likes": 67, "retweets": 15, "sentiment": "positive"}
-            ]
-            ]]>
-        </template>
-    </def>
-    
-    <!-- Convert JSON to XML for processing -->
-    <def var="postsXml">
-        <json-to-xml>
-            <script>socialData</script>
-        </json-to-xml>
-    </def>
-    
-    <!-- Analyze sentiment -->
-    <def var="sentimentAnalysis">
-        <xquery>
-            <xq-param name="posts">
-                <script>postsXml</script>
-            </xq-param>
-            <xq-expression>
-                <![CDATA[
-                declare variable $posts as node() external;
-                
-                let $positive := count($posts//item[sentiment = "positive"])
-                let $negative := count($posts//item[sentiment = "negative"])
-                let $neutral := count($posts//item[sentiment = "neutral"])
-                let $total := count($posts//item)
-                
-                return
-                <sentiment_analysis>
-                    <total_posts>{$total}</total_posts>
-                    <positive_posts>{$positive}</positive_posts>
-                    <negative_posts>{$negative}</negative_posts>
-                    <neutral_posts>{$neutral}</neutral_posts>
-                    <positive_percentage>{if ($total > 0) then round($positive div $total * 100) else 0}</positive_percentage>
-                </sentiment_analysis>
-                ]]>
-            </xq-expression>
-        </xquery>
-    </def>
-    
-    <!-- Generate analytics report -->
-    <file path="social_analytics_report.xml" action="write">
-        <template>
-            <![CDATA[
-            <social_media_analytics>
-                <hashtag>\${hashtag}</hashtag>
-                <analysis_date>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</analysis_date>
-                <sentiment_analysis>
-                    <script>sentimentAnalysis</script>
-                </sentiment_analysis>
-            </social_media_analytics>
-            ]]>
-        </template>
-    </file>
-</config>`
-    },
-
-    'ecommerce_monitoring.xml': {
-        title: 'E-commerce Price Monitoring',
+    'price_monitoring.xml': {
+        title: 'Price Monitoring System',
         icon: 'dollar-sign',
         category: 'E-commerce',
         content: `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- E-commerce price monitoring example -->
-    <def var="productUrl">https://httpbin.org/json</def>
-    <def var="priceThreshold">100.00</def>
-    <!-- Monitor product prices -->
-    <def var="productData">
-        <template>
-            <![CDATA[
-            {
-                "name": "Sample Product",
-                "price": 89.99,
-                "availability": "In Stock",
-                "rating": 4.5,
-                "reviews": 127
-            }
-            ]]>
-        </template>
-    </def>
-    <!-- Process the data - simplified approach -->
-    <def var="currentPrice">89.99</def>
-    <!-- Check if price is below threshold -->
-    <file path="price_check.txt" action="write">
-        <template>
-            <![CDATA[
-                Price Check: $\${currentPrice} (threshold: $\${priceThreshold})
-                Status: Price is below threshold - ALERT!
-                ]]>
-        </template>
-    </file>
-    <!-- Generate monitoring report -->
-    <file path="monitoring_report.xml" action="write">
-        <template>
-            <![CDATA[
-            <monitoring_report>
-                <timestamp>\${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
-                <product_url>\${productUrl}</product_url>
-                <price_threshold>\${priceThreshold}</price_threshold>
-                <current_price>\${currentPrice}</current_price>
-                <status>ALERT_TRIGGERED</status>
-            </monitoring_report>
-            ]]>
-        </template>
-    </file>
-</config>`
-    }
-};
-
-const app = {
-    editor: null,
-    tabs: [],
-    activeTabId: null,
-    currentExecutionId: null,
-    webSocket: null,
-
-    /**
-     * Initialize the IDE
-     */
-    init() {
-        console.log('Initializing Web-Harvest IDE...');
-
-        // First: Create example tabs (before Monaco)
-        this.loadExampleTabs();
-
-        // Then: Initialize Monaco with first tab content
-        this.initMonaco();
-        this.initEventListeners();
-
-        console.log('Web-Harvest IDE ready with', this.tabs.length, 'example tabs!');
-    },
-
-    /**
-     * Load initial empty tab
-     */
-    loadExampleTabs() {
-        console.log('Loading initial empty tab...');
-
-        // Start with one empty tab
-        const emptyContent = `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.2.0/core">
-    <!-- Your configuration goes here -->
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Monitor book prices on books.toscrape.com -->
+    <!-- Extract product titles, prices, and availability -->
     
-</config>`;
-
-        this.addTab('untitled.xml', emptyContent);
-        console.log('  Added empty tab: untitled.xml');
-
-        console.log('Total tabs loaded:', this.tabs.length);
-    },
-
-    /**
-     * Initialize Monaco Editor
-     */
-    initMonaco() {
-        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
-
-        require(['vs/editor/editor.main'], () => {
-            // Get content from active tab (if tabs were pre-loaded)
-            const activeTab = this.tabs.find(t => t.id === this.activeTabId);
-            const initialContent = activeTab ? activeTab.content : '<!-- Loading... -->';
-
-            console.log('Creating Monaco Editor with content from tab:', this.activeTabId);
-            console.log('Content length:', initialContent.length);
-
-            this.editor = monaco.editor.create(document.getElementById('editor'), {
-                value: initialContent,
-                language: 'xml',
-                theme: 'vs-dark',
-                automaticLayout: true,
-                minimap: { enabled: true },
-                fontSize: 14,
-                lineNumbers: 'on',
-                renderWhitespace: 'selection',
-                folding: true,
-                wordWrap: 'on'
-            });
-
-            // Update cursor position
-            this.editor.onDidChangeCursorPosition((e) => {
-                document.getElementById('cursorPosition').textContent =
-                    `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
-            });
-
-            // Auto-save to tab
-            this.editor.onDidChangeModelContent(() => {
-                if (this.activeTabId) {
-                    const tab = this.tabs.find(t => t.id === this.activeTabId);
-                    if (tab) {
-                        tab.content = this.editor.getValue();
-                        tab.modified = true;
-                        this.renderTabs();
-                    }
-                }
-            });
-        });
-    },
-
-    /**
-     * Initialize event listeners
-     */
-    initEventListeners() {
-        // Result tabs
-        document.querySelectorAll('.result-tab').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const tabName = e.currentTarget.dataset.tab;
-                this.switchResultTab(tabName);
-            });
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl+S / Cmd+S: Save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                this.saveFile();
-            }
-            // Ctrl+Enter / Cmd+Enter: Run
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                this.runConfig();
-            }
-            // Ctrl+T / Cmd+T: New Tab
-            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-                e.preventDefault();
-                this.addTab();
-            }
-        });
-    },
-
-    /**
-     * Add new tab
-     */
-    addTab(name = null, content = null) {
-        const tabId = 'tab-' + Date.now() + '-' + this.tabs.length;
-        const tabName = name || `config-${this.tabs.length + 1}.xml`;
-        const tabContent = content || this.getHttpXPathExample();
-
-        console.log('Adding tab:', tabName, '- Content length:', tabContent.length);
-
-        const tab = {
-            id: tabId,
-            name: tabName,
-            content: tabContent,
-            modified: false,
-
-            // v2.2: Per-tab execution state (Apple HIG - each document has own state)
-            executionId: null,
-            logs: [],
-            results: {},
-            sessionInfo: null,
-            tokenUsage: null,
-            status: 'IDLE',
-            lastUpdate: null
-        };
-
-        this.tabs.push(tab);
-
-        // Only switch if this is the first tab or explicitly requested
-        if (this.tabs.length === 1 || !this.activeTabId) {
-            this.activeTabId = tabId;
-            console.log('  Set as active tab');
-        }
-
-        this.renderTabs();
-    },
-
-    /**
-     * Get active tab (v2.2 helper)
-     */
-    getActiveTab() {
-        return this.tabs.find(t => t.id === this.activeTabId);
-    },
-
-    /**
-     * Switch to tab (v2.2: Restores per-tab state - Apple HIG)
-     */
-    switchTab(tabId) {
-        console.log('Switching to tab:', tabId);
-
-        // Save current tab content
-        if (this.activeTabId && this.editor) {
-            const currentTab = this.tabs.find(t => t.id === this.activeTabId);
-            if (currentTab) {
-                currentTab.content = this.editor.getValue();
-                console.log('  Saved current tab content:', currentTab.name, currentTab.content.length, 'chars');
-            }
-        }
-
-        // Switch to new tab
-        this.activeTabId = tabId;
-        const tab = this.tabs.find(t => t.id === tabId);
-
-        if (tab) {
-            console.log('  Loading tab:', tab.name, tab.content.length, 'chars');
-            if (this.editor) {
-                this.editor.setValue(tab.content);
-                console.log('  Editor content updated');
-            } else {
-                console.warn('  Editor not ready yet, content will load when Monaco initializes');
-            }
-
-            // v2.2: Restore per-tab execution state (Apple HIG)
-            console.log('  Restoring tab state:', {
-                logs: tab.logs.length,
-                results: Object.keys(tab.results).length,
-                status: tab.status
-            });
-            this.renderLogs();
-            this.renderResults();
-            this.renderVariables();
-            this.renderSessionInfo();
-        }
-
-        this.renderTabs();
-    },
-
-    /**
-     * Close tab
-     */
-    closeTab(tabId, event) {
-        event.stopPropagation();
-
-        const index = this.tabs.findIndex(t => t.id === tabId);
-        if (index === -1) return;
-
-        // Confirm if modified
-        const tab = this.tabs[index];
-        if (tab.modified) {
-            if (!confirm(`${tab.name} has unsaved changes. Close anyway?`)) {
-                return;
-            }
-        }
-
-        this.tabs.splice(index, 1);
-
-        // Switch to another tab or create new one
-        if (this.tabs.length === 0) {
-            this.addTab();
-        } else {
-            const nextTab = this.tabs[Math.max(0, index - 1)];
-            this.switchTab(nextTab.id);
-        }
-
-        this.renderTabs();
-    },
-
-    /**
-     * Render tabs
-     */
-    renderTabs() {
-        const tabsContainer = document.getElementById('tabs');
-        tabsContainer.innerHTML = '';
-
-        this.tabs.forEach(tab => {
-            const tabEl = document.createElement('div');
-            tabEl.className = 'tab' + (tab.id === this.activeTabId ? ' active' : '');
-            tabEl.onclick = () => this.switchTab(tab.id);
-
-            const name = document.createElement('span');
-            name.textContent = tab.name + (tab.modified ? ' •' : '');
-
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'tab-close';
-            closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-            closeBtn.onclick = (e) => this.closeTab(tab.id, e);
-
-            tabEl.appendChild(name);
-            tabEl.appendChild(closeBtn);
-            tabsContainer.appendChild(tabEl);
-        });
-    },
-
-    /**
-     * Validate configuration
-     */
-    async validateConfig() {
-        const xml = this.editor.getValue();
-        this.setStatus('<i class="fas fa-spinner fa-spin"></i> Validating...', 'info');
-
-        try {
-            const response = await fetch('/api/config/validate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/xml' },
-                body: xml
-            });
-
-            const result = await response.json();
-
-            if (result.valid) {
-                this.setStatus('<i class="fas fa-check-circle text-success"></i> Configuration is valid!', 'success');
-            } else {
-                this.setStatus('<i class="fas fa-times-circle text-error"></i> Validation failed: ' + result.message, 'error');
-            }
-        } catch (error) {
-            this.setStatus('<i class="fas fa-times-circle text-error"></i> Validation error: ' + error.message, 'error');
-        }
-    },
-
-    /**
-     * Run configuration (v2.2: Stores executionId in active tab)
-     */
-    async runConfig() {
-        console.log('[1] runConfig() called');
-
-        const tab = this.getActiveTab();
-        console.log('[2] Active tab:', tab);
-        if (!tab) {
-            console.error('[ERROR] No active tab!');
-            this.addLog('error', 'No active tab found');
-            return;
-        }
-
-        const xml = this.editor.getValue();
-        const tabName = tab.name;
-        console.log('[3] Got XML, length:', xml.length, 'name:', tabName);
-
-        // v2.2: Clear previous execution data in THIS tab
-        tab.logs = [];
-        tab.results = {};
-        tab.sessionInfo = null;
-        tab.tokenUsage = null;
-        tab.status = 'RUNNING';
-
-        this.setStatus('<i class="fas fa-spinner fa-spin"></i> Connecting...', 'info');
-        this.showProgress(0);
-        this.clearResults();
-        this.addLog('info', '▶ Preparing to execute: ' + tabName);
-
-        // IMPORTANT: Close any existing WebSocket before creating new one
-        // This ensures each execution gets a fresh connection
-        if (this.webSocket && this.webSocket.readyState !== WebSocket.CLOSED) {
-            console.log('Closing existing WebSocket before new execution');
-            this.webSocket.close();
-            this.webSocket = null;
-        }
-
-        try {
-            // FIRST: Create execution to get ID
-            console.log('[DEBUG] About to send POST /api/execute');
-            console.log('[DEBUG] configName:', tabName);
-            console.log('[DEBUG] configXml length:', xml.length);
-
-            const response = await fetch('/api/execute', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    configXml: xml,
-                    configName: tabName,
-                    waitForWebSocket: true  // Signal to wait
-                })
-            });
-
-            console.log('[DEBUG] fetch() returned, status:', response.status);
-            console.log('[DEBUG] response ok:', response.ok);
-
-            if (!response.ok) {
-                throw new Error('Server returned error: ' + response.status);
-            }
-
-            const result = await response.json();
-            console.log('[DEBUG] JSON parsed, executionId:', result.executionId);
-
-            // v2.2: Store executionId in TAB, not globally
-            tab.executionId = result.executionId;
-            this.currentExecutionId = result.executionId;  // Keep for backward compat
-
-            this.addLog('info', '⚙ Execution ID: ' + result.executionId.substring(0, 8) + '...');
-            this.addLog('info', '🔌 Creating new WebSocket connection...');
-
-            // SECOND: Create FRESH WebSocket for this execution
-            await this.connectWebSocketSync(result.executionId);
-
-            this.addLog('success', '✓ WebSocket connected, execution starting...');
-            this.setStatus('<i class="fas fa-spinner fa-spin text-warning"></i> Running...', 'running');
-            document.getElementById('executionControls').style.display = 'flex';
-
-        } catch (error) {
-            console.error('[ERROR] runConfig() failed:', error);
-            console.error('[ERROR] Error type:', error.constructor.name);
-            console.error('[ERROR] Error message:', error.message);
-            console.error('[ERROR] Stack:', error.stack);
-
-            tab.status = 'FAILED';
-            this.setStatus('<i class="fas fa-times-circle text-error"></i> Execution failed: ' + error.message, 'error');
-            this.addLog('error', '✗ Error: ' + error.message);
-            this.addLog('error', '✗ Error type: ' + error.constructor.name);
-            this.hideProgress();
-        }
-    },
-
-    /**
-     * Connect WebSocket synchronously (wait for connection)
-     */
-    connectWebSocketSync(executionId) {
-        return new Promise((resolve, reject) => {
-            const wsUrl = `ws://${window.location.host}/ws/execution?id=${executionId}`;
-
-            console.log('🔍 [Safari Debug] Browser:', navigator.userAgent);
-            console.log('🔍 [Safari Debug] WebSocket URL:', wsUrl);
-            console.log('🔍 [Safari Debug] WebSocket support:', typeof WebSocket !== 'undefined');
-
-            try {
-                this.webSocket = new WebSocket(wsUrl);
-                console.log('✓ [Safari Debug] WebSocket object created, readyState:', this.webSocket.readyState);
-            } catch (err) {
-                console.error('❌ [Safari Debug] Failed to create WebSocket:', err);
-                this.addLog('error', '✗ WebSocket creation failed: ' + err.message);
-                reject(err);
-                return;
-            }
-
-            this.webSocket.onopen = () => {
-                console.log('✓ [Safari Debug] WebSocket onopen event fired!');
-                console.log('✓ WebSocket connected for execution:', executionId);
-                this.addLog('success', '✓ [Debug] WebSocket connected!');
-                resolve(); // Connection established!
-            };
-
-            this.webSocket.onmessage = (event) => {
-                try {
-                    const update = JSON.parse(event.data);
-                    console.log('📨 WebSocket message received (', event.data.length, 'bytes)');
-                    console.log('  Type:', update.type, 'Status:', update.status);
-
-                    // Handle different message types
-                    if (update.type === 'log') {
-                        // Log message
-                        console.log('  → Log:', update.level, update.message);
-                        this.handleLogMessage(update);
-                    } else {
-                        // Status update
-                        console.log('  → Status:', update.status);
-
-                        // Use setTimeout to avoid blocking UI
-                        setTimeout(() => {
-                            try {
-                                this.handleExecutionUpdate(update);
-                            } catch (err) {
-                                console.error('Error in handleExecutionUpdate:', err);
-                                this.addLog('error', 'UI Error: ' + err.message);
-                            }
-                        }, 0);
-                    }
-                } catch (err) {
-                    console.error('Error parsing WebSocket message:', err);
-                    console.error('Raw message:', event.data);
-                    this.addLog('error', 'Failed to parse server message: ' + err.message);
-                }
-            };
-
-            this.webSocket.onerror = (error) => {
-                console.error('❌ [Safari Debug] WebSocket onerror event:', error);
-                console.error('❌ [Safari Debug] ReadyState:', this.webSocket.readyState);
-                console.error('❌ [Safari Debug] URL:', this.webSocket.url);
-                this.addLog('error', '✗ WebSocket connection error (check console)');
-                reject(error);
-            };
-
-            this.webSocket.onclose = (event) => {
-                console.log('🔌 [Safari Debug] WebSocket onclose event');
-                console.log('🔌 WebSocket closed:', event.code, event.reason);
-                console.log('🔌 [Safari Debug] Was clean:', event.wasClean);
-
-                // Check if this was unexpected disconnect (not normal closure)
-                if (event.code !== 1000 && event.code !== 1005) {
-                    console.warn('⚠️ Unexpected WebSocket disconnect! Code:', event.code);
-                    this.handleWebSocketDisconnect(executionId, event.code);
-                }
-            };
-
-            // Timeout after 5 seconds
-            setTimeout(() => {
-                if (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN) {
-                    console.warn('⏱ [Safari Debug] WebSocket connection timeout!');
-                    console.warn('⏱ [Safari Debug] Current readyState:', this.webSocket.readyState);
-                    console.warn('⏱ [Safari Debug] Expected: 1 (OPEN), got:', this.webSocket.readyState);
-                    this.addLog('error', '✗ WebSocket timeout - readyState: ' + this.webSocket.readyState);
-                    reject(new Error('WebSocket connection timeout (readyState: ' + this.webSocket.readyState + ')'));
-                }
-            }, 5000);
-        });
-    },
-
-    /**
-     * Handle execution update from WebSocket
-     */
-    handleExecutionUpdate(update) {
-        console.log('=== Execution update received ===');
-        console.log('Status:', update.status);
-        console.log('Message:', update.message);
-        console.log('Progress:', update.progress);
-        console.log('Results:', update.results);
-        console.log('Full update object:', update);
-
-        this.showProgress(update.progress || 0);
-
-        switch (update.status) {
-            case 'STARTED':
-                this.addLog('info', '▶ ' + update.message);
-                break;
-
-            case 'RUNNING':
-                this.addLog('info', '⚙ ' + update.message);
-                // Show Pause button, hide Resume button (in case resuming)
-                const pauseBtnRun = document.getElementById('pauseBtn');
-                const resumeBtnRun = document.getElementById('resumeBtn');
-                if (pauseBtnRun) pauseBtnRun.style.display = 'inline-block';
-                if (resumeBtnRun) resumeBtnRun.style.display = 'none';
-                break;
-
-            case 'PAUSED':
-                this.setStatus('<i class="fas fa-pause-circle text-warning"></i> Paused', 'paused');
-                this.addLog('warning', '⏸ ' + update.message);
-                // Show Resume button, hide Pause button
-                const pauseBtn = document.getElementById('pauseBtn');
-                const resumeBtn = document.getElementById('resumeBtn');
-                if (pauseBtn) pauseBtn.style.display = 'none';
-                if (resumeBtn) resumeBtn.style.display = 'inline-block';
-                break;
-
-            case 'COMPLETED':
-                console.log('COMPLETED! Processing results...');
-                this.setStatus('<i class="fas fa-check-circle text-success"></i> Completed!', 'success');
-                this.addLog('success', '✓ ' + update.message);
-                document.getElementById('executionControls').style.display = 'none';
-                this.hideProgress();
-
-                console.log('Checking results:', update.results);
-                if (update.results && Object.keys(update.results).length > 0) {
-                    console.log('Displaying', Object.keys(update.results).length, 'results');
-                    this.displayResults(update.results);
-
-                    // Switch to Results panel to show results
-                    this.switchSidebarPanel('results');
-                } else {
-                    console.warn('No results in update!');
-                    this.addLog('warning', '⚠ No results returned');
-                }
-
-                // v2.2: Store session info and token usage in active tab
-                const tab = this.getActiveTab();
-                if (tab) {
-                    if (update.sessionInfo) {
-                        console.log('Storing session info in tab:', update.sessionInfo);
-                        tab.sessionInfo = update.sessionInfo;
-                    }
-                    if (update.tokenUsage) {
-                        console.log('Storing token usage in tab:', update.tokenUsage);
-                        tab.tokenUsage = update.tokenUsage;
-                    }
-                    // Render all panels
-                    this.renderVariables();
-                    this.renderSessionInfo();
-                }
-
-                // Close WebSocket after successful completion
-                if (this.webSocket) {
-                    console.log('Closing WebSocket after successful execution');
-                    this.webSocket.close();
-                    this.webSocket = null;
-                }
-                break;
-
-            case 'FAILED':
-                console.error('Execution FAILED:', update.message);
-                this.setStatus('<i class="fas fa-times-circle text-error"></i> Failed', 'error');
-                this.addLog('error', '✗ ' + update.message);
-                document.getElementById('executionControls').style.display = 'none';
-                this.hideProgress();
-
-                // Close WebSocket after failure
-                if (this.webSocket) {
-                    console.log('Closing WebSocket after failed execution');
-                    this.webSocket.close();
-                    this.webSocket = null;
-                }
-                break;
-
-            case 'STOPPED':
-                this.setStatus('<i class="fas fa-stop-circle text-error"></i> Stopped', 'stopped');
-                this.addLog('warning', '⏹ ' + update.message);
-                document.getElementById('executionControls').style.display = 'none';
-                this.hideProgress();
-
-                // Close WebSocket after stop
-                if (this.webSocket) {
-                    console.log('Closing WebSocket after stopped execution');
-                    this.webSocket.close();
-                    this.webSocket = null;
-                }
-                break;
-
-            default:
-                console.warn('Unknown status:', update.status);
-                this.addLog('info', update.message || 'Status: ' + update.status);
-        }
-    },
-
-    /**
-     * Pause execution
-     */
-    async pauseExecution() {
-        if (!this.currentExecutionId) return;
-
-        try {
-            await fetch(`/api/execute/${this.currentExecutionId}/pause`, { method: 'POST' });
-            this.addLog('warning', 'Pause requested...');
-        } catch (error) {
-            this.addLog('error', 'Failed to pause: ' + error.message);
-        }
-    },
-
-    /**
-     * Stop execution
-     */
-    async stopExecution() {
-        if (!this.currentExecutionId) return;
-
-        try {
-            await fetch(`/api/execute/${this.currentExecutionId}/stop`, { method: 'POST' });
-            this.addLog('warning', 'Stop requested...');
-        } catch (error) {
-            this.addLog('error', 'Failed to stop: ' + error.message);
-        }
-    },
-
-    /**
-     * Display execution results (v2.2: Stores in active tab)
-     */
-    displayResults(results) {
-        console.log('=== displayResults called ===');
-        console.log('Results type:', typeof results);
-        console.log('Results keys:', results ? Object.keys(results).length : 0);
-
-        // v2.2: Store in active tab (Apple HIG - per-document results)
-        const tab = this.getActiveTab();
-        if (tab) {
-            tab.results = results || {};
-            tab.status = 'COMPLETED';
-            tab.lastUpdate = new Date();
-        }
-
-        // Render results
-        this.renderResults();
-    },
-
-
-
-    /**
-     * Switch result tab
-     */
-    switchResultTab(tabName) {
-        document.querySelectorAll('.result-tab').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
-        });
-
-        document.querySelectorAll('.result-panel').forEach(panel => {
-            panel.classList.toggle('active', panel.id === tabName + 'Panel');
-        });
-    },
-
-    /**
-     * Show progress bar
-     */
-    showProgress(percent) {
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-
-        if (progressBar) progressBar.style.display = 'block';
-        if (progressFill) progressFill.style.width = percent + '%';
-        if (progressText) progressText.textContent = Math.round(percent) + '%';
-    },
-
-    /**
-     * Hide progress bar
-     */
-    hideProgress() {
-        const progressBar = document.getElementById('progressBar');
-        if (progressBar) progressBar.style.display = 'none';
-    },
-
-    /**
-     * Handle WebSocket disconnect
-     */
-    handleWebSocketDisconnect(executionId, code) {
-        const codeMessages = {
-            1001: 'Server is going away',
-            1006: 'Connection lost abnormally',
-            1008: 'Policy violation',
-            1009: 'Message too large',
-            1011: 'Server error'
-        };
-
-        const message = codeMessages[code] || `Connection closed (code: ${code})`;
-
-        // Show notification to user
-        this.showNotification(
-            '⚠️ WebSocket Disconnected',
-            `Connection was lost: ${message}\n\nClick Run again to execute a new configuration.`,
-            'warning'
-        );
-
-        this.addLog('warning', `⚠️ WebSocket disconnected: ${message}`);
-        this.setStatus('<i class="fas fa-exclamation-triangle text-warning"></i> Connection lost', 'warning');
-
-        // Hide execution controls
-        document.getElementById('executionControls').style.display = 'none';
-        this.hideProgress();
-    },
-
-    /**
-     * Show notification to user
-     */
-    showNotification(title, message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-header">
-                <strong>${title}</strong>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-            <div class="notification-body">${message.replace(/\n/g, '<br>')}</div>
-        `;
-
-        // Add to page
-        let container = document.getElementById('notificationContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'notificationContainer';
-            container.className = 'notification-container';
-            document.body.appendChild(container);
-        }
-
-        container.appendChild(notification);
-
-        // Auto-remove after 10 seconds (except errors)
-        if (type !== 'error') {
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.style.opacity = '0';
-                    setTimeout(() => notification.remove(), 300);
-                }
-            }, 10000);
-        }
-    },
-
-    /**
-     * Handle log message from WebSocket
-     */
-    handleLogMessage(logMsg) {
-        const levelMap = {
-            'INFO': 'info',
-            'SUCCESS': 'success',
-            'WARNING': 'warning',
-            'ERROR': 'error'
-        };
-        const type = levelMap[logMsg.level] || 'info';
-        this.addLog(type, logMsg.message);
-    },
-
-    /**
-     * Add log entry (v2.2: Stores in active tab)
-     */
-    addLog(type, message) {
-        // v2.2: Store in active tab (Apple HIG - per-document logs)
-        const tab = this.getActiveTab();
-        if (tab) {
-            const logEntry = {
-                time: new Date().toLocaleTimeString(),
-                type: type,
-                message: message
-            };
-            tab.logs.push(logEntry);
-        }
-
-        // Render logs for active tab
-        this.renderLogs();
-
-        // Auto-show log panel if error
-        if (type === 'error') {
-            this.switchResultTab('log');
-        }
-    },
-
-    /**
-     * Clear results
-     */
-    clearResults() {
-        // Clear results - with null checks for Safari compatibility
-        const outputContent = document.getElementById('outputContent');
-        if (outputContent) outputContent.textContent = 'Executing...';
-
-        const variablesContent = document.getElementById('variablesContent');
-        if (variablesContent) variablesContent.innerHTML = '';
-
-        const logContent = document.getElementById('logContent');
-        if (logContent) logContent.innerHTML = '';
-    },
-
-    /**
-     * Set status message
-     */
-    setStatus(message, type) {
-        const statusMessage = document.getElementById('statusMessage');
-        if (statusMessage) statusMessage.innerHTML = message;
-    },
-
-    /**
-     * Open file (placeholder)
-     */
-    openFile() {
-        alert('File open dialog - to be implemented');
-    },
-
-    /**
-     * Save file (placeholder)
-     */
-    saveFile() {
-        const tab = this.tabs.find(t => t.id === this.activeTabId);
-        if (tab) {
-            tab.modified = false;
-            this.renderTabs();
-            this.setStatus('<i class="fas fa-check-circle text-success"></i> Saved!', 'success');
-            setTimeout(() => {
-                this.setStatus('<i class="fas fa-circle text-success"></i> Ready', 'ready');
-            }, 2000);
-        }
-    },
-
-    /**
-     * Example 1: Simple HTTP + XPath
-     */
-    getHttpXPathExample() {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Simple HTTP + XPath Example -->
-    <!-- Fast test: httpbin.org (~3 seconds) -->
-    
-    <def var="url">https://httpbin.org/html</def>
+    <def var="url">https://books.toscrape.com/</def>
     
     <def var="html">
         <http url="\${url}"/>
@@ -1431,33 +33,846 @@ const app = {
         </html-to-xml>
     </def>
     
-    <def var="title">
-        <xpath expression="//title/text()">
+    <!-- Extract all product titles -->
+    <def var="titles">
+        <xpath expression="//article[@class='product_pod']//h3/a/@title">
             <get var="page"/>
         </xpath>
     </def>
     
-    <def var="heading">
-        <xpath expression="//h1/text()">
+    <!-- Extract all prices -->
+    <def var="prices">
+        <xpath expression="//article[@class='product_pod']//p[@class='price_color']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <file action="write" path="target/test-output/http_xpath_result.txt">
-        <template>Title: \${title}
-Heading: \${heading}</template>
+    <!-- Extract availability status -->
+    <def var="availability">
+        <xpath expression="//article[@class='product_pod']//p[contains(@class, 'availability')]/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Count total products -->
+    <def var="productCount">
+        <xpath expression="count(//article[@class='product_pod'])">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate JSON output -->
+    <def var="jsonOutput">
+        <template>{
+  "monitoring_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "source_url": "\${url}",
+  "total_products": \${productCount},
+  "status": "SUCCESS"
+}</template>
+    </def>
+    
+    <!-- Save results -->
+    <file action="write" path="price_monitoring.json">
+        <get var="jsonOutput"/>
     </file>
-</config>`;
+</config>`
     },
 
-    /**
-     * Example 2: Quotes Scraping
-     */
-    getQuotesExample() {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Quotes Scraping - quotes.toscrape.com -->
-    <!-- Made for scrapers - never blocks! (~10 seconds) -->
+    'product_catalog_crawler.xml': {
+        title: 'Multi-Level Catalog Crawler',
+        icon: 'sitemap',
+        category: 'Web Scraping',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Crawl multiple pages of product catalog -->
+    <!-- Extract data from category pages and product details -->
+    
+    <def var="baseUrl">https://books.toscrape.com</def>
+    <def var="categoryUrl">\${baseUrl}/catalogue/category/books_1/index.html</def>
+    
+    <!-- Level 1: Get category page -->
+    <def var="categoryHtml">
+        <http url="\${categoryUrl}"/>
+    </def>
+    
+    <def var="categoryPage">
+        <html-to-xml>
+            <get var="categoryHtml"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract product links -->
+    <def var="productLinks">
+        <xpath expression="//article[@class='product_pod']//h3/a/@href">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Count products found -->
+    <def var="productsFound">
+        <xpath expression="count(//article[@class='product_pod'])">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract first product title as sample -->
+    <def var="sampleTitle">
+        <xpath expression="(//article[@class='product_pod']//h3/a/@title)[1]">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract first product price as sample -->
+    <def var="samplePrice">
+        <xpath expression="(//article[@class='product_pod']//p[@class='price_color']/text())[1]">
+            <get var="categoryPage"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate crawl summary JSON -->
+    <def var="crawlSummary">
+        <template>{
+  "crawl_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "category_url": "\${categoryUrl}",
+  "products_found": \${productsFound},
+  "sample_product": {
+    "title": "\${sampleTitle}",
+    "price": "\${samplePrice}"
+  },
+  "status": "COMPLETED"
+}</template>
+    </def>
+    
+    <!-- Save summary -->
+    <file action="write" path="crawl_summary.json">
+        <get var="crawlSummary"/>
+    </file>
+</config>`
+    },
+
+    'product_details_extractor.xml': {
+        title: 'Product Details Extraction',
+        icon: 'info-circle',
+        category: 'E-commerce',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Extract detailed product information -->
+    <!-- Get prices, ratings, availability, and descriptions -->
+    
+    <def var="url">https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html</def>
+    
+    <def var="html">
+        <http url="\${url}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract product title -->
+    <def var="productTitle">
+        <xpath expression="//div[@class='col-sm-6 product_main']//h1/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract price -->
+    <def var="productPrice">
+        <xpath expression="//p[@class='price_color']/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract availability -->
+    <def var="productAvailability">
+        <xpath expression="//p[contains(@class, 'availability')]/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract rating -->
+    <def var="productRating">
+        <xpath expression="//p[contains(@class, 'star-rating')]/@class">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract description -->
+    <def var="productDescription">
+        <xpath expression="//div[@id='product_description']/following-sibling::p/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate product JSON -->
+    <def var="productJson">
+        <template>{
+  "extraction_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "product": {
+    "title": "\${productTitle}",
+    "price": "\${productPrice}",
+    "availability": "\${productAvailability}",
+    "rating": "\${productRating}",
+    "description_length": \${productDescription.length()}
+  },
+  "status": "EXTRACTED"
+}</template>
+    </def>
+    
+    <!-- Save product data -->
+    <file action="write" path="product_details.json">
+        <get var="productJson"/>
+    </file>
+</config>`
+    },
+
+    'category_analyzer.xml': {
+        title: 'Category Analysis Tool',
+        icon: 'chart-bar',
+        category: 'Analytics',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Analyze product distribution across categories -->
+    <!-- Extract category data and generate statistics -->
+    
+    <def var="baseUrl">https://books.toscrape.com</def>
+    
+    <def var="html">
+        <http url="\${baseUrl}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract all category names -->
+    <def var="categories">
+        <xpath expression="//ul[@class='nav nav-list']//ul//a/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Count total products on main page -->
+    <def var="totalProducts">
+        <xpath expression="count(//article[@class='product_pod'])">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Calculate average price -->
+    <def var="prices">
+        <xpath expression="//p[@class='price_color']/text()">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Extract first 5 product titles as sample -->
+    <def var="sampleProducts">
+        <xpath expression="//article[@class='product_pod'][position() &lt;= 5]//h3/a/@title">
+            <get var="page"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate analytics JSON -->
+    <def var="analytics">
+        <template>{
+  "analysis_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "website": "\${baseUrl}",
+  "metrics": {
+    "total_products_displayed": \${totalProducts},
+    "categories_count": "50+",
+    "sample_products_extracted": 5
+  },
+  "status": "ANALYZED"
+}</template>
+    </def>
+    
+    <!-- Save analytics -->
+    <file action="write" path="category_analytics.json">
+        <get var="analytics"/>
+    </file>
+</config>`
+    },
+
+    'competitive_price_tracker.xml': {
+        title: 'Competitive Price Tracking',
+        icon: 'balance-scale',
+        category: 'Business Intelligence',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Track competitor prices and find best deals -->
+    <!-- Compare prices across multiple products -->
+    
+    <def var="storeUrl">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${storeUrl}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Use XQuery to find cheapest products -->
+    <def var="priceAnalysis">
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $content as node() external;
+                
+                <price_analysis>
+                {
+                    for $product in $content//article[@class="product_pod"]
+                    let $title := normalize-space($product//h3/a/@title)
+                    let $priceText := normalize-space($product//p[@class="price_color"])
+                    let $price := number(substring-after($priceText, "£"))
+                    where $price > 0
+                    order by $price ascending
+                    return
+                        <product>
+                            <title>{$title}</title>
+                            <price>{$price}</price>
+                            <price_formatted>{$priceText}</price_formatted>
+                        </product>
+                }
+                </price_analysis>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Extract cheapest product -->
+    <def var="cheapestTitle">
+        <xpath expression="(//product/title/text())[1]">
+            <get var="priceAnalysis"/>
+        </xpath>
+    </def>
+    
+    <def var="cheapestPrice">
+        <xpath expression="(//product/price_formatted/text())[1]">
+            <get var="priceAnalysis"/>
+        </xpath>
+    </def>
+    
+    <!-- Count products analyzed -->
+    <def var="productsAnalyzed">
+        <xpath expression="count(//product)">
+            <get var="priceAnalysis"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate competitive analysis JSON -->
+    <def var="competitiveReport">
+        <template>{
+  "report_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "store_url": "\${storeUrl}",
+  "products_analyzed": \${productsAnalyzed},
+  "cheapest_product": {
+    "title": "\${cheapestTitle}",
+    "price": "\${cheapestPrice}"
+  },
+  "recommendation": "Monitor for price changes",
+  "status": "COMPLETE"
+}</template>
+    </def>
+    
+    <!-- Save report -->
+    <file action="write" path="competitive_analysis.json">
+        <get var="competitiveReport"/>
+    </file>
+</config>`
+    },
+
+    'inventory_tracker.xml': {
+        title: 'Inventory Availability Tracker',
+        icon: 'boxes',
+        category: 'Inventory Management',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Track product availability across catalog -->
+    <!-- Monitor in-stock vs out-of-stock items -->
+    
+    <def var="catalogUrl">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${catalogUrl}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Extract availability information -->
+    <def var="inventoryStatus">
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $content as node() external;
+                
+                let $allProducts := $content//article[@class="product_pod"]
+                let $inStock := $allProducts//p[contains(@class, 'availability') and contains(., 'In stock')]
+                let $total := count($allProducts)
+                let $available := count($inStock)
+                let $percentage := if ($total > 0) then round($available div $total * 100) else 0
+                
+                return
+                <inventory>
+                    <total_items>{$total}</total_items>
+                    <in_stock>{$available}</in_stock>
+                    <availability_rate>{$percentage}</availability_rate>
+                </inventory>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Extract metrics -->
+    <def var="totalItems">
+        <xpath expression="//total_items/text()">
+            <get var="inventoryStatus"/>
+        </xpath>
+    </def>
+    
+    <def var="inStockItems">
+        <xpath expression="//in_stock/text()">
+            <get var="inventoryStatus"/>
+        </xpath>
+    </def>
+    
+    <def var="availabilityRate">
+        <xpath expression="//availability_rate/text()">
+            <get var="inventoryStatus"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate inventory report JSON -->
+    <def var="inventoryReport">
+        <template>{
+  "report_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "catalog_url": "\${catalogUrl}",
+  "inventory": {
+    "total_items": \${totalItems},
+    "in_stock": \${inStockItems},
+    "availability_rate": "\${availabilityRate}%"
+  },
+  "alert": \${availabilityRate} < 90 ? "LOW_STOCK_WARNING" : "NORMAL",
+  "status": "TRACKED"
+}</template>
+    </def>
+    
+    <!-- Save inventory report -->
+    <file action="write" path="inventory_report.json">
+        <get var="inventoryReport"/>
+    </file>
+</config>`
+    },
+
+    'bestseller_finder.xml': {
+        title: 'Bestseller Identification',
+        icon: 'star',
+        category: 'Market Research',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Identify bestsellers by ratings -->
+    <!-- Extract highly-rated products for trend analysis -->
+    
+    <def var="url">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${url}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Find 5-star products using XQuery -->
+    <def var="bestsellers">
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $content as node() external;
+                
+                <bestsellers>
+                {
+                    for $product in $content//article[@class="product_pod"]
+                    let $rating := $product//p[contains(@class, 'star-rating')]/@class
+                    let $title := normalize-space($product//h3/a/@title)
+                    let $price := normalize-space($product//p[@class="price_color"])
+                    where contains($rating, 'Five') or contains($rating, 'Four')
+                    return
+                        <product>
+                            <title>{$title}</title>
+                            <price>{$price}</price>
+                            <rating>{$rating}</rating>
+                        </product>
+                }
+                </bestsellers>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Count bestsellers -->
+    <def var="bestsellerCount">
+        <xpath expression="count(//product)">
+            <get var="bestsellers"/>
+        </xpath>
+    </def>
+    
+    <!-- Get first bestseller details -->
+    <def var="topProduct">
+        <xpath expression="(//product/title/text())[1]">
+            <get var="bestsellers"/>
+        </xpath>
+    </def>
+    
+    <def var="topPrice">
+        <xpath expression="(//product/price/text())[1]">
+            <get var="bestsellers"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate bestseller report JSON -->
+    <def var="bestsellerReport">
+        <template>{
+  "analysis_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "source": "\${url}",
+  "bestsellers": {
+    "total_found": \${bestsellerCount},
+    "top_product": {
+      "title": "\${topProduct}",
+      "price": "\${topPrice}"
+    }
+  },
+  "criteria": "4-5 star ratings",
+  "status": "IDENTIFIED"
+}</template>
+    </def>
+    
+    <!-- Save report -->
+    <file action="write" path="bestseller_report.json">
+        <get var="bestsellerReport"/>
+    </file>
+</config>`
+    },
+
+    'price_comparison_tool.xml': {
+        title: 'Price Comparison Engine',
+        icon: 'calculator',
+        category: 'Price Intelligence',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Compare prices and find best value -->
+    <!-- Calculate statistics and identify outliers -->
+    
+    <def var="catalogUrl">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${catalogUrl}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Calculate price statistics using XQuery -->
+    <def var="priceStats">
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $content as node() external;
+                
+                let $prices := 
+                    for $priceText in $content//article[@class="product_pod"]//p[@class="price_color"]
+                    let $price := number(substring-after(normalize-space($priceText), "£"))
+                    where $price > 0
+                    return $price
+                
+                let $count := count($prices)
+                let $sum := sum($prices)
+                let $avg := if ($count > 0) then round($sum div $count * 100) div 100 else 0
+                let $min := min($prices)
+                let $max := max($prices)
+                
+                return
+                <statistics>
+                    <count>{$count}</count>
+                    <average>{$avg}</average>
+                    <minimum>{$min}</minimum>
+                    <maximum>{$max}</maximum>
+                    <range>{$max - $min}</range>
+                </statistics>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Extract statistics -->
+    <def var="productCount">
+        <xpath expression="//count/text()">
+            <get var="priceStats"/>
+        </xpath>
+    </def>
+    
+    <def var="avgPrice">
+        <xpath expression="//average/text()">
+            <get var="priceStats"/>
+        </xpath>
+    </def>
+    
+    <def var="minPrice">
+        <xpath expression="//minimum/text()">
+            <get var="priceStats"/>
+        </xpath>
+    </def>
+    
+    <def var="maxPrice">
+        <xpath expression="//maximum/text()">
+            <get var="priceStats"/>
+        </xpath>
+    </def>
+    
+    <def var="priceRange">
+        <xpath expression="//range/text()">
+            <get var="priceStats"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate comparison report JSON -->
+    <def var="comparisonReport">
+        <template>{
+  "report_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "catalog": "\${catalogUrl}",
+  "price_statistics": {
+    "products_analyzed": \${productCount},
+    "average_price": "£\${avgPrice}",
+    "minimum_price": "£\${minPrice}",
+    "maximum_price": "£\${maxPrice}",
+    "price_range": "£\${priceRange}"
+  },
+  "business_insight": "Price spread indicates diverse catalog",
+  "status": "COMPARED"
+}</template>
+    </def>
+    
+    <!-- Save comparison report -->
+    <file action="write" path="price_comparison.json">
+        <get var="comparisonReport"/>
+    </file>
+</config>`
+    },
+
+    'multi_page_scraper.xml': {
+        title: 'Multi-Page Catalog Scraper',
+        icon: 'layer-group',
+        category: 'Advanced Scraping',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Scrape multiple pages of catalog -->
+    <!-- Extract data from pagination and aggregate results -->
+    
+    <def var="baseUrl">https://books.toscrape.com/catalogue</def>
+    <def var="totalPages">3</def>
+    
+    <def var="allProductTitles"></def>
+    <def var="allPrices"></def>
+    <def var="pagesScraped">0</def>
+    
+    <!-- Loop through pages -->
+    <loop maxloops="\${totalPages}">
+        <def var="pageNum">\${_index + 1}</def>
+        <def var="pageUrl">\${baseUrl}/page-\${pageNum}.html</def>
+        
+        <def var="pageHtml">
+            <http url="\${pageUrl}"/>
+        </def>
+        
+        <def var="page">
+            <html-to-xml>
+                <get var="pageHtml"/>
+            </html-to-xml>
+        </def>
+        
+        <!-- Extract titles from current page -->
+        <def var="pageTitles">
+            <xpath expression="//article[@class='product_pod']//h3/a/@title">
+                <get var="page"/>
+            </xpath>
+        </def>
+        
+        <!-- Extract prices from current page -->
+        <def var="pagePrices">
+            <xpath expression="//article[@class='product_pod']//p[@class='price_color']/text()">
+                <get var="page"/>
+            </xpath>
+        </def>
+        
+        <!-- Aggregate (simplified - just count) -->
+        <def var="pagesScraped">\${_index + 1}</def>
+    </loop>
+    
+    <!-- Generate multi-page scraping report JSON -->
+    <def var="scrapingReport">
+        <template>{
+  "scraping_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "base_url": "\${baseUrl}",
+  "pages_scraped": \${pagesScraped},
+  "total_pages_requested": \${totalPages},
+  "method": "Multi-page pagination scraping",
+  "status": "COMPLETED"
+}</template>
+    </def>
+    
+    <!-- Save scraping report -->
+    <file action="write" path="multi_page_scraping.json">
+        <get var="scrapingReport"/>
+    </file>
+</config>`
+    },
+
+    'product_data_api.xml': {
+        title: 'Product Data API Formatter',
+        icon: 'database',
+        category: 'Data Export',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Extract product data and format as JSON API response -->
+    <!-- Suitable for feeding into other systems or dashboards -->
+    
+    <def var="sourceUrl">https://books.toscrape.com/</def>
+    
+    <def var="html">
+        <http url="\${sourceUrl}"/>
+    </def>
+    
+    <def var="page">
+        <html-to-xml>
+            <get var="html"/>
+        </html-to-xml>
+    </def>
+    
+    <!-- Build structured product data with XQuery -->
+    <def var="productData">
+        <xquery>
+            <xq-param name="content" type="node()">
+                <get var="page"/>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare variable $content as node() external;
+                
+                <api_response>
+                    <metadata>
+                        <timestamp>{current-dateTime()}</timestamp>
+                        <source>books.toscrape.com</source>
+                        <version>1.0</version>
+                    </metadata>
+                    <products>
+                    {
+                        for $product at $pos in $content//article[@class="product_pod"]
+                        let $title := normalize-space($product//h3/a/@title)
+                        let $price := normalize-space($product//p[@class="price_color"])
+                        let $rating := normalize-space($product//p[contains(@class, 'star-rating')]/@class)
+                        let $available := if ($product//p[contains(@class, 'availability') and contains(., 'In stock')]) then 'true' else 'false'
+                        where $pos <= 10
+                        return
+                            <product>
+                                <id>{$pos}</id>
+                                <title>{$title}</title>
+                                <price>{$price}</price>
+                                <rating>{replace($rating, 'star-rating ', '')}</rating>
+                                <in_stock>{$available}</in_stock>
+                            </product>
+                    }
+                    </products>
+                </api_response>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Extract summary stats -->
+    <def var="productsExtracted">
+        <xpath expression="count(//products/product)">
+            <get var="productData"/>
+        </xpath>
+    </def>
+    
+    <!-- Get first product as example -->
+    <def var="firstProductTitle">
+        <xpath expression="(//product/title/text())[1]">
+            <get var="productData"/>
+        </xpath>
+    </def>
+    
+    <def var="firstProductPrice">
+        <xpath expression="(//product/price/text())[1]">
+            <get var="productData"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate API-formatted JSON -->
+    <def var="apiResponse">
+        <template>{
+  "api_version": "1.0",
+  "timestamp": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "source_url": "\${sourceUrl}",
+  "data": {
+    "products_extracted": \${productsExtracted},
+    "sample_product": {
+      "title": "\${firstProductTitle}",
+      "price": "\${firstProductPrice}"
+    }
+  },
+  "status": "SUCCESS"
+}</template>
+    </def>
+    
+    <!-- Save API response -->
+    <file action="write" path="product_api.json">
+        <get var="apiResponse"/>
+    </file>
+    
+    <!-- Also save full XML data -->
+    <file action="write" path="product_data.xml">
+        <get var="productData"/>
+    </file>
+</config>`
+    },
+
+    'quotes_scraping.xml': {
+        title: 'Quotes Content Scraper',
+        icon: 'quote-left',
+        category: 'Content Extraction',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Extract quotes and authors for content database -->
+    <!-- Scrape structured content from quotes.toscrape.com -->
     
     <def var="url">https://quotes.toscrape.com/</def>
     
@@ -1471,914 +886,178 @@ Heading: \${heading}</template>
         </html-to-xml>
     </def>
     
-    <!-- Extract all quotes (use /text() to get text content) -->
+    <!-- Extract all quotes (use /text() to get text content only) -->
     <def var="quotes">
         <xpath expression="//div[@class='quote']//span[@class='text']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <!-- Extract all authors (use /text() to get text content) -->
+    <!-- Extract all authors (use /text() to get text content only) -->
     <def var="authors">
         <xpath expression="//div[@class='quote']//small[@class='author']/text()">
             <get var="page"/>
         </xpath>
     </def>
     
-    <file action="write" path="target/test-output/quotes.txt">
-        <template>
-=== QUOTES FROM \${url} ===
-
-Quotes:
-\${quotes}
-
-Authors:
-\${authors}
-        </template>
-    </file>
-</config>`;
-    },
-
-    /**
-     * Example 3: JSON API
-     */
-    getJsonApiExample() {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- JSON API Example - jsonplaceholder.typicode.com -->
-    <!-- Public API - always available (~5 seconds) -->
-    
-    <def var="apiUrl">https://jsonplaceholder.typicode.com/users/1</def>
-    
-    <def var="jsonData">
-        <http url="\${apiUrl}"/>
-    </def>
-    
-    <def var="xmlData">
-        <json-to-xml>
-            <get var="jsonData"/>
-        </json-to-xml>
-    </def>
-    
-    <def var="userName">
-        <xpath expression="//name/text()">
-            <get var="xmlData"/>
-        </xpath>
-    </def>
-    
-    <def var="userEmail">
-        <xpath expression="//email/text()">
-            <get var="xmlData"/>
-        </xpath>
-    </def>
-    
-    <def var="userCity">
-        <xpath expression="//address/city/text()">
-            <get var="xmlData"/>
-        </xpath>
-    </def>
-    
-    <file action="write" path="target/test-output/user_data.txt">
-        <template>
-=== USER DATA ===
-Name: \${userName}
-Email: \${userEmail}
-City: \${userCity}
-        </template>
-    </file>
-</config>`;
-    },
-
-    /**
-     * Example 4: Wikipedia
-     */
-    getWikipediaExample() {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Wikipedia Example - polite scraping -->
-    <!-- Educational use (~5 seconds) -->
-    
-    <def var="topic">Web_scraping</def>
-    <def var="url">https://en.wikipedia.org/wiki/\${topic}</def>
-    
-    <def var="html">
-        <http url="\${url}">
-            <http-header name="User-Agent" value="Web-Harvest/2.2.0 Educational"/>
-        </http>
-    </def>
-    
-    <def var="page">
-        <html-to-xml>
-            <get var="html"/>
-        </html-to-xml>
-    </def>
-    
-    <def var="title">
-        <xpath expression="//h1[@id='firstHeading']/text()">
+    <!-- Count quotes -->
+    <def var="quoteCount">
+        <xpath expression="count(//div[@class='quote'])">
             <get var="page"/>
         </xpath>
     </def>
     
-    <def var="intro">
-        <xpath expression="string(//div[@id='mw-content-text']//p[1])">
-            <get var="page"/>
-        </xpath>
+    <!-- Generate quotes JSON -->
+    <def var="quotesJson">
+        <template>{
+  "extraction_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "source_url": "\${url}",
+  "content": {
+    "total_quotes": \${quoteCount},
+    "quotes_preview": "First quote extracted successfully",
+    "authors_extracted": true
+  },
+  "status": "EXTRACTED"
+}</template>
     </def>
     
-    <file action="write" path="target/test-output/wikipedia.txt">
-        <template>
-=== WIKIPEDIA: \${topic} ===
-
-Title: \${title}
-
-Intro: \${intro}
-        </template>
+    <!-- Save quotes data -->
+    <file action="write" path="quotes_data.json">
+        <get var="quotesJson"/>
     </file>
-</config>`;
-    },
-
-    /**
-     * Example 5: Data Pipeline
-     */
-    getDataPipelineExample() {
-        return `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Advanced Data Pipeline - Multiple APIs -->
-    <!-- Shows: Multi-source aggregation (~15 seconds) -->
     
-    <!-- Get user data -->
-    <def var="userData">
-        <http url="https://jsonplaceholder.typicode.com/users/1"/>
-    </def>
-    
-    <!-- Get user's posts -->
-    <def var="postsData">
-        <http url="https://jsonplaceholder.typicode.com/posts?userId=1"/>
-    </def>
-    
-    <!-- Parse both -->
-    <def var="userXml">
-        <json-to-xml>
-            <get var="userData"/>
-        </json-to-xml>
-    </def>
-    
-    <def var="postsXml">
-        <json-to-xml>
-            <get var="postsData"/>
-        </json-to-xml>
-    </def>
-    
-    <!-- Extract user info (use /text() to get text content) -->
-    <def var="name">
-        <xpath expression="//name/text()">
-            <get var="userXml"/>
-        </xpath>
-    </def>
-    
-    <def var="email">
-        <xpath expression="//email/text()">
-            <get var="userXml"/>
-        </xpath>
-    </def>
-    
-    <!-- Count posts (count function returns number) -->
-    <def var="postCount">
-        <xpath expression="count(//item)">
-            <get var="postsXml"/>
-        </xpath>
-    </def>
-    
-    <!-- Get first post (use /text() to get text content) -->
-    <def var="firstPost">
-        <xpath expression="//item[1]/title/text()">
-            <get var="postsXml"/>
-        </xpath>
-    </def>
-    
-    <!-- Generate report -->
-    <file action="write" path="target/test-output/user_report.txt">
-        <template>
-=== USER ACTIVITY REPORT ===
-
-User: \${name}
-Email: \${email}
-Posts: \${postCount}
-
-Latest: \${firstPost}
-
-Data aggregated from 2 API sources!
-        </template>
+    <!-- Save quotes text -->
+    <file action="write" path="quotes.txt" charset="UTF-8">
+        <get var="quotes"/>
     </file>
-</config>`;
+</config>`
     },
 
-    /**
-     * Sidebar Panel Management (v2.2 - Apple HIG)
-     */
-    switchSidebarPanel(panelName) {
-        console.log('Switching sidebar panel to:', panelName);
-
-        // Update nav buttons
-        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.panel === panelName);
-        });
-
-        // Update panels
-        document.querySelectorAll('.sidebar-panel').forEach(panel => {
-            panel.classList.toggle('active', panel.id === panelName + 'Panel');
-        });
-
-        // Update active tab's state
-        const tab = this.getActiveTab();
-        if (tab) {
-            tab.activeSidebarPanel = panelName;
-        }
-    },
-
-    /**
-     * Examples Modal Management
-     */
-    showExamplesModal() {
-        console.log('Showing examples modal...');
-        const modal = document.getElementById('examplesModal');
-        modal.classList.add('active');
-        this.loadExamplesList();
-    },
-
-    hideExamplesModal() {
-        const modal = document.getElementById('examplesModal');
-        modal.classList.remove('active');
-    },
-
-    async loadExamplesList() {
-        const grid = document.getElementById('examplesGrid');
-
-        // Build examples array from embedded examples
-        const examples = Object.keys(EMBEDDED_EXAMPLES).map(file => ({
-            file: file,
-            title: EMBEDDED_EXAMPLES[file].title,
-            icon: EMBEDDED_EXAMPLES[file].icon,
-            category: EMBEDDED_EXAMPLES[file].category
-        }));
-
-        grid.innerHTML = examples.map(ex => `
-            <div class="example-card" data-file="${ex.file}" onclick="app.selectExample('${ex.file}')">
-                <i class="fas fa-${ex.icon}"></i>
-                <h4>${ex.title}</h4>
-                <p>${ex.category}</p>
-            </div>
-        `).join('');
-    },
-
-    selectExample(filename) {
-        document.querySelectorAll('.example-card').forEach(card => {
-            card.classList.toggle('selected', card.dataset.file === filename);
-        });
-        this.selectedExample = filename;
-    },
-
-    async loadSelectedExample() {
-        if (!this.selectedExample) {
-            alert('Please select an example first');
-            return;
-        }
-
-        try {
-            // Get content from embedded examples
-            const example = EMBEDDED_EXAMPLES[this.selectedExample];
-            if (!example) {
-                throw new Error(`Example ${this.selectedExample} not found`);
-            }
-
-            const content = example.content;
-            this.addTab(this.selectedExample, content);
-            this.hideExamplesModal();
-            this.addLog('info', `Loaded example: ${this.selectedExample}`);
-        } catch (error) {
-            console.error('Failed to load example:', error);
-            this.addLog('error', `Failed to load example: ${error.message}`);
-        }
-    },
-
-    /**
-     * Logs, Variables, Results Rendering
-     */
-    clearLogs() {
-        const tab = this.getActiveTab();
-        if (tab) {
-            tab.logs = [];
-            this.renderLogs();
-            if (document.getElementById('logsBadge')) {
-                document.getElementById('logsBadge').textContent = '0';
-            }
-        }
-    },
-
-    renderLogs() {
-        const tab = this.getActiveTab();
-        const container = document.getElementById('logsContent');
-        const badge = document.getElementById('logsBadge');
-
-        if (!container) return;
-
-        if (!tab || !tab.logs || tab.logs.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-list-ul"></i>
-                    <p>No logs yet</p>
-                    <small>Logs will appear during execution</small>
-                </div>`;
-            // Update badge to 0 when no logs
-            if (badge) badge.textContent = '0';
-            return;
-        }
-
-        container.innerHTML = tab.logs.map(log => `
-            <div class="log-entry ${log.type}">
-                <span class="log-time">${log.time}</span>
-                <span class="log-message">${this.escapeHtml(log.message)}</span>
-            </div>
-        `).join('');
-
-        container.scrollTop = container.scrollHeight;
-
-        // Update badge with log count
-        if (badge) {
-            badge.textContent = tab.logs.length;
-        }
-    },
-
-    filterVariables(query) {
-        const items = document.querySelectorAll('.variable-item');
-        items.forEach(item => {
-            const name = item.querySelector('.var-name').textContent;
-            item.style.display = name.toLowerCase().includes(query.toLowerCase()) ? 'block' : 'none';
-        });
-    },
-
-    renderResults() {
-        console.log('[renderResults] Called');
-        const tab = this.getActiveTab();
-        console.log('[renderResults] Active tab:', tab);
-        const container = document.getElementById('resultsContent');
-        console.log('[renderResults] Container:', container);
-
-        if (!container) {
-            console.warn('[renderResults] Container not found!');
-            return;
-        }
-
-        if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
-            console.log('[renderResults] No results to display');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-table"></i>
-                    <p>No results yet</p>
-                    <small>Results will appear after execution</small>
-                </div>`;
-            return;
-        }
-
-        const resultCount = Object.keys(tab.results).length;
-        console.log('[renderResults] Rendering', resultCount, 'results');
-        container.innerHTML = Object.entries(tab.results).map(([key, value]) => `
-            <div class="result-item">
-                <span class="result-key">${this.escapeHtml(key)}:</span>
-                <span class="result-value">${this.escapeHtml(String(value))}</span>
-            </div>
-        `).join('');
-        console.log('[renderResults] Done rendering');
-    },
-
-    renderVariables() {
-        console.log('[renderVariables] Called');
-        const tab = this.getActiveTab();
-        const container = document.getElementById('variablesContent');
-        const badge = document.getElementById('varsBadge');
-
-        if (!container) {
-            console.warn('[renderVariables] Container not found!');
-            return;
-        }
-
-        if (!tab || !tab.results || Object.keys(tab.results).length === 0) {
-            console.log('[renderVariables] No variables to display');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-box"></i>
-                    <p>No variables yet</p>
-                    <small>Variables will appear during execution</small>
-                </div>`;
-            if (badge) badge.textContent = '0';
-            return;
-        }
-
-        const varCount = Object.keys(tab.results).length;
-        console.log('[renderVariables] Rendering', varCount, 'variables');
-
-        container.innerHTML = Object.entries(tab.results).map(([key, value]) => `
-            <div class="var-item">
-                <div class="var-name">${this.escapeHtml(key)}</div>
-                <div class="var-value">${this.escapeHtml(String(value).substring(0, 200))}${String(value).length > 200 ? '...' : ''}</div>
-            </div>
-        `).join('');
-
-        if (badge) badge.textContent = varCount;
-        console.log('[renderVariables] Done, badge updated to:', varCount);
-    },
-
-    renderSessionInfo() {
-        console.log('[renderSessionInfo] Called');
-        const tab = this.getActiveTab();
-        const container = document.getElementById('sessionContent');
-        console.log('[renderSessionInfo] Container:', container);
-
-        if (!container) {
-            console.warn('[renderSessionInfo] Container not found!');
-            return;
-        }
-
-        if (!tab || !tab.sessionInfo) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-info-circle"></i>
-                    <p>No session active</p>
-                    <small>Session details will appear after execution</small>
-                </div>
-                <button class="btn btn-secondary" onclick="app.loadSessionHistory()">
-                    <i class="fas fa-history"></i> View History
-                </button>`;
-            return;
-        }
-
-        const session = tab.sessionInfo;
-        const duration = session.duration < 1000 ?
-            `${session.duration}ms` :
-            `${(session.duration / 1000).toFixed(2)}s`;
-
-        container.innerHTML = `
-            <div class="session-card">
-                <h4>Current Session</h4>
-                <div class="session-stat">
-                    <span class="session-stat-label">ID:</span>
-                    <span class="session-stat-value">${session.sessionId ? session.sessionId.substring(0, 8) + '...' : 'N/A'}</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Status:</span>
-                    <span class="session-stat-value status-${session.status ? session.status.toLowerCase() : 'unknown'}">
-                        <i class="${this.getStatusIcon(session.status)}"></i> ${session.status || 'N/A'}
-                    </span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Duration:</span>
-                    <span class="session-stat-value">${duration}</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Elements:</span>
-                    <span class="session-stat-value">${session.elementsProcessed || 0}</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Rate:</span>
-                    <span class="session-stat-value">${session.processingRate ? session.processingRate.toFixed(2) : '0.00'} elem/s</span>
-                </div>
-            </div>`;
-
-        // v2.2: HTTP Metrics (if available)
-        if (session.httpMetrics) {
-            const http = session.httpMetrics;
-            const kbDown = (http.bytesDownloaded / 1024).toFixed(2);
-            const kbUp = (http.bytesUploaded / 1024).toFixed(2);
-
-            container.innerHTML += `
-            <div class="session-card">
-                <h4><i class="fas fa-network-wired"></i> HTTP Metrics</h4>
-                <div class="session-stat">
-                    <span class="session-stat-label">Requests:</span>
-                    <span class="session-stat-value">${http.requests}</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Downloaded:</span>
-                    <span class="session-stat-value">${kbDown} KB</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Uploaded:</span>
-                    <span class="session-stat-value">${kbUp} KB</span>
-                </div>
-                <div class="session-stat">
-                    <span class="session-stat-label">Avg Response:</span>
-                    <span class="session-stat-value">${http.avgResponseTime} ms</span>
-                </div>
-            </div>`;
-        }
-
-        // v2.2: Plugin Breakdown (if available)
-        if (session.pluginBreakdown) {
-            const plugins = session.pluginBreakdown;
-            const pluginList = Object.entries(plugins)
-                .sort((a, b) => b[1] - a[1])  // Sort by time (longest first)
-                .map(([name, timeMs]) => `
-                    <div class="plugin-stat">
-                        <span class="plugin-name"><i class="fas fa-puzzle-piece"></i> ${name}</span>
-                        <span class="plugin-time">${timeMs}ms</span>
-                        <div class="plugin-bar">
-                            <div class="plugin-bar-fill" style="width: ${(timeMs / session.duration * 100).toFixed(1)}%"></div>
-                        </div>
-                    </div>
-                `).join('');
-
-            container.innerHTML += `
-            <div class="session-card">
-                <h4><i class="fas fa-chart-bar"></i> Plugin Breakdown</h4>
-                <div class="plugin-breakdown">
-                    ${pluginList}
-                </div>
-            </div>`;
-        }
-
-        container.innerHTML += `
-            <button class="btn btn-secondary btn-block" onclick="app.loadSessionHistory()" style="margin-top: 1rem;">
-                <i class="fas fa-history"></i> View All Sessions
-            </button>
-        `;
-    },
-
-    exportResults() {
-        const tab = this.getActiveTab();
-        if (!tab || !tab.results) {
-            alert('No results to export');
-            return;
-        }
-
-        const json = JSON.stringify(tab.results, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `results-${tab.name}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
-
-    showPluginHelp(pluginName) {
-        const tooltip = document.getElementById('pluginTooltip');
-        if (!tooltip) return;
-
-        const title = document.getElementById('tooltipTitle');
-        const description = document.getElementById('tooltipDescription');
-        const link = document.getElementById('tooltipLink');
-
-        const plugins = {
-            'http': { title: 'HTTP Plugin', desc: 'HTTP/HTTPS request plugin', url: '/plugins/http.html' },
-            'xpath': { title: 'XPath Plugin', desc: 'Extract data from XML using XPath', url: '/plugins/xpath.html' },
-            'html-to-xml': { title: 'HTML to XML Plugin', desc: 'Convert HTML to XML', url: '/plugins/html-to-xml.html' }
-        };
-
-        const plugin = plugins[pluginName] || { title: pluginName, desc: 'Plugin documentation', url: '/plugins/' };
-
-        title.textContent = plugin.title;
-        description.textContent = plugin.desc;
-        link.href = plugin.url;
-
-        tooltip.style.display = 'block';
-    },
-
-    hideTooltip() {
-        const tooltip = document.getElementById('pluginTooltip');
-        if (tooltip) tooltip.style.display = 'none';
-    },
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-
-    /**
-     * Load and display session execution history
-     */
-    async loadSessionHistory() {
-        console.log('[loadSessionHistory] Loading session history...');
-
-        try {
-            const response = await fetch('/api/sessions/history?limit=20');
-
-            if (!response.ok) {
-                console.error('[loadSessionHistory] HTTP error:', response.status);
-                alert('Failed to load session history');
-                return;
-            }
-
-            const data = await response.json();
-            console.log('[loadSessionHistory] Loaded', data.total, 'sessions');
-
-            this.renderSessionHistory(data.sessions);
-
-        } catch (error) {
-            console.error('[loadSessionHistory] Error:', error);
-            alert('Error loading session history: ' + error.message);
-        }
-    },
-
-    /**
-     * Render session history in the Session panel
-     */
-    renderSessionHistory(sessions) {
-        console.log('[renderSessionHistory] Rendering', sessions.length, 'sessions');
-
-        const container = document.getElementById('sessionContent');
-        if (!container) {
-            console.warn('[renderSessionHistory] Container not found!');
-            return;
-        }
-
-        if (!sessions || sessions.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-history"></i>
-                    <p>No session history</p>
-                    <small>Execute some configurations to build history</small>
-                </div>`;
-            return;
-        }
-
-        let html = `
-            <div class="session-history">
-                <div class="session-history-header">
-                    <h4><i class="fas fa-history"></i> Session History</h4>
-                    <span class="session-count">${sessions.length} sessions</span>
-                </div>
-                <div class="session-history-list">`;
-
-        sessions.forEach((session, index) => {
-            const statusClass = session.status.toLowerCase();
-            const statusIcon = this.getStatusIcon(session.status);
-            const timestamp = new Date(session.timestamp).toLocaleString();
-            const duration = session.duration < 1000 ?
-                `${session.duration}ms` :
-                `${(session.duration / 1000).toFixed(2)}s`;
-
-            html += `
-                <div class="session-history-item ${statusClass}" onclick="app.showSessionDetails(${index})">
-                    <div class="session-history-header">
-                        <span class="session-status">
-                            <i class="${statusIcon}"></i> ${session.status}
-                        </span>
-                        <span class="session-time">${timestamp}</span>
-                    </div>
-                    <div class="session-history-details">
-                        <div class="session-detail">
-                            <i class="fas fa-file-code"></i>
-                            <span>${session.configName}</span>
-                        </div>
-                        <div class="session-stats-row">
-                            <div class="session-stat-mini">
-                                <i class="fas fa-clock"></i>
-                                ${duration}
-                            </div>
-                            <div class="session-stat-mini">
-                                <i class="fas fa-cubes"></i>
-                                ${session.elementsProcessed} elements
-                            </div>
-                            <div class="session-stat-mini">
-                                <i class="fas fa-tachometer-alt"></i>
-                                ${session.processingRate.toFixed(1)} elem/s
-                            </div>
-                        </div>
-                    </div>
-                    <div class="session-id-mini">
-                        <i class="fas fa-fingerprint"></i>
-                        ${session.sessionId.substring(0, 8)}...
-                    </div>
-                </div>`;
-        });
-
-        html += `
-                </div>
-                <button class="btn btn-secondary btn-block" onclick="app.loadSessionHistory()">
-                    <i class="fas fa-sync"></i> Refresh
-                </button>
-            </div>`;
-
-        container.innerHTML = html;
-
-        // Store sessions for details view
-        this.sessionHistory = sessions;
-    },
-
-    /**
-     * Get icon for session status
-     */
-    getStatusIcon(status) {
-        const icons = {
-            'COMPLETED': 'fas fa-check-circle',
-            'FAILED': 'fas fa-times-circle',
-            'RUNNING': 'fas fa-spinner fa-spin',
-            'PENDING': 'fas fa-clock',
-            'CANCELLED': 'fas fa-ban'
-        };
-        return icons[status] || 'fas fa-question-circle';
-    },
-
-    /**
-     * Show details for a specific session
-     */
-    /**
-     * Pause current execution
-     */
-    async pauseExecution() {
-        const tab = this.getActiveTab();
-        if (!tab || !tab.executionId) {
-            alert('No active execution to pause');
-            return;
-        }
-
-        console.log('[pauseExecution] Pausing:', tab.executionId);
-
-        try {
-            const response = await fetch(`/api/execution/${tab.executionId}/pause`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log('[pauseExecution] Paused:', result);
-                this.addLog('info', '⏸ Execution paused');
-            } else {
-                console.error('[pauseExecution] Failed:', response.status);
-                alert('Failed to pause execution');
-            }
-        } catch (error) {
-            console.error('[pauseExecution] Error:', error);
-            alert('Error pausing execution: ' + error.message);
-        }
-    },
-
-    /**
-     * Resume paused execution
-     */
-    async resumeExecution() {
-        const tab = this.getActiveTab();
-        if (!tab || !tab.executionId) {
-            alert('No paused execution to resume');
-            return;
-        }
-
-        console.log('[resumeExecution] Resuming:', tab.executionId);
-
-        try {
-            const response = await fetch(`/api/execution/${tab.executionId}/resume`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log('[resumeExecution] Resumed:', result);
-                this.addLog('info', '▶ Execution resumed');
-            } else {
-                console.error('[resumeExecution] Failed:', response.status);
-                alert('Failed to resume execution');
-            }
-        } catch (error) {
-            console.error('[resumeExecution] Error:', error);
-            alert('Error resuming execution: ' + error.message);
-        }
-    },
-
-    /**
-     * Stop execution
-     */
-    async stopExecution() {
-        const tab = this.getActiveTab();
-        if (!tab || !tab.executionId) {
-            alert('No execution to stop');
-            return;
-        }
-
-        if (!confirm('Are you sure you want to stop this execution?')) {
-            return;
-        }
-
-        console.log('[stopExecution] Stopping:', tab.executionId);
-
-        try {
-            const response = await fetch(`/api/execution/${tab.executionId}/stop`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log('[stopExecution] Stopped:', result);
-                this.addLog('warn', '⏹ Execution stopped by user');
-            } else {
-                console.error('[stopExecution] Failed:', response.status);
-                alert('Failed to stop execution');
-            }
-        } catch (error) {
-            console.error('[stopExecution] Error:', error);
-            alert('Error stopping execution: ' + error.message);
-        }
-    },
-
-    showSessionDetails(index) {
-        if (!this.sessionHistory || !this.sessionHistory[index]) {
-            console.warn('[showSessionDetails] Session not found:', index);
-            return;
-        }
-
-        const session = this.sessionHistory[index];
-        console.log('[showSessionDetails] Showing session:', session.sessionId);
-
-        const container = document.getElementById('sessionContent');
-        if (!container) return;
-
-        const timestamp = new Date(session.timestamp).toLocaleString();
-        const duration = session.duration < 1000 ?
-            `${session.duration}ms` :
-            `${(session.duration / 1000).toFixed(2)}s`;
-
-        container.innerHTML = `
-            <div class="session-details">
-                <div class="session-details-header">
-                    <button class="btn btn-sm" onclick="app.loadSessionHistory()">
-                        <i class="fas fa-arrow-left"></i> Back to History
-                    </button>
-                    <h4><i class="fas fa-info-circle"></i> Session Details</h4>
-                </div>
-                
-                <div class="session-card">
-                    <h5>General</h5>
-                    <div class="session-stat">
-                        <span class="session-stat-label">ID:</span>
-                        <span class="session-stat-value">${session.sessionId}</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Config:</span>
-                        <span class="session-stat-value">${session.configName}</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Status:</span>
-                        <span class="session-stat-value status-${session.status.toLowerCase()}">
-                            <i class="${this.getStatusIcon(session.status)}"></i> ${session.status}
-                        </span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Timestamp:</span>
-                        <span class="session-stat-value">${timestamp}</span>
-                    </div>
-                </div>
-                
-                <div class="session-card">
-                    <h5>Performance</h5>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Duration:</span>
-                        <span class="session-stat-value">${duration}</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Elements:</span>
-                        <span class="session-stat-value">${session.elementsProcessed}</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Rate:</span>
-                        <span class="session-stat-value">${session.processingRate.toFixed(2)} elem/s</span>
-                    </div>
-                </div>`;
-
-        // v2.2: HTTP Metrics (if available)
-        if (session.httpMetrics) {
-            const http = session.httpMetrics;
-            const kbDown = (http.bytesDownloaded / 1024).toFixed(2);
-            const kbUp = (http.bytesUploaded / 1024).toFixed(2);
-
-            container.innerHTML += `
-                <div class="session-card">
-                    <h5>HTTP Metrics</h5>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Requests:</span>
-                        <span class="session-stat-value">${http.requests}</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Downloaded:</span>
-                        <span class="session-stat-value">${kbDown} KB</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Uploaded:</span>
-                        <span class="session-stat-value">${kbUp} KB</span>
-                    </div>
-                    <div class="session-stat">
-                        <span class="session-stat-label">Avg Response:</span>
-                        <span class="session-stat-value">${http.avgResponseTime} ms</span>
-                    </div>
-                </div>`;
-        }
-
-        container.innerHTML += `
-            </div>`;
+    'xquery_examples.xml': {
+        title: 'XQuery Processing',
+        icon: 'code',
+        category: 'XML Processing',
+        content: `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Business Scenario: Complex data transformation with XQuery -->
+    <!-- Demonstrate XQuery capabilities for business logic -->
+    
+    <def var="xqueryResult">
+        <xquery>
+            <xq-param name="logicvalue" type="boolean">true</xq-param>
+            <xq-param name="revenue" type="double">150000</xq-param>
+            <xq-param name="quarters" type="integer*">
+                35000
+                42000
+                38000
+                35000
+            </xq-param>
+            <xq-param name="companyName" type="string">TechCorp</xq-param>
+            <xq-param name="salesData">
+                <![CDATA[
+               <sales>
+                    <region name="North" revenue="50000"/>
+                    <region name="South" revenue="45000"/>
+                    <region name="East" revenue="35000"/>
+                    <region name="West" revenue="20000"/>
+               </sales>
+            ]]>
+            </xq-param>
+            <xq-expression>
+                <![CDATA[
+                declare namespace math ="java:java.lang.Math";
+                declare namespace fn ="f:ns";
+
+                declare variable $logicvalue as xs:boolean external;
+                declare variable $revenue as xs:double external;
+                declare variable $quarters as xs:integer* external;
+                declare variable $companyName as xs:string external;
+                declare variable $salesData as node()* external;
+
+                declare function fn:calculateGrowth($values as xs:integer*) as node()* {
+                    for $val at $pos in $values
+                    return
+                        <quarter>
+                            <period>{$pos}</period>
+                            <revenue>{$val}</revenue>
+                            <growth_index>{math:sqrt($val)}</growth_index>
+                        </quarter>
+                };
+
+                <business_report>
+                    <company>{$companyName}</company>
+                    <annual_revenue>{$revenue}</annual_revenue>
+                    <target_met>{if ($logicvalue and $revenue > 100000) then 'YES' else 'NO'}</target_met>
+                    <quarterly_performance>
+                        { fn:calculateGrowth($quarters) }
+                    </quarterly_performance>
+                    <regional_breakdown>
+                        { for $region in $salesData//region
+                          let $rev := number($region/@revenue)
+                          let $share := round($rev div $revenue * 100)
+                          return
+                            <region>
+                                <name>{string($region/@name)}</name>
+                                <revenue>{$rev}</revenue>
+                                <market_share>{$share}%</market_share>
+                            </region>
+                        }
+                    </regional_breakdown>
+                </business_report>
+                ]]>
+            </xq-expression>
+        </xquery>
+    </def>
+    
+    <!-- Extract key metrics -->
+    <def var="targetMet">
+        <xpath expression="//target_met/text()">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <def var="quarterCount">
+        <xpath expression="count(//quarter)">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <def var="regionCount">
+        <xpath expression="count(//regional_breakdown/region)">
+            <get var="xqueryResult"/>
+        </xpath>
+    </def>
+    
+    <!-- Generate XQuery results JSON -->
+    <def var="xqueryJson">
+        <template>{
+  "processing_date": "\${sys.datetime('yyyy-MM-dd HH:mm:ss')}",
+  "analysis": {
+    "target_met": "\${targetMet}",
+    "quarters_analyzed": \${quarterCount},
+    "regions_analyzed": \${regionCount}
+  },
+  "capabilities_demonstrated": ["XQuery", "Java functions", "Math operations", "Complex transformations"],
+  "status": "PROCESSED"
+}</template>
+    </def>
+    
+    <!-- Save results -->
+    <file action="write" path="xquery_results.json">
+        <get var="xqueryJson"/>
+    </file>
+    
+    <!-- Save full XML -->
+    <file action="write" path="xquery_full.xml">
+        <get var="xqueryResult"/>
+    </file>
+</config>`
     }
 };
 
-// Initialize IDE when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    app.init();
-});
-
+const app = {
+    editor: null,
+    tabs: [],
+    activeTabId: null,
+    currentExecutionId: null,
+    webSocket: null,
