@@ -124,7 +124,7 @@
                 <h1>XPath Best Practices<br />in WebHarvest</h1>
                 <p class="lead">Master text extraction vs element selection</p>
                 <p class="hero-description">
-                    Learn the most common XPath pitfall in WebHarvest and how to avoid it. 
+                    Learn the most common XPath pitfall in WebHarvest and how to avoid it.
                     Understand when to use <code>/text()</code>, <code>string()</code>, or plain element selection.
                 </p>
             </div>
@@ -141,18 +141,21 @@
         <div style="max-width: 900px; margin: 2rem auto;">
             <blockquote
                 style="border-left: 4px solid var(--purple); padding-left: var(--spacing-5); font-style: italic; color: var(--gray-600); margin: var(--spacing-6) 0;">
-                "When I use <code>//title</code> or <code>//h1</code>, I get <code>&lt;h1&gt;Herman Melville - Moby-Dick&lt;/h1&gt;</code> 
+                "When I use <code>//title</code> or <code>//h1</code>, I get
+                <code>&lt;h1&gt;Herman Melville - Moby-Dick&lt;/h1&gt;</code>
                 instead of just <code>Herman Melville - Moby-Dick</code>. How do I extract only the text?"
                 <footer style="margin-top: var(--spacing-3); font-size: 0.875rem;">— Common WebHarvest Question</footer>
             </blockquote>
 
             <p style="font-size: 1.05rem; line-height: 1.7; margin-top: 2rem;">
-                By default, XPath expressions like <code>//title</code> return the <strong>entire element</strong> including tags.
-                To extract only the text content, you need to use <code>/text()</code> or <code>string()</code> function.
+                By default, XPath expressions like <code>//title</code> return the <strong>entire element</strong>
+                including tags.
+                To extract only the text content, you need to use <code>/text()</code> or <code>string()</code>
+                function.
             </p>
 
             <div class="note">
-                <strong>💡 Quick Fix:</strong> Add <code>/text()</code> to your XPath expression: 
+                <strong>💡 Quick Fix:</strong> Add <code>/text()</code> to your XPath expression:
                 <code>//title/text()</code> instead of <code>//title</code>
             </div>
         </div>
@@ -219,7 +222,8 @@
             </div>
 
             <div class="note" style="margin-top: 2rem;">
-                <strong>💡 Alternative:</strong> You can also use <code>string(//title)</code> which does the same thing.
+                <strong>💡 Alternative:</strong> You can also use <code>string(//title)</code> which does the same
+                thing.
             </div>
         </div>
     </section>
@@ -527,7 +531,8 @@
             </div>
 
             <div class="note" style="margin-top: 2rem;">
-                <strong>💡 Pro Tip:</strong> Check <code>debug/xpath-result.txt</code> to verify the result matches your expectations. 
+                <strong>💡 Pro Tip:</strong> Check <code>debug/xpath-result.txt</code> to verify the result matches your
+                expectations.
                 If you see XML tags in the output, you forgot <code>/text()</code>!
             </div>
         </div>
@@ -546,11 +551,11 @@
                     <i class="fas fa-star" style="color: #f59e0b;"></i> General Rule
                 </h3>
                 <p style="margin-bottom: 1rem; font-size: 1.05rem;">
-                    <strong>If you're extracting content for display, templates, or text processing, 
-                    always use <code>/text()</code> or <code>string()</code> function.</strong>
+                    <strong>If you're extracting content for display, templates, or text processing,
+                        always use <code>/text()</code> or <code>string()</code> function.</strong>
                 </p>
                 <p style="margin: 0; font-size: 1.05rem;">
-                    <strong>Exception:</strong> Only use <code>//element</code> (without <code>/text()</code>) 
+                    <strong>Exception:</strong> Only use <code>//element</code> (without <code>/text()</code>)
                     when you need the element node for further XPath processing or iteration.
                 </p>
             </div>
@@ -559,35 +564,17 @@
 
     <!-- Footer -->
     <footer class="site-footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>WebHarvest</h4>
-                    <p>Open-source Java framework for web data extraction</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Documentation</h4>
-                    <a href="getting-started.html">Getting Started</a>
-                    <a href="2.2.0/">Core Processors</a>
-                    <a href="./">Guides & Tutorials</a>
-                </div>
-                <div class="footer-section">
-                    <h4>Resources</h4>
-                    <a href="../plugins.html">Plugins</a>
-                    <a href="../ide.html">IDE</a>
-                    <a href="../cli.html">CLI</a>
-                </div>
-                <div class="footer-section">
-                    <h4>Community</h4>
-                    <a href="https://github.com/webharvest/webharvest">GitHub</a>
-                    <a href="../support.html">Support</a>
-                </div>
+        <div class="container footer-content">
+            <div class="footer-links">
+                <a href="../about.html">About</a>
+                <a href="2.2.0/">Plugins</a>
+                <a href="./">Documentation</a>
+                <a href="../examples/">Examples</a>
+                <a href="../support.html">Support</a>
+                <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
             </div>
-            <div class="footer-bottom">
-                <p>© 2006-2025 WebHarvest. Licensed under Apache License 2.0</p>
-                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                    Updated: October 17, 2025 | Version: 2.2.0
-                </p>
+            <div class="footer-legal">
+                <p>Copyright © 2006-2025 WebHarvest Contributors. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -597,4 +584,3 @@
 </body>
 
 </html>
-
