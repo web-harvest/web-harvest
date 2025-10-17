@@ -48,29 +48,117 @@ import org.webharvest.runtime.variables.Variable;
  * Function call parameter - used within {@code <call>} to pass arguments to functions.
  * 
  * <p>
- * The {@code <call-param>} processor defines a parameter passed to a function.
- * Must be used as a child element of {@code <call>}.
+ * The {@code <call-param>} processor defines a parameter passed to a function when calling it with {@code <call>}.
+ * Parameters can be simple values or complex expressions. Must be used as a child element of {@code <call>}.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple parameters</h4>
  * <pre>{@code
- * <call name="fetchProduct">
- *   <call-param name="productId">12345</call-param>
- *   <call-param name="includeReviews">true</call-param>
- * </call>
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <function name="greet">
+ *   <def var="name"><call-param name="userName"/></def>
+ *   <def var="greeting">Hello, ${name}!</def>
+ *   <return>${greeting}</return>
+ * </function>
+ * 
+ * <def var="message">
+ *   <call name="greet">
+ *     <call-param name="userName">John</call-param>
+ *   </call>
+ * </def>
+ * </config>
  * }</pre>
  * 
- * <p>Inside the function, access parameters with:</p>
+ * <h4>Example 2: Complex parameter values</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <function name="fetchProduct">
  *   <def var="id"><call-param name="productId"/></def>
- *   <def var="reviews"><call-param name="includeReviews"/></def>
- *   <!-- Function logic -->
+ *   <def var="apiUrl">https://api.example.com/products/${id}</def>
+ *   <def var="response">
+ *     <http url="${apiUrl}"/>
+ *   </def>
+ *   <return>${response}</return>
  * </function>
+ * 
+ * <call name="fetchProduct">
+ *   <call-param name="productId">
+ *     <xpath expression="//product/@id">
+ *       <html-to-xml>${catalog}</html-to-xml>
+ *     </xpath>
+ *   </call-param>
+ * </call>
  * </config>
  * }</pre>
+ * 
+ * <h4>Example 3: Multiple parameters with types</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <function name="formatPrice">
+ *   <def var="amount"><call-param name="price"/></def>
+ *   <def var="curr"><call-param name="currency"/></def>
+ *   <def var="decimals"><call-param name="decimalPlaces"/></def>
+ *   
+ *   <return>${curr} ${amount}</return>
+ * </function>
+ * 
+ * <call name="formatPrice">
+ *   <call-param name="price">19.99</call-param>
+ *   <call-param name="currency">USD</call-param>
+ *   <call-param name="decimalPlaces">2</call-param>
+ * </call>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Passing XML/HTML content</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <function name="extractLinks">
+ *   <def var="htmlContent"><call-param name="html"/></def>
+ *   <def var="links">
+ *     <xpath expression="//a/@href">
+ *       <html-to-xml>${htmlContent}</html-to-xml>
+ *     </xpath>
+ *   </def>
+ *   <return>${links}</return>
+ * </function>
+ * 
+ * <call name="extractLinks">
+ *   <call-param name="html">
+ *     <http url="https://example.com"/>
+ *   </call-param>
+ * </call>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>name</strong> (required): The parameter name used to access value in function</li>
+ * </ul>
+ * 
+ * <h3>Return Value</h3>
+ * <p>Returns the evaluated body content as the parameter value.</p>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used within {@code <call>} element</li>
+ *   <li><strong>Parameter Access</strong>: Inside function, use {@code <call-param name="paramName"/>} to retrieve value</li>
+ *   <li><strong>Type Handling</strong>: Parameters can be strings, XML, lists, or any variable type</li>
+ *   <li><strong>Evaluation</strong>: Body content is evaluated before passing to function</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <call>} - Function invocation (parent element)</li>
+ *   <li>{@code <function>} - Function definition</li>
+ *   <li>{@code <return>} - Return value from function</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

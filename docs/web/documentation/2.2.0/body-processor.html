@@ -13,16 +13,14 @@
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;body-processor&gt; - Body execution processor" />
     <meta property="og:description" content="The <code><body-processor></code> is an internal processor used by the framework
-to execute child processors and collect their results. Not typically used
-direc..." />
+to execute child processors and collect their results. It provides a standardiz..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/body-processor.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;body-processor&gt; - Body execution processor" />
     <meta property="twitter:description" content="The <code><body-processor></code> is an internal processor used by the framework
-to execute child processors and collect their results. Not typically used
-direc..." />
+to execute child processors and collect their results. It provides a standardiz..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -31,8 +29,8 @@ direc..." />
       "@type": "TechArticle",
       "headline": "&lt;body-processor&gt; - Body execution processor",
       "description": "The <code><body-processor></code> is an internal processor used by the framework
-to execute child processors and collect their results. Not typically used
-directly in user configurations.",
+to execute child processors and collect their results. It provides a standardized
+way to execute processor body content and return the results as a variable list.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -149,17 +147,30 @@ directly in user configurations.",
         <section class="section">
             <h2 class="section-title">Overview</h2>
             <p>The <code><body-processor></code> is an internal processor used by the framework
-to execute child processors and collect their results. Not typically used
-directly in user configurations.</p>
+to execute child processors and collect their results. It provides a standardized
+way to execute processor body content and return the results as a variable list.</p>
         </section>
 
         
 
         
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Internal Use:: Primarily used by framework, not user configurations</li><li>Body Execution:: Executes child processors and returns results</li><li>Variable Scope:: Maintains proper variable scope during execution</li><li>Result Format:: Returns results as appropriate variable type</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="loop.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;loop&gt;
+                </a>
+                <a href="if.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;if&gt;
+                </a>
+                <a href="function.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;function&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

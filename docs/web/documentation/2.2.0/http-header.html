@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;http-header&gt; - HTTP request header definition" />
-    <meta property="og:description" content="The <code><http-header></code> processor defines HTTP request headers. Must be used
-as a child element of <code><http></code>...." />
+    <meta property="og:description" content="The <code><http-header></code> processor defines HTTP request headers for authentication,
+content type negotiation, custom headers, and API requirements. Must b..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/http-header.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;http-header&gt; - HTTP request header definition" />
-    <meta property="twitter:description" content="The <code><http-header></code> processor defines HTTP request headers. Must be used
-as a child element of <code><http></code>...." />
+    <meta property="twitter:description" content="The <code><http-header></code> processor defines HTTP request headers for authentication,
+content type negotiation, custom headers, and API requirements. Must b..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,8 @@ as a child element of <code><http></code>...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;http-header&gt; - HTTP request header definition",
-      "description": "The <code><http-header></code> processor defines HTTP request headers. Must be used
-as a child element of <code><http></code>.",
+      "description": "The <code><http-header></code> processor defines HTTP request headers for authentication,
+content type negotiation, custom headers, and API requirements. Must be used as a child element of <code><http></code>.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +145,14 @@ as a child element of <code><http></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><http-header></code> processor defines HTTP request headers. Must be used
-as a child element of <code><http></code>.</p>
+            <p>The <code><http-header></code> processor defines HTTP request headers for authentication,
+content type negotiation, custom headers, and API requirements. Must be used as a child element of <code><http></code>.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: API Authentication with Bearer Token</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -165,10 +165,78 @@ as a child element of <code><http></code>.</p>
                 <div class="window-content">
                     <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
 &lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;apiKey&quot;&gt;sk_live_abc123xyz&lt;/def&gt;
+
 &lt;http url=&quot;https://api.example.com/data&quot;&gt;
   &lt;http-header name=&quot;Authorization&quot;&gt;Bearer ${apiKey}&lt;/http-header&gt;
   &lt;http-header name=&quot;Accept&quot;&gt;application/json&lt;/http-header&gt;
-  &lt;http-header name=&quot;User-Agent&quot;&gt;WebHarvest/2.2&lt;/http-header&gt;
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Custom User-Agent</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://example.com/page&quot;&gt;
+  &lt;http-header name=&quot;User-Agent&quot;&gt;Mozilla/5.0 (compatible; MyBot/1.0)&lt;/http-header&gt;
+  &lt;http-header name=&quot;Accept-Language&quot;&gt;en-US,en;q=0.9&lt;/http-header&gt;
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Content-Type for POST requests</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://api.example.com/users&quot; method=&quot;POST&quot;&gt;
+  &lt;http-header name=&quot;Content-Type&quot;&gt;application/json&lt;/http-header&gt;
+  &lt;http-header name=&quot;Authorization&quot;&gt;Bearer ${apiKey}&lt;/http-header&gt;
+  {&quot;name&quot;: &quot;John&quot;, &quot;email&quot;: &quot;john@example.com&quot;}
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Multiple custom headers</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://api.example.com/v1/data&quot;&gt;
+  &lt;http-header name=&quot;X-API-Key&quot;&gt;${apiKey}&lt;/http-header&gt;
+  &lt;http-header name=&quot;X-Request-ID&quot;&gt;${requestId}&lt;/http-header&gt;
+  &lt;http-header name=&quot;X-Client-Version&quot;&gt;2.2.0&lt;/http-header&gt;
+  &lt;http-header name=&quot;Accept&quot;&gt;application/json&lt;/http-header&gt;
+  &lt;http-header name=&quot;Accept-Encoding&quot;&gt;gzip, deflate&lt;/http-header&gt;
 &lt;/http&gt;
 &lt;/config&gt;</code></pre>
                 </div>
@@ -177,11 +245,11 @@ as a child element of <code><http></code>.</p>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The HTTP header name (e.g., Authorization, Accept, User-Agent)</li><li><strong>value</strong>: (required): The HTTP header value (as element content)</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The HTTP header name (e.g., Authorization, Content-Type, User-Agent)</li><li><strong>Content (body)</strong>: : The HTTP header value</li></ul>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><http></code> element</li><li>Header Names: : Use standard HTTP header names (case-insensitive)</li><li>Dynamic Values: : Header values support variable substitution with ${var}</li><li>Multiple Headers: : Can define multiple headers in single HTTP request</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><http></code> element</li><li>Header Names: : Standard HTTP header names (case-insensitive per HTTP spec)</li><li>Dynamic Values: : Header values support variable substitution with ${var}</li><li>Multiple Headers: : Can define multiple headers in single HTTP request</li><li>Overwriting: : If same header name used twice, last value wins</li></ul>
         </section>
 
         <section class="section">
@@ -192,8 +260,8 @@ as a child element of <code><http></code>.</p>
                 <a href="http-param.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;http-param&gt;
                 </a>
-                <a href="var.html" class="related-link">
-                    <i class="fas fa-code"></i> &lt;var&gt;
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
                 </a></div>
         </section>
     </div>

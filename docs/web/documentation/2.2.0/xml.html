@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;xml&gt; - XML content wrapper processor" />
-    <meta property="og:description" content="The <code><xml></code> processor wraps XML content for explicit declaration.
-Rarely needed - most XML is processed directly without this wrapper...." />
+    <meta property="og:description" content="The <code><xml></code> processor wraps XML content for explicit declaration and processing.
+Rarely needed in modern configurations - most XML is processed direc..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/xml.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;xml&gt; - XML content wrapper processor" />
-    <meta property="twitter:description" content="The <code><xml></code> processor wraps XML content for explicit declaration.
-Rarely needed - most XML is processed directly without this wrapper...." />
+    <meta property="twitter:description" content="The <code><xml></code> processor wraps XML content for explicit declaration and processing.
+Rarely needed in modern configurations - most XML is processed direc..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,9 @@ Rarely needed - most XML is processed directly without this wrapper...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;xml&gt; - XML content wrapper processor",
-      "description": "The <code><xml></code> processor wraps XML content for explicit declaration.
-Rarely needed - most XML is processed directly without this wrapper.",
+      "description": "The <code><xml></code> processor wraps XML content for explicit declaration and processing.
+Rarely needed in modern configurations - most XML is processed directly without this wrapper.
+Useful when you need to ensure XML content is properly parsed and validated.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +146,15 @@ Rarely needed - most XML is processed directly without this wrapper.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><xml></code> processor wraps XML content for explicit declaration.
-Rarely needed - most XML is processed directly without this wrapper.</p>
+            <p>The <code><xml></code> processor wraps XML content for explicit declaration and processing.
+Rarely needed in modern configurations - most XML is processed directly without this wrapper.
+Useful when you need to ensure XML content is properly parsed and validated.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Explicit XML declaration</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -168,7 +170,14 @@ Rarely needed - most XML is processed directly without this wrapper.</p>
 &lt;def var=&quot;xmlData&quot;&gt;
   &lt;xml&gt;
     &lt;products&gt;
-      &lt;product id=&quot;1&quot;&gt;Item&lt;/product&gt;
+      &lt;product id=&quot;1&quot;&gt;
+        &lt;name&gt;Laptop&lt;/name&gt;
+        &lt;price&gt;999.99&lt;/price&gt;
+      &lt;/product&gt;
+      &lt;product id=&quot;2&quot;&gt;
+        &lt;name&gt;Mouse&lt;/name&gt;
+        &lt;price&gt;29.99&lt;/price&gt;
+      &lt;/product&gt;
     &lt;/products&gt;
   &lt;/xml&gt;
 &lt;/def&gt;
@@ -176,13 +185,138 @@ Rarely needed - most XML is processed directly without this wrapper.</p>
                 </div>
             </div>
 
+            <h3 class="subsection-title">Example 2: Dynamic XML generation</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;productName&quot;&gt;WebHarvest Pro&lt;/def&gt;
+&lt;def var=&quot;productPrice&quot;&gt;199.99&lt;/def&gt;
+
+&lt;def var=&quot;productXml&quot;&gt;
+  &lt;xml&gt;
+    &lt;product&gt;
+      &lt;name&gt;${productName}&lt;/name&gt;
+      &lt;price&gt;${productPrice}&lt;/price&gt;
+      &lt;timestamp&gt;${new Date()}&lt;/timestamp&gt;
+    &lt;/product&gt;
+  &lt;/xml&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: XML template with processing</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;userData&quot;&gt;
+  &lt;xml&gt;
+    &lt;user&gt;
+      &lt;id&gt;12345&lt;/id&gt;
+      &lt;name&gt;John Doe&lt;/name&gt;
+      &lt;email&gt;john@example.com&lt;/email&gt;
+      &lt;preferences&gt;
+        &lt;theme&gt;dark&lt;/theme&gt;
+        &lt;language&gt;en&lt;/language&gt;
+      &lt;/preferences&gt;
+    &lt;/user&gt;
+  &lt;/xml&gt;
+&lt;/def&gt;
+
+&lt;!-- Process the XML --&gt;
+&lt;def var=&quot;userName&quot;&gt;
+  &lt;xpath expression=&quot;//name/text()&quot;&gt;
+    &lt;get var=&quot;userData&quot;/&gt;
+  &lt;/xpath&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: When explicit XML is useful</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- When you need to ensure XML is properly parsed --&gt;
+&lt;def var=&quot;configTemplate&quot;&gt;
+  &lt;xml&gt;
+    &lt;configuration&gt;
+      &lt;database&gt;
+        &lt;host&gt;localhost&lt;/host&gt;
+        &lt;port&gt;3306&lt;/port&gt;
+        &lt;name&gt;webharvest&lt;/name&gt;
+      &lt;/database&gt;
+      &lt;api&gt;
+        &lt;baseUrl&gt;https://api.example.com&lt;/baseUrl&gt;
+        &lt;timeout&gt;30000&lt;/timeout&gt;
+      &lt;/api&gt;
+    &lt;/configuration&gt;
+  &lt;/xml&gt;
+&lt;/def&gt;
+
+&lt;!-- Alternative: Direct XML (usually preferred) --&gt;
+&lt;def var=&quot;configTemplate2&quot;&gt;
+  &lt;configuration&gt;
+    &lt;database&gt;
+      &lt;host&gt;localhost&lt;/host&gt;
+      &lt;port&gt;3306&lt;/port&gt;
+      &lt;name&gt;webharvest&lt;/name&gt;
+    &lt;/database&gt;
+  &lt;/configuration&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
         </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>Content (body)</strong>: : XML content to wrap</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Rarely Needed:: Most XML content works directly without this wrapper</li><li>XML Parsing:: Ensures content is properly parsed as XML</li><li>Variable Substitution:: Supports ${var} syntax within XML content</li><li>Validation:: XML content must be well-formed</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="xpath.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;xpath&gt;
+                </a>
+                <a href="html-to-xml.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;html-to-xml&gt;
+                </a>
+                <a href="json-to-xml.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;json-to-xml&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

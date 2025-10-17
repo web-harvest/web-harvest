@@ -51,10 +51,12 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <p>
  * The {@code <else>} processor executes when the preceding {@code <if>} condition
- * evaluates to false. Used with {@code <if>} and {@code <case>} processors.
+ * evaluates to false. Used with {@code <if>} for conditional branching logic.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple if-else logic</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -67,15 +69,67 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
+ * <h4>Example 2: Handle empty results</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="title">
+ *   <xpath expression="//h1/text()">
+ *     <html-to-xml>${response}</html-to-xml>
+ *   </xpath>
+ * </def>
+ * 
+ * <if condition="${!empty(title)}">
+ *   <file path="title.txt" action="write">${title}</file>
+ * </if>
+ * <else>
+ *   <file path="errors.log" action="append">
+ *     Title not found on page ${url}
+ *   </file>
+ * </else>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Error handling with HTTP</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="response">
+ *   <try>
+ *     <http url="https://api.example.com/data"/>
+ *   </try>
+ *   <catch>
+ *     <empty/>
+ *   </catch>
+ * </def>
+ * 
+ * <if condition="${!empty(response)}">
+ *   <!-- Process successful response -->
+ *   <def var="data">
+ *     <json-to-xml>${response}</json-to-xml>
+ *   </def>
+ * </if>
+ * <else>
+ *   <!-- Fallback to cached data -->
+ *   <def var="data">
+ *     <file path="cache/last-response.xml" action="read"/>
+ *   </def>
+ * </else>
+ * </config>
+ * }</pre>
+ * 
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>No parameters</strong>: Else block executes when condition is false</li>
  *   <li><strong>Content</strong>: Contains processors to execute in else case</li>
  * </ul>
  * 
+ * <h3>Return Value</h3>
+ * <p>Returns the result of executing the else block body, or EmptyVariable if no body.</p>
+ * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Parent Element</strong>: Must be used after {@code <if>} or {@code <case>} block</li>
+ *   <li><strong>Parent Element</strong>: Must be used immediately after {@code <if>} or {@code <case>} block</li>
  *   <li><strong>Conditional Logic</strong>: Executes only when preceding condition is false</li>
  *   <li><strong>Fallback Processing</strong>: Provides alternative execution path</li>
  *   <li><strong>Variable Scope</strong>: Variables defined in else block are available after execution</li>
@@ -85,10 +139,9 @@ import org.webharvest.runtime.variables.Variable;
  * <ul>
  *   <li>{@code <if>} - Conditional execution with condition</li>
  *   <li>{@code <case>} - Case-based conditional execution</li>
- *   <li>{@code <var>} - Variable definition</li>
+ *   <li>{@code <try>} / {@code <catch>} - Exception handling</li>
+ *   <li>{@code <def>} - Variable definition</li>
  * </ul>
- * 
- * <p>See {@link IfPlugin} and {@link CasePlugin} for complete examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

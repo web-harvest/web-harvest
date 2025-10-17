@@ -50,20 +50,116 @@ import org.slf4j.LoggerFactory;
  * Expression evaluation processor - evaluates ${} expressions explicitly.
  * 
  * <p>
- * The {@code <value-of>} processor explicitly evaluates template expressions.
- * Mostly used for XPath-style value extraction. In most cases, direct ${} syntax is simpler.
+ * The {@code <value-of>} processor explicitly evaluates template expressions and returns their values.
+ * Mostly used for XPath-style value extraction and when you need explicit expression evaluation.
+ * In most cases, direct ${} syntax is simpler and preferred.
  * </p>
  * 
- * <h3>Usage</h3>
- * <pre>{@code
- * <!-- Explicit expression evaluation -->
- * <value-of expr="${productName}" />
+ * <h3>Usage Examples</h3>
  * 
- * <!-- Simpler: just use ${} directly -->
- * ${productName}
+ * <h4>Example 1: Explicit expression evaluation</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="productName">WebHarvest Pro</def>
+ * <def var="price">99.99</def>
+ * 
+ * <!-- Explicit evaluation -->
+ * <def var="description">
+ *   <value-of expr="${productName} - $${price}"/>
+ * </def>
+ * 
+ * <!-- Simpler alternative -->
+ * <def var="description2">${productName} - $${price}</def>
+ * </config>
  * }</pre>
  * 
- * <p><strong>Note:</strong> Rarely needed - direct ${} syntax is preferred.</p>
+ * <h4>Example 2: XPath-style value extraction</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="xmlData">
+ *   <html-to-xml>
+ *     <http url="https://example.com/product"/>
+ *   </html-to-xml>
+ * </def>
+ * 
+ * <def var="productTitle">
+ *   <value-of expr="//h1[@class='product-title']/text()"/>
+ * </def>
+ * 
+ * <def var="productPrice">
+ *   <value-of expr="//span[@class='price']/text()"/>
+ * </def>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Complex expression evaluation</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="baseUrl">https://api.example.com</def>
+ * <def var="endpoint">/v1/products</def>
+ * <def var="apiKey">abc123</def>
+ * 
+ * <def var="fullUrl">
+ *   <value-of expr="${baseUrl}${endpoint}?key=${apiKey}"/>
+ * </def>
+ * 
+ * <!-- Alternative syntax -->
+ * <def var="fullUrl2">${baseUrl}${endpoint}?key=${apiKey}</def>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: When explicit evaluation is useful</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <!-- When you need to ensure expression is evaluated in specific context -->
+ * <def var="dynamicContent">
+ *   <value-of expr="${userInput}"/>
+ * </def>
+ * 
+ * <!-- For debugging - explicit evaluation shows what's being processed -->
+ * <log message="Processing: ${dynamicContent}"/>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>expr</strong> (required): The expression to evaluate</li>
+ * </ul>
+ * 
+ * <h3>Return Value</h3>
+ * <p>Returns the evaluated result of the expression as a Variable.</p>
+ * 
+ * <h3>When to Use</h3>
+ * <ul>
+ *   <li><strong>XPath expressions:</strong> When extracting values from XML/HTML</li>
+ *   <li><strong>Explicit evaluation:</strong> When you need to ensure expression is evaluated</li>
+ *   <li><strong>Debugging:</strong> To see exactly what expression is being processed</li>
+ *   <li><strong>Complex expressions:</strong> For multi-part expressions that need explicit handling</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Expression Required:</strong> The expr attribute is mandatory</li>
+ *   <li><strong>Template Syntax:</strong> Uses ${} template syntax</li>
+ *   <li><strong>Variable Access:</strong> Can access all variables in current scope</li>
+ *   <li><strong>XPath Support:</strong> Supports XPath expressions for XML/HTML data</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li><strong>Direct ${} syntax</strong> - Preferred for simple expressions</li>
+ *   <li>{@code <xpath>} - XPath extraction from XML/HTML</li>
+ *   <li>{@code <def>} - Variable definition</li>
+ * </ul>
+ * 
+ * <h3>Note</h3>
+ * <p><strong>Rarely needed in modern configurations.</strong> Direct ${} syntax is simpler and preferred
+ * for most use cases. Use {@code <value-of>} only when you need explicit expression evaluation
+ * or XPath-style extraction.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

@@ -48,45 +48,97 @@ import org.webharvest.runtime.variables.Variable;
  * Regexp pattern definition - used within {@code <regexp>} to specify regex pattern.
  * 
  * <p>
- * The {@code <regexp-pattern>} processor defines the regular expression pattern.
- * Must be used as a child element of {@code <regexp>}.
+ * The {@code <regexp-pattern>} processor defines the regular expression pattern for matching and extraction.
+ * Must be used as a child element of {@code <regexp>}. Supports Java regex syntax with capture groups.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Extract links from HTML</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <regexp>
  *   <regexp-pattern><![CDATA[<a href="([^"]+)">]]></regexp-pattern>
  *   <regexp-source>${htmlPage}</regexp-source>
  * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: Extract emails</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})]]></regexp-pattern>
+ *   <regexp-source>${textContent}</regexp-source>
+ * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Price extraction with capture groups</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[Price:\s*\$(\d+)\.(\d{2})]]></regexp-pattern>
+ *   <regexp-source>Price: $19.99</regexp-source>
+ *   <regexp-result index="1"/><!-- Returns "19" -->
+ *   <regexp-result index="2"/><!-- Returns "99" -->
+ * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Complex pattern with multiple groups</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<div class="product" data-id="(\d+)" data-name="([^"]+)" data-price="([\d.]+)">]]></regexp-pattern>
+ *   <regexp-source>${productHtml}</regexp-source>
+ * </regexp>
+ * <!-- Access groups with <regexp-result index="1"/>, <regexp-result index="2"/>, etc. -->
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>
  * <ul>
- *   <li><strong>pattern</strong> (required): The regular expression pattern (as element content)</li>
- *   <li><strong>CDATA</strong> (recommended): Use CDATA section for complex patterns</li>
+ *   <li><strong>Content (body)</strong>: The regular expression pattern</li>
+ * </ul>
+ * 
+ * <h3>Pattern Syntax</h3>
+ * <p>Uses Java regex syntax. Common patterns:</p>
+ * <ul>
+ *   <li><strong>.*</strong> - Match any character (greedy)</li>
+ *   <li><strong>.*?</strong> - Match any character (non-greedy)</li>
+ *   <li><strong>\d+</strong> - Match one or more digits</li>
+ *   <li><strong>\w+</strong> - Match one or more word characters</li>
+ *   <li><strong>[^"]</strong> - Match any character except quotes</li>
+ *   <li><strong>(...)</strong> - Capture group (accessible via index)</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Parent Element</strong>: Must be used as child of {@code <regexp>} element</li>
- *   <li><strong>Pattern Syntax</strong>: Uses Java regular expression syntax</li>
- *   <li><strong>CDATA Usage</strong>: Use CDATA for patterns with special XML characters</li>
- *   <li><strong>Capture Groups</strong>: Use parentheses () for capturing matched groups</li>
+ *   <li><strong>Pattern Syntax</strong>: Uses Java regular expression syntax (java.util.regex)</li>
+ *   <li><strong>CDATA Usage</strong>: Use CDATA for patterns with special XML characters (&lt;, &gt;, &amp;)</li>
+ *   <li><strong>Capture Groups</strong>: Use parentheses () for capturing matched text</li>
+ *   <li><strong>Escaping</strong>: Backslash \ must be escaped in XML (or use CDATA)</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
  * <ul>
- *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp>} - Main regexp processor (parent element)</li>
  *   <li>{@code <regexp-source>} - Source text for pattern matching</li>
  *   <li>{@code <regexp-result>} - Access to matched groups</li>
  * </ul>
- * 
- * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
  * @see RegexpPlugin
+ * @see RegexpSourcePlugin
+ * @see RegexpResultPlugin
  */
 @CorePlugin(
     elementName = "regexp-pattern",

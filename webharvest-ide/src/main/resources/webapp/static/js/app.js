@@ -2026,13 +2026,20 @@ Data aggregated from 2 API sources!
         const description = document.getElementById('tooltipDescription');
         const link = document.getElementById('tooltipLink');
 
+        // WebHarvest 2.2.0 - Documentation links to sourceforge website
+        const BASE_DOC_URL = 'https://web-harvest.sourceforge.net/documentation/2.2.0';
+
         const plugins = {
-            'http': { title: 'HTTP Plugin', desc: 'HTTP/HTTPS request plugin', url: '/plugins/http.html' },
-            'xpath': { title: 'XPath Plugin', desc: 'Extract data from XML using XPath', url: '/plugins/xpath.html' },
-            'html-to-xml': { title: 'HTML to XML Plugin', desc: 'Convert HTML to XML', url: '/plugins/html-to-xml.html' }
+            'http': { title: 'HTTP Plugin', desc: 'HTTP/HTTPS request plugin', url: `${BASE_DOC_URL}/http.html` },
+            'xpath': { title: 'XPath Plugin', desc: 'Extract data from XML using XPath', url: `${BASE_DOC_URL}/xpath.html` },
+            'html-to-xml': { title: 'HTML to XML Plugin', desc: 'Convert HTML to XML', url: `${BASE_DOC_URL}/html-to-xml.html` }
         };
 
-        const plugin = plugins[pluginName] || { title: pluginName, desc: 'Plugin documentation', url: '/plugins/' };
+        const plugin = plugins[pluginName] || {
+            title: pluginName,
+            desc: 'Plugin documentation',
+            url: `${BASE_DOC_URL}/${pluginName}.html`
+        };
 
         title.textContent = plugin.title;
         description.textContent = plugin.desc;

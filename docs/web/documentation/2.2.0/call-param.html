@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;call-param&gt; - Function call parameter" />
-    <meta property="og:description" content="The <code><call-param></code> processor defines a parameter passed to a function.
-Must be used as a child element of <code><call></code>...." />
+    <meta property="og:description" content="The <code><call-param></code> processor defines a parameter passed to a function when calling it with <code><call></code>.
+Parameters can be simple values or co..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/call-param.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;call-param&gt; - Function call parameter" />
-    <meta property="twitter:description" content="The <code><call-param></code> processor defines a parameter passed to a function.
-Must be used as a child element of <code><call></code>...." />
+    <meta property="twitter:description" content="The <code><call-param></code> processor defines a parameter passed to a function when calling it with <code><call></code>.
+Parameters can be simple values or co..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,8 @@ Must be used as a child element of <code><call></code>...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;call-param&gt; - Function call parameter",
-      "description": "The <code><call-param></code> processor defines a parameter passed to a function.
-Must be used as a child element of <code><call></code>.",
+      "description": "The <code><call-param></code> processor defines a parameter passed to a function when calling it with <code><call></code>.
+Parameters can be simple values or complex expressions. Must be used as a child element of <code><call></code>.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +145,14 @@ Must be used as a child element of <code><call></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><call-param></code> processor defines a parameter passed to a function.
-Must be used as a child element of <code><call></code>.</p>
+            <p>The <code><call-param></code> processor defines a parameter passed to a function when calling it with <code><call></code>.
+Parameters can be simple values or complex expressions. Must be used as a child element of <code><call></code>.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Simple parameters</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -163,20 +163,140 @@ Must be used as a child element of <code><call></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;call name=&quot;fetchProduct&quot;&gt;
-  &lt;call-param name=&quot;productId&quot;&gt;12345&lt;/call-param&gt;
-  &lt;call-param name=&quot;includeReviews&quot;&gt;true&lt;/call-param&gt;
-&lt;/call&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;greet&quot;&gt;
+  &lt;def var=&quot;name&quot;&gt;&lt;call-param name=&quot;userName&quot;/&gt;&lt;/def&gt;
+  &lt;def var=&quot;greeting&quot;&gt;Hello, ${name}!&lt;/def&gt;
+  &lt;return&gt;${greeting}&lt;/return&gt;
+&lt;/function&gt;
+
+&lt;def var=&quot;message&quot;&gt;
+  &lt;call name=&quot;greet&quot;&gt;
+    &lt;call-param name=&quot;userName&quot;&gt;John&lt;/call-param&gt;
+  &lt;/call&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Complex parameter values</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;fetchProduct&quot;&gt;
+  &lt;def var=&quot;id&quot;&gt;&lt;call-param name=&quot;productId&quot;/&gt;&lt;/def&gt;
+  &lt;def var=&quot;apiUrl&quot;&gt;https://api.example.com/products/${id}&lt;/def&gt;
+  &lt;def var=&quot;response&quot;&gt;
+    &lt;http url=&quot;${apiUrl}&quot;/&gt;
+  &lt;/def&gt;
+  &lt;return&gt;${response}&lt;/return&gt;
+&lt;/function&gt;
+
+&lt;call name=&quot;fetchProduct&quot;&gt;
+  &lt;call-param name=&quot;productId&quot;&gt;
+    &lt;xpath expression=&quot;//product/@id&quot;&gt;
+      &lt;html-to-xml&gt;${catalog}&lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+  &lt;/call-param&gt;
+&lt;/call&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Multiple parameters with types</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;formatPrice&quot;&gt;
+  &lt;def var=&quot;amount&quot;&gt;&lt;call-param name=&quot;price&quot;/&gt;&lt;/def&gt;
+  &lt;def var=&quot;curr&quot;&gt;&lt;call-param name=&quot;currency&quot;/&gt;&lt;/def&gt;
+  &lt;def var=&quot;decimals&quot;&gt;&lt;call-param name=&quot;decimalPlaces&quot;/&gt;&lt;/def&gt;
+  
+  &lt;return&gt;${curr} ${amount}&lt;/return&gt;
+&lt;/function&gt;
+
+&lt;call name=&quot;formatPrice&quot;&gt;
+  &lt;call-param name=&quot;price&quot;&gt;19.99&lt;/call-param&gt;
+  &lt;call-param name=&quot;currency&quot;&gt;USD&lt;/call-param&gt;
+  &lt;call-param name=&quot;decimalPlaces&quot;&gt;2&lt;/call-param&gt;
+&lt;/call&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Passing XML/HTML content</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;function name=&quot;extractLinks&quot;&gt;
+  &lt;def var=&quot;htmlContent&quot;&gt;&lt;call-param name=&quot;html&quot;/&gt;&lt;/def&gt;
+  &lt;def var=&quot;links&quot;&gt;
+    &lt;xpath expression=&quot;//a/@href&quot;&gt;
+      &lt;html-to-xml&gt;${htmlContent}&lt;/html-to-xml&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  &lt;return&gt;${links}&lt;/return&gt;
+&lt;/function&gt;
+
+&lt;call name=&quot;extractLinks&quot;&gt;
+  &lt;call-param name=&quot;html&quot;&gt;
+    &lt;http url=&quot;https://example.com&quot;/&gt;
+  &lt;/call-param&gt;
+&lt;/call&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The parameter name used to access value in function</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used within <code><call></code> element</li><li>Parameter Access: : Inside function, use <code><call-param name="paramName"/></code> to retrieve value</li><li>Type Handling: : Parameters can be strings, XML, lists, or any variable type</li><li>Evaluation: : Body content is evaluated before passing to function</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="call.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;call&gt;
+                </a>
+                <a href="function.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;function&gt;
+                </a>
+                <a href="return.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;return&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

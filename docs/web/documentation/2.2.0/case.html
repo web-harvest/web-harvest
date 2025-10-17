@@ -30,7 +30,7 @@ executes the first matching branch. It's equivalent to if-else..." />
       "headline": "&lt;case&gt; - Multi-branch conditional processor",
       "description": "The <code><case></code> processor evaluates multiple <code><if></code> conditions in sequence and
 executes the first matching branch. It's equivalent to if-else-if chains but with cleaner
-syntax for multiple conditions.",
+syntax for multiple conditions. Provides structured conditional logic.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -148,7 +148,7 @@ syntax for multiple conditions.",
             <h2 class="section-title">Overview</h2>
             <p>The <code><case></code> processor evaluates multiple <code><if></code> conditions in sequence and
 executes the first matching branch. It's equivalent to if-else-if chains but with cleaner
-syntax for multiple conditions.</p>
+syntax for multiple conditions. Provides structured conditional logic.</p>
         </section>
 
         <section class="section">
@@ -185,15 +185,148 @@ syntax for multiple conditions.</p>
                 </div>
             </div>
 
-        </section>
+            <h3 class="subsection-title">Example 2: User role-based processing</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;case&gt;
+  &lt;if condition=&quot;${userRole == &#x27;admin&#x27;}&quot;&gt;
+    &lt;def var=&quot;permissions&quot; value=&quot;full_access&quot;/&gt;
+    &lt;def var=&quot;dashboard&quot; value=&quot;admin_dashboard&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${userRole == &#x27;moderator&#x27;}&quot;&gt;
+    &lt;def var=&quot;permissions&quot; value=&quot;moderate_content&quot;/&gt;
+    &lt;def var=&quot;dashboard&quot; value=&quot;moderator_dashboard&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${userRole == &#x27;user&#x27;}&quot;&gt;
+    &lt;def var=&quot;permissions&quot; value=&quot;basic_access&quot;/&gt;
+    &lt;def var=&quot;dashboard&quot; value=&quot;user_dashboard&quot;/&gt;
+  &lt;/if&gt;
+  &lt;else&gt;
+    &lt;def var=&quot;permissions&quot; value=&quot;guest_access&quot;/&gt;
+    &lt;def var=&quot;dashboard&quot; value=&quot;login_page&quot;/&gt;
+  &lt;/else&gt;
+&lt;/case&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
 
-        
+            <h3 class="subsection-title">Example 3: File type processing</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;fileExtension&quot;&gt;
+  &lt;xpath expression=&quot;substring-after(//file/@name, &#x27;.&#x27;)&quot;&gt;
+    &lt;get var=&quot;fileInfo&quot;/&gt;
+  &lt;/xpath&gt;
+&lt;/def&gt;
+
+&lt;case&gt;
+  &lt;if condition=&quot;${fileExtension == &#x27;xml&#x27;}&quot;&gt;
+    &lt;def var=&quot;processor&quot; value=&quot;xml_parser&quot;/&gt;
+    &lt;def var=&quot;outputFormat&quot; value=&quot;structured_data&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${fileExtension == &#x27;json&#x27;}&quot;&gt;
+    &lt;def var=&quot;processor&quot; value=&quot;json_parser&quot;/&gt;
+    &lt;def var=&quot;outputFormat&quot; value=&quot;structured_data&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${fileExtension == &#x27;csv&#x27;}&quot;&gt;
+    &lt;def var=&quot;processor&quot; value=&quot;csv_parser&quot;/&gt;
+    &lt;def var=&quot;outputFormat&quot; value=&quot;tabular_data&quot;/&gt;
+  &lt;/if&gt;
+  &lt;else&gt;
+    &lt;def var=&quot;processor&quot; value=&quot;text_parser&quot;/&gt;
+    &lt;def var=&quot;outputFormat&quot; value=&quot;plain_text&quot;/&gt;
+  &lt;/else&gt;
+&lt;/case&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Error handling with case</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;errorCode&quot;&gt;
+  &lt;try&gt;
+    &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
+  &lt;/try&gt;
+  &lt;catch&gt;
+    &lt;def var=&quot;errorType&quot;&gt;${exception.class.simpleName}&lt;/def&gt;
+  &lt;/catch&gt;
+&lt;/def&gt;
+
+&lt;case&gt;
+  &lt;if condition=&quot;${errorType == &#x27;ConnectException&#x27;}&quot;&gt;
+    &lt;def var=&quot;action&quot; value=&quot;retry_later&quot;/&gt;
+    &lt;def var=&quot;message&quot; value=&quot;Network connection failed&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${errorType == &#x27;SocketTimeoutException&#x27;}&quot;&gt;
+    &lt;def var=&quot;action&quot; value=&quot;increase_timeout&quot;/&gt;
+    &lt;def var=&quot;message&quot; value=&quot;Request timed out&quot;/&gt;
+  &lt;/if&gt;
+  &lt;if condition=&quot;${errorType == &#x27;IOException&#x27;}&quot;&gt;
+    &lt;def var=&quot;action&quot; value=&quot;check_permissions&quot;/&gt;
+    &lt;def var=&quot;message&quot; value=&quot;IO error occurred&quot;/&gt;
+  &lt;/if&gt;
+  &lt;else&gt;
+    &lt;def var=&quot;action&quot; value=&quot;log_and_continue&quot;/&gt;
+    &lt;def var=&quot;message&quot; value=&quot;Unknown error: ${errorType}&quot;/&gt;
+  &lt;/else&gt;
+&lt;/case&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+        </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>First match wins:: Only first matching <code><if></code> executes</li><li>Else is optional:: Executed if no conditions match</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>Content (body)</strong>: : Contains <code><if></code> and optional <code><else></code> elements</li></ul>
         </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>First match wins:: Only first matching <code><if></code> executes</li><li>Else is optional:: Executed if no conditions match</li><li>Condition Order:: Order of <code><if></code> elements matters</li><li>Variable Scope:: Variables defined in executed branch are available after</li></ul>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="if.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;if&gt;
+                </a>
+                <a href="else.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;else&gt;
+                </a>
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

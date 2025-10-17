@@ -52,17 +52,66 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * Constant value processor - defines static, immutable text values.
  * 
  * <p>
- * The {@code <constant>} processor wraps static text content. It's primarily used
- * internally by the framework for static configuration values. User configurations
- * typically use {@code <def>} or direct text content instead.
+ * The {@code <constant>} processor creates a static, immutable text value. It's primarily used
+ * internally by the framework for static configuration values and literal text content.
+ * In user configurations, {@code <def>} or direct text content is typically preferred.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>When to Use</h3>
+ * <ul>
+ *   <li>When you need an explicit constant value (rare in user configs)</li>
+ *   <li>Framework uses it internally for literal text nodes</li>
+ *   <li>For configs that need to explicitly mark static values</li>
+ * </ul>
+ * 
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic constant value</h4>
  * <pre>{@code
- * <constant value="static text"/>
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="apiKey">
+ *   <constant value="sk_live_abc123xyz"/>
+ * </def>
+ * </config>
  * }</pre>
  * 
- * <p><strong>Note:</strong> Rarely used directly. Use {@code <def>} for variable definitions.</p>
+ * <h4>Example 2: Static configuration value</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <constant value="https://api.example.com/v1"/>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Preferred alternative - use &lt;def&gt;</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <!-- This is clearer and more common -->
+ * <def var="baseUrl" value="https://api.example.com/v1"/>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>value</strong> (required): The static text value to return</li>
+ * </ul>
+ * 
+ * <h3>Return Value</h3>
+ * <p>Returns a NodeVariable containing the constant text value.</p>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <def>} - Define variables (preferred for most cases)</li>
+ *   <li>{@code <text>} - Text content wrapper</li>
+ *   <li>{@code <var>} - Variable reference</li>
+ * </ul>
+ * 
+ * <h3>Note</h3>
+ * <p><strong>Rarely used directly in user configurations.</strong> The framework uses it internally
+ * for static text nodes. For your own configs, prefer {@code <def>} with a value attribute or
+ * direct text content for better readability.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

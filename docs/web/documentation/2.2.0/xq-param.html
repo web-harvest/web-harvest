@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;xq-param&gt; - XQuery parameter definition" />
-    <meta property="og:description" content="The <code><xq-param></code> processor defines parameters for XQuery expressions.
-Must be used as a child element of <code><xquery></code>...." />
+    <meta property="og:description" content="The <code><xq-param></code> processor defines parameters for XQuery expressions, enabling
+dynamic data binding and type-safe parameter passing. Must be used as ..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/xq-param.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;xq-param&gt; - XQuery parameter definition" />
-    <meta property="twitter:description" content="The <code><xq-param></code> processor defines parameters for XQuery expressions.
-Must be used as a child element of <code><xquery></code>...." />
+    <meta property="twitter:description" content="The <code><xq-param></code> processor defines parameters for XQuery expressions, enabling
+dynamic data binding and type-safe parameter passing. Must be used as ..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,8 @@ Must be used as a child element of <code><xquery></code>...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;xq-param&gt; - XQuery parameter definition",
-      "description": "The <code><xq-param></code> processor defines parameters for XQuery expressions.
-Must be used as a child element of <code><xquery></code>.",
+      "description": "The <code><xq-param></code> processor defines parameters for XQuery expressions, enabling
+dynamic data binding and type-safe parameter passing. Must be used as a child element of <code><xquery></code>.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +145,14 @@ Must be used as a child element of <code><xquery></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><xq-param></code> processor defines parameters for XQuery expressions.
-Must be used as a child element of <code><xquery></code>.</p>
+            <p>The <code><xq-param></code> processor defines parameters for XQuery expressions, enabling
+dynamic data binding and type-safe parameter passing. Must be used as a child element of <code><xquery></code>.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Basic parameter binding</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -167,10 +167,131 @@ Must be used as a child element of <code><xquery></code>.</p>
 &lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
 &lt;xquery&gt;
   &lt;xq-expression&gt;
-    declare variable $minPrice external;
-    //product[price &gt; $minPrice]
+    &lt;![CDATA[
+      declare variable $minPrice as xs:double external;
+      //product[price &gt; $minPrice]
+    ]]&gt;
   &lt;/xq-expression&gt;
-  &lt;xq-param name=&quot;minPrice&quot; type=&quot;xs:integer&quot;&gt;100&lt;/xq-param&gt;
+  &lt;xq-param name=&quot;minPrice&quot; type=&quot;xs:double&quot;&gt;100.0&lt;/xq-param&gt;
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Multiple parameters with different types</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xquery&gt;
+  &lt;xq-expression&gt;
+    &lt;![CDATA[
+      declare variable $category as xs:string external;
+      declare variable $maxPrice as xs:double external;
+      declare variable $includeOutOfStock as xs:boolean external;
+      
+      for $p in //product
+      where $p/category = $category
+        and $p/price &lt;= $maxPrice
+        and ($includeOutOfStock or $p/stock &gt; 0)
+      return $p
+    ]]&gt;
+  &lt;/xq-expression&gt;
+  &lt;xq-param name=&quot;category&quot; type=&quot;xs:string&quot;&gt;electronics&lt;/xq-param&gt;
+  &lt;xq-param name=&quot;maxPrice&quot; type=&quot;xs:double&quot;&gt;500.0&lt;/xq-param&gt;
+  &lt;xq-param name=&quot;includeOutOfStock&quot; type=&quot;xs:boolean&quot;&gt;false&lt;/xq-param&gt;
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Dynamic parameters from variables</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;searchTerm&quot;&gt;laptop&lt;/def&gt;
+&lt;def var=&quot;priceRange&quot;&gt;1500&lt;/def&gt;
+
+&lt;xquery&gt;
+  &lt;xq-expression&gt;
+    &lt;![CDATA[
+      declare variable $search as xs:string external;
+      declare variable $maxPrice as xs:double external;
+      
+      &lt;results&gt;
+        {
+          for $p in //product
+          where contains(lower-case($p/name), lower-case($search))
+            and $p/price &lt;= $maxPrice
+          order by $p/price ascending
+          return $p
+        }
+      &lt;/results&gt;
+    ]]&gt;
+  &lt;/xq-expression&gt;
+  &lt;xq-param name=&quot;search&quot; type=&quot;xs:string&quot;&gt;${searchTerm}&lt;/xq-param&gt;
+  &lt;xq-param name=&quot;maxPrice&quot; type=&quot;xs:double&quot;&gt;${priceRange}&lt;/xq-param&gt;
+&lt;/xquery&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: XML node parameters (Bug #61 fix)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;userProfile&quot;&gt;
+  &lt;html-to-xml&gt;
+    &lt;http url=&quot;https://api.example.com/user/123&quot;/&gt;
+  &lt;/html-to-xml&gt;
+&lt;/def&gt;
+
+&lt;xquery&gt;
+  &lt;xq-expression&gt;
+    &lt;![CDATA[
+      declare variable $profile as node() external;
+      
+      &lt;userSummary&gt;
+        &lt;name&gt;{$profile//name/text()}&lt;/name&gt;
+        &lt;email&gt;{$profile//email/text()}&lt;/email&gt;
+        &lt;preferences&gt;
+          {
+            for $pref in $profile//preference
+            return &lt;pref&gt;{$pref/@name}&lt;/pref&gt;
+          }
+        &lt;/preferences&gt;
+      &lt;/userSummary&gt;
+    ]]&gt;
+  &lt;/xq-expression&gt;
+  &lt;xq-param name=&quot;profile&quot; type=&quot;node()&quot;&gt;
+    &lt;get-var name=&quot;userProfile&quot;/&gt;
+  &lt;/xq-param&gt;
 &lt;/xquery&gt;
 &lt;/config&gt;</code></pre>
                 </div>
@@ -179,11 +300,11 @@ Must be used as a child element of <code><xquery></code>.</p>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The parameter name (matches XQuery variable)</li><li><strong>type</strong>: (optional): XQuery data type (xs:string, xs:integer, etc.)</li><li><strong>value</strong>: (required): The parameter value (as element content)</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The parameter name (matches XQuery variable)</li><li><strong>type</strong>: (optional): XQuery data type (xs:string, xs:integer, xs:double, xs:boolean, node())</li><li><strong>Content (body)</strong>: : The parameter value</li></ul>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><xquery></code> element</li><li>Variable Declaration: : XQuery must declare external variables</li><li>Type Safety: : Use type attribute for proper data type conversion</li><li>Multiple Parameters: : Can define multiple parameters for single query</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><xquery></code> element</li><li>Variable Declaration: : XQuery must declare external variables</li><li>Type Safety: : Use type attribute for proper data type conversion</li><li>Multiple Parameters: : Can define multiple parameters for single query</li><li>Dynamic Values: : Supports ${var} syntax for dynamic parameter values</li></ul>
         </section>
 
         <section class="section">
@@ -194,11 +315,11 @@ Must be used as a child element of <code><xquery></code>.</p>
                 <a href="xq-expression.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;xq-expression&gt;
                 </a>
-                <a href="var.html" class="related-link">
-                    <i class="fas fa-code"></i> &lt;var&gt;
-                </a>
                 <a href="get-var.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;get-var&gt;
+                </a>
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
                 </a></div>
         </section>
     </div>

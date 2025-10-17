@@ -60,22 +60,156 @@ import org.slf4j.LoggerFactory;
  * <p>
  * The {@code <config>} processor is the root element of every WebHarvest configuration.
  * It defines global settings like charset and scripting language, and contains all
- * other processors.
+ * other processors. Every WebHarvest scraper must start with this element.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic configuration</h4>
  * <pre>{@code
- * <config charset="UTF-8" scriptlang="javascript">
- *   <!-- All scraper logic goes here -->
- *   <http url="https://example.com"/>
- *   <def var="data">...</def>
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+ *   <def var="baseUrl">https://example.com</def>
+ *   <def var="response">
+ *     <http url="${baseUrl}/api/data"/>
+ *   </def>
+ *   <def var="processedData">
+ *     <json-to-xml>${response}</json-to-xml>
+ *   </def>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: With custom scripting language</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core" 
+ *         charset="UTF-8" 
+ *         scriptlang="groovy">
+ *   <def var="apiKey">sk_live_abc123</def>
+ *   <def var="timestamp">${new Date().getTime()}</def>
+ *   
+ *   <http url="https://api.example.com/data">
+ *     <http-header name="Authorization">Bearer ${apiKey}</http-header>
+ *     <http-header name="X-Timestamp">${timestamp}</http-header>
+ *   </http>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Complex scraping workflow</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+ *   <!-- Global variables -->
+ *   <def var="baseUrl">https://shop.example.com</def>
+ *   <def var="category">electronics</def>
+ *   
+ *   <!-- Main scraping logic -->
+ *   <def var="categoryPage">
+ *     <html-to-xml>
+ *       <http url="${baseUrl}/category/${category}"/>
+ *     </html-to-xml>
+ *   </def>
+ *   
+ *   <def var="productLinks">
+ *     <xpath expression="//a[@class='product-link']/@href">
+ *       <get var="categoryPage"/>
+ *     </xpath>
+ *   </def>
+ *   
+ *   <!-- Process each product -->
+ *   <loop item="productUrl" list="${productLinks}">
+ *     <def var="productData">
+ *       <html-to-xml>
+ *         <http url="${baseUrl}${productUrl}"/>
+ *       </html-to-xml>
+ *     </def>
+ *     
+ *     <def var="productName">
+ *       <xpath expression="//h1[@class='product-title']/text()">
+ *         <get var="productData"/>
+ *       </xpath>
+ *     </def>
+ *     
+ *     <def var="productPrice">
+ *       <xpath expression="//span[@class='price']/text()">
+ *         <get var="productData"/>
+ *       </xpath>
+ *     </def>
+ *     
+ *     <!-- Save product data -->
+ *     <file path="products.xml" action="append">
+ *       <product>
+ *         <name>${productName}</name>
+ *         <price>${productPrice}</price>
+ *         <url>${baseUrl}${productUrl}</url>
+ *       </product>
+ *     </file>
+ *   </loop>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Error handling configuration</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+ *   <def var="apiEndpoint">https://api.example.com/data</def>
+ *   
+ *   <try>
+ *     <def var="response">
+ *       <http url="${apiEndpoint}" timeout="30000"/>
+ *     </def>
+ *     
+ *     <def var="data">
+ *       <json-to-xml>${response}</json-to-xml>
+ *     </def>
+ *     
+ *     <file path="success.log" action="append">
+ *       Successfully processed API response at ${new Date()}
+ *     </file>
+ *   </try>
+ *   <catch>
+ *     <file path="error.log" action="append">
+ *       Error processing API: ${exception.message} at ${new Date()}
+ *     </file>
+ *     
+ *     <!-- Fallback to cached data -->
+ *     <def var="data">
+ *       <file path="cache/last-response.xml" action="read"/>
+ *     </def>
+ *   </catch>
  * </config>
  * }</pre>
  * 
  * <h3>Attributes</h3>
  * <ul>
- *   <li><strong>charset:</strong> Default character encoding (default: UTF-8)</li>
- *   <li><strong>scriptlang:</strong> Scripting language: javascript, groovy, beanshell (default: javascript)</li>
+ *   <li><strong>xmlns</strong> (required): XML namespace - "http://org.webharvest/schema/2.1/core"</li>
+ *   <li><strong>charset</strong> (optional): Default character encoding (default: UTF-8)</li>
+ *   <li><strong>scriptlang</strong> (optional): Scripting language: javascript, groovy, beanshell (default: javascript)</li>
+ * </ul>
+ * 
+ * <h3>Global Settings</h3>
+ * <ul>
+ *   <li><strong>Character Encoding:</strong> Affects all text processing and file operations</li>
+ *   <li><strong>Scripting Language:</strong> Used for ${} expressions and script execution</li>
+ *   <li><strong>Variable Scope:</strong> Global variables defined here are available everywhere</li>
+ *   <li><strong>Error Handling:</strong> Global try-catch blocks can wrap entire scraper</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Root Element:</strong> Must be the outermost element in every WebHarvest configuration</li>
+ *   <li><strong>Namespace Required:</strong> Must include xmlns attribute for proper validation</li>
+ *   <li><strong>Global Scope:</strong> Variables defined here are available to all child processors</li>
+ *   <li><strong>Execution Order:</strong> Processors execute in document order</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li><strong>All processors</strong> - Must be children of config</li>
+ *   <li>{@code <def>} - Variable definition</li>
+ *   <li>{@code <http>} - HTTP requests</li>
+ *   <li>{@code <loop>} - Iteration</li>
+ *   <li>{@code <try>} / {@code <catch>} - Error handling</li>
  * </ul>
  * 
  * @author WebHarvest Team

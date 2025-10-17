@@ -58,7 +58,7 @@ import org.webharvest.utils.CommonUtil;
  * <p>
  * The {@code <case>} processor evaluates multiple {@code <if>} conditions in sequence and
  * executes the first matching branch. It's equivalent to if-else-if chains but with cleaner
- * syntax for multiple conditions.
+ * syntax for multiple conditions. Provides structured conditional logic.
  * </p>
  * 
  * <h3>Usage Examples</h3>
@@ -84,15 +84,129 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
+ * <h4>Example 2: User role-based processing</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <case>
+ *   <if condition="${userRole == 'admin'}">
+ *     <def var="permissions" value="full_access"/>
+ *     <def var="dashboard" value="admin_dashboard"/>
+ *   </if>
+ *   <if condition="${userRole == 'moderator'}">
+ *     <def var="permissions" value="moderate_content"/>
+ *     <def var="dashboard" value="moderator_dashboard"/>
+ *   </if>
+ *   <if condition="${userRole == 'user'}">
+ *     <def var="permissions" value="basic_access"/>
+ *     <def var="dashboard" value="user_dashboard"/>
+ *   </if>
+ *   <else>
+ *     <def var="permissions" value="guest_access"/>
+ *     <def var="dashboard" value="login_page"/>
+ *   </else>
+ * </case>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: File type processing</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="fileExtension">
+ *   <xpath expression="substring-after(//file/@name, '.')">
+ *     <get var="fileInfo"/>
+ *   </xpath>
+ * </def>
+ * 
+ * <case>
+ *   <if condition="${fileExtension == 'xml'}">
+ *     <def var="processor" value="xml_parser"/>
+ *     <def var="outputFormat" value="structured_data"/>
+ *   </if>
+ *   <if condition="${fileExtension == 'json'}">
+ *     <def var="processor" value="json_parser"/>
+ *     <def var="outputFormat" value="structured_data"/>
+ *   </if>
+ *   <if condition="${fileExtension == 'csv'}">
+ *     <def var="processor" value="csv_parser"/>
+ *     <def var="outputFormat" value="tabular_data"/>
+ *   </if>
+ *   <else>
+ *     <def var="processor" value="text_parser"/>
+ *     <def var="outputFormat" value="plain_text"/>
+ *   </else>
+ * </case>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Error handling with case</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="errorCode">
+ *   <try>
+ *     <http url="https://api.example.com/data"/>
+ *   </try>
+ *   <catch>
+ *     <def var="errorType">${exception.class.simpleName}</def>
+ *   </catch>
+ * </def>
+ * 
+ * <case>
+ *   <if condition="${errorType == 'ConnectException'}">
+ *     <def var="action" value="retry_later"/>
+ *     <def var="message" value="Network connection failed"/>
+ *   </if>
+ *   <if condition="${errorType == 'SocketTimeoutException'}">
+ *     <def var="action" value="increase_timeout"/>
+ *     <def var="message" value="Request timed out"/>
+ *   </if>
+ *   <if condition="${errorType == 'IOException'}">
+ *     <def var="action" value="check_permissions"/>
+ *     <def var="message" value="IO error occurred"/>
+ *   </if>
+ *   <else>
+ *     <def var="action" value="log_and_continue"/>
+ *     <def var="message" value="Unknown error: ${errorType}"/>
+ *   </else>
+ * </case>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>Content (body)</strong>: Contains {@code <if>} and optional {@code <else>} elements</li>
+ * </ul>
+ * 
+ * <h3>Behavior</h3>
+ * <ul>
+ *   <li><strong>Sequential Evaluation:</strong> Conditions evaluated in order</li>
+ *   <li><strong>First Match Wins:</strong> Only first matching {@code <if>} executes</li>
+ *   <li><strong>Else Fallback:</strong> Optional {@code <else>} executes if no conditions match</li>
+ *   <li><strong>Single Execution:</strong> Only one branch executes per case statement</li>
+ * </ul>
+ * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>First match wins:</strong> Only first matching {@code <if>} executes</li>
  *   <li><strong>Else is optional:</strong> Executed if no conditions match</li>
+ *   <li><strong>Condition Order:</strong> Order of {@code <if>} elements matters</li>
+ *   <li><strong>Variable Scope:</strong> Variables defined in executed branch are available after</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <if>} - Single conditional execution</li>
+ *   <li>{@code <else>} - Fallback execution</li>
+ *   <li>{@code <def>} - Variable definition</li>
  * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
+ * @see IfPlugin
+ * @see ElsePlugin
  */
 @CorePlugin(
     namespace = "http://org.webharvest/schema/2.1/core",

@@ -48,27 +48,172 @@ import org.webharvest.runtime.variables.Variable;
  * XSLT stylesheet definition - used within {@code <xslt>} to specify transformation.
  * 
  * <p>
- * The {@code <stylesheet>} processor defines the XSLT stylesheet content.
- * Must be used as a child element of {@code <xslt>}.
+ * The {@code <stylesheet>} processor defines the XSLT stylesheet content for XML transformations.
+ * Must be used as a child element of {@code <xslt>}. Supports XSLT 1.0 and 2.0 transformations
+ * with Saxon engine.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic XML transformation</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <xslt>
  *   <stylesheet>
  *     <![CDATA[
  *     <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
  *       <xsl:template match="/">
- *         <!-- XSLT transformation -->
+ *         <html>
+ *           <head><title>Product Catalog</title></head>
+ *           <body>
+ *             <h1>Products</h1>
+ *             <xsl:for-each select="//product">
+ *               <div class="product">
+ *                 <h2><xsl:value-of select="name"/></h2>
+ *                 <p>Price: $<xsl:value-of select="price"/></p>
+ *               </div>
+ *             </xsl:for-each>
+ *           </body>
+ *         </html>
  *       </xsl:template>
  *     </xsl:stylesheet>
  *     ]]>
  *   </stylesheet>
  *   <xml>${sourceXml}</xml>
  * </xslt>
+ * </config>
  * }</pre>
  * 
- * <p>See {@link XsltPlugin} for complete XSLT examples.</p>
+ * <h4>Example 2: Data transformation with filtering</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <xslt>
+ *   <stylesheet>
+ *     <![CDATA[
+ *     <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ *       <xsl:template match="/">
+ *         <products>
+ *           <xsl:for-each select="//product[price > 100]">
+ *             <xsl:sort select="price" order="ascending"/>
+ *             <product>
+ *               <id><xsl:value-of select="@id"/></id>
+ *               <name><xsl:value-of select="name"/></name>
+ *               <price><xsl:value-of select="price"/></price>
+ *               <category><xsl:value-of select="category"/></category>
+ *             </product>
+ *           </xsl:for-each>
+ *         </products>
+ *       </xsl:template>
+ *     </xsl:stylesheet>
+ *     ]]>
+ *   </stylesheet>
+ *   <xml>${productCatalog}</xml>
+ * </xslt>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Complex transformation with parameters</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="currency">USD</def>
+ * <def var="discountRate">0.1</def>
+ * 
+ * <xslt>
+ *   <stylesheet>
+ *     <![CDATA[
+ *     <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ *       <xsl:param name="currency"/>
+ *       <xsl:param name="discountRate"/>
+ *       
+ *       <xsl:template match="/">
+ *         <catalog>
+ *           <xsl:for-each select="//product">
+ *             <item>
+ *               <name><xsl:value-of select="name"/></name>
+ *               <originalPrice><xsl:value-of select="price"/></originalPrice>
+ *               <discountedPrice>
+ *                 <xsl:value-of select="price * (1 - $discountRate)"/>
+ *               </discountedPrice>
+ *               <currency><xsl:value-of select="$currency"/></currency>
+ *             </item>
+ *           </xsl:for-each>
+ *         </catalog>
+ *       </xsl:template>
+ *     </xsl:stylesheet>
+ *     ]]>
+ *   </stylesheet>
+ *   <param name="currency">${currency}</param>
+ *   <param name="discountRate">${discountRate}</param>
+ *   <xml>${sourceData}</xml>
+ * </xslt>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: HTML to structured data</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <xslt>
+ *   <stylesheet>
+ *     <![CDATA[
+ *     <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+ *       <xsl:template match="/">
+ *         <structuredData>
+ *           <xsl:for-each select="//div[@class='product']">
+ *             <product>
+ *               <title><xsl:value-of select="h2/text()"/></title>
+ *               <price><xsl:value-of select="span[@class='price']/text()"/></price>
+ *               <description><xsl:value-of select="p[@class='description']/text()"/></description>
+ *               <image><xsl:value-of select="img/@src"/></image>
+ *             </product>
+ *           </xsl:for-each>
+ *         </structuredData>
+ *       </xsl:template>
+ *     </xsl:stylesheet>
+ *     ]]>
+ *   </stylesheet>
+ *   <xml>
+ *     <html-to-xml>
+ *       <http url="https://shop.example.com/products"/>
+ *     </html-to-xml>
+ *   </xml>
+ * </xslt>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>Content (body)</strong>: XSLT stylesheet content</li>
+ * </ul>
+ * 
+ * <h3>XSLT Features</h3>
+ * <ul>
+ *   <li><strong>Templates:</strong> xsl:template for pattern matching</li>
+ *   <li><strong>Loops:</strong> xsl:for-each for iteration</li>
+ *   <li><strong>Conditionals:</strong> xsl:if and xsl:choose for branching</li>
+ *   <li><strong>Sorting:</strong> xsl:sort for ordering results</li>
+ *   <li><strong>Parameters:</strong> xsl:param for external values</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Parent Element</strong>: Must be used as child of {@code <xslt>} element</li>
+ *   <li><strong>XSLT Syntax</strong>: Uses XSLT 1.0/2.0 syntax with Saxon engine</li>
+ *   <li><strong>CDATA Usage</strong>: Use CDATA for stylesheets with special XML characters</li>
+ *   <li><strong>Namespace Support</strong>: Supports XML namespaces in transformations</li>
+ *   <li><strong>Parameter Binding</strong>: Use {@code <param>} to pass external parameters</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xslt>} - Main XSLT processor (parent element)</li>
+ *   <li>{@code <param>} - XSLT parameter binding</li>
+ *   <li>{@code <xml>} - Source XML for transformation</li>
+ *   <li>{@code <html-to-xml>} - Convert HTML to XML for transformation</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

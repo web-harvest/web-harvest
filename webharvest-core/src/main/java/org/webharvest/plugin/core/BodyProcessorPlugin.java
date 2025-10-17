@@ -51,12 +51,50 @@ import org.slf4j.LoggerFactory;
  * 
  * <p>
  * The {@code <body-processor>} is an internal processor used by the framework
- * to execute child processors and collect their results. Not typically used
- * directly in user configurations.
+ * to execute child processors and collect their results. It provides a standardized
+ * way to execute processor body content and return the results as a variable list.
  * </p>
  * 
- * <h3>Usage</h3>
- * <p>Automatically used by framework - rarely needed in user XML configurations.</p>
+ * <h3>Internal Usage</h3>
+ * <p>This processor is automatically used by the framework when processors need to execute
+ * their body content. It's rarely used directly in user XML configurations.</p>
+ * 
+ * <h3>Framework Integration</h3>
+ * <ul>
+ *   <li><strong>Child Execution:</strong> Executes all child processors in sequence</li>
+ *   <li><strong>Result Collection:</strong> Collects results from child processors</li>
+ *   <li><strong>Variable Management:</strong> Manages variable scope during execution</li>
+ *   <li><strong>Error Handling:</strong> Provides consistent error handling for body execution</li>
+ * </ul>
+ * 
+ * <h3>When Framework Uses It</h3>
+ * <ul>
+ *   <li><strong>Container Processors:</strong> When processors contain child elements</li>
+ *   <li><strong>Loop Processors:</strong> For executing loop body content</li>
+ *   <li><strong>Conditional Processors:</strong> For executing conditional branches</li>
+ *   <li><strong>Function Processors:</strong> For executing function body</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Internal Use:</strong> Primarily used by framework, not user configurations</li>
+ *   <li><strong>Body Execution:</strong> Executes child processors and returns results</li>
+ *   <li><strong>Variable Scope:</strong> Maintains proper variable scope during execution</li>
+ *   <li><strong>Result Format:</strong> Returns results as appropriate variable type</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li><strong>All container processors</strong> - Use this internally for body execution</li>
+ *   <li>{@code <loop>} - Uses body-processor for loop iterations</li>
+ *   <li>{@code <if>} - Uses body-processor for conditional execution</li>
+ *   <li>{@code <function>} - Uses body-processor for function body</li>
+ * </ul>
+ * 
+ * <h3>Note</h3>
+ * <p><strong>Framework internal processor.</strong> Users typically don't need to use this
+ * directly. It's automatically used by the framework when processors need to execute
+ * their body content.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

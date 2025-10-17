@@ -12,17 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;regexp-result&gt; - Regexp result template" />
-    <meta property="og:description" content="The <code><regexp-result></code> processor defines output format for regex matches
-using capture group references (${group0}, ${group1}, etc.).
-Must be used as ..." />
+    <meta property="og:description" content="The <code><regexp-result></code> processor defines output format for regex matches using capture group references.
+Must be used as a child element of <code><reg..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/regexp-result.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;regexp-result&gt; - Regexp result template" />
-    <meta property="twitter:description" content="The <code><regexp-result></code> processor defines output format for regex matches
-using capture group references (${group0}, ${group1}, etc.).
-Must be used as ..." />
+    <meta property="twitter:description" content="The <code><regexp-result></code> processor defines output format for regex matches using capture group references.
+Must be used as a child element of <code><reg..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -30,9 +28,8 @@ Must be used as ..." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;regexp-result&gt; - Regexp result template",
-      "description": "The <code><regexp-result></code> processor defines output format for regex matches
-using capture group references (${group0}, ${group1}, etc.).
-Must be used as a child element of <code><regexp></code>.",
+      "description": "The <code><regexp-result></code> processor defines output format for regex matches using capture group references.
+Must be used as a child element of <code><regexp></code>. Supports ${group0}, ${group1}, etc. for accessing matched groups.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -148,15 +145,14 @@ Must be used as a child element of <code><regexp></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><regexp-result></code> processor defines output format for regex matches
-using capture group references (${group0}, ${group1}, etc.).
-Must be used as a child element of <code><regexp></code>.</p>
+            <p>The <code><regexp-result></code> processor defines output format for regex matches using capture group references.
+Must be used as a child element of <code><regexp></code>. Supports ${group0}, ${group1}, etc. for accessing matched groups.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Basic group formatting</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -167,22 +163,99 @@ Must be used as a child element of <code><regexp></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;regexp&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
   &lt;regexp-pattern&gt;&lt;![CDATA[&lt;a href=&quot;([^&quot;]+)&quot;&gt;([^&lt;]+)&lt;/a&gt;]]&gt;&lt;/regexp-pattern&gt;
   &lt;regexp-source&gt;${html}&lt;/regexp-source&gt;
   &lt;regexp-result&gt;URL: ${group1}, Text: ${group2}&lt;/regexp-result&gt;
-&lt;/regexp&gt;</code></pre>
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Phone number formatting</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[(\\d{3})-(\\d{3})-(\\d{4})]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;Call 555-123-4567 for support&lt;/regexp-source&gt;
+  &lt;regexp-result&gt;(${group1}) ${group2}-${group3}&lt;/regexp-result&gt;
+&lt;/regexp&gt;
+&lt;!-- Output: (555) 123-4567 --&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Email extraction with formatting</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+)\\.([a-zA-Z]{2,})]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;Contact: john.doe@example.com&lt;/regexp-source&gt;
+  &lt;regexp-result&gt;User: ${group1}, Domain: ${group2}.${group3}&lt;/regexp-result&gt;
+&lt;/regexp&gt;
+&lt;!-- Output: User: john.doe, Domain: example.com --&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Complex data extraction</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[&lt;div class=&quot;product&quot; data-id=&quot;(\\d+)&quot; data-name=&quot;([^&quot;]+)&quot; data-price=&quot;([\\d.]+)&quot;&gt;]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;${productHtml}&lt;/regexp-source&gt;
+  &lt;regexp-result&gt;
+    &lt;product&gt;
+      &lt;id&gt;${group1}&lt;/id&gt;
+      &lt;name&gt;${group2}&lt;/name&gt;
+      &lt;price&gt;${group3}&lt;/price&gt;
+    &lt;/product&gt;
+  &lt;/regexp-result&gt;
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>template</strong>: (required): Output template with group references (as element content)</li><li><strong>Group References</strong>: : Use ${group0}, ${group1}, ${group2}, etc.</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>Content (body)</strong>: : Output template with group references</li></ul>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><regexp></code> element</li><li>Group References: : ${group0} = full match, ${group1} = first capture group</li><li>Output Formatting: : Defines how matched groups are formatted</li><li>Multiple Matches: : Template applied to each match found</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><regexp></code> element</li><li>Group References: : ${group0} = full match, ${group1} = first capture group</li><li>Output Formatting: : Defines how matched groups are formatted</li><li>Multiple Matches: : Template applied to each match found</li><li>Empty Groups: : Unmatched groups will be empty strings</li></ul>
         </section>
 
         <section class="section">

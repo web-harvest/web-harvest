@@ -48,24 +48,87 @@ import org.webharvest.runtime.variables.Variable;
  * Regexp result template - used within {@code <regexp>} to format extracted matches.
  * 
  * <p>
- * The {@code <regexp-result>} processor defines output format for regex matches
- * using capture group references (${group0}, ${group1}, etc.).
- * Must be used as a child element of {@code <regexp>}.
+ * The {@code <regexp-result>} processor defines output format for regex matches using capture group references.
+ * Must be used as a child element of {@code <regexp>}. Supports ${group0}, ${group1}, etc. for accessing matched groups.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic group formatting</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <regexp>
  *   <regexp-pattern><![CDATA[<a href="([^"]+)">([^<]+)</a>]]></regexp-pattern>
  *   <regexp-source>${html}</regexp-source>
  *   <regexp-result>URL: ${group1}, Text: ${group2}</regexp-result>
  * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: Phone number formatting</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[(\\d{3})-(\\d{3})-(\\d{4})]]></regexp-pattern>
+ *   <regexp-source>Call 555-123-4567 for support</regexp-source>
+ *   <regexp-result>(${group1}) ${group2}-${group3}</regexp-result>
+ * </regexp>
+ * <!-- Output: (555) 123-4567 -->
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Email extraction with formatting</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+)\\.([a-zA-Z]{2,})]]></regexp-pattern>
+ *   <regexp-source>Contact: john.doe@example.com</regexp-source>
+ *   <regexp-result>User: ${group1}, Domain: ${group2}.${group3}</regexp-result>
+ * </regexp>
+ * <!-- Output: User: john.doe, Domain: example.com -->
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Complex data extraction</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<div class="product" data-id="(\\d+)" data-name="([^"]+)" data-price="([\\d.]+)">]]></regexp-pattern>
+ *   <regexp-source>${productHtml}</regexp-source>
+ *   <regexp-result>
+ *     <product>
+ *       <id>${group1}</id>
+ *       <name>${group2}</name>
+ *       <price>${group3}</price>
+ *     </product>
+ *   </regexp-result>
+ * </regexp>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>
  * <ul>
- *   <li><strong>template</strong> (required): Output template with group references (as element content)</li>
- *   <li><strong>Group References</strong>: Use ${group0}, ${group1}, ${group2}, etc.</li>
+ *   <li><strong>Content (body)</strong>: Output template with group references</li>
+ * </ul>
+ * 
+ * <h3>Group References</h3>
+ * <ul>
+ *   <li><strong>${group0}</strong> - Full match (entire matched text)</li>
+ *   <li><strong>${group1}</strong> - First capture group (first parentheses)</li>
+ *   <li><strong>${group2}</strong> - Second capture group (second parentheses)</li>
+ *   <li><strong>${group3}</strong> - Third capture group, etc.</li>
+ * </ul>
+ * 
+ * <h3>Template Features</h3>
+ * <ul>
+ *   <li><strong>Static Text:</strong> Can include literal text alongside group references</li>
+ *   <li><strong>XML Output:</strong> Can generate XML/HTML structure</li>
+ *   <li><strong>Multiple Groups:</strong> Can reference multiple capture groups in one template</li>
+ *   <li><strong>Conditional:</strong> Groups that don't match will be empty</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
@@ -74,21 +137,22 @@ import org.webharvest.runtime.variables.Variable;
  *   <li><strong>Group References</strong>: ${group0} = full match, ${group1} = first capture group</li>
  *   <li><strong>Output Formatting</strong>: Defines how matched groups are formatted</li>
  *   <li><strong>Multiple Matches</strong>: Template applied to each match found</li>
+ *   <li><strong>Empty Groups</strong>: Unmatched groups will be empty strings</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
  * <ul>
- *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp>} - Main regexp processor (parent element)</li>
  *   <li>{@code <regexp-pattern>} - Regular expression pattern</li>
  *   <li>{@code <regexp-source>} - Source text for matching</li>
  * </ul>
- * 
- * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
  * @see RegexpPlugin
+ * @see RegexpPatternPlugin
+ * @see RegexpSourcePlugin
  */
 @CorePlugin(
     elementName = "regexp-result",

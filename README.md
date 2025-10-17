@@ -1038,18 +1038,18 @@ See [licences/webharvest_licence.txt](licences/webharvest_licence.txt) for the f
 ## 🙏 Acknowledgments
 
 ### Original Author
-- **Vladimir Nikic** - Created WebHarvest (2006-2007)
+- **Vladimir Nikic** - Created WebHarvest, designed original processor-based architecture, XML configuration system, and Swing-based IDE (2006-2013)
 
 ### Contributors
-- **Alexander Wajda** - Developer
-- **[Robert Bala](https://www.linkedin.com/in/rbala)** - Project Admin, Major Refactoring & Modernization (2024-2025)
-- **Piotr Dyraga** - Developer
-- **Maciej Czapiewski** - Developer
+- **[Robert Bala](https://www.linkedin.com/in/rbala)** - Project Admin & Lead Developer. Designed modern plugin architecture, event-driven system, and cloud-ready infrastructure. Led comprehensive modernization (2024-2025) (2012-2025)
+- **Alexander Wajda** - Developer (2010-2012)
+- **Piotr Dyraga** - Developer (2012-2013)
+- **Maciej Czapiewski** - Developer (2012-2013)
 
 ### Community
 We thank all contributors and users who help improve WebHarvest!
 
-**Note**: This project has undergone substantial modernization and refactoring in 2024-2025, including migration to Java 11+, complete architecture redesign, web-based IDE implementation, and numerous enhancements. See [NOTICE](NOTICE) for detailed contribution history.
+**Note**: This project has undergone substantial modernization and refactoring in 2024-2025, including migration to Java 11+, complete architecture redesign, web-based IDE implementation, and numerous enhancements. The modern plugin architecture, event-driven system, and cloud-ready infrastructure were designed starting from 2012. See [NOTICE](NOTICE) for detailed contribution history.
 
 ---
 

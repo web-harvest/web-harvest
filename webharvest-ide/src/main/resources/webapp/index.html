@@ -39,7 +39,8 @@
                 <button class="btn btn-sm btn-primary" onclick="app.showExamplesModal()" title="Load Example">
                     <i class="fas fa-download"></i> Examples
                 </button>
-                <button class="btn btn-sm" onclick="window.open('http://localhost:8080/docs', '_blank')"
+                <button class="btn btn-sm"
+                    onclick="window.open('https://web-harvest.sourceforge.net/documentation/2.2.0/', '_blank')"
                     title="Documentation">
                     <i class="fas fa-question-circle"></i> Help
                 </button>
@@ -75,26 +76,28 @@
                     </button>
                 </div>
             </div>
-            
+
             <!-- Progress Bar -->
             <div id="progressBar" class="progress-bar" style="display: none;">
                 <div id="progressFill" class="progress-fill"></div>
                 <span id="progressText" class="progress-text">0%</span>
             </div>
-            
+
             <!-- Execution Controls -->
             <div id="executionControls" class="execution-controls" style="display: none;">
-                <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="app.pauseExecution()" title="Pause Execution">
+                <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="app.pauseExecution()"
+                    title="Pause Execution">
                     <i class="fas fa-pause"></i> Pause
                 </button>
-                <button id="resumeBtn" class="btn btn-sm btn-success" onclick="app.resumeExecution()" title="Resume Execution" style="display: none;">
+                <button id="resumeBtn" class="btn btn-sm btn-success" onclick="app.resumeExecution()"
+                    title="Resume Execution" style="display: none;">
                     <i class="fas fa-play"></i> Resume
                 </button>
                 <button class="btn btn-sm btn-error" onclick="app.stopExecution()" title="Stop Execution">
                     <i class="fas fa-stop"></i> Stop
                 </button>
             </div>
-            
+
             <div id="editor" class="monaco-editor-container"></div>
         </div>
 

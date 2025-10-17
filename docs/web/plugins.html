@@ -110,10 +110,12 @@
         <div
             style="max-width: 55rem; margin: 0 auto 3rem; padding: 2rem; background: linear-gradient(135deg, #f8f9ff, #fff9f9); border-radius: 0.75rem; border-left: 4px solid var(--primary);">
             <p style="font-size: 1.125rem; color: var(--gray-700); margin-bottom: 1.5rem; line-height: 1.7;">
-                WebHarvest delivers <strong>47 production-ready core plugins</strong> right out of the box - everything you need for web scraping with <strong>zero external dependencies</strong>.
+                WebHarvest delivers <strong>47 production-ready core plugins</strong> right out of the box - everything
+                you need for web scraping with <strong>zero external dependencies</strong>.
             </p>
             <p style="margin-bottom: 1rem; line-height: 1.7;">
-                The framework's modular architecture allows you to add <strong>10 optional extension modules</strong> only when your project needs them:
+                The framework's modular architecture allows you to add <strong>10 optional extension modules</strong>
+                only when your project needs them:
             </p>
             <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1.5rem;">
                 <li><strong>Database operations</strong> (2 plugins) - requires JDBC drivers</li>
@@ -123,7 +125,8 @@
                 <li><strong>Web browser automation</strong> (1 plugin) - requires HtmlUnit</li>
             </ul>
             <p style="line-height: 1.7;">
-                <strong>Why this architecture?</strong> This keeps your core lightweight and lets you add only the dependencies you actually need - smaller JARs, faster startup, and reduced complexity.
+                <strong>Why this architecture?</strong> This keeps your core lightweight and lets you add only the
+                dependencies you actually need - smaller JARs, faster startup, and reduced complexity.
             </p>
         </div>
 
@@ -423,165 +426,24 @@
         </div>
     </section>
 
-    <!-- Building Custom Plugins -->
+    <!-- Building Custom Plugins CTA -->
     <section class="container" style="margin-top: 6rem;">
-        <div class="section-header">
-            <h2>Building Custom Plugins</h2>
-            <p class="section-subtitle">Step-by-step guide to creating your own</p>
-        </div>
-
-        <div class="installation-steps">
-            <div class="install-step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <h3>Maven / Gradle Setup</h3>
-                    <p><strong>Maven:</strong> Add dependency to pom.xml:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">pom.xml</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-xml">&lt;dependency&gt;
-  &lt;groupId&gt;org.webharvest&lt;/groupId&gt;
-  &lt;artifactId&gt;webharvest-core&lt;/artifactId&gt;
-  &lt;version&gt;2.2.0&lt;/version&gt;
-&lt;/dependency&gt;</code></pre>
-                        </div>
-                    </div>
-                    <p style="margin-top: 1rem;"><strong>Gradle:</strong> Add to build.gradle:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">build.gradle</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-groovy">dependencies {
-    implementation 'org.webharvest:webharvest-core:2.2.0'
-}</code></pre>
-                        </div>
-                    </div>
-                </div>
+        <div class="download-card">
+            <h2>Want to Build Custom Plugins?</h2>
+            <p>Extend WebHarvest with your own functionality using the modern @CorePlugin architecture</p>
+            <div class="download-buttons" style="margin-top: 2rem;">
+                <a class="btn btn-primary btn-large" href="documentation/plugin-development.html">
+                    <i class="fas fa-code"></i>
+                    Complete Plugin Development Guide
+                </a>
+                <a class="btn btn-secondary btn-large" href="documentation/architecture.html">
+                    <i class="fas fa-book"></i>
+                    Architecture Overview
+                </a>
             </div>
-
-            <div class="install-step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <h3>Create Plugin Class</h3>
-                    <p>Extend <code>AbstractProcessor</code> and add annotations:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">Example.java</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-java">@Autoscanned
-@TargetNamespace({"http://web-harvest.sourceforge.net/schema/1.0/config"})
-@Definition(
-    value = "my-plugin",
-    validAttributes = {"attr1", "attr2"},
-    requiredAttributes = "attr1"
-)
-public class MyPluginProcessor extends AbstractProcessor&lt;MyPluginDef&gt; {
-    
-    @Override
-    public Variable execute(DynamicScopeContext context) 
-            throws InterruptedException {
-        String attr1 = BaseTemplater.evaluateToString(
-            elementDef.getAttr1(), null, context);
-        
-        // Plugin logic
-        String result = processData(attr1);
-        
-        return new NodeVariable(result);
-    }
-}</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="install-step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <h3>Create Definition Class</h3>
-                    <p>Define plugin attributes and validation:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">Example.java</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-java">public class MyPluginDef extends ProcessorDefinition {
-    private String attr1;
-    private String attr2;
-    
-    public String getAttr1() { return attr1; }
-    public void setAttr1(String attr1) { this.attr1 = attr1; }
-    
-    public String getAttr2() { return attr2; }
-    public void setAttr2(String attr2) { this.attr2 = attr2; }
-}</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="install-step">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                    <h3>Package & Deploy</h3>
-                    <p>Build JAR and add to WebHarvest classpath:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">terminal</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-bash">mvn clean package
-cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
-
-# Plugin is auto-discovered on next run!</code></pre>
-                        </div>
-                    </div>
-                    <p>Use in configurations:</p>
-                    <div class="code-window">
-                        <div class="window-header">
-                            <div class="window-controls">
-                                <span class="control red"></span>
-                                <span class="control yellow"></span>
-                                <span class="control green"></span>
-                            </div>
-                            <span class="window-title">config.xml</span>
-                        </div>
-                        <div class="window-content">
-                            <pre><code class="language-xml">&lt;my-plugin attr1="value"&gt;
-  &lt;http url="https://example.com"/&gt;
-&lt;/my-plugin&gt;</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <p style="margin-top: 1.5rem; font-size: 0.9375rem; opacity: 0.85;">
+                Learn @CorePlugin architecture • Automatic discovery • Real examples • Best practices
+            </p>
         </div>
     </section>
 
@@ -596,7 +458,7 @@ cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
             <div class="usage-card">
                 <h3><i class="fas fa-cube"></i> Start with Core</h3>
                 <p>
-                    Begin with the 46 built-in plugins. No setup required - just start scraping immediately.
+                    Begin with the 47 built-in plugins. No setup required - just start scraping immediately.
                 </p>
                 <div style="margin-top: var(--spacing-4);">
                     <a href="examples/" class="btn btn-primary">
@@ -623,8 +485,8 @@ cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
                     Create your own plugins with the @CorePlugin annotation. Integrate any API or service.
                 </p>
                 <div style="margin-top: var(--spacing-4);">
-                    <a href="documentation/" class="btn btn-primary">
-                        <i class="fas fa-arrow-right"></i> Learn More
+                    <a href="documentation/plugin-development.html" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Plugin Development Guide
                     </a>
                 </div>
             </div>

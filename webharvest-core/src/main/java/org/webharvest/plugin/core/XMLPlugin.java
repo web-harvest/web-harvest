@@ -52,25 +52,149 @@ import org.slf4j.LoggerFactory;
  * XML content wrapper processor - explicit XML content declaration.
  * 
  * <p>
- * The {@code <xml>} processor wraps XML content for explicit declaration.
- * Rarely needed - most XML is processed directly without this wrapper.
+ * The {@code <xml>} processor wraps XML content for explicit declaration and processing.
+ * Rarely needed in modern configurations - most XML is processed directly without this wrapper.
+ * Useful when you need to ensure XML content is properly parsed and validated.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Explicit XML declaration</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="xmlData">
  *   <xml>
  *     <products>
- *       <product id="1">Item</product>
+ *       <product id="1">
+ *         <name>Laptop</name>
+ *         <price>999.99</price>
+ *       </product>
+ *       <product id="2">
+ *         <name>Mouse</name>
+ *         <price>29.99</price>
+ *       </product>
  *     </products>
  *   </xml>
  * </def>
  * </config>
  * }</pre>
  * 
- * <p><strong>Note:</strong> Usually unnecessary - direct XML content works in most contexts.</p>
+ * <h4>Example 2: Dynamic XML generation</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="productName">WebHarvest Pro</def>
+ * <def var="productPrice">199.99</def>
+ * 
+ * <def var="productXml">
+ *   <xml>
+ *     <product>
+ *       <name>${productName}</name>
+ *       <price>${productPrice}</price>
+ *       <timestamp>${new Date()}</timestamp>
+ *     </product>
+ *   </xml>
+ * </def>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: XML template with processing</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="userData">
+ *   <xml>
+ *     <user>
+ *       <id>12345</id>
+ *       <name>John Doe</name>
+ *       <email>john@example.com</email>
+ *       <preferences>
+ *         <theme>dark</theme>
+ *         <language>en</language>
+ *       </preferences>
+ *     </user>
+ *   </xml>
+ * </def>
+ * 
+ * <!-- Process the XML -->
+ * <def var="userName">
+ *   <xpath expression="//name/text()">
+ *     <get var="userData"/>
+ *   </xpath>
+ * </def>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: When explicit XML is useful</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <!-- When you need to ensure XML is properly parsed -->
+ * <def var="configTemplate">
+ *   <xml>
+ *     <configuration>
+ *       <database>
+ *         <host>localhost</host>
+ *         <port>3306</port>
+ *         <name>webharvest</name>
+ *       </database>
+ *       <api>
+ *         <baseUrl>https://api.example.com</baseUrl>
+ *         <timeout>30000</timeout>
+ *       </api>
+ *     </configuration>
+ *   </xml>
+ * </def>
+ * 
+ * <!-- Alternative: Direct XML (usually preferred) -->
+ * <def var="configTemplate2">
+ *   <configuration>
+ *     <database>
+ *       <host>localhost</host>
+ *       <port>3306</port>
+ *       <name>webharvest</name>
+ *     </database>
+ *   </configuration>
+ * </def>
+ * </config>
+ * }</pre>
+ * 
+ * <h3>Parameters</h3>
+ * <ul>
+ *   <li><strong>Content (body)</strong>: XML content to wrap</li>
+ * </ul>
+ * 
+ * <h3>Return Value</h3>
+ * <p>Returns a NodeVariable containing the parsed XML content.</p>
+ * 
+ * <h3>When to Use</h3>
+ * <ul>
+ *   <li><strong>Explicit Declaration:</strong> When you want to explicitly mark XML content</li>
+ *   <li><strong>Validation:</strong> When you need to ensure XML is properly parsed</li>
+ *   <li><strong>Template Processing:</strong> When generating XML with variable substitution</li>
+ *   <li><strong>Debugging:</strong> When you want to see exactly what XML is being processed</li>
+ * </ul>
+ * 
+ * <h3>Important Notes</h3>
+ * <ul>
+ *   <li><strong>Rarely Needed:</strong> Most XML content works directly without this wrapper</li>
+ *   <li><strong>XML Parsing:</strong> Ensures content is properly parsed as XML</li>
+ *   <li><strong>Variable Substitution:</strong> Supports ${var} syntax within XML content</li>
+ *   <li><strong>Validation:</strong> XML content must be well-formed</li>
+ * </ul>
+ * 
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li><strong>Direct XML content</strong> - Preferred for most cases</li>
+ *   <li>{@code <xpath>} - Extract data from XML</li>
+ *   <li>{@code <html-to-xml>} - Convert HTML to XML</li>
+ *   <li>{@code <json-to-xml>} - Convert JSON to XML</li>
+ * </ul>
+ * 
+ * <h3>Note</h3>
+ * <p><strong>Usually unnecessary.</strong> Direct XML content works in most contexts.
+ * Use {@code <xml>} only when you need explicit XML declaration or validation.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0

@@ -48,20 +48,113 @@ import org.webharvest.runtime.variables.Variable;
  * XQuery parameter definition - used within {@code <xquery>} to pass parameters.
  * 
  * <p>
- * The {@code <xq-param>} processor defines parameters for XQuery expressions.
- * Must be used as a child element of {@code <xquery>}.
+ * The {@code <xq-param>} processor defines parameters for XQuery expressions, enabling
+ * dynamic data binding and type-safe parameter passing. Must be used as a child element of {@code <xquery>}.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Basic parameter binding</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <xquery>
  *   <xq-expression>
- *     declare variable $minPrice external;
- *     //product[price > $minPrice]
+ *     <![CDATA[
+ *       declare variable $minPrice as xs:double external;
+ *       //product[price > $minPrice]
+ *     ]]>
  *   </xq-expression>
- *   <xq-param name="minPrice" type="xs:integer">100</xq-param>
+ *   <xq-param name="minPrice" type="xs:double">100.0</xq-param>
+ * </xquery>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: Multiple parameters with different types</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <xquery>
+ *   <xq-expression>
+ *     <![CDATA[
+ *       declare variable $category as xs:string external;
+ *       declare variable $maxPrice as xs:double external;
+ *       declare variable $includeOutOfStock as xs:boolean external;
+ *       
+ *       for $p in //product
+ *       where $p/category = $category
+ *         and $p/price <= $maxPrice
+ *         and ($includeOutOfStock or $p/stock > 0)
+ *       return $p
+ *     ]]>
+ *   </xq-expression>
+ *   <xq-param name="category" type="xs:string">electronics</xq-param>
+ *   <xq-param name="maxPrice" type="xs:double">500.0</xq-param>
+ *   <xq-param name="includeOutOfStock" type="xs:boolean">false</xq-param>
+ * </xquery>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Dynamic parameters from variables</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="searchTerm">laptop</def>
+ * <def var="priceRange">1500</def>
+ * 
+ * <xquery>
+ *   <xq-expression>
+ *     <![CDATA[
+ *       declare variable $search as xs:string external;
+ *       declare variable $maxPrice as xs:double external;
+ *       
+ *       <results>
+ *         {
+ *           for $p in //product
+ *           where contains(lower-case($p/name), lower-case($search))
+ *             and $p/price <= $maxPrice
+ *           order by $p/price ascending
+ *           return $p
+ *         }
+ *       </results>
+ *     ]]>
+ *   </xq-expression>
+ *   <xq-param name="search" type="xs:string">${searchTerm}</xq-param>
+ *   <xq-param name="maxPrice" type="xs:double">${priceRange}</xq-param>
+ * </xquery>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: XML node parameters (Bug #61 fix)</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="userProfile">
+ *   <html-to-xml>
+ *     <http url="https://api.example.com/user/123"/>
+ *   </html-to-xml>
+ * </def>
+ * 
+ * <xquery>
+ *   <xq-expression>
+ *     <![CDATA[
+ *       declare variable $profile as node() external;
+ *       
+ *       <userSummary>
+ *         <name>{$profile//name/text()}</name>
+ *         <email>{$profile//email/text()}</email>
+ *         <preferences>
+ *           {
+ *             for $pref in $profile//preference
+ *             return <pref>{$pref/@name}</pref>
+ *           }
+ *         </preferences>
+ *       </userSummary>
+ *     ]]>
+ *   </xq-expression>
+ *   <xq-param name="profile" type="node()">
+ *     <get-var name="userProfile"/>
+ *   </xq-param>
  * </xquery>
  * </config>
  * }</pre>
@@ -69,8 +162,17 @@ import org.webharvest.runtime.variables.Variable;
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>name</strong> (required): The parameter name (matches XQuery variable)</li>
- *   <li><strong>type</strong> (optional): XQuery data type (xs:string, xs:integer, etc.)</li>
- *   <li><strong>value</strong> (required): The parameter value (as element content)</li>
+ *   <li><strong>type</strong> (optional): XQuery data type (xs:string, xs:integer, xs:double, xs:boolean, node())</li>
+ *   <li><strong>Content (body)</strong>: The parameter value</li>
+ * </ul>
+ * 
+ * <h3>Supported Types</h3>
+ * <ul>
+ *   <li><strong>xs:string</strong> - Text values</li>
+ *   <li><strong>xs:integer</strong> - Whole numbers</li>
+ *   <li><strong>xs:double</strong> - Decimal numbers</li>
+ *   <li><strong>xs:boolean</strong> - true/false values</li>
+ *   <li><strong>node()</strong> - XML/HTML content (requires {@code <get-var>})</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
@@ -79,14 +181,7 @@ import org.webharvest.runtime.variables.Variable;
  *   <li><strong>Variable Declaration</strong>: XQuery must declare external variables</li>
  *   <li><strong>Type Safety</strong>: Use type attribute for proper data type conversion</li>
  *   <li><strong>Multiple Parameters</strong>: Can define multiple parameters for single query</li>
- * </ul>
- * 
- * <h3>Related Processors</h3>
- * <ul>
- *   <li>{@code <xquery>} - Main XQuery processor</li>
- *   <li>{@code <xq-expression>} - XQuery expression definition</li>
- *   <li>{@code <var>} - Variable definition for dynamic values</li>
- *   <li>{@code <get-var>} - Retrieve variable value for node() parameters</li>
+ *   <li><strong>Dynamic Values</strong>: Supports ${var} syntax for dynamic parameter values</li>
  * </ul>
  * 
  * <h3>Bug Fix (r825 - Oct 2025)</h3>
@@ -96,12 +191,19 @@ import org.webharvest.runtime.variables.Variable;
  * to receive actual XML data from context variables.
  * </p>
  * 
- * <p>See {@link XQueryPlugin} for complete XQuery examples.</p>
+ * <h3>Related Processors</h3>
+ * <ul>
+ *   <li>{@code <xquery>} - Main XQuery processor (parent element)</li>
+ *   <li>{@code <xq-expression>} - XQuery expression definition</li>
+ *   <li>{@code <get-var>} - Retrieve variable value for node() parameters</li>
+ *   <li>{@code <def>} - Variable definition for dynamic values</li>
+ * </ul>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 2.0
  * @see XQueryPlugin
+ * @see XQExpressionPlugin
  */
 @CorePlugin(
     elementName = "xq-param",

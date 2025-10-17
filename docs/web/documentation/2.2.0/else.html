@@ -13,14 +13,14 @@
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;else&gt; - Else branch processor" />
     <meta property="og:description" content="The <code><else></code> processor executes when the preceding <code><if></code> condition
-evaluates to false. Used with <code><if></code> and <code><case></code..." />
+evaluates to false. Used with <code><if></code> for conditional branch..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/else.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;else&gt; - Else branch processor" />
     <meta property="twitter:description" content="The <code><else></code> processor executes when the preceding <code><if></code> condition
-evaluates to false. Used with <code><if></code> and <code><case></code..." />
+evaluates to false. Used with <code><if></code> for conditional branch..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -29,7 +29,7 @@ evaluates to false. Used with <code><if></code> and <code><case></code..." />
       "@type": "TechArticle",
       "headline": "&lt;else&gt; - Else branch processor",
       "description": "The <code><else></code> processor executes when the preceding <code><if></code> condition
-evaluates to false. Used with <code><if></code> and <code><case></code> processors.",
+evaluates to false. Used with <code><if></code> for conditional branching logic.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -146,13 +146,13 @@ evaluates to false. Used with <code><if></code> and <code><case></code> processo
         <section class="section">
             <h2 class="section-title">Overview</h2>
             <p>The <code><else></code> processor executes when the preceding <code><if></code> condition
-evaluates to false. Used with <code><if></code> and <code><case></code> processors.</p>
+evaluates to false. Used with <code><if></code> for conditional branching logic.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Simple if-else logic</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -175,6 +175,75 @@ evaluates to false. Used with <code><if></code> and <code><case></code> processo
                 </div>
             </div>
 
+            <h3 class="subsection-title">Example 2: Handle empty results</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;title&quot;&gt;
+  &lt;xpath expression=&quot;//h1/text()&quot;&gt;
+    &lt;html-to-xml&gt;${response}&lt;/html-to-xml&gt;
+  &lt;/xpath&gt;
+&lt;/def&gt;
+
+&lt;if condition=&quot;${!empty(title)}&quot;&gt;
+  &lt;file path=&quot;title.txt&quot; action=&quot;write&quot;&gt;${title}&lt;/file&gt;
+&lt;/if&gt;
+&lt;else&gt;
+  &lt;file path=&quot;errors.log&quot; action=&quot;append&quot;&gt;
+    Title not found on page ${url}
+  &lt;/file&gt;
+&lt;/else&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Error handling with HTTP</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;response&quot;&gt;
+  &lt;try&gt;
+    &lt;http url=&quot;https://api.example.com/data&quot;/&gt;
+  &lt;/try&gt;
+  &lt;catch&gt;
+    &lt;empty/&gt;
+  &lt;/catch&gt;
+&lt;/def&gt;
+
+&lt;if condition=&quot;${!empty(response)}&quot;&gt;
+  &lt;!-- Process successful response --&gt;
+  &lt;def var=&quot;data&quot;&gt;
+    &lt;json-to-xml&gt;${response}&lt;/json-to-xml&gt;
+  &lt;/def&gt;
+&lt;/if&gt;
+&lt;else&gt;
+  &lt;!-- Fallback to cached data --&gt;
+  &lt;def var=&quot;data&quot;&gt;
+    &lt;file path=&quot;cache/last-response.xml&quot; action=&quot;read&quot;/&gt;
+  &lt;/def&gt;
+&lt;/else&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
         </section>
 
         <section class="section">
@@ -182,7 +251,7 @@ evaluates to false. Used with <code><if></code> and <code><case></code> processo
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used after <code><if></code> or <code><case></code> block</li><li>Conditional Logic: : Executes only when preceding condition is false</li><li>Fallback Processing: : Provides alternative execution path</li><li>Variable Scope: : Variables defined in else block are available after execution</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used immediately after <code><if></code> or <code><case></code> block</li><li>Conditional Logic: : Executes only when preceding condition is false</li><li>Fallback Processing: : Provides alternative execution path</li><li>Variable Scope: : Variables defined in else block are available after execution</li></ul>
         </section>
 
         <section class="section">
@@ -193,8 +262,14 @@ evaluates to false. Used with <code><if></code> and <code><case></code> processo
                 <a href="case.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;case&gt;
                 </a>
-                <a href="var.html" class="related-link">
-                    <i class="fas fa-code"></i> &lt;var&gt;
+                <a href="try.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;try&gt;
+                </a>
+                <a href="catch.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;catch&gt;
+                </a>
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
                 </a></div>
         </section>
     </div>

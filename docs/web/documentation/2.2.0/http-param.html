@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;http-param&gt; - HTTP request parameter (form data)" />
-    <meta property="og:description" content="The <code><http-param></code> processor defines HTTP request parameters (form fields).
-Must be used as a child element of <code><http></code>. Used for POST/PUT..." />
+    <meta property="og:description" content="The <code><http-param></code> processor defines HTTP request parameters for form submissions,
+API calls, and data posting. Must be used as a child element of <c..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/http-param.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;http-param&gt; - HTTP request parameter (form data)" />
-    <meta property="twitter:description" content="The <code><http-param></code> processor defines HTTP request parameters (form fields).
-Must be used as a child element of <code><http></code>. Used for POST/PUT..." />
+    <meta property="twitter:description" content="The <code><http-param></code> processor defines HTTP request parameters for form submissions,
+API calls, and data posting. Must be used as a child element of <c..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,9 @@ Must be used as a child element of <code><http></code>. Used for POST/PUT..." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;http-param&gt; - HTTP request parameter (form data)",
-      "description": "The <code><http-param></code> processor defines HTTP request parameters (form fields).
-Must be used as a child element of <code><http></code>. Used for POST/PUT form data.",
+      "description": "The <code><http-param></code> processor defines HTTP request parameters for form submissions,
+API calls, and data posting. Must be used as a child element of <code><http></code>. 
+Automatically handles URL encoding and content-type headers.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +146,15 @@ Must be used as a child element of <code><http></code>. Used for POST/PUT form d
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><http-param></code> processor defines HTTP request parameters (form fields).
-Must be used as a child element of <code><http></code>. Used for POST/PUT form data.</p>
+            <p>The <code><http-param></code> processor defines HTTP request parameters for form submissions,
+API calls, and data posting. Must be used as a child element of <code><http></code>. 
+Automatically handles URL encoding and content-type headers.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Login form submission</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -174,14 +176,84 @@ Must be used as a child element of <code><http></code>. Used for POST/PUT form d
                 </div>
             </div>
 
+            <h3 class="subsection-title">Example 2: Search form with dynamic values</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;searchTerm&quot;&gt;web scraping tools&lt;/def&gt;
+
+&lt;http url=&quot;https://example.com/search&quot; method=&quot;POST&quot;&gt;
+  &lt;http-param name=&quot;q&quot;&gt;${searchTerm}&lt;/http-param&gt;
+  &lt;http-param name=&quot;category&quot;&gt;software&lt;/http-param&gt;
+  &lt;http-param name=&quot;sort&quot;&gt;relevance&lt;/http-param&gt;
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: API data submission</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://api.example.com/submit&quot; method=&quot;POST&quot;&gt;
+  &lt;http-header name=&quot;Content-Type&quot;&gt;application/x-www-form-urlencoded&lt;/http-header&gt;
+  &lt;http-param name=&quot;name&quot;&gt;John Doe&lt;/http-param&gt;
+  &lt;http-param name=&quot;email&quot;&gt;john@example.com&lt;/http-param&gt;
+  &lt;http-param name=&quot;message&quot;&gt;Hello from WebHarvest!&lt;/http-param&gt;
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Multi-value parameters (checkboxes)</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;http url=&quot;https://example.com/preferences&quot; method=&quot;POST&quot;&gt;
+  &lt;http-param name=&quot;interests&quot;&gt;technology&lt;/http-param&gt;
+  &lt;http-param name=&quot;interests&quot;&gt;programming&lt;/http-param&gt;
+  &lt;http-param name=&quot;interests&quot;&gt;web-scraping&lt;/http-param&gt;
+  &lt;http-param name=&quot;email&quot;&gt;user@example.com&lt;/http-param&gt;
+&lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The parameter name (form field name)</li><li><strong>value</strong>: (required): The parameter value (as element content)</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>name</strong>: (required): The parameter name (form field name)</li><li><strong>Content (body)</strong>: : The parameter value</li></ul>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><http></code> element</li><li>HTTP Methods: : Used with POST, PUT, PATCH methods for form data</li><li>Content-Type: : Automatically sets application/x-www-form-urlencoded</li><li>Dynamic Values: : Parameter values support variable substitution with ${var}</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><http></code> element</li><li>HTTP Methods: : Works with GET (query string), POST, PUT, PATCH (body)</li><li>Dynamic Values: : Parameter values support variable substitution with ${var}</li><li>Special Characters: : Automatically handles spaces, &, =, and other special characters</li></ul>
         </section>
 
         <section class="section">
@@ -192,8 +264,8 @@ Must be used as a child element of <code><http></code>. Used for POST/PUT form d
                 <a href="http-header.html" class="related-link">
                     <i class="fas fa-code"></i> &lt;http-header&gt;
                 </a>
-                <a href="var.html" class="related-link">
-                    <i class="fas fa-code"></i> &lt;var&gt;
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
                 </a></div>
         </section>
     </div>

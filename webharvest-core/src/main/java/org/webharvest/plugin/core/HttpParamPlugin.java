@@ -51,11 +51,14 @@ import org.webharvest.utils.CommonUtil;
  * HTTP request parameter (form data) - used within {@code <http>} for POST/PUT parameters.
  * 
  * <p>
- * The {@code <http-param>} processor defines HTTP request parameters (form fields).
- * Must be used as a child element of {@code <http>}. Used for POST/PUT form data.
+ * The {@code <http-param>} processor defines HTTP request parameters for form submissions,
+ * API calls, and data posting. Must be used as a child element of {@code <http>}. 
+ * Automatically handles URL encoding and content-type headers.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Login form submission</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -67,33 +70,84 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
+ * <h4>Example 2: Search form with dynamic values</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="searchTerm">web scraping tools</def>
+ * 
+ * <http url="https://example.com/search" method="POST">
+ *   <http-param name="q">${searchTerm}</http-param>
+ *   <http-param name="category">software</http-param>
+ *   <http-param name="sort">relevance</http-param>
+ * </http>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: API data submission</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <http url="https://api.example.com/submit" method="POST">
+ *   <http-header name="Content-Type">application/x-www-form-urlencoded</http-header>
+ *   <http-param name="name">John Doe</http-param>
+ *   <http-param name="email">john@example.com</http-param>
+ *   <http-param name="message">Hello from WebHarvest!</http-param>
+ * </http>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Multi-value parameters (checkboxes)</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <http url="https://example.com/preferences" method="POST">
+ *   <http-param name="interests">technology</http-param>
+ *   <http-param name="interests">programming</http-param>
+ *   <http-param name="interests">web-scraping</http-param>
+ *   <http-param name="email">user@example.com</http-param>
+ * </http>
+ * </config>
+ * }</pre>
+ * 
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>name</strong> (required): The parameter name (form field name)</li>
- *   <li><strong>value</strong> (required): The parameter value (as element content)</li>
+ *   <li><strong>Content (body)</strong>: The parameter value</li>
+ * </ul>
+ * 
+ * <h3>Return Value</h3>
+ * <p>Does not return a value. Parameters are collected by parent {@code <http>} element and sent in request body.</p>
+ * 
+ * <h3>Behavior</h3>
+ * <ul>
+ *   <li><strong>URL Encoding:</strong> Parameter values are automatically URL-encoded</li>
+ *   <li><strong>Content-Type:</strong> Sets application/x-www-form-urlencoded if not specified</li>
+ *   <li><strong>GET Requests:</strong> Parameters appended to URL query string</li>
+ *   <li><strong>POST/PUT Requests:</strong> Parameters sent in request body</li>
+ *   <li><strong>Multiple Values:</strong> Same parameter name can be used multiple times</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Parent Element</strong>: Must be used as child of {@code <http>} element</li>
- *   <li><strong>HTTP Methods</strong>: Used with POST, PUT, PATCH methods for form data</li>
- *   <li><strong>Content-Type</strong>: Automatically sets application/x-www-form-urlencoded</li>
+ *   <li><strong>HTTP Methods</strong>: Works with GET (query string), POST, PUT, PATCH (body)</li>
  *   <li><strong>Dynamic Values</strong>: Parameter values support variable substitution with ${var}</li>
+ *   <li><strong>Special Characters</strong>: Automatically handles spaces, &, =, and other special characters</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
  * <ul>
- *   <li>{@code <http>} - Main HTTP request processor</li>
+ *   <li>{@code <http>} - Main HTTP request processor (parent element)</li>
  *   <li>{@code <http-header>} - HTTP request headers</li>
- *   <li>{@code <var>} - Variable definition for dynamic values</li>
+ *   <li>{@code <def>} - Variable definition for dynamic parameter values</li>
  * </ul>
- * 
- * <p>See {@link HttpPlugin} for complete HTTP request examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
  * @see HttpPlugin
+ * @see HttpHeaderPlugin
  */
 @CorePlugin(
     elementName = "http-param",

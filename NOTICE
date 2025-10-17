@@ -5,8 +5,8 @@ Copyright 2006-2025 the original author or authors.
 
 ORIGINAL WORK
 
-This product includes software originally developed by Vladimir Nikic (2006-2007).
-The original WebHarvest project was created and actively maintained during 2006-2007.
+This product includes software originally developed by Vladimir Nikic (2006-2013).
+The original WebHarvest project was created in 2006 and actively maintained through 2013.
 
 ================================================================================
 
@@ -14,23 +14,34 @@ SUBSTANTIAL MODIFICATIONS
 
 This product has been substantially modified and enhanced by subsequent contributors:
 
-- Vladimir Nikic - Original Author (2006-2007)
-- Alexander Wajda - Developer
-- Robert Bala - Project Admin, Major Refactoring & Modernization (2024-2025)
+- Vladimir Nikic - Original Author (2006-2013)
+  Designed original processor-based architecture, XML configuration system, and Swing-based IDE
+
+- Robert Bala - Project Admin & Lead Developer (2012-2025)
   https://www.linkedin.com/in/rbala
-- Piotr Dyraga - Developer
-- Maciej Czapiewski - Developer
+  Designed modern plugin architecture (2012+), event-driven system, and cloud-ready infrastructure
+  Led comprehensive modernization (2024-2025)
+
+- Alexander Wajda - Developer (2010-2012)
+- Piotr Dyraga - Developer (2012-2013)
+- Maciej Czapiewski - Developer (2012-2013)
 - and other contributors
 
-Major refactoring and modernization work performed in 2024-2025 included:
+Modern plugin architecture and infrastructure (2012+):
+- Auto-discovered plugin system with @CorePlugin annotations
+- Event-driven architecture for distributed and cloud environments
+- Dependency injection with Google Guice
+- Modern session management and token tracking
+
+Major refactoring and modernization work (2024-2025):
 - Migration to modern Java (Java 11+)
-- Complete architecture redesign
-- Web-based IDE implementation
-- Enhanced plugin system
-- Comprehensive test coverage
-- Modern HTTP client (Apache HttpClient 5)
-- WebSocket support
+- Complete codebase refactoring
+- Web-based IDE implementation (replaced Swing GUI)
+- Modern HTTP client (Apache HttpClient 5, replaced Commons HttpClient 3.x)
+- Comprehensive test coverage (2600+ tests)
+- WebSocket support for real-time execution
 - Database connection pooling
+- Enhanced error handling and logging
 - And numerous other improvements
 
 ================================================================================

@@ -48,22 +48,81 @@ import org.webharvest.runtime.variables.Variable;
  * Regexp source text definition - used within {@code <regexp>} to specify input text.
  * 
  * <p>
- * The {@code <regexp-source>} processor defines the text to match against.
- * Must be used as a child element of {@code <regexp>}.
+ * The {@code <regexp-source>} processor defines the text content to match against using regular expressions.
+ * Must be used as a child element of {@code <regexp>}. Supports variable substitution and complex text sources.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h3>Usage Examples</h3>
+ * 
+ * <h4>Example 1: Simple text matching</h4>
  * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <regexp>
- *   <regexp-pattern>\\d{3}-\\d{3}-\\d{4}</regexp-pattern>
- *   <regexp-source>${textWithPhoneNumbers}</regexp-source>
+ *   <regexp-pattern><![CDATA[\\d{3}-\\d{3}-\\d{4}]]></regexp-pattern>
+ *   <regexp-source>Call us at 555-123-4567 or 800-555-0199</regexp-source>
  * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 2: Variable substitution</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="htmlContent">
+ *   <http url="https://example.com"/>
+ * </def>
+ * 
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<a href="([^"]+)">]]></regexp-pattern>
+ *   <regexp-source>${htmlContent}</regexp-source>
+ * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 3: Complex text processing</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <def var="rawText">
+ *   <file path="data.txt" action="read"/>
+ * </def>
+ * 
+ * <regexp>
+ *   <regexp-pattern><![CDATA[Email: ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})]]></regexp-pattern>
+ *   <regexp-source>${rawText}</regexp-source>
+ * </regexp>
+ * </config>
+ * }</pre>
+ * 
+ * <h4>Example 4: Multi-line text with HTML</h4>
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8"?>
+ * <config xmlns="http://org.webharvest/schema/2.1/core">
+ * <regexp>
+ *   <regexp-pattern><![CDATA[<div class="price">\\$([\\d,]+\\.[\\d]{2})</div>]]></regexp-pattern>
+ *   <regexp-source>
+ *     <html-to-xml>
+ *       <http url="https://shop.example.com/product/123"/>
+ *     </html-to-xml>
+ *   </regexp-source>
+ * </regexp>
+ * </config>
  * }</pre>
  * 
  * <h3>Parameters</h3>
  * <ul>
- *   <li><strong>source</strong> (required): The text to match against (as element content)</li>
- *   <li><strong>Variable Support</strong>: Can use ${var} for dynamic content</li>
+ *   <li><strong>Content (body)</strong>: The text content to match against</li>
+ * </ul>
+ * 
+ * <h3>Source Types</h3>
+ * <p>Can contain various types of content:</p>
+ * <ul>
+ *   <li><strong>Plain text:</strong> Direct text content</li>
+ *   <li><strong>Variables:</strong> ${varName} for dynamic content</li>
+ *   <li><strong>Processors:</strong> Results from other processors</li>
+ *   <li><strong>File content:</strong> Text from file operations</li>
+ *   <li><strong>HTTP responses:</strong> Web page content</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
@@ -72,21 +131,22 @@ import org.webharvest.runtime.variables.Variable;
  *   <li><strong>Text Input</strong>: Provides the text content for pattern matching</li>
  *   <li><strong>Variable Substitution</strong>: Supports ${var} syntax for dynamic content</li>
  *   <li><strong>Multiple Matches</strong>: Can match multiple occurrences in source text</li>
+ *   <li><strong>Encoding</strong>: Text encoding handled automatically</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
  * <ul>
- *   <li>{@code <regexp>} - Main regexp processor</li>
+ *   <li>{@code <regexp>} - Main regexp processor (parent element)</li>
  *   <li>{@code <regexp-pattern>} - Regular expression pattern</li>
  *   <li>{@code <regexp-result>} - Access to matched groups</li>
  * </ul>
- * 
- * <p>See {@link RegexpPlugin} for complete regex examples.</p>
  * 
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
  * @see RegexpPlugin
+ * @see RegexpPatternPlugin
+ * @see RegexpResultPlugin
  */
 @CorePlugin(
     elementName = "regexp-source",

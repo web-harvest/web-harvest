@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;constant&gt; - Constant value processor" />
-    <meta property="og:description" content="The <code><constant></code> processor wraps static text content. It's primarily used
-internally by the framework for static configuration values. User configura..." />
+    <meta property="og:description" content="The <code><constant></code> processor creates a static, immutable text value. It's primarily used
+internally by the framework for static configuration values an..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/constant.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;constant&gt; - Constant value processor" />
-    <meta property="twitter:description" content="The <code><constant></code> processor wraps static text content. It's primarily used
-internally by the framework for static configuration values. User configura..." />
+    <meta property="twitter:description" content="The <code><constant></code> processor creates a static, immutable text value. It's primarily used
+internally by the framework for static configuration values an..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,9 +28,9 @@ internally by the framework for static configuration values. User configura..." 
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;constant&gt; - Constant value processor",
-      "description": "The <code><constant></code> processor wraps static text content. It's primarily used
-internally by the framework for static configuration values. User configurations
-typically use <code><def></code> or direct text content instead.",
+      "description": "The <code><constant></code> processor creates a static, immutable text value. It's primarily used
+internally by the framework for static configuration values and literal text content.
+In user configurations, <code><def></code> or direct text content is typically preferred.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -146,15 +146,15 @@ typically use <code><def></code> or direct text content instead.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><constant></code> processor wraps static text content. It's primarily used
-internally by the framework for static configuration values. User configurations
-typically use <code><def></code> or direct text content instead.</p>
+            <p>The <code><constant></code> processor creates a static, immutable text value. It's primarily used
+internally by the framework for static configuration values and literal text content.
+In user configurations, <code><def></code> or direct text content is typically preferred.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Basic constant value</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -165,17 +165,72 @@ typically use <code><def></code> or direct text content instead.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;constant value=&quot;static text&quot;/&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;apiKey&quot;&gt;
+  &lt;constant value=&quot;sk_live_abc123xyz&quot;/&gt;
+&lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Static configuration value</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;constant value=&quot;https://api.example.com/v1&quot;/&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Preferred alternative - use &lt;def&gt;</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;!-- This is clearer and more common --&gt;
+&lt;def var=&quot;baseUrl&quot; value=&quot;https://api.example.com/v1&quot;/&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>value</strong>: (required): The static text value to return</li></ul>
+        </section>
 
         
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
+                </a>
+                <a href="text.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;text&gt;
+                </a>
+                <a href="var.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;var&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

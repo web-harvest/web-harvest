@@ -30,7 +30,7 @@ It defines global settings like charset and scripting language, and c..." />
       "headline": "&lt;config&gt; - Root configuration processor",
       "description": "The <code><config></code> processor is the root element of every WebHarvest configuration.
 It defines global settings like charset and scripting language, and contains all
-other processors.",
+other processors. Every WebHarvest scraper must start with this element.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -148,13 +148,13 @@ other processors.",
             <h2 class="section-title">Overview</h2>
             <p>The <code><config></code> processor is the root element of every WebHarvest configuration.
 It defines global settings like charset and scripting language, and contains all
-other processors.</p>
+other processors. Every WebHarvest scraper must start with this element.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Basic configuration</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -165,10 +165,146 @@ other processors.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;config charset=&quot;UTF-8&quot; scriptlang=&quot;javascript&quot;&gt;
-  &lt;!-- All scraper logic goes here --&gt;
-  &lt;http url=&quot;https://example.com&quot;/&gt;
-  &lt;def var=&quot;data&quot;&gt;...&lt;/def&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot; charset=&quot;UTF-8&quot;&gt;
+  &lt;def var=&quot;baseUrl&quot;&gt;https://example.com&lt;/def&gt;
+  &lt;def var=&quot;response&quot;&gt;
+    &lt;http url=&quot;${baseUrl}/api/data&quot;/&gt;
+  &lt;/def&gt;
+  &lt;def var=&quot;processedData&quot;&gt;
+    &lt;json-to-xml&gt;${response}&lt;/json-to-xml&gt;
+  &lt;/def&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: With custom scripting language</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot; 
+        charset=&quot;UTF-8&quot; 
+        scriptlang=&quot;groovy&quot;&gt;
+  &lt;def var=&quot;apiKey&quot;&gt;sk_live_abc123&lt;/def&gt;
+  &lt;def var=&quot;timestamp&quot;&gt;${new Date().getTime()}&lt;/def&gt;
+  
+  &lt;http url=&quot;https://api.example.com/data&quot;&gt;
+    &lt;http-header name=&quot;Authorization&quot;&gt;Bearer ${apiKey}&lt;/http-header&gt;
+    &lt;http-header name=&quot;X-Timestamp&quot;&gt;${timestamp}&lt;/http-header&gt;
+  &lt;/http&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Complex scraping workflow</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot; charset=&quot;UTF-8&quot;&gt;
+  &lt;!-- Global variables --&gt;
+  &lt;def var=&quot;baseUrl&quot;&gt;https://shop.example.com&lt;/def&gt;
+  &lt;def var=&quot;category&quot;&gt;electronics&lt;/def&gt;
+  
+  &lt;!-- Main scraping logic --&gt;
+  &lt;def var=&quot;categoryPage&quot;&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url=&quot;${baseUrl}/category/${category}&quot;/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/def&gt;
+  
+  &lt;def var=&quot;productLinks&quot;&gt;
+    &lt;xpath expression=&quot;//a[@class=&#x27;product-link&#x27;]/@href&quot;&gt;
+      &lt;get var=&quot;categoryPage&quot;/&gt;
+    &lt;/xpath&gt;
+  &lt;/def&gt;
+  
+  &lt;!-- Process each product --&gt;
+  &lt;loop item=&quot;productUrl&quot; list=&quot;${productLinks}&quot;&gt;
+    &lt;def var=&quot;productData&quot;&gt;
+      &lt;html-to-xml&gt;
+        &lt;http url=&quot;${baseUrl}${productUrl}&quot;/&gt;
+      &lt;/html-to-xml&gt;
+    &lt;/def&gt;
+    
+    &lt;def var=&quot;productName&quot;&gt;
+      &lt;xpath expression=&quot;//h1[@class=&#x27;product-title&#x27;]/text()&quot;&gt;
+        &lt;get var=&quot;productData&quot;/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;def var=&quot;productPrice&quot;&gt;
+      &lt;xpath expression=&quot;//span[@class=&#x27;price&#x27;]/text()&quot;&gt;
+        &lt;get var=&quot;productData&quot;/&gt;
+      &lt;/xpath&gt;
+    &lt;/def&gt;
+    
+    &lt;!-- Save product data --&gt;
+    &lt;file path=&quot;products.xml&quot; action=&quot;append&quot;&gt;
+      &lt;product&gt;
+        &lt;name&gt;${productName}&lt;/name&gt;
+        &lt;price&gt;${productPrice}&lt;/price&gt;
+        &lt;url&gt;${baseUrl}${productUrl}&lt;/url&gt;
+      &lt;/product&gt;
+    &lt;/file&gt;
+  &lt;/loop&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Error handling configuration</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot; charset=&quot;UTF-8&quot;&gt;
+  &lt;def var=&quot;apiEndpoint&quot;&gt;https://api.example.com/data&lt;/def&gt;
+  
+  &lt;try&gt;
+    &lt;def var=&quot;response&quot;&gt;
+      &lt;http url=&quot;${apiEndpoint}&quot; timeout=&quot;30000&quot;/&gt;
+    &lt;/def&gt;
+    
+    &lt;def var=&quot;data&quot;&gt;
+      &lt;json-to-xml&gt;${response}&lt;/json-to-xml&gt;
+    &lt;/def&gt;
+    
+    &lt;file path=&quot;success.log&quot; action=&quot;append&quot;&gt;
+      Successfully processed API response at ${new Date()}
+    &lt;/file&gt;
+  &lt;/try&gt;
+  &lt;catch&gt;
+    &lt;file path=&quot;error.log&quot; action=&quot;append&quot;&gt;
+      Error processing API: ${exception.message} at ${new Date()}
+    &lt;/file&gt;
+    
+    &lt;!-- Fallback to cached data --&gt;
+    &lt;def var=&quot;data&quot;&gt;
+      &lt;file path=&quot;cache/last-response.xml&quot; action=&quot;read&quot;/&gt;
+    &lt;/def&gt;
+  &lt;/catch&gt;
 &lt;/config&gt;</code></pre>
                 </div>
             </div>
@@ -177,9 +313,28 @@ other processors.</p>
 
         
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Root Element:: Must be the outermost element in every WebHarvest configuration</li><li>Namespace Required:: Must include xmlns attribute for proper validation</li><li>Global Scope:: Variables defined here are available to all child processors</li><li>Execution Order:: Processors execute in document order</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="def.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;def&gt;
+                </a>
+                <a href="http.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;http&gt;
+                </a>
+                <a href="loop.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;loop&gt;
+                </a>
+                <a href="try.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;try&gt;
+                </a>
+                <a href="catch.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;catch&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">

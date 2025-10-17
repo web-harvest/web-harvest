@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;regexp-source&gt; - Regexp source text definition" />
-    <meta property="og:description" content="The <code><regexp-source></code> processor defines the text to match against.
-Must be used as a child element of <code><regexp></code>...." />
+    <meta property="og:description" content="The <code><regexp-source></code> processor defines the text content to match against using regular expressions.
+Must be used as a child element of <code><regexp..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/regexp-source.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;regexp-source&gt; - Regexp source text definition" />
-    <meta property="twitter:description" content="The <code><regexp-source></code> processor defines the text to match against.
-Must be used as a child element of <code><regexp></code>...." />
+    <meta property="twitter:description" content="The <code><regexp-source></code> processor defines the text content to match against using regular expressions.
+Must be used as a child element of <code><regexp..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,8 @@ Must be used as a child element of <code><regexp></code>...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;regexp-source&gt; - Regexp source text definition",
-      "description": "The <code><regexp-source></code> processor defines the text to match against.
-Must be used as a child element of <code><regexp></code>.",
+      "description": "The <code><regexp-source></code> processor defines the text content to match against using regular expressions.
+Must be used as a child element of <code><regexp></code>. Supports variable substitution and complex text sources.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +145,14 @@ Must be used as a child element of <code><regexp></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><regexp-source></code> processor defines the text to match against.
-Must be used as a child element of <code><regexp></code>.</p>
+            <p>The <code><regexp-source></code> processor defines the text content to match against using regular expressions.
+Must be used as a child element of <code><regexp></code>. Supports variable substitution and complex text sources.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Simple text matching</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -163,21 +163,99 @@ Must be used as a child element of <code><regexp></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;regexp&gt;
-  &lt;regexp-pattern&gt;\\d{3}-\\d{3}-\\d{4}&lt;/regexp-pattern&gt;
-  &lt;regexp-source&gt;${textWithPhoneNumbers}&lt;/regexp-source&gt;
-&lt;/regexp&gt;</code></pre>
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[\\d{3}-\\d{3}-\\d{4}]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;Call us at 555-123-4567 or 800-555-0199&lt;/regexp-source&gt;
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Variable substitution</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;htmlContent&quot;&gt;
+  &lt;http url=&quot;https://example.com&quot;/&gt;
+&lt;/def&gt;
+
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[&lt;a href=&quot;([^&quot;]+)&quot;&gt;]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;${htmlContent}&lt;/regexp-source&gt;
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Complex text processing</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;rawText&quot;&gt;
+  &lt;file path=&quot;data.txt&quot; action=&quot;read&quot;/&gt;
+&lt;/def&gt;
+
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[Email: ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;${rawText}&lt;/regexp-source&gt;
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: Multi-line text with HTML</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;regexp&gt;
+  &lt;regexp-pattern&gt;&lt;![CDATA[&lt;div class=&quot;price&quot;&gt;\\$([\\d,]+\\.[\\d]{2})&lt;/div&gt;]]&gt;&lt;/regexp-pattern&gt;
+  &lt;regexp-source&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url=&quot;https://shop.example.com/product/123&quot;/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/regexp-source&gt;
+&lt;/regexp&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
         <section class="section">
-            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>source</strong>: (required): The text to match against (as element content)</li><li><strong>Variable Support</strong>: : Can use ${var} for dynamic content</li></ul>
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>Content (body)</strong>: : The text content to match against</li></ul>
         </section>
 
         <section class="section">
-            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><regexp></code> element</li><li>Text Input: : Provides the text content for pattern matching</li><li>Variable Substitution: : Supports ${var} syntax for dynamic content</li><li>Multiple Matches: : Can match multiple occurrences in source text</li></ul>
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><regexp></code> element</li><li>Text Input: : Provides the text content for pattern matching</li><li>Variable Substitution: : Supports ${var} syntax for dynamic content</li><li>Multiple Matches: : Can match multiple occurrences in source text</li><li>Encoding: : Text encoding handled automatically</li></ul>
         </section>
 
         <section class="section">

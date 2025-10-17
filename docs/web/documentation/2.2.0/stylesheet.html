@@ -12,15 +12,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article" />
     <meta property="og:title" content="&lt;stylesheet&gt; - XSLT stylesheet definition" />
-    <meta property="og:description" content="The <code><stylesheet></code> processor defines the XSLT stylesheet content.
-Must be used as a child element of <code><xslt></code>...." />
+    <meta property="og:description" content="The <code><stylesheet></code> processor defines the XSLT stylesheet content for XML transformations.
+Must be used as a child element of <code><xslt></code>. Sup..." />
     <meta property="og:url" content="https://webharvest.sourceforge.net/documentation/2.2.0/stylesheet.html" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:title" content="&lt;stylesheet&gt; - XSLT stylesheet definition" />
-    <meta property="twitter:description" content="The <code><stylesheet></code> processor defines the XSLT stylesheet content.
-Must be used as a child element of <code><xslt></code>...." />
+    <meta property="twitter:description" content="The <code><stylesheet></code> processor defines the XSLT stylesheet content for XML transformations.
+Must be used as a child element of <code><xslt></code>. Sup..." />
     
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -28,8 +28,9 @@ Must be used as a child element of <code><xslt></code>...." />
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "&lt;stylesheet&gt; - XSLT stylesheet definition",
-      "description": "The <code><stylesheet></code> processor defines the XSLT stylesheet content.
-Must be used as a child element of <code><xslt></code>.",
+      "description": "The <code><stylesheet></code> processor defines the XSLT stylesheet content for XML transformations.
+Must be used as a child element of <code><xslt></code>. Supports XSLT 1.0 and 2.0 transformations
+with Saxon engine.",
       "author": {
         "@type": "Organization",
         "name": "WebHarvest Team"
@@ -145,14 +146,15 @@ Must be used as a child element of <code><xslt></code>.",
     <div class="processor-content">
         <section class="section">
             <h2 class="section-title">Overview</h2>
-            <p>The <code><stylesheet></code> processor defines the XSLT stylesheet content.
-Must be used as a child element of <code><xslt></code>.</p>
+            <p>The <code><stylesheet></code> processor defines the XSLT stylesheet content for XML transformations.
+Must be used as a child element of <code><xslt></code>. Supports XSLT 1.0 and 2.0 transformations
+with Saxon engine.</p>
         </section>
 
         <section class="section">
             <h2 class="section-title">Usage Examples</h2>
             
-            <h3 class="subsection-title">Usage Examples</h3>
+            <h3 class="subsection-title">Example 1: Basic XML transformation</h3>
             <div class="code-window">
                 <div class="window-header">
                     <div class="window-controls">
@@ -163,28 +165,189 @@ Must be used as a child element of <code><xslt></code>.</p>
                     <span class="window-title">example-1.xml</span>
                 </div>
                 <div class="window-content">
-                    <pre><code class="language-xml">&lt;xslt&gt;
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xslt&gt;
   &lt;stylesheet&gt;
     &lt;![CDATA[
     &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot;&gt;
       &lt;xsl:template match=&quot;/&quot;&gt;
-        &lt;!-- XSLT transformation --&gt;
+        &lt;html&gt;
+          &lt;head&gt;&lt;title&gt;Product Catalog&lt;/title&gt;&lt;/head&gt;
+          &lt;body&gt;
+            &lt;h1&gt;Products&lt;/h1&gt;
+            &lt;xsl:for-each select=&quot;//product&quot;&gt;
+              &lt;div class=&quot;product&quot;&gt;
+                &lt;h2&gt;&lt;xsl:value-of select=&quot;name&quot;/&gt;&lt;/h2&gt;
+                &lt;p&gt;Price: $&lt;xsl:value-of select=&quot;price&quot;/&gt;&lt;/p&gt;
+              &lt;/div&gt;
+            &lt;/xsl:for-each&gt;
+          &lt;/body&gt;
+        &lt;/html&gt;
       &lt;/xsl:template&gt;
     &lt;/xsl:stylesheet&gt;
     ]]&gt;
   &lt;/stylesheet&gt;
   &lt;xml&gt;${sourceXml}&lt;/xml&gt;
-&lt;/xslt&gt;</code></pre>
+&lt;/xslt&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 2: Data transformation with filtering</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-2.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xslt&gt;
+  &lt;stylesheet&gt;
+    &lt;![CDATA[
+    &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot;&gt;
+      &lt;xsl:template match=&quot;/&quot;&gt;
+        &lt;products&gt;
+          &lt;xsl:for-each select=&quot;//product[price &gt; 100]&quot;&gt;
+            &lt;xsl:sort select=&quot;price&quot; order=&quot;ascending&quot;/&gt;
+            &lt;product&gt;
+              &lt;id&gt;&lt;xsl:value-of select=&quot;@id&quot;/&gt;&lt;/id&gt;
+              &lt;name&gt;&lt;xsl:value-of select=&quot;name&quot;/&gt;&lt;/name&gt;
+              &lt;price&gt;&lt;xsl:value-of select=&quot;price&quot;/&gt;&lt;/price&gt;
+              &lt;category&gt;&lt;xsl:value-of select=&quot;category&quot;/&gt;&lt;/category&gt;
+            &lt;/product&gt;
+          &lt;/xsl:for-each&gt;
+        &lt;/products&gt;
+      &lt;/xsl:template&gt;
+    &lt;/xsl:stylesheet&gt;
+    ]]&gt;
+  &lt;/stylesheet&gt;
+  &lt;xml&gt;${productCatalog}&lt;/xml&gt;
+&lt;/xslt&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 3: Complex transformation with parameters</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-3.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;def var=&quot;currency&quot;&gt;USD&lt;/def&gt;
+&lt;def var=&quot;discountRate&quot;&gt;0.1&lt;/def&gt;
+
+&lt;xslt&gt;
+  &lt;stylesheet&gt;
+    &lt;![CDATA[
+    &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot;&gt;
+      &lt;xsl:param name=&quot;currency&quot;/&gt;
+      &lt;xsl:param name=&quot;discountRate&quot;/&gt;
+      
+      &lt;xsl:template match=&quot;/&quot;&gt;
+        &lt;catalog&gt;
+          &lt;xsl:for-each select=&quot;//product&quot;&gt;
+            &lt;item&gt;
+              &lt;name&gt;&lt;xsl:value-of select=&quot;name&quot;/&gt;&lt;/name&gt;
+              &lt;originalPrice&gt;&lt;xsl:value-of select=&quot;price&quot;/&gt;&lt;/originalPrice&gt;
+              &lt;discountedPrice&gt;
+                &lt;xsl:value-of select=&quot;price * (1 - $discountRate)&quot;/&gt;
+              &lt;/discountedPrice&gt;
+              &lt;currency&gt;&lt;xsl:value-of select=&quot;$currency&quot;/&gt;&lt;/currency&gt;
+            &lt;/item&gt;
+          &lt;/xsl:for-each&gt;
+        &lt;/catalog&gt;
+      &lt;/xsl:template&gt;
+    &lt;/xsl:stylesheet&gt;
+    ]]&gt;
+  &lt;/stylesheet&gt;
+  &lt;param name=&quot;currency&quot;&gt;${currency}&lt;/param&gt;
+  &lt;param name=&quot;discountRate&quot;&gt;${discountRate}&lt;/param&gt;
+  &lt;xml&gt;${sourceData}&lt;/xml&gt;
+&lt;/xslt&gt;
+&lt;/config&gt;</code></pre>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Example 4: HTML to structured data</h3>
+            <div class="code-window">
+                <div class="window-header">
+                    <div class="window-controls">
+                        <span class="control red"></span>
+                        <span class="control yellow"></span>
+                        <span class="control green"></span>
+                    </div>
+                    <span class="window-title">example-4.xml</span>
+                </div>
+                <div class="window-content">
+                    <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;config xmlns=&quot;http://org.webharvest/schema/2.1/core&quot;&gt;
+&lt;xslt&gt;
+  &lt;stylesheet&gt;
+    &lt;![CDATA[
+    &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot;&gt;
+      &lt;xsl:template match=&quot;/&quot;&gt;
+        &lt;structuredData&gt;
+          &lt;xsl:for-each select=&quot;//div[@class=&#x27;product&#x27;]&quot;&gt;
+            &lt;product&gt;
+              &lt;title&gt;&lt;xsl:value-of select=&quot;h2/text()&quot;/&gt;&lt;/title&gt;
+              &lt;price&gt;&lt;xsl:value-of select=&quot;span[@class=&#x27;price&#x27;]/text()&quot;/&gt;&lt;/price&gt;
+              &lt;description&gt;&lt;xsl:value-of select=&quot;p[@class=&#x27;description&#x27;]/text()&quot;/&gt;&lt;/description&gt;
+              &lt;image&gt;&lt;xsl:value-of select=&quot;img/@src&quot;/&gt;&lt;/image&gt;
+            &lt;/product&gt;
+          &lt;/xsl:for-each&gt;
+        &lt;/structuredData&gt;
+      &lt;/xsl:template&gt;
+    &lt;/xsl:stylesheet&gt;
+    ]]&gt;
+  &lt;/stylesheet&gt;
+  &lt;xml&gt;
+    &lt;html-to-xml&gt;
+      &lt;http url=&quot;https://shop.example.com/products&quot;/&gt;
+    &lt;/html-to-xml&gt;
+  &lt;/xml&gt;
+&lt;/xslt&gt;
+&lt;/config&gt;</code></pre>
                 </div>
             </div>
 
         </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Parameters</h2><ul style="line-height: 1.8;"><li><strong>Content (body)</strong>: : XSLT stylesheet content</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Important Notes</h2><ul style="line-height: 1.8;"><li>Parent Element: : Must be used as child of <code><xslt></code> element</li><li>XSLT Syntax: : Uses XSLT 1.0/2.0 syntax with Saxon engine</li><li>CDATA Usage: : Use CDATA for stylesheets with special XML characters</li><li>Namespace Support: : Supports XML namespaces in transformations</li><li>Parameter Binding: : Use <code><param></code> to pass external parameters</li></ul>
+        </section>
 
-        
+        <section class="section">
+            <h2 class="section-title">Related Processors</h2><div class="related-links">
+                <a href="xslt.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;xslt&gt;
+                </a>
+                <a href="param.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;param&gt;
+                </a>
+                <a href="xml.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;xml&gt;
+                </a>
+                <a href="html-to-xml.html" class="related-link">
+                    <i class="fas fa-code"></i> &lt;html-to-xml&gt;
+                </a></div>
+        </section>
     </div>
 
     <footer class="site-footer">
