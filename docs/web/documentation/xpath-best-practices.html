@@ -1,189 +1,253 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XPath Best Practices - WebHarvest Documentation</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/prism.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XPath Best Practices - WebHarvest</title>
+    <meta name="description"
+        content="Learn XPath best practices in WebHarvest: text extraction vs element selection, common pitfalls, and solutions with practical examples." />
+    <meta name="keywords"
+        content="xpath best practices, xpath text extraction, xpath tutorial, webharvest xpath, xpath /text(), xpath string()" />
+    <link rel="stylesheet" href="../css/enterprise.css" />
+    <link rel="stylesheet" href="../css/prism.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
             margin: 2rem 0;
         }
-        .comparison-table th,
-        .comparison-table td {
-            padding: 1rem;
-            border: 1px solid var(--gray-200);
-            text-align: left;
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
         }
-        .comparison-table th {
-            background: var(--gray-50);
-            font-weight: 600;
+
+        .comparison-box {
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 2px solid;
         }
-        .comparison-table code {
-            background: var(--gray-100);
-            padding: 0.2rem 0.4rem;
-            border-radius: 0.25rem;
-            font-size: 0.9rem;
-        }
-        .good-example {
+
+        .comparison-box.good {
             background: #f0fdf4;
-            border-left: 4px solid #22c55e;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 0.5rem;
+            border-color: #22c55e;
         }
-        .bad-example {
+
+        .comparison-box.bad {
             background: #fef2f2;
-            border-left: 4px solid #ef4444;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 0.5rem;
+            border-color: #ef4444;
         }
+
+        .comparison-box h4 {
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .comparison-box.good h4 {
+            color: #16a34a;
+        }
+
+        .comparison-box.bad h4 {
+            color: #dc2626;
+        }
+
         .info-box {
             background: #f0f9ff;
             border-left: 4px solid #3b82f6;
             padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 0.5rem;
+            border-radius: var(--radius-md);
+            margin: 2rem 0;
         }
-        .section-icon {
-            display: inline-block;
-            margin-right: 0.5rem;
-            color: var(--primary);
+
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin: 2rem 0;
+        }
+
+        .reference-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: white;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .reference-table th,
+        .reference-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .reference-table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .reference-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .reference-table code {
+            background: var(--gray-100);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.9rem;
+            color: #e11d48;
         }
     </style>
 </head>
+
 <body>
+
     <!-- Header -->
     <header class="site-header">
         <div class="container header-inner">
-            <div class="brand">
-                <a href="../index.html" class="logo-link">
-                    <span class="logo-icon">🕷️</span>
-                    <span class="project-name">WebHarvest</span>
-                </a>
-                <span class="version-badge">v2.2.0</span>
-            </div>
+            <a href="../index.html" class="brand"
+                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--spacing-3);">
+                <img src="../images/logo.png" alt="WebHarvest" class="logo" />
+                <span class="project-name">WebHarvest</span>
+            </a>
             <nav class="main-nav">
-                <a href="../index.html#features"><i class="fas fa-star"></i> Features</a>
-                <a href="../plugins.html"><i class="fas fa-plug"></i> Plugins</a>
-                <a href="index.html" class="active"><i class="fas fa-book"></i> Docs</a>
-                <a href="../ide.html"><i class="fas fa-desktop"></i> IDE</a>
-                <a href="https://github.com/webharvest/webharvest" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <a href="../about.html">About</a>
+                <a href="getting-started.html"
+                    style="background: linear-gradient(135deg, var(--lime), #8BC34A); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 700;"><i
+                        class="fas fa-rocket"></i> Get Started</a>
+                <a href="../plugins.html">Plugins</a>
+                <a href="../ide.html">IDE</a>
+                <a href="../cli.html">CLI</a>
+                <a href="../examples/">Examples</a>
+                <a href="./" class="active">Docs</a>
+                <a href="../news.html">News</a>
+                <a href="../support.html">Support</a>
+                <a class="cta" href="../index.html#download">Download</a>
             </nav>
         </div>
     </header>
 
-    <!-- Content -->
-    <div class="docs-container">
-        <aside class="docs-sidebar">
-            <div class="sidebar-section">
-                <h3>Getting Started</h3>
-                <a href="getting-started.html">Quick Start Guide</a>
-                <a href="architecture.html">Architecture Overview</a>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container hero-inner">
+            <div class="hero-content">
+                <h1>XPath Best Practices<br />in WebHarvest</h1>
+                <p class="lead">Master text extraction vs element selection</p>
+                <p class="hero-description">
+                    Learn the most common XPath pitfall and how to avoid it. Understand when to use /text(), 
+                    string() function, or plain element selection.
+                </p>
             </div>
-            <div class="sidebar-section">
-                <h3>Best Practices</h3>
-                <a href="xpath-best-practices.html" class="active">XPath Best Practices</a>
-                <a href="css-selectors-guide.html">CSS Selectors Guide</a>
-                <a href="rate-limiting-guide.html">Rate Limiting Guide</a>
+        </div>
+    </section>
+
+    <!-- Common Issue -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> The Most Common Issue</h2>
+            <p class="section-subtitle">Element vs Text Content</p>
+        </div>
+
+        <div class="comparison-grid">
+            <div class="comparison-box bad">
+                <h4><i class="fas fa-times-circle"></i> Problem</h4>
+                <p><strong>When using XPath like <code>//title</code> or <code>//h1</code>:</strong></p>
+                <pre><code class="language-markup">Result: &lt;h1&gt;Herman Melville - Moby-Dick&lt;/h1&gt;</code></pre>
+                <p style="margin-top: 1rem;">WebHarvest returns the <strong>entire element</strong> including tags!</p>
             </div>
-            <div class="sidebar-section">
-                <h3>Core Processors</h3>
-                <a href="2.2.0/index.html">All Processors (A-Z)</a>
+
+            <div class="comparison-box good">
+                <h4><i class="fas fa-check-circle"></i> Solution</h4>
+                <p><strong>Use <code>/text()</code> or <code>string()</code>:</strong></p>
+                <pre><code class="language-markup">Result: Herman Melville - Moby-Dick</code></pre>
+                <p style="margin-top: 1rem;">Extract <strong>text content only</strong> - exactly what you need!</p>
             </div>
-        </aside>
+        </div>
+    </section>
 
-        <main class="docs-content">
-            <div class="breadcrumb">
-                <a href="../index.html">Home</a> &gt;
-                <a href="index.html">Documentation</a> &gt;
-                <span>XPath Best Practices</span>
-            </div>
+    <!-- XPath Patterns -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-code-branch" style="color: var(--primary);"></i> XPath Expression Patterns</h2>
+            <p class="section-subtitle">Correct ways to extract data</p>
+        </div>
 
-            <h1><i class="fas fa-code-branch section-icon"></i>XPath Best Practices in WebHarvest</h1>
+        <div class="feature-card">
+            <h3><i class="fas fa-check-circle" style="color: #22c55e;"></i> Extracting Text Content</h3>
+            <p>When you want text only (for display, templates, variables):</p>
 
-            <!-- Common Issue Section -->
-            <section class="doc-section">
-                <h2><i class="fas fa-exclamation-triangle section-icon"></i>Common Issue: Element vs Text Content</h2>
-                
-                <div class="bad-example">
-                    <h3><i class="fas fa-times"></i> Problem</h3>
-                    <p>When using XPath expressions like <code>//title</code> or <code>//h1</code>, WebHarvest returns the <strong>entire element</strong> including tags:</p>
-                    <pre><code class="language-markup">Result: &lt;h1&gt;Herman Melville - Moby-Dick&lt;/h1&gt;</code></pre>
-                </div>
-
-                <div class="good-example">
-                    <h3><i class="fas fa-check"></i> Solution</h3>
-                    <p>Use <code>/text()</code> or <code>string()</code> function to extract <strong>text content only</strong>:</p>
-                    <pre><code class="language-markup">Result: Herman Melville - Moby-Dick</code></pre>
-                </div>
-            </section>
-
-            <!-- XPath Expression Patterns -->
-            <section class="doc-section">
-                <h2><i class="fas fa-lightbulb section-icon"></i>XPath Expression Patterns</h2>
-
-                <h3><i class="fas fa-check-circle" style="color: #22c55e;"></i> Extracting Text Content</h3>
-                <p>When you want text only (for display, templates, variables):</p>
-
-                <div class="code-comparison" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
-                    <div class="bad-example">
-                        <h4><i class="fas fa-times"></i> Incorrect</h4>
-                        <pre><code class="language-xml">&lt;!-- Returns element with tags --&gt;
+            <div class="comparison-grid" style="margin-top: 1.5rem;">
+                <div class="comparison-box bad">
+                    <h4><i class="fas fa-times"></i> Incorrect</h4>
+                    <pre><code class="language-xml">&lt;!-- Returns element with tags --&gt;
 &lt;xpath expression="//title"&gt;
     &lt;get var="page"/&gt;
 &lt;/xpath&gt;
 &lt;!-- Result: &lt;title&gt;My Page&lt;/title&gt; --&gt;</code></pre>
-                    </div>
-                    <div class="good-example">
-                        <h4><i class="fas fa-check"></i> Correct</h4>
-                        <pre><code class="language-xml">&lt;!-- Returns text only --&gt;
+                </div>
+                <div class="comparison-box good">
+                    <h4><i class="fas fa-check"></i> Correct</h4>
+                    <pre><code class="language-xml">&lt;!-- Returns text only --&gt;
 &lt;xpath expression="//title/text()"&gt;
     &lt;get var="page"/&gt;
 &lt;/xpath&gt;
 &lt;!-- Result: My Page --&gt;</code></pre>
-                    </div>
                 </div>
+            </div>
 
-                <div class="good-example">
-                    <h4>Alternative: Using string() function</h4>
-                    <pre><code class="language-xml">&lt;xpath expression="string(//title)"&gt;
+            <div class="info-box" style="margin-top: 1.5rem;">
+                <h4><i class="fas fa-lightbulb"></i> Alternative: Using string() function</h4>
+                <pre><code class="language-xml">&lt;xpath expression="string(//title)"&gt;
     &lt;get var="page"/&gt;
 &lt;/xpath&gt;
 &lt;!-- Result: My Page --&gt;</code></pre>
-                </div>
+            </div>
+        </div>
 
+        <div class="features-grid" style="margin-top: 3rem;">
+            <div class="feature-card">
                 <h3>Multiple Elements</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
-                    <div class="bad-example">
+                <div class="comparison-grid" style="margin-top: 1rem;">
+                    <div class="comparison-box bad">
                         <h4><i class="fas fa-times"></i> Incorrect</h4>
                         <pre><code class="language-xml">&lt;xpath expression="//h1 | //h2 | //h3"&gt;</code></pre>
                     </div>
-                    <div class="good-example">
+                    <div class="comparison-box good">
                         <h4><i class="fas fa-check"></i> Correct</h4>
                         <pre><code class="language-xml">&lt;xpath expression="//h1/text() | //h2/text() | //h3/text()"&gt;</code></pre>
                     </div>
                 </div>
+            </div>
 
+            <div class="feature-card">
                 <h3>Nested Paths</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
-                    <div class="bad-example">
+                <div class="comparison-grid" style="margin-top: 1rem;">
+                    <div class="comparison-box bad">
                         <h4><i class="fas fa-times"></i> Incorrect</h4>
                         <pre><code class="language-xml">&lt;xpath expression="//div[@id='content']//span"&gt;</code></pre>
                     </div>
-                    <div class="good-example">
+                    <div class="comparison-box good">
                         <h4><i class="fas fa-check"></i> Correct</h4>
                         <pre><code class="language-xml">&lt;xpath expression="//div[@id='content']//span/text()"&gt;</code></pre>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <h3>Extracting from Child Elements</h3>
-                <pre><code class="language-xml">&lt;loop item="row"&gt;
+        <div class="feature-card" style="margin-top: 2rem;">
+            <h3>Extracting from Child Elements</h3>
+            <pre><code class="language-xml">&lt;loop item="row"&gt;
     &lt;xpath expression="//row"&gt;
         &lt;get var="dbResult"/&gt;
     &lt;/xpath&gt;
@@ -197,15 +261,24 @@
         &lt;/product&gt;
     &lt;/body&gt;
 &lt;/loop&gt;</code></pre>
-            </section>
+        </div>
+    </section>
 
-            <!-- When NOT to Use /text() -->
-            <section class="doc-section">
-                <h2><i class="fas fa-info-circle section-icon"></i>When NOT to Use /text()</h2>
+    <!-- When NOT to Use /text() -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-info-circle" style="color: #3b82f6;"></i> When NOT to Use /text()</h2>
+            <p class="section-subtitle">Exceptions to the rule</p>
+        </div>
 
-                <div class="info-box">
-                    <h3><i class="fas fa-info-circle"></i> Node Selection for Further Processing</h3>
-                    <pre><code class="language-xml">&lt;!-- OK - selecting nodes for iteration --&gt;
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6);">
+                    <i class="fas fa-sitemap"></i>
+                </div>
+                <h3>Node Selection for Iteration</h3>
+                <p>When you need to select elements for further processing:</p>
+                <pre><code class="language-xml">&lt;!-- OK - selecting nodes for iteration --&gt;
 &lt;loop item="row"&gt;
     &lt;xpath expression="//row"&gt;  &lt;!-- Returns node objects --&gt;
         &lt;get var="xmlData"/&gt;
@@ -213,74 +286,93 @@
     &lt;body&gt;
         &lt;!-- Process each row node --&gt;
     &lt;/body&gt;
-&lt;/loop&gt;
+&lt;/loop&gt;</code></pre>
+            </div>
 
-&lt;!-- OK - getting element for further XPath --&gt;
+            <div class="feature-card">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6, #d946ef);">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <h3>Further XPath Processing</h3>
+                <p>When you need the element for nested XPath queries:</p>
+                <pre><code class="language-xml">&lt;!-- OK - getting element for further XPath --&gt;
 &lt;def var="contentDiv"&gt;
     &lt;xpath expression="//div[@id='content']"&gt;  &lt;!-- Returns element --&gt;
         &lt;get var="page"/&gt;
     &lt;/xpath&gt;
 &lt;/def&gt;</code></pre>
-                </div>
+            </div>
 
-                <div class="info-box">
-                    <h3><i class="fas fa-info-circle"></i> Attribute Extraction</h3>
-                    <pre><code class="language-xml">&lt;!-- Attributes don't need /text() --&gt;
+            <div class="feature-card">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #d946ef, #ec4899);">
+                    <i class="fas fa-at"></i>
+                </div>
+                <h3>Attribute Extraction</h3>
+                <p>Attributes don't need /text():</p>
+                <pre><code class="language-xml">&lt;!-- Attributes return values directly --&gt;
 &lt;xpath expression="//a/@href"&gt;
     &lt;get var="page"/&gt;
 &lt;/xpath&gt;</code></pre>
-                </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <!-- Quick Reference -->
-            <section class="doc-section">
-                <h2><i class="fas fa-table section-icon"></i>Quick Reference</h2>
-                
-                <table class="comparison-table">
-                    <thead>
-                        <tr>
-                            <th>Goal</th>
-                            <th>XPath Expression</th>
-                            <th>Example</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Get text content</td>
-                            <td><code>//element/text()</code></td>
-                            <td><code>//h1/text()</code> → "Title"</td>
-                        </tr>
-                        <tr>
-                            <td>Get text (function)</td>
-                            <td><code>string(//element)</code></td>
-                            <td><code>string(//h1)</code> → "Title"</td>
-                        </tr>
-                        <tr>
-                            <td>Get element</td>
-                            <td><code>//element</code></td>
-                            <td><code>//h1</code> → <code>&lt;h1&gt;Title&lt;/h1&gt;</code></td>
-                        </tr>
-                        <tr>
-                            <td>Get attribute</td>
-                            <td><code>//element/@attr</code></td>
-                            <td><code>//a/@href</code> → "url"</td>
-                        </tr>
-                        <tr>
-                            <td>Multiple text</td>
-                            <td><code>//e1/text() | //e2/text()</code></td>
-                            <td>Multiple elements</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
+    <!-- Quick Reference -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-table" style="color: var(--primary);"></i> Quick Reference</h2>
+            <p class="section-subtitle">Choose the right XPath expression</p>
+        </div>
 
-            <!-- Examples -->
-            <section class="doc-section">
-                <h2><i class="fas fa-code section-icon"></i>Examples</h2>
+        <table class="reference-table">
+            <thead>
+                <tr>
+                    <th>Goal</th>
+                    <th>XPath Expression</th>
+                    <th>Example Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Get text content</strong></td>
+                    <td><code>//element/text()</code></td>
+                    <td><code>//h1/text()</code> → "Title"</td>
+                </tr>
+                <tr>
+                    <td><strong>Get text (function)</strong></td>
+                    <td><code>string(//element)</code></td>
+                    <td><code>string(//h1)</code> → "Title"</td>
+                </tr>
+                <tr>
+                    <td><strong>Get element</strong></td>
+                    <td><code>//element</code></td>
+                    <td><code>//h1</code> → <code>&lt;h1&gt;Title&lt;/h1&gt;</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Get attribute</strong></td>
+                    <td><code>//element/@attr</code></td>
+                    <td><code>//a/@href</code> → "url"</td>
+                </tr>
+                <tr>
+                    <td><strong>Multiple text</strong></td>
+                    <td><code>//e1/text() | //e2/text()</code></td>
+                    <td>Multiple elements</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 
-                <div class="good-example">
-                    <h3><i class="fas fa-check-circle"></i> Good Example: Text Extraction</h3>
-                    <pre><code class="language-xml">&lt;def var="title"&gt;
+    <!-- Examples -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-code" style="color: var(--primary);"></i> Complete Examples</h2>
+            <p class="section-subtitle">See it in action</p>
+        </div>
+
+        <div class="comparison-grid">
+            <div class="comparison-box good">
+                <h4><i class="fas fa-check-circle"></i> Good Example: Text Extraction</h4>
+                <pre><code class="language-xml">&lt;def var="title"&gt;
     &lt;xpath expression="//title/text()"&gt;
         &lt;get var="page"/&gt;
     &lt;/xpath&gt;
@@ -288,11 +380,11 @@
 
 &lt;template&gt;Page Title: ${title}&lt;/template&gt;
 &lt;!-- Output: Page Title: My Page Title --&gt;</code></pre>
-                </div>
+            </div>
 
-                <div class="bad-example">
-                    <h3><i class="fas fa-times-circle"></i> Bad Example: Element Extraction</h3>
-                    <pre><code class="language-xml">&lt;def var="title"&gt;
+            <div class="comparison-box bad">
+                <h4><i class="fas fa-times-circle"></i> Bad Example: Element Extraction</h4>
+                <pre><code class="language-xml">&lt;def var="title"&gt;
     &lt;xpath expression="//title"&gt;  &lt;!-- Missing /text() --&gt;
         &lt;get var="page"/&gt;
     &lt;/xpath&gt;
@@ -300,16 +392,20 @@
 
 &lt;template&gt;Page Title: ${title}&lt;/template&gt;
 &lt;!-- Output: Page Title: &lt;title&gt;My Page Title&lt;/title&gt; --&gt;</code></pre>
-                </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <!-- Testing -->
-            <section class="doc-section">
-                <h2><i class="fas fa-vial section-icon"></i>Testing Your XPath</h2>
-                
-                <p>You can test XPath expressions using the <code>&lt;file&gt;</code> plugin:</p>
-                
-                <pre><code class="language-xml">&lt;def var="test"&gt;
+    <!-- Testing -->
+    <section class="container" style="margin-top: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-vial" style="color: var(--primary);"></i> Testing Your XPath</h2>
+            <p class="section-subtitle">Verify your expressions work correctly</p>
+        </div>
+
+        <div class="feature-card">
+            <p>You can test XPath expressions using the <code>&lt;file&gt;</code> plugin:</p>
+            <pre><code class="language-xml">&lt;def var="test"&gt;
     &lt;xpath expression="//h1/text()"&gt;
         &lt;get var="page"/&gt;
     &lt;/xpath&gt;
@@ -318,37 +414,74 @@
 &lt;file action="write" path="test_output.txt"&gt;
     Result: ${test}
 &lt;/file&gt;</code></pre>
-                
-                <p>Check <code>test_output.txt</code> to verify the result matches your expectations.</p>
-            </section>
+            <p style="margin-top: 1rem;">Check <code>test_output.txt</code> to verify the result matches your expectations.</p>
+        </div>
+    </section>
 
-            <!-- Summary -->
-            <section class="doc-section">
-                <h2><i class="fas fa-clipboard-check section-icon"></i>Summary</h2>
-                
-                <div class="info-box" style="background: #fef3c7; border-left-color: #f59e0b;">
-                    <p><strong>General Rule:</strong> If you're extracting content for display, templates, or text processing, <strong>always use <code>/text()</code></strong> or <code>string()</code> function.</p>
-                    <p><strong>Exception:</strong> Only use <code>//element</code> (without <code>/text()</code>) when you need the element node for further XPath processing or iteration.</p>
-                </div>
-            </section>
+    <!-- Summary -->
+    <section class="container" style="margin-top: 4rem; margin-bottom: 4rem;">
+        <div class="section-header">
+            <h2><i class="fas fa-clipboard-check" style="color: var(--primary);"></i> Summary</h2>
+            <p class="section-subtitle">Key takeaways</p>
+        </div>
 
-            <!-- Footer -->
-            <footer class="doc-footer">
-                <div class="doc-meta">
-                    <span><i class="fas fa-calendar"></i> Updated: October 17, 2025</span>
-                    <span><i class="fas fa-tag"></i> Version: 2.2.0</span>
+        <div class="warning-box">
+            <h3 style="margin: 0 0 1rem 0;"><i class="fas fa-star" style="color: #f59e0b;"></i> General Rule</h3>
+            <p style="margin-bottom: 1rem;"><strong>If you're extracting content for display, templates, or text processing, always use <code>/text()</code> or <code>string()</code> function.</strong></p>
+            <p style="margin: 0;"><strong>Exception:</strong> Only use <code>//element</code> (without <code>/text()</code>) when you need the element node for further XPath processing or iteration.</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>WebHarvest</h4>
+                    <p>Open-source Java framework for web data extraction</p>
                 </div>
-                <div class="doc-navigation">
-                    <a href="css-selectors-guide.html" class="btn-nav"><i class="fas fa-arrow-left"></i> CSS Selectors</a>
-                    <a href="rate-limiting-guide.html" class="btn-nav">Rate Limiting <i class="fas fa-arrow-right"></i></a>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <a href="getting-started.html">Getting Started</a>
+                    <a href="2.2.0/">Core Processors</a>
+                    <a href="./">Guides & Tutorials</a>
                 </div>
-            </footer>
-        </main>
-    </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="../plugins.html">Plugins</a>
+                    <a href="../ide.html">IDE</a>
+                    <a href="../cli.html">CLI</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <a href="https://github.com/webharvest/webharvest">GitHub</a>
+                    <a href="../support.html">Support</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2006-2025 WebHarvest. Licensed under Apache License 2.0</p>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    Updated: October 17, 2025 | Version: 2.2.0
+                </p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="../js/prism.js"></script>
-    <script src="../js/script.js"></script>
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
 </body>
+
 </html>
 
