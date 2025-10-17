@@ -4,9 +4,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebHarvest Plugins - 54 Ready-to-Use Components | Core & External</title>
+    <title>WebHarvest Plugins - 57 Ready-to-Use Components | Core & Extensions</title>
     <meta name="description"
-        content="Complete list of 54 WebHarvest plugins: 46 core plugins (HTTP, XPath, XQuery, Regex) + 8 external plugins (FTP, Mail, Browser, ZIP). Enterprise-ready data extraction components." />
+        content="Complete list of 57 WebHarvest plugins: 47 core plugins (HTTP, XPath, XQuery, Regex) + 10 extension modules (FTP, Mail, Browser, ZIP, Database). Enterprise-ready data extraction components." />
     <meta name="keywords"
         content="webharvest plugins, HTTP plugin, XPath plugin, XQuery plugin, regex plugin, FTP plugin, mail plugin, browser plugin, data extraction plugins" />
     <meta name="robots" content="index, follow" />
@@ -48,14 +48,14 @@
         <div class="container hero-inner">
             <div class="hero-content">
                 <h1>WebHarvest<br />Plugin Ecosystem</h1>
-                <p class="lead">54 production-ready plugins for web scraping</p>
+                <p class="lead">57 production-ready plugins for web scraping</p>
                 <p class="hero-description">
-                    46 core plugins built-in, 8 external modules for specialized needs.
+                    47 core plugins built-in, 10 optional extensions for specialized needs.
                     Modern architecture with automatic discovery and dependency injection.
                 </p>
                 <div class="hero-buttons" style="margin-top: 2rem;">
                     <a href="documentation/2.2.0/" class="btn btn-primary btn-large">
-                        <i class="fas fa-book"></i> View All 54 Plugins
+                        <i class="fas fa-book"></i> View All 57 Plugins
                     </a>
                     <a href="documentation/getting-started.html" class="btn btn-secondary btn-large">
                         <i class="fas fa-rocket"></i> Get Started
@@ -79,7 +79,7 @@
                         <i class="fas fa-book"></i> Technical Documentation
                     </h4>
                     <p style="color: var(--gray-700); margin-bottom: 1rem; font-size: 0.95rem;">
-                        Complete reference for all 54 plugins with examples, parameters, and usage details.
+                        Complete reference for all 57 plugins with examples, parameters, and usage details.
                     </p>
                     <a href="documentation/2.2.0/" class="btn btn-primary">
                         View Plugin Reference →
@@ -104,30 +104,27 @@
     <section class="container" style="margin-top: 0rem;">
         <div class="section-header">
             <h2>Powerful, Modular, Production-Ready</h2>
-            <p class="section-subtitle">46 core plugins built-in, specialized extensions when you need them</p>
+            <p class="section-subtitle">47 core plugins built-in, optional extensions when you need them</p>
         </div>
 
         <div
             style="max-width: 55rem; margin: 0 auto 3rem; padding: 2rem; background: linear-gradient(135deg, #f8f9ff, #fff9f9); border-radius: 0.75rem; border-left: 4px solid var(--primary);">
             <p style="font-size: 1.125rem; color: var(--gray-700); margin-bottom: 1.5rem; line-height: 1.7;">
-                WebHarvest gives you <strong>everything you need</strong> to scrape the web right out of the box.
-                The core framework includes <strong>46 production-ready core plugins</strong> covering HTTP requests,
-                data
-                extraction,
-                transformation, control flow, and scripting - with <strong>zero external dependencies</strong>.
+                WebHarvest delivers <strong>47 production-ready core plugins</strong> right out of the box - everything you need for web scraping with <strong>zero external dependencies</strong>.
             </p>
             <p style="margin-bottom: 1rem; line-height: 1.7;">
-                <strong>Why this architecture?</strong>
+                The framework's modular architecture allows you to add <strong>10 optional extension modules</strong> only when your project needs them:
             </p>
-            <ul style="line-height: 1.8; margin-left: 1.5rem;">
-                <li><strong>Lightweight core</strong> - Start scraping immediately without managing dozens of
-                    dependencies</li>
-                <li><strong>Modular extensions</strong> - Add databases, email, or FTP only when your project needs them
-                </li>
-                <li><strong>Clean separation</strong> - Core stays stable and lightweight, extensions evolve
-                    independently</li>
-                <li><strong>Easy deployment</strong> - Smaller JARs, faster startup, reduced attack surface</li>
+            <ul style="line-height: 1.8; margin-left: 1.5rem; margin-bottom: 1.5rem;">
+                <li><strong>Database operations</strong> (2 plugins) - requires JDBC drivers</li>
+                <li><strong>FTP file transfer</strong> (4 plugins) - requires Apache Commons Net</li>
+                <li><strong>Email operations</strong> (1 plugin) - requires JavaMail</li>
+                <li><strong>ZIP file handling</strong> (2 plugins) - requires Apache Commons Compress</li>
+                <li><strong>Web browser automation</strong> (1 plugin) - requires HtmlUnit</li>
             </ul>
+            <p style="line-height: 1.7;">
+                <strong>Why this architecture?</strong> This keeps your core lightweight and lets you add only the dependencies you actually need - smaller JARs, faster startup, and reduced complexity.
+            </p>
         </div>
 
         <div class="features-grid">
@@ -135,7 +132,7 @@
                 <div class="feature-icon">
                     <i class="fas fa-cube"></i>
                 </div>
-                <h3>Core Plugins (46)</h3>
+                <h3>Core Plugins (47)</h3>
                 <p>Ready to use immediately</p>
                 <p style="margin-bottom: 1rem;">
                     Everything you need for web scraping:
@@ -162,8 +159,8 @@
                 <div class="feature-icon">
                     <i class="fas fa-plug"></i>
                 </div>
-                <h3>External Plugins (8 modules)</h3>
-                <p>Add when you need them</p>
+                <h3>Extension Modules (10)</h3>
+                <p>Optional add-ons with specific dependencies</p>
                 <p style="margin-bottom: 1rem;">
                     Specialized capabilities for enterprise use:
                 </p>
@@ -235,12 +232,11 @@
         </div>
     </section>
 
-    <!-- Available External Plugins -->
+    <!-- Available Extension Modules -->
     <section class="container" style="margin-top: 6rem;">
         <div class="section-header">
-            <h2>Enterprise-Grade Extensions</h2>
-            <p class="section-subtitle">Add powerful capabilities to your web scraping workflows with single
-                dependencies</p>
+            <h2>Extension Modules</h2>
+            <p class="section-subtitle">Optional modules with heavy dependencies - add only what your project needs</p>
         </div>
 
         <div
@@ -639,7 +635,7 @@ cp target/my-plugin-1.0.0.jar $WEBHARVEST_HOME/lib/
     <section class="download container" id="download" style="margin-top: 6rem;">
         <div class="download-card">
             <h2>Ready to Extend?</h2>
-            <p>Download external plugins or build your own custom extensions</p>
+            <p>Download extension modules or build your own custom plugins</p>
             <div class="download-buttons">
                 <a class="btn btn-primary btn-large"
                     href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/">
