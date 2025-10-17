@@ -1,8 +1,8 @@
 # 📚 Documentation Upload Simplification - Summary
 
-**Date**: October 16, 2025  
+**Date**: October 16-17, 2025  
 **Author**: Robert Bala  
-**Status**: ✅ Complete (not committed yet)
+**Status**: ✅ Complete & Deployed to SourceForge (r840)
 
 ---
 

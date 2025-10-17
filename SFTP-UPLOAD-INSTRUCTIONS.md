@@ -132,26 +132,33 @@ https://web-harvest.sourceforge.io/
 ### 🚀 Quick Upload (Automated)
 
 ```bash
-./upload-docs.sh                # Normal upload (updates existing files)
+./upload-docs.sh                # Normal upload (RECOMMENDED - cleans old files automatically)
 ./upload-docs.sh --dry-run      # Preview only (no upload)
-./upload-docs.sh --clean-remote # Delete all remote files first (DANGEROUS!)
+./upload-docs.sh --clean-remote # ⚠️ NOT WORKING - SourceForge has restricted Shell Account
 ```
 
-**Normal mode** (default):
+**💡 BEST PRACTICE:** Always use normal mode (`./upload-docs.sh`). The `rsync --delete` flag automatically:
+- ✅ Removes old files not in source (including old javadoc)
+- ✅ Updates modified files
+- ✅ Adds new files
+- ✅ Works with SourceForge restricted Shell Account
+
+**Normal mode** (default) - **RECOMMENDED**:
+- Uses `rsync --delete` which removes remote files not in source
 - Updates/adds files from `docs/web/`
-- Keeps existing files on server
-- Safe for incremental updates
+- **Automatically cleans up** old files (including old javadoc)
+- Safe and reliable - works with SourceForge restricted Shell Account
 
 **Dry-run mode** (`--dry-run`):
 - Shows what would be uploaded
 - No actual changes made
 - Good for verification
 
-**Clean-remote mode** (`--clean-remote`) - ⚠️ **DANGEROUS**:
-- Deletes ALL files from remote website first
-- Creates automatic backup before deletion
-- Requires typing "DELETE" to confirm
-- Use ONLY when starting fresh with new structure
+**Clean-remote mode** (`--clean-remote`) - ⚠️ **NOT WORKING ON SOURCEFORGE**:
+- ⚠️ Does NOT work with SourceForge (restricted Shell Account)
+- SourceForge allows only file transfers, not SSH commands like `rm -rf`
+- **Use normal mode instead** - `rsync --delete` achieves the same result
+- Normal mode will delete remote files not in local source automatically
 
 ## 🔧 Manual Upload via SFTP
 
@@ -285,17 +292,34 @@ Visit: https://web-harvest.sourceforge.io/
 - Ensure all CSS and JS files were uploaded
 - Verify file permissions (should be 644)
 
-**⚠️ Clean-Remote Mode Issues**
+**⚠️ SourceForge Restricted Shell Account**
 
-**❌ "Could not create backup"**
-- **Cause:** Remote directory empty or no permissions
-- **Effect:** Warning shown, but continues with deletion
-- **Safe:** Backup failure doesn't stop the process
+**❌ "This is a restricted Shell Account. You can only copy files to/from here."**
+- **Cause:** SourceForge web hosting doesn't allow SSH commands (only SFTP/rsync)
+- **Impact:** `--clean-remote` mode FAILS (requires SSH `rm -rf` command)
+- **Solution:** Use **normal mode** with `rsync --delete` instead:
+  ```bash
+  ./upload-docs.sh  # This will clean old files automatically
+  ```
+- **Why it works:** `rsync --delete` removes remote files not in source (same effect as manual clean)
+- **Result:** Old javadoc and obsolete files are automatically deleted
+
+**❌ "Could not create backup" or "Could not delete remote files"**
+- **Cause:** Attempting to run SSH commands on restricted Shell Account
+- **Effect:** `--clean-remote` mode will fail
+- **Safe:** No damage to local files or remote files (operation just fails)
+- **Fix:** Use normal mode instead
 
 **❌ "Could not delete remote files"**
-- **Cause:** SSH connection or permission issues
-- **Fix:** Check SSH key and permissions
-- **Impact:** Script exits, no files deleted
+- **Cause:** SourceForge restricted Shell Account (can't run `rm -rf` via SSH)
+- **Fix:** Use normal mode: `./upload-docs.sh` (rsync --delete works)
+- **Impact:** Script exits, no files deleted, but this is expected behavior
+
+**⚠️ "Warning: Remote count lower than expected"**
+- **Cause:** SourceForge restricted Shell Account can't run `find` command for verification
+- **Impact:** Just a warning - upload was successful
+- **Verify:** Manually check https://web-harvest.sourceforge.io/ in browser
+- **Safe:** Files were uploaded correctly, just can't verify count via SSH
 
 **⚠️ Clean-remote confirmation**
 - **Expected:** Must type exactly "DELETE" (case-sensitive)
@@ -487,5 +511,5 @@ java -jar test.jar
 ---
 
 **Last Updated**: October 16, 2025  
-**SourceForge Project**: https://sourceforge.net/projects/web-harvest/  
+**SourceForge Project**: https://sourceforge.net/projects/web-harvest/
 **Maintained by**: Robert Bala (rbala)

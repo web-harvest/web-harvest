@@ -51,7 +51,7 @@ for arg in "$@"; do
             echo "  ./upload-docs.sh                # Upload documentation"
             echo "  ./upload-docs.sh --dry-run      # Preview only"
             echo "  ./upload-docs.sh --clean-remote # Delete remote files first (DANGEROUS!)"
-            exit 1
+    exit 1
             ;;
     esac
 done
@@ -166,10 +166,35 @@ echo ""
 # Clean remote directory if requested
 if [ "$CLEAN_REMOTE" = true ]; then
     echo ""
+    echo "⚠️  WARNING: --clean-remote mode does NOT work with SourceForge!"
+    echo ""
+    echo "SourceForge uses a 'restricted Shell Account' that only allows"
+    echo "file transfers (SFTP/rsync), not SSH commands like 'rm -rf'."
+    echo ""
+    echo "💡 SOLUTION: Use normal mode instead:"
+    echo "   ./upload-docs.sh"
+    echo ""
+    echo "Normal mode uses 'rsync --delete' which achieves the same result:"
+    echo "  • Removes remote files not in docs/web/ (old javadoc, obsolete files)"
+    echo "  • Uploads new/updated files"
+    echo "  • Safe and reliable"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo ""
+    read -p "❓ Continue anyway and attempt clean-remote? (yes/no): " -r
+    echo
+    
+    if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+        echo "❌ Cancelled. Use: ./upload-docs.sh (normal mode)"
+        exit 0
+    fi
+    
+    echo ""
     echo "🚨🚨🚨 DANGER ZONE 🚨🚨🚨"
     echo "═══════════════════════════════════════════════════════════════"
     echo ""
-    echo "⚠️  You are about to DELETE ALL FILES from SourceForge website!"
+    echo "⚠️  Attempting to DELETE ALL FILES from SourceForge website!"
+    echo "   (This will likely FAIL due to restricted Shell Account)"
     echo ""
     echo "📁 Remote path: ${SF_HOST}:${SF_PATH}"
     echo "🌐 Website:     https://web-harvest.sourceforge.io/"
