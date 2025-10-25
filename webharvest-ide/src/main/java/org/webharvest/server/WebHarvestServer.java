@@ -78,7 +78,8 @@ public class WebHarvestServer {
         context.addServlet(new ServletHolder(new ExecutionServlet()), "/api/execute/*");
         context.addServlet(new ServletHolder(new org.webharvest.server.api.ExecutionControlServlet()), "/api/execution/*");
         context.addServlet(new ServletHolder(new org.webharvest.server.api.SessionHistoryServlet()), "/api/sessions/*");
-        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/* (control+info), /api/sessions/*");
+        context.addServlet(new ServletHolder(new org.webharvest.server.api.PluginMetadataServlet()), "/api/plugins/*");
+        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/*, /api/sessions/*, /api/plugins/*");
         
         // 2. WebSocket servlet
         JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {

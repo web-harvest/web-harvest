@@ -1411,6 +1411,224 @@ const app = {
     /**
      * Example 1: Simple HTTP + XPath
      */
+    /**
+     * Toggle Visual Mode (Step 2-3: Show/hide canvas)
+     */
+    toggleVisualMode() {
+        console.log('🎨 Toggling Visual mode...');
+
+        const editor = document.getElementById('editor');
+        const canvas = document.getElementById('visual-canvas');
+        const sidebar = document.getElementById('plugin-sidebar');
+
+        if (canvas.style.display === 'none') {
+            // Switch to Visual mode
+            editor.style.display = 'none';
+            canvas.style.display = 'flex';
+            sidebar.style.display = 'flex';
+
+            // Load plugins (first time only)
+            if (!this.pluginsLoaded) {
+                this.loadVisualPlugins();
+                this.pluginsLoaded = true;
+            }
+
+            // Parse XML and render (Steps 6-7)
+            this.parseAndRenderVisual();
+
+            console.log('✅ Switched to Visual mode');
+        } else {
+            // Switch back to XML mode
+            const tab = this.getActiveTab();
+
+            // Restore filename display
+            if (tab) {
+                document.getElementById('currentFileName').textContent = tab.name;
+            }
+
+            // Generate XML from visual nodes if modified (Step 10)
+            if (tab && tab.visualNodes && tab.visualNodes.length > 0) {
+                try {
+                    const generator = new SimpleXMLGenerator();
+                    const generatedXML = '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' +
+                        generator.generate(tab.visualNodes, 1) +
+                        '</config>';
+
+                    // Update editor
+                    this.editor.setValue(generatedXML);
+                    console.log('✅ Generated XML from visual nodes');
+                } catch (error) {
+                    console.error('❌ XML generation error:', error);
+                }
+            }
+
+            canvas.style.display = 'none';
+            editor.style.display = 'block';
+            sidebar.style.display = 'none';
+            console.log('✅ Switched to XML mode');
+        }
+    },
+
+    /**
+     * Load plugins for Visual mode (Step 5) - with categories
+     */
+    async loadVisualPlugins() {
+        console.log('📦 Loading plugins for Visual mode...');
+        const container = document.getElementById('plugin-list');
+
+        try {
+            const response = await fetch('/api/plugins');
+            const data = await response.json();
+            const plugins = data.plugins || [];
+
+            console.log(`✅ Loaded ${plugins.length} plugins`);
+
+            // Group by category
+            const grouped = {};
+            plugins.forEach(plugin => {
+                const cat = plugin.category || 'Other';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(plugin);
+            });
+
+            let html = '';
+            for (const category of Object.keys(grouped).sort()) {
+                html += `
+                    <div style="margin-bottom: 16px;">
+                        <div style="padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; letter-spacing: 0.5px;">
+                            ${category}
+                        </div>
+                `;
+
+                for (const plugin of grouped[category]) {
+                    html += `
+                        <div class="plugin-item" 
+                             draggable="true" 
+                             data-plugin-id="${plugin.id}"
+                             ondragstart="app.handleDragStart(event, '${plugin.id}')"
+                             style="padding: 10px 12px; margin-bottom: 4px; background: #f9f9f9; border: 1px solid transparent; border-radius: 6px; cursor: grab; transition: all 0.15s;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="width: 28px; height: 28px; background: rgba(255, 193, 7, 0.1); border: 2px solid #FFC107; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #1F2937;">
+                                    <i class="fas ${plugin.icon}"></i>
+                                </div>
+                                <div style="font-size: 13px; font-weight: 600; color: #1F2937;">${plugin.name}</div>
+                            </div>
+                            <div style="font-size: 11px; color: #666; line-height: 1.4;">${plugin.description}</div>
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
+            console.log('✅ Plugins rendered in sidebar with categories');
+
+        } catch (error) {
+            console.error('❌ Failed to load plugins:', error);
+            container.innerHTML = `
+                <div style="padding: 24px; text-align: center; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+                    <p style="margin: 12px 0 0; font-size: 13px;">Failed to load plugins</p>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Parse XML and render in Visual mode (Steps 6-7)
+     */
+    parseAndRenderVisual() {
+        console.log('📊 Parsing XML for Visual mode...');
+
+        const tab = this.getActiveTab();
+        if (!tab || !this.editor) {
+            console.error('No tab or editor!');
+            return;
+        }
+
+        const xml = this.editor.getValue();
+        console.log('XML to parse:', xml.substring(0, 100) + '...');
+
+        // Don't update filename - it's already in tab
+        // document.getElementById('currentFileName').textContent = tab.name + ' (Visual)';
+
+        try {
+            // Check if SimpleXMLParser exists
+            if (typeof SimpleXMLParser === 'undefined') {
+                throw new Error('SimpleXMLParser not loaded! Check if simple-xml-parser.js is included.');
+            }
+
+            // Parse XML using SimpleXMLParser
+            const parser = new SimpleXMLParser();
+            const nodes = parser.parse(xml);
+
+            console.log(`✅ Parsed ${nodes.length} nodes from XML`);
+            console.log('Parsed nodes:', nodes);
+
+            // Check if VisualRenderer exists
+            if (typeof VisualRenderer === 'undefined') {
+                throw new Error('VisualRenderer not loaded! Check if visual-renderer.js is included.');
+            }
+
+            // Render nodes using VisualRenderer
+            if (!this.visualRenderer) {
+                this.visualRenderer = new VisualRenderer('canvas-area');
+                console.log('✅ VisualRenderer initialized');
+            }
+
+            this.visualRenderer.render(nodes);
+            console.log('✅ Nodes rendered on canvas');
+
+            // Store in tab
+            tab.visualNodes = nodes;
+
+        } catch (error) {
+            console.error('❌ Parse/render error:', error);
+            console.error('Error stack:', error.stack);
+            document.getElementById('canvas-area').innerHTML = `
+                <div style="padding: 48px; text-align: center; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; opacity: 0.5;"></i>
+                    <h3 style="margin: 16px 0 8px; color: #1F2937;">Parse Error</h3>
+                    <p style="color: #666; font-size: 14px;">${error.message}</p>
+                    <pre style="margin-top: 16px; padding: 16px; background: #f5f5f5; border-radius: 6px; text-align: left; font-size: 12px; max-width: 600px; margin-left: auto; margin-right: auto; overflow: auto;">${error.stack || 'No stack trace'}</pre>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Drag & Drop handlers (Step 8)
+     */
+    handleDragStart(event, pluginId) {
+        event.dataTransfer.setData('plugin-id', pluginId);
+        event.dataTransfer.effectAllowed = 'copy';
+        console.log('🎯 Dragging plugin:', pluginId);
+    },
+
+    handleDragOver(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    },
+
+    handleDrop(event) {
+        event.preventDefault();
+        const pluginId = event.dataTransfer.getData('plugin-id');
+
+        console.log('📦 Dropped plugin:', pluginId);
+
+        // TODO: Create node on canvas
+        // For now, just show alert
+        alert(`Plugin dropped: ${pluginId}\n\nDrag & drop is working!\nNext: Implement node creation and property editing.`);
+    },
+
+    /**
+     * Get active tab helper
+     */
+    getActiveTab() {
+        return this.tabs.find(t => t.id === this.activeTabId);
+    },
+
     getHttpXPathExample() {
         return `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">

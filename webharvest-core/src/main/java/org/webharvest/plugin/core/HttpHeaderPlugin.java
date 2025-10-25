@@ -351,7 +351,7 @@ public class HttpHeaderPlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
+                    return new String[]{"id", "value"};
                 }
 
                 @Override
@@ -373,6 +373,21 @@ public class HttpHeaderPlugin extends AbstractPlugin {
                     if (!name.matches("^[a-zA-Z0-9\\-_]+$")) {
                         throw new PluginValidationException("Name must be a valid HTTP header name");
                     }
+                }
+                
+                @Override
+                public boolean canAppearAtRoot() {
+                    return false; // Must be inside http element
+                }
+                
+                @Override
+                public String[] getRequiredParents() {
+                    return new String[]{"http"};
+                }
+                
+                @Override
+                public boolean isContextSpecific() {
+                    return true;
                 }
             };
         }
@@ -537,6 +552,21 @@ public class HttpHeaderPlugin extends AbstractPlugin {
                 if (!name.matches("^[a-zA-Z0-9\\-_]+$")) {
                     throw new PluginValidationException("Name must be a valid HTTP header name");
                 }
+            }
+            
+            @Override
+            public boolean canAppearAtRoot() {
+                return false;  // http-header CANNOT be at root level
+            }
+            
+            @Override
+            public String[] getRequiredParents() {
+                return new String[]{"http"};  // MUST be child of <http>
+            }
+            
+            @Override
+            public boolean isContextSpecific() {
+                return true;  // Context-specific plugin
             }
         };
     }

@@ -30,13 +30,13 @@
                 <span class="project-name">WebHarvest IDE</span>
             </div>
             <div class="ide-actions">
-                <button class="btn btn-sm" onclick="app.openFile()" title="Open Configuration (Cmd+O)">
+                <button class="btn btn-sm" onclick="window.app.openFile()" title="Open Configuration (Cmd+O)">
                     <i class="fas fa-folder-open"></i> Open
                 </button>
-                <button class="btn btn-sm" onclick="app.saveFile()" title="Save (Cmd+S)">
+                <button class="btn btn-sm" onclick="window.app.saveFile()" title="Save (Cmd+S)">
                     <i class="fas fa-save"></i> Save
                 </button>
-                <button class="btn btn-sm btn-primary" onclick="app.showExamplesModal()" title="Load Example">
+                <button class="btn btn-sm btn-primary" onclick="window.app.showExamplesModal()" title="Load Example">
                     <i class="fas fa-download"></i> Examples
                 </button>
                 <button class="btn btn-sm"
@@ -51,14 +51,32 @@
     <!-- Tab Bar (macOS-style) -->
     <div class="tab-bar">
         <div id="tabs" class="tabs"></div>
-        <button class="tab-add-btn" onclick="app.addTab()" title="New Tab (Cmd+T)">
+        <button class="tab-add-btn" onclick="window.app.addTab()" title="New Tab (Cmd+T)">
             <i class="fas fa-plus"></i>
         </button>
     </div>
 
     <!-- Main IDE Content (Split View) -->
     <div class="ide-main">
-        <!-- Left: Editor Panel (70%) -->
+        <!-- Left Sidebar: Plugin Palette (Visual mode only) -->
+        <div id="plugin-sidebar"
+            style="display: none; width: 260px; background: white; border-right: 1px solid #e0e0e0; flex-direction: column;">
+            <div style="padding: 16px; border-bottom: 1px solid #e0e0e0;">
+                <h3
+                    style="margin: 0 0 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; color: #666;">
+                    Plugins</h3>
+                <input type="search" id="plugin-search" placeholder="Search..."
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+            </div>
+            <div id="plugin-list" style="flex: 1; overflow-y: auto; padding: 8px;">
+                <div style="padding: 48px 16px; text-align: center; color: #999;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p style="margin: 12px 0 0; font-size: 13px;">Loading plugins...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Editor Panel -->
         <div class="editor-section">
             <div class="editor-toolbar">
                 <div class="toolbar-left">
@@ -68,10 +86,14 @@
                     </span>
                 </div>
                 <div class="toolbar-right">
-                    <button class="btn btn-sm btn-primary" onclick="app.runConfig()" title="Run Configuration (Cmd+R)">
+                    <button class="btn btn-sm" onclick="window.app.toggleVisualMode()" title="Visual Designer Mode">
+                        <i class="fas fa-project-diagram"></i> Visual
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="window.app.runConfig()"
+                        title="Run Configuration (Cmd+R)">
                         <i class="fas fa-play"></i> Run
                     </button>
-                    <button class="btn btn-sm" onclick="app.validateConfig()" title="Validate XML">
+                    <button class="btn btn-sm" onclick="window.app.validateConfig()" title="Validate XML">
                         <i class="fas fa-check"></i> Validate
                     </button>
                 </div>
@@ -85,41 +107,58 @@
 
             <!-- Execution Controls -->
             <div id="executionControls" class="execution-controls" style="display: none;">
-                <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="app.pauseExecution()"
+                <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="window.app.pauseExecution()"
                     title="Pause Execution">
                     <i class="fas fa-pause"></i> Pause
                 </button>
-                <button id="resumeBtn" class="btn btn-sm btn-success" onclick="app.resumeExecution()"
+                <button id="resumeBtn" class="btn btn-sm btn-success" onclick="window.app.resumeExecution()"
                     title="Resume Execution" style="display: none;">
                     <i class="fas fa-play"></i> Resume
                 </button>
-                <button class="btn btn-sm btn-error" onclick="app.stopExecution()" title="Stop Execution">
+                <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop Execution">
                     <i class="fas fa-stop"></i> Stop
                 </button>
             </div>
 
             <div id="editor" class="monaco-editor-container"></div>
+
+            <!-- Visual Designer Canvas (hidden by default) -->
+            <div id="visual-canvas" style="display: none; flex: 1; background: #f5f5f5; padding: 0; width: 100%;">
+                <div id="canvas-area"
+                    style="background: white; padding: 24px; min-height: 100%; width: 100%; box-sizing: border-box;"
+                    ondrop="app.handleDrop(event)" ondragover="app.handleDragOver(event)">
+                    <!-- Visual nodes will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Property Panel (Visual Mode only, hidden by default) -->
+        <div id="propertyPanel"
+            style="display: none; width: 300px; background: white; border-left: 1px solid #e0e0e0; flex-direction: column; overflow-y: auto;">
+            <!-- Properties will be rendered here by PropertyPanel.ts -->
         </div>
 
         <!-- Right: Sidebar Panel (30%) -->
         <div class="sidebar-section">
             <!-- Sidebar Tab Navigation -->
             <div class="sidebar-nav">
-                <button class="sidebar-nav-btn active" data-panel="logs" onclick="app.switchSidebarPanel('logs')">
+                <button class="sidebar-nav-btn active" data-panel="logs"
+                    onclick="window.app.switchSidebarPanel('logs')">
                     <i class="fas fa-list-ul"></i>
                     <span>Logs</span>
                     <span class="badge" id="logsBadge">0</span>
                 </button>
-                <button class="sidebar-nav-btn" data-panel="results" onclick="app.switchSidebarPanel('results')">
+                <button class="sidebar-nav-btn" data-panel="results" onclick="window.app.switchSidebarPanel('results')">
                     <i class="fas fa-table"></i>
                     <span>Results</span>
                 </button>
-                <button class="sidebar-nav-btn" data-panel="variables" onclick="app.switchSidebarPanel('variables')">
+                <button class="sidebar-nav-btn" data-panel="variables"
+                    onclick="window.app.switchSidebarPanel('variables')">
                     <i class="fas fa-box"></i>
                     <span>Variables</span>
                     <span class="badge" id="varsBadge">0</span>
                 </button>
-                <button class="sidebar-nav-btn" data-panel="session" onclick="app.switchSidebarPanel('session')">
+                <button class="sidebar-nav-btn" data-panel="session" onclick="window.app.switchSidebarPanel('session')">
                     <i class="fas fa-info-circle"></i>
                     <span>Session</span>
                 </button>
@@ -131,17 +170,13 @@
                 <div id="logsPanel" class="sidebar-panel active">
                     <div class="panel-header">
                         <h3>Execution Logs</h3>
-                        <button class="btn-icon" onclick="app.clearLogs()" title="Clear Logs">
+                        <button class="btn-icon" onclick="window.app.clearLogs()" title="Clear Logs">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                     <div class="panel-body">
-                        <div id="logsContent" class="logs-list">
-                            <div class="empty-state">
-                                <i class="fas fa-list-ul"></i>
-                                <p>No logs yet</p>
-                                <small>Logs will appear here during execution</small>
-                            </div>
+                        <div id="logs" class="logs-list">
+                            <!-- Logs rendered by LogsPanel.ts -->
                         </div>
                     </div>
                 </div>
@@ -150,17 +185,13 @@
                 <div id="resultsPanel" class="sidebar-panel">
                     <div class="panel-header">
                         <h3>Results</h3>
-                        <button class="btn-icon" onclick="app.exportResults()" title="Export Results">
+                        <button class="btn-icon" onclick="window.app.exportResults()" title="Export Results">
                             <i class="fas fa-download"></i>
                         </button>
                     </div>
                     <div class="panel-body">
-                        <div id="resultsContent" class="results-tree">
-                            <div class="empty-state">
-                                <i class="fas fa-table"></i>
-                                <p>No results yet</p>
-                                <small>Results will appear after execution</small>
-                            </div>
+                        <div id="results" class="results-tree">
+                            <!-- Results rendered by ResultsPanel.ts -->
                         </div>
                     </div>
                 </div>
@@ -173,12 +204,8 @@
                             onkeyup="app.filterVariables(this.value)">
                     </div>
                     <div class="panel-body">
-                        <div id="variablesContent" class="variables-list">
-                            <div class="empty-state">
-                                <i class="fas fa-box"></i>
-                                <p>No variables defined</p>
-                                <small>Variables will appear during execution</small>
-                            </div>
+                        <div id="variables" class="variables-list">
+                            <!-- Variables rendered by VariablesPanel.ts -->
                         </div>
                     </div>
                 </div>
@@ -186,15 +213,11 @@
                 <!-- Session Panel -->
                 <div id="sessionPanel" class="sidebar-panel">
                     <div class="panel-header">
-                        <h3>Session Info</h3>
+                        <h3>Session</h3>
                     </div>
                     <div class="panel-body">
-                        <div id="sessionContent" class="session-info">
-                            <div class="empty-state">
-                                <i class="fas fa-info-circle"></i>
-                                <p>No session active</p>
-                                <small>Session details will appear after execution</small>
-                            </div>
+                        <div id="session" class="session-info">
+                            <!-- Session rendered by SessionPanel.ts -->
                         </div>
                     </div>
                 </div>
@@ -221,11 +244,11 @@
 
     <!-- Examples Modal -->
     <div id="examplesModal" class="modal">
-        <div class="modal-overlay" onclick="app.hideExamplesModal()"></div>
+        <div class="modal-overlay" onclick="window.app.hideExamplesModal()"></div>
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Load Example Configuration</h2>
-                <button class="btn-icon" onclick="app.hideExamplesModal()">
+                <button class="btn-icon" onclick="window.app.hideExamplesModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -235,9 +258,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" onclick="app.hideExamplesModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="app.loadSelectedExample()">
-                    <i class="fas fa-download"></i> Load Example
+                <button class="btn btn-outline" onclick="window.app.hideExamplesModal()">
+                    <i class="fas fa-times"></i> Close
                 </button>
             </div>
         </div>
@@ -247,7 +269,7 @@
     <div id="pluginTooltip" class="plugin-tooltip" style="display: none;">
         <div class="tooltip-header">
             <strong id="tooltipTitle"></strong>
-            <button class="btn-icon-sm" onclick="app.hideTooltip()">
+            <button class="btn-icon-sm" onclick="window.app.hideTooltip()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -259,8 +281,9 @@
         </div>
     </div>
 
-    <!-- Application Script -->
-    <script src="static/js/app.js"></script>
+    <!-- TypeScript Application -->
+    <script type="module" crossorigin src="dist/assets/main.js"></script>
+    <link rel="stylesheet" crossorigin href="dist/assets/main.css">
 </body>
 
 </html>
