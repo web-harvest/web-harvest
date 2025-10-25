@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML Conversion Tests - WebHarvest Visual Designer</title>
+    <link rel="stylesheet" href="../../../static/css/enterprise.css">
+    <link rel="stylesheet" href="../styles/visual-designer.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            padding: var(--spacing-8);
+            background: var(--gray-50);
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-8);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: var(--spacing-8);
+            padding-bottom: var(--spacing-4);
+            border-bottom: 2px solid var(--gray-200);
+        }
+        
+        .test-header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .test-header p {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: var(--spacing-4);
+            margin-bottom: var(--spacing-6);
+            justify-content: center;
+        }
+        
+        .btn-run-tests {
+            padding: var(--spacing-4) var(--spacing-8);
+            background: var(--yellow);
+            color: #000;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(255, 193, 7, 0.4);
+            transition: all 0.2s;
+        }
+        
+        .btn-run-tests:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 193, 7, 0.5);
+        }
+        
+        .test-results {
+            margin-top: var(--spacing-6);
+        }
+        
+        .test-result {
+            padding: var(--spacing-4);
+            margin-bottom: var(--spacing-3);
+            border-radius: var(--radius-lg);
+            border-left: 4px solid;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+        
+        .test-result.pass {
+            background: rgba(164, 198, 57, 0.1);
+            border-left-color: var(--lime);
+        }
+        
+        .test-result.fail {
+            background: rgba(244, 67, 54, 0.1);
+            border-left-color: #F44336;
+        }
+        
+        .test-result .icon {
+            font-size: 1.5rem;
+            width: 32px;
+            text-align: center;
+        }
+        
+        .test-result .icon.pass {
+            color: var(--lime);
+        }
+        
+        .test-result .icon.fail {
+            color: #F44336;
+        }
+        
+        .test-result .details {
+            flex: 1;
+        }
+        
+        .test-result .name {
+            font-weight: 600;
+            margin-bottom: var(--spacing-1);
+        }
+        
+        .test-result .message {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .test-summary {
+            margin-top: var(--spacing-8);
+            padding: var(--spacing-6);
+            background: var(--gradient-primary);
+            color: white;
+            border-radius: var(--radius-xl);
+            text-align: center;
+        }
+        
+        .test-summary h2 {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .test-stats {
+            display: flex;
+            gap: var(--spacing-8);
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .test-stats .stat {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2);
+        }
+        
+        .test-stats .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: var(--spacing-8);
+            color: var(--text-secondary);
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-4);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 XML Conversion Unit Tests</h1>
+            <p>Ensures Visual ↔ XML conversion is lossless and correct</p>
+        </div>
+        
+        <div class="test-controls">
+            <button id="run-tests-btn" class="btn-run-tests">
+                <i class="fas fa-play"></i> Run All Tests
+            </button>
+        </div>
+        
+        <div id="test-results" class="test-results">
+            <div class="loading">
+                <i class="fas fa-info-circle"></i>
+                <p>Click "Run All Tests" to start</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { XMLConversionTests } from './XMLConversionTests.js';
+        
+        // Load plugin registry from API
+        async function loadPluginRegistry() {
+            const response = await fetch('/api/plugins/metadata');
+            const data = await response.json();
+            
+            const registry = new Map();
+            data.plugins.forEach(p => {
+                registry.set(p.elementName, p);
+            });
+            
+            return registry;
+        }
+        
+        // Run tests
+        document.getElementById('run-tests-btn').addEventListener('click', async () => {
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Running tests...</p>
+                </div>
+            `;
+            
+            try {
+                // Load registry
+                const registry = await loadPluginRegistry();
+                
+                // Run tests
+                const tests = new XMLConversionTests(registry);
+                const results = await tests.runAll();
+                
+                // Display results
+                const passed = results.filter(r => r.passed).length;
+                const failed = results.filter(r => !r.passed).length;
+                
+                let html = '';
+                
+                results.forEach(result => {
+                    html += `
+                        <div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                            <div class="icon ${result.passed ? 'pass' : 'fail'}">
+                                <i class="fas ${result.passed ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                            </div>
+                            <div class="details">
+                                <div class="name">${result.name}</div>
+                                <div class="message">${result.message}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                    <div class="test-summary">
+                        <h2>${failed === 0 ? '🎉 All Tests Passed!' : '⚠️ Some Tests Failed'}</h2>
+                        <div class="test-stats">
+                            <div class="stat">
+                                <div class="stat-value">${results.length}</div>
+                                <div>Total Tests</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" style="color: var(--lime);">${passed}</div>
+                                <div>Passed</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" style="color: #F44336;">${failed}</div>
+                                <div>Failed</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                resultsContainer.innerHTML = html;
+                
+            } catch (error) {
+                resultsContainer.innerHTML = `
+                    <div class="test-result fail">
+                        <div class="icon fail">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="details">
+                            <div class="name">Test Runner Error</div>
+                            <div class="message">${error}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -6,11 +6,11 @@
     <parent>
         <groupId>org.webharvest</groupId>
         <artifactId>webharvest</artifactId>
-        <version>2.2.0</version>
+        <version>2.3.1</version>
     </parent>
     <groupId>org.webharvest</groupId>
     <artifactId>webharvest-ide</artifactId>
-    <version>2.2.0</version>
+    <version>2.3.1</version>
     <name>WebHarvest IDE</name>
     <properties>
         <maven.build.timestamp.format>MMMM dd, yyyy</maven.build.timestamp.format>
@@ -76,6 +76,52 @@
                             <mainClass>org.webharvest.server.WebHarvestServer</mainClass>
                         </manifest>
                     </archive>
+                </configuration>
+            </plugin>
+            <!-- Frontend Build Plugin - Builds TypeScript/Vite project -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.15.0</version>
+                <executions>
+                    <!-- Install Node & NPM -->
+                    <execution>
+                        <id>install node and npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <nodeVersion>v18.19.0</nodeVersion>
+                            <npmVersion>10.2.3</npmVersion>
+                        </configuration>
+                    </execution>
+                    <!-- npm install -->
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- npm run build -->
+                    <execution>
+                        <id>npm run build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>compile</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <workingDirectory>${project.basedir}/frontend</workingDirectory>
+                    <installDirectory>${project.basedir}/target</installDirectory>
                 </configuration>
             </plugin>
             <plugin>

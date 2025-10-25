@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><title>Token Usage Test</title></head>
+<body>
+<h1>Testing Token Usage Display</h1>
+<div id="session"></div>
+<script>
+// Simulate backend data
+const sessionInfo = {
+    sessionId: "test-123",
+    status: "COMPLETED",
+    duration: 1500,
+    elementsProcessed: 5,
+    processingRate: 3.33,
+    httpMetrics: {
+        requests: 3,
+        bytesDownloaded: 15000,
+        bytesUploaded: 500,
+        avgResponseTime: 250
+    },
+    pluginBreakdown: {
+        "http": 3,
+        "xpath": 2
+    }
+};
+
+const tokenUsage = {
+    httpRequests: 3,
+    httpBytes: 15500,
+    cpuTimeMs: 120,
+    memoryPeakBytes: 5242880
+};
+
+console.log("SessionInfo:", sessionInfo);
+console.log("TokenUsage:", tokenUsage);
+
+document.getElementById('session').innerHTML = `
+  <h3>Session:</h3>
+  <pre>${JSON.stringify(sessionInfo, null, 2)}</pre>
+  <h3>Tokens:</h3>
+  <pre>${JSON.stringify(tokenUsage, null, 2)}</pre>
+`;
+</script>
+</body>
+</html>

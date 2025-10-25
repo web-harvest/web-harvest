@@ -76,9 +76,11 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, XmlToJsonPlugin.class, "xml-to-json");
         registry.registerMapping(null, XPathPlugin.class, "xpath");
         registry.registerMapping(null, XQueryPlugin.class, "xquery");
+        registry.registerMapping(null, XQExpressionPlugin.class, "xq-expression");
+        registry.registerMapping(null, XQParamPlugin.class, "xq-param");
         registry.registerMapping(null, XsltPlugin.class, "xslt");
         
-        LOG.info("Registered 39 core plugins");
+        LOG.info("Registered 41 core plugins");
         initialized = true;
     }
     

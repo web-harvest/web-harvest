@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebHarvest IDE - Professional Web Scraping Editor</title>
+
+    <!-- CSS - Clean and organized -->
+    <link rel="stylesheet" href="static/css/enterprise.css">
+    <link rel="stylesheet" href="static/css/unified-ide-clean.css">
+
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- ==================== HEADER ==================== -->
+    <header class="unified-header">
+        <div class="header-left">
+            <img src="static/img/logo.png" alt="WebHarvest" class="app-logo" />
+            <span class="app-title">WebHarvest IDE</span>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="unifiedApp.newFile()">
+                <i class="fas fa-file"></i> New
+            </button>
+            <button class="header-btn" onclick="unifiedApp.openFile()">
+                <i class="fas fa-folder-open"></i> Open
+            </button>
+            <button class="header-btn" onclick="unifiedApp.saveFile()">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button class="header-btn header-btn-primary" onclick="unifiedApp.run()">
+                <i class="fas fa-play"></i> Run
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== TAB BAR ==================== -->
+    <div class="unified-tabs">
+        <div id="tabs-container" class="tabs-list">
+            <!-- Tabs rendered here -->
+        </div>
+        <button class="tab-add-btn" onclick="unifiedApp.addTab()">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- ==================== TOOLBAR ==================== -->
+    <div class="unified-toolbar">
+        <div class="toolbar-left">
+            <div class="view-switcher">
+                <button class="view-btn active" data-view="xml" onclick="unifiedApp.setViewMode('xml')">
+                    <i class="fas fa-code"></i> XML
+                </button>
+                <button class="view-btn" data-view="visual" onclick="unifiedApp.setViewMode('visual')">
+                    <i class="fas fa-project-diagram"></i> Visual
+                </button>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="tool-btn" onclick="unifiedApp.validate()">
+                <i class="fas fa-check"></i> Validate
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <div class="unified-main">
+        <!-- LEFT SIDEBAR: Plugin Palette (Visual mode only) -->
+        <aside id="left-sidebar" class="left-sidebar" style="display: none;">
+            <div class="sidebar-header">
+                <h3>Plugins</h3>
+                <input type="search" id="plugin-search" class="search-box" placeholder="Search...">
+            </div>
+            <div id="plugin-list" class="plugin-list">
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading plugins...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER: Editor/Canvas -->
+        <main class="main-content">
+            <!-- XML Mode: Monaco Editor -->
+            <div id="xml-editor" class="editor-container">
+                <div id="monaco-editor"></div>
+            </div>
+
+            <!-- Visual Mode: Canvas -->
+            <div id="visual-canvas" class="canvas-container" style="display: none;">
+                <div id="canvas-area" class="canvas-area">
+                    <!-- Visual nodes here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: Context-dependent -->
+        <aside class="right-sidebar">
+            <!-- XML Mode: Logs/Variables -->
+            <div id="xml-sidebar" class="xml-panels">
+                <div class="panel-tabs">
+                    <button class="panel-tab active" data-panel="logs" onclick="unifiedApp.showPanel('logs')">
+                        <i class="fas fa-list"></i> Logs
+                    </button>
+                    <button class="panel-tab" data-panel="variables" onclick="unifiedApp.showPanel('variables')">
+                        <i class="fas fa-box"></i> Variables
+                    </button>
+                </div>
+                <div class="panel-content">
+                    <div id="logs-panel" class="panel active">
+                        <div class="empty-state">
+                            <i class="fas fa-list"></i>
+                            <p>No logs yet</p>
+                        </div>
+                    </div>
+                    <div id="variables-panel" class="panel">
+                        <div class="empty-state">
+                            <i class="fas fa-box"></i>
+                            <p>No variables</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual Mode: Properties -->
+            <div id="visual-sidebar" class="visual-properties" style="display: none;">
+                <div class="sidebar-header">
+                    <h3>Properties</h3>
+                </div>
+                <div id="properties-content" class="properties-body">
+                    <div class="empty-state">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <p>No selection</p>
+                        <small>Click a node to edit</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ==================== STATUS BAR ==================== -->
+    <footer class="unified-status">
+        <div class="status-left">
+            <span id="status-message">
+                <i class="fas fa-circle" style="color: #4CAF50;"></i> Ready
+            </span>
+        </div>
+        <div class="status-right">
+            <span id="cursor-pos">Ln 1, Col 1</span>
+            <span id="view-mode-indicator">XML</span>
+            <span>UTF-8</span>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="static/js/simple-xml-parser.js"></script>
+    <script src="static/js/visual-renderer.js"></script>
+    <script src="static/js/unified-app.js"></script>
+</body>
+
+</html>

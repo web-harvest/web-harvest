@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Mode Tests - WebHarvest IDE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 24px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .stats {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .stat-value {
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .passed { color: #10b981; }
+        .failed { color: #ef4444; }
+        .total { color: #6b7280; }
+        
+        #results {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .test-suite {
+            margin-bottom: 32px;
+        }
+        .suite-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .test-case {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid #10b981;
+            background: #f0fdf4;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .test-case.failed {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        .test-icon {
+            font-size: 20px;
+        }
+        .test-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .test-time {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .test-error {
+            margin-top: 8px;
+            padding: 12px;
+            background: white;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #ef4444;
+            white-space: pre-wrap;
+        }
+        .run-btn {
+            background: #FFC107;
+            color: #1F2937;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .run-btn:hover {
+            background: #FFB300;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Visual Mode Test Suite</h1>
+        <p style="color: #6b7280; margin-top: 8px;">TDD for XML ↔ Visual conversion, rendering, and drag & drop</p>
+        
+        <div class="stats">
+            <div class="stat total">
+                <span>Total:</span>
+                <span class="stat-value" id="totalTests">0</span>
+            </div>
+            <div class="stat passed">
+                <span>✓ Passed:</span>
+                <span class="stat-value" id="passedTests">0</span>
+            </div>
+            <div class="stat failed">
+                <span>✗ Failed:</span>
+                <span class="stat-value" id="failedTests">0</span>
+            </div>
+        </div>
+        
+        <button class="run-btn" onclick="runAllTests()" style="margin-top: 16px;">
+            ▶ Run All Tests
+        </button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <!-- Load dependencies -->
+    <script src="../js/simple-xml-parser.js"></script>
+    <script src="../js/simple-xml-generator.js"></script>
+    <script src="../js/visual-renderer.js"></script>
+    
+    <!-- Mini Test Framework -->
+    <script>
+        class TestRunner {
+            constructor() {
+                this.suites = [];
+                this.results = {
+                    total: 0,
+                    passed: 0,
+                    failed: 0
+                };
+            }
+            
+            describe(suiteName, suiteFunc) {
+                const suite = {
+                    name: suiteName,
+                    tests: []
+                };
+                this.suites.push(suite);
+                
+                const it = (testName, testFunc) => {
+                    suite.tests.push({ name: testName, func: testFunc });
+                };
+                
+                suiteFunc(it);
+            }
+            
+            async run() {
+                this.results = { total: 0, passed: 0, failed: 0 };
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '';
+                
+                for (const suite of this.suites) {
+                    const suiteDiv = document.createElement('div');
+                    suiteDiv.className = 'test-suite';
+                    
+                    const suiteName = document.createElement('div');
+                    suiteName.className = 'suite-name';
+                    suiteName.textContent = suite.name;
+                    suiteDiv.appendChild(suiteName);
+                    
+                    for (const test of suite.tests) {
+                        this.results.total++;
+                        const start = performance.now();
+                        
+                        const testDiv = document.createElement('div');
+                        testDiv.className = 'test-case';
+                        
+                        try {
+                            await test.func();
+                            
+                            this.results.passed++;
+                            testDiv.innerHTML = `
+                                <div class="test-icon">✓</div>
+                                <div class="test-name">${test.name}</div>
+                                <div class="test-time">${(performance.now() - start).toFixed(2)}ms</div>
+                            `;
+                        } catch (error) {
+                            this.results.failed++;
+                            testDiv.className = 'test-case failed';
+                            testDiv.innerHTML = `
+                                <div class="test-icon">✗</div>
+                                <div class="test-name">${test.name}</div>
+                                <div class="test-time">${(performance.now() - start).toFixed(2)}ms</div>
+                            `;
+                            
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'test-error';
+                            errorDiv.textContent = error.stack || error.message;
+                            testDiv.appendChild(errorDiv);
+                        }
+                        
+                        suiteDiv.appendChild(testDiv);
+                    }
+                    
+                    resultsDiv.appendChild(suiteDiv);
+                }
+                
+                this.updateStats();
+            }
+            
+            updateStats() {
+                document.getElementById('totalTests').textContent = this.results.total;
+                document.getElementById('passedTests').textContent = this.results.passed;
+                document.getElementById('failedTests').textContent = this.results.failed;
+            }
+        }
+        
+        // Assertion helpers
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+        
+        function assertEquals(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected}, got ${actual}`);
+            }
+        }
+        
+        function assertDeepEquals(actual, expected, message) {
+            const actualStr = JSON.stringify(actual);
+            const expectedStr = JSON.stringify(expected);
+            if (actualStr !== expectedStr) {
+                throw new Error(message || `Expected ${expectedStr}, got ${actualStr}`);
+            }
+        }
+        
+        function assertContains(haystack, needle, message) {
+            if (!haystack.includes(needle)) {
+                throw new Error(message || `Expected to contain "${needle}"`);
+            }
+        }
+        
+        // Test Runner Instance
+        const runner = new TestRunner();
+        
+        // === TEST SUITES ===
+        
+        // Suite 1: SimpleXMLParser Tests
+        runner.describe('SimpleXMLParser', (it) => {
+            it('should parse simple element', () => {
+                const parser = new SimpleXMLParser();
+                const xml = '<config><var name="test">value</var></config>';
+                const nodes = parser.parse(xml);
+                
+                assertEquals(nodes.length, 1, 'Should have 1 node');
+                assertEquals(nodes[0].type, 'var', 'Node type should be var');
+                assertEquals(nodes[0].attributes.name, 'test', 'Attribute name should be test');
+                assertEquals(nodes[0].body, 'value', 'Body should be value');
+            });
+            
+            it('should parse nested elements', () => {
+                const parser = new SimpleXMLParser();
+                const xml = '<config><loop><var name="x">1</var></loop></config>';
+                const nodes = parser.parse(xml);
+                
+                assertEquals(nodes.length, 1, 'Should have 1 root node');
+                assertEquals(nodes[0].type, 'loop', 'Root should be loop');
+                assertEquals(nodes[0].children.length, 1, 'Loop should have 1 child');
+                assertEquals(nodes[0].children[0].type, 'var', 'Child should be var');
+            });
+            
+            it('should parse CDATA content', () => {
+                const parser = new SimpleXMLParser();
+                const xml = '<config><var><![CDATA[<html>test</html>]]></var></config>';
+                const nodes = parser.parse(xml);
+                
+                assertEquals(nodes[0].body, '<html>test</html>', 'Should preserve CDATA content');
+            });
+            
+            it('should parse multiple attributes', () => {
+                const parser = new SimpleXMLParser();
+                const xml = '<config><http url="http://example.com" method="POST" timeout="5000"/></config>';
+                const nodes = parser.parse(xml);
+                
+                assertEquals(nodes[0].attributes.url, 'http://example.com');
+                assertEquals(nodes[0].attributes.method, 'POST');
+                assertEquals(nodes[0].attributes.timeout, '5000');
+            });
+            
+            it('should handle empty elements', () => {
+                const parser = new SimpleXMLParser();
+                const xml = '<config><var name="empty"></var></config>';
+                const nodes = parser.parse(xml);
+                
+                assertEquals(nodes[0].body, '', 'Empty element should have empty body');
+            });
+        });
+        
+        // Suite 2: SimpleXMLGenerator Tests
+        runner.describe('SimpleXMLGenerator', (it) => {
+            it('should generate simple element', () => {
+                const generator = new SimpleXMLGenerator();
+                const nodes = [{
+                    type: 'var',
+                    attributes: { name: 'test' },
+                    body: 'value',
+                    children: []
+                }];
+                
+                const xml = generator.generate(nodes, 1);
+                assertContains(xml, '<var name="test">value</var>');
+            });
+            
+            it('should generate nested elements', () => {
+                const generator = new SimpleXMLGenerator();
+                const nodes = [{
+                    type: 'loop',
+                    attributes: { maxloops: '10' },
+                    body: null,
+                    children: [{
+                        type: 'var',
+                        attributes: { name: 'x' },
+                        body: '1',
+                        children: []
+                    }]
+                }];
+                
+                const xml = generator.generate(nodes, 1);
+                assertContains(xml, '<loop maxloops="10">');
+                assertContains(xml, '<var name="x">1</var>');
+                assertContains(xml, '</loop>');
+            });
+            
+            it('should escape special characters in attributes', () => {
+                const generator = new SimpleXMLGenerator();
+                const nodes = [{
+                    type: 'var',
+                    attributes: { name: 'test"quote' },
+                    body: 'value',
+                    children: []
+                }];
+                
+                const xml = generator.generate(nodes, 1);
+                assertContains(xml, '&quot;');
+            });
+            
+            it('should wrap body with CDATA if contains HTML', () => {
+                const generator = new SimpleXMLGenerator();
+                const nodes = [{
+                    type: 'var',
+                    attributes: { name: 'html' },
+                    body: '<div>test</div>',
+                    children: []
+                }];
+                
+                const xml = generator.generate(nodes, 1);
+                assertContains(xml, '<![CDATA[<div>test</div>]]>');
+            });
+        });
+        
+        // Suite 3: Round-trip conversion (XML → Visual → XML)
+        runner.describe('XML ↔ Visual Conversion', (it) => {
+            it('should roundtrip simple config', () => {
+                const original = '<config><var name="test">value</var></config>';
+                
+                const parser = new SimpleXMLParser();
+                const nodes = parser.parse(original);
+                
+                const generator = new SimpleXMLGenerator();
+                const regenerated = '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' +
+                                   generator.generate(nodes, 1) +
+                                   '</config>';
+                
+                // Parse both and compare structure
+                const originalNodes = parser.parse(original);
+                const regeneratedNodes = parser.parse(regenerated);
+                
+                assertDeepEquals(regeneratedNodes, originalNodes, 'Round-trip should preserve structure');
+            });
+            
+            it('should roundtrip nested config', () => {
+                const original = `<config>
+                    <loop maxloops="10">
+                        <var name="x">1</var>
+                        <http url="http://example.com"/>
+                    </loop>
+                </config>`;
+                
+                const parser = new SimpleXMLParser();
+                const nodes = parser.parse(original);
+                
+                const generator = new SimpleXMLGenerator();
+                const regenerated = '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' +
+                                   generator.generate(nodes, 1) +
+                                   '</config>';
+                
+                const originalNodes = parser.parse(original);
+                const regeneratedNodes = parser.parse(regenerated);
+                
+                assertDeepEquals(regeneratedNodes, originalNodes, 'Nested round-trip should work');
+            });
+            
+            it('should preserve all attributes', () => {
+                const original = '<config><http url="http://example.com" method="POST" timeout="5000" charset="UTF-8"/></config>';
+                
+                const parser = new SimpleXMLParser();
+                const generator = new SimpleXMLGenerator();
+                
+                const nodes = parser.parse(original);
+                const regenerated = '<?xml version="1.0" encoding="UTF-8"?>\n<config>\n' +
+                                   generator.generate(nodes, 1) +
+                                   '</config>';
+                
+                const regeneratedNodes = parser.parse(regenerated);
+                
+                assertEquals(regeneratedNodes[0].attributes.url, 'http://example.com');
+                assertEquals(regeneratedNodes[0].attributes.method, 'POST');
+                assertEquals(regeneratedNodes[0].attributes.timeout, '5000');
+                assertEquals(regeneratedNodes[0].attributes.charset, 'UTF-8');
+            });
+        });
+        
+        // Suite 4: VisualRenderer Tests
+        runner.describe('VisualRenderer', (it) => {
+            it('should create renderer instance', () => {
+                const div = document.createElement('div');
+                div.id = 'test-canvas';
+                document.body.appendChild(div);
+                
+                const renderer = new VisualRenderer('test-canvas');
+                assert(renderer !== null, 'Renderer should be created');
+                
+                document.body.removeChild(div);
+            });
+            
+            it('should render empty nodes array', () => {
+                const div = document.createElement('div');
+                div.id = 'test-canvas-2';
+                document.body.appendChild(div);
+                
+                const renderer = new VisualRenderer('test-canvas-2');
+                renderer.render([]);
+                
+                assertEquals(div.children.length, 0, 'Should render nothing for empty array');
+                
+                document.body.removeChild(div);
+            });
+            
+            it('should render single node', () => {
+                const div = document.createElement('div');
+                div.id = 'test-canvas-3';
+                document.body.appendChild(div);
+                
+                const renderer = new VisualRenderer('test-canvas-3');
+                const nodes = [{
+                    type: 'var',
+                    attributes: { name: 'test' },
+                    body: 'value',
+                    children: []
+                }];
+                
+                renderer.render(nodes);
+                
+                assert(div.children.length > 0, 'Should render at least one element');
+                
+                document.body.removeChild(div);
+            });
+        });
+        
+        // Run all tests function
+        async function runAllTests() {
+            console.log('🧪 Running all tests...');
+            await runner.run();
+            console.log('✅ Tests completed!');
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            console.log('📋 Test suite loaded. Click "Run All Tests" to execute.');
+        });
+    </script>
+</body>
+</html>
+

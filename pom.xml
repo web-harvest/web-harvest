@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.webharvest</groupId>
   <artifactId>webharvest</artifactId>
-  <version>2.2.0</version>
+  <version>2.3.1</version>
   <packaging>pom</packaging>
   <name>WebHarvest</name>
   <description>

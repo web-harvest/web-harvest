@@ -113,6 +113,38 @@ public interface PluginConfigurationSchema {
      * @throws PluginValidationException if validation fails
      */
     void validate(PluginConfiguration configuration) throws PluginValidationException;
+    
+    /**
+     * Can this plugin appear at root level (directly under &lt;config&gt;)?
+     * 
+     * @return true if can be root element, false if must be nested
+     * @since 2.2.0
+     */
+    default boolean canAppearAtRoot() {
+        return true;  // Default: most plugins can be at root
+    }
+    
+    /**
+     * Get list of required parent element names.
+     * If non-empty, this plugin MUST be a child of one of these parents.
+     * Empty array means the plugin is universal (can appear in any context).
+     * 
+     * @return array of required parent element names (e.g., {"http"} for http-header)
+     * @since 2.2.0
+     */
+    default String[] getRequiredParents() {
+        return new String[0];  // Default: universal (no parent requirement)
+    }
+    
+    /**
+     * Is this a context-specific plugin that requires a specific parent?
+     * 
+     * @return true if has required parents, false if universal
+     * @since 2.2.0
+     */
+    default boolean isContextSpecific() {
+        return getRequiredParents().length > 0;
+    }
 
     /**
      * Definition of a configuration attribute.

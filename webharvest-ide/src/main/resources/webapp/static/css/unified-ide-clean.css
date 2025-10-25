@@ -1,0 +1,512 @@
+/**
+ * Unified IDE - Clean CSS (Apple HIG Compliant)
+ * No conflicts, professional layout
+ */
+
+/* ===================================
+   RESET & BASE
+   =================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===================================
+   HEADER (60px fixed)
+   =================================== */
+
+.unified-header {
+    height: 60px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-logo {
+    height: 32px;
+}
+
+.app-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1F2937;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.header-btn {
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+}
+
+.header-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.header-btn-primary {
+    background: #FFC107;
+    border-color: #FFC107;
+    color: #000;
+}
+
+.header-btn-primary:hover {
+    background: #FFD54F;
+}
+
+/* ===================================
+   TAB BAR (40px fixed)
+   =================================== */
+
+.unified-tabs {
+    height: 40px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    flex-shrink: 0;
+}
+
+.tabs-list {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+}
+
+.tab {
+    padding: 6px 16px;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+}
+
+.tab:hover {
+    background: rgba(255, 193, 7, 0.1);
+    color: #374151;
+}
+
+.tab.active {
+    background: white;
+    color: #000;
+    font-weight: 600;
+}
+
+.tab-close {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.tab-close:hover {
+    opacity: 1;
+    color: #ef4444;
+}
+
+.tab-add-btn {
+    padding: 6px 12px;
+    background: none;
+    border: 1px dashed #d1d5db;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+}
+
+.tab-add-btn:hover {
+    border-color: #FFC107;
+    color: #FFC107;
+    background: rgba(255, 193, 7, 0.05);
+}
+
+/* ===================================
+   TOOLBAR (44px fixed)
+   =================================== */
+
+.unified-toolbar {
+    height: 44px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    flex-shrink: 0;
+}
+
+.view-switcher {
+    display: inline-flex;
+    background: #f3f4f6;
+    padding: 3px;
+    border-radius: 7px;
+    gap: 2px;
+}
+
+.view-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.view-btn.active {
+    background: white;
+    color: #000;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tool-btn {
+    padding: 6px 12px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+}
+
+.tool-btn:hover {
+    background: #f9fafb;
+}
+
+/* ===================================
+   MAIN CONTENT - CSS GRID (Clean!)
+   =================================== */
+
+.unified-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: auto 1fr 360px;
+    overflow: hidden;
+}
+
+/* Left Sidebar (hidden by default) */
+.left-sidebar {
+    grid-column: 1;
+    width: 260px;
+    background: white;
+    border-right: 1px solid #e0e0e0;
+    display: none;
+    flex-direction: column;
+}
+
+.left-sidebar[data-visible="true"] {
+    display: flex;
+}
+
+/* Main Content (Editor/Canvas) */
+.main-content {
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    overflow: hidden;
+}
+
+/* Right Sidebar (always visible) */
+.right-sidebar {
+    grid-column: 3;
+    background: #f9fafb;
+    border-left: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ===================================
+   SIDEBARS
+   =================================== */
+
+.sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-header h3 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+}
+
+.search-box {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.search-box:focus {
+    outline: none;
+    border-color: #FFC107;
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+}
+
+/* Plugin List */
+.plugin-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.plugin-item {
+    padding: 10px;
+    margin-bottom: 6px;
+    background: #f9fafb;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.15s;
+}
+
+.plugin-item:hover {
+    background: white;
+    border-color: #FFC107;
+    transform: translateX(2px);
+}
+
+.plugin-item:active {
+    cursor: grabbing;
+}
+
+.plugin-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.plugin-icon {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 2px solid #FFC107;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #1F2937;
+    flex-shrink: 0;
+}
+
+.plugin-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1F2937;
+}
+
+.plugin-desc {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+/* ===================================
+   EDITOR & CANVAS
+   =================================== */
+
+.editor-container,
+.canvas-container {
+    flex: 1;
+    overflow: hidden;
+}
+
+#monaco-editor {
+    width: 100%;
+    height: 100%;
+}
+
+.canvas-area {
+    padding: 24px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* ===================================
+   PANELS (Right Sidebar)
+   =================================== */
+
+.panel-tabs {
+    display: flex;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.panel-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+}
+
+.panel-tab:hover {
+    color: #374151;
+}
+
+.panel-tab.active {
+    color: #FFC107;
+    border-bottom-color: #FFC107;
+    background: white;
+}
+
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.panel {
+    display: none;
+    padding: 16px;
+    height: 100%;
+}
+
+.panel.active {
+    display: block;
+}
+
+/* ===================================
+   STATUS BAR (32px fixed)
+   =================================== */
+
+.unified-status {
+    height: 32px;
+    background: #1F2937;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.status-left,
+.status-right {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+/* ===================================
+   UTILITY STATES
+   =================================== */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: #9ca3af;
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 48px;
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.empty-state small {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: #FFC107;
+}
+
+.loading-state i {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.loading-state p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
