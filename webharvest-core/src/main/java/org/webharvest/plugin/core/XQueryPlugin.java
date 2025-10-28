@@ -277,7 +277,8 @@ import javax.xml.transform.stream.StreamSource;
 @CorePlugin(
     elementName = "xquery",
     description = "XQuery plugin that provides XQuery processing functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Extraction"
 )
 public class XQueryPlugin extends AbstractPlugin {
 
@@ -309,7 +310,7 @@ public class XQueryPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Extraction";
         }
 
         @Override
@@ -493,26 +494,46 @@ public class XQueryPlugin extends AbstractPlugin {
                 } else if ("xq-param".equals(elementName)) {
                     // Get parameter name and type
                     String paramName = child.getProperty("name", "");
-                    String paramType = child.getProperty("type", "string");
+                    String paramType = child.getProperty("type", "");
                     
                     LOGGER.debug("XQueryPlugin: Processing xq-param: name=" + paramName + ", type=" + paramType);
                     
                     if (!paramName.isEmpty()) {
-                        // Execute child elements (like <get>) to get parameter value
-                        // Use the same approach as DefPlugin: create a temporary plugin to execute children
-                        Variable paramValue = executeChildElements(child, context);
+                        Variable paramValue = null;
+                        
+                        // Try to execute child elements first (like <get>, <http>, etc.)
+                        if (child.hasChildren()) {
+                            paramValue = executeChildElements(child, context);
+                            LOGGER.debug("XQueryPlugin: Parameter value from child execution: " + (paramValue != null ? paramValue.toString().substring(0, Math.min(100, paramValue.toString().length())) : "null"));
+                        } 
+                        
+                        // If no children or empty result, use text content
+                        if (paramValue == null || paramValue instanceof EmptyVariable) {
+                            String textContent = child.getProperty("_textContent", "").trim();
+                            if (!textContent.isEmpty()) {
+                                paramValue = new org.webharvest.runtime.variables.NodeVariable(textContent);
+                                LOGGER.debug("XQueryPlugin: Parameter value from text content: " + textContent);
+                            }
+                        }
                         
                         if (paramValue != null && !(paramValue instanceof EmptyVariable)) {
-                            LOGGER.debug("XQueryPlugin: Parameter value from child execution: " + paramValue.toString().substring(0, Math.min(100, paramValue.toString().length())));
+                            String stringValue = paramValue.toString().trim();
+                            
+                            // Auto-detect XML content if no type specified
+                            boolean looksLikeXml = stringValue.startsWith("<") && stringValue.contains(">");
                             
                             // Convert based on type
-                            if ("node()".equals(paramType)) {
-                                // For node() type, pass the Variable directly
+                            if ("node()".equals(paramType) || paramType.startsWith("node()") || 
+                                (paramType.isEmpty() && looksLikeXml)) {
+                                // For node() type or XML content, pass the Variable directly
                                 xqParams.put(paramName, paramValue);
-                            } else {
-                                // For other types, convert to string first
-                                String stringValue = paramValue.toString();
+                                LOGGER.debug("XQueryPlugin: Parameter {} will be bound as node()", paramName);
+                            } else if (!paramType.isEmpty()) {
+                                // For other explicit types, convert to string first, then to target type
                                 xqParams.put(paramName, convertParamValue(stringValue, paramType));
+                            } else {
+                                // Default: string
+                                xqParams.put(paramName, stringValue);
                             }
                         } else {
                             LOGGER.warn("XQueryPlugin: No value obtained for parameter: " + paramName);
@@ -561,6 +582,31 @@ public class XQueryPlugin extends AbstractPlugin {
                         // Fallback to string
                         dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue(paramValue.toString()));
                     }
+                } else if (paramValue instanceof java.util.List) {
+                    // Handle sequences (integer*, double*, etc.)
+                    java.util.List<?> sequence = (java.util.List<?>) paramValue;
+                    java.util.List<net.sf.saxon.om.Item> saxonItems = new java.util.ArrayList<>();
+                    
+                    for (Object item : sequence) {
+                        if (item instanceof Integer) {
+                            saxonItems.add(net.sf.saxon.value.Int64Value.makeIntegerValue((Integer) item));
+                        } else if (item instanceof Long) {
+                            saxonItems.add(net.sf.saxon.value.Int64Value.makeIntegerValue((Long) item));
+                        } else if (item instanceof Double) {
+                            saxonItems.add(new net.sf.saxon.value.DoubleValue((Double) item));
+                        } else if (item instanceof Boolean) {
+                            saxonItems.add(net.sf.saxon.value.BooleanValue.get((Boolean) item));
+                        } else {
+                            saxonItems.add(new net.sf.saxon.value.StringValue(item.toString()));
+                        }
+                    }
+                    
+                    // Create Saxon sequence from items
+                    net.sf.saxon.value.SequenceExtent saxonSequence = new net.sf.saxon.value.SequenceExtent(
+                        saxonItems.toArray(new net.sf.saxon.om.Item[0])
+                    );
+                    dynamicContext.setParameter(paramName, saxonSequence);
+                    LOGGER.debug("XQueryPlugin: Bound sequence parameter {} with {} items", paramName, saxonItems.size());
                 } else if (paramValue instanceof String) {
                     dynamicContext.setParameter(paramName, new net.sf.saxon.value.StringValue((String) paramValue));
                 } else if (paramValue instanceof Integer) {
@@ -644,21 +690,50 @@ public class XQueryPlugin extends AbstractPlugin {
             return "";
         }
         
+        // Check if type is a sequence (ends with * or +)
+        boolean isSequence = type.endsWith("*") || type.endsWith("+");
+        String baseType = isSequence ? type.substring(0, type.length() - 1).trim() : type;
+        
+        if (isSequence) {
+            // Split value by whitespace (spaces, tabs, newlines)
+            String[] values = value.trim().split("\\s+");
+            java.util.List<Object> sequence = new java.util.ArrayList<>();
+            
+            for (String val : values) {
+                if (!val.isEmpty()) {
+                    sequence.add(convertSingleValue(val, baseType));
+                }
+            }
+            
+            return sequence;
+        } else {
+            return convertSingleValue(value.trim(), baseType);
+        }
+    }
+    
+    /**
+     * Convert a single value to the specified XQuery type.
+     */
+    private Object convertSingleValue(String value, String type) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        
         try {
             if (type.contains("integer")) {
-                return Integer.parseInt(value.trim());
+                return Integer.parseInt(value);
             } else if (type.contains("long")) {
-                return Long.parseLong(value.trim());
+                return Long.parseLong(value);
             } else if (type.contains("double") || type.contains("float")) {
-                return Double.parseDouble(value.trim());
+                return Double.parseDouble(value);
             } else if (type.contains("boolean")) {
-                return Boolean.parseBoolean(value.trim());
+                return Boolean.parseBoolean(value);
             } else {
                 // Default: string
                 return value;
             }
         } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to convert parameter value '{}' to type '{}', using as string", value, type);
+            LOGGER.warn("Failed to convert value '{}' to type '{}', using as string", value, type);
             return value;
         }
     }

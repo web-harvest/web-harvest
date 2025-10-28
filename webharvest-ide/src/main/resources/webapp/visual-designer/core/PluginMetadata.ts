@@ -125,3 +125,4 @@ export function getSpecialChildPlugins(plugins: PluginMetadata[]): PluginMetadat
     return plugins.filter(p => p.mustBeChildOf && p.mustBeChildOf.length > 0);
 }
 
+

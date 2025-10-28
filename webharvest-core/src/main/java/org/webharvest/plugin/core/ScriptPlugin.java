@@ -336,7 +336,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "script",
     description = "Script plugin that executes script code in various scripting languages",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Processing"
 )
 public class ScriptPlugin extends AbstractPlugin {
 
@@ -373,7 +374,7 @@ public class ScriptPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Processing";
         }
 
         @Override

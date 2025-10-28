@@ -614,14 +614,8 @@ const app = {
     loadExampleTabs() {
         console.log('Loading initial empty tab...');
 
-        // Start with one empty tab
-        const emptyContent = `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.2.0/core">
-    <!-- Your configuration goes here -->
-    
-</config>`;
-
-        this.addTab('untitled.xml', emptyContent);
+        // Start with one empty tab using default config
+        this.addTab('untitled.xml', this.getDefaultEmptyConfig());
         console.log('  Added empty tab: untitled.xml');
 
         console.log('Total tabs loaded:', this.tabs.length);
@@ -712,7 +706,7 @@ const app = {
     addTab(name = null, content = null) {
         const tabId = 'tab-' + Date.now() + '-' + this.tabs.length;
         const tabName = name || `config-${this.tabs.length + 1}.xml`;
-        const tabContent = content || this.getHttpXPathExample();
+        const tabContent = content || this.getDefaultEmptyConfig();
 
         console.log('Adding tab:', tabName, '- Content length:', tabContent.length);
 
@@ -1629,6 +1623,18 @@ const app = {
         return this.tabs.find(t => t.id === this.activeTabId);
     },
 
+    /**
+     * Get default empty configuration for new tabs.
+     * Clean, minimal XML ready for user input.
+     */
+    getDefaultEmptyConfig() {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Your scraping configuration goes here -->
+    
+</config>`;
+    },
+
     getHttpXPathExample() {
         return `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -1968,9 +1974,28 @@ Data aggregated from 2 API sources!
             }
 
             const content = example.content;
-            this.addTab(this.selectedExample, content);
+
+            // Check if tab with this name already exists
+            const existingTab = this.tabs.find(t => t.name === this.selectedExample);
+
+            if (existingTab) {
+                // Tab exists - switch to it and update content
+                console.log('Tab already exists:', this.selectedExample, '- switching to it');
+                this.activeTabId = existingTab.id;
+                existingTab.content = content;
+                existingTab.modified = false;
+                this.renderTabs();
+                if (this.editor) {
+                    this.editor.setValue(content);
+                }
+                this.addLog('info', `Switched to existing tab: ${this.selectedExample}`);
+            } else {
+                // Tab doesn't exist - create new one
+                this.addTab(this.selectedExample, content);
+                this.addLog('info', `✅ Loaded: ${this.selectedExample} (new tab)`);
+            }
+
             this.hideExamplesModal();
-            this.addLog('info', `Loaded example: ${this.selectedExample}`);
         } catch (error) {
             console.error('Failed to load example:', error);
             this.addLog('error', `Failed to load example: ${error.message}`);

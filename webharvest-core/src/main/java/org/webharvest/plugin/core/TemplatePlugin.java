@@ -338,7 +338,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "template",
     description = "Template plugin that provides template processing functionality",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Processing"
 )
 public class TemplatePlugin extends AbstractPlugin {
 
@@ -372,7 +373,7 @@ public class TemplatePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Processing";
         }
 
         @Override

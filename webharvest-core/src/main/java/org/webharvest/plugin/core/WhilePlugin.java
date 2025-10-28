@@ -255,7 +255,8 @@ import java.util.List;
 @CorePlugin(
     elementName = "while",
     description = "While plugin that provides while loop functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class WhilePlugin extends AbstractPlugin {
 
@@ -289,7 +290,7 @@ public class WhilePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

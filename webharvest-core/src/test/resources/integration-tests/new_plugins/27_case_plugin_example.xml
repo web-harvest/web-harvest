@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-  <set-var var="value" value="2"/>
+  <def var="value" value="2"/>
   <case>
     <if condition="${value == 1}">
       <template>Case 1</template>

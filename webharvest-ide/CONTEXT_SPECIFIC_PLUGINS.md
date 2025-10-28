@@ -147,3 +147,4 @@ These have `getRequiredParents() = []` and `canAppearAtRoot() = true`:
 
 **Kontynuować z rozszerzeniem wszystkich context-specific plugins?** 🎯
 
+

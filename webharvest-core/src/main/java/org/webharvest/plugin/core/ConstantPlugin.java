@@ -120,7 +120,8 @@ import org.webharvest.runtime.templaters.BaseTemplater;
 @CorePlugin(
     elementName = "constant",
     description = "Constant plugin that provides static text content",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Variables"
 )
 public class ConstantPlugin extends AbstractPlugin {
 
@@ -154,7 +155,7 @@ public class ConstantPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Variables";
         }
 
         @Override

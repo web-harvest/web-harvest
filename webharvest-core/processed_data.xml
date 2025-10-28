@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+            <processed_data>
+                <metadata>
+                    <processing_date>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</processing_date>
+                    <input_file>${inputFile}</input_file>
+                    <records_processed>${sys.recordCount()}</records_processed>
+                </metadata>
+                <raw_data>
+                    <get var="cleanXmlData"/>
+                </raw_data>
+                <analysis>
+                    <get var="analysisResults"/>
+                </analysis>
+                <data_quality>
+                    <get var="dataQualityReport"/>
+                </data_quality>
+            </processed_data>

@@ -137,7 +137,8 @@ import org.webharvest.utils.CommonUtil;
 @CorePlugin(
     elementName = "exit",
     description = "Exit plugin that provides conditional exit functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Utilities"
 )
 public class ExitPlugin extends AbstractPlugin {
 
@@ -172,7 +173,7 @@ public class ExitPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Utilities";
         }
 
         @Override

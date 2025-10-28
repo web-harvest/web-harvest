@@ -90,7 +90,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 @CorePlugin(
     elementName = "empty",
     description = "Empty plugin that executes its body and returns an empty variable",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Utilities"
 )
 public class EmptyPlugin extends AbstractPlugin {
 
@@ -122,7 +123,7 @@ public class EmptyPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Utilities";
         }
 
         @Override

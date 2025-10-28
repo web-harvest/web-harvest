@@ -277,7 +277,8 @@ import org.slf4j.LoggerFactory;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "get",
     description = "Retrieves a variable value from the context",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Variables"
 )
 public class GetVarPlugin extends AbstractPlugin {
 
@@ -300,7 +301,7 @@ public class GetVarPlugin extends AbstractPlugin {
             @Override
             public String getAuthor() { return "Web-Harvest Team"; }
             @Override
-            public String getCategory() { return "core"; }
+            public String getCategory() { return "Variables"; }
             @Override
             public String[] getTags() { return new String[0]; }
             @Override

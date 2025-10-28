@@ -152,7 +152,8 @@ import org.webharvest.runtime.variables.Variable;
 @CorePlugin(
     elementName = "else",
     description = "Else plugin that provides the else branch for conditional execution",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class ElsePlugin extends AbstractPlugin {
 
@@ -186,7 +187,7 @@ public class ElsePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

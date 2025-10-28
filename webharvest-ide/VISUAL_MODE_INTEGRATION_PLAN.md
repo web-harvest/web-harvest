@@ -241,3 +241,4 @@ onNodePropertyChange(nodeId, config) {
 
 **Zacznę teraz od Phase 1?** 🎯
 
+

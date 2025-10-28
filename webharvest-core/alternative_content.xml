@@ -1,0 +1,7 @@
+<alternative_extraction>
+                <timestamp>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <method>html-to-xml</method>
+                <content>
+                    <script>extractedContent</script>
+                </content>
+            </alternative_extraction>

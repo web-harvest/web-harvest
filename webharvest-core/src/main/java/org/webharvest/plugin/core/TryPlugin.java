@@ -149,7 +149,8 @@ import java.util.List;
 @CorePlugin(
     elementName = "try",
     description = "Try plugin that provides exception handling with try-catch functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class TryPlugin extends AbstractPlugin {
 
@@ -183,7 +184,7 @@ public class TryPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

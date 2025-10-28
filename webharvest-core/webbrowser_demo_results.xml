@@ -1,0 +1,13 @@
+<web_scraping_results>
+                <timestamp>${sys.datetime()}</timestamp>
+                <url>${target_url}</url>
+                <page_title>${pageTitle}</page_title>
+                <extracted_content>
+                    <headings>${headings}</headings>
+                    <paragraphs>${paragraphs}</paragraphs>
+                </extracted_content>
+                <demo_info>
+                    <description>This demo shows HTML to XML conversion and XPath extraction</description>
+                    <plugins_used>http, html-to-xml, xpath, template</plugins_used>
+                </demo_info>
+            </web_scraping_results>

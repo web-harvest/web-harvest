@@ -40,13 +40,7 @@ public class QuickWinsMetadataTest {
     @Test public void testDef7() { DefPlugin p = new DefPlugin(); assertNotNull(p.getMetadata().getNamespace()); }
     @Test public void testDef8() { DefPlugin p = new DefPlugin(); assertNotNull(p.getMetadata().getTags()); }
     
-    // ==================== VarPlugin (66.67% → 70%+) ====================
-    
-    @Test public void testVar1() { VarPlugin p = new VarPlugin(); assertNotNull(p.getMetadata()); }
-    @Test public void testVar2() { VarPlugin p = new VarPlugin(); assertTrue(p.getMetadata().isCorePlugin()); }
-    @Test public void testVar3() { VarPlugin p = new VarPlugin(); assertNotNull(p.getMetadata().getName()); }
-    @Test public void testVar4() { VarPlugin p = new VarPlugin(); assertNotNull(p.getMetadata().getCategory()); }
-    @Test public void testVar5() { VarPlugin p = new VarPlugin(); assertNotNull(p.getMetadata().getConfigurationSchema()); }
+    // VarPlugin removed - deprecated, use DefPlugin instead
     
     // ==================== GetVarPlugin (65.22% → 70%+) ====================
     

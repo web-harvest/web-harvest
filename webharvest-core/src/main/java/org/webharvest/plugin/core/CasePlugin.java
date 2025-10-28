@@ -212,7 +212,8 @@ import org.webharvest.utils.CommonUtil;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "case",
     description = "Case plugin that provides conditional execution with multiple if-else branches",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class CasePlugin extends AbstractPlugin {
 
@@ -246,7 +247,7 @@ public class CasePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

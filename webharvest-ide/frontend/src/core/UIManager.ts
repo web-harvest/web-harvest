@@ -47,12 +47,45 @@ export class UIManager {
     }
 
     /**
-     * Show/hide Property panel
+     * Show/hide Property panel tab + content in sidebar
      */
     showPropertyPanel(show: boolean): void {
+        const tab = document.getElementById('propertiesTabBtn');
         const panel = document.getElementById('propertyPanel');
-        if (panel) {
-            panel.style.display = show ? 'flex' : 'none';
+
+        if (tab && panel) {
+            tab.style.display = show ? 'flex' : 'none';
+
+            if (show) {
+                // Show Properties tab and make it active (FIRST tab in Visual mode)
+                tab.setAttribute('aria-hidden', 'false');
+
+                // Auto-activate Properties tab when entering Visual mode
+                const allTabs = document.querySelectorAll('.sidebar-nav-btn');
+                const allPanels = document.querySelectorAll('.sidebar-panel');
+
+                allTabs.forEach(t => t.classList.remove('active'));
+                allPanels.forEach(p => p.classList.remove('active'));
+
+                tab.classList.add('active');
+                panel.classList.add('active');
+                panel.style.display = 'block';
+            } else {
+                // Hide Properties tab in XML mode
+                tab.setAttribute('aria-hidden', 'true');
+                tab.classList.remove('active');
+                panel.classList.remove('active');
+                panel.style.display = 'none';
+
+                // Switch to Logs tab when hiding Properties
+                const logsTab = document.querySelector('[data-panel="logs"]') as HTMLElement;
+                const logsPanel = document.getElementById('logsPanel');
+
+                if (logsTab && logsPanel) {
+                    logsTab.classList.add('active');
+                    logsPanel.classList.add('active');
+                }
+            }
         }
     }
 
@@ -60,22 +93,28 @@ export class UIManager {
      * Switch to XML mode
      */
     switchToXMLMode(): void {
+        console.log('🔄 [UIManager] Switching to XML mode (Conductor-style)...');
         this.showEditor(true);
         this.showVisualCanvas(false);
         this.showPluginSidebar(false);
-        this.showRightSidebar(true);
-        this.showPropertyPanel(false);
+        this.showRightSidebar(true);    // ← ALWAYS visible
+        this.showPropertyPanel(false);  // ← HIDE Properties tab + switch to Logs
+
+        console.log('✅ [UIManager] XML mode: Editor + Right Sidebar (Logs/Results/Variables/Sessions - NO Properties)');
     }
 
     /**
      * Switch to Visual mode
      */
     switchToVisualMode(): void {
+        console.log('🔄 [UIManager] Switching to Visual mode (Conductor-style)...');
         this.showEditor(false);
         this.showVisualCanvas(true);
         this.showPluginSidebar(true);
-        this.showRightSidebar(false);
-        this.showPropertyPanel(true);
+        this.showRightSidebar(true);    // ← ALWAYS visible
+        this.showPropertyPanel(true);   // ← SHOW Properties tab as FIRST + make active
+
+        console.log('✅ [UIManager] Visual mode: Plugins + Canvas + Right Sidebar (Properties FIRST, then Logs/Results/Variables/Sessions)');
     }
 
     /**

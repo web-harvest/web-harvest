@@ -200,7 +200,8 @@ import org.webharvest.runtime.variables.Variable;
 @CorePlugin(
     elementName = "log",
     description = "Log plugin that writes text to stdout or stderr",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Utilities"
 )
 public class LogPlugin extends AbstractPlugin {
 
@@ -295,7 +296,7 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Utilities";
         }
 
         @Override

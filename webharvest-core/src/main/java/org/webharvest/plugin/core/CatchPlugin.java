@@ -105,7 +105,8 @@ import java.util.List;
 @CorePlugin(
     elementName = "catch",
     description = "Catch plugin that provides the catch block for exception handling",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class CatchPlugin extends AbstractPlugin {
 
@@ -139,7 +140,7 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

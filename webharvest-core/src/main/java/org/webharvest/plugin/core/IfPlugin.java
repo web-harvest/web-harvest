@@ -208,7 +208,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "if",
     description = "If plugin that provides conditional processing",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class IfPlugin extends AbstractPlugin {
     
@@ -242,7 +243,7 @@ public class IfPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Control";
         }
 
         @Override

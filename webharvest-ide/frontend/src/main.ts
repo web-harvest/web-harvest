@@ -16,8 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Expose ALL methods to window for HTML onclick handlers
         (window as any).app = {
-            // View mode
-            toggleVisualMode: () => app.toggleVisualMode(),
+            // View mode (Conductor-style)
+            switchMode: (mode: 'xml' | 'visual') => app.switchMode(mode),
+            toggleVisualMode: () => app.toggleVisualMode(), // Legacy
+
+            // Configuration management
+            newConfiguration: () => app.newConfiguration(),
 
             // Execution
             runConfig: () => app.runConfig(),
@@ -30,11 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
             openFile: () => app.openFile(),
             saveFile: () => app.saveFile(),
 
+            // Visual Mode - Single Configuration
+            saveVisualConfiguration: () => app.saveVisualConfiguration(),
+            newVisualConfiguration: () => app.newVisualConfiguration(),
+            openFileInVisual: () => app.openFileInVisual(),
+
             // Examples
             showExamplesModal: () => app.showExamplesModal(),
             loadExampleDirect: (event: Event) => app.loadExampleDirect(event),
 
-            // Tabs
+            // Tabs (XML mode only)
             addTab: () => app.addTab(),
             closeTab: (tabId: string, event?: Event) => {
                 if (event) {

@@ -48,10 +48,10 @@
     <!-- ============================================ -->
     
     <!-- Query from main database -->
-    <var name="users">
+    <def var="users">
         <db:database connection="mainDB" 
                      sql="SELECT id, name, email FROM users WHERE active = true"/>
-    </var>
+    </def>
     
     <!-- Insert into analytics -->
     <db:database connection="analyticsDB" 
@@ -67,23 +67,23 @@
         VALUES (1, 'test'), (2, 'data'), (3, 'example')
     </db:database>
     
-    <var name="temp_results">
+    <def var="temp_results">
         <db:database connection="scratchDB" 
                      sql="SELECT * FROM temp_data ORDER BY id"/>
-    </var>
+    </def>
     
     <!-- ============================================ -->
     <!-- PART 3: Backward Compatibility              -->
     <!-- ============================================ -->
     
     <!-- Old style - inline connection (still works!) -->
-    <var name="simple_query">
+    <def var="simple_query">
         <db:database driver="org.h2.Driver"
                      url="jdbc:h2:mem:legacy"
                      username="sa"
                      password=""
                      sql="SELECT 1 AS result"/>
-    </var>
+    </def>
     
     
     <!-- ============================================ -->
@@ -93,10 +93,10 @@
     <!-- Loop through users and query details from different databases -->
     <loop items="${users}" item="user">
         <!-- Get user details from main DB -->
-        <var name="user_details">
+        <def var="user_details">
             <db:database connection="mainDB" 
                          sql="SELECT * FROM user_profile WHERE user_id = ${user.id}"/>
-        </var>
+        </def>
         
         <!-- Record analytics -->
         <db:database connection="analyticsDB" 

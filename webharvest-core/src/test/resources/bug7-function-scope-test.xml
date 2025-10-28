@@ -15,7 +15,7 @@
     
     <var-def name="newvar1">
         <call name="function1">
-            <call-param name="param1"><var name="var1"/></call-param>
+            <call-param name="param1"><def var="var1"/></call-param>
         </call>
     </var-def>
     

@@ -372,7 +372,8 @@ import java.io.StringReader;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "html-to-xml",
     description = "HTML to XML plugin that converts HTML content to well-formed XML",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Extraction"
 )
 public class HtmlToXmlPlugin extends AbstractPlugin {
 
@@ -419,7 +420,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Extraction";
         }
 
         @Override

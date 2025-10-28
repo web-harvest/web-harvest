@@ -254,7 +254,8 @@ import java.util.regex.Pattern;
 @CorePlugin(
     elementName = "regexp",
     description = "Regular expression plugin with group isolation (Bug #62 fixed in v2.2.0)",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Extraction"
 )
 public class RegexpPlugin extends AbstractPlugin {
     
@@ -572,7 +573,7 @@ public class RegexpPlugin extends AbstractPlugin {
 
             @Override
             public String getCategory() {
-                return "Core Web-Harvest plugins";
+                return "Extraction";
             }
 
             @Override

@@ -245,7 +245,12 @@ import org.webharvest.runtime.variables.Variable;
  * @version 2.2.0
  * @since 2.0
  */
-@CorePlugin(elementName = "xml-to-json")
+@CorePlugin(
+    elementName = "xml-to-json",
+    description = "Converts XML to JSON",
+    version = "2.2.0",
+    category = "Extraction"
+)
 public class XmlToJsonPlugin extends AbstractPlugin {
 
     @Override
@@ -262,7 +267,7 @@ public class XmlToJsonPlugin extends AbstractPlugin {
             @Override
             public String getAuthor() { return "Web-Harvest Team"; }
             @Override
-            public String getCategory() { return "core"; }
+            public String getCategory() { return "Extraction"; }
             @Override
             public String[] getTags() { return new String[]{"core", "xml", "json", "converter"}; }
             @Override

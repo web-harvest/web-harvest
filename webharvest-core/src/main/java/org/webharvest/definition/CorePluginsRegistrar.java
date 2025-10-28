@@ -64,14 +64,14 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, RegexpSourcePlugin.class, "regexp-source");
         registry.registerMapping(null, ReturnPlugin.class, "return");
         registry.registerMapping(null, ScriptPlugin.class, "script");
-        registry.registerMapping(null, SetVarPlugin.class, "set-var");
+        // SetVarPlugin removed - use DefPlugin instead
         registry.registerMapping(null, SleepPlugin.class, "sleep");
         registry.registerMapping(null, StylesheetPlugin.class, "stylesheet");
         registry.registerMapping(null, TemplatePlugin.class, "template");
         registry.registerMapping(null, TextPlugin.class, "text");
         registry.registerMapping(null, TokenizePlugin.class, "tokenize");
         registry.registerMapping(null, TryPlugin.class, "try");
-        registry.registerMapping(null, VarPlugin.class, "var");
+        // VarPlugin removed - use DefPlugin instead
         registry.registerMapping(null, WhilePlugin.class, "while");
         registry.registerMapping(null, XmlToJsonPlugin.class, "xml-to-json");
         registry.registerMapping(null, XPathPlugin.class, "xpath");
@@ -80,7 +80,7 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, XQParamPlugin.class, "xq-param");
         registry.registerMapping(null, XsltPlugin.class, "xslt");
         
-        LOG.info("Registered 41 core plugins");
+        LOG.info("Registered 37 core plugins (legacy var/set-var removed - use def instead)");
         initialized = true;
     }
     

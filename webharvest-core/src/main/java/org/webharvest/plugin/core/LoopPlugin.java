@@ -283,7 +283,8 @@ import org.webharvest.runtime.variables.Variable;
 @CorePlugin(
     elementName = "loop",
     description = "Loop plugin for iterations",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Control"
 )
 public class LoopPlugin extends AbstractPlugin {
     
@@ -386,7 +387,7 @@ public class LoopPlugin extends AbstractPlugin {
 
             @Override
             public String getCategory() {
-                return "Core";
+                return "Control";
             }
 
             @Override

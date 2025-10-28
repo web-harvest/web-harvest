@@ -17,3 +17,4 @@ export function renderPluginIcon(plugin: any): string {
     return renderIcon(plugin.icon);
 }
 
+

@@ -124,7 +124,8 @@ import java.io.StringWriter;
 @CorePlugin(
     elementName = "xslt",
     description = "XSLT plugin that provides XSLT transformation functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Processing"
 )
 public class XsltPlugin extends AbstractPlugin {
 
@@ -158,7 +159,7 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Processing";
         }
 
         @Override

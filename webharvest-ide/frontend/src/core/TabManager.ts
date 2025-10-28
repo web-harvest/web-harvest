@@ -17,13 +17,24 @@ export class TabManager {
     }
 
     /**
-     * Add new tab with optional name
+     * Get default empty configuration for new tabs
      */
-    addTab(name: string = 'untitled.xml'): Tab {
+    private getDefaultEmptyConfig(): string {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <!-- Your scraping configuration goes here -->
+    
+</config>`;
+    }
+
+    /**
+     * Add new tab with optional name and content
+     */
+    addTab(name: string = 'untitled.xml', content: string = ''): Tab {
         const tab: Tab = {
             id: this.generateId(),
             name,
-            content: '',
+            content: content || this.getDefaultEmptyConfig(),
             isDirty: false,
         };
 
@@ -171,4 +182,5 @@ export class TabManager {
         return true;
     }
 }
+
 

@@ -19,41 +19,159 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+
+    <!-- Brand Styles (EXACT from docs/web/css/enterprise.css) -->
+    <style>
+        :root {
+            /* Brand Colors (from icon - EXACT!) */
+            --purple: #7B1FA2;
+            --magenta: #D81B60;
+            --yellow: #FFC107;
+            --lime: #A4C639;
+
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, #7B1FA2, #D81B60);
+            --gradient-accent: linear-gradient(135deg, #FFC107, #FFD54F);
+
+            /* Grays */
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+
+            /* Semantic */
+            --text-primary: var(--gray-900);
+            --text-secondary: var(--gray-600);
+            --bg-base: #FFFFFF;
+            --bg-subtle: var(--gray-50);
+
+            /* Spacing */
+            --spacing-2: 0.5rem;
+            --spacing-3: 0.75rem;
+            --spacing-4: 1rem;
+            --spacing-6: 1.5rem;
+
+            /* Radius & Shadows */
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            background: var(--bg-subtle);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Sidebar zawsze visible */
+        .sidebar-section {
+            display: flex !important;
+            flex: 0 0 360px;
+            flex-direction: column;
+            background: white;
+            border-left: 1px solid var(--gray-200);
+        }
+
+        /* Canvas rozciągnięty */
+        .editor-section {
+            flex: 1 !important;
+            min-width: 0;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Unified Header (matching website) -->
-    <header class="site-header">
-        <div class="container">
-            <div class="brand">
-                <img src="static/img/logo.png" alt="WebHarvest" class="logo" />
-                <span class="project-name">WebHarvest IDE</span>
+    <!-- Professional Header (Logo + Title LEFT aligned) -->
+    <header class="site-header"
+        style="position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.8); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--gray-200);">
+        <div
+            style="display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 var(--spacing-6);">
+            <!-- Left: Brand (LEFT aligned) -->
+            <div style="display: flex; align-items: center; gap: var(--spacing-3);">
+                <img src="static/img/logo.png" alt="WebHarvest" style="width: 56px; height: 56px;" />
+                <span
+                    style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.025em;">WebHarvest</span>
+                <span
+                    style="font-size: 0.875rem; color: var(--gray-600); font-weight: 500; margin-left: var(--spacing-2);">IDE</span>
             </div>
-            <div class="ide-actions">
-                <button class="btn btn-sm" onclick="window.app.openFile()" title="Open Configuration (Cmd+O)">
-                    <i class="fas fa-folder-open"></i> Open
-                </button>
-                <button class="btn btn-sm" onclick="window.app.saveFile()" title="Save (Cmd+S)">
-                    <i class="fas fa-save"></i> Save
-                </button>
-                <button class="btn btn-sm btn-primary" onclick="window.app.showExamplesModal()" title="Load Example">
-                    <i class="fas fa-download"></i> Examples
-                </button>
-                <button class="btn btn-sm"
-                    onclick="window.open('https://web-harvest.sourceforge.net/documentation/2.2.0/', '_blank')"
-                    title="Documentation">
+            <!-- Right: Help -->
+            <div>
+                <a href="https://web-harvest.sourceforge.net/documentation/2.2.0/" target="_blank"
+                    style="padding: var(--spacing-2) var(--spacing-4); background: var(--magenta); color: white; text-decoration: none; font-weight: 600; border-radius: var(--radius-md); transition: all 0.2s; display: inline-flex; align-items: center; gap: var(--spacing-2);">
                     <i class="fas fa-question-circle"></i> Help
-                </button>
+                </a>
             </div>
         </div>
     </header>
 
-    <!-- Tab Bar (macOS-style) -->
-    <div class="tab-bar">
-        <div id="tabs" class="tabs"></div>
-        <button class="tab-add-btn" onclick="window.app.addTab()" title="New Tab (Cmd+T)">
-            <i class="fas fa-plus"></i>
-        </button>
+    <!-- Unified Toolbar (Brand Colors!) -->
+    <div id="unified-toolbar"
+        style="display: flex; padding: var(--spacing-3) var(--spacing-6); background: white; border-bottom: 1px solid var(--gray-200); align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
+        <!-- Left: Filename + Dirty -->
+        <div style="display: flex; align-items: center; gap: var(--spacing-2);">
+            <i class="fas fa-file-code" style="color: var(--gray-600);"></i>
+            <span id="current-filename"
+                style="font-weight: 600; font-size: 14px; color: var(--text-primary);">untitled.xml</span>
+            <span id="dirty-indicator"
+                style="display: none; color: var(--magenta); font-size: 16px; margin-left: var(--spacing-2);"
+                title="Unsaved changes">●</span>
+        </div>
+
+        <!-- Center: Mode Toggle -->
+        <div class="mode-toggle"
+            style="display: flex; gap: 4px; background: var(--gray-100); border-radius: var(--radius-md); padding: 3px;">
+            <button id="btn-xml-mode" onclick="window.app.switchMode('xml')"
+                style="padding: var(--spacing-2) var(--spacing-4); border: none; background: white; color: var(--text-primary); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                <i class="fas fa-code"></i> XML
+            </button>
+            <button id="btn-visual-mode" onclick="window.app.switchMode('visual')"
+                style="padding: var(--spacing-2) var(--spacing-4); border: none; background: transparent; color: var(--gray-600); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-project-diagram"></i> Visual
+            </button>
+        </div>
+
+        <!-- Right: Actions -->
+        <div style="display: flex; gap: var(--spacing-2); align-items: center;">
+            <button onclick="window.app.newConfiguration()" title="New (⌘N)"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-file"></i> New
+            </button>
+            <button onclick="window.app.openFile()" title="Open (⌘O)"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-folder-open"></i> Open
+            </button>
+            <button onclick="window.app.saveFile()" title="Save (⌘S)"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--magenta); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button onclick="window.app.showExamplesModal()" title="Examples"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-book"></i> Examples
+            </button>
+            <div style="width: 1px; height: 24px; background: var(--gray-300); margin: 0 var(--spacing-2);"></div>
+            <button onclick="window.app.runConfig()" title="Run (⌘R)"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--lime); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-play"></i> Run
+            </button>
+            <button onclick="window.app.validateConfig()" title="Validate (⌘K)"
+                style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-check"></i> Validate
+            </button>
+        </div>
     </div>
 
     <!-- Main IDE Content (Split View) -->
@@ -61,104 +179,91 @@
         <!-- Left Sidebar: Plugin Palette (Visual mode only) -->
         <div id="plugin-sidebar"
             style="display: none; width: 260px; background: white; border-right: 1px solid #e0e0e0; flex-direction: column;">
-            <div style="padding: 16px; border-bottom: 1px solid #e0e0e0;">
-                <h3
-                    style="margin: 0 0 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; color: #666;">
-                    Plugins</h3>
-                <input type="search" id="plugin-search" placeholder="Search..."
-                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
-            </div>
-            <div id="plugin-list" style="flex: 1; overflow-y: auto; padding: 8px;">
-                <div style="padding: 48px 16px; text-align: center; color: #999;">
+            <!-- PluginPalette.ts will render here -->
+            <div id="plugin-palette" style="display: flex; flex-direction: column; height: 100%;">
+                <!-- Initial loading state -->
+                <div id="plugin-palette-loading" style="padding: 48px 16px; text-align: center; color: #999;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
                     <p style="margin: 12px 0 0; font-size: 13px;">Loading plugins...</p>
                 </div>
             </div>
         </div>
 
-        <!-- Center: Editor Panel -->
-        <div class="editor-section">
-            <div class="editor-toolbar">
-                <div class="toolbar-left">
-                    <span class="toolbar-title">
-                        <i class="fas fa-file-code"></i>
-                        <span id="currentFileName">config.xml</span>
-                    </span>
-                </div>
-                <div class="toolbar-right">
-                    <button class="btn btn-sm" onclick="window.app.toggleVisualMode()" title="Visual Designer Mode">
-                        <i class="fas fa-project-diagram"></i> Visual
-                    </button>
-                    <button class="btn btn-sm btn-primary" onclick="window.app.runConfig()"
-                        title="Run Configuration (Cmd+R)">
-                        <i class="fas fa-play"></i> Run
-                    </button>
-                    <button class="btn btn-sm" onclick="window.app.validateConfig()" title="Validate XML">
-                        <i class="fas fa-check"></i> Validate
-                    </button>
+        <!-- Center: Editor/Canvas Panel (Conductor-style - no duplicate controls!) -->
+        <div class="editor-section"
+            style="flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; width: 100%;">
+            <!-- Progress Bar (during execution) -->
+            <div id="progressBar"
+                style="display: none; height: 3px; background: #e5e7eb; position: absolute; top: 0; left: 0; right: 0; z-index: 100;">
+                <div id="progressFill"
+                    style="height: 100%; background: linear-gradient(90deg, var(--primary-color, #3b82f6), var(--secondary-color, #8b5cf6)); transition: width 0.3s;">
                 </div>
             </div>
 
-            <!-- Progress Bar -->
-            <div id="progressBar" class="progress-bar" style="display: none;">
-                <div id="progressFill" class="progress-fill"></div>
-                <span id="progressText" class="progress-text">0%</span>
-            </div>
-
-            <!-- Execution Controls -->
-            <div id="executionControls" class="execution-controls" style="display: none;">
+            <!-- Execution Controls (Pause/Resume/Stop - floating during execution) -->
+            <div id="executionControls"
+                style="display: none; position: absolute; top: 8px; right: 8px; z-index: 101; background: white; border-radius: 8px; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 4px;">
                 <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="window.app.pauseExecution()"
-                    title="Pause Execution">
-                    <i class="fas fa-pause"></i> Pause
+                    title="Pause">
+                    <i class="fas fa-pause"></i>
                 </button>
                 <button id="resumeBtn" class="btn btn-sm btn-success" onclick="window.app.resumeExecution()"
-                    title="Resume Execution" style="display: none;">
-                    <i class="fas fa-play"></i> Resume
+                    title="Resume" style="display: none;">
+                    <i class="fas fa-play"></i>
                 </button>
-                <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop Execution">
-                    <i class="fas fa-stop"></i> Stop
+                <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop">
+                    <i class="fas fa-stop"></i>
                 </button>
             </div>
 
-            <div id="editor" class="monaco-editor-container"></div>
+            <!-- Monaco Editor (XML mode) -->
+            <div id="editor" class="monaco-editor-container" style="flex: 1; width: 100%; min-width: 0;"></div>
 
             <!-- Visual Designer Canvas (hidden by default) -->
-            <div id="visual-canvas" style="display: none; flex: 1; background: #f5f5f5; padding: 0; width: 100%;">
+            <div id="visual-canvas"
+                style="display: none; flex: 1; width: 100%; min-width: 0; background: #f5f5f5; padding: 0;">
                 <div id="canvas-area"
-                    style="background: white; padding: 24px; min-height: 100%; width: 100%; box-sizing: border-box;"
-                    ondrop="app.handleDrop(event)" ondragover="app.handleDragOver(event)">
+                    style="background: white; padding: 24px; min-height: 100%; width: 100%; box-sizing: border-box;">
                     <!-- Visual nodes will be rendered here -->
+                    <!-- Drag & drop handled by VisualDesigner.ts -->
                 </div>
             </div>
         </div>
 
-        <!-- Right: Property Panel (Visual Mode only, hidden by default) -->
-        <div id="propertyPanel"
-            style="display: none; width: 300px; background: white; border-left: 1px solid #e0e0e0; flex-direction: column; overflow-y: auto;">
-            <!-- Properties will be rendered here by PropertyPanel.ts -->
-        </div>
-
-        <!-- Right: Sidebar Panel (30%) -->
+        <!-- Right: Sidebar Section (Always Visible, 360px) -->
         <div class="sidebar-section">
             <!-- Sidebar Tab Navigation -->
             <div class="sidebar-nav">
-                <button class="sidebar-nav-btn active" data-panel="logs"
-                    onclick="window.app.switchSidebarPanel('logs')">
+                <!-- Properties Tab (Visual Mode Only - FIRST!) -->
+                <button class="sidebar-nav-btn active" data-panel="properties" id="propertiesTabBtn"
+                    onclick="window.app.switchSidebarPanel('properties')" style="display: none;"
+                    aria-label="Plugin Properties">
+                    <i class="fas fa-cog"></i>
+                    <span>Properties</span>
+                </button>
+                <!-- Logs Tab -->
+                <button class="sidebar-nav-btn" data-panel="logs" onclick="window.app.switchSidebarPanel('logs')"
+                    aria-label="Execution Logs">
                     <i class="fas fa-list-ul"></i>
                     <span>Logs</span>
                     <span class="badge" id="logsBadge">0</span>
                 </button>
-                <button class="sidebar-nav-btn" data-panel="results" onclick="window.app.switchSidebarPanel('results')">
+                <!-- Results Tab -->
+                <button class="sidebar-nav-btn" data-panel="results" onclick="window.app.switchSidebarPanel('results')"
+                    aria-label="Execution Results">
                     <i class="fas fa-table"></i>
                     <span>Results</span>
                 </button>
+                <!-- Variables Tab -->
                 <button class="sidebar-nav-btn" data-panel="variables"
-                    onclick="window.app.switchSidebarPanel('variables')">
+                    onclick="window.app.switchSidebarPanel('variables')" aria-label="Runtime Variables">
                     <i class="fas fa-box"></i>
                     <span>Variables</span>
                     <span class="badge" id="varsBadge">0</span>
                 </button>
-                <button class="sidebar-nav-btn" data-panel="session" onclick="window.app.switchSidebarPanel('session')">
+                <!-- Session Tab -->
+                <button class="sidebar-nav-btn" data-panel="session" onclick="window.app.switchSidebarPanel('session')"
+                    aria-label="Session Information">
                     <i class="fas fa-info-circle"></i>
                     <span>Session</span>
                 </button>
@@ -166,6 +271,21 @@
 
             <!-- Sidebar Content Area -->
             <div class="sidebar-content">
+                <!-- Property Panel (Visual Mode Only - FIRST!) -->
+                <div id="propertyPanel" class="sidebar-panel" style="display: none;">
+                    <div class="panel-header">
+                        <h3>Plugin Properties</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div id="property-panel-content"
+                            style="padding: 16px; color: var(--gray-600); text-align: center;">
+                            <i class="fas fa-mouse-pointer"
+                                style="font-size: 48px; color: var(--gray-300); margin-bottom: 16px;"></i>
+                            <p>Select a plugin on the canvas to view its properties</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Logs Panel -->
                 <div id="logsPanel" class="sidebar-panel active">
                     <div class="panel-header">

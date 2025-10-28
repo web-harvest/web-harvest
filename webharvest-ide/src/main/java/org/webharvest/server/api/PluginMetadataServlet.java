@@ -135,15 +135,57 @@ public class PluginMetadataServlet extends HttpServlet {
         
         Map<String, Object> visual = new HashMap<>();
         
+        // Get category from plugin metadata (not inferred!)
+        String category = "Core";
+        String description = getPluginDescription(elementName);
+        String version = "2.2.0";
+        String author = "WebHarvest Team";
+        
+        try {
+            // 1. Try to get category from @CorePlugin annotation FIRST
+            org.webharvest.plugin.annotations.CorePlugin annotation = 
+                pluginClass.getAnnotation(org.webharvest.plugin.annotations.CorePlugin.class);
+            
+            if (annotation != null && annotation.category() != null && !annotation.category().isEmpty()) {
+                category = annotation.category();
+                description = annotation.description() != null && !annotation.description().isEmpty() 
+                    ? annotation.description() : description;
+                version = annotation.version() != null && !annotation.version().isEmpty()
+                    ? annotation.version() : version;
+            }
+            
+            // 2. Then override with METADATA if available (METADATA takes precedence)
+            org.webharvest.plugin.Plugin pluginInstance = pluginClass.getDeclaredConstructor().newInstance();
+            org.webharvest.plugin.PluginMetadata metadata = pluginInstance.getMetadata();
+            
+            if (metadata != null) {
+                // Override only if METADATA provides non-null/non-empty values
+                if (metadata.getCategory() != null && !metadata.getCategory().trim().isEmpty()) {
+                    category = metadata.getCategory();
+                }
+                if (metadata.getDescription() != null && !metadata.getDescription().trim().isEmpty()) {
+                    description = metadata.getDescription();
+                }
+                if (metadata.getVersion() != null && !metadata.getVersion().trim().isEmpty()) {
+                    version = metadata.getVersion();
+                }
+                if (metadata.getAuthor() != null && !metadata.getAuthor().trim().isEmpty()) {
+                    author = metadata.getAuthor();
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to read plugin metadata for {}: {}", elementName, e.getMessage());
+        }
+        
         visual.put("id", elementName);
         visual.put("name", formatPluginName(elementName));
         visual.put("elementName", elementName);
-        visual.put("description", getPluginDescription(elementName));
-        visual.put("category", inferPluginCategory(elementName));
+        visual.put("description", description);
+        visual.put("category", category); // ← From metadata!
         visual.put("icon", getPluginIcon("", elementName));
-        visual.put("version", "2.2.0");
-        visual.put("author", "WebHarvest Team");
-        visual.put("tags", Arrays.asList(elementName, inferPluginCategory(elementName).toLowerCase()));
+        visual.put("version", version);
+        visual.put("author", author);
+        visual.put("tags", Arrays.asList(elementName, category.toLowerCase()));
         visual.put("helpUrl", getHelpUrl(elementName));
         
         // Extract REAL schema from plugin instance

@@ -128,7 +128,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 @CorePlugin(
     elementName = "return",
     description = "Return plugin that sets the return value for function calls",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Utilities"
 )
 public class ReturnPlugin extends AbstractPlugin {
 
@@ -160,7 +161,7 @@ public class ReturnPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Utilities";
         }
 
         @Override

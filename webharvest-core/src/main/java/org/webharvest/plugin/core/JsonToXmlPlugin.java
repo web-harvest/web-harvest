@@ -248,7 +248,12 @@ import org.webharvest.runtime.variables.Variable;
  * @since 2.0
  * @see JsonXmlConverter
  */
-@CorePlugin(elementName = "json-to-xml")
+@CorePlugin(
+    elementName = "json-to-xml",
+    description = "Converts JSON to XML",
+    version = "2.2.0",
+    category = "Extraction"
+)
 public class JsonToXmlPlugin extends AbstractPlugin {
 
     private static final String TAG_ATT_NAME = "tag";
@@ -283,7 +288,7 @@ public class JsonToXmlPlugin extends AbstractPlugin {
 
             @Override
             public String getCategory() {
-                return "core";
+                return "Extraction";
             }
 
             @Override

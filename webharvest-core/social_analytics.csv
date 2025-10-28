@@ -1,0 +1,8 @@
+Platform,User,Content,Likes,Retweets,Sentiment
+            <loop item="post" index="i">
+                <list>
+                    <xpath expression="//item">
+                        <script>postsXml</script>
+                    </xpath>
+                </list>
+            </loop>

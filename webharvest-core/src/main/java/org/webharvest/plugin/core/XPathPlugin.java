@@ -187,7 +187,8 @@ import org.xml.sax.InputSource;
 @CorePlugin(
     elementName = "xpath",
     description = "XPath plugin that provides XPath processing functionality",
-    version = "2.1.0"
+    version = "2.1.0",
+    category = "Extraction"
 )
 public class XPathPlugin extends AbstractPlugin {
 
@@ -219,7 +220,7 @@ public class XPathPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Extraction";
         }
 
         @Override

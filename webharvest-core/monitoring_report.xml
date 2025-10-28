@@ -1,0 +1,7 @@
+<monitoring_report>
+                <timestamp>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <product_url>${productUrl}</product_url>
+                <price_threshold>${priceThreshold}</price_threshold>
+                <current_price>${currentPrice}</current_price>
+                <status>ALERT_TRIGGERED</status>
+            </monitoring_report>

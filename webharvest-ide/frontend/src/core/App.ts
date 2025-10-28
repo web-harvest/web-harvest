@@ -15,6 +15,7 @@ import { VariablesPanel } from '../panels/VariablesPanel';
 import { SessionPanel } from '../panels/SessionPanel';
 import { VisualDesigner } from '../visual/VisualDesigner';
 import { PropertyPanel } from '../visual/PropertyPanel';
+import { PluginPalette } from '../visual/PluginPalette';
 import { XMLParser } from '../visual/XMLParser';
 import { XMLGenerator } from '../visual/XMLGenerator';
 import type { ViewMode } from '../types';
@@ -32,9 +33,10 @@ export class App {
     private sessionPanel: SessionPanel;
     private visualDesigner: VisualDesigner;
     private propertyPanel: PropertyPanel;
+    private pluginPalette: PluginPalette;
     private xmlParser: XMLParser;
     private xmlGenerator: XMLGenerator;
-    private currentMode: ViewMode = 'xml';
+    private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
 
     constructor() {
         console.log('🚀 Initializing WebHarvest IDE (TypeScript + Apple HIG)...');
@@ -52,6 +54,7 @@ export class App {
         this.sessionPanel = new SessionPanel('session');
         this.visualDesigner = new VisualDesigner('canvas-area');
         this.propertyPanel = new PropertyPanel('propertyPanel');
+        this.pluginPalette = new PluginPalette('plugin-palette');
         this.xmlParser = new XMLParser();
         this.xmlGenerator = new XMLGenerator();
 
@@ -64,30 +67,46 @@ export class App {
      */
     private async initialize(): Promise<void> {
         try {
+            console.log('🚀 [App] Starting initialization...');
+
             // 1. Initialize Monaco Editor
+            console.log('🚀 [App] Step 1: Initializing Monaco Editor...');
             await this.initializeEditor();
 
-            // 2. Load plugins
+            // 2. Load plugins (backend metadata)
+            console.log('🚀 [App] Step 2: Loading plugin metadata...');
             await this.loadPlugins();
 
-            // 3. Setup event handlers
+            // 3. Initialize Plugin Palette (fetch from API)
+            console.log('🚀 [App] Step 3: Initializing Plugin Palette...');
+            await this.pluginPalette.init();
+            console.log('🚀 [App] Step 3 complete: Plugin Palette initialized');
+
+            // 4. Setup event handlers
+            console.log('🚀 [App] Step 4: Setting up event handlers...');
             this.setupEventHandlers();
 
-            // 4. Setup drag & drop
+            // 5. Setup drag & drop
+            console.log('🚀 [App] Step 5: Setting up drag & drop...');
             this.setupDragAndDrop();
 
             // 5. Setup modal handlers
             this.setupModalHandlers();
 
-            // 6. Create initial tab
+            // 6. Create initial tab (for XML mode when needed)
             const initialTab = this.tabManager.addTab('untitled.xml');
             this.renderTabs();
             this.switchToTab(initialTab.id);
 
-            // 7. Set initial mode
-            this.uiManager.switchToXMLMode();
+            // 7. Set initial mode to VISUAL (Conductor-style!)
+            console.log('🎨 [App] Setting default mode to VISUAL...');
+            this.uiManager.switchToVisualMode();
+            this.updateModeToggleButtons('visual'); // Update toolbar
 
-            console.log('✅ WebHarvest IDE initialized successfully!');
+            // Update filename in unified toolbar
+            this.updateUnifiedToolbar();
+
+            console.log('✅ WebHarvest IDE initialized successfully (Conductor-style Visual mode)!');
         } catch (error) {
             console.error('❌ Initialization failed:', error);
         }
@@ -105,6 +124,7 @@ export class App {
                 const tab = this.tabManager.getActiveTab();
                 if (tab) {
                     this.tabManager.updateTabContent(tab.id, value);
+                    this.updateUnifiedToolbar(); // Update dirty indicator
                 }
             });
 
@@ -292,12 +312,71 @@ export class App {
             }
         });
 
+        // Visual Designer → XML (when node added)
+        this.visualDesigner.addEventListener('nodeAdded', (node: any) => {
+            console.log('Node added, syncing to XML:', node.type);
+            if (this.currentMode === 'visual') {
+                this.syncVisualToXML();
+                this.updateUnifiedToolbar(); // Update dirty indicator
+            }
+        });
+
+        // Visual Designer → Toolbar update (on any change)
+        this.visualDesigner.addEventListener('nodeRemoved', () => {
+            if (this.currentMode === 'visual') {
+                this.updateUnifiedToolbar();
+            }
+        });
+
+        this.visualDesigner.addEventListener('nodeUpdated', () => {
+            if (this.currentMode === 'visual') {
+                this.updateUnifiedToolbar();
+            }
+        });
+
         // Property Panel → Visual Designer
         this.propertyPanel.onChange((updatedNode) => {
             this.visualDesigner.updateNode(updatedNode.id, updatedNode);
+
+            // Sync to XML immediately
+            if (this.currentMode === 'visual') {
+                this.syncVisualToXML();
+            }
+        });
+
+        // Plugin Palette → Visual Designer
+        this.pluginPalette.onAddNode((newNode) => {
+            this.visualDesigner.addNode(newNode);
+            this.logsPanel.addLog('success', `Added ${newNode.type} node`);
+
+            // Sync to XML immediately
+            if (this.currentMode === 'visual') {
+                this.syncVisualToXML();
+            }
         });
 
         console.log('✅ Event handlers configured');
+    }
+
+    /**
+     * Sync visual nodes to XML (real-time)
+     */
+    private syncVisualToXML(): void {
+        try {
+            const nodes = this.visualDesigner.getNodes();
+            const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">\n' +
+                this.xmlGenerator.generate(nodes, 1) +
+                '\n</config>';
+
+            const activeTab = this.tabManager.getActiveTab();
+            if (activeTab) {
+                this.tabManager.updateTabContent(activeTab.id, xml);
+                this.tabManager.markDirty(activeTab.id);
+                this.editor.setValue(xml);
+            }
+        } catch (error) {
+            console.error('Failed to sync visual to XML:', error);
+        }
     }
 
     /**
@@ -460,10 +539,88 @@ export class App {
     }
 
     /**
-     * Toggle Visual Mode
+     * Switch mode (Conductor-style unified toolbar)
      */
-    toggleVisualMode(): void {
+    async switchMode(mode: 'xml' | 'visual'): Promise<void> {
+        console.log(`🔄 [App] Switching to ${mode} mode...`);
+
+        // If switching away from Visual and has unsaved changes
+        if (this.currentMode === 'visual' && mode === 'xml' && this.visualDesigner.isDirty()) {
+            const confirmed = confirm('You have unsaved changes. Discard and switch to XML mode?');
+            if (!confirmed) {
+                console.log('ℹ️ Mode switch cancelled');
+                return;
+            }
+        }
+
+        // Switch data model
+        this.switchViewMode(mode);
+
+        // Update UI
+        if (mode === 'visual') {
+            this.uiManager.switchToVisualMode();
+        } else {
+            this.uiManager.switchToXMLMode();
+        }
+
+        // Update toolbar buttons (active state)
+        this.updateModeToggleButtons(mode);
+
+        this.currentMode = mode;
+        console.log(`✅ [App] Switched to ${mode} mode`);
+    }
+
+    /**
+     * Update mode toggle buttons (active state)
+     */
+    private updateModeToggleButtons(activeMode: 'xml' | 'visual'): void {
+        const xmlBtn = document.getElementById('btn-xml-mode');
+        const visualBtn = document.getElementById('btn-visual-mode');
+
+        if (xmlBtn && visualBtn) {
+            if (activeMode === 'xml') {
+                xmlBtn.style.background = '#007bff';
+                xmlBtn.style.color = 'white';
+                visualBtn.style.background = 'transparent';
+                visualBtn.style.color = '#666';
+            } else {
+                xmlBtn.style.background = 'transparent';
+                xmlBtn.style.color = '#666';
+                visualBtn.style.background = '#007bff';
+                visualBtn.style.color = 'white';
+            }
+        }
+    }
+
+    /**
+     * New configuration (works in both modes)
+     */
+    async newConfiguration(): Promise<void> {
+        if (this.currentMode === 'visual') {
+            await this.newVisualConfiguration();
+        } else {
+            // XML mode: create new tab
+            const newTab = this.tabManager.addTab('untitled.xml');
+            this.renderTabs();
+            this.switchToTab(newTab.id);
+            this.logsPanel.addLog('info', '✨ New configuration created');
+        }
+    }
+
+    /**
+     * Toggle Visual Mode (legacy - for backwards compatibility)
+     */
+    async toggleVisualMode(): Promise<void> {
         const newMode = this.currentMode === 'xml' ? 'visual' : 'xml';
+
+        // Check for unsaved changes before switching
+        if (newMode === 'xml' && this.visualDesigner.shouldPromptBeforeModeSwitch()) {
+            const confirmed = confirm('You have unsaved changes in Visual mode. Discard and switch to XML?');
+            if (!confirmed) {
+                console.log('ℹ️ Mode switch cancelled by user');
+                return;
+            }
+        }
 
         // Switch data model
         this.switchViewMode(newMode);
@@ -471,11 +628,150 @@ export class App {
         // Switch UI
         if (newMode === 'visual') {
             this.uiManager.switchToVisualMode();
+            this.updateVisualToolbar();
         } else {
             this.uiManager.switchToXMLMode();
         }
 
         this.currentMode = newMode;
+    }
+
+    /**
+     * Update unified toolbar (filename + dirty indicator)
+     */
+    updateUnifiedToolbar(): void {
+        const filenameElement = document.getElementById('current-filename');
+        const dirtyIndicator = document.getElementById('dirty-indicator');
+
+        let filename = 'untitled.xml';
+        let isDirty = false;
+
+        if (this.currentMode === 'visual') {
+            const config = this.visualDesigner.getCurrentConfiguration();
+            filename = config?.filename || 'untitled.xml';
+            isDirty = config?.isDirty || false;
+        } else {
+            const tab = this.tabManager.getActiveTab();
+            filename = tab?.name || 'untitled.xml';
+            isDirty = tab?.isDirty || false;
+        }
+
+        if (filenameElement) {
+            filenameElement.textContent = filename;
+        }
+
+        if (dirtyIndicator) {
+            dirtyIndicator.style.display = isDirty ? 'inline' : 'none';
+        }
+    }
+
+    /**
+     * Update Visual mode toolbar (DEPRECATED - use updateUnifiedToolbar)
+     */
+    updateVisualToolbar(): void {
+        this.updateUnifiedToolbar();
+    }
+
+    /**
+     * Save Visual configuration
+     */
+    async saveVisualConfiguration(): Promise<void> {
+        const config = this.visualDesigner.getCurrentConfiguration();
+        if (!config) {
+            this.logsPanel.addLog('warning', 'No configuration to save');
+            return;
+        }
+
+        try {
+            // Generate XML from nodes
+            const xml = this.xmlGenerator.generate(config.nodes);
+
+            // If no filename, show Save As dialog
+            if (!config.filename) {
+                await this.saveVisualConfigurationAs();
+                return;
+            }
+
+            // TODO: Save to file
+            this.logsPanel.addLog('success', `💾 Saved: ${config.filename}`);
+            this.visualDesigner.markClean();
+            this.updateVisualToolbar();
+        } catch (error) {
+            console.error('Failed to save configuration:', error);
+            this.logsPanel.addLog('error', 'Failed to save configuration');
+        }
+    }
+
+    /**
+     * Save Visual configuration as...
+     */
+    async saveVisualConfigurationAs(): Promise<void> {
+        const filename = prompt('Enter filename:', 'my-workflow.xml');
+        if (!filename) {
+            return;
+        }
+
+        const config = this.visualDesigner.getCurrentConfiguration();
+        if (!config) {
+            return;
+        }
+
+        try {
+            const xml = this.xmlGenerator.generate(config.nodes);
+
+            // TODO: Actual file save
+            this.visualDesigner.setCurrentFilename(filename);
+            this.visualDesigner.markClean();
+            this.updateVisualToolbar();
+
+            this.logsPanel.addLog('success', `💾 Saved as: ${filename}`);
+        } catch (error) {
+            console.error('Failed to save as:', error);
+            this.logsPanel.addLog('error', 'Failed to save configuration');
+        }
+    }
+
+    /**
+     * Create new Visual configuration
+     */
+    async newVisualConfiguration(): Promise<void> {
+        // Check for unsaved changes
+        if (this.visualDesigner.isDirty()) {
+            const action = confirm(
+                'You have unsaved changes. Create new configuration?\n\nClick OK to discard changes, Cancel to keep working.'
+            );
+
+            if (!action) {
+                console.log('ℹ️ New configuration cancelled');
+                return;
+            }
+        }
+
+        // Create new
+        this.visualDesigner.newConfiguration();
+        this.updateVisualToolbar();
+        this.logsPanel.addLog('info', '✨ New configuration created');
+    }
+
+    /**
+     * Open file in Visual mode
+     */
+    async openFileInVisual(): Promise<void> {
+        // Check for unsaved changes
+        if (this.visualDesigner.isDirty()) {
+            const action = confirm(
+                'You have unsaved changes. Open new file?\n\nClick OK to discard changes, Cancel to keep working.'
+            );
+
+            if (!action) {
+                console.log('ℹ️ Open file cancelled');
+                return;
+            }
+        }
+
+        // TODO: Show file picker
+        // For now, use examples modal
+        this.showExamplesModal();
     }
 
     /**
@@ -515,8 +811,44 @@ export class App {
      * Run configuration (with validation)
      */
     async runConfig(): Promise<void> {
-        const tab = this.tabManager.getActiveTab();
-        if (!tab) return;
+        console.log(`🎯 [App] runConfig() called in ${this.currentMode} mode`);
+        
+        // Get XML content based on current mode
+        let xmlContent: string;
+        let configName: string;
+        
+        if (this.currentMode === 'visual') {
+            // Generate XML from Visual Designer
+            const nodes = this.visualDesigner.getNodes();
+            if (nodes.length === 0) {
+                this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
+                return;
+            }
+            
+            console.log('🎨 [App] Generating XML from', nodes.length, 'visual nodes...');
+            
+            // Wrap in <config> if needed
+            const nodesXml = this.xmlGenerator.generate(nodes);
+            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+${nodesXml}
+</config>`;
+            
+            const config = this.visualDesigner.getCurrentConfiguration();
+            configName = config?.filename || 'visual-workflow.xml';
+            
+            console.log('✅ [App] Generated XML from Visual mode:', xmlContent.length, 'chars');
+        } else {
+            // XML mode: use tab content
+            const tab = this.tabManager.getActiveTab();
+            if (!tab) {
+                this.logsPanel.addLog('error', '❌ No active tab');
+                return;
+            }
+            
+            xmlContent = tab.content;
+            configName = tab.name;
+        }
 
         // Validate first
         this.logsPanel.addLog('info', '🔍 Validating configuration...');
@@ -525,7 +857,7 @@ export class App {
             const validationResponse = await fetch('/api/config/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/xml' },
-                body: tab.content,
+                body: xmlContent,
             });
 
             const validationResult = await validationResponse.json();
@@ -542,15 +874,42 @@ export class App {
             // Continue anyway if validation service fails
         }
 
-        await this.runExecution(tab.content);
+        // Run with generated/retrieved XML content
+        await this.runExecution(xmlContent);
     }
 
     /**
      * Validate configuration (explicit validation - shows ALL errors)
      */
     async validateConfig(): Promise<void> {
-        const tab = this.tabManager.getActiveTab();
-        if (!tab) return;
+        console.log(`🎯 [App] validateConfig() called in ${this.currentMode} mode`);
+        
+        // Get XML content based on current mode
+        let xmlContent: string;
+        
+        if (this.currentMode === 'visual') {
+            // Generate XML from Visual Designer
+            const nodes = this.visualDesigner.getNodes();
+            if (nodes.length === 0) {
+                this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
+                return;
+            }
+            
+            const nodesXml = this.xmlGenerator.generate(nodes);
+            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+${nodesXml}
+</config>`;
+        } else {
+            // XML mode: use tab content
+            const tab = this.tabManager.getActiveTab();
+            if (!tab) {
+                this.logsPanel.addLog('error', '❌ No active tab');
+                return;
+            }
+            
+            xmlContent = tab.content;
+        }
 
         this.logsPanel.addLog('info', '🔍 Validating configuration...');
 
@@ -558,7 +917,7 @@ export class App {
             const response = await fetch('/api/config/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/xml' },
-                body: tab.content,
+                body: xmlContent,
             });
 
             const data = await response.json();
@@ -746,7 +1105,7 @@ export class App {
 
     /**
      * Load example directly on click (Apple HIG - immediate action)
-     * Creates NEW TAB for each example!
+     * Checks for duplicates before creating new tab!
      */
     async loadExampleDirect(event: Event): Promise<void> {
         const card = (event.target as HTMLElement).closest('.example-card') as HTMLElement;
@@ -759,18 +1118,45 @@ export class App {
             // Load content
             const content = await this.examplesManager.loadExampleContent(filename);
 
-            // Create NEW tab (always!)
-            const newTab = this.tabManager.addTab(filename);
-            this.tabManager.updateTabContent(newTab.id, content);
-            this.tabManager.markClean(newTab.id); // It's from example, not dirty
+            // Check if tab with this name already exists
+            const existingTab = this.tabManager.findTabByName(filename);
 
-            // Render tabs
-            this.renderTabs();
+            if (existingTab) {
+                // Tab exists - ask user if they want to overwrite
+                const shouldOverwrite = confirm(
+                    `Tab "${filename}" is already open.\n\n` +
+                    `Do you want to reload it with fresh content from examples?\n\n` +
+                    `• OK = Reload the tab\n` +
+                    `• Cancel = Switch to existing tab without reloading`
+                );
 
-            // Switch to new tab
-            this.switchToTab(newTab.id);
+                if (shouldOverwrite) {
+                    // User confirmed - reload the tab
+                    console.log('Reloading existing tab:', filename);
+                    this.tabManager.updateTabContent(existingTab.id, content);
+                    this.tabManager.markClean(existingTab.id);
+                    this.switchToTab(existingTab.id);
+                    this.logsPanel.addLog('success', `✅ Reloaded: ${filename}`);
+                } else {
+                    // User cancelled - just switch to existing tab without reloading
+                    console.log('Switching to existing tab without reload:', filename);
+                    this.switchToTab(existingTab.id);
+                    this.logsPanel.addLog('info', `Switched to existing tab: ${filename}`);
+                }
+            } else {
+                // Tab doesn't exist - create new one
+                const newTab = this.tabManager.addTab(filename, content);
+                this.tabManager.markClean(newTab.id); // It's from example, not dirty
 
-            // Update Monaco with new tab content
+                // Render tabs
+                this.renderTabs();
+
+                // Switch to new tab
+                this.switchToTab(newTab.id);
+                this.logsPanel.addLog('success', `✅ Loaded: ${filename} (new tab)`);
+            }
+
+            // Update Monaco with tab content
             this.editor.setValue(content);
             this.uiManager.updateFilename(filename);
 

@@ -1,0 +1,19 @@
+<extraction_comparison>
+                <timestamp>${sys.datetime("yyyy-MM-dd HH:mm:ss")}</timestamp>
+                <url>${startUrl}</url>
+                <methods>
+                    <method name="web-browser">
+                        <description>Uses JavaScript to extract content</description>
+                        <advantages>Handles JavaScript, better for modern sites</advantages>
+                        <disadvantages>Slower, requires browser engine</disadvantages>
+                    </method>
+                    <method name="html-to-xml">
+                        <description>Direct HTML to XML conversion</description>
+                        <advantages>Faster, simpler</advantages>
+                        <disadvantages>May struggle with malformed HTML</disadvantages>
+                    </method>
+                </methods>
+                <recommendation>
+                    Use web-browser for JavaScript-heavy sites, html-to-xml for simple HTML
+                </recommendation>
+            </extraction_comparison>

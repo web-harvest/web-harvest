@@ -16,18 +16,20 @@
 }
 
 .editor-section {
-    flex: 0 0 70%;
+    flex: 1; /* Rozciągnij na całą dostępną przestrzeń */
     display: flex;
     flex-direction: column;
     background: white;
     border-right: 1px solid #e0e0e0;
+    min-width: 0; /* Prevent flex overflow */
 }
 
 .sidebar-section {
-    flex: 1;
+    flex: 0 0 360px; /* Fixed width dla Logs/Results/Variables/Sessions */
     display: flex;
     flex-direction: column;
     background: var(--gray-50);
+    border-left: 1px solid #e0e0e0;
 }
 
 /* ============================================

@@ -374,7 +374,8 @@ import java.util.regex.PatternSyntaxException;
 @CorePlugin(
     elementName = "file",
     description = "File plugin that provides file operations",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Storage"
 )
 public class FilePlugin extends AbstractPlugin {
     
@@ -414,7 +415,7 @@ public class FilePlugin extends AbstractPlugin {
 
             @Override
             public String getCategory() {
-                return "core";
+                return "Storage";
             }
 
             @Override

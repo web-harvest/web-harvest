@@ -118,3 +118,4 @@ Complete rewrite of WebHarvest IDE using TypeScript + TDD approach.
 - Visual mode will be fully integrated
 - No breaking changes for users
 
+

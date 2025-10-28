@@ -175,7 +175,12 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * @version 2.2.0
  * @see org.webharvest.utils.CommonUtil#encodeUrl(String, String)
  */
-@CorePlugin(elementName = "http")
+@CorePlugin(
+    elementName = "http",
+    description = "Performs HTTP requests to retrieve web pages",
+    version = "2.2.0",
+    category = "Network"
+)
 public class HttpPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.HttpPlugin");
@@ -372,7 +377,7 @@ public class HttpPlugin extends AbstractPlugin {
         
         @Override
         public String getCategory() {
-            return "Web";
+            return "Network";
         }
     }
     

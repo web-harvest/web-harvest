@@ -79,6 +79,24 @@ public @interface CorePlugin {
      * @return the version
      */
     String version() default "2.1.0";
+    
+    /**
+     * The category for Visual Designer palette.
+     * 
+     * <p>Standard categories:</p>
+     * <ul>
+     *   <li><strong>Network</strong> - HTTP, FTP, Mail</li>
+     *   <li><strong>Extraction</strong> - XPath, XQuery, Regexp, HTML-to-XML, JSON-to-XML</li>
+     *   <li><strong>Variables</strong> - Def, Get-Var</li>
+     *   <li><strong>Control</strong> - Loop, While, If, Try, Case</li>
+     *   <li><strong>Processing</strong> - Script, Template, XSLT</li>
+     *   <li><strong>Storage</strong> - File</li>
+     *   <li><strong>Utilities</strong> - Log, Sleep, Return, Exit</li>
+     * </ul>
+     * 
+     * @return the category
+     */
+    String category() default "Core";
 }
 
 

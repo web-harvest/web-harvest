@@ -96,8 +96,14 @@ public class WebHarvestServer {
         defaultServlet.setInitParameter("dirAllowed", "true");
         defaultServlet.setInitParameter("pathInfoOnly", "false");
         defaultServlet.setInitParameter("welcomeServlets", "true");
+        
+        // DEVELOPMENT MODE: Disable browser caching for static files
+        defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
+        defaultServlet.setInitParameter("useFileMappedBuffer", "false");
+        defaultServlet.setInitParameter("etags", "false");
+        
         context.addServlet(defaultServlet, "/");
-        LOG.info("Default servlet configured for static files");
+        LOG.info("Default servlet configured for static files (cache DISABLED for development)");
         
         server.setHandler(context);
         

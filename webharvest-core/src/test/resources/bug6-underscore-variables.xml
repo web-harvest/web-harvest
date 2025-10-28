@@ -45,7 +45,7 @@
     <!-- Underscore names in loops -->
     <loop item="product_item" index="product_index">
         <list>
-            <var name="api_response"/>
+            <def var="api_response"/>
         </list>
         <body>
             <var-def name="product_name">

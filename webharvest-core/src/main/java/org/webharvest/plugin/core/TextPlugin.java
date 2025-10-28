@@ -96,7 +96,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "text",
     description = "Text plugin that processes text content with charset and delimiter support",
-    version = "2.2.0"
+    version = "2.2.0",
+    category = "Utilities"
 )
 public class TextPlugin extends AbstractPlugin {
 
@@ -130,7 +131,7 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            return "Utilities";
         }
 
         @Override

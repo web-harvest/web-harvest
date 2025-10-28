@@ -90,3 +90,4 @@ describe('ResultsPanel - WebSocket Integration', () => {
     });
 });
 
+

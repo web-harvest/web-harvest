@@ -146,7 +146,12 @@ import org.webharvest.runtime.variables.Variable;
  * @version 2.2.0
  * @since 2.0
  */
-@CorePlugin(elementName = "sleep")
+@CorePlugin(
+    elementName = "sleep",
+    description = "Sleep plugin that pauses execution for specified milliseconds",
+    version = "2.1.0",
+    category = "Utilities"
+)
 public class SleepPlugin extends AbstractPlugin {
 
     private static final String MILLISECONDS_ATT_NAME = "milliseconds";
@@ -181,7 +186,7 @@ public class SleepPlugin extends AbstractPlugin {
 
             @Override
             public String getCategory() {
-                return "core";
+                return "Utilities";
             }
 
             @Override
