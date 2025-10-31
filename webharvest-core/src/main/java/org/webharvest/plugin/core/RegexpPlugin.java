@@ -40,6 +40,7 @@ import org.webharvest.WHConstants;
 // REMOVED in v2.2.x
 import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -276,14 +277,13 @@ public class RegexpPlugin extends AbstractPlugin {
         if (config.hasChildren()) {
             for (PluginConfiguration child : config.getChildren()) {
                 String elementName = child.getElementName();
-                String childText = child.getProperty("_textContent", "");
-                
+
                 if ("regexp-pattern".equals(elementName)) {
-                    pattern = childText;
+                    pattern = extractChildText(child, context);
                 } else if ("regexp-source".equals(elementName)) {
-                    source = childText;
+                    source = extractChildText(child, context);
                 } else if ("regexp-result".equals(elementName)) {
-                    result = childText;
+                    result = child.getProperty("_textContent", "");
                 }
             }
         }
@@ -697,6 +697,20 @@ public class RegexpPlugin extends AbstractPlugin {
             }
         }
         return "";
+    }
+
+    private String extractChildText(PluginConfiguration child, DynamicScopeContext context) throws InterruptedException {
+        String direct = child.getProperty("_textContent", "");
+        if (direct != null && !direct.trim().isEmpty()) {
+            return direct;
+        }
+
+        DefaultPluginBodyExecutor executor = new DefaultPluginBodyExecutor();
+        Variable evaluated = executor.getBodyTextContent(child, context);
+        if (evaluated == null || evaluated instanceof EmptyVariable) {
+            return "";
+        }
+        return evaluated.toString();
     }
 
     /**

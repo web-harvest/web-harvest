@@ -30,8 +30,8 @@ public class AllIDEExamplesIntegrationTest extends ScraperTestBase {
         System.out.println("\n### IDE Example: xquery.xml ###");
         testExampleFile("xquery.xml");
         
-        // Verify output file was created
-        Path outputPath = Paths.get("target/test-output/xquerytest.xml");
+        // Verify output file was created (example writes to project root)
+        Path outputPath = Paths.get("xquerytest.xml");
         assertTrue(Files.exists(outputPath), "xquerytest.xml should be created");
         
         String content = new String(Files.readAllBytes(outputPath));
@@ -46,7 +46,10 @@ public class AllIDEExamplesIntegrationTest extends ScraperTestBase {
         
         System.out.println("✅ xquery.xml PASSED");
         
-        // Cleanup
+        // Cleanup and move to test-output for traceability
+        Path targetOutput = Paths.get("target/test-output/xquerytest.xml");
+        Files.createDirectories(targetOutput.getParent());
+        Files.copy(outputPath, targetOutput, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         Files.deleteIfExists(outputPath);
     }
     

@@ -19,6 +19,7 @@ import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for HttpParamPlugin.
@@ -52,7 +53,7 @@ public class HttpParamPluginTest {
         assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
         assertEquals(plugin.getMetadata().getDescription(), "HTTP parameter plugin that defines HTTP parameters for HTTP requests");
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(HttpParamPlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "http-param");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
@@ -256,7 +257,7 @@ public class HttpParamPluginTest {
         assertNotNull(metadata.getAuthor());
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
         assertNotNull(metadata.getCategory());
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(HttpParamPlugin.class));
         assertNotNull(metadata.getVersion());
         
         String[] tags = metadata.getTags();

@@ -7,7 +7,7 @@ import org.webharvest.Harvester.ContextInitCallback;
 
 /**
  * Test class for ScrapingHarvester component - responsible for creating and executing harvesters.
- * This test verifies basic functionality without complex mocking due to Guice @Assisted annotation.
+ * This test verifies basic functionality of the ScrapingHarvester component.
  */
 public class ScrapingHarvesterTest {
 

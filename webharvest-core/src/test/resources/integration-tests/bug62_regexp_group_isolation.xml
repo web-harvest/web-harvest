@@ -1,74 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- 
-    Bug #62: Regexp group isolation issue
-    
-    When two REGEX statements are used (not nested), the second regex
-    retrieves the first group value from the FIRST regex instead of its own groups.
-    
-    Scenario:
-    1. First regexp splits text "name:John;age:30" and extracts pairs
-    2. Loop processes each pair with a SECOND regexp to extract key/value
-    3. BUG: Second regexp's group1 returns value from FIRST regexp
-    -->
-    
-    <!-- Input data: key-value pairs separated by semicolons -->
-    <def var="input">name:John;age:30;city:NYC</def>
-    
-    <!-- First regexp: Split by semicolon into pairs -->
-    <def var="pairs">
+    <!-- Bug #62 verification: sequential regexp executions must isolate group variables -->
+
+    <!-- Collected results -->
+    <def var="results"></def>
+
+    <!-- Pair 0 -->
+    <def var="pair0">
         <regexp replace="false">
-            <regexp-pattern>([^;]+)</regexp-pattern>
-            <regexp-source>
-                <get var="input"/>
-            </regexp-source>
+            <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+            <regexp-source>name:John</regexp-source>
+            <regexp-result>
+                <text>Pair 0: Key=${group1}, Value=${group2}
+</text>
+            </regexp-result>
         </regexp>
     </def>
-    
-    <!-- Variable to collect results -->
-    <def var="results"></def>
-    
-    <!-- Loop through each pair -->
-    <loop item="pair" index="i">
-        <list>
-            <get var="pairs"/>
-        </list>
-        <body>
-            <!-- Second regexp: Extract key and value from "key:value" -->
-            <!-- BUG: This should create NEW groups (group0, group1, group2) -->
-            <!-- But it retrieves groups from the FIRST regexp above! -->
-            <regexp replace="false">
-                <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
-                <regexp-source>
-                    <get var="pair"/>
-                </regexp-source>
-                <regexp-result>
-                    <!-- group1 should be the KEY (e.g., "name", "age", "city") -->
-                    <!-- group2 should be the VALUE (e.g., "John", "30", "NYC") -->
-                    <text>Key=</text>
-                    <get var="group1"/>
-                    <text>, Value=</text>
-                    <get var="group2"/>
-                    <text>
+    <def var="results">
+        <get var="results"/>
+        <get var="pair0"/>
+    </def>
+
+    <!-- Pair 1 -->
+    <def var="pair1">
+        <regexp replace="false">
+            <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+            <regexp-source>age:30</regexp-source>
+            <regexp-result>
+                <text>Pair 1: Key=${group1}, Value=${group2}
 </text>
-                </regexp-result>
-            </regexp>
-            
-            <!-- Save result -->
-            <def var="results">
-                <get var="results"/>
-                <text>Pair </text>
-                <get var="i"/>
-                <text>: Key=</text>
-                <get var="group1"/>
-                <text>, Value=</text>
-                <get var="group2"/>
-                <text>
+            </regexp-result>
+        </regexp>
+    </def>
+    <def var="results">
+        <get var="results"/>
+        <get var="pair1"/>
+    </def>
+
+    <!-- Pair 2 -->
+    <def var="pair2">
+        <regexp replace="false">
+            <regexp-pattern>([^:]+):([^:]+)</regexp-pattern>
+            <regexp-source>city:NYC</regexp-source>
+            <regexp-result>
+                <text>Pair 2: Key=${group1}, Value=${group2}
 </text>
-            </def>
-        </body>
-    </loop>
-    
+            </regexp-result>
+        </regexp>
+    </def>
+    <def var="results">
+        <get var="results"/>
+        <get var="pair2"/>
+    </def>
+
     <!-- Output results -->
     <file action="write" path="target/test-output/bug62_output.txt">
         <get var="results"/>

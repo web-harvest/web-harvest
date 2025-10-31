@@ -21,6 +21,7 @@ import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for ListPlugin.
@@ -69,7 +70,7 @@ public class ListPluginTest {
         assertEquals(metadata.getId(), "list");
         assertEquals(metadata.getVersion(), "2.1.0");
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(ListPlugin.class));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "list");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

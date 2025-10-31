@@ -8,6 +8,7 @@ import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Additional tests for HtmlToXmlPlugin to boost coverage.
@@ -46,7 +47,7 @@ public class HtmlToXmlPluginAdditionalTest {
 
     @Test
     public void testMetadataCategory() {
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(HtmlToXmlPlugin.class));
     }
 
     @Test

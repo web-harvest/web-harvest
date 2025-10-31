@@ -5,7 +5,9 @@
 package org.webharvest.plugin.core;
 
 import org.testng.annotations.Test;
+
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Comprehensive metadata coverage test for ALL core plugins below 70%.
@@ -68,7 +70,7 @@ public class AllPluginsMetadataCoverageTest {
     @Test public void jsonPlugin05() { assertTrue(new JsonToXmlPlugin().getMetadata().getConfigurationSchema().allowsBody()); }
     @Test public void jsonPlugin06() { assertNotNull(new JsonToXmlPlugin().getMetadata().getTags()); }
     @Test public void jsonPlugin07() { assertNotNull(new JsonToXmlPlugin().getMetadata().getDependencies()); }
-    @Test public void jsonPlugin08() { assertEquals(new JsonToXmlPlugin().getMetadata().getCategory(), "core"); }
+    @Test public void jsonPlugin08() { assertEquals(new JsonToXmlPlugin().getMetadata().getCategory(), expectedCategory(JsonToXmlPlugin.class)); }
     @Test public void jsonPlugin09() { assertNotNull(new JsonToXmlPlugin().getMetadata().getClassName()); }
     @Test public void jsonPlugin10() { assertNotNull(new JsonToXmlPlugin().getMetadata().getNamespace()); }
     
@@ -81,7 +83,7 @@ public class AllPluginsMetadataCoverageTest {
     @Test public void scriptPlugin06() { assertNotNull(new ScriptPlugin().getMetadata().getTags()); }
     @Test public void scriptPlugin07() { assertTrue(new ScriptPlugin().getMetadata().getTags().length > 0); }
     @Test public void scriptPlugin08() { assertNotNull(new ScriptPlugin().getMetadata().getDependencies()); }
-    @Test public void scriptPlugin09() { assertEquals(new ScriptPlugin().getMetadata().getCategory(), "core"); }
+    @Test public void scriptPlugin09() { assertEquals(new ScriptPlugin().getMetadata().getCategory(), expectedCategory(ScriptPlugin.class)); }
     @Test public void scriptPlugin10() { assertNotNull(new ScriptPlugin().getMetadata().getClassName()); }
 }
 

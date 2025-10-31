@@ -33,19 +33,19 @@
 
 package org.webharvest.runtime;
 
-import java.io.IOException;
-
 import com.google.common.eventbus.EventBus;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.Harvester;
 import org.webharvest.definition.Config;
 import org.webharvest.ioc.ContextFactory;
+import org.webharvest.ioc.ScopeAttributeHolder;
+import org.webharvest.ioc.ScraperScope;
 import org.webharvest.ioc.Scraping;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
-
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.assistedinject.Assisted;
 
 import java.util.UUID;
 
@@ -77,14 +77,16 @@ import java.util.UUID;
 // FIXME rbala Can not be final as we put an @Scraping annotation on this
 public class ScrapingHarvester implements Harvester {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScrapingHarvester.class);
+
     private final Provider<WebScraper> scraperProvider;
 
     private final Config config;
 
     private final ContextFactory contextFactory;
-    
-    // Bug #24: EventBus for plugin event publishing (injected from Guice)
-    private final EventBus eventBus;
+
+    private final Provider<EventBus> eventBusProvider;
+    private final ScraperScope scraperScope;
 
     /**
      * Class constructor expecting Guice
@@ -98,19 +100,20 @@ public class ScrapingHarvester implements Harvester {
      *            reference to a {@link DynamicScopeContext} factory.
      * @param config
      *            reference to the configuration {@link Config}.
-     * @param eventBus
-     *            the EventBus for publishing plugin execution events (Bug #24)
-     * @throws IOException
+     * @param eventBusProvider
+     *            provider for the EventBus used for publishing plugin execution events (Bug #24)
      */
     @Inject
     public ScrapingHarvester(final Provider<WebScraper> scraperProvider,
             final ContextFactory contextFactory,
-            @Assisted final Config config,
-            final EventBus eventBus) {
+            final Provider<EventBus> eventBusProvider,
+            final ScraperScope scraperScope,
+            final Config config) {
         this.scraperProvider = scraperProvider;
         this.contextFactory = contextFactory;
+        this.eventBusProvider = eventBusProvider;
+        this.scraperScope = scraperScope;
         this.config = config;
-        this.eventBus = eventBus;
     }
 
     /**
@@ -119,27 +122,38 @@ public class ScrapingHarvester implements Harvester {
     @Override
     @Scraping
     public DynamicScopeContext execute(final ContextInitCallback callback) {
-        final WebScraper scraper = scraperProvider.get();
+        ScopeAttributeHolder scopeHolder = new ScopeAttributeHolder();
+        scraperScope.enter(scopeHolder);
+        try {
+            final WebScraper scraper = scraperProvider.get();
 
-        final DynamicScopeContext context =
-                contextFactory.create(config);
-        
-        // Bug #24: Set EventBus and Session in context for plugin event publishing
-        // Create a simple session for CLI/IDE (legacy API compatibility)
-        if (eventBus != null) {
-            context.setEventBus(eventBus);
-            
-            // Create legacy session (simple wrapper for CLI/IDE)
-            String sessionId = UUID.randomUUID().toString();
-            ScraperSession session = new ScraperSessionImpl(sessionId, "cli", config, eventBus);
-            context.setSession(session);
+            final DynamicScopeContext context = contextFactory.create(config);
+
+            EventBus eventBus = null;
+            if (eventBusProvider != null) {
+                try {
+                    eventBus = eventBusProvider.get();
+                } catch (Exception ex) {
+                    LOGGER.warn("EventBus provider not available in current scope: {}", ex.getMessage());
+                }
+            }
+
+            if (eventBus != null) {
+                context.setEventBus(eventBus);
+
+                String sessionId = UUID.randomUUID().toString();
+                ScraperSession session = new ScraperSessionImpl(sessionId, "cli", config, eventBus);
+                context.setSession(session);
+            }
+
+            callback.onSuccess(context);
+
+            scraper.execute(context);
+
+            return context;
+        } finally {
+            scraperScope.exit();
         }
-        
-        callback.onSuccess(context);
-
-        scraper.execute(context);
-
-        return context;
     }
 
 }

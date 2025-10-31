@@ -17,6 +17,7 @@ import org.webharvest.runtime.variables.Variable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for XQExpressionPlugin.
@@ -50,7 +51,7 @@ public class XQExpressionPluginTest {
         assertEquals(metadata.getVersion(), "2.1.0");
         assertEquals(metadata.getDescription(), "XQExpression plugin that provides XQuery expression evaluation functionality");
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(XQExpressionPlugin.class));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "xq-expression");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -234,7 +235,7 @@ public class XQExpressionPluginTest {
         assertNotNull(metadata.getAuthor());
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
         assertNotNull(metadata.getCategory());
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(XQExpressionPlugin.class));
         assertNotNull(metadata.getVersion());
         
         String[] tags = metadata.getTags();

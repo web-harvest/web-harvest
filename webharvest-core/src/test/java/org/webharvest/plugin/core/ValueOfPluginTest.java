@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for ValueOfPlugin.
@@ -51,7 +52,7 @@ public class ValueOfPluginTest {
         assertEquals(metadata.getVersion(), "2.1.0");
         assertEquals(metadata.getDescription(), "ValueOf plugin that evaluates expressions and returns their values");
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(ValueOfPlugin.class));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "value-of");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

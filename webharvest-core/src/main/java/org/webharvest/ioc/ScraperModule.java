@@ -54,6 +54,7 @@ import org.webharvest.events.HandlerHolder;
 import org.webharvest.events.HarvesterEventSink;
 import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 import org.webharvest.runtime.DefaultHarvest;
+import org.webharvest.runtime.DefaultHarvesterFactory;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.EventBasedStatusHolder;
 import org.webharvest.runtime.RunningStatusGuard;
@@ -78,7 +79,6 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
-import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Names;
 
@@ -181,13 +181,8 @@ public final class ScraperModule extends AbstractModule {
     }
     
     private void bindFactories() {
-        install(new FactoryModuleBuilder()
-                .implement(Config.class, XMLConfig.class)
-                .build(ConfigFactory.class));
-        
-        install(new FactoryModuleBuilder()
-                .implement(Harvester.class, ScrapingHarvester.class)
-                .build(HarvesterFactory.class));
+        bind(ConfigFactory.class).to(DefaultConfigFactory.class).in(Singleton.class);
+        bind(HarvesterFactory.class).to(DefaultHarvesterFactory.class).in(Singleton.class);
     }
     
     private void bindInterceptors() {

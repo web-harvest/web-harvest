@@ -11,6 +11,7 @@ import org.webharvest.runtime.variables.NodeVariable;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Tests for BodyProcessorPlugin.
@@ -63,7 +64,7 @@ public class BodyProcessorPluginTest {
 
     @Test
     public void testMetadataCategory() {
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(BodyProcessorPlugin.class));
     }
 
     @Test

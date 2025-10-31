@@ -43,9 +43,13 @@ public class GetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
     public void testGetVarInXPath() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <def var=\"xmlData\"><root><item>Test</item></root></def>\n" +
+            "    <def var=\"xmlData\">\n" +
+            "        <html-to-xml>\n" +
+            "            <text><![CDATA[<root><item>Test</item></root>]]></text>\n" +
+            "        </html-to-xml>\n" +
+            "    </def>\n" +
             "    <def var=\"extracted\">\n" +
-            "        <xpath expression=\"//item\">\n" +
+            "        <xpath expression=\"//item/text()\">\n" +
             "            <get var=\"xmlData\"/>\n" +
             "        </xpath>\n" +
             "    </def>\n" +

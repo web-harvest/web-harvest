@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Simulate setvar by redefining variable -->
+    <def var="initial">old value</def>
+    <def var="initial">updated value from setvar example</def>
+</config>
+

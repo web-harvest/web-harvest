@@ -54,6 +54,7 @@ import java.util.ArrayList;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for {@link IncludePlugin}.
@@ -141,7 +142,7 @@ public class IncludePluginTest {
         assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
         assertEquals(plugin.getMetadata().getDescription(), "Include plugin that includes external configuration files");
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(IncludePlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "include");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
@@ -376,7 +377,7 @@ public class IncludePluginTest {
         assertNotNull(metadata.getAuthor());
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
         assertNotNull(metadata.getCategory());
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(IncludePlugin.class));
         assertNotNull(metadata.getVersion());
         
         String[] tags = metadata.getTags();

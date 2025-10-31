@@ -2,6 +2,7 @@ package org.webharvest.plugin.core;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -38,7 +39,7 @@ public class FunctionPluginTest {
         assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
         assertEquals(plugin.getMetadata().getDescription(), "Function plugin that defines user-defined functions");
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(FunctionPlugin.class));
         assertTrue(plugin.getMetadata().isCorePlugin());
         assertEquals(plugin.getMetadata().getElementName(), "function");
         assertEquals(plugin.getMetadata().getNamespace(), "http://org.webharvest/schema/2.1/core");

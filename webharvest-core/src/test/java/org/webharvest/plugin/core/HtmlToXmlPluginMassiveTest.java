@@ -20,6 +20,7 @@ import java.util.ArrayList;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Massive test suite for {@link HtmlToXmlPlugin} to achieve 70%+ coverage.
@@ -682,7 +683,7 @@ public class HtmlToXmlPluginMassiveTest {
     
     @Test
     public void testMetadataCategory() {
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(HtmlToXmlPlugin.class));
     }
     
     @Test

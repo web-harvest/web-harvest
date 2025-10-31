@@ -48,6 +48,7 @@ import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
+import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
  * Unit tests for XMLPlugin.
@@ -79,7 +80,7 @@ public class XMLPluginTest {
         assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
         assertEquals(plugin.getMetadata().getDescription(), "XML plugin that provides XML processing functionality");
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(XMLPlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "xml");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
@@ -322,7 +323,7 @@ public class XMLPluginTest {
         assertNotNull(metadata.getAuthor());
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
         assertNotNull(metadata.getCategory());
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), expectedCategory(XMLPlugin.class));
         assertNotNull(metadata.getVersion());
         
         String[] tags = metadata.getTags();

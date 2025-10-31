@@ -33,8 +33,6 @@
 package org.webharvest.definition;
 
 import com.google.inject.Inject;
-import com.google.inject.Injector;
-import com.google.inject.assistedinject.Assisted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
@@ -59,9 +57,7 @@ public final class XMLConfig implements Config {
     private final ConfigSource configSource;
 
     private final ConfigParser configParser;
-    
-    private final Injector injector;
-    
+
     private PluginConfigurationTree configurationTree;
 
     /**
@@ -69,10 +65,9 @@ public final class XMLConfig implements Config {
      * 
      * @param configSource reference to configuration resource.
      * @param configParser reference to configuration parser.
-     * @param injector Guice injector for lazy parser creation
      */
     @Inject
-    public XMLConfig(@Assisted final ConfigSource configSource, ConfigParser configParser, Injector injector) {
+    public XMLConfig(final ConfigSource configSource, final ConfigParser configParser) {
         if (configSource == null) {
             throw new IllegalArgumentException("ConfigSource is required");
         }
@@ -81,7 +76,6 @@ public final class XMLConfig implements Config {
         }
         this.configSource = configSource;
         this.configParser = configParser;
-        this.injector = injector;
     }
 
     /**

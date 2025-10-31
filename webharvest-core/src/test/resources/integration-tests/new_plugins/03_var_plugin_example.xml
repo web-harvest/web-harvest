@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <!-- Legacy var plugin behavior recreated with def -->
+    <def var="testVar">Sample value from var example</def>
+</config>
+
