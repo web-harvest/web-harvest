@@ -40,7 +40,7 @@ public class FilePluginMassiveTest {
     @Test
     public void testMeta5() {
         FilePlugin plugin = new FilePlugin();
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), "Storage");
     }
     
     @Test

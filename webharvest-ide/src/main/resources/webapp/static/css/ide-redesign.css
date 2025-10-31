@@ -16,16 +16,19 @@
 }
 
 .editor-section {
-    flex: 1; /* Rozciągnij na całą dostępną przestrzeń */
+    flex: 1;
+    /* Rozciągnij na całą dostępną przestrzeń */
     display: flex;
     flex-direction: column;
     background: white;
     border-right: 1px solid #e0e0e0;
-    min-width: 0; /* Prevent flex overflow */
+    min-width: 0;
+    /* Prevent flex overflow */
 }
 
 .sidebar-section {
-    flex: 0 0 360px; /* Fixed width dla Logs/Results/Variables/Sessions */
+    flex: 0 0 360px;
+    /* Fixed width dla Logs/Results/Variables/Sessions */
     display: flex;
     flex-direction: column;
     background: var(--gray-50);
@@ -442,7 +445,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1000;
+    z-index: 10001;
 }
 
 .modal.active {
@@ -452,13 +455,15 @@
 }
 
 .modal-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
+    z-index: 10000;
+    pointer-events: auto;
 }
 
 .modal-content {
@@ -471,6 +476,8 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 10002;
+    pointer-events: auto;
 }
 
 .modal-header {
@@ -831,6 +838,7 @@
         justify-content: space-around;
     }
 }
+
 /* ===========================
    Session History Styles
    =========================== */
@@ -1126,4 +1134,144 @@
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1rem;
+}
+
+/* ============================================
+   Marquee Selection & Multi-Select
+   ============================================ */
+
+.marquee-selection {
+    position: absolute;
+    border: 2px dashed var(--magenta, #D81B60);
+    background: rgba(216, 27, 96, 0.1);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.visual-node.node-selected {
+    border-color: var(--magenta, #D81B60) !important;
+    border-width: 3px !important;
+    box-shadow: 0 0 0 2px rgba(216, 27, 96, 0.2) !important;
+    background: rgba(216, 27, 96, 0.05) !important;
+}
+
+/* ============================================
+   ContainerRenderer Styles
+   ============================================ */
+
+.container-node {
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    /* Changed from hidden to allow drop detection */
+}
+
+.container-header {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+
+.container-header:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.container-children {
+    transition: all 0.3s ease;
+    min-height: 40px;
+    /* Ensure drop target is always visible */
+    position: relative;
+}
+
+.container-collapsed .container-children {
+    display: none !important;
+}
+
+.container-expanded .container-children {
+    display: flex !important;
+}
+
+.child-count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.expand-icon,
+.collapse-icon {
+    transition: transform 0.2s;
+    display: inline-block;
+}
+
+.container-expanded .expand-icon {
+    transform: rotate(0deg);
+}
+
+.container-collapsed .expand-icon {
+    transform: rotate(-90deg);
+}
+
+/* Drop target highlight */
+.container-node.drop-target,
+.container-children.drop-target {
+    background: rgba(216, 27, 96, 0.1) !important;
+    border: 2px dashed var(--magenta, #D81B60) !important;
+}
+
+/* Port Styles */
+.port {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--gray-600);
+    border: 2px solid white;
+    cursor: crosshair;
+    z-index: 15 !important;
+    transition: all 0.2s;
+    pointer-events: auto !important;
+}
+
+.port-input {
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.port-output {
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+
+.port:hover,
+.port-hover {
+    width: 16px;
+    height: 16px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.port-highlighted {
+    background: var(--lime) !important;
+    box-shadow: 0 0 12px var(--lime) !important;
+}
+
+.port-label {
+    position: absolute;
+    font-size: 10px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.port-error {
+    background: var(--magenta) !important;
 }

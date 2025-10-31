@@ -77,7 +77,7 @@ public class WhilePluginEnhancedTest {
     
     @Test
     public void testMetadataCategory() {
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), "Control");
     }
     
     @Test

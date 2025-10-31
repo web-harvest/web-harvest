@@ -21,7 +21,7 @@ public class TemplatePluginMassiveTest {
     @Test public void testMeta06() { TemplatePlugin p = new TemplatePlugin(); assertEquals(p.getMetadata().getVersion(), "2.1.0"); }
     @Test public void testMeta07() { TemplatePlugin p = new TemplatePlugin(); assertNotNull(p.getMetadata().getDescription()); }
     @Test public void testMeta08() { TemplatePlugin p = new TemplatePlugin(); assertNotNull(p.getMetadata().getAuthor()); }
-    @Test public void testMeta09() { TemplatePlugin p = new TemplatePlugin(); assertEquals(p.getMetadata().getCategory(), "core"); }
+    @Test public void testMeta09() { TemplatePlugin p = new TemplatePlugin(); assertEquals(p.getMetadata().getCategory(), "Processing"); }
     @Test public void testMeta10() { TemplatePlugin p = new TemplatePlugin(); assertNotNull(p.getMetadata().getTags()); }
     @Test public void testMeta11() { TemplatePlugin p = new TemplatePlugin(); assertEquals(p.getMetadata().getElementName(), "template"); }
     @Test public void testMeta12() { TemplatePlugin p = new TemplatePlugin(); assertNotNull(p.getMetadata().getNamespace()); }

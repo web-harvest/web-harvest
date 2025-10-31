@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         app = new App();
 
         // Expose ALL methods to window for HTML onclick handlers
+        const appInstance = app; // Capture reference
         (window as any).app = {
             // View mode (Conductor-style)
             switchMode: (mode: 'xml' | 'visual') => app.switchMode(mode),
@@ -65,8 +66,38 @@ document.addEventListener('DOMContentLoaded', () => {
             hideTooltip: () => app.hideTooltip(),
             hideExamplesModal: () => app.hideExamplesModal(),
 
+            // Visual: Zoom & Layout & Grid
+            zoomIn: () => {
+                console.log('[main.ts] zoomIn called');
+                appInstance.zoomIn();
+            },
+            zoomOut: () => {
+                console.log('[main.ts] zoomOut called');
+                appInstance.zoomOut();
+            },
+            zoomReset: () => {
+                console.log('[main.ts] zoomReset called');
+                appInstance.zoomReset();
+            },
+            zoomToFit: () => {
+                console.log('[main.ts] zoomToFit called');
+                appInstance.zoomToFit();
+            },
+            autoLayout: (type: 'grid' | 'vertical' | 'horizontal') => {
+                console.log(`[main.ts] autoLayout(${type}) called`);
+                appInstance.autoLayout(type);
+            },
+            toggleGrid: () => {
+                console.log('[main.ts] toggleGrid called');
+                appInstance.toggleGrid();
+            },
+            toggleMinimap: () => {
+                console.log('[main.ts] toggleMinimap called');
+                appInstance.toggleMinimap();
+            },
+
             // For debugging
-            _instance: app
+            _instance: appInstance
         };
 
         console.log('✅ Application ready!');

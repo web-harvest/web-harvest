@@ -414,9 +414,10 @@ public class FilePlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "Storage";
-            }
+        public String getCategory() {
+            CorePlugin annotation = FilePlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Storage";
+        }
 
             @Override
             public String[] getTags() {

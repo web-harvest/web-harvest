@@ -377,7 +377,8 @@ public class HttpPlugin extends AbstractPlugin {
         
         @Override
         public String getCategory() {
-            return "Network";
+            CorePlugin annotation = HttpPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Network";
         }
     }
     

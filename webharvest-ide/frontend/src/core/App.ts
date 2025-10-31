@@ -9,6 +9,7 @@ import { MonacoEditor } from './MonacoEditor';
 import { UIManager } from './UIManager';
 import { PluginManager } from './PluginManager';
 import { ExamplesManager } from './ExamplesManager';
+import { ExecutionStateManager } from './ExecutionStateManager';
 import { LogsPanel } from '../panels/LogsPanel';
 import { ResultsPanel } from '../panels/ResultsPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
@@ -26,6 +27,7 @@ export class App {
     private uiManager: UIManager;
     private pluginManager: PluginManager;
     private examplesManager: ExamplesManager;
+    private executionStateManager: ExecutionStateManager;
     private editor!: MonacoEditor;
     private logsPanel: LogsPanel;
     private resultsPanel: ResultsPanel;
@@ -37,6 +39,7 @@ export class App {
     private xmlParser: XMLParser;
     private xmlGenerator: XMLGenerator;
     private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
+    private gridEnabled: boolean = false;
 
     constructor() {
         console.log('🚀 Initializing WebHarvest IDE (TypeScript + Apple HIG)...');
@@ -47,6 +50,7 @@ export class App {
         this.uiManager = new UIManager();
         this.pluginManager = new PluginManager();
         this.examplesManager = new ExamplesManager();
+        this.executionStateManager = new ExecutionStateManager();
         this.editor = new MonacoEditor('editor');
         this.logsPanel = new LogsPanel('logs');
         this.resultsPanel = new ResultsPanel('results');
@@ -306,9 +310,15 @@ export class App {
 
         // Visual Designer → Property Panel
         this.visualDesigner.addEventListener('nodeSelected', (nodeId: string) => {
+            console.log(`📡 [App] Received 'nodeSelected' event for: ${nodeId}`);
             const node = this.visualDesigner.findNode(nodeId);
             if (node) {
-                this.propertyPanel.showNode(node);
+                console.log(`✅ [App] Found node, calling propertyPanel.showNode():`, node);
+                this.propertyPanel.showNode(node).catch(err => {
+                    console.error('❌ [App] Error showing node in PropertyPanel:', err);
+                });
+            } else {
+                console.warn(`⚠️ [App] Node not found: ${nodeId}`);
             }
         });
 
@@ -356,6 +366,101 @@ export class App {
         });
 
         console.log('✅ Event handlers configured');
+
+        // Keyboard shortcuts (Visual mode only)
+        document.addEventListener('keydown', (e: KeyboardEvent) => {
+            // Ignore when typing in inputs/textareas
+            const target = e.target as HTMLElement;
+            const tag = target?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+
+            const meta = e.metaKey || e.ctrlKey;
+            // Delete selected
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                if (this.currentMode === 'visual') {
+                    this.visualDesigner.deleteSelectedNodes();
+                    e.preventDefault();
+                }
+            }
+            // Select All
+            if (meta && e.key.toLowerCase() === 'a') {
+                if (this.currentMode === 'visual') {
+                    this.visualDesigner.selectAll();
+                    e.preventDefault();
+                }
+            }
+            // Zoom
+            if (meta && (e.key === '=' || e.key === '+')) {
+                if (this.currentMode === 'visual') {
+                    this.visualDesigner.zoomIn();
+                    e.preventDefault();
+                }
+            }
+            if (meta && e.key === '-') {
+                if (this.currentMode === 'visual') {
+                    this.visualDesigner.zoomOut();
+                    e.preventDefault();
+                }
+            }
+            if (meta && e.key === '0') {
+                if (this.currentMode === 'visual') {
+                    this.visualDesigner.resetView();
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+
+    // =========================
+    // Public UI actions (toolbar)
+    // =========================
+    zoomIn(): void {
+        if (this.currentMode === 'visual') this.visualDesigner.zoomIn();
+    }
+
+    zoomOut(): void {
+        if (this.currentMode === 'visual') this.visualDesigner.zoomOut();
+    }
+
+    zoomReset(): void {
+        if (this.currentMode === 'visual') this.visualDesigner.resetView();
+    }
+
+    zoomToFit(): void {
+        // Basic implementation: reset view for now
+        if (this.currentMode === 'visual') this.visualDesigner.resetView();
+    }
+
+    autoLayout(type: 'grid' | 'vertical' | 'horizontal'): void {
+        console.log(`🔧 [App] autoLayout(${type}) called, currentMode: ${this.currentMode}`);
+        if (this.currentMode === 'visual' && this.visualDesigner) {
+            console.log(`✅ [App] Calling visualDesigner.autoLayout(${type})`);
+            this.visualDesigner.autoLayout(type);
+        } else {
+            console.warn(`⚠️ [App] autoLayout failed - mode: ${this.currentMode}, visualDesigner: ${!!this.visualDesigner}`);
+        }
+    }
+
+    toggleGrid(): void {
+        console.log(`🔧 [App] toggleGrid() called, currentMode: ${this.currentMode}`);
+        if (this.currentMode !== 'visual' || !this.visualDesigner) {
+            console.warn(`⚠️ [App] toggleGrid failed - mode: ${this.currentMode}, visualDesigner: ${!!this.visualDesigner}`);
+            return;
+        }
+        this.gridEnabled = !this.gridEnabled;
+        this.visualDesigner.setGridSnap(this.gridEnabled, 20);
+        console.log(`📐 Grid snap ${this.gridEnabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    toggleMinimap(): void {
+        console.log(`🔧 [App] toggleMinimap() called, currentMode: ${this.currentMode}`);
+        if (this.currentMode !== 'visual' || !this.visualDesigner) {
+            console.warn(`⚠️ [App] toggleMinimap failed - mode: ${this.currentMode}, visualDesigner: ${!!this.visualDesigner}`);
+            return;
+        }
+        const currentlyVisible = this.visualDesigner.isMinimapVisible();
+        this.visualDesigner.showMinimap(!currentlyVisible);
+        console.log(`🗺️ Minimap ${!currentlyVisible ? 'ENABLED' : 'DISABLED'}`);
     }
 
     /**
@@ -759,14 +864,9 @@ export class App {
     async openFileInVisual(): Promise<void> {
         // Check for unsaved changes
         if (this.visualDesigner.isDirty()) {
-            const action = confirm(
-                'You have unsaved changes. Open new file?\n\nClick OK to discard changes, Cancel to keep working.'
-            );
-
-            if (!action) {
-                console.log('ℹ️ Open file cancelled');
-                return;
-            }
+            // For now, just show examples without blocking
+            // TODO: Implement non-blocking modal
+            console.warn('⚠️ Unsaved changes will be lost');
         }
 
         // TODO: Show file picker
@@ -812,11 +912,11 @@ export class App {
      */
     async runConfig(): Promise<void> {
         console.log(`🎯 [App] runConfig() called in ${this.currentMode} mode`);
-        
+
         // Get XML content based on current mode
         let xmlContent: string;
         let configName: string;
-        
+
         if (this.currentMode === 'visual') {
             // Generate XML from Visual Designer
             const nodes = this.visualDesigner.getNodes();
@@ -824,19 +924,19 @@ export class App {
                 this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
                 return;
             }
-            
+
             console.log('🎨 [App] Generating XML from', nodes.length, 'visual nodes...');
-            
+
             // Wrap in <config> if needed
             const nodesXml = this.xmlGenerator.generate(nodes);
             xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
 ${nodesXml}
 </config>`;
-            
+
             const config = this.visualDesigner.getCurrentConfiguration();
             configName = config?.filename || 'visual-workflow.xml';
-            
+
             console.log('✅ [App] Generated XML from Visual mode:', xmlContent.length, 'chars');
         } else {
             // XML mode: use tab content
@@ -845,7 +945,7 @@ ${nodesXml}
                 this.logsPanel.addLog('error', '❌ No active tab');
                 return;
             }
-            
+
             xmlContent = tab.content;
             configName = tab.name;
         }
@@ -883,10 +983,10 @@ ${nodesXml}
      */
     async validateConfig(): Promise<void> {
         console.log(`🎯 [App] validateConfig() called in ${this.currentMode} mode`);
-        
+
         // Get XML content based on current mode
         let xmlContent: string;
-        
+
         if (this.currentMode === 'visual') {
             // Generate XML from Visual Designer
             const nodes = this.visualDesigner.getNodes();
@@ -894,7 +994,7 @@ ${nodesXml}
                 this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
                 return;
             }
-            
+
             const nodesXml = this.xmlGenerator.generate(nodes);
             xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
@@ -907,7 +1007,7 @@ ${nodesXml}
                 this.logsPanel.addLog('error', '❌ No active tab');
                 return;
             }
-            
+
             xmlContent = tab.content;
         }
 

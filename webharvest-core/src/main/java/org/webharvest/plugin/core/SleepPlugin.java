@@ -185,9 +185,10 @@ public class SleepPlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "Utilities";
-            }
+        public String getCategory() {
+            CorePlugin annotation = SleepPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Utilities";
+        }
 
             @Override
             public String[] getTags() {

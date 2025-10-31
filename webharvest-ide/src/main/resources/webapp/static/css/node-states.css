@@ -1,0 +1,199 @@
+/**
+ * Node Execution State Styles
+ * Visual states for workflow nodes during execution
+ */
+
+/* Base node styling */
+.visual-node {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* IDLE State - Gray border, default appearance */
+.node-idle {
+    border: 2px solid var(--gray-200, #E5E7EB) !important;
+    background: white;
+}
+
+/* RUNNING State - Lime animated border with pulse */
+.node-running {
+    border: 2px solid var(--lime, #A4C639) !important;
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(164, 198, 57, 0.7);
+    background: #f9ffe6;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(164, 198, 57, 0.7);
+    }
+
+    50% {
+        box-shadow: 0 0 0 10px rgba(164, 198, 57, 0);
+    }
+}
+
+/* SUCCESS State - Lime solid border */
+.node-success {
+    border: 2px solid var(--lime, #A4C639) !important;
+    background: #f0ffe0;
+}
+
+/* ERROR State - Magenta border with error icon */
+.node-error {
+    border: 2px solid var(--magenta, #D81B60) !important;
+    background: #ffe6f0;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* PAUSED State - Yellow border */
+.node-paused {
+    border: 2px solid var(--yellow, #FFC107) !important;
+    background: #fff8e6;
+}
+
+/* SKIPPED State - Gray border, dimmed */
+.node-skipped {
+    border: 2px solid var(--gray-400, #9CA3AF) !important;
+    background: var(--gray-100, #F3F4F6);
+    opacity: 0.5;
+}
+
+/* State Icons */
+.state-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    transition: transform 0.2s ease;
+}
+
+.state-icon-success {
+    background: var(--lime, #A4C639);
+    color: white;
+}
+
+.state-icon-error {
+    background: var(--magenta, #D81B60);
+    color: white;
+    animation: errorPulse 1s ease-in-out infinite;
+}
+
+@keyframes errorPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.state-icon-paused {
+    background: var(--yellow, #FFC107);
+    color: white;
+}
+
+/* State Spinner */
+.state-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Hover effects */
+.visual-node:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.node-running:hover {
+    box-shadow: 0 0 0 0 rgba(164, 198, 57, 0.7), 0 4px 6px -1px rgba(164, 198, 57, 0.3);
+}
+
+/* State-specific cursors */
+.node-running {
+    cursor: progress;
+}
+
+.node-error {
+    cursor: help;
+}
+
+/* Responsive states for small nodes */
+@media (max-width: 768px) {
+    .state-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+    }
+}
+
+/* Metrics Panel Animations */
+@keyframes shimmer {
+    0% {
+        background-position: -100% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.metrics-progress-fill {
+    background: linear-gradient(90deg,
+            var(--lime) 0%,
+            var(--yellow) 50%,
+            var(--lime) 100%);
+    background-size: 200% 100%;
+}
+
+.metrics-panel {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

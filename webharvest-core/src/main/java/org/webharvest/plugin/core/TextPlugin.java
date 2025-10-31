@@ -131,7 +131,8 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Utilities";
+            CorePlugin annotation = TextPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Utilities";
         }
 
         @Override

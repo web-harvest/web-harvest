@@ -267,7 +267,10 @@ public class XmlToJsonPlugin extends AbstractPlugin {
             @Override
             public String getAuthor() { return "Web-Harvest Team"; }
             @Override
-            public String getCategory() { return "Extraction"; }
+        public String getCategory() {
+            CorePlugin annotation = XmlToJsonPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Extraction";
+        }
             @Override
             public String[] getTags() { return new String[]{"core", "xml", "json", "converter"}; }
             @Override

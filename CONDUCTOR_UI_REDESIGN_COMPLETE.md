@@ -343,3 +343,6 @@ window.app = {
 **UI:** ✅ Conductor-style (NO TABS!)
 
 **ODŚWIEŻ PRZEGLĄDARKĘ (Cmd+Shift+R) I ZOBACZ NOWY UI!** 🚀
+
+
+

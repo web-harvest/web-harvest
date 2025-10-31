@@ -39,7 +39,7 @@ public class WhilePluginMassiveTest {
     @Test
     public void testMeta5() {
         WhilePlugin plugin = new WhilePlugin();
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), "Control");
     }
     
     @Test

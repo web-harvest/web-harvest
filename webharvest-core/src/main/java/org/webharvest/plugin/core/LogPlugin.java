@@ -296,7 +296,8 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Utilities";
+            CorePlugin annotation = LogPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Utilities";
         }
 
         @Override

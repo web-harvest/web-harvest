@@ -81,7 +81,7 @@ public class IfPluginTest {
         assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
         assertEquals(plugin.getMetadata().getDescription(), "If plugin that provides conditional processing");
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), "core");
+        assertEquals(plugin.getMetadata().getCategory(), "Control");
         assertEquals(plugin.getMetadata().getElementName(), "if");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }

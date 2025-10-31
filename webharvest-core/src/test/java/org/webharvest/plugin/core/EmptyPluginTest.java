@@ -256,7 +256,7 @@ public class EmptyPluginTest {
         PluginMetadata metadata = plugin.getMetadata();
         
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), "Utilities");
         assertEquals(metadata.getVersion(), "2.1.0");
         
         String[] tags = metadata.getTags();

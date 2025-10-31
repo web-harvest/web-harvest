@@ -104,3 +104,6 @@ http://localhost:8080/visual-designer/tests/test-runner.html
 **"pamiętaj o tdd!!" - Tak, robimy to teraz poprawnie!** 🧪✅
 
 
+
+
+

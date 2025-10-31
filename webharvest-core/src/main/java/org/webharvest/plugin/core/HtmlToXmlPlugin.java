@@ -420,7 +420,8 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Extraction";
+            CorePlugin annotation = HtmlToXmlPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Extraction";
         }
 
         @Override
@@ -430,7 +431,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String[] getDependencies() {
-            return new String[0];
+            return new String[]{"Jsoup", "ApacheTika"};
         }
 
         @Override

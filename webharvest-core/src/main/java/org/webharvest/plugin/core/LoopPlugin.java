@@ -386,9 +386,10 @@ public class LoopPlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "Control";
-            }
+        public String getCategory() {
+            CorePlugin annotation = LoopPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Control";
+        }
 
             @Override
             public String[] getTags() {

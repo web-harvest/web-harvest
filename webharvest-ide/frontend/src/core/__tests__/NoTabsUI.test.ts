@@ -182,3 +182,6 @@ function renderUnifiedToolbar(filename: string, isDirty: boolean, mode: 'xml' | 
     return toolbar;
 }
 
+
+
+

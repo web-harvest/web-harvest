@@ -19,7 +19,7 @@ public class XPathPluginMassiveTest {
     @Test public void testMeta04() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getId()); }
     @Test public void testMeta05() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getVersion(), "2.1.0"); }
     @Test public void testMeta06() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getDescription()); }
-    @Test public void testMeta07() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getCategory(), "core"); }
+    @Test public void testMeta07() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getCategory(), "Extraction"); }
     @Test public void testMeta08() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getTags()); }
     @Test public void testMeta09() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getElementName(), "xpath"); }
     @Test public void testMeta10() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getNamespace()); }

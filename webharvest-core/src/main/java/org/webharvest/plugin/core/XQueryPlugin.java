@@ -320,7 +320,7 @@ public class XQueryPlugin extends AbstractPlugin {
 
         @Override
         public String[] getDependencies() {
-            return new String[0];
+            return new String[]{"Saxon"};
         }
 
         @Override

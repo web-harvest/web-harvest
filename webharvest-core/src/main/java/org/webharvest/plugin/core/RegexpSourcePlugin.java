@@ -183,7 +183,8 @@ public class RegexpSourcePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            CorePlugin annotation = RegexpSourcePlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
         }
 
         @Override

@@ -134,9 +134,10 @@ public class ListPlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "core";
-            }
+        public String getCategory() {
+            CorePlugin annotation = ListPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
+        }
 
             @Override
             public String[] getTags() {

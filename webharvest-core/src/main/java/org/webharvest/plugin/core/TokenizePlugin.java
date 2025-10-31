@@ -231,7 +231,10 @@ public class TokenizePlugin extends AbstractPlugin {
             @Override
             public String getAuthor() { return "Web-Harvest Team"; }
             @Override
-            public String getCategory() { return "core"; }
+        public String getCategory() {
+            CorePlugin annotation = TokenizePlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
+        }
             @Override
             public String[] getTags() { return new String[]{"core", "tokenize", "split", "text"}; }
             @Override

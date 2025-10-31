@@ -155,7 +155,8 @@ public class ConstantPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Variables";
+            CorePlugin annotation = ConstantPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Variables";
         }
 
         @Override

@@ -9,6 +9,8 @@
     <!-- Enterprise Design System -->
     <link rel="stylesheet" href="static/css/enterprise.css">
     <link rel="stylesheet" href="static/css/ide-redesign.css">
+    <link rel="stylesheet" href="static/css/node-states.css">
+    <link rel="stylesheet" href="static/css/advanced-editors.css">
 
     <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
@@ -170,6 +172,46 @@
             <button onclick="window.app.validateConfig()" title="Validate (⌘K)"
                 style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
                 <i class="fas fa-check"></i> Validate
+            </button>
+            <div style="width: 1px; height: 24px; background: var(--gray-300); margin: 0 var(--spacing-2);"></div>
+            <!-- Zoom Controls -->
+            <button onclick="window.app.zoomOut()" title="Zoom Out (⌘-)"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-search-minus"></i>
+            </button>
+            <button onclick="window.app.zoomReset()" title="Reset Zoom (⌘0)"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                100%
+            </button>
+            <button onclick="window.app.zoomIn()" title="Zoom In (⌘+)"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-search-plus"></i>
+            </button>
+            <button onclick="window.app.zoomToFit()" title="Zoom to Fit"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-compress-arrows-alt"></i>
+            </button>
+            <div style="width: 1px; height: 24px; background: var(--gray-300); margin: 0 var(--spacing-2);"></div>
+            <!-- Layout & Grid -->
+            <button onclick="window.app.autoLayout('vertical')" title="Auto-Layout: Vertical"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-stream"></i>
+            </button>
+            <button onclick="window.app.autoLayout('horizontal')" title="Auto-Layout: Horizontal"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+            <button onclick="window.app.autoLayout('grid')" title="Auto-Layout: Grid"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-th"></i>
+            </button>
+            <button onclick="window.app.toggleGrid()" title="Toggle Grid / Snap"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-border-all"></i>
+            </button>
+            <button onclick="window.app.toggleMinimap()" title="Toggle Minimap"
+                style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-map"></i>
             </button>
         </div>
     </div>
@@ -402,8 +444,8 @@
     </div>
 
     <!-- TypeScript Application -->
-    <script type="module" crossorigin src="dist/assets/main.js"></script>
-    <link rel="stylesheet" crossorigin href="dist/assets/main.css">
+    <script type="module" crossorigin src="dist/assets/main.js?v=2.3.1"></script>
+    <link rel="stylesheet" crossorigin href="dist/assets/main.css?v=2.3.1">
 </body>
 
 </html>

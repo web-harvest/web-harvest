@@ -123,7 +123,8 @@ public class EmptyPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Utilities";
+            CorePlugin annotation = EmptyPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Utilities";
         }
 
         @Override

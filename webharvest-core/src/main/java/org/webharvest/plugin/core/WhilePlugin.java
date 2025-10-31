@@ -290,7 +290,8 @@ public class WhilePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Control";
+            CorePlugin annotation = WhilePlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Control";
         }
 
         @Override

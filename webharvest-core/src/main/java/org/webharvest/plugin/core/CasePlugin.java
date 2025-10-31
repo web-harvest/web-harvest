@@ -247,7 +247,8 @@ public class CasePlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Control";
+            CorePlugin annotation = CasePlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Control";
         }
 
         @Override

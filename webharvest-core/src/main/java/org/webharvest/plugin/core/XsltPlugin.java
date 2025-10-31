@@ -159,7 +159,8 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Processing";
+            CorePlugin annotation = XsltPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Processing";
         }
 
         @Override
@@ -169,7 +170,7 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public String[] getDependencies() {
-            return new String[0];
+            return new String[]{"TransformerFactory"};
         }
 
         @Override

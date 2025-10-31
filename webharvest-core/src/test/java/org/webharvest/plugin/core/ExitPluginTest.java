@@ -63,7 +63,7 @@ public class ExitPluginTest {
         assertEquals(metadata.getVersion(), "2.1.0");
         assertEquals(metadata.getDescription(), "Exit plugin that provides conditional exit functionality");
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), "Utilities");
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "exit");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

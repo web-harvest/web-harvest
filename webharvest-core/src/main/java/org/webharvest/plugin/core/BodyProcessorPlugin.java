@@ -145,9 +145,10 @@ public class BodyProcessorPlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "core";
-            }
+        public String getCategory() {
+            CorePlugin annotation = BodyProcessorPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
+        }
 
             @Override
             public String[] getTags() {

@@ -427,3 +427,6 @@ They can ONLY be dropped into their required parent:
 Czy mam kontynuować z tą szczegółową implementacją? To zajmie 10-15 godzin ale będzie fundamentem całego systemu.
 
 
+
+
+

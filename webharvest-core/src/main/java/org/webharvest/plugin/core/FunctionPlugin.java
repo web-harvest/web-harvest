@@ -178,7 +178,8 @@ public class FunctionPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            CorePlugin annotation = FunctionPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
         }
 
         @Override

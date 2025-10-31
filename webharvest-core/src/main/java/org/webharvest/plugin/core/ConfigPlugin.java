@@ -255,7 +255,8 @@ public class ConfigPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "core";
+            CorePlugin annotation = ConfigPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "core";
         }
 
         @Override

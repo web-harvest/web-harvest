@@ -16,6 +16,14 @@ import {
     generateConnections,
     type Connection
 } from './VisualModelHelpers';
+import { NodeStateRenderer, type NodeExecutionState } from './NodeStateRenderer';
+import { NodeMetricsOverlay, type NodeMetrics } from './NodeMetricsOverlay';
+import { GridSystem } from './GridSystem';
+import { Minimap } from './Minimap';
+import { IconLibrary } from './IconLibrary';
+import { ContainerRenderer } from './ContainerRenderer';
+import { PortSystem } from './PortSystem';
+import { ConnectionManager } from './ConnectionManager';
 
 type EventListener = (data: any) => void;
 
@@ -28,6 +36,19 @@ export class VisualDesigner {
     private selectedNodeId: string | null = null;
     private selectedNodeIds: string[] = [];
     private eventListeners: Map<string, EventListener[]> = new Map();
+
+    // Execution state visualization
+    private stateRenderer: NodeStateRenderer = new NodeStateRenderer();
+    private metricsOverlay: NodeMetricsOverlay = new NodeMetricsOverlay();
+    private gridSystem: GridSystem = new GridSystem(20);
+    private minimap: Minimap = new Minimap();
+    private iconLibrary: IconLibrary = new IconLibrary();
+    private containerRenderer: ContainerRenderer = new ContainerRenderer();
+    private portSystem: PortSystem = new PortSystem();
+    private connectionManager: ConnectionManager = new ConnectionManager();
+
+    // Container expand/collapse state
+    private collapsedContainers: Set<string> = new Set();
 
     // Layout constants
     private readonly NODE_WIDTH = 250;
@@ -46,6 +67,14 @@ export class VisualDesigner {
         initialY: number;
     } | null = null;
 
+    // Connection drag state
+    private connectionDragState: {
+        fromNodeId: string;
+        fromPortElement: HTMLElement;
+        fromPortType: string;
+        temporaryLine: SVGLineElement | null;
+    } | null = null;
+
     // Zoom & pan state
     private zoom: number = 1.0;
     private pan: { x: number; y: number } = { x: 0, y: 0 };
@@ -55,6 +84,16 @@ export class VisualDesigner {
     // Grid snap
     private gridSnapEnabled: boolean = false;
     private gridSize: number = 20;
+
+    // Marquee selection
+    private marqueeState: {
+        startX: number;
+        startY: number;
+        endX: number;
+        endY: number;
+        isActive: boolean;
+    } | null = null;
+    private marqueeElement: HTMLElement | null = null;
 
     // Single Configuration Mode (Conductor-style)
     private isDirtyFlag: boolean = false;
@@ -75,6 +114,17 @@ export class VisualDesigner {
 
         // Setup drag & drop
         this.setupDragAndDrop();
+
+        // Setup container renderer callbacks
+        this.containerRenderer.onToggle((containerId: string, expanded: boolean) => {
+            this.containerRenderer.setExpanded(containerId, expanded);
+            if (expanded) {
+                this.collapsedContainers.delete(containerId);
+            } else {
+                this.collapsedContainers.add(containerId);
+            }
+            this.render(); // Re-render to update container state
+        });
     }
 
     /**
@@ -189,6 +239,8 @@ export class VisualDesigner {
      * Select node
      */
     selectNode(nodeId: string): void {
+        console.log(`🎯 [VisualDesigner] selectNode() called for: ${nodeId}`);
+
         // Clear previous selection
         if (this.selectedNodeId) {
             const prevElement = this.canvasElement.querySelector(`[data-node-id="${this.selectedNodeId}"]`);
@@ -199,13 +251,13 @@ export class VisualDesigner {
 
         // Select new node
         this.selectedNodeId = nodeId;
-        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`);
-        if (nodeElement) {
-            nodeElement.classList.add('selected');
-        }
+        this.selectedNodeIds = [nodeId]; // Also update multi-select
+        this.highlightSelectedNodes();
 
         // Emit event
+        console.log(`📡 [VisualDesigner] Emitting 'nodeSelected' event for: ${nodeId}`);
         this.emit('nodeSelected', nodeId);
+        console.log(`✅ [VisualDesigner] selectNode() complete`);
     }
 
     /**
@@ -300,6 +352,16 @@ export class VisualDesigner {
 
         // Render connections
         this.renderConnections();
+
+        // Render minimap if enabled
+        if (this.minimapVisible) {
+            this.minimap.render(this.canvasElement, this.nodes);
+
+            // Setup navigation callback
+            this.minimap.onNavigate((position) => {
+                this.handleMinimapClick(position);
+            });
+        }
     }
 
     /**
@@ -318,13 +380,25 @@ export class VisualDesigner {
         nodeElement.style.display = 'inline-block';
         nodeElement.style.minWidth = '120px';
 
-        // Node header
+        // Node header with icon
         const header = document.createElement('div');
-        header.style.fontWeight = '600';
-        header.style.marginBottom = '8px';
-        header.style.fontSize = '14px';
-        header.textContent = node.type;
+        header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
+
+        // Icon from IconLibrary
+        const iconConfig = this.iconLibrary.getIcon(node.type);
+        const icon = this.iconLibrary.getIconElement(node.type, 16);
+        header.appendChild(icon);
+
+        // Type name
+        const typeText = document.createElement('span');
+        typeText.textContent = node.type;
+        typeText.style.color = iconConfig.color;
+        header.appendChild(typeText);
+
         nodeElement.appendChild(header);
+
+        // Update border color based on category
+        nodeElement.style.borderColor = iconConfig.color;
 
         // Attributes
         if (Object.keys(node.attributes).length > 0) {
@@ -378,7 +452,7 @@ export class VisualDesigner {
     }
 
     /**
-     * Render nested container node
+     * Render nested container node using ContainerRenderer (FULL SCALE!)
      */
     private renderNestedNode(node: VisualNode): void {
         // Calculate nested layout for container + children
@@ -394,67 +468,61 @@ export class VisualDesigner {
             child.position = positions[child.id];
         });
 
-        // Render container
+        // Render container using ContainerRenderer (FULL SCALE!)
         const container = document.createElement('div');
         container.className = 'visual-node nested-container';
         container.dataset.nodeId = node.id;
         container.style.position = 'absolute';
         container.style.left = `${node.position.x}px`;
         container.style.top = `${node.position.y}px`;
-        container.style.minWidth = `${this.NODE_WIDTH + 80}px`;
-        container.style.padding = `${this.PADDING}px`;
-        container.style.background = '#f0f7ff';
-        container.style.border = '2px solid #2196F3';
-        container.style.borderRadius = '8px';
         container.style.zIndex = '2';
 
-        // Header
-        const header = document.createElement('div');
-        header.style.fontWeight = '600';
-        header.style.fontSize = '14px';
-        header.style.marginBottom = `${this.PADDING}px`;
-        header.style.color = '#2196F3';
-        header.textContent = `${node.type.toUpperCase()}`;
-        container.appendChild(header);
+        // Check expansion state using ContainerRenderer
+        const isExpanded = this.containerRenderer.isExpanded(node.id);
+        if (!isExpanded && !this.collapsedContainers.has(node.id)) {
+            // First time - default to expanded
+            this.containerRenderer.setExpanded(node.id, true);
+        }
+        const isCollapsed = !this.containerRenderer.isExpanded(node.id);
 
-        // Attributes (compact)
-        if (Object.keys(node.attributes).length > 0) {
-            const attrs = document.createElement('div');
-            attrs.style.fontSize = '11px';
-            attrs.style.color = '#666';
-            attrs.style.marginBottom = `${this.PADDING}px`;
-            Object.entries(node.attributes).slice(0, 2).forEach(([key, value]) => {
-                const attr = document.createElement('span');
-                attr.textContent = `${key}="${value}" `;
-                attrs.appendChild(attr);
-            });
-            container.appendChild(attrs);
+        // Get container state from ContainerRenderer
+        const containerState = this.containerRenderer.getContainerState(node.id);
+
+        if (isCollapsed) {
+            // Render collapsed state using ContainerRenderer
+            this.containerRenderer.renderCollapsed(container, node, containerState);
+        } else {
+            // Render expanded state using ContainerRenderer
+            // ContainerRenderer.renderExpanded() already renders children, but we need to use our own rendering
+            // So we'll render children ourselves after ContainerRenderer creates the structure
+            this.containerRenderer.renderExpanded(container, node);
+
+            // Clear default children rendered by ContainerRenderer and use our own rendering
+            const childrenArea = container.querySelector('.container-children');
+            if (childrenArea) {
+                // Clear default simple children
+                childrenArea.innerHTML = '';
+
+                // Render children using our createBasicNodeElement logic
+                // This ensures children also get ports and event handlers
+                node.children.forEach(child => {
+                    const childElement = this.createBasicNodeElement(child);
+                    // Children are rendered inside container's children area
+                    childrenArea.appendChild(childElement);
+                });
+            } else {
+                console.warn(`[VisualDesigner] Container children area not found for node ${node.id}`);
+            }
         }
 
-        // Children area
-        const childrenArea = document.createElement('div');
-        childrenArea.style.borderTop = '1px dashed #2196F3';
-        childrenArea.style.paddingTop = `${this.PADDING}px`;
-        childrenArea.style.position = 'relative';
-
-        // Render children as connected nodes inside
-        node.children.forEach(child => {
-            const childElement = this.createBasicNodeElement(child);
-            childElement.style.position = 'absolute';
-            childElement.style.left = `${child.position!.x - node.position!.x - this.PADDING}px`;
-            childElement.style.top = `${child.position!.y - node.position!.y - this.PADDING - 40}px`;
-            childrenArea.appendChild(childElement);
+        // Click handler for selection (header handles expand/collapse via ContainerRenderer)
+        container.addEventListener('click', (e) => {
+            // Don't select if clicking on header (ContainerRenderer handles toggle)
+            if (!(e.target as HTMLElement).closest('.container-header')) {
+                e.stopPropagation();
+                this.selectNode(node.id);
+            }
         });
-
-        // Calculate container height
-        const maxChildY = Math.max(...node.children.map(c => c.position!.y - node.position!.y));
-        childrenArea.style.height = `${maxChildY + this.NODE_HEIGHT}px`;
-
-        container.appendChild(childrenArea);
-        container.onclick = (e) => {
-            e.stopPropagation();
-            this.selectNode(node.id);
-        };
 
         this.canvasElement.appendChild(container);
     }
@@ -488,13 +556,25 @@ export class VisualDesigner {
         nodeElement.style.cursor = 'pointer';
         nodeElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
-        // Header
+        // Header with icon
         const header = document.createElement('div');
-        header.style.fontWeight = '600';
-        header.style.marginBottom = '8px';
-        header.style.fontSize = '14px';
-        header.textContent = node.type;
+        header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
+
+        // Icon from IconLibrary
+        const iconConfig = this.iconLibrary.getIcon(node.type);
+        const icon = this.iconLibrary.getIconElement(node.type, 16);
+        header.appendChild(icon);
+
+        // Type name
+        const typeText = document.createElement('span');
+        typeText.textContent = node.type;
+        typeText.style.color = iconConfig.color;
+        header.appendChild(typeText);
+
         nodeElement.appendChild(header);
+
+        // Update border color based on category
+        nodeElement.style.borderColor = iconConfig.color;
 
         // Attributes (max 3)
         const attrEntries = Object.entries(node.attributes).slice(0, 3);
@@ -513,7 +593,26 @@ export class VisualDesigner {
             nodeElement.appendChild(attrs);
         }
 
+        // Add ports to node
+        this.portSystem.addPorts(nodeElement, node);
+        console.log(`🔌 [VisualDesigner] Added ports to node ${node.id}, type: ${node.type}`);
+
+        // Verify ports were added
+        const ports = nodeElement.querySelectorAll('.port');
+        console.log(`🔌 [VisualDesigner] Node ${node.id} has ${ports.length} ports rendered`);
+
+        // Setup port event handlers for connections
+        this.setupPortHandlers(nodeElement, node);
+        console.log(`🔌 [VisualDesigner] Setup port handlers for node ${node.id}`);
+
+        // Setup drag handlers for moving node
+        this.setupNodeDragHandlers(nodeElement, node);
+
         nodeElement.onclick = (e) => {
+            // Don't select if clicking on port
+            if ((e.target as HTMLElement).closest('.port')) {
+                return;
+            }
             e.stopPropagation();
             this.selectNode(node.id);
         };
@@ -525,9 +624,17 @@ export class VisualDesigner {
      * Render connections (arrows)
      */
     private renderConnections(): void {
-        if (!this.svgElement || this.connections.length === 0) return;
+        if (!this.svgElement) return;
 
-        this.connections.forEach(connection => {
+        // Get all connections: automatic + manual
+        const allConnections = [
+            ...this.connections, // Automatic connections (from XML parsing)
+            ...this.connectionManager.getConnections() // Manual connections (user-created)
+        ];
+
+        if (allConnections.length === 0) return;
+
+        allConnections.forEach(connection => {
             const fromNode = this.nodes.find(n => n.id === connection.from);
             const toNode = this.nodes.find(n => n.id === connection.to);
 
@@ -606,11 +713,40 @@ export class VisualDesigner {
      * Setup drag & drop handlers
      */
     private setupDragAndDrop(): void {
-        // Allow drop on canvas
+        // Allow drop on canvas and containers
         this.canvasElement.ondragover = (e) => {
             e.preventDefault();
-            e.dataTransfer!.dropEffect = 'copy';
+
+            // Check if dragging over container
+            const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+            const containerElement = dropTarget?.closest('.container-children, .container-node');
+
+            if (containerElement) {
+                e.dataTransfer!.dropEffect = 'copy';
+                // Visual feedback - highlight container
+                const containerNodeElement = containerElement.closest('[data-node-id]');
+                if (containerNodeElement) {
+                    containerNodeElement.classList.add('drop-target');
+                }
+            } else {
+                e.dataTransfer!.dropEffect = 'copy';
+                // Remove all drop-target classes
+                this.canvasElement.querySelectorAll('.drop-target').forEach(el => {
+                    el.classList.remove('drop-target');
+                });
+            }
         };
+
+        // Remove drop target highlight on drag leave
+        this.canvasElement.addEventListener('dragleave', (e) => {
+            const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+            if (!dropTarget || !this.canvasElement.contains(dropTarget)) {
+                // Remove all drop-target classes
+                this.canvasElement.querySelectorAll('.drop-target').forEach(el => {
+                    el.classList.remove('drop-target');
+                });
+            }
+        });
 
         // Handle drop
         this.canvasElement.ondrop = (e) => {
@@ -624,6 +760,11 @@ export class VisualDesigner {
 
                 const template = JSON.parse(templateJSON);
 
+                // Get drop position relative to canvas
+                const canvasRect = this.canvasElement.getBoundingClientRect();
+                const dropX = e.clientX - canvasRect.left;
+                const dropY = e.clientY - canvasRect.top;
+
                 // Create new node from template
                 const newNode: VisualNode = {
                     id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -632,15 +773,51 @@ export class VisualDesigner {
                     body: null,
                     children: [],
                     position: {
-                        x: e.offsetX,
-                        y: e.offsetY
+                        x: dropX - this.NODE_WIDTH / 2, // Center on drop point
+                        y: dropY - this.NODE_HEIGHT / 2
                     }
                 };
 
-                // Add to nodes
-                this.addNode(newNode);
+                // Check if drop is over a container node
+                const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+                let containerElement = dropTarget?.closest('.container-children');
 
-                // Emit event
+                // If not directly over children area, check if over container node itself
+                if (!containerElement) {
+                    containerElement = dropTarget?.closest('.container-node');
+                }
+
+                if (containerElement) {
+                    // Find container node ID
+                    const containerNodeElement = containerElement.closest('[data-node-id]');
+                    const containerId = containerNodeElement?.getAttribute('data-node-id');
+
+                    if (containerId && containerNodeElement) {
+                        const container = this.findNode(containerId);
+                        if (container && isContainerNode(container.type)) {
+                            // Drop into container - add as child
+                            console.log(`📦 [VisualDesigner] Dropping ${newNode.type} into container ${container.type} (${containerId})`);
+
+                            // Remove drop-target highlight
+                            containerNodeElement.classList.remove('drop-target');
+
+                            // Position will be calculated by calculateNestedLayout
+                            newNode.position = undefined; // Let layout algorithm handle it
+
+                            this.addChildToContainer(containerId, newNode);
+                            return; // Exit early
+                        }
+                    }
+                }
+
+                // Remove all drop-target highlights
+                this.canvasElement.querySelectorAll('.drop-target').forEach(el => {
+                    el.classList.remove('drop-target');
+                });
+
+                // Drop on canvas - add to root level
+                console.log(`📄 [VisualDesigner] Dropping ${newNode.type} on canvas (root level)`);
+                this.addNode(newNode);
                 this.emit('nodeAdded', newNode);
 
                 console.log('✅ Added node from palette:', newNode.type);
@@ -648,6 +825,475 @@ export class VisualDesigner {
                 console.error('Failed to create node from drop:', error);
             }
         };
+
+        // Context menu (right-click)
+        this.canvasElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const target = e.target as HTMLElement;
+            const nodeElement = target.closest('[data-node-id]') as HTMLElement;
+
+            if (nodeElement) {
+                const nodeId = nodeElement.dataset.nodeId!;
+                this.showContextMenu(e.clientX, e.clientY, nodeId);
+            }
+        });
+
+        // Marquee selection (drag on empty canvas)
+        this.setupMarqueeSelection();
+
+        // Setup mouse wheel for zoom/pan
+        this.canvasElement.addEventListener('wheel', (e) => this.handleMouseWheel(e), { passive: false });
+
+        // Setup canvas-wide mouse move/up for connection drag
+        this.canvasElement.addEventListener('mousemove', (e) => {
+            if (this.connectionDragState?.temporaryLine) {
+                const canvasRect = this.canvasElement.getBoundingClientRect();
+                const currentX = e.clientX - canvasRect.left;
+                const currentY = e.clientY - canvasRect.top;
+
+                this.connectionDragState.temporaryLine.setAttribute('x2', currentX.toString());
+                this.connectionDragState.temporaryLine.setAttribute('y2', currentY.toString());
+            }
+        });
+
+        this.canvasElement.addEventListener('mouseup', () => {
+            // Cancel connection drag if mouse released outside a port
+            if (this.connectionDragState) {
+                this.cancelConnectionDrag();
+            }
+        });
+    }
+
+    /**
+     * Setup drag handlers for node movement
+     */
+    private setupNodeDragHandlers(nodeElement: HTMLElement, node: VisualNode): void {
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        nodeElement.addEventListener('mousedown', (e) => {
+            // Don't start drag if clicking on port
+            if ((e.target as HTMLElement).closest('.port')) {
+                return;
+            }
+
+            // Don't start drag if clicking on container header
+            if ((e.target as HTMLElement).closest('.container-header')) {
+                return;
+            }
+
+            isDragging = true;
+            const rect = nodeElement.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+
+            nodeElement.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const canvasRect = this.canvasElement.getBoundingClientRect();
+            const newX = e.clientX - canvasRect.left - offsetX;
+            const newY = e.clientY - canvasRect.top - offsetY;
+
+            this.moveNode(node.id, { x: newX, y: newY });
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                nodeElement.style.cursor = 'pointer';
+            }
+        });
+    }
+
+    /**
+     * Setup port handlers for connection creation
+     */
+    private setupPortHandlers(nodeElement: HTMLElement, node: VisualNode): void {
+        const outputPorts = nodeElement.querySelectorAll('.port-output');
+        console.log(`🔌 [VisualDesigner] setupPortHandlers for ${node.id}: found ${outputPorts.length} output ports`);
+
+        outputPorts.forEach(portElement => {
+            portElement.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+
+                const port = portElement as HTMLElement;
+                const portType = port.dataset.portConnectionType || 'sequential';
+
+                // Start connection drag
+                this.connectionDragState = {
+                    fromNodeId: node.id,
+                    fromPortElement: port,
+                    fromPortType: portType,
+                    temporaryLine: null
+                };
+
+                // Create temporary SVG line
+                if (this.svgElement) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    const portRect = port.getBoundingClientRect();
+                    const canvasRect = this.canvasElement.getBoundingClientRect();
+                    const nodeRect = nodeElement.getBoundingClientRect();
+
+                    const startX = nodeRect.left - canvasRect.left + nodeRect.width / 2;
+                    const startY = nodeRect.bottom - canvasRect.top;
+
+                    line.setAttribute('x1', startX.toString());
+                    line.setAttribute('y1', startY.toString());
+                    line.setAttribute('x2', startX.toString());
+                    line.setAttribute('y2', startY.toString());
+                    line.setAttribute('stroke', 'var(--magenta)');
+                    line.setAttribute('stroke-width', '2');
+                    line.setAttribute('stroke-dasharray', '5,5');
+                    line.style.pointerEvents = 'none';
+
+                    this.svgElement.appendChild(line);
+                    this.connectionDragState.temporaryLine = line;
+                }
+
+                console.log(`🔗 [VisualDesigner] Started connection drag from ${node.id}`);
+            });
+        });
+
+        const inputPorts = nodeElement.querySelectorAll('.port-input');
+
+        inputPorts.forEach(portElement => {
+            portElement.addEventListener('mouseup', (e) => {
+                e.stopPropagation();
+
+                if (!this.connectionDragState) {
+                    return; // Not in connection drag mode
+                }
+
+                if (this.connectionDragState.fromNodeId === node.id) {
+                    // Cannot connect to same node
+                    this.cancelConnectionDrag();
+                    return;
+                }
+
+                // Create connection
+                const validation = this.connectionManager.validateConnection(
+                    this.connectionDragState.fromNodeId,
+                    node.id
+                );
+
+                if (!validation.valid) {
+                    console.warn(`⚠️ [VisualDesigner] Connection validation failed: ${validation.error}`);
+                    this.cancelConnectionDrag();
+                    return;
+                }
+
+                // Create connection
+                const connection = this.connectionManager.createConnection(
+                    this.connectionDragState.fromNodeId,
+                    node.id,
+                    this.connectionDragState.fromPortType as any,
+                    undefined
+                );
+
+                console.log(`✅ [VisualDesigner] Created connection: ${this.connectionDragState.fromNodeId} → ${node.id}`);
+
+                // Clear drag state
+                this.cancelConnectionDrag();
+
+                // Re-render to show new connection
+                this.markDirty();
+                this.render();
+            });
+        });
+    }
+
+    /**
+     * Cancel connection drag
+     */
+    private cancelConnectionDrag(): void {
+        if (this.connectionDragState?.temporaryLine) {
+            this.connectionDragState.temporaryLine.remove();
+        }
+        this.connectionDragState = null;
+    }
+
+    /**
+     * Setup marquee selection (drag rectangle)
+     */
+    private setupMarqueeSelection(): void {
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        this.canvasElement.addEventListener('mousedown', (e) => {
+            // Only start marquee if clicking on canvas (not on a node)
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-node-id]')) {
+                return; // Clicked on a node, let node handle it
+            }
+
+            // Start marquee selection
+            isDragging = true;
+            const rect = this.canvasElement.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+
+            this.marqueeState = {
+                startX,
+                startY,
+                endX: startX,
+                endY: startY,
+                isActive: true
+            };
+
+            // Create marquee rectangle
+            this.createMarqueeElement();
+            this.updateMarqueeElement(startX, startY, startX, startY);
+
+            e.preventDefault();
+        });
+
+        this.canvasElement.addEventListener('mousemove', (e) => {
+            if (!isDragging || !this.marqueeState) {
+                return;
+            }
+
+            const rect = this.canvasElement.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            this.marqueeState.endX = currentX;
+            this.marqueeState.endY = currentY;
+
+            // Update visual rectangle
+            this.updateMarqueeElement(
+                this.marqueeState.startX,
+                this.marqueeState.startY,
+                currentX,
+                currentY
+            );
+
+            // Update selection in real-time
+            this.updateMarqueeSelection();
+        });
+
+        this.canvasElement.addEventListener('mouseup', () => {
+            if (isDragging && this.marqueeState) {
+                // Final selection
+                this.finalizeMarqueeSelection();
+                isDragging = false;
+            }
+        });
+    }
+
+    /**
+     * Create marquee rectangle element
+     */
+    private createMarqueeElement(): void {
+        // Remove existing
+        if (this.marqueeElement) {
+            this.marqueeElement.remove();
+        }
+
+        this.marqueeElement = document.createElement('div');
+        this.marqueeElement.className = 'marquee-selection';
+        this.marqueeElement.style.cssText = `
+            position: absolute;
+            border: 2px dashed var(--magenta, #D81B60);
+            background: rgba(216, 27, 96, 0.1);
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        `;
+
+        this.canvasElement.appendChild(this.marqueeElement);
+    }
+
+    /**
+     * Update marquee rectangle position
+     */
+    private updateMarqueeElement(startX: number, startY: number, endX: number, endY: number): void {
+        if (!this.marqueeElement) {
+            return;
+        }
+
+        const left = Math.min(startX, endX);
+        const top = Math.min(startY, endY);
+        const width = Math.abs(endX - startX);
+        const height = Math.abs(endY - startY);
+
+        this.marqueeElement.style.left = `${left}px`;
+        this.marqueeElement.style.top = `${top}px`;
+        this.marqueeElement.style.width = `${width}px`;
+        this.marqueeElement.style.height = `${height}px`;
+        this.marqueeElement.style.display = width > 5 && height > 5 ? 'block' : 'none';
+    }
+
+    /**
+     * Update selection while dragging
+     */
+    private updateMarqueeSelection(): void {
+        if (!this.marqueeState) {
+            return;
+        }
+
+        const rect = {
+            x: Math.min(this.marqueeState.startX, this.marqueeState.endX),
+            y: Math.min(this.marqueeState.startY, this.marqueeState.endY),
+            width: Math.abs(this.marqueeState.endX - this.marqueeState.startX),
+            height: Math.abs(this.marqueeState.endY - this.marqueeState.startY)
+        };
+
+        // Select nodes in rectangle
+        this.selectNodesInRectangle(rect);
+    }
+
+    /**
+     * Finalize marquee selection
+     */
+    private finalizeMarqueeSelection(): void {
+        if (!this.marqueeState || !this.marqueeElement) {
+            return;
+        }
+
+        // Hide marquee
+        this.marqueeElement.style.display = 'none';
+
+        // Final selection already done by updateMarqueeSelection()
+        this.marqueeState = null;
+
+        // Visual feedback for selected nodes
+        this.highlightSelectedNodes();
+    }
+
+    /**
+     * Show context menu for node
+     */
+    private showContextMenu(x: number, y: number, nodeId: string): void {
+        // Remove existing context menu
+        const existing = document.querySelector('.node-context-menu');
+        if (existing) {
+            existing.remove();
+        }
+
+        const menu = document.createElement('div');
+        menu.className = 'node-context-menu';
+        menu.style.cssText = `
+            position: fixed;
+            top: ${y}px;
+            left: ${x}px;
+            background: white;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 10000;
+            min-width: 180px;
+            padding: 4px 0;
+        `;
+
+        const items = [
+            {
+                label: 'Edit Properties', icon: 'fas fa-edit', action: () => {
+                    this.selectNode(nodeId);
+                    this.emit('nodeSelected', nodeId);
+                }
+            },
+            {
+                label: 'Delete', icon: 'fas fa-trash', action: () => {
+                    this.removeNode(nodeId);
+                    this.render();
+                }, danger: true
+            },
+            { type: 'divider' },
+            {
+                label: 'Duplicate', icon: 'fas fa-copy', action: () => {
+                    // TODO: Implement duplicate
+                    console.log('Duplicate not yet implemented');
+                }
+            },
+        ];
+
+        items.forEach(item => {
+            if ('type' in item && item.type === 'divider') {
+                const divider = document.createElement('div');
+                divider.style.cssText = 'height: 1px; background: var(--gray-200); margin: 4px 0;';
+                menu.appendChild(divider);
+            } else if ('label' in item) {
+                const button = document.createElement('button');
+                button.style.cssText = `
+                    outline: none;
+                    border: none;
+                    background: none;
+                    padding: 8px 16px;
+                    width: 100%;
+                    text-align: left;
+                    cursor: pointer;
+                    font-size: 13px;
+                    color: ${item.danger ? 'var(--magenta)' : 'var(--text-primary)'};
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: background 0.2s;
+                `;
+                button.innerHTML = `<i class="${item.icon}"></i> ${item.label}`;
+                button.onmouseenter = () => button.style.background = 'var(--gray-100)';
+                button.onmouseleave = () => button.style.background = 'none';
+                button.onclick = () => {
+                    if (item.action) {
+                        item.action();
+                    }
+                    menu.remove();
+                };
+                menu.appendChild(button);
+            }
+        });
+
+        document.body.appendChild(menu);
+
+        // Close on click outside
+        const closeMenu = (e: MouseEvent) => {
+            if (!menu.contains(e.target as Node)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    }
+
+    /**
+     * Add child node to container
+     */
+    addChildToContainer(containerId: string, childNode: VisualNode): boolean {
+        const container = this.findNode(containerId);
+        if (!container) {
+            console.warn(`[VisualDesigner] Container not found: ${containerId}`);
+            return false;
+        }
+
+        if (!isContainerNode(container.type)) {
+            console.warn(`[VisualDesigner] Node ${containerId} is not a container`);
+            return false;
+        }
+
+        // Add to children array
+        if (!container.children) {
+            container.children = [];
+        }
+        container.children.push(childNode);
+
+        // Mark dirty and re-render
+        this.markDirty();
+        this.render();
+
+        // Emit event
+        this.emit('nodeAdded', childNode);
+
+        console.log(`✅ Added child ${childNode.type} to container ${container.type}`);
+        return true;
     }
 
     /**
@@ -763,6 +1409,17 @@ export class VisualDesigner {
         this.gridSnapEnabled = enabled;
         if (gridSize) {
             this.gridSize = gridSize;
+            this.gridSystem = new GridSystem(gridSize);
+        }
+
+        // Show/hide grid overlay
+        if (enabled) {
+            this.gridSystem.render(this.canvasElement);
+        } else {
+            const existing = this.canvasElement.querySelector('.grid-overlay');
+            if (existing) {
+                existing.remove();
+            }
         }
     }
 
@@ -796,6 +1453,15 @@ export class VisualDesigner {
         this.selectedNodeIds = [];
         this.selectedNodeId = null;
         this.clearSelection();
+    }
+
+    /**
+     * Select all nodes
+     */
+    selectAll(): void {
+        this.selectedNodeIds = this.nodes.map(n => n.id);
+        this.selectedNodeId = null;
+        this.render();
     }
 
     /**
@@ -1041,9 +1707,28 @@ export class VisualDesigner {
         });
 
         this.selectedNodeIds = selected;
-        this.render();
+        this.highlightSelectedNodes();
 
         return selected;
+    }
+
+    /**
+     * Highlight selected nodes visually
+     */
+    private highlightSelectedNodes(): void {
+        // Clear all highlights
+        const allNodes = this.canvasElement.querySelectorAll('[data-node-id]');
+        allNodes.forEach((nodeEl) => {
+            (nodeEl as HTMLElement).classList.remove('node-selected');
+        });
+
+        // Highlight selected nodes
+        this.selectedNodeIds.forEach(nodeId => {
+            const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
+            if (nodeElement) {
+                nodeElement.classList.add('node-selected');
+            }
+        });
     }
 
     // ========================================================================
@@ -1115,91 +1800,6 @@ export class VisualDesigner {
     // Context Menu
     // ========================================================================
 
-    /**
-     * Show context menu for node
-     */
-    showContextMenu(nodeId: string, position: { x: number; y: number }): {
-        position: { x: number; y: number };
-        items: any[];
-    } | null {
-        const node = this.findNode(nodeId);
-        if (!node) {
-            return null;
-        }
-
-        const menu = {
-            position,
-            items: [
-                {
-                    label: 'Delete',
-                    shortcut: '⌫',
-                    action: () => {
-                        this.removeNode(nodeId);
-                        this.render();
-                    }
-                },
-                {
-                    label: 'Duplicate',
-                    shortcut: '⌘D',
-                    action: () => {
-                        this.selectNodeMulti(nodeId);
-                        this.duplicateSelectedNodes();
-                    }
-                },
-                {
-                    label: 'Copy',
-                    shortcut: '⌘C',
-                    action: () => {
-                        // TODO: Implement clipboard
-                        console.log('Copy not yet implemented');
-                    }
-                },
-                {
-                    label: 'Paste',
-                    shortcut: '⌘V',
-                    action: () => {
-                        // TODO: Implement clipboard
-                        console.log('Paste not yet implemented');
-                    }
-                },
-                { type: 'separator' },
-                {
-                    label: 'Edit Properties',
-                    action: () => {
-                        this.selectNode(nodeId);
-                    }
-                },
-                { type: 'separator' },
-                {
-                    label: 'Bring to Front',
-                    action: () => {
-                        // Move node to end of array
-                        const index = this.nodes.findIndex(n => n.id === nodeId);
-                        if (index !== -1) {
-                            const [node] = this.nodes.splice(index, 1);
-                            this.nodes.push(node);
-                            this.render();
-                        }
-                    }
-                },
-                {
-                    label: 'Send to Back',
-                    action: () => {
-                        // Move node to start of array
-                        const index = this.nodes.findIndex(n => n.id === nodeId);
-                        if (index !== -1) {
-                            const [node] = this.nodes.splice(index, 1);
-                            this.nodes.unshift(node);
-                            this.render();
-                        }
-                    }
-                }
-            ]
-        };
-
-        return menu;
-    }
-
     // ========================================================================
     // Manual Connections
     // ========================================================================
@@ -1210,63 +1810,6 @@ export class VisualDesigner {
         to: string;
         type: 'sequential' | 'conditional' | 'error';
     }> = [];
-
-    private connectionDragState: {
-        fromNodeId: string;
-        port: 'output' | 'input';
-    } | null = null;
-
-    /**
-     * Start connection drag
-     */
-    startConnectionDrag(nodeId: string, port: 'output' | 'input'): void {
-        this.connectionDragState = {
-            fromNodeId: nodeId,
-            port
-        };
-    }
-
-    /**
-     * End connection drag
-     */
-    endConnectionDrag(toNodeId: string, port: 'output' | 'input'): {
-        id: string;
-        from: string;
-        to: string;
-        type: string;
-    } | null {
-        if (!this.connectionDragState) {
-            return null;
-        }
-
-        const fromNodeId = this.connectionDragState.fromNodeId;
-
-        // Validate: output → input only
-        if (this.connectionDragState.port !== 'output' || port !== 'input') {
-            this.connectionDragState = null;
-            return null;
-        }
-
-        // Check for circular reference
-        if (this.wouldCreateCycle(fromNodeId, toNodeId)) {
-            console.warn('Circular connection detected');
-            this.connectionDragState = null;
-            throw new Error('Circular connection detected');
-        }
-
-        const connection = {
-            id: `conn-${Date.now()}`,
-            from: fromNodeId,
-            to: toNodeId,
-            type: 'sequential' as const
-        };
-
-        this.manualConnections.push(connection);
-        this.connectionDragState = null;
-        this.render();
-
-        return connection;
-    }
 
     /**
      * Create manual connection
@@ -1414,7 +1957,17 @@ export class VisualDesigner {
      */
     showMinimap(visible: boolean): void {
         this.minimapVisible = visible;
-        // TODO: Render minimap
+        if (visible) {
+            this.minimap.render(this.canvasElement, this.nodes);
+            this.minimap.onNavigate((position) => {
+                this.handleMinimapClick(position);
+            });
+        } else {
+            const existing = this.canvasElement.querySelector('.minimap');
+            if (existing) {
+                existing.remove();
+            }
+        }
     }
 
     /**
@@ -1428,11 +1981,12 @@ export class VisualDesigner {
      * Handle minimap click (navigate canvas)
      */
     handleMinimapClick(position: { x: number; y: number }): void {
-        // Convert minimap coordinates to canvas coordinates
-        // TODO: Implement minimap navigation
+        // Position is already converted by Minimap component
+        // Center canvas view on clicked position
+        const canvasRect = this.canvasElement.getBoundingClientRect();
         this.pan = {
-            x: -position.x,
-            y: -position.y
+            x: -position.x + canvasRect.width / 2,
+            y: -position.y + canvasRect.height / 2
         };
         this.applyTransform();
     }
@@ -1564,15 +2118,72 @@ export class VisualDesigner {
     }
 
     /**
-     * Show dialog modal (to be implemented by App.ts)
+     * Show dialog modal (non-blocking version)
      */
     private async showDialogModal(dialog: any): Promise<string> {
-        // This will be implemented in App.ts
-        // For now, use window.confirm as fallback
-        const confirmed = window.confirm(
-            `${dialog.title}\n\n${dialog.message}\n\nClick OK to discard changes, Cancel to keep editing.`
-        );
-        return confirmed ? 'discard' : 'cancel';
+        // Non-blocking implementation using HTML dialog
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                border-radius: var(--radius-lg, 8px);
+                padding: 24px;
+                max-width: 500px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            `;
+
+            content.innerHTML = `
+                <h3 style="margin: 0 0 16px 0; color: var(--magenta, #D81B60);">${dialog.title}</h3>
+                <p style="margin: 0 0 24px 0;">${dialog.message}</p>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    ${dialog.buttons.map((btn: any) => `
+                        <button data-action="${btn.action}" style="
+                            padding: 8px 16px;
+                            background: ${btn.style === 'primary' ? 'var(--magenta, #D81B60)' : 'var(--gray-200, #ccc)'};
+                            color: ${btn.style === 'primary' ? 'white' : 'black'};
+                            border: none;
+                            border-radius: var(--radius-md, 4px);
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">${btn.label}</button>
+                    `).join('')}
+                </div>
+            `;
+
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+
+            // Handle button clicks
+            content.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = (btn as HTMLElement).dataset.action || 'cancel';
+                    modal.remove();
+                    resolve(action);
+                });
+            });
+
+            // Close on overlay click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                    resolve('cancel');
+                }
+            });
+        });
     }
 
     /**
@@ -1719,5 +2330,56 @@ export class VisualDesigner {
         this.markClean();
         this.emit('saveAsRequested', { filename, nodes: this.nodes });
         return true;
+    }
+
+    // ========================================================================
+    // Execution State Visualization (Phase 1)
+    // ========================================================================
+
+    /**
+     * Update execution state for a node
+     */
+    updateNodeExecutionState(nodeId: string, state: NodeExecutionState): void {
+        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
+        if (!nodeElement) {
+            console.warn(`[VisualDesigner] Node element not found: ${nodeId}`);
+            return;
+        }
+
+        this.stateRenderer.applyState(nodeElement, state);
+        console.log(`[VisualDesigner] Applied state ${state} to node ${nodeId}`);
+    }
+
+    /**
+     * Update metrics for a running node
+     */
+    updateNodeMetrics(nodeId: string, metrics: NodeMetrics): void {
+        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
+        if (!nodeElement) {
+            console.warn(`[VisualDesigner] Node element not found: ${nodeId}`);
+            return;
+        }
+
+        this.metricsOverlay.showMetrics(nodeElement, metrics);
+    }
+
+    /**
+     * Clear all execution states (reset to idle)
+     */
+    clearExecutionStates(): void {
+        const nodeElements = this.canvasElement.querySelectorAll('[data-node-id]');
+        nodeElements.forEach(element => {
+            this.stateRenderer.clearState(element as HTMLElement);
+            this.metricsOverlay.hideMetrics(element as HTMLElement);
+        });
+
+        console.log('[VisualDesigner] Cleared all execution states');
+    }
+
+    /**
+     * Get nodes for execution state registration
+     */
+    getNodesForExecution(): VisualNode[] {
+        return [...this.nodes];
     }
 }

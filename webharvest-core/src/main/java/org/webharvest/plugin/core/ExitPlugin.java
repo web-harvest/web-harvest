@@ -173,7 +173,8 @@ public class ExitPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Utilities";
+            CorePlugin annotation = ExitPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Utilities";
         }
 
         @Override

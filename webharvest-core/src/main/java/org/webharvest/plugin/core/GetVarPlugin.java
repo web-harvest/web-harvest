@@ -301,7 +301,10 @@ public class GetVarPlugin extends AbstractPlugin {
             @Override
             public String getAuthor() { return "Web-Harvest Team"; }
             @Override
-            public String getCategory() { return "Variables"; }
+        public String getCategory() {
+            CorePlugin annotation = GetVarPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Variables";
+        }
             @Override
             public String[] getTags() { return new String[0]; }
             @Override

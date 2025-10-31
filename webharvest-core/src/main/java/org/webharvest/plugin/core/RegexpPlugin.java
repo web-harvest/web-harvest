@@ -572,9 +572,10 @@ public class RegexpPlugin extends AbstractPlugin {
             }
 
             @Override
-            public String getCategory() {
-                return "Extraction";
-            }
+        public String getCategory() {
+            CorePlugin annotation = RegexpPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Extraction";
+        }
 
             @Override
             public String[] getTags() {

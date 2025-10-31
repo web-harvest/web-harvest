@@ -179,3 +179,6 @@ switchViewMode(mode) {
 **Zaczynam implementację!** 🎯
 
 
+
+
+

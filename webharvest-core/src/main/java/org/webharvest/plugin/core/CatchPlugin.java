@@ -140,7 +140,8 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Control";
+            CorePlugin annotation = CatchPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Control";
         }
 
         @Override

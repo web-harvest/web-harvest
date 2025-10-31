@@ -30,8 +30,8 @@ export function isContainerNode(type: string): boolean {
  * Get rendering strategy for a node
  */
 export function getRenderingStrategy(node: VisualNode): 'nested' | 'connected' {
-    // Container with children → nested rendering
-    if (isContainerNode(node.type) && node.children.length > 0) {
+    // Container node → always use nested rendering (even without children initially)
+    if (isContainerNode(node.type)) {
         return 'nested';
     }
 

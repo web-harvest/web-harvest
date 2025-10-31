@@ -184,7 +184,8 @@ public class TryPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Control";
+            CorePlugin annotation = TryPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Control";
         }
 
         @Override

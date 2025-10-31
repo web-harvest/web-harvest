@@ -85,7 +85,7 @@ public class ReturnPluginTest {
         assertEquals(metadata.getId(), "return");
         assertEquals(metadata.getName(), "Return Plugin");
         assertEquals(metadata.getVersion(), "2.2.0");
-        assertEquals(metadata.getCategory(), "core");
+        assertEquals(metadata.getCategory(), "Utilities");
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
         assertEquals(metadata.getElementName(), "return");
