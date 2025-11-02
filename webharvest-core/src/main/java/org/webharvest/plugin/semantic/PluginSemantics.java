@@ -1,0 +1,187 @@
+package org.webharvest.plugin.semantic;
+
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * Immutable semantic descriptor describing how a plugin behaves in the
+ * configuration tree.
+ */
+public final class PluginSemantics {
+
+    public static final PluginSemantics DEFAULT = PluginSemantics.builder().build();
+
+    private final PluginNodeRole role;
+    private final boolean allowsChildPlugins;
+    private final boolean allowsTextContent;
+    private final boolean providesExecutionContext;
+    private final boolean executable;
+    private final boolean allowsAnyChild;
+    private final Set<String> allowedChildElements;
+    private final Set<String> requiredParentElements;
+
+    private PluginSemantics(Builder builder) {
+        this.role = builder.role;
+        this.allowsChildPlugins = builder.allowsChildPlugins;
+        this.allowsTextContent = builder.allowsTextContent;
+        this.providesExecutionContext = builder.providesExecutionContext;
+        this.executable = builder.executable;
+        this.allowsAnyChild = builder.allowsAnyChild;
+        this.allowedChildElements = Collections.unmodifiableSet(builder.allowedChildElements);
+        this.requiredParentElements = Collections.unmodifiableSet(builder.requiredParentElements);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public PluginNodeRole getRole() {
+        return role;
+    }
+
+    public boolean allowsChildPlugins() {
+        return allowsChildPlugins;
+    }
+
+    public boolean allowsTextContent() {
+        return allowsTextContent;
+    }
+
+    public boolean providesExecutionContext() {
+        return providesExecutionContext;
+    }
+
+    public boolean isExecutable() {
+        return executable;
+    }
+
+    public boolean allowsAnyChild() {
+        return allowsAnyChild;
+    }
+
+    public Set<String> getAllowedChildElements() {
+        return allowedChildElements;
+    }
+
+    public Set<String> getRequiredParentElements() {
+        return requiredParentElements;
+    }
+
+    public boolean requiresParent() {
+        return !requiredParentElements.isEmpty();
+    }
+
+    public java.util.Map<String, Object> toMap() {
+        java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("role", role.name());
+        map.put("allowsChildPlugins", allowsChildPlugins);
+        map.put("allowsTextContent", allowsTextContent);
+        map.put("providesExecutionContext", providesExecutionContext);
+        map.put("executable", executable);
+        map.put("allowsAnyChild", allowsAnyChild);
+        map.put("allowedChildElements", allowedChildElements);
+        map.put("requiredParentElements", requiredParentElements);
+        return map;
+    }
+
+    /**
+     * Builder for {@link PluginSemantics}.
+     */
+    public static final class Builder {
+
+        private PluginNodeRole role = PluginNodeRole.LEAF;
+        private boolean allowsChildPlugins = false;
+        private boolean allowsTextContent = false;
+        private boolean providesExecutionContext = false;
+        private boolean executable = true;
+        private boolean allowsAnyChild = false;
+        private final Set<String> allowedChildElements = new LinkedHashSet<>();
+        private final Set<String> requiredParentElements = new LinkedHashSet<>();
+
+        private Builder() {
+        }
+
+        public Builder role(PluginNodeRole role) {
+            this.role = Objects.requireNonNull(role, "role");
+            return this;
+        }
+
+        public Builder allowsChildPlugins(boolean allowsChildPlugins) {
+            this.allowsChildPlugins = allowsChildPlugins;
+            if (!allowsChildPlugins) {
+                this.allowsAnyChild = false;
+                this.allowedChildElements.clear();
+            }
+            return this;
+        }
+
+        public Builder allowsTextContent(boolean allowsTextContent) {
+            this.allowsTextContent = allowsTextContent;
+            return this;
+        }
+
+        public Builder providesExecutionContext(boolean providesExecutionContext) {
+            this.providesExecutionContext = providesExecutionContext;
+            return this;
+        }
+
+        public Builder executable(boolean executable) {
+            this.executable = executable;
+            return this;
+        }
+
+        public Builder allowsAnyChild(boolean allowsAnyChild) {
+            this.allowsAnyChild = allowsAnyChild;
+            if (allowsAnyChild) {
+                this.allowsChildPlugins = true;
+                this.allowedChildElements.clear();
+            }
+            return this;
+        }
+
+        public Builder addAllowedChild(String elementName) {
+            if (elementName != null && !elementName.isEmpty()) {
+                this.allowedChildElements.add(elementName.toLowerCase(Locale.ROOT));
+                this.allowsChildPlugins = true;
+            }
+            return this;
+        }
+
+        public Builder allowedChildElements(String[] elementNames) {
+            if (elementNames != null) {
+                for (String name : elementNames) {
+                    addAllowedChild(name);
+                }
+            }
+            return this;
+        }
+
+        public Builder addRequiredParent(String elementName) {
+            if (elementName != null && !elementName.isEmpty()) {
+                this.requiredParentElements.add(elementName.toLowerCase(Locale.ROOT));
+            }
+            return this;
+        }
+
+        public Builder requiredParentElements(String[] elementNames) {
+            if (elementNames != null) {
+                for (String name : elementNames) {
+                    addRequiredParent(name);
+                }
+            }
+            return this;
+        }
+
+        public PluginSemantics build() {
+            if (!allowsChildPlugins) {
+                allowedChildElements.clear();
+                allowsAnyChild = false;
+            }
+            return new PluginSemantics(this);
+        }
+    }
+}
+

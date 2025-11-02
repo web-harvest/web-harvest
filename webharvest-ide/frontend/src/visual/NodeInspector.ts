@@ -39,12 +39,14 @@ export class NodeInspector {
     private container: HTMLElement | null = null;
     private currentTab: string = 'overview';
     private readonly MAX_PREVIEW_LENGTH = 5000;
+    private latestData: InspectorData | null = null;
 
     /**
      * Show inspector panel
      */
     show(container: HTMLElement, data: InspectorData): void {
         this.container = container;
+        this.latestData = data;
         container.innerHTML = '';
 
         const panel = document.createElement('div');
@@ -175,6 +177,7 @@ export class NodeInspector {
 
             const tabBtn = document.createElement('button');
             tabBtn.className = `inspector-tab ${tab.id === this.currentTab ? 'active' : ''}`;
+            tabBtn.dataset.tab = tab.id;
             tabBtn.textContent = tab.label;
             tabBtn.style.cssText = `
                 padding: 10px 16px;
@@ -473,6 +476,14 @@ export class NodeInspector {
             activeTab.classList.add('active');
             activeTab.style.background = 'white';
             activeTab.style.borderBottom = '2px solid var(--magenta)';
+        }
+
+        if (this.latestData) {
+            const existingContent = this.container.querySelector('.inspector-content');
+            if (existingContent) {
+                const newContent = this.createContent(this.latestData);
+                existingContent.replaceWith(newContent);
+            }
         }
     }
 

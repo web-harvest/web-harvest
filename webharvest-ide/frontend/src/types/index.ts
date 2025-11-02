@@ -2,6 +2,8 @@
  * Core type definitions for WebHarvest IDE
  */
 
+import type { NodeExecutionState } from '../visual/NodeStateRenderer';
+
 // ============================================================================
 // Configuration & Tabs
 // ============================================================================
@@ -34,14 +36,36 @@ export interface VisualNode {
     position?: { x: number; y: number };
 }
 
+export interface PluginDocumentationSummary {
+    summary: string;
+    url?: string;
+    examples?: string[];
+}
+
+export interface PluginSemanticsModel {
+    role: 'ROOT_CONTAINER' | 'CONTEXT_CONTAINER' | 'BODY_EVALUATOR' | 'DEPENDENT' | 'LEAF';
+    canAppearAtRoot: boolean;
+    allowsChildren: boolean;
+    acceptsAnyChild: boolean;
+    allowBody: boolean;
+    allowTextContent: boolean;
+    allowedChildTypes: string[];
+    requiredParentTypes: string[];
+}
+
 export interface Plugin {
     id: string;
     name: string;
     description: string;
     category: string;
     icon: string;
+    paletteGroup?: string;
+    tags?: string[];
     schema: PluginSchema;
+    semantics?: PluginSemanticsModel;
     helpUrl?: string;
+    documentation?: PluginDocumentationSummary;
+    dependencies?: string[];
 }
 
 export interface PluginSchema {
@@ -51,6 +75,9 @@ export interface PluginSchema {
     canAppearAtRoot: boolean;
     requiredParents: string[];
     isContextSpecific: boolean;
+    allowedSubElements?: string[];
+    requiredSubElements?: string[];
+    allowsBody?: boolean;
 }
 
 export interface AttributeDefinition {
@@ -66,6 +93,27 @@ export interface AttributeDefinition {
 // Execution & WebSocket
 // ============================================================================
 
+export interface NodeExecutionMetrics {
+    dataProcessed?: number;
+    httpRequests?: number;
+    memoryUsed?: number;
+}
+
+export interface NodeExecutionUpdate {
+    nodeId: string;
+    pluginType: string;
+    status: NodeExecutionState;
+    progress?: number;
+    startTime?: number;
+    endTime?: number;
+    metrics?: NodeExecutionMetrics;
+    variables?: Record<string, any>;
+    error?: {
+        message: string;
+        stackTrace: string;
+    };
+}
+
 export interface ExecutionUpdate {
     status: ExecutionStatus;
     progress: number;
@@ -74,6 +122,7 @@ export interface ExecutionUpdate {
     variables?: Record<string, any>;
     sessionInfo?: SessionInfo;
     tokenUsage?: TokenUsage;
+    nodeUpdates?: NodeExecutionUpdate[];
     error?: string;
 }
 

@@ -1,0 +1,1874 @@
+{
+    "schemaVersion": "1.1.0",
+    "plugins": [
+        {
+            "id": "body-processor",
+            "elementName": "body-processor",
+            "displayName": "Body Processor",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.BodyProcessorPlugin",
+            "description": "Executes nested processors sequentially and returns their combined result.",
+            "documentation": {
+                "summary": "Internal helper that executes nested processors in order and aggregates their results.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/body-processor.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": false,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-layer-group",
+                "tags": [
+                    "body",
+                    "processor",
+                    "utility"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "call",
+            "elementName": "call",
+            "displayName": "Call",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.CallPlugin",
+            "description": "Invokes a previously defined function with optional <call-param> entries.",
+            "documentation": {
+                "summary": "Invokes a function defined with <function>, passing parameters via <call-param> elements.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/call.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "call-param"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-phone",
+                "tags": [
+                    "function",
+                    "call",
+                    "parameter"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "call-param",
+            "elementName": "call-param",
+            "displayName": "Call Parameter",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.CallParamPlugin",
+            "description": "Defines an individual parameter value passed into a <call>.",
+            "documentation": {
+                "summary": "Defines a named argument or body content passed into a <call> invocation.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/call-param.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "call"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-sliders",
+                "tags": [
+                    "function",
+                    "parameter"
+                ]
+            },
+            "dependencies": [
+                "call"
+            ]
+        },
+        {
+            "id": "case",
+            "elementName": "case",
+            "displayName": "Case",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.CasePlugin",
+            "description": "Conditional branch used within an <if> construct.",
+            "documentation": {
+                "summary": "Provides additional condition branches inside an <if> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/if.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "else"
+                ],
+                "requiredParentTypes": [
+                    "if"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-diagram-project",
+                "tags": [
+                    "branch",
+                    "condition"
+                ]
+            },
+            "dependencies": [
+                "if"
+            ]
+        },
+        {
+            "id": "catch",
+            "elementName": "catch",
+            "displayName": "Catch",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.CatchPlugin",
+            "description": "Handles errors thrown from the associated <try> block.",
+            "documentation": {
+                "summary": "Executes recovery logic when the parent <try> block encounters an error.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/try.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "try"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-triangle-exclamation",
+                "tags": [
+                    "error",
+                    "handling"
+                ]
+            },
+            "dependencies": [
+                "try"
+            ]
+        },
+        {
+            "id": "config",
+            "elementName": "config",
+            "displayName": "Configuration",
+            "origin": "core",
+            "category": "Configuration",
+            "className": "org.webharvest.plugin.core.ConfigPlugin",
+            "description": "Root container for WebHarvest workflows.",
+            "documentation": {
+                "summary": "Root element that wraps the entire WebHarvest configuration and defines namespace and charset scopes.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/config.html"
+            },
+            "semantics": {
+                "role": "ROOT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Configuration",
+                "icon": "fa-gear",
+                "tags": [
+                    "root",
+                    "configuration",
+                    "workflow"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "connection",
+            "elementName": "connection",
+            "displayName": "Database Connection",
+            "origin": "database",
+            "category": "Storage",
+            "className": "org.webharvest.plugin.db.ConnectionPlugin",
+            "description": "Defines a reusable JDBC connection for the <database> plugin.",
+            "documentation": {
+                "summary": "Configures a named JDBC connection that can be reused inside <database> blocks.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/index.html#database"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "database"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Storage",
+                "icon": "fa-plug",
+                "tags": [
+                    "database",
+                    "connection"
+                ]
+            },
+            "dependencies": [
+                "database"
+            ]
+        },
+        {
+            "id": "constant",
+            "elementName": "constant",
+            "displayName": "Constant",
+            "origin": "core",
+            "category": "Variables",
+            "className": "org.webharvest.plugin.core.ConstantPlugin",
+            "description": "Outputs a fixed value without evaluating expressions.",
+            "documentation": {
+                "summary": "Emits a static literal value; useful for composing templates and variables.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/constant.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Variables",
+                "icon": "fa-lock",
+                "tags": [
+                    "constant",
+                    "literal"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "database",
+            "elementName": "database",
+            "displayName": "Database",
+            "origin": "database",
+            "category": "Storage",
+            "className": "org.webharvest.plugin.db.DatabasePlugin",
+            "description": "Executes SQL queries using JDBC connections defined inline or via <connection>.",
+            "documentation": {
+                "summary": "Runs SQL statements using JDBC. Supports inline credentials or named <connection> blocks.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/index.html#database"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "connection"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Storage",
+                "icon": "fa-database",
+                "tags": [
+                    "sql",
+                    "database",
+                    "jdbc"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "def",
+            "elementName": "def",
+            "displayName": "Define Variable",
+            "origin": "core",
+            "category": "Variables",
+            "className": "org.webharvest.plugin.core.DefPlugin",
+            "description": "Evaluates its body and assigns the result to a variable.",
+            "documentation": {
+                "summary": "Evaluates nested processors and stores the result in a named variable.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/var.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Variables",
+                "icon": "fa-tag",
+                "tags": [
+                    "variable",
+                    "define"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "else",
+            "elementName": "else",
+            "displayName": "Else",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.ElsePlugin",
+            "description": "Fallback branch executed when the parent if/elseif condition is false.",
+            "documentation": {
+                "summary": "Defines the fallback body for an <if> or <case> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/if.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "if",
+                    "case"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-arrow-down-wide-short",
+                "tags": [
+                    "condition",
+                    "fallback"
+                ]
+            },
+            "dependencies": [
+                "case",
+                "if"
+            ]
+        },
+        {
+            "id": "empty",
+            "elementName": "empty",
+            "displayName": "Empty",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.EmptyPlugin",
+            "description": "Produces an empty result placeholder (no data).",
+            "documentation": {
+                "summary": "Produces an empty variable, useful for optional bindings and conditional flows.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/empty.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-circle",
+                "tags": [
+                    "empty",
+                    "placeholder"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "exit",
+            "elementName": "exit",
+            "displayName": "Exit",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.ExitPlugin",
+            "description": "Terminates execution of the current configuration immediately.",
+            "documentation": {
+                "summary": "Stops the current workflow execution immediately, optionally with status information.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/exit.html"
+            },
+            "semantics": {
+                "role": "LEAF",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-right-from-bracket",
+                "tags": [
+                    "exit",
+                    "stop"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "file",
+            "elementName": "file",
+            "displayName": "File",
+            "origin": "core",
+            "category": "Storage",
+            "className": "org.webharvest.plugin.core.FilePlugin",
+            "description": "Reads from or writes to files on the local filesystem.",
+            "documentation": {
+                "summary": "Performs file operations such as read, write, append, and delete on the local filesystem.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/file.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Storage",
+                "icon": "fa-file",
+                "tags": [
+                    "file",
+                    "io"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "ftp",
+            "elementName": "ftp",
+            "displayName": "FTP",
+            "origin": "ftp",
+            "category": "Network",
+            "className": "org.webharvest.plugin.ftp.FtpPlugin",
+            "description": "Establishes an FTP/FTPS connection for child operations.",
+            "documentation": {
+                "summary": "Opens an FTP/FTPS connection and provides it to child operations such as <ftp-get> and <ftp-put>.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/ftp.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "ftp-get",
+                    "ftp-put",
+                    "ftp-list"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-server",
+                "tags": [
+                    "ftp",
+                    "connection"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "ftp-get",
+            "elementName": "ftp-get",
+            "displayName": "FTP Get",
+            "origin": "ftp",
+            "category": "Network",
+            "className": "org.webharvest.plugin.ftp.FtpGetPlugin",
+            "description": "Downloads a file from the current FTP connection.",
+            "documentation": {
+                "summary": "Downloads a file from the active <ftp> connection and returns its contents as a variable.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/ftp-get.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "ftp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-arrow-down",
+                "tags": [
+                    "ftp",
+                    "download"
+                ]
+            },
+            "dependencies": [
+                "ftp"
+            ]
+        },
+        {
+            "id": "ftp-list",
+            "elementName": "ftp-list",
+            "displayName": "FTP List",
+            "origin": "ftp",
+            "category": "Network",
+            "className": "org.webharvest.plugin.ftp.FtpListPlugin",
+            "description": "Lists directory contents on the active FTP connection.",
+            "documentation": {
+                "summary": "Lists files and directories from the current <ftp> connection.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/ftp-list.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "ftp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-list-check",
+                "tags": [
+                    "ftp",
+                    "list"
+                ]
+            },
+            "dependencies": [
+                "ftp"
+            ]
+        },
+        {
+            "id": "ftp-put",
+            "elementName": "ftp-put",
+            "displayName": "FTP Put",
+            "origin": "ftp",
+            "category": "Network",
+            "className": "org.webharvest.plugin.ftp.FtpPutPlugin",
+            "description": "Uploads data to the FTP server using the active connection.",
+            "documentation": {
+                "summary": "Uploads the body content of the processor to a remote file over the active <ftp> connection.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/ftp-put.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "ftp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-arrow-up",
+                "tags": [
+                    "ftp",
+                    "upload"
+                ]
+            },
+            "dependencies": [
+                "ftp"
+            ]
+        },
+        {
+            "id": "function",
+            "elementName": "function",
+            "displayName": "Function",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.FunctionPlugin",
+            "description": "Defines a reusable function with optional parameters and a <return> value.",
+            "documentation": {
+                "summary": "Declares a named function that can be invoked using <call>.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/function.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "return"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-superscript",
+                "tags": [
+                    "function",
+                    "define"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "get",
+            "elementName": "get",
+            "displayName": "Get Variable",
+            "origin": "core",
+            "category": "Variables",
+            "className": "org.webharvest.plugin.core.GetVarPlugin",
+            "description": "Retrieves the value of a previously defined variable.",
+            "documentation": {
+                "summary": "Fetches the value of a previously defined WebHarvest variable.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/var.html"
+            },
+            "semantics": {
+                "role": "LEAF",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Variables",
+                "icon": "fa-arrow-right",
+                "tags": [
+                    "variable",
+                    "read"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "html-to-xml",
+            "elementName": "html-to-xml",
+            "displayName": "HTML to XML",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.HtmlToXmlPlugin",
+            "description": "Converts HTML content to well-formed XML for further processing.",
+            "documentation": {
+                "summary": "Normalizes HTML content, producing well-formed XML output for XPath/XQuery.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/html-to-xml.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-file-code",
+                "tags": [
+                    "html",
+                    "xml",
+                    "conversion"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "http",
+            "elementName": "http",
+            "displayName": "HTTP",
+            "origin": "core",
+            "category": "Network",
+            "className": "org.webharvest.plugin.core.HttpPlugin",
+            "description": "Performs HTTP/HTTPS requests and returns the response.",
+            "documentation": {
+                "summary": "Executes HTTP/HTTPS requests with support for headers, parameters, POST bodies, and binary content.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/http.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "http-header",
+                    "http-param"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-globe",
+                "tags": [
+                    "http",
+                    "request",
+                    "web"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "http-header",
+            "elementName": "http-header",
+            "displayName": "HTTP Header",
+            "origin": "core",
+            "category": "Network",
+            "className": "org.webharvest.plugin.core.HttpHeaderPlugin",
+            "description": "Defines a header to include in the parent HTTP request.",
+            "documentation": {
+                "summary": "Declares an HTTP header name/value pair for the surrounding <http> request.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/http-header.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "http"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-heading",
+                "tags": [
+                    "http",
+                    "header"
+                ]
+            },
+            "dependencies": [
+                "http"
+            ]
+        },
+        {
+            "id": "http-param",
+            "elementName": "http-param",
+            "displayName": "HTTP Parameter",
+            "origin": "core",
+            "category": "Network",
+            "className": "org.webharvest.plugin.core.HttpParamPlugin",
+            "description": "Defines a query or form parameter for the parent HTTP request.",
+            "documentation": {
+                "summary": "Sets a query/form parameter for the surrounding <http> request.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/http-param.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "http"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-sliders",
+                "tags": [
+                    "http",
+                    "parameter"
+                ]
+            },
+            "dependencies": [
+                "http"
+            ]
+        },
+        {
+            "id": "if",
+            "elementName": "if",
+            "displayName": "If",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.IfPlugin",
+            "description": "Conditional execution block with optional else/elseif branches.",
+            "documentation": {
+                "summary": "Evaluates a condition and executes child processors when it is true.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/if.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "else",
+                    "case"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-question",
+                "tags": [
+                    "condition",
+                    "branch"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "include",
+            "elementName": "include",
+            "displayName": "Include",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.IncludePlugin",
+            "description": "Includes another WebHarvest configuration file inline.",
+            "documentation": {
+                "summary": "Includes another WebHarvest configuration or fragment during execution.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/include.html"
+            },
+            "semantics": {
+                "role": "LEAF",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-link",
+                "tags": [
+                    "include",
+                    "fragment"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "json-to-xml",
+            "elementName": "json-to-xml",
+            "displayName": "JSON to XML",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.JsonToXmlPlugin",
+            "description": "Converts JSON data to XML representation.",
+            "documentation": {
+                "summary": "Transforms JSON structures into XML for XPath/XSLT processing.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/json-to-xml.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-brackets-curly",
+                "tags": [
+                    "json",
+                    "xml"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "list",
+            "elementName": "list",
+            "displayName": "List",
+            "origin": "core",
+            "category": "Variables",
+            "className": "org.webharvest.plugin.core.ListPlugin",
+            "description": "Collects body results into a list variable.",
+            "documentation": {
+                "summary": "Aggregates multiple values into a list variable using nested processors.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/list.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Variables",
+                "icon": "fa-list",
+                "tags": [
+                    "list",
+                    "aggregate"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "log",
+            "elementName": "log",
+            "displayName": "Log",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.LogPlugin",
+            "description": "Writes messages to the WebHarvest execution log.",
+            "documentation": {
+                "summary": "Writes diagnostic messages to the execution log for debugging and audit.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/log.html"
+            },
+            "semantics": {
+                "role": "LEAF",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-file-lines",
+                "tags": [
+                    "log",
+                    "debug"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "loop",
+            "elementName": "loop",
+            "displayName": "Loop",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.LoopPlugin",
+            "description": "Iterates over a collection, executing child processors for each item.",
+            "documentation": {
+                "summary": "Loop over values or ranges and execute body processors using loop variables.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/loop.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-repeat",
+                "tags": [
+                    "control",
+                    "iteration",
+                    "context"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "mail",
+            "elementName": "mail",
+            "displayName": "Mail",
+            "origin": "mail",
+            "category": "Network",
+            "className": "org.webharvest.plugin.mail.MailPlugin",
+            "description": "Sends email via SMTP with optional HTML body and attachments.",
+            "documentation": {
+                "summary": "Sends email notifications via SMTP and supports HTML bodies using nested templates.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/mail.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-envelope",
+                "tags": [
+                    "mail",
+                    "smtp"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "regexp",
+            "elementName": "regexp",
+            "displayName": "RegExp",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.RegexpPlugin",
+            "description": "Performs regular expression matching against the body or child processors.",
+            "documentation": {
+                "summary": "Executes regular expression matches, using helper elements to define the pattern and source.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/regexp.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [
+                    "regexp-pattern",
+                    "regexp-source",
+                    "regexp-result"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-search",
+                "tags": [
+                    "regex",
+                    "pattern"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "regexp-pattern",
+            "elementName": "regexp-pattern",
+            "displayName": "RegExp Pattern",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.RegexpPatternPlugin",
+            "description": "Defines the regular expression pattern for a parent <regexp>.",
+            "documentation": {
+                "summary": "Specifies the regular expression pattern used by the surrounding <regexp> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/regexp-pattern.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "regexp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-asterisk",
+                "tags": [
+                    "regex",
+                    "pattern"
+                ]
+            },
+            "dependencies": [
+                "regexp"
+            ]
+        },
+        {
+            "id": "regexp-result",
+            "elementName": "regexp-result",
+            "displayName": "RegExp Result",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.RegexpResultPlugin",
+            "description": "Extracts a specific match result from the parent <regexp> execution.",
+            "documentation": {
+                "summary": "Extracts a capture group or match from the surrounding <regexp> execution.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/regexp-result.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "regexp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-highlighter",
+                "tags": [
+                    "regex",
+                    "result"
+                ]
+            },
+            "dependencies": [
+                "regexp"
+            ]
+        },
+        {
+            "id": "regexp-source",
+            "elementName": "regexp-source",
+            "displayName": "RegExp Source",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.RegexpSourcePlugin",
+            "description": "Provides the source text that a parent <regexp> should evaluate.",
+            "documentation": {
+                "summary": "Supplies the source text processed by the surrounding <regexp> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/regexp-source.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "regexp"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-input-text",
+                "tags": [
+                    "regex",
+                    "source"
+                ]
+            },
+            "dependencies": [
+                "regexp"
+            ]
+        },
+        {
+            "id": "return",
+            "elementName": "return",
+            "displayName": "Return",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.ReturnPlugin",
+            "description": "Returns a value from the surrounding <function>.",
+            "documentation": {
+                "summary": "Returns a value from the nearest enclosing <function> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/return.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "function"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-arrow-turn-down",
+                "tags": [
+                    "function",
+                    "return"
+                ]
+            },
+            "dependencies": [
+                "function"
+            ]
+        },
+        {
+            "id": "script",
+            "elementName": "script",
+            "displayName": "Script",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.ScriptPlugin",
+            "description": "Executes inline scripting code (JavaScript, Groovy, etc.) and returns its result.",
+            "documentation": {
+                "summary": "Evaluates script code within the current WebHarvest context.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/script.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-code",
+                "tags": [
+                    "processing",
+                    "scripting"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "sleep",
+            "elementName": "sleep",
+            "displayName": "Sleep",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.SleepPlugin",
+            "description": "Pauses execution for a specified duration.",
+            "documentation": {
+                "summary": "Pauses workflow execution for a specified number of milliseconds.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/sleep.html"
+            },
+            "semantics": {
+                "role": "LEAF",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-clock",
+                "tags": [
+                    "sleep",
+                    "delay"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "stylesheet",
+            "elementName": "stylesheet",
+            "displayName": "Stylesheet",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.StylesheetPlugin",
+            "description": "Defines an inline XSLT stylesheet used by the parent processor.",
+            "documentation": {
+                "summary": "Helper element for <xslt> providing inline stylesheet content.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xslt.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "xslt"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-code-branch",
+                "tags": [
+                    "xslt",
+                    "helper"
+                ]
+            },
+            "dependencies": [
+                "xslt"
+            ]
+        },
+        {
+            "id": "template",
+            "elementName": "template",
+            "displayName": "Template",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.TemplatePlugin",
+            "description": "Generates text/XML output using WebHarvest template expressions.",
+            "documentation": {
+                "summary": "Generates markup/text content using inline template syntax.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/template.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-file-alt",
+                "tags": [
+                    "template",
+                    "text"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "text",
+            "elementName": "text",
+            "displayName": "Text",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.TextPlugin",
+            "description": "Outputs literal text or CDATA content.",
+            "documentation": {
+                "summary": "Outputs literal text content, often used inside templates or HTML responses.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/text.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-align-left",
+                "tags": [
+                    "text",
+                    "literal"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "tokenize",
+            "elementName": "tokenize",
+            "displayName": "Tokenize",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.TokenizePlugin",
+            "description": "Splits text using a delimiter and returns the resulting tokens.",
+            "documentation": {
+                "summary": "Splits text into tokens using a specified delimiter or regular expression.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/tokenize.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-scissors",
+                "tags": [
+                    "token",
+                    "split"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "try",
+            "elementName": "try",
+            "displayName": "Try",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.TryPlugin",
+            "description": "Exception handling container providing catch/finally style semantics.",
+            "documentation": {
+                "summary": "Executes child processors with error handling via <catch> blocks.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/try.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-shield",
+                "tags": [
+                    "error",
+                    "handling"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "value-of",
+            "elementName": "value-of",
+            "displayName": "Value Of",
+            "origin": "core",
+            "category": "Variables",
+            "className": "org.webharvest.plugin.core.ValueOfPlugin",
+            "description": "Evaluates an expression and returns its string value.",
+            "documentation": {
+                "summary": "Evaluates the body and returns its value as text.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/value-of.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Variables",
+                "icon": "fa-scissors",
+                "tags": [
+                    "value",
+                    "expression"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "webbrowser",
+            "elementName": "webbrowser",
+            "displayName": "Web Browser",
+            "origin": "webbrowser",
+            "category": "Network",
+            "className": "org.webharvest.plugin.webbrowser.WebBrowserPlugin",
+            "description": "Automates a headless web browser to interact with complex pages.",
+            "documentation": {
+                "summary": "Controls a headless browser for dynamic sites, supporting navigation and form submission.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/web-browser.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Network",
+                "icon": "fa-window-restore",
+                "tags": [
+                    "browser",
+                    "automation"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "while",
+            "elementName": "while",
+            "displayName": "While",
+            "origin": "core",
+            "category": "Control",
+            "className": "org.webharvest.plugin.core.WhilePlugin",
+            "description": "Executes its body while the provided condition evaluates to true.",
+            "documentation": {
+                "summary": "Performs repeated execution based on a boolean expression.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/while.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Control",
+                "icon": "fa-rotate",
+                "tags": [
+                    "control",
+                    "loop",
+                    "condition"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "xml",
+            "elementName": "xml",
+            "displayName": "XML",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.XMLPlugin",
+            "description": "Outputs literal XML fragments or templates.",
+            "documentation": {
+                "summary": "Emits literal XML content, preserving markup for downstream processors.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xml.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-file-code",
+                "tags": [
+                    "xml",
+                    "literal"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "xml-to-json",
+            "elementName": "xml-to-json",
+            "displayName": "XML to JSON",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.XmlToJsonPlugin",
+            "description": "Converts XML data structures to JSON output.",
+            "documentation": {
+                "summary": "Transforms XML nodes into JSON representation.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xml-to-json.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-code",
+                "tags": [
+                    "xml",
+                    "json"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "xpath",
+            "elementName": "xpath",
+            "displayName": "XPath",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.XPathPlugin",
+            "description": "Extracts data using XPath expressions.",
+            "documentation": {
+                "summary": "Evaluates XPath expressions against XML data to return nodes or values.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xpath.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": true,
+                "allowBody": true,
+                "allowTextContent": false,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-code-branch",
+                "tags": [
+                    "xpath",
+                    "extraction"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "xq-expression",
+            "elementName": "xq-expression",
+            "displayName": "XQuery Expression",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.XQExpressionPlugin",
+            "description": "Defines the main XQuery expression executed by a parent <xquery>.",
+            "documentation": {
+                "summary": "Provides the XQuery expression body evaluated by the surrounding <xquery> block.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xq-expression.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "xquery"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-database",
+                "tags": [
+                    "xquery",
+                    "expression"
+                ]
+            },
+            "dependencies": [
+                "xquery"
+            ]
+        },
+        {
+            "id": "xq-param",
+            "elementName": "xq-param",
+            "displayName": "XQuery Parameter",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.XQParamPlugin",
+            "description": "Defines a parameter binding for the parent XQuery expression.",
+            "documentation": {
+                "summary": "Defines a named parameter passed into the surrounding <xquery> execution.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xq-param.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "xquery"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-tag",
+                "tags": [
+                    "xquery",
+                    "param"
+                ]
+            },
+            "dependencies": [
+                "xquery"
+            ]
+        },
+        {
+            "id": "xquery",
+            "elementName": "xquery",
+            "displayName": "XQuery",
+            "origin": "core",
+            "category": "Extraction",
+            "className": "org.webharvest.plugin.core.XQueryPlugin",
+            "description": "Executes XQuery expressions against XML documents.",
+            "documentation": {
+                "summary": "Runs XQuery expressions and returns the resulting XML or text.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xquery.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [
+                    "xq-param",
+                    "xq-expression"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Extraction",
+                "icon": "fa-database",
+                "tags": [
+                    "xquery",
+                    "xml"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "xslt",
+            "elementName": "xslt",
+            "displayName": "XSLT",
+            "origin": "core",
+            "category": "Processing",
+            "className": "org.webharvest.plugin.core.XsltPlugin",
+            "description": "Applies an XSLT stylesheet to XML content.",
+            "documentation": {
+                "summary": "Transforms XML input using inline or external XSLT stylesheets.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/xslt.html"
+            },
+            "semantics": {
+                "role": "BODY_EVALUATOR",
+                "canAppearAtRoot": true,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Processing",
+                "icon": "fa-shuffle",
+                "tags": [
+                    "xslt",
+                    "transform"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "zip",
+            "elementName": "zip",
+            "displayName": "ZIP",
+            "origin": "zip",
+            "category": "Storage",
+            "className": "org.webharvest.plugin.zip.ZipPlugin",
+            "description": "Creates or extracts ZIP archives with nested <zip-entry> definitions.",
+            "documentation": {
+                "summary": "Creates or extracts ZIP archives, allowing nested <zip-entry> definitions for file content.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/zip.html"
+            },
+            "semantics": {
+                "role": "CONTEXT_CONTAINER",
+                "canAppearAtRoot": true,
+                "allowsChildren": true,
+                "acceptsAnyChild": false,
+                "allowBody": false,
+                "allowTextContent": false,
+                "allowedChildTypes": [
+                    "zip-entry"
+                ],
+                "requiredParentTypes": []
+            },
+            "ui": {
+                "paletteGroup": "Storage",
+                "icon": "fa-file-zipper",
+                "tags": [
+                    "zip",
+                    "archive"
+                ]
+            },
+            "dependencies": []
+        },
+        {
+            "id": "zip-entry",
+            "elementName": "zip-entry",
+            "displayName": "ZIP Entry",
+            "origin": "zip",
+            "category": "Storage",
+            "className": "org.webharvest.plugin.zip.ZipEntryPlugin",
+            "description": "Defines a file inside a ZIP archive created by <zip>.",
+            "documentation": {
+                "summary": "Defines an individual file entry within a surrounding <zip> operation.",
+                "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/external/zip-entry.html"
+            },
+            "semantics": {
+                "role": "DEPENDENT",
+                "canAppearAtRoot": false,
+                "allowsChildren": false,
+                "acceptsAnyChild": false,
+                "allowBody": true,
+                "allowTextContent": true,
+                "allowedChildTypes": [],
+                "requiredParentTypes": [
+                    "zip"
+                ]
+            },
+            "ui": {
+                "paletteGroup": "Storage",
+                "icon": "fa-file-circle-plus",
+                "tags": [
+                    "zip",
+                    "entry"
+                ]
+            },
+            "dependencies": [
+                "zip"
+            ]
+        }
+    ]
+}

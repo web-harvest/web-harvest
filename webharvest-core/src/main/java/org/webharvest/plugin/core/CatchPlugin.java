@@ -276,6 +276,16 @@ public class CatchPlugin extends AbstractPlugin {
                     }
                     // Additional validation can be added here if needed
                 }
+
+                @Override
+                public boolean canAppearAtRoot() {
+                    return false;
+                }
+
+                @Override
+                public String[] getRequiredParents() {
+                    return new String[]{"try"};
+                }
             };
         }
     };
@@ -385,6 +395,16 @@ public class CatchPlugin extends AbstractPlugin {
                     throw new PluginValidationException("Configuration cannot be null");
                 }
                 // Additional validation can be added here if needed
+            }
+
+            @Override
+            public boolean canAppearAtRoot() {
+                return false;
+            }
+
+            @Override
+            public String[] getRequiredParents() {
+                return new String[]{"try"};
             }
         };
     }

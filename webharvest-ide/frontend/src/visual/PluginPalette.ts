@@ -82,11 +82,12 @@ export class PluginPalette {
             // Map API response to PluginTemplate[]
             this.templates = data.plugins.map((p: any) => ({
                 type: p.id,
-                category: p.category,
-                icon: p.visual?.icon || '📦',
+                category: p.paletteGroup || p.ui?.paletteGroup || p.category || 'General',
+                icon: p.icon || p.ui?.icon || 'fa-puzzle-piece',
                 label: p.name,
                 defaultAttributes: this.extractDefaultAttributes(p.schema),
-                description: p.description || ''
+                description: p.description || '',
+                canAppearAtRoot: p.semantics?.canAppearAtRoot !== false && p.schema?.canAppearAtRoot !== false
             }));
 
             this.filteredTemplates = [...this.templates];
@@ -395,6 +396,14 @@ export class PluginPalette {
         item.style.borderRadius = '4px';
         item.style.cursor = 'grab';
         item.style.transition = 'all 0.2s';
+
+        // Mark dependent plugins as disabled
+        if (template.canAppearAtRoot === false) {
+            item.classList.add('dependent-plugin');
+            item.style.opacity = '0.6';
+            item.style.cursor = 'not-allowed';
+            item.title = `This plugin requires a parent element`;
+        }
 
         // Icon + Label
         const content = document.createElement('div');

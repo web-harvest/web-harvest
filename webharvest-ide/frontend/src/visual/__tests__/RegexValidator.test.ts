@@ -230,14 +230,14 @@ describe('RegexValidator', () => {
         it('should explain quantifiers', () => {
             const explanation = validator.explainRegex('\\d+');
 
-            expect(explanation.some(e => e.includes('one or more'))).toBe(true);
+            expect(explanation.some(e => e.toLowerCase().includes('one or more'))).toBe(true);
         });
 
         it('should explain anchors', () => {
             const explanation = validator.explainRegex('^\\d+$');
 
-            expect(explanation.some(e => e.includes('start'))).toBe(true);
-            expect(explanation.some(e => e.includes('end'))).toBe(true);
+            expect(explanation.some(e => e.toLowerCase().includes('start'))).toBe(true);
+            expect(explanation.some(e => e.toLowerCase().includes('end'))).toBe(true);
         });
     });
 

@@ -50,7 +50,7 @@ describe('NodeInspector', () => {
             inspector.show(mockContainer, data);
 
             const info = mockContainer.querySelector('.inspector-info');
-            expect(info?.textContent).toContain('http');
+            expect(info?.textContent).toContain('HTTP');
         });
 
         it('should display variable values', () => {
@@ -65,6 +65,7 @@ describe('NodeInspector', () => {
             };
 
             inspector.show(mockContainer, data);
+            inspector.switchTab('variables');
 
             const vars = mockContainer.querySelector('.inspector-variables');
             expect(vars?.textContent).toContain('httpResponse');
@@ -83,6 +84,7 @@ describe('NodeInspector', () => {
             };
 
             inspector.show(mockContainer, data);
+            inspector.switchTab('data');
 
             const preview = mockContainer.querySelector('.data-preview');
             expect(preview).not.toBeNull();
@@ -101,6 +103,7 @@ describe('NodeInspector', () => {
             };
 
             inspector.show(mockContainer, data);
+            inspector.switchTab('performance');
 
             const perf = mockContainer.querySelector('.performance-breakdown');
             expect(perf).not.toBeNull();
@@ -119,6 +122,7 @@ describe('NodeInspector', () => {
             };
 
             inspector.show(mockContainer, data);
+            inspector.switchTab('error');
 
             const error = mockContainer.querySelector('.error-details');
             expect(error?.textContent).toContain('Connection timeout');
@@ -142,6 +146,7 @@ describe('NodeInspector', () => {
             };
 
             inspector.show(mockContainer, data);
+            inspector.switchTab('http');
 
             const http = mockContainer.querySelector('.http-details');
             expect(http?.textContent).toContain('GET');

@@ -178,16 +178,10 @@ export class SchemaEditor {
      * Create checkbox
      */
     private createCheckbox(attrDef: AttributeDefinition, value: string): HTMLInputElement {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        `;
-
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.checked = value === 'true';
+        input.required = attrDef.required;
         input.style.cssText = `
             width: 18px;
             height: 18px;

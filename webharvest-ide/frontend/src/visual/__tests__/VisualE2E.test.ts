@@ -99,7 +99,7 @@ describe('Visual Designer E2E Integration (TDD)', () => {
 
             // Step 5: Verify nested structure preserved
             expect(generatedXML).toContain('<loop maxloops="5">');
-            expect(generatedXML).toContain('<http url="https://api.example.com"/>');
+            expect(generatedXML).toContain('http url="https://api.example.com"');
             expect(generatedXML).toContain('</loop>');
         });
 

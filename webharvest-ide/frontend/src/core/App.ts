@@ -56,6 +56,7 @@ export class App {
         this.resultsPanel = new ResultsPanel('results');
         this.variablesPanel = new VariablesPanel('variables');
         this.sessionPanel = new SessionPanel('session');
+        // Note: visualDesigner initialized after pluginManager loads in initialize()
         this.visualDesigner = new VisualDesigner('canvas-area');
         this.propertyPanel = new PropertyPanel('propertyPanel');
         this.pluginPalette = new PluginPalette('plugin-palette');
@@ -146,6 +147,10 @@ export class App {
         try {
             const plugins = await this.pluginManager.loadPlugins();
             this.uiManager.renderPluginPalette(plugins);
+
+            // Initialize semantic validator in VisualDesigner
+            this.visualDesigner.setPluginManager(this.pluginManager);
+
             console.log('✅ Plugin palette rendered');
         } catch (error) {
             console.error('❌ Failed to load plugins:', error);
@@ -244,6 +249,24 @@ export class App {
     private setupEventHandlers(): void {
         // WebSocket updates (matches old app.js logic)
         this.wsManager.onUpdate((update) => {
+            if (this.currentMode === 'visual' && this.visualDesigner && Array.isArray(update.nodeUpdates) && update.nodeUpdates.length > 0) {
+                update.nodeUpdates.forEach((nodeUpdate) => {
+                    this.executionStateManager.updateNodeState(nodeUpdate);
+                    const nodeState = this.executionStateManager.getNodeState(nodeUpdate.nodeId);
+
+                    if (!nodeState) {
+                        console.warn(`[App] Received execution update for unknown node: ${nodeUpdate.nodeId}`);
+                        return;
+                    }
+
+                    this.visualDesigner.updateNodeExecutionState(nodeUpdate.nodeId, nodeState.status);
+
+                    if (nodeState.metrics) {
+                        this.visualDesigner.updateNodeMetrics(nodeUpdate.nodeId, nodeState.metrics);
+                    }
+                });
+            }
+
             console.log('=== Execution update received ===');
             console.log('Status:', update.status);
             console.log('Message:', update.message);
@@ -365,6 +388,51 @@ export class App {
             }
         });
 
+        this.visualDesigner.addEventListener('saveRequested', async (payload: any) => {
+            try {
+                const xml = typeof payload?.xml === 'string' ? payload.xml : this.visualDesigner.generateXML();
+                const providedFilename: string | undefined = payload?.filename;
+
+                if (providedFilename && providedFilename.trim().length > 0) {
+                    this.downloadXml(xml, providedFilename);
+                    this.visualDesigner.markClean();
+                    this.updateUnifiedToolbar();
+                    this.logsPanel.addLog('success', `💾 Saved: ${providedFilename}`);
+                    return;
+                }
+
+                const suggestedName = this.visualDesigner.getCurrentConfiguration()?.filename || 'visual-workflow.xml';
+                const chosenName = window.prompt('Enter filename for this configuration:', suggestedName);
+
+                if (!chosenName) {
+                    this.logsPanel.addLog('info', '💡 Save cancelled');
+                    return;
+                }
+
+                await this.visualDesigner.saveConfigurationAs(chosenName);
+            } catch (error) {
+                console.error('❌ [App] Failed to handle saveRequested event:', error);
+                this.logsPanel.addLog('error', '❌ Failed to save configuration');
+            }
+        });
+
+        this.visualDesigner.addEventListener('saveAsRequested', (payload: any) => {
+            try {
+                const filename = (payload?.filename && payload.filename.trim().length > 0)
+                    ? payload.filename
+                    : 'visual-workflow.xml';
+                const xml = typeof payload?.xml === 'string' ? payload.xml : this.visualDesigner.generateXML();
+
+                this.downloadXml(xml, filename);
+                this.visualDesigner.markClean();
+                this.updateUnifiedToolbar();
+                this.logsPanel.addLog('success', `💾 Saved as: ${filename}`);
+            } catch (error) {
+                console.error('❌ [App] Failed to handle saveAsRequested event:', error);
+                this.logsPanel.addLog('error', '❌ Failed to save configuration');
+            }
+        });
+
         console.log('✅ Event handlers configured');
 
         // Keyboard shortcuts (Visual mode only)
@@ -463,15 +531,28 @@ export class App {
         console.log(`🗺️ Minimap ${!currentlyVisible ? 'ENABLED' : 'DISABLED'}`);
     }
 
+    private downloadXml(xml: string, filename: string): void {
+        const blob = new Blob([xml], { type: 'text/xml' });
+        const url = URL.createObjectURL(blob);
+
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.style.display = 'none';
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        URL.revokeObjectURL(url);
+    }
+
     /**
      * Sync visual nodes to XML (real-time)
      */
     private syncVisualToXML(): void {
         try {
-            const nodes = this.visualDesigner.getNodes();
-            const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">\n' +
-                this.xmlGenerator.generate(nodes, 1) +
-                '\n</config>';
+            const xml = this.visualDesigner.generateXML();
 
             const activeTab = this.tabManager.getActiveTab();
             if (activeTab) {
@@ -545,6 +626,14 @@ export class App {
         try {
             const tab = this.tabManager.getActiveTab();
             const configName = tab?.name || 'config.xml';
+
+            if (this.currentMode === 'visual' && this.visualDesigner) {
+                const nodesForTracking = this.visualDesigner.getAllNodes();
+                this.executionStateManager.registerNodes(nodesForTracking);
+                this.visualDesigner.clearExecutionStates();
+            } else {
+                this.executionStateManager.reset();
+            }
 
             // Call API with JSON payload (backend expects {"configXml": "...", "configName": "..."})
             const response = await fetch('/api/execute', {
@@ -627,7 +716,12 @@ export class App {
     /**
      * Save file
      */
-    saveFile(): void {
+    async saveFile(): Promise<void> {
+        if (this.currentMode === 'visual') {
+            await this.visualDesigner.requestSave();
+            return;
+        }
+
         const tab = this.tabManager.getActiveTab();
         if (!tab) return;
 
@@ -781,59 +875,21 @@ export class App {
      * Save Visual configuration
      */
     async saveVisualConfiguration(): Promise<void> {
-        const config = this.visualDesigner.getCurrentConfiguration();
-        if (!config) {
-            this.logsPanel.addLog('warning', 'No configuration to save');
-            return;
-        }
-
-        try {
-            // Generate XML from nodes
-            const xml = this.xmlGenerator.generate(config.nodes);
-
-            // If no filename, show Save As dialog
-            if (!config.filename) {
-                await this.saveVisualConfigurationAs();
-                return;
-            }
-
-            // TODO: Save to file
-            this.logsPanel.addLog('success', `💾 Saved: ${config.filename}`);
-            this.visualDesigner.markClean();
-            this.updateVisualToolbar();
-        } catch (error) {
-            console.error('Failed to save configuration:', error);
-            this.logsPanel.addLog('error', 'Failed to save configuration');
-        }
+        await this.visualDesigner.requestSave();
     }
 
     /**
      * Save Visual configuration as...
      */
     async saveVisualConfigurationAs(): Promise<void> {
-        const filename = prompt('Enter filename:', 'my-workflow.xml');
+        const suggested = this.visualDesigner.getCurrentConfiguration()?.filename || 'visual-workflow.xml';
+        const filename = window.prompt('Enter filename:', suggested);
         if (!filename) {
+            this.logsPanel.addLog('info', '💡 Save As cancelled');
             return;
         }
 
-        const config = this.visualDesigner.getCurrentConfiguration();
-        if (!config) {
-            return;
-        }
-
-        try {
-            const xml = this.xmlGenerator.generate(config.nodes);
-
-            // TODO: Actual file save
-            this.visualDesigner.setCurrentFilename(filename);
-            this.visualDesigner.markClean();
-            this.updateVisualToolbar();
-
-            this.logsPanel.addLog('success', `💾 Saved as: ${filename}`);
-        } catch (error) {
-            console.error('Failed to save as:', error);
-            this.logsPanel.addLog('error', 'Failed to save configuration');
-        }
+        await this.visualDesigner.saveConfigurationAs(filename);
     }
 
     /**
@@ -862,16 +918,62 @@ export class App {
      * Open file in Visual mode
      */
     async openFileInVisual(): Promise<void> {
-        // Check for unsaved changes
-        if (this.visualDesigner.isDirty()) {
-            // For now, just show examples without blocking
-            // TODO: Implement non-blocking modal
-            console.warn('⚠️ Unsaved changes will be lost');
-        }
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xml';
 
-        // TODO: Show file picker
-        // For now, use examples modal
-        this.showExamplesModal();
+        input.addEventListener('change', async (event) => {
+            const target = event.target as HTMLInputElement;
+            const file = target.files?.[0];
+
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = async (loadEvent) => {
+                const content = loadEvent?.target?.result;
+
+                if (typeof content !== 'string') {
+                    this.logsPanel.addLog('error', '❌ Failed to read configuration file');
+                    return;
+                }
+
+                try {
+                    const nodes = this.xmlParser.parse(content);
+                    const loaded = await this.visualDesigner.loadNodesWithPrompt(nodes);
+
+                    if (!loaded) {
+                        this.logsPanel.addLog('info', 'ℹ️ Load cancelled');
+                        return;
+                    }
+
+                    this.visualDesigner.setCurrentFilename(file.name);
+                    this.visualDesigner.markClean();
+                    this.updateUnifiedToolbar();
+
+                    if (this.currentMode === 'visual') {
+                        this.syncVisualToXML();
+                    }
+
+                    this.logsPanel.addLog('success', `✅ Loaded: ${file.name}`);
+                } catch (error) {
+                    console.error('❌ [App] Failed to import configuration:', error);
+                    this.logsPanel.addLog('error', '❌ Failed to load configuration');
+                }
+            };
+
+            reader.onerror = (err) => {
+                console.error('❌ [App] File read error:', err);
+                this.logsPanel.addLog('error', '❌ Failed to load configuration');
+            };
+
+            reader.readAsText(file);
+            target.value = '';
+        });
+
+        input.click();
     }
 
     /**
@@ -928,11 +1030,7 @@ export class App {
             console.log('🎨 [App] Generating XML from', nodes.length, 'visual nodes...');
 
             // Wrap in <config> if needed
-            const nodesXml = this.xmlGenerator.generate(nodes);
-            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-${nodesXml}
-</config>`;
+            xmlContent = this.visualDesigner.generateXML();
 
             const config = this.visualDesigner.getCurrentConfiguration();
             configName = config?.filename || 'visual-workflow.xml';
@@ -956,8 +1054,11 @@ ${nodesXml}
         try {
             const validationResponse = await fetch('/api/config/validate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/xml' },
-                body: xmlContent,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    configXml: xmlContent,
+                    configName: configName,
+                }),
             });
 
             const validationResult = await validationResponse.json();
@@ -995,11 +1096,7 @@ ${nodesXml}
                 return;
             }
 
-            const nodesXml = this.xmlGenerator.generate(nodes);
-            xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
-${nodesXml}
-</config>`;
+            xmlContent = this.visualDesigner.generateXML();
         } else {
             // XML mode: use tab content
             const tab = this.tabManager.getActiveTab();

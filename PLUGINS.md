@@ -609,6 +609,44 @@ public class ReportGeneratorProcessor extends AbstractProcessor<ReportGeneratorD
 - Testuj różne scenariusze
 - Testuj obsługę błędów
 
+## 🔒 **Context-Specific Plugins**
+
+Some plugins **require a parent element** and cannot be used at the root level:
+
+### **HTTP Context**
+- **http-header** - Add HTTP request headers (parent: `<http>`)
+- **http-param** - Add HTTP parameters (parent: `<http>`)
+
+### **XQuery Context**
+- **xq-param** - XQuery external variables (parent: `<xquery>`)
+- **xq-expression** - XQuery expression code (parent: `<xquery>`)
+
+### **Function Call Context**
+- **call-param** - Function call parameters (parent: `<call>`)
+
+### **Conditional Context**
+- **else** - Alternative path (parent: `<if>`)
+
+### **Error Handling Context**
+- **catch** - Error handler (parent: `<try>`)
+
+### **FTP Context**
+- **ftp-put** - Upload file to FTP server (parent: `<ftp>`)
+
+### **Loop Context**
+- **list** - Loop items (parent: `<loop>`)
+- **body** - Loop body (parent: `<loop>`)
+
+### **XML Context**
+- **xml-to-xml** - XML transformation (parent: `<xml>`)
+
+### **List Context**
+- **list-item** - Add item to list (parent: `<list>`)
+
+For detailed metadata and semantic information, see: `docs/semantic-metadata/`
+
+---
+
 ## 📖 **Dodatkowe zasoby**
 
 - **API Documentation:** `webharvest-ide/target/apidocs/index.html`

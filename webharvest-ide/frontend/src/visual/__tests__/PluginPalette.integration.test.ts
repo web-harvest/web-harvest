@@ -8,6 +8,7 @@
  * 4. Should show empty state when no templates
  */
 
+import { jest } from '@jest/globals';
 import { PluginPalette } from '../PluginPalette';
 
 describe('PluginPalette - API Integration (TDD)', () => {
@@ -64,7 +65,8 @@ describe('PluginPalette - API Integration (TDD)', () => {
                             name: 'Http',
                             category: 'Network',
                             description: 'HTTP plugin',
-                            visual: { icon: '🌐' },
+                            icon: 'fa-globe',
+                            paletteGroup: 'Network',
                             schema: {
                                 attributes: [
                                     { name: 'url', defaultValue: 'https://example.com' }
@@ -76,6 +78,7 @@ describe('PluginPalette - API Integration (TDD)', () => {
                             name: 'XPath',
                             category: 'Extraction',
                             description: 'XPath extraction',
+                            icon: undefined,
                             schema: { attributes: [] }
                         }
                     ]
@@ -95,8 +98,9 @@ describe('PluginPalette - API Integration (TDD)', () => {
                 label: 'Http',
                 category: 'Network',
                 description: 'HTTP plugin',
-                icon: '🌐',
-                defaultAttributes: { url: 'https://example.com' }
+                icon: 'fa-globe',
+                defaultAttributes: { url: 'https://example.com' },
+                canAppearAtRoot: true
             });
 
             // Check second template
@@ -105,8 +109,9 @@ describe('PluginPalette - API Integration (TDD)', () => {
                 label: 'XPath',
                 category: 'Extraction',
                 description: 'XPath extraction',
-                icon: '📦', // Default icon
-                defaultAttributes: {}
+                icon: 'fa-puzzle-piece', // Default icon
+                defaultAttributes: {},
+                canAppearAtRoot: true
             });
         });
 
@@ -190,10 +195,7 @@ describe('PluginPalette - API Integration (TDD)', () => {
             await palette.init();
 
             expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('✅'),
-                expect.stringContaining('Loaded'),
-                expect.stringContaining('27'),
-                expect.stringContaining('plugins')
+                expect.stringContaining('✅ [PluginPalette] Loaded 27 plugins from API!')
             );
 
             consoleSpy.mockRestore();
@@ -216,8 +218,7 @@ describe('PluginPalette - API Integration (TDD)', () => {
 
             // Should log error
             expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('❌'),
-                expect.stringContaining('Failed to load plugins from API'),
+                expect.stringContaining('❌ [PluginPalette] Failed to load plugins from API:'),
                 expect.any(Error)
             );
 
@@ -323,7 +324,7 @@ describe('PluginPalette - API Integration (TDD)', () => {
             await palette.init();
 
             // Should show empty state message
-            expect(container.innerHTML).toContain('No plugins found');
+            expect(container.innerHTML).toContain('No plugins loaded');
         });
     });
 

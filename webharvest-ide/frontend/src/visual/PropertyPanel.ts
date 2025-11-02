@@ -4,6 +4,10 @@
  */
 
 import type { VisualNode, Plugin } from '../types';
+
+interface PropertyPanelOptions {
+    autoLoad?: boolean;
+}
 import { ExpressionBuilder } from './ExpressionBuilder';
 import { XPathTester } from './XPathTester';
 import { RegexValidator } from './RegexValidator';
@@ -27,7 +31,7 @@ export class PropertyPanel {
     // Available variables for expression builder
     private availableVariables: string[] = [];
 
-    constructor(containerId: string) {
+    constructor(containerId: string, options?: PropertyPanelOptions | ((node: VisualNode) => void)) {
         const container = document.getElementById(containerId);
 
         if (!container) {
@@ -37,10 +41,19 @@ export class PropertyPanel {
         this.container = container;
         this.schemaEditor = new SchemaEditor();
 
+        let autoLoad = true;
+        if (typeof options === 'function') {
+            this.onChangeCallback = options;
+        } else if (options) {
+            autoLoad = options.autoLoad ?? true;
+        }
+
         // Load plugin metadata asynchronously
-        this.loadPluginMetadata().catch(err => {
-            console.warn('⚠️ [PropertyPanel] Failed to load plugin metadata:', err);
-        });
+        if (autoLoad) {
+            this.loadPluginMetadata().catch(err => {
+                console.warn('⚠️ [PropertyPanel] Failed to load plugin metadata:', err);
+            });
+        }
     }
 
     /**
@@ -58,7 +71,50 @@ export class PropertyPanel {
             }
 
             const data = await response.json();
-            this.pluginMetadata = data.plugins || [];
+            const rawPlugins: Plugin[] = data.plugins || [];
+
+            this.pluginMetadata = rawPlugins.map(plugin => {
+                if (!plugin.schema) {
+                    return plugin;
+                }
+
+                const normalisedAttributes = plugin.schema.attributes.map(attr => ({
+                    ...attr,
+                    type: attr.type ? attr.type.toLowerCase() : 'string'
+                }));
+
+                const semantics = plugin.semantics || {
+                    role: 'LEAF',
+                    canAppearAtRoot: true,
+                    allowsChildren: false,
+                    acceptsAnyChild: false,
+                    allowBody: false,
+                    allowTextContent: false,
+                    allowedChildTypes: [] as string[],
+                    requiredParentTypes: [] as string[]
+                };
+
+                const allowedSubElements: string[] = plugin.schema.allowedSubElements || [];
+                const requiredParents: string[] = plugin.schema.requiredParents || semantics.requiredParentTypes || [];
+                const canHaveBody = plugin.schema.canHaveBody ?? plugin.schema.allowsBody ?? semantics.allowTextContent;
+                const canHaveChildren = plugin.schema.canHaveChildren ?? (semantics.allowsChildren || allowedSubElements.length > 0);
+                const canAppearAtRoot = plugin.schema.canAppearAtRoot ?? (requiredParents.length === 0 && semantics.role !== 'DEPENDENT');
+                const isContextSpecific = plugin.schema.isContextSpecific ?? requiredParents.length > 0;
+
+                return {
+                    ...plugin,
+                    semantics,
+                    schema: {
+                        ...plugin.schema,
+                        attributes: normalisedAttributes,
+                        canHaveBody,
+                        canHaveChildren,
+                        canAppearAtRoot,
+                        requiredParents,
+                        isContextSpecific
+                    }
+                } as Plugin;
+            });
             this.metadataLoaded = true;
 
             console.log(`✅ [PropertyPanel] Loaded ${this.pluginMetadata.length} plugin schemas`);
@@ -165,6 +221,48 @@ export class PropertyPanel {
 
         // Try to use SchemaEditor if plugin schema is available
         const plugin = this.getPluginSchema(this.currentNode.type);
+
+        if (plugin) {
+            const metaContainer = document.createElement('div');
+            metaContainer.style.marginBottom = '16px';
+            metaContainer.style.fontSize = '12px';
+            metaContainer.style.lineHeight = '1.5';
+
+            if (plugin.documentation?.summary) {
+                const summaryEl = document.createElement('div');
+                summaryEl.style.color = 'var(--gray-700)';
+                summaryEl.innerHTML = `<strong>Summary:</strong> ${plugin.documentation.summary}`;
+                metaContainer.appendChild(summaryEl);
+            }
+
+            if (plugin.documentation?.url) {
+                const linkEl = document.createElement('a');
+                linkEl.href = plugin.documentation.url;
+                linkEl.target = '_blank';
+                linkEl.rel = 'noreferrer';
+                linkEl.textContent = 'View documentation ↗';
+                linkEl.style.display = 'inline-block';
+                linkEl.style.marginTop = '4px';
+                linkEl.style.color = 'var(--magenta)';
+                linkEl.style.fontWeight = '600';
+                metaContainer.appendChild(linkEl);
+            }
+
+            if (plugin.dependencies && plugin.dependencies.length > 0) {
+                const depsEl = document.createElement('div');
+                depsEl.style.marginTop = '8px';
+                depsEl.innerHTML = `<strong>Requires parent:</strong> ${plugin.dependencies.join(', ')}`;
+                metaContainer.appendChild(depsEl);
+            }
+
+            if (metaContainer.children.length > 0) {
+                metaContainer.style.padding = '12px';
+                metaContainer.style.background = 'var(--gray-50)';
+                metaContainer.style.border = '1px solid var(--gray-200)';
+                metaContainer.style.borderRadius = 'var(--radius-md)';
+                form.appendChild(metaContainer);
+            }
+        }
 
         if (plugin && plugin.schema && this.schemaEditor) {
             console.log(`✅ [PropertyPanel] Using SchemaEditor for plugin: ${this.currentNode.type}`);

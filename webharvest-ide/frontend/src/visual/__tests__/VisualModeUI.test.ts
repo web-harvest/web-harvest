@@ -56,17 +56,17 @@ describe('Visual Mode UI Integration (TDD)', () => {
     describe('Visual Toolbar', () => {
         it('should display current filename', () => {
             const filename = 'my-workflow.xml';
-            
+
             updateVisualToolbar(filename, false);
 
-            const filenameElement = visualToolbar.querySelector('.current-filename');
+            const filenameElement = visualToolbar.querySelector('#current-filename');
             expect(filenameElement?.textContent).toBe(filename);
         });
 
         it('should show dirty indicator when configuration is modified', () => {
             updateVisualToolbar('my-workflow.xml', true);
 
-            const dirtyIndicator = visualToolbar.querySelector('.dirty-indicator');
+            const dirtyIndicator = visualToolbar.querySelector('#dirty-indicator');
             expect(dirtyIndicator).toBeTruthy();
             expect(getComputedStyle(dirtyIndicator!).display).not.toBe('none');
         });
@@ -74,25 +74,28 @@ describe('Visual Mode UI Integration (TDD)', () => {
         it('should hide dirty indicator when configuration is clean', () => {
             updateVisualToolbar('my-workflow.xml', false);
 
-            const dirtyIndicator = visualToolbar.querySelector('.dirty-indicator');
+            const dirtyIndicator = visualToolbar.querySelector('#dirty-indicator');
             expect(dirtyIndicator).toBeTruthy();
             expect(getComputedStyle(dirtyIndicator!).display).toBe('none');
         });
 
         it('should have Save button', () => {
-            const saveBtn = visualToolbar.querySelector('.btn-save');
+            updateVisualToolbar('config.xml', false);
+            const saveBtn = visualToolbar.querySelector('button[title="Save (⌘S)"]');
             expect(saveBtn).toBeTruthy();
             expect(saveBtn?.textContent).toContain('Save');
         });
 
         it('should have New button', () => {
-            const newBtn = visualToolbar.querySelector('.btn-new');
+            updateVisualToolbar('config.xml', false);
+            const newBtn = visualToolbar.querySelector('button[title="New (⌘N)"]');
             expect(newBtn).toBeTruthy();
             expect(newBtn?.textContent).toContain('New');
         });
 
         it('should have Open button', () => {
-            const openBtn = visualToolbar.querySelector('.btn-open');
+            updateVisualToolbar('config.xml', false);
+            const openBtn = visualToolbar.querySelector('button[title="Open (⌘O)"]');
             expect(openBtn).toBeTruthy();
             expect(openBtn?.textContent).toContain('Open');
         });
@@ -129,7 +132,7 @@ describe('Visual Mode UI Integration (TDD)', () => {
 function switchToVisualMode() {
     const tabs = document.getElementById('tabs-container');
     const toolbar = document.getElementById('visual-toolbar');
-    
+
     if (tabs) tabs.style.display = 'none';
     if (toolbar) toolbar.style.display = 'flex';
 }
@@ -137,7 +140,7 @@ function switchToVisualMode() {
 function switchToXMLMode() {
     const tabs = document.getElementById('tabs-container');
     const toolbar = document.getElementById('visual-toolbar');
-    
+
     if (tabs) tabs.style.display = 'flex';
     if (toolbar) toolbar.style.display = 'none';
 }
@@ -147,11 +150,11 @@ function updateVisualToolbar(filename: string, isDirty: boolean) {
     if (!toolbar) return;
 
     toolbar.innerHTML = `
-        <span class="current-filename">${filename}</span>
-        <span class="dirty-indicator" style="display: ${isDirty ? 'inline' : 'none'}; color: #ef4444;">●</span>
-        <button class="btn btn-save">Save</button>
-        <button class="btn btn-new">New</button>
-        <button class="btn btn-open">Open</button>
+        <span id="current-filename">${filename}</span>
+        <span id="dirty-indicator" style="display: ${isDirty ? 'inline' : 'none'}; color: #ef4444;">●</span>
+        <button title="New (⌘N)">New</button>
+        <button title="Open (⌘O)">Open</button>
+        <button title="Save (⌘S)">Save</button>
     `;
 }
 

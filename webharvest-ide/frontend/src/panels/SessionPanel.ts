@@ -19,6 +19,19 @@ export class SessionPanel {
         }
 
         this.container = container;
+        this.renderEmptyState();
+    }
+
+    private renderEmptyState(): void {
+        this.container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-info-circle"></i>
+                <p>No session active</p>
+                <small>Session details will appear after execution</small>
+            </div>
+            <button class="btn btn-secondary" onclick="window.app.loadSessionHistory()" style="margin-top: 16px; width: 100%;">
+                <i class="fas fa-history"></i> View History
+            </button>`;
     }
 
     /**
@@ -43,7 +56,7 @@ export class SessionPanel {
     clear(): void {
         this.sessionInfo = null;
         this.tokenUsage = null;
-        this.container.innerHTML = '';
+        this.renderEmptyState();
     }
 
     /**
@@ -74,15 +87,7 @@ export class SessionPanel {
         // If no data at all, show empty state with View History button
         if (!this.sessionInfo && !this.tokenUsage) {
             console.log('[SessionPanel] No data, showing empty state');
-            this.container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-info-circle"></i>
-                    <p>No session active</p>
-                    <small>Session details will appear after execution</small>
-                </div>
-                <button class="btn btn-secondary" onclick="window.app.loadSessionHistory()" style="margin-top: 16px; width: 100%;">
-                    <i class="fas fa-history"></i> View History
-                </button>`;
+            this.renderEmptyState();
             return;
         }
 

@@ -9,17 +9,22 @@ import type { ExecutionUpdate } from '../types';
 
 // Mock WebSocket
 class MockWebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+
     url: string;
     onopen: ((event: Event) => void) | null = null;
     onmessage: ((event: MessageEvent) => void) | null = null;
     onerror: ((event: Event) => void) | null = null;
     onclose: ((event: CloseEvent) => void) | null = null;
-    readyState: number = 0; // CONNECTING
+    readyState: number = MockWebSocket.CONNECTING;
 
     constructor(url: string) {
         this.url = url;
         setTimeout(() => {
-            this.readyState = 1; // OPEN
+            this.readyState = MockWebSocket.OPEN;
             if (this.onopen) {
                 this.onopen(new Event('open'));
             }
@@ -31,7 +36,7 @@ class MockWebSocket {
     }
 
     close(): void {
-        this.readyState = 3; // CLOSED
+        this.readyState = MockWebSocket.CLOSED;
         if (this.onclose) {
             this.onclose(new CloseEvent('close'));
         }
@@ -94,34 +99,38 @@ describe('WebSocketManager', () => {
     });
 
     describe('message handling', () => {
-        it('should receive execution updates', async (done) => {
+        it('should receive execution updates', async () => {
             const ws = await manager.connect('test-id') as any;
 
-            manager.onUpdate((update: ExecutionUpdate) => {
-                expect(update.status).toBe('RUNNING');
-                expect(update.message).toBe('Test message');
-                done();
-            });
+            await new Promise<void>((resolve) => {
+                manager.onUpdate((update: ExecutionUpdate) => {
+                    expect(update.status).toBe('RUNNING');
+                    expect(update.message).toBe('Test message');
+                    resolve();
+                });
 
-            ws.simulateMessage({
-                status: 'RUNNING',
-                message: 'Test message',
-                progress: 50,
+                ws.simulateMessage({
+                    status: 'RUNNING',
+                    message: 'Test message',
+                    progress: 50,
+                });
             });
         });
 
-        it('should parse JSON messages', async (done) => {
+        it('should parse JSON messages', async () => {
             const ws = await manager.connect('test-id') as any;
 
-            manager.onUpdate((update: ExecutionUpdate) => {
-                expect(update.progress).toBe(75);
-                done();
-            });
+            await new Promise<void>((resolve) => {
+                manager.onUpdate((update: ExecutionUpdate) => {
+                    expect(update.progress).toBe(75);
+                    resolve();
+                });
 
-            ws.simulateMessage({
-                status: 'RUNNING',
-                message: 'Progress',
-                progress: 75,
+                ws.simulateMessage({
+                    status: 'RUNNING',
+                    message: 'Progress',
+                    progress: 75,
+                });
             });
         });
 

@@ -3,27 +3,8 @@
  * Manages per-node execution state and integrates with WebSocket updates
  */
 
-import type { VisualNode } from '../types';
+import type { VisualNode, NodeExecutionUpdate, NodeExecutionMetrics } from '../types';
 import type { NodeExecutionState as ExecutionStatus } from '../visual/NodeStateRenderer';
-
-export interface NodeExecutionUpdate {
-    nodeId: string;
-    pluginType: string;
-    status: ExecutionStatus;
-    progress?: number;
-    startTime?: number;
-    endTime?: number;
-    metrics?: {
-        dataProcessed?: number;
-        httpRequests?: number;
-        memoryUsed?: number;
-    };
-    variables?: Record<string, any>;
-    error?: {
-        message: string;
-        stackTrace: string;
-    };
-}
 
 export interface NodeStateInfo {
     nodeId: string;
@@ -33,11 +14,7 @@ export interface NodeStateInfo {
     startTime?: number;
     endTime?: number;
     elapsedTime?: number;
-    metrics?: {
-        dataProcessed?: number;
-        httpRequests?: number;
-        memoryUsed?: number;
-    };
+    metrics?: NodeExecutionMetrics;
     variables?: Record<string, any>;
     error?: {
         message: string;

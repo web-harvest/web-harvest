@@ -5,6 +5,7 @@
  * Inspired by: Conductor (visual-first workflow editor)
  */
 
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { App } from '../App';
 
 describe('App - Default Mode (TDD)', () => {
@@ -12,8 +13,12 @@ describe('App - Default Mode (TDD)', () => {
         // Setup DOM
         document.body.innerHTML = `
             <div id="tabs-container"></div>
-            <div id="visual-toolbar"></div>
+            <div id="visual-toolbar">
+                <span id="current-filename">untitled.xml</span>
+                <span id="dirty-indicator" style="display: none;">●</span>
+            </div>
             <div id="editor"></div>
+            <div id="visual-canvas"></div>
             <div id="canvas-area"></div>
             <div id="plugin-sidebar"></div>
             <div id="plugin-palette"></div>
@@ -61,10 +66,12 @@ describe('App - Default Mode (TDD)', () => {
 
         // Visual UI should be visible
         const visualToolbar = document.getElementById('visual-toolbar');
-        const tabsContainer = document.getElementById('tabs-container');
+        const visualCanvas = document.getElementById('visual-canvas');
+        const editor = document.getElementById('editor');
 
-        expect(visualToolbar?.style.display).not.toBe('none');
-        expect(tabsContainer?.style.display).toBe('none');
+        expect(getComputedStyle(visualToolbar as HTMLElement).display).not.toBe('none');
+        expect(getComputedStyle(visualCanvas as HTMLElement).display).toBe('flex');
+        expect(getComputedStyle(editor as HTMLElement).display).toBe('none');
     });
 
     it('should show Plugin Palette on startup', async () => {
@@ -73,7 +80,7 @@ describe('App - Default Mode (TDD)', () => {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const pluginSidebar = document.getElementById('plugin-sidebar');
-        expect(pluginSidebar?.style.display).not.toBe('none');
+        expect(getComputedStyle(pluginSidebar as HTMLElement).display).toBe('flex');
     });
 
     it('should hide Monaco Editor on startup', async () => {
@@ -82,7 +89,7 @@ describe('App - Default Mode (TDD)', () => {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const editor = document.getElementById('editor');
-        expect(editor?.style.display).toBe('none');
+        expect(getComputedStyle(editor as HTMLElement).display).toBe('none');
     });
 
     it('should allow switching to XML mode after startup', async () => {
@@ -100,20 +107,22 @@ describe('App - Default Mode (TDD)', () => {
         expect((app as any).currentMode).toBe('xml');
     });
 
-    it('should show tabs when switching to XML mode', async () => {
+    it('should show editor when switching to XML mode', async () => {
         const app = new App();
 
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Start in visual (tabs hidden)
-        const tabsContainer = document.getElementById('tabs-container');
-        expect(tabsContainer?.style.display).toBe('none');
+        const editor = document.getElementById('editor') as HTMLElement;
+        const visualCanvas = document.getElementById('visual-canvas') as HTMLElement;
+        expect(getComputedStyle(visualCanvas).display).toBe('flex');
+        expect(getComputedStyle(editor).display).toBe('none');
 
         // Switch to XML
         await app.toggleVisualMode();
 
-        // Tabs should now be visible
-        expect(tabsContainer?.style.display).not.toBe('none');
+        // Editor visible, visual canvas hidden
+        expect(getComputedStyle(editor).display).not.toBe('none');
+        expect(getComputedStyle(visualCanvas).display).toBe('none');
     });
 });
 

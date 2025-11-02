@@ -62,7 +62,7 @@ describe('App - Compilation & Type Safety', () => {
         it('should have toggleVisualMode method', () => {
             const app = new App();
             expect(typeof app.toggleVisualMode).toBe('function');
-            
+
             // Should not throw
             expect(() => app.toggleVisualMode()).not.toThrow();
         });
@@ -70,7 +70,7 @@ describe('App - Compilation & Type Safety', () => {
         it('should have runExecution method that accepts string', async () => {
             const app = new App();
             expect(typeof app.runExecution).toBe('function');
-            
+
             // Should accept XML string
             await expect(app.runExecution('<config></config>')).resolves.not.toThrow();
         });
@@ -78,7 +78,7 @@ describe('App - Compilation & Type Safety', () => {
         it('should have runConfig method with NO arguments', async () => {
             const app = new App();
             expect(typeof app.runConfig).toBe('function');
-            
+
             // Should NOT require arguments
             await expect(app.runConfig()).resolves.not.toThrow();
         });
@@ -86,14 +86,14 @@ describe('App - Compilation & Type Safety', () => {
         it('should have validateConfig method', async () => {
             const app = new App();
             expect(typeof app.validateConfig).toBe('function');
-            
+
             await expect(app.validateConfig()).resolves.not.toThrow();
         });
 
         it('should have loadSessionHistory method', () => {
             const app = new App();
             expect(typeof app.loadSessionHistory).toBe('function');
-            
+
             expect(() => app.loadSessionHistory()).not.toThrow();
         });
 
@@ -110,14 +110,14 @@ describe('App - Compilation & Type Safety', () => {
         it('should have showExamplesModal method', async () => {
             const app = new App();
             expect(typeof app.showExamplesModal).toBe('function');
-            
+
             await expect(app.showExamplesModal()).resolves.not.toThrow();
         });
 
         it('should have closeTab method with 1 argument (tabId)', () => {
             const app = new App();
             expect(typeof app.closeTab).toBe('function');
-            
+
             // closeTab should accept just tabId
             const tabId = (app as any).tabManager.addTab('test.xml');
             expect(() => app.closeTab(tabId)).not.toThrow();
@@ -126,7 +126,7 @@ describe('App - Compilation & Type Safety', () => {
         it('should have switchToTab method', () => {
             const app = new App();
             expect(typeof app.switchToTab).toBe('function');
-            
+
             const tabId = (app as any).tabManager.addTab('test.xml');
             expect(() => app.switchToTab(tabId)).not.toThrow();
         });
@@ -134,7 +134,7 @@ describe('App - Compilation & Type Safety', () => {
         it('should have addTab method', () => {
             const app = new App();
             expect(typeof app.addTab).toBe('function');
-            
+
             expect(() => app.addTab()).not.toThrow();
         });
     });
@@ -142,7 +142,7 @@ describe('App - Compilation & Type Safety', () => {
     describe('window.app exposure', () => {
         it('should expose all methods to window after init', () => {
             const app = new App();
-            
+
             // Simulate what main.ts does
             (window as any).app = {
                 toggleVisualMode: () => app.toggleVisualMode(),
@@ -174,10 +174,40 @@ describe('App - Compilation & Type Safety', () => {
     });
 
     describe('Validation before execution', () => {
+        beforeEach(() => {
+            (global.fetch as jest.Mock).mockReset();
+            (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+                if (url.includes('/api/plugins')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ plugins: [], count: 0, version: '2.2.0' })
+                    } as any);
+                }
+                if (url === '/api/config/validate') {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ valid: true })
+                    } as any);
+                }
+                if (url === '/api/execute') {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ executionId: 'exec-1' })
+                    } as any);
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({})
+                } as any);
+            });
+        });
+
         it('should validate before running', async () => {
             const app = new App();
-            
-            const tab = (app as any).tabManager.getActiveTab();
+            await app.switchMode('xml');
+            const tabId = (app as any).tabManager.addTab('config.xml');
+            const tab = (app as any).tabManager.getAllTabs().find((t: any) => t.id === tabId);
+
             if (tab) {
                 tab.content = '<config><def var="test">value</def></config>';
             }
@@ -186,12 +216,12 @@ describe('App - Compilation & Type Safety', () => {
             await app.runConfig();
 
             // Should have called validation API
-            expect(global.fetch).toHaveBeenCalledWith(
-                '/api/config/validate',
-                expect.objectContaining({
-                    method: 'POST',
-                })
-            );
+            const fetchMock = global.fetch as jest.Mock;
+            const validateCall = fetchMock.mock.calls.find(([url]) => url === '/api/config/validate');
+            expect(validateCall).toBeDefined();
+            expect(validateCall?.[1]).toEqual(expect.objectContaining({ method: 'POST' }));
+            const executeCall = fetchMock.mock.calls.find(([url]) => url === '/api/execute');
+            expect(executeCall).toBeDefined();
         });
 
         it('should NOT run if validation fails', async () => {
@@ -199,9 +229,9 @@ describe('App - Compilation & Type Safety', () => {
                 if (url.includes('/api/config/validate')) {
                     return Promise.resolve({
                         ok: true,
-                        json: () => Promise.resolve({ 
-                            valid: false, 
-                            message: 'Invalid XML' 
+                        json: () => Promise.resolve({
+                            valid: false,
+                            message: 'Invalid XML'
                         }),
                     } as any);
                 }
@@ -215,7 +245,9 @@ describe('App - Compilation & Type Safety', () => {
             });
 
             const app = new App();
-            const tab = (app as any).tabManager.getActiveTab();
+            await app.switchMode('xml');
+            const tabId = (app as any).tabManager.addTab('config.xml');
+            const tab = (app as any).tabManager.getAllTabs().find((t: any) => t.id === tabId);
             if (tab) {
                 tab.content = '<invalid>';
             }
@@ -223,10 +255,9 @@ describe('App - Compilation & Type Safety', () => {
             await app.runConfig();
 
             // Should NOT have called /api/execute
-            expect(global.fetch).not.toHaveBeenCalledWith(
-                '/api/execute',
-                expect.anything()
-            );
+            const fetchMock = global.fetch as jest.Mock;
+            const executeCall = fetchMock.mock.calls.find(([requestUrl]) => requestUrl === '/api/execute');
+            expect(executeCall).toBeUndefined();
         });
     });
 });

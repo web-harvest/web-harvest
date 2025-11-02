@@ -2,13 +2,58 @@
  * Integration tests for PluginManager with real API
  */
 
+import { jest, describe, it, expect, beforeAll, beforeEach } from '@jest/globals';
 import { PluginManager } from '../PluginManager';
-import fetch from 'node-fetch';
-
-(global as any).fetch = fetch;
 
 describe('PluginManager - API Integration', () => {
-    const API_BASE = 'http://localhost:8080';
+    const sampleResponse = {
+        count: 3,
+        schemaVersion: '1.1.0',
+        schema: { title: 'WebHarvest Plugin Metadata Catalog', type: 'object' },
+        plugins: [
+            {
+                id: 'http',
+                name: 'HTTP',
+                description: 'HTTP request',
+                category: 'Network',
+                icon: 'fa-globe',
+                documentation: { summary: 'Makes HTTP requests', url: 'https://docs/http' },
+                dependencies: [],
+                schema: { attributes: [{ name: 'url', required: true }], requiredAttributes: ['url'] },
+                semantics: { role: 'LEAF', canAppearAtRoot: true, allowsChildren: false, acceptsAnyChild: false, allowBody: false, allowTextContent: false, allowedChildTypes: [], requiredParentTypes: [] }
+            },
+            {
+                id: 'xpath',
+                name: 'XPath',
+                description: 'XPath extractor',
+                category: 'Extraction',
+                icon: 'fa-code-branch',
+                documentation: { summary: 'Extracts with XPath', url: 'https://docs/xpath' },
+                dependencies: [],
+                schema: { attributes: [] },
+                semantics: { role: 'BODY_EVALUATOR', canAppearAtRoot: true, allowsChildren: false, acceptsAnyChild: false, allowBody: true, allowTextContent: true, allowedChildTypes: [], requiredParentTypes: [] }
+            },
+            {
+                id: 'loop',
+                name: 'Loop',
+                description: 'Loop container',
+                category: 'Control',
+                icon: 'fa-repeat',
+                documentation: { summary: 'Loops over values', url: 'https://docs/loop' },
+                dependencies: [],
+                schema: { attributes: [] },
+                semantics: { role: 'CONTEXT_CONTAINER', canAppearAtRoot: true, allowsChildren: true, acceptsAnyChild: true, allowBody: true, allowTextContent: false, allowedChildTypes: [], requiredParentTypes: [] }
+            }
+        ]
+    };
+
+    beforeEach(() => {
+        (global as any).fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => sampleResponse
+        });
+    });
+
     let manager: PluginManager;
 
     beforeEach(() => {
@@ -20,8 +65,7 @@ describe('PluginManager - API Integration', () => {
             await manager.loadPlugins();
 
             const plugins = manager.getAllPlugins();
-            expect(plugins.length).toBeGreaterThan(0);
-            expect(plugins.length).toBeGreaterThanOrEqual(29); // We know we have 29 core plugins
+            expect(plugins.length).toBe(sampleResponse.plugins.length);
         }, 10000);
 
         it('should find specific plugins', async () => {
@@ -29,7 +73,7 @@ describe('PluginManager - API Integration', () => {
 
             const httpPlugin = manager.findPluginById('http');
             expect(httpPlugin).toBeDefined();
-            expect(httpPlugin?.name).toBe('Http');
+            expect(httpPlugin?.name).toBe('HTTP');
             expect(httpPlugin?.category).toBeTruthy();
 
             const xpathPlugin = manager.findPluginById('xpath');
@@ -48,7 +92,7 @@ describe('PluginManager - API Integration', () => {
 
             // Check common categories exist
             const categoryList = Array.from(categories);
-            expect(categoryList.some(c => c.includes('HTTP') || c.includes('Web'))).toBe(true);
+            expect(categoryList.some(c => c.toLowerCase().includes('network'))).toBe(true);
         }, 10000);
 
         it('should have Font Awesome icons', async () => {
@@ -69,6 +113,7 @@ describe('PluginManager - API Integration', () => {
                 expect(plugin).toHaveProperty('schema');
                 expect(plugin.schema).toHaveProperty('attributes');
                 expect(Array.isArray(plugin.schema.attributes)).toBe(true);
+                expect(plugin.documentation?.summary).toBeTruthy();
             });
         }, 10000);
 
@@ -79,11 +124,20 @@ describe('PluginManager - API Integration', () => {
             expect(httpPlugin).toBeDefined();
 
             const schema = httpPlugin!.schema;
-            expect(schema.requiredAttributes).toContain('url');
+            expect(schema.requiredAttributes || []).toContain('url');
 
             const urlAttr = schema.attributes.find(a => a.name === 'url');
             expect(urlAttr).toBeDefined();
             expect(urlAttr?.required).toBe(true);
+            expect(httpPlugin?.documentation?.url).toBe('https://docs/http');
+            expect(httpPlugin?.dependencies).toEqual([]);
+        }, 10000);
+
+        it('should surface schema metadata version info', async () => {
+            await manager.loadPlugins();
+
+            expect(manager.getSchemaVersion()).toBe('1.1.0');
+            expect(manager.getCatalogSchema()).toEqual(sampleResponse.schema);
         }, 10000);
     });
 });

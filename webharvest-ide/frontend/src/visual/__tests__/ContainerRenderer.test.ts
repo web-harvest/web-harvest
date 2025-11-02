@@ -132,11 +132,11 @@ describe('ContainerRenderer', () => {
             expect(children.length).toBe(3);
         });
 
-        it('should position children relatively', () => {
+        it('should render child content', () => {
             renderer.renderExpanded(mockElement, mockContainer);
 
             const child = mockElement.querySelector('.child-node') as HTMLElement;
-            expect(child.style.position).toBe('relative');
+            expect(child.textContent).toContain('http');
         });
     });
 
@@ -308,6 +308,16 @@ describe('ContainerRenderer', () => {
         it('should expand all containers', () => {
             renderer.setExpanded('container-1', false);
             renderer.setExpanded('container-2', false);
+            renderer.setContainerState('container-1', {
+                collapsed: false,
+                aggregateState: 'IDLE',
+                childStates: {},
+            });
+            renderer.setContainerState('container-2', {
+                collapsed: false,
+                aggregateState: 'IDLE',
+                childStates: {},
+            });
 
             renderer.expandAll();
 

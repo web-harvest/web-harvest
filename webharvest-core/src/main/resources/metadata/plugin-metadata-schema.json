@@ -1,0 +1,234 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://webharvest.org/schema/plugin-metadata",
+    "title": "WebHarvest Plugin Metadata Catalog",
+    "type": "object",
+    "properties": {
+        "schemaVersion": {
+            "type": "string",
+            "description": "Semantic metadata schema version"
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of plugins described in this catalog"
+        },
+        "plugins": {
+            "type": "array",
+            "description": "List of plugin descriptors consumed by the IDE",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "elementName",
+                    "displayName",
+                    "category",
+                    "semantics",
+                    "schema"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "elementName": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "origin": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "className": {
+                        "type": "string"
+                    },
+                    "documentation": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            "examples": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "semantics": {
+                        "type": "object",
+                        "required": [
+                            "role",
+                            "canAppearAtRoot",
+                            "allowsChildren",
+                            "allowedChildTypes",
+                            "requiredParentTypes"
+                        ],
+                        "properties": {
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "ROOT_CONTAINER",
+                                    "CONTEXT_CONTAINER",
+                                    "BODY_EVALUATOR",
+                                    "DEPENDENT",
+                                    "LEAF"
+                                ]
+                            },
+                            "canAppearAtRoot": {
+                                "type": "boolean"
+                            },
+                            "allowsChildren": {
+                                "type": "boolean"
+                            },
+                            "acceptsAnyChild": {
+                                "type": "boolean"
+                            },
+                            "allowBody": {
+                                "type": "boolean"
+                            },
+                            "allowTextContent": {
+                                "type": "boolean"
+                            },
+                            "allowedChildTypes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "requiredParentTypes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "ui": {
+                        "type": "object",
+                        "properties": {
+                            "paletteGroup": {
+                                "type": "string"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "tags": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "description": "Parent nodes or services required by this plugin",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "schema": {
+                        "type": "object",
+                        "required": [
+                            "attributes",
+                            "canHaveBody",
+                            "canHaveChildren",
+                            "canAppearAtRoot"
+                        ],
+                        "properties": {
+                            "attributes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": [
+                                        "name",
+                                        "type",
+                                        "required"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "required": {
+                                            "type": "boolean"
+                                        },
+                                        "defaultValue": {
+                                            "type": "string"
+                                        },
+                                        "allowedValues": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "canHaveBody": {
+                                "type": "boolean"
+                            },
+                            "canHaveChildren": {
+                                "type": "boolean"
+                            },
+                            "canAppearAtRoot": {
+                                "type": "boolean"
+                            },
+                            "requiredParents": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "allowedSubElements": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "requiredSubElements": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "isContextSpecific": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "extensions": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            }
+        },
+        "schema": {
+            "type": "object",
+            "description": "Reference JSON schema describing each plugin descriptor"
+        }
+    },
+    "required": [
+        "schemaVersion",
+        "plugins"
+    ],
+    "additionalProperties": true
+}

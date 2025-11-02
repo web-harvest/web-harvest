@@ -49,7 +49,7 @@ describe('XMLParser', () => {
             const xml = '<config><var name="empty"></var></config>';
             const nodes = parser.parse(xml);
 
-            expect(nodes[0].body).toBe('');
+            expect(nodes[0].body).toBeNull();
         });
     });
 

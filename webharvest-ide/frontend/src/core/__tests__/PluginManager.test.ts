@@ -10,9 +10,36 @@ global.fetch = jest.fn(() =>
     Promise.resolve({
         json: () => Promise.resolve({
             plugins: [
-                { id: 'var', name: 'Variable', category: 'Data', icon: 'fa-box', description: 'Define variable', schema: {} },
-                { id: 'http', name: 'HTTP', category: 'Network', icon: 'fa-globe', description: 'HTTP request', schema: {} },
-                { id: 'loop', name: 'Loop', category: 'Flow Control', icon: 'fa-repeat', description: 'Loop', schema: {} },
+                {
+                    id: 'var',
+                    name: 'Variable',
+                    category: 'Variables',
+                    icon: 'fa-box',
+                    description: 'Define variable',
+                    schema: {},
+                    ui: { paletteGroup: 'Variables', icon: 'fa-box', tags: ['var', 'variables'] },
+                    semantics: { role: 'BODY_EVALUATOR', canAppearAtRoot: true }
+                },
+                {
+                    id: 'http',
+                    name: 'HTTP',
+                    category: 'Network',
+                    icon: 'fa-globe',
+                    description: 'HTTP request',
+                    schema: {},
+                    ui: { paletteGroup: 'Network', icon: 'fa-globe' },
+                    semantics: { role: 'LEAF', canAppearAtRoot: true }
+                },
+                {
+                    id: 'loop',
+                    name: 'Loop',
+                    category: 'Control',
+                    icon: 'fa-repeat',
+                    description: 'Loop',
+                    schema: {},
+                    ui: { paletteGroup: 'Control', icon: 'fa-repeat' },
+                    semantics: { role: 'CONTEXT_CONTAINER', canAppearAtRoot: true }
+                }
             ],
         }),
     })
@@ -31,7 +58,7 @@ describe('PluginManager', () => {
             const plugins = await manager.loadPlugins();
 
             expect(plugins).toHaveLength(3);
-            expect(fetch).toHaveBeenCalledWith('/api/plugins');
+            expect(fetch).toHaveBeenCalledWith('/api/plugins/metadata');
         });
 
         it('should cache plugins after first load', async () => {
@@ -56,9 +83,9 @@ describe('PluginManager', () => {
             await manager.loadPlugins();
 
             const categories = manager.getCategories();
-            expect(categories).toContain('Data');
+            expect(categories).toContain('Variables');
             expect(categories).toContain('Network');
-            expect(categories).toContain('Flow Control');
+            expect(categories).toContain('Control');
         });
     });
 });

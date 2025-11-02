@@ -23,6 +23,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import org.webharvest.plugin.metadata.PluginMetadataCatalog;
+import org.webharvest.plugin.metadata.PluginDescriptor;
+import org.webharvest.plugin.metadata.PluginDocumentation;
+import org.webharvest.plugin.metadata.PluginSemantics;
+import org.webharvest.plugin.metadata.PluginUIHints;
+import org.webharvest.plugin.metadata.PluginSemanticRole;
 
 /**
  * Servlet providing plugin metadata for the Visual Designer.
@@ -48,13 +54,31 @@ public class PluginMetadataServlet extends HttpServlet {
             throws ServletException, IOException {
         
         try {
-            // Get all plugins from CorePluginRegistry
-            List<Map<String, Object>> plugins = getPluginMetadataFromRegistry();
+            // Try semantic catalog first, fallback to runtime registry
+            List<Map<String, Object>> plugins;
+            String schemaVersion;
+            Map<String, Object> catalogSchema;
+            
+            try {
+                plugins = getPluginMetadataFromCatalog();
+                schemaVersion = PluginMetadataCatalog.getSchemaVersion();
+                catalogSchema = PluginMetadataCatalog.getCatalogSchema();
+                LOG.info("Loaded {} plugins from PluginMetadataCatalog (v{})", plugins.size(), schemaVersion);
+            } catch (Exception e) {
+                LOG.warn("Failed to load from PluginMetadataCatalog, falling back to CorePluginRegistry: {}", e.getMessage());
+                plugins = getPluginMetadataFromRegistry();
+                schemaVersion = "2.2.0";
+                catalogSchema = null;
+            }
             
             Map<String, Object> response = new HashMap<>();
             response.put("plugins", plugins);
             response.put("count", plugins.size());
             response.put("version", "2.2.0");
+            response.put("schemaVersion", schemaVersion);
+            if (catalogSchema != null) {
+                response.put("schema", catalogSchema);
+            }
             response.put("timestamp", System.currentTimeMillis());
             
             // Set response headers
@@ -76,6 +100,116 @@ public class PluginMetadataServlet extends HttpServlet {
             error.put("timestamp", System.currentTimeMillis());
             
             resp.getWriter().write(GSON.toJson(error));
+        }
+    }
+    
+    /**
+     * Get plugin metadata from PluginMetadataCatalog (new semantic catalog)
+     */
+    private List<Map<String, Object>> getPluginMetadataFromCatalog() {
+        LOG.info("Building plugin metadata from PluginMetadataCatalog...");
+        
+        List<Map<String, Object>> visualPlugins = new ArrayList<>();
+        List<PluginDescriptor> descriptors = PluginMetadataCatalog.getAllDescriptors();
+        
+        for (PluginDescriptor desc : descriptors) {
+            try {
+                Map<String, Object> metadata = buildMetadataFromDescriptor(desc);
+                visualPlugins.add(metadata);
+            } catch (Exception e) {
+                LOG.warn("Failed to build metadata for plugin: {}", desc.getId(), e);
+            }
+        }
+        
+        LOG.info("Retrieved {} plugins from PluginMetadataCatalog", visualPlugins.size());
+        return visualPlugins;
+    }
+    
+    /**
+     * Build metadata map from PluginDescriptor
+     */
+    private Map<String, Object> buildMetadataFromDescriptor(PluginDescriptor desc) {
+        Map<String, Object> visual = new HashMap<>();
+        
+        // Basic fields
+        visual.put("id", desc.getId());
+        visual.put("name", desc.getDisplayName());
+        visual.put("elementName", desc.getElementName());
+        visual.put("description", desc.getDescription());
+        visual.put("category", desc.getCategory());
+        
+        // Documentation
+        PluginDocumentation doc = desc.getDocumentation();
+        if (doc != null) {
+            visual.put("helpUrl", doc.getUrl());
+        } else {
+            visual.put("helpUrl", getHelpUrl(desc.getId()));
+        }
+        
+        // UI Hints
+        PluginUIHints ui = desc.getUiHints();
+        if (ui != null) {
+            visual.put("icon", ui.getIcon());
+            visual.put("tags", ui.getTags());
+            visual.put("paletteGroup", ui.getPaletteGroup());
+        } else {
+            visual.put("icon", getPluginIcon(desc.getCategory(), desc.getId()));
+            visual.put("tags", Arrays.asList(desc.getId(), desc.getCategory().toLowerCase()));
+        }
+        
+        // Semantics
+        PluginSemantics semantics = desc.getSemantics();
+        if (semantics != null) {
+            Map<String, Object> semanticsMap = new HashMap<>();
+            semanticsMap.put("role", semantics.getRole().toString());
+            semanticsMap.put("allowsChildren", semantics.allowsChildren());
+            semanticsMap.put("acceptsAnyChild", semantics.acceptsAnyChild());
+            semanticsMap.put("allowsBody", semantics.allowsBody());
+            semanticsMap.put("allowTextContent", semantics.allowsTextContent());
+            semanticsMap.put("canAppearAtRoot", semantics.canAppearAtRoot());
+            semanticsMap.put("allowedChildTypes", semantics.getAllowedChildTypes());
+            semanticsMap.put("requiredParentTypes", semantics.getRequiredParentTypes());
+            visual.put("semantics", semanticsMap);
+        }
+        
+        // Dependencies
+        if (desc.getDependencies() != null && !desc.getDependencies().isEmpty()) {
+            visual.put("dependencies", desc.getDependencies());
+        }
+        
+        // Extensions
+        if (desc.getExtensions() != null && !desc.getExtensions().isEmpty()) {
+            visual.put("extensions", desc.getExtensions());
+        }
+        
+        // Runtime schema (for backward compatibility)
+        Map<String, Object> schema = extractSchemaFromDescriptor(desc);
+        visual.put("schema", schema);
+        
+        return visual;
+    }
+    
+    /**
+     * Extract schema from descriptor by loading runtime plugin class
+     */
+    private Map<String, Object> extractSchemaFromDescriptor(PluginDescriptor desc) {
+        try {
+            Class<? extends org.webharvest.plugin.Plugin> pluginClass = 
+                Class.forName(desc.getClassName()).asSubclass(org.webharvest.plugin.Plugin.class);
+            return extractRealPluginSchema(pluginClass);
+        } catch (Exception e) {
+            LOG.debug("Failed to extract runtime schema for {}: {}", desc.getId(), e.getMessage());
+            // Return basic schema from semantics
+            Map<String, Object> schema = new HashMap<>();
+            if (desc.getSemantics() != null) {
+                schema.put("allowsBody", desc.getSemantics().allowsBody());
+            } else {
+                schema.put("allowsBody", true);
+            }
+            schema.put("attributes", Collections.emptyList());
+            schema.put("allowedSubElements", Collections.emptyList());
+            schema.put("requiredSubElements", Collections.emptyList());
+            return schema;
         }
     }
     

@@ -565,26 +565,35 @@ WebHarvest IDE is a modern, web-based development environment for creating and t
 
 ### Features
 
-- **Monaco Editor** - Professional code editor with XML syntax highlighting and validation
+- **XML Editor + Visual Designer** - Two editing modes for maximum productivity
+- **Monaco Editor** - Professional code editor with XML syntax highlighting
+- **Drag-and-Drop** - Visual workflow builder with plugin palette
+- **Semantic Validation** - Automatic validation of plugin configurations
+- **Real-Time Execution** - Live streaming of logs, progress, and results
+- **Session Management** - Track metrics, tokens, and performance
 - **Multi-Tab Interface** - Work with multiple configurations simultaneously
-- **Real-Time Execution** - Live streaming of logs, progress, and results via WebSocket
-- **Results Explorer** - Three-panel view:
-  - **Output** - Main execution result (`configResult`)
-  - **Variables** - All extracted variables with values
-  - **Log** - Real-time execution logs with color coding
-- **Example Configurations** - 5 pre-loaded examples to get started quickly
-- **Auto-Open Browser** - Automatically opens in default browser on startup
+- **Example Configurations** - 5 pre-loaded examples to get started
 
 ### Running the IDE
 
 ```bash
 # From project root
 cd webharvest-ide
-java -jar target/webharvest-ide-2.2.0.jar
+java -jar target/webharvest-ide-2.3.1.jar
 
 # IDE opens automatically at http://localhost:8080
 # If port 8080 is busy, it will try ports 8081-8179
 ```
+
+### IDE Features (v2.3)
+
+- **Two Editing Modes:** XML Editor + Visual Designer (drag-and-drop)
+- **Monaco Editor:** Professional code editing with syntax highlighting
+- **Visual Designer:** Create workflows visually with plugin palette
+- **Semantic Validation:** Prevents invalid plugin configurations
+- **Real-time Execution:** Live logs and results via WebSocket
+- **Session Management:** Track metrics, tokens, and performance
+- **Multi-tab Support:** Work with multiple configurations
 
 ### IDE Architecture
 
@@ -592,6 +601,7 @@ java -jar target/webharvest-ide-2.2.0.jar
 ┌─────────────────────────────────────────┐
 │  Browser (http://localhost:8080)        │
 │  ├─ Monaco Editor (XML editing)         │
+│  ├─ Visual Designer (drag-and-drop)     │
 │  ├─ REST API (config validation)        │
 │  └─ WebSocket (live execution updates)  │
 └─────────────────────────────────────────┘
@@ -600,23 +610,23 @@ java -jar target/webharvest-ide-2.2.0.jar
 │  Embedded Jetty Server (Java)           │
 │  ├─ ConfigServlet (/api/config)        │
 │  ├─ ExecutionServlet (/api/execute)    │
+│  ├─ PluginMetadataServlet (/api/plugins)│
 │  ├─ ExecutionWebSocketServlet (/ws)     │
 │  └─ StaticFileHandler (/webapp)         │
 └─────────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────────┐
 │  WebHarvest Core Engine                │
-│  └─ ExecutionManager (thread pool)      │
+│  ├─ ExecutionManager (thread pool)      │
+│  ├─ PluginMetadataCatalog (55 plugins)  │
+│  └─ SemanticMetadataResolver            │
 └─────────────────────────────────────────┘
 ```
 
-### Implementation Details
+### Documentation
 
-- **Backend:** Jetty 11, Gson for JSON, SLF4J logging
-- **Frontend:** Vanilla JavaScript, Monaco Editor, Font Awesome icons
-- **Communication:** REST API for sync operations, WebSocket for streaming
-- **Styling:** Based on `docs/web/` styling with WebHarvest branding
-- **Testing:** 4 professional integration tests with real Jetty WebSocket
+- **User Guide:** See [USER_GUIDE.md](USER_GUIDE.md) for complete IDE and Visual Designer documentation
+- **Developer Guide:** See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for architecture details
 
 ---
 

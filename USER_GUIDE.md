@@ -1,6 +1,6 @@
-# Web-Harvest IDE - Kompletny Przewodnik Użytkownika v2.2
+# WebHarvest User Guide
 
-**Modern Web Scraping & Data Extraction Environment**
+**Modern Web Scraping & Data Extraction Environment v2.3**
 
 ---
 
@@ -11,13 +11,14 @@
 3. [Interfejs Użytkownika](#interfejs-użytkownika)
 4. [Praca z Zakładkami](#praca-z-zakładkami)
 5. [Edytor XML](#edytor-xml)
-6. [Wykonywanie Konfiguracji](#wykonywanie-konfiguracji)
-7. [Panel Wyników](#panel-wyników)
-8. [Session Management (v2.2)](#session-management-v22)
-9. [Token Tracking (v2.2)](#token-tracking-v22)
-10. [Skróty Klawiszowe](#skróty-klawiszowe)
-11. [Przykłady Użycia](#przykłady-użycia)
-12. [Rozwiązywanie Problemów](#rozwiązywanie-problemów)
+6. [Visual Designer (v2.3)](#visual-designer-v23)
+7. [Wykonywanie Konfiguracji](#wykonywanie-konfiguracji)
+8. [Panel Wyników](#panel-wyników)
+9. [Session Management (v2.2)](#session-management-v22)
+10. [Token Tracking (v2.2)](#token-tracking-v22)
+11. [Skróty Klawiszowe](#skróty-klawiszowe)
+12. [Przykłady Użycia](#przykłady-użycia)
+13. [Rozwiązywanie Problemów](#rozwiązywanie-problemów)
 
 ---
 
@@ -28,6 +29,14 @@ Web-Harvest IDE to nowoczesne, webowe środowisko programistyczne do:
 - **Testowania** i debugowania scraperów
 - **Monitorowania** wykonania w czasie rzeczywistym
 - **Analizowania** wyników i metryk (v2.2)
+
+### Nowości w v2.3
+
+🆕 **Visual Designer** - drag-and-drop edytor konfiguracji  
+🆕 **Zmiana kolejności pluginów** - przyciski ⬆️⬇️ w kontenerach  
+🆕 **Zagnieżdżone kontenery** - wielopoziomowa hierarchia wizualna  
+🆕 **Semantic validation** - automatyczna walidacja poprawności  
+🆕 **Nested drop targets** - inteligentne upuszczanie do zagnieżdżonych kontenerów  
 
 ### Nowości w v2.2
 
@@ -51,7 +60,7 @@ Web-Harvest IDE to nowoczesne, webowe środowisko programistyczne do:
 
 ```bash
 # Uruchomienie IDE
-java -jar webharvest-ide-2.2.0.jar
+java -jar webharvest-ide-2.3.1.jar
 
 # IDE startuje na porcie 8080
 # Otwórz w przeglądarce: http://localhost:8080
@@ -61,7 +70,7 @@ java -jar webharvest-ide-2.2.0.jar
 
 ```bash
 # Uruchomienie na innym porcie (np. 9000)
-java -Dport=9000 -jar webharvest-ide-2.2.0.jar
+java -Dport=9000 -jar webharvest-ide-2.3.1.jar
 ```
 
 ### Zatrzymanie
@@ -628,6 +637,190 @@ Memory Peak:    34.12 MB
 
 ---
 
+## Visual Designer (v2.3)
+
+### Wprowadzenie
+
+**Visual Designer** to nowy, wizualny edytor konfiguracji WebHarvest wprowadzony w wersji 2.3. Umożliwia tworzenie workflow'ów poprzez przeciąganie i upuszczanie pluginów na canvas zamiast pisania XML ręcznie.
+
+### Przełączanie Trybów
+
+W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
+
+**Jak przełączyć:**
+1. Kliknij przycisk **"Visual"**, aby przełączyć na visual designer
+2. Kliknij przycisk **"XML"**, aby wrócić do edytora kodu
+3. IDE automatycznie synchronizuje zmiany między trybami
+
+**Ważne:**
+- Zmiany są zachowywane automatycznie
+- XML jest generowany w czasie rzeczywistym
+- Walidacja semantyczna chroni przed błędami
+
+### Podstawowe Operacje
+
+#### Dodawanie Pluginów
+
+**Metoda 1: Drag & Drop z Palety**
+1. Znajdź plugin w **Plugin Palette** po lewej stronie
+2. **Kliknij i przeciągnij** plugin do obszaru Canvas
+3. **Puść** mysz - węzeł pojawi się w miejscu upuszczenia
+4. **Kliknij** węzeł, aby go wybrać
+
+**Metoda 2: Wyszukiwanie**
+1. Wpisz nazwę plugin w **wyszukiwarce** (`[🔍]`)
+2. Paleta się filtruje
+3. Przeciągnij znaleziony plugin
+
+#### Praca z Kontenerami
+
+**Kontener** to plugin, który może zawierać inne pluginy jako dzieci (np. `try`, `catch`, `if`, `loop`, `while`).
+
+**Jak dodać plugin do kontenera:**
+1. Przeciągnij kontener na canvas
+2. Rozwiń kontener (kliknij nagłówek), jeśli jest zwinięty
+3. Przeciągnij kolejne pluginy **do środka** kontenera
+4. Pluginy pojawią się jako dzieci
+
+#### Zmiana Kolejności Pluginów ⬆️⬇️
+
+Każdy plugin wewnątrz kontenera ma **przyciski strzałek** w prawym górnym rogu:
+
+```
+┌─────────────────────────────┐
+│ 📦 log    ⬆️⬇️              │ ← Reorder buttons
+└─────────────────────────────┘
+```
+
+**Instrukcja:**
+1. Znajdź plugin w kontenerze
+2. **Kliknij ⬆️**, aby przenieść w górę
+3. **Kliknij ⬇️**, aby przenieść w dół
+4. Przyciski są automatycznie wyłączane na granicach
+
+**Przykład:**
+```
+Początkowa kolejność:
+1. def var="x" value="1"
+2. log message="X=${x}"
+3. def var="y" value="2"
+
+Po kliknięciu ⬆️ na "log":
+1. log message="X=${x}"     ← Moved up!
+2. def var="x" value="1"
+3. def var="y" value="2"
+```
+
+#### Zagnieżdżone Kontenery
+
+Visual Designer obsługuje **wielopoziomowe zagnieżdżenie**:
+
+```
+┌──────────────────────────────┐
+│ 🛡️  try                      │ ← Root container
+│ ┌──────────────────────────┐ │
+│ │ ⚠️  catch               │ │ ← Nested container
+│ │ ┌──────────────────────┐ │ │
+│ │ │ ❓ if               │ │ │ ← Deeply nested
+│ │ │ ┌──────────────────┐ │ │ │
+│ │ │ │ 🌐 http         │ │ │ │ ← Child node
+│ │ │ └──────────────────┘ │ │ │
+│ │ └──────────────────────┘ │ │
+│ └──────────────────────────┘ │
+└──────────────────────────────┘
+```
+
+**Jak działa:**
+1. Przeciągnij plugin do obszaru kontenera
+2. System wykrywa najgłębszy kontener na pozycji myszy
+3. Plugin jest dodawany do właściwego kontenera
+4. **Zielone podświetlenie** wskazuje prawidłowy target
+
+### Semantic Validation
+
+**Walidacja semantyczna** zapewnia, że pluginy są używane zgodnie ze swoim przeznaczeniem.
+
+**Zasady walidacji:**
+
+**1. Zależne Pluginy:**
+- `catch` - **wymaga** rodzica `try`
+- `ftp-put` - **wymaga** rodzica `ftp`
+- `call-param` - **wymaga** rodzica `call`
+- `http-header` - **wymaga** rodzica `http`
+
+**2. Wizualna Informacja Zwrotna:**
+- **🟢 Zielony border** = dopuszczalne upuszczenie
+- **🔴 Czerwony border** = niedopuszczalne upuszczenie
+- **⚫ Szary plugin w palecie** = wymaga rodzica
+
+**Przykład błędu:**
+```
+❌ BŁĄD: catch bez try
+┌──────────────────┐
+│ ⚠️  catch        │ ← Błąd! catch wymaga try
+│ (empty)          │
+└──────────────────┘
+
+Toast: "❌ catch can only be used inside a try container"
+```
+
+### Generowanie XML
+
+Visual Designer automatycznie generuje XML na podstawie wizualnej reprezentacji.
+
+**Instrukcja:**
+1. Edytuj workflow wizualnie na canvas
+2. Przełącz na tryb **XML**
+3. XML zostanie zaktualizowany zgodnie z węzłami
+
+**Zachowanie:**
+- Kolejność węzłów jest zachowywana
+- Poziomy zagnieżdżenia są zachowywane
+- Właściwości węzłów są zachowywane
+
+### Skróty Klawiszowe (Visual Designer)
+
+| Skrót | Akcja |
+|-------|-------|
+| **Ctrl+A** / **Cmd+A** | Select all |
+| **Ctrl+C** / **Cmd+C** | Copy selected |
+| **Ctrl+V** / **Cmd+V** | Paste |
+| **Ctrl+Z** / **Cmd+Z** | Undo |
+| **Ctrl+Y** / **Cmd+Y** | Redo |
+| **Delete** / **Backspace** | Delete selected |
+| **Ctrl+F** / **Cmd+F** | Search plugins |
+
+### Rozwiązywanie Problemów
+
+**Problem: Węzły nie pojawiają się**
+- Sprawdź Console (F12) dla błędów
+- Upewnij się, że drop jest nad Canvas
+- Sprawdź walidację semantyczną
+
+**Problem: Nie mogę zmienić kolejności**
+- Upewnij się, że plugin jest wewnątrz kontenera
+- Węzły główne nie mają przycisków
+- Hard refresh (Cmd+Shift+R) jeśli cache
+
+**Problem: Walidacja zawodzi niepotrzebnie**
+- Sprawdź komunikat toast
+- Upewnij się, że przeciągasz nad właściwym targetem
+- Użyj zielonego podświetlenia jako wskazówki
+
+**Problem: Canvas jest pusty**
+- Dodaj węzły przeciągając z palety
+- Sprawdź, czy XML jest prawidłowy
+- Błędy parsowania są w Console (F12)
+
+### Dokumentacja Techniczna
+
+Aby uzyskać więcej informacji o Visual Designerze, zobacz:
+- `VISUAL_DESIGNER_USER_GUIDE.md` - kompletny przewodnik użytkownika
+- `SEMANTIC_METADATA_IMPLEMENTATION_COMPLETE.md` - implementacja techniczna
+- `DEVELOPER_GUIDE.md` - dokumentacja dla deweloperów
+
+---
+
 ## Skróty Klawiszowe
 
 ### Globalne
@@ -993,7 +1186,7 @@ webharvest-ide/
 │           ├── 02_quotes_scraping.xml
 │           └── 03_wikipedia.xml
 └── target/
-    └── webharvest-ide-2.2.0.jar         # Shaded JAR
+    └── webharvest-ide-2.3.1.jar         # Shaded JAR
 ```
 
 ---

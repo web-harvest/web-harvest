@@ -84,7 +84,7 @@ describe('CanvasSearch', () => {
             const results = search.search(mockNodes, 'example.com');
 
             expect(results[0].matchType).toBeDefined();
-            expect(results[0].matchedText).toBe('example.com');
+            expect(results[0].matchedText).toContain('example.com');
         });
     });
 
@@ -155,6 +155,7 @@ describe('CanvasSearch', () => {
     describe('getCurrentMatch', () => {
         it('should track current match index', () => {
             const results = search.search(mockNodes, 'http');
+            search.setResults(results);
             search.setCurrentMatch(0);
 
             expect(search.getCurrentMatch()).toBe(0);
@@ -163,10 +164,9 @@ describe('CanvasSearch', () => {
         it('should wrap around at end', () => {
             const results = search.search(mockNodes, 'http');
             search.setResults(results);
+            search.setCurrentMatch(results.length - 1);
 
-            search.nextMatch();
-            search.nextMatch();
-            search.nextMatch(); // Should wrap to 0
+            search.nextMatch(); // wraps to first
 
             expect(search.getCurrentMatch()).toBe(0);
         });

@@ -238,7 +238,7 @@ describe('XPathTester', () => {
             const suggestions = tester.getXPathSuggestions();
 
             expect(suggestions.length).toBeGreaterThan(0);
-            expect(suggestions.some(s => s.includes('//'))).toBe(true);
+            expect(suggestions.some(s => s.pattern.includes('//'))).toBe(true);
         });
 
         it('should include examples with descriptions', () => {

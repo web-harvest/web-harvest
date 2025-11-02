@@ -5,6 +5,32 @@ All notable changes to WebHarvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - November 2, 2025
+
+### 🎨 IDE Visual Designer (v2.3)
+- **New:** Visual drag-and-drop editor for WebHarvest configurations
+- **Features:** Plugin palette, canvas, nested containers, semantic validation
+- **Reorder:** Arrow buttons (⬆️⬇️) to change plugin order in containers
+- **Nested Drops:** Support for multi-level container nesting
+- **Semantic Validation:** Prevents invalid plugin placements (e.g., `catch` without `try`)
+- **XML Sync:** Bidirectional synchronization between Visual and XML modes
+- **Architecture:** TypeScript/Vite frontend with semantic metadata system
+- **Docs:** Complete user guide in USER_GUIDE.md
+
+### 📚 Documentation Consolidation
+- **Reduced:** 183 .md files → 32 core files
+- **Created:** USER_GUIDE.md (unified IDE + Visual Designer guide)
+- **Archived:** All session summaries, plans, and status files
+- **Consolidated:** PLUGINS.md with context-specific plugins section
+- **Updated:** DOCUMENTATION_INDEX.md with new structure
+
+### 🔧 Plugin Metadata System
+- **New:** Semantic metadata catalog with 55 plugins
+- **Schema:** v1.1.0 with dependencies, roles, and constraints
+- **Validation:** Context-aware plugin placement rules
+- **Docs:** docs/semantic-metadata/ with inventory and README
+- **Tests:** Complete TDD coverage for metadata system
+
 ## [2.2.1] - October 11, 2025
 
 ### 🔒 CRITICAL: HttpClient 5.x Migration (r753)

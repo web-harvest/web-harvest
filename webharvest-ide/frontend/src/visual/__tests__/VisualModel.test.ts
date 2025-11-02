@@ -170,8 +170,8 @@ describe('Visual Model Architecture (TDD)', () => {
             expect(positions['loop-1']).toEqual({ x: 100, y: 100 });
 
             // Children inside container (offset by padding)
-            expect(positions['http-1']).toEqual({ x: 120, y: 140 }); // 100+20, 100+20+20(header)
-            expect(positions['xpath-1']).toEqual({ x: 120, y: 260 }); // next row
+            expect(positions['http-1']).toEqual({ x: 120, y: 160 }); // padding + header offset
+            expect(positions['xpath-1']).toEqual({ x: 120, y: 280 }); // next row ( + node height + padding )
         });
     });
 

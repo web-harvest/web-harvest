@@ -19,7 +19,7 @@ describe('TabManager', () => {
 
             expect(tab).toBeDefined();
             expect(tab.name).toBe('untitled.xml');
-            expect(tab.content).toBe('');
+            expect(tab.content).toContain('<config');
             expect(tab.isDirty).toBe(false);
         });
 

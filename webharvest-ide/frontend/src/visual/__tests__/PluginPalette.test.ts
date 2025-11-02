@@ -28,7 +28,7 @@ describe('PluginPalette (TDD)', () => {
 
         it('should load all plugin templates', () => {
             const templates = palette.getTemplates();
-            
+
             expect(templates.length).toBeGreaterThan(0);
             expect(templates).toContainEqual(expect.objectContaining({
                 type: 'http'
@@ -40,7 +40,7 @@ describe('PluginPalette (TDD)', () => {
 
         it('should group plugins by category', () => {
             const categories = palette.getCategories();
-            
+
             expect(categories).toContain('network');
             expect(categories).toContain('extraction');
             expect(categories).toContain('control');
@@ -52,7 +52,7 @@ describe('PluginPalette (TDD)', () => {
         it('should filter plugins by search term', () => {
             palette.search('http');
             const filtered = palette.getFilteredTemplates();
-            
+
             expect(filtered.length).toBeGreaterThan(0);
             expect(filtered.every(t => t.type.includes('http') || t.label.toLowerCase().includes('http'))).toBe(true);
         });
@@ -60,14 +60,14 @@ describe('PluginPalette (TDD)', () => {
         it('should return empty for non-matching search', () => {
             palette.search('nonexistent-plugin-xyz');
             const filtered = palette.getFilteredTemplates();
-            
+
             expect(filtered).toHaveLength(0);
         });
 
         it('should filter by category', () => {
             palette.filterByCategory('network');
             const filtered = palette.getFilteredTemplates();
-            
+
             expect(filtered.length).toBeGreaterThan(0);
             expect(filtered.every(t => t.category === 'network')).toBe(true);
         });
@@ -76,7 +76,7 @@ describe('PluginPalette (TDD)', () => {
             palette.search('http');
             palette.clearFilters();
             const filtered = palette.getFilteredTemplates();
-            
+
             expect(filtered.length).toBe(palette.getTemplates().length);
         });
     });
@@ -128,19 +128,19 @@ describe('PluginPalette (TDD)', () => {
     describe('Rendering', () => {
         it('should render plugin items grouped by category', () => {
             palette.render();
-            
+
             const paletteEl = document.getElementById('test-palette')!;
-            const categories = paletteEl.querySelectorAll('.plugin-category');
-            
+            const categories = paletteEl.querySelectorAll('.plugin-category-section');
+
             expect(categories.length).toBeGreaterThan(0);
         });
 
         it('should make plugin items draggable', () => {
             palette.render();
-            
+
             const paletteEl = document.getElementById('test-palette')!;
             const pluginItems = paletteEl.querySelectorAll('.plugin-item');
-            
+
             pluginItems.forEach(item => {
                 expect(item.getAttribute('draggable')).toBe('true');
             });
@@ -148,10 +148,10 @@ describe('PluginPalette (TDD)', () => {
 
         it('should show plugin count per category', () => {
             palette.render();
-            
+
             const networkCategory = document.querySelector('[data-category="network"]');
             expect(networkCategory).toBeTruthy();
-            
+
             const networkTemplates = getPluginTemplates().filter(t => t.category === 'network');
             expect(networkCategory!.textContent).toContain(networkTemplates.length.toString());
         });
@@ -160,14 +160,14 @@ describe('PluginPalette (TDD)', () => {
     describe('Keyboard Navigation', () => {
         it('should navigate plugins with arrow keys', () => {
             palette.render();
-            
+
             const firstItem = document.querySelector('.plugin-item') as HTMLElement;
             firstItem?.focus();
-            
+
             // Simulate arrow down
             const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
             firstItem?.dispatchEvent(event);
-            
+
             // Second item should be focused
             const secondItem = document.querySelectorAll('.plugin-item')[1] as HTMLElement;
             expect(document.activeElement).toBe(secondItem);
@@ -175,15 +175,15 @@ describe('PluginPalette (TDD)', () => {
 
         it('should activate plugin with Enter key', () => {
             palette.render();
-            
+
             const httpItem = Array.from(document.querySelectorAll('.plugin-item'))
                 .find(item => item.textContent?.includes('HTTP')) as HTMLElement;
-            
+
             httpItem?.focus();
-            
+
             const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
             httpItem?.dispatchEvent(enterEvent);
-            
+
             // Should trigger add node callback
             expect(palette).toBeDefined(); // Placeholder assertion
         });
@@ -192,10 +192,10 @@ describe('PluginPalette (TDD)', () => {
     describe('Category Collapse/Expand', () => {
         it('should collapse category on click', () => {
             palette.render();
-            
+
             const categoryHeader = document.querySelector('[data-category="network"]') as HTMLElement;
             categoryHeader?.click();
-            
+
             const categoryItems = document.querySelectorAll('[data-plugin-category="network"]');
             categoryItems.forEach(item => {
                 expect((item as HTMLElement).style.display).toBe('none');
@@ -204,15 +204,15 @@ describe('PluginPalette (TDD)', () => {
 
         it('should expand collapsed category on second click', () => {
             palette.render();
-            
+
             const categoryHeader = document.querySelector('[data-category="network"]') as HTMLElement;
-            
+
             // First click: collapse
             categoryHeader?.click();
-            
+
             // Second click: expand
             categoryHeader?.click();
-            
+
             const categoryItems = document.querySelectorAll('[data-plugin-category="network"]');
             categoryItems.forEach(item => {
                 expect((item as HTMLElement).style.display).not.toBe('none');
@@ -224,10 +224,10 @@ describe('PluginPalette (TDD)', () => {
         it('should allow adding custom attributes to template', () => {
             const httpTemplate = getPluginTemplates().find(t => t.type === 'http')!;
             const node = palette.createNodeFromTemplate(httpTemplate);
-            
+
             // Add custom attribute
             node.attributes['custom-header'] = 'value';
-            
+
             expect(node.attributes).toHaveProperty('custom-header');
             expect(node.attributes['custom-header']).toBe('value');
         });

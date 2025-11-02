@@ -83,6 +83,8 @@ describe('BreadcrumbNav', () => {
         });
 
         it('should emit navigation event with correct level', (done) => {
+            nav.render(mockContainer, [{ id: 'root', label: 'Root', level: 0 }]);
+
             nav.onNavigate((item) => {
                 expect(item.level).toBe(0);
                 done();

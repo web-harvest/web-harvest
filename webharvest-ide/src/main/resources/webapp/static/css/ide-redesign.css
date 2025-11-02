@@ -26,6 +26,26 @@
     /* Prevent flex overflow */
 }
 
+.visual-canvas {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    background: var(--gray-50);
+    position: relative;
+}
+
+.canvas-area {
+    flex: 1;
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    background: white;
+    padding: 24px;
+    position: relative;
+}
+
 .sidebar-section {
     flex: 0 0 360px;
     /* Fixed width dla Logs/Results/Variables/Sessions */
@@ -1274,4 +1294,25 @@
 
 .port-error {
     background: var(--magenta) !important;
+}
+
+/* ============================================
+   Semantic Validation Styles
+   ============================================ */
+
+.dependent-plugin {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    pointer-events: auto;
+}
+
+.drop-zone-valid {
+    border: 2px dashed #4ade80 !important;
+    background: rgba(74, 222, 128, 0.1) !important;
+}
+
+.drop-zone-invalid {
+    border: 2px dashed #ef4444 !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+    cursor: not-allowed !important;
 }

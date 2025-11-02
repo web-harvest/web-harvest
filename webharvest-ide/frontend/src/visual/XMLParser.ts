@@ -90,7 +90,7 @@ export class XMLParser {
             // If no children elements, even empty text should be empty string
             if (element.children.length === 0 && body === null) {
                 const allText = element.textContent?.trim() || '';
-                body = allText;
+                body = allText.length > 0 ? allText : null;
             }
         }
 

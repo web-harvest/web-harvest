@@ -15,17 +15,30 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
     let container: HTMLElement;
     let propertyPanel: PropertyPanel;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         // Create container
         container = document.createElement('div');
         container.id = 'test-property-panel';
         document.body.appendChild(container);
 
-        // Create PropertyPanel instance
-        propertyPanel = new PropertyPanel('test-property-panel');
+        mockFetch.mockReset();
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({ plugins: [] })
+        });
 
-        // Clear mocks
+        // Create PropertyPanel instance (constructor triggers metadata load)
+        propertyPanel = new PropertyPanel('test-property-panel', { autoLoad: false });
+
+        // Allow async constructor fetch to resolve with default response
+        await Promise.resolve();
+
+        // Clear call history for assertions (but keep default implementation)
         mockFetch.mockClear();
+
+        // Reset metadata state so individual tests can control fetch flow
+        (propertyPanel as any).metadataLoaded = false;
+        (propertyPanel as any).pluginMetadata = [];
     });
 
     afterEach(() => {
@@ -184,7 +197,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             // Should render with SchemaEditor (not simple inputs)
             await new Promise(resolve => setTimeout(resolve, 100)); // Wait for async render
@@ -215,7 +228,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             // Should use simple text inputs (fallback)
             const inputs = container.querySelectorAll('input[type="text"]');
@@ -264,7 +277,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -313,7 +326,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -362,7 +375,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -412,7 +425,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -466,7 +479,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -513,7 +526,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                Vish: async () => ({ plugins: mockPlugins })
+                json: async () => ({ plugins: mockPlugins })
             });
 
             let onChangeCalled = false;
@@ -522,7 +535,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
             });
 
             await (propertyPanel as any).loadPluginMetadata();
-            propertyPanel.showNode(node);
+            await propertyPanel.showNode(node);
 
             await new Promise(resolve => setTimeout(resolve, 100));
 

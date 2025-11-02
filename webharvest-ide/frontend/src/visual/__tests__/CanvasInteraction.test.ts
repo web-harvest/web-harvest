@@ -192,7 +192,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
             designer.pan({ x: 50, y: 30 });
 
             const newPan = designer.getPan();
-            expect(newPan.x).toBe(initial Pan.x + 50);
+            expect(newPan.x).toBe(initialPan.x + 50);
             expect(newPan.y).toBe(initialPan.y + 30);
         });
 
@@ -509,7 +509,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
             // Try to create n2 → n1 (circular!)
             expect(() => {
                 designer.createManualConnection('n2', 'n1');
-            }).toThrow('Circular connection detected');
+            }).toThrow('Connection would create a cycle');
         });
 
         it('should delete connection', () => {
@@ -528,6 +528,44 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
             designer.deleteConnection(connections[0].id);
 
             expect(designer.getManualConnections()).toHaveLength(0);
+        });
+
+        it('should include manual connections in configuration snapshot', () => {
+            const nodes: VisualNode[] = [
+                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] }
+            ];
+
+            designer.loadNodes(nodes);
+            designer.createManualConnection('n1', 'n2');
+
+            const snapshot = designer.getCurrentConfiguration();
+
+            expect(snapshot).not.toBeNull();
+            expect(snapshot?.connections).toHaveLength(1);
+            expect(snapshot?.connections[0].from).toBe('n1');
+            expect(snapshot?.connections[0].to).toBe('n2');
+        });
+
+        it('should export connection-ordered nodes without mutating internal state', () => {
+            const nodes: VisualNode[] = [
+                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n2', type: 'def', attributes: {}, body: null, children: [] },
+                { id: 'n3', type: 'xpath', attributes: {}, body: null, children: [] }
+            ];
+
+            designer.loadNodes(nodes);
+            designer.createManualConnection('n1', 'n3');
+            designer.createManualConnection('n3', 'n2');
+
+            const snapshot = designer.getCurrentConfiguration();
+
+            expect(snapshot).not.toBeNull();
+            expect(snapshot?.nodes.map(node => node.id)).toEqual(['n1', 'n3', 'n2']);
+
+            // Ensure original internal order remains unchanged
+            const internalOrder = designer.getNodes().map(node => node.id);
+            expect(internalOrder).toEqual(['n1', 'n2', 'n3']);
         });
 
         it('should update XML when manual connections change execution order', () => {

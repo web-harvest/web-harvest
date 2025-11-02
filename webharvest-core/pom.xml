@@ -88,6 +88,11 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
         <!-- HTML parsing libraries for robust pipeline -->
         <dependency>
             <groupId>org.ccil.cowan.tagsoup</groupId>

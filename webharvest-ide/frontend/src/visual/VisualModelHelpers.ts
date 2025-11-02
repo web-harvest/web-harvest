@@ -245,6 +245,7 @@ export interface PluginTemplate {
     label: string;
     defaultAttributes: Record<string, string>;
     description: string;
+    canAppearAtRoot?: boolean; // For semantic filtering
 }
 
 /**

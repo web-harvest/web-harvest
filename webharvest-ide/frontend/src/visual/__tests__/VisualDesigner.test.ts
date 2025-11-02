@@ -162,7 +162,8 @@ describe('VisualDesigner', () => {
             const copy = designer.getNodes();
 
             expect(copy).not.toBe(nodes);
-            expect(copy).toEqual(nodes);
+            expect(copy).toHaveLength(nodes.length);
+            expect(copy[0]).toMatchObject(nodes[0]);
         });
     });
 
@@ -178,7 +179,7 @@ describe('VisualDesigner', () => {
 
             designer.addNode(node);
 
-            expect(designer.findNode('test-123')).toEqual(node);
+            expect(designer.findNode('test-123')).toMatchObject(node);
         });
 
         it('should return null for non-existing node', () => {
@@ -271,6 +272,293 @@ describe('VisualDesigner', () => {
             designer.clearSelection();
 
             expect(designer.getSelectedNodeId()).toBeNull();
+        });
+    });
+
+    describe('generateXML', () => {
+        it('should produce config document with nested nodes and CDATA-wrapped bodies', () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'var-1',
+                    type: 'var',
+                    attributes: { name: 'foo' },
+                    body: 'value',
+                    children: [],
+                },
+                {
+                    id: 'http-1',
+                    type: 'http',
+                    attributes: { url: 'https://example.com' },
+                    body: null,
+                    children: [
+                        {
+                            id: 'xpath-1',
+                            type: 'xpath',
+                            attributes: { expr: '//a' },
+                            body: '<div>Content</div>',
+                            children: [],
+                        },
+                    ],
+                },
+            ];
+
+            (designer as unknown as { nodes: VisualNode[] }).nodes = nodes;
+
+            const xml = designer.generateXML();
+
+            const expected = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<config xmlns="http://org.webharvest/schema/2.1/core">',
+                '    <var name="foo">value</var>',
+                '    <http url="https://example.com">',
+                '        <xpath expr="//a"><![CDATA[<div>Content</div>]]></xpath>',
+                '    </http>',
+                '</config>',
+            ].join('\n');
+
+            expect(xml).toBe(expected);
+        });
+
+        it('should escape attributes and self-close leaf nodes', () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'var-1',
+                    type: 'var',
+                    attributes: {
+                        name: 'foo & bar',
+                        title: 'Use "quotes" & <tags>',
+                    },
+                    body: null,
+                    children: [],
+                },
+            ];
+
+            (designer as unknown as { nodes: VisualNode[] }).nodes = nodes;
+
+            const xml = designer.generateXML();
+
+            const expected = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<config xmlns="http://org.webharvest/schema/2.1/core">',
+                '    <var name="foo &amp; bar" title="Use &quot;quotes&quot; &amp; &lt;tags&gt;"/>',
+                '</config>',
+            ].join('\n');
+
+            expect(xml).toBe(expected);
+            expect(nodes[0].attributes.name).toBe('foo & bar');
+            expect(nodes[0].attributes.title).toBe('Use "quotes" & <tags>');
+        });
+
+        it('should order top-level nodes based on manual connections', () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'node-a',
+                    type: 'http',
+                    attributes: { url: 'https://first.example.com' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-b',
+                    type: 'http',
+                    attributes: { url: 'https://second.example.com' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-c',
+                    type: 'xpath',
+                    attributes: { expression: '//item' },
+                    body: null,
+                    children: [],
+                },
+            ];
+
+            designer.loadNodes(nodes);
+            designer.createManualConnection('node-a', 'node-c');
+            designer.createManualConnection('node-c', 'node-b');
+
+            const manualConnections = designer.getManualConnections().map(conn => [conn.from, conn.to]);
+            expect(manualConnections).toEqual([
+                ['node-a', 'node-c'],
+                ['node-c', 'node-b']
+            ]);
+
+            const xml = designer.generateXML();
+
+            const indexA = xml.indexOf('https://first.example.com');
+            const indexC = xml.indexOf('//item');
+            const indexB = xml.indexOf('https://second.example.com');
+
+            expect(indexA).toBeGreaterThan(-1);
+            expect(indexC).toBeGreaterThan(-1);
+            expect(indexB).toBeGreaterThan(-1);
+            expect(indexA).toBeLessThan(indexC);
+            expect(indexC).toBeLessThan(indexB);
+        });
+
+        it('should apply connection ordering inside container nodes', () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'loop-1',
+                    type: 'loop',
+                    attributes: { maxloops: '3' },
+                    body: null,
+                    children: [
+                        {
+                            id: 'child-a',
+                            type: 'http',
+                            attributes: { url: 'https://first.example.com' },
+                            body: null,
+                            children: [],
+                        },
+                        {
+                            id: 'child-b',
+                            type: 'xpath',
+                            attributes: { expression: '//item' },
+                            body: null,
+                            children: [],
+                        },
+                        {
+                            id: 'child-c',
+                            type: 'def',
+                            attributes: { var: 'result' },
+                            body: null,
+                            children: [],
+                        },
+                    ],
+                },
+            ];
+
+            designer.loadNodes(nodes);
+            designer.createManualConnection('child-c', 'child-a');
+            designer.createManualConnection('child-a', 'child-b');
+
+            const xml = designer.generateXML();
+
+            const loopBody = xml.split('\n').filter(line => line.includes('<loop'));
+            expect(loopBody).toHaveLength(1);
+
+            const childAIndex = xml.indexOf('https://first.example.com');
+            const childBIndex = xml.indexOf('//item');
+            const childCIndex = xml.indexOf('var="result"');
+
+            expect(childCIndex).toBeGreaterThan(-1);
+            expect(childAIndex).toBeGreaterThan(-1);
+            expect(childBIndex).toBeGreaterThan(-1);
+            expect(childCIndex).toBeLessThan(childAIndex);
+            expect(childAIndex).toBeLessThan(childBIndex);
+        });
+    });
+
+    describe('configuration export', () => {
+        it('should emit saveAsRequested with connection-ordered node clones', async () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'node-a',
+                    type: 'http',
+                    attributes: { url: 'https://first.example.com' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-b',
+                    type: 'xpath',
+                    attributes: { expression: '//item' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-c',
+                    type: 'def',
+                    attributes: { var: 'result' },
+                    body: null,
+                    children: [],
+                },
+            ];
+
+            designer.loadNodes(nodes);
+            const originalConn1 = designer.createManualConnection('node-c', 'node-a');
+            const originalConn2 = designer.createManualConnection('node-a', 'node-b');
+
+            const manualConnectionOrder = designer.getManualConnections().map(conn => [conn.from, conn.to]);
+            expect(manualConnectionOrder).toEqual([
+                ['node-c', 'node-a'],
+                ['node-a', 'node-b']
+            ]);
+
+            await new Promise<void>((resolve, reject) => {
+                designer.addEventListener('saveAsRequested', (payload) => {
+                    try {
+                        expect(payload.filename).toBe('test.xml');
+                        expect(payload.nodes.map((node: VisualNode) => node.id)).toEqual(['node-c', 'node-a', 'node-b']);
+                        // Ensure nodes are clones
+                        expect(payload.nodes).not.toBe(nodes);
+                        expect(payload.nodes[0]).not.toBe(nodes[0]);
+
+                        // Connections should also be cloned
+                        expect(payload.connections).toHaveLength(2);
+                        expect(payload.connections[0]).not.toBe(originalConn1);
+                        expect(payload.connections[1]).not.toBe(originalConn2);
+
+                        expect(typeof payload.xml).toBe('string');
+                        expect(payload.xml).toContain('<config xmlns="http://org.webharvest/schema/2.1/core">');
+                        expect(payload.xml.indexOf('https://first.example.com')).toBeLessThan(payload.xml.indexOf('//item'));
+
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                void designer.saveConfigurationAs('test.xml');
+            });
+        });
+
+        it('should emit saveRequested with ordered nodes, connections, and XML', async () => {
+            const nodes: VisualNode[] = [
+                {
+                    id: 'node-a',
+                    type: 'http',
+                    attributes: { url: 'https://first.example.com' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-b',
+                    type: 'xpath',
+                    attributes: { expression: '//item' },
+                    body: null,
+                    children: [],
+                },
+                {
+                    id: 'node-c',
+                    type: 'def',
+                    attributes: { var: 'result' },
+                    body: null,
+                    children: [],
+                },
+            ];
+
+            designer.loadNodes(nodes);
+            designer.createManualConnection('node-c', 'node-a');
+            designer.createManualConnection('node-a', 'node-b');
+
+            await new Promise<void>((resolve, reject) => {
+                designer.addEventListener('saveRequested', (payload) => {
+                    try {
+                        expect(payload.nodes.map((node: VisualNode) => node.id)).toEqual(['node-c', 'node-a', 'node-b']);
+                        expect(payload.connections).toHaveLength(2);
+                        expect(payload.xml).toContain('<config xmlns="http://org.webharvest/schema/2.1/core">');
+                        expect(payload.xml.indexOf('https://first.example.com')).toBeLessThan(payload.xml.indexOf('//item'));
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                void (designer as unknown as { saveConfiguration: () => Promise<boolean> }).saveConfiguration();
+            });
         });
     });
 });

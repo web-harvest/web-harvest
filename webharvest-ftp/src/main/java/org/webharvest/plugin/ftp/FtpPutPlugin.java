@@ -205,6 +205,16 @@ public class FtpPutPlugin extends AbstractPlugin {
                         }
                     }
                 }
+
+                @Override
+                public boolean canAppearAtRoot() {
+                    return false;
+                }
+
+                @Override
+                public String[] getRequiredParents() {
+                    return new String[]{"ftp"};
+                }
             };
         }
     };

@@ -1,19 +1,33 @@
 # WebHarvest Developer Guide
 
-## 🎉 **IDE Modernization - October 2025**
+**Version:** 2.3.1  
+**Last Updated:** November 2, 2025
 
-### ✅ **Web-Based IDE with Embedded Jetty**
+## 🎉 **Recent Achievements**
 
-WebHarvest now features a modern, professional web-based IDE replacing the legacy Swing application!
+### ✅ **Visual Designer + Semantic Metadata (v2.3.1)**
 
-#### 🚀 Key Achievements:
+**Visual Designer:** Complete drag-and-drop editor for WebHarvest configurations
+- TypeScript/Vite frontend with professional UI
+- Plugin palette with 55 plugins from semantic metadata
+- Nested containers with reordering support
+- Semantic validation for plugin configurations
+- Bidirectional XML ↔ Visual synchronization
 
-- ✅ **Embedded Jetty 11** - Runs as standalone executable JAR
-- ✅ **Monaco Editor** - Professional code editing experience
-- ✅ **WebSocket Streaming** - Real-time logs and results
-- ✅ **Variable Extraction** - All variables accessible in UI
-- ✅ **Professional Tests** - 4 integration tests with real WebSocket
-- ✅ **Zero Regression** - All 2556 core tests pass
+**Semantic Metadata System:**
+- Unified plugin catalog (55 plugins)
+- Schema v1.1.0 with dependencies and roles
+- Context-aware validation
+- Complete TDD coverage
+
+### ✅ **IDE Modernization (v2.2)**
+
+**Web-Based IDE** replacing legacy Swing application:
+- Embedded Jetty 11 - standalone executable JAR
+- Monaco Editor - professional code editing
+- WebSocket streaming - real-time logs and results
+- Variable extraction - all variables accessible in UI
+- Zero regression - all tests pass
 
 #### 🔧 Critical Core Fix:
 
@@ -47,18 +61,20 @@ Modern: @CorePlugin → CorePluginDef → PluginProcessorAdapter → AbstractPro
 
 1. [Architecture Overview](#architecture-overview)
 2. [IDE Development](#ide-development)
-3. [Plugin Development](#plugin-development)
-4. [Core APIs](#core-apis)
-5. [Configuration System](#configuration-system)
-6. [Runtime System](#runtime-system)
-7. [Testing Guidelines](#testing-guidelines)
-8. [Code Quality Standards](#code-quality-standards)
+3. [Visual Designer Architecture](#visual-designer-architecture)
+4. [Semantic Metadata System](#semantic-metadata-system)
+5. [Plugin Development](#plugin-development)
+6. [Core APIs](#core-apis)
+7. [Configuration System](#configuration-system)
+8. [Runtime System](#runtime-system)
+9. [Testing Guidelines](#testing-guidelines)
+10. [Code Quality Standards](#code-quality-standards)
 
 ## IDE Development
 
 ### Overview
 
-The WebHarvest IDE is built as a web application with embedded Jetty server. See [webharvest-ide/IDE_GUIDE.md](webharvest-ide/IDE_GUIDE.md) for user documentation.
+The WebHarvest IDE is built as a web application with embedded Jetty server. See [USER_GUIDE.md](USER_GUIDE.md) for user documentation.
 
 ### Architecture
 
@@ -150,32 +166,52 @@ Results Display  ←WS→       ExecutionManager  ─┘
    }
    ```
 
-#### Adding New Frontend Feature
+#### Adding New Frontend Feature (TypeScript/Vite - v2.3+)
 
-1. **Update app.js**
-   ```javascript
-   myNewFeature() {
+**CRITICAL**: The IDE now uses TypeScript/Vite, NOT plain JavaScript!
+
+1. **Edit TypeScript files in `webharvest-ide/frontend/src/`**
+   ```typescript
+   // Example: webharvest-ide/frontend/src/core/App.ts
+   public myNewFeature(): void {
        // Implementation
    }
    ```
 
-2. **Update index.html** (if UI changes needed)
+2. **Update HTML** (if UI changes needed)
    ```html
+   <!-- webharvest-ide/src/main/resources/webapp/index.html -->
    <button onclick="app.myNewFeature()">My Feature</button>
    ```
 
-3. **Update ide.css** (if styling needed)
+3. **Update CSS** (if styling needed)
    ```css
+   /* webharvest-ide/src/main/resources/webapp/static/css/ide-redesign.css */
    .my-feature {
        /* Styles */
    }
    ```
 
-4. **Rebuild and test**
+4. **REBUILD FRONTEND AND JAR**
    ```bash
-   mvn clean package -DskipTests
-   java -jar target/webharvest-ide-2.2.0.jar
+   # Step 1: Build frontend (TypeScript → JavaScript)
+   cd webharvest-ide/frontend
+   npm run build
+   # Outputs to: webharvest-ide/src/main/resources/webapp/dist/
+   
+   # Step 2: Build JAR (includes frontend)
+   cd ..
+   mvn install -DskipTests
+   # Creates: webharvest-ide/target/webharvest-ide-2.3.1.jar
+   
+   # Step 3: Run IDE
+   java -jar target/webharvest-ide-2.3.1.jar
    ```
+
+**IMPORTANT**: After ANY frontend changes:
+- Must run `npm run build` in `frontend/` directory
+- Must rebuild JAR to include new frontend assets
+- Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R) to clear cache
 
 ### ConfigPlugin Scope Fix (CRITICAL)
 
@@ -256,31 +292,282 @@ mvn test
 # Tests run: 4, Failures: 0, Errors: 0
 ```
 
-### Building IDE
+### Building IDE (v2.3+ TypeScript/Vite)
 
-#### Development Build (Fast)
+#### Complete Build Process (Frontend + Backend)
+
+**When changing ANY frontend TypeScript files:**
+
 ```bash
+# Step 1: Build frontend (TypeScript → JavaScript)
+cd webharvest-ide/frontend
+npm run build
+# ~2-5 seconds, outputs to src/main/resources/webapp/dist/
+
+# Step 2: Build JAR (includes frontend assets)
+cd ..
+mvn install -DskipTests
+# ~30-60 seconds, creates target/webharvest-ide-2.3.1.jar
+
+# Step 3: Run IDE
+java -jar target/webharvest-ide-2.3.1.jar
+```
+
+**When only changing Java backend:**
+
+```bash
+# Skip frontend build, just compile Java
 cd webharvest-ide
 mvn compile jar:jar shade:shade -DskipTests
-# ~10 seconds
+java -jar target/webharvest-ide-2.3.1.jar
 ```
 
-#### Production Build (Complete)
+#### Quick Development Workflow
+
+**For rapid iteration on frontend changes:**
+
 ```bash
+# Terminal 1: Start frontend watcher (auto-rebuild on save)
+cd webharvest-ide/frontend
+npm run watch  # Or: npm run dev
+
+# Terminal 2: After each change, rebuild JAR
 cd webharvest-ide
-mvn clean package
-# ~90 seconds (includes javadoc, quality checks)
+mvn jar:jar shade:shade -DskipTests
+pkill -f webharvest-ide
+java -jar target/webharvest-ide-2.3.1.jar &
+
+# Browser: Hard refresh (Cmd+Shift+R) to see changes
 ```
 
-#### Quick JAR Update (During Development)
-If you only changed frontend files:
-```bash
-# Update app.js in existing JAR
-jar -uf target/webharvest-ide-2.2.0.jar \
-    -C src/main/resources webapp/static/js/app.js
+**After ANY frontend change:**
+1. ✅ Run `npm run build` in `frontend/` directory
+2. ✅ Rebuild JAR with `mvn install -DskipTests`
+3. ✅ Restart IDE
+4. ✅ Hard refresh browser
 
-# Restart IDE to see changes
+**Common mistake:**
+- ❌ Editing TypeScript files but not rebuilding
+- ❌ Running `mvn install` without `npm run build` first
+- ❌ Forgetting to hard refresh browser
+- ❌ This leads to: "I don't see my changes!" 💔
+
+---
+
+## Visual Designer Architecture
+
+### Overview
+
+The Visual Designer is a complete drag-and-drop editor for creating WebHarvest configurations visually, introduced in v2.3.
+
+### Technology Stack
+
+**Frontend:**
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **Vanilla DOM** - No framework overhead
+- **SVG** - Canvas rendering for nodes and connections
+
+**Backend:**
+- **Jetty 11** - Embedded server
+- **PluginMetadataCatalog** - 55 plugins with semantic metadata
+- **PluginMetadataServlet** - API endpoint for plugin metadata
+
+### Key Components
+
+**Frontend (`webharvest-ide/frontend/src/`):**
+
 ```
+core/
+├── App.ts                    # Main application, mode switching
+├── PluginManager.ts          # Loads 55 plugins from API
+└── types/index.ts            # TypeScript type definitions
+
+visual/
+├── VisualDesigner.ts         # Core canvas, nodes, events
+├── PluginPalette.ts          # Plugin list with search
+├── ContainerRenderer.ts      # Expand/collapse containers
+├── SemanticValidator.ts      # Validation rules
+├── XMLParser.ts             # XML → Visual nodes
+├── XMLGenerator.ts          # Visual nodes → XML
+└── ConnectionManager.ts      # Manual connections
+```
+
+**Backend (`webharvest-core/src/main/java/org/webharvest/plugin/metadata/`):**
+
+```
+PluginMetadataCatalog.java    # Unified metadata catalog (55 plugins)
+PluginDescriptor.java         # Plugin metadata structure
+PluginSemantics.java          # Semantic roles and constraints
+PluginSemanticsResolver.java  # Runtime semantic resolution
+```
+
+### Semantic Metadata System
+
+**Schema Version:** 1.1.0
+
+**Key Features:**
+- **Plugin Roles:** CONTAINER, PROCESSOR, TRANSFORMER, DATA_SOURCE, etc.
+- **Dependencies:** Explicit parent-child relationships
+- **Constraints:** `acceptsAnyChild`, `allowedChildTypes`, `requiredParent`
+- **UI Hints:** Icons, categories, grouping
+
+**Example:**
+```json
+{
+  "elementName": "catch",
+  "displayName": "Catch",
+  "role": "ERROR_HANDLER",
+  "semantics": {
+    "role": "DEPENDENT",
+    "requiresParent": ["try"],
+    "canAppearAtRoot": false
+  },
+  "dependencies": ["try"]
+}
+```
+
+**Files:**
+- `plugin-semantics.json` - Curated metadata with overrides
+- `plugin-metadata-schema.json` - JSON Schema validation
+- `PluginMetadataCatalog` - Runtime catalog builder
+
+### Visual Designer Features
+
+**Implemented:**
+- ✅ Drag & drop from plugin palette
+- ✅ Plugin nesting (containers)
+- ✅ Reordering plugins with ⬆️⬇️ buttons
+- ✅ Nested container drops
+- ✅ Semantic validation
+- ✅ XML ↔ Visual synchronization
+- ✅ Undo/Redo/Copy/Paste
+- ✅ History tracking
+
+**Planned:**
+- Manual connections (ports)
+- Execution state visualization
+- Property panels with advanced editors
+- Minimap and zoom controls
+- Multi-select with marquee
+
+### Data Flow
+
+```
+1. App.ts → Switch to Visual mode
+2. Load XML → XMLParser.parseXML()
+3. Render nodes → VisualDesigner.render()
+4. User edits → Drag/drop/reorder
+5. Validate → SemanticValidator.validateDrop()
+6. Save → XMLGenerator.generateXML()
+7. Sync → Update App state
+```
+
+### Testing
+
+**TDD Test Files:**
+- `VisualDesigner.test.ts` - Core canvas logic
+- `SemanticValidator.test.ts` - Validation rules (20 tests)
+- `NestedReordering.test.ts` - Reordering functionality
+- `XMLParser.test.ts` - XML parsing
+- `XMLGenerator.test.ts` - XML generation
+
+**Test Coverage:** 599 passing tests
+
+### Build & Deploy
+
+See [IDE Development - Build Process](#ide-development) section above.
+
+---
+
+## Semantic Metadata System
+
+### Overview
+
+The semantic metadata system provides unified, curated information about all WebHarvest plugins, enabling the IDE to offer intelligent features like validation, autocomplete, and visual editing.
+
+### Architecture
+
+```
+plugin-semantics.json (curated)
+    ↓
+PluginMetadataCatalog (Java)
+    ↓
+PluginMetadataServlet (API)
+    ↓
+PluginManager (TypeScript)
+    ↓
+SemanticValidator (Validation)
+```
+
+### Plugin Metadata Structure
+
+Each plugin has:
+
+```typescript
+interface PluginDescriptor {
+  elementName: string;        // XML element name
+  displayName: string;        // Human-readable name
+  documentation: {
+    summary: string;          // Brief description
+    url: string;              // Full docs URL
+  };
+  semantics: {
+    role: string;             // CONTAINER, PROCESSOR, etc.
+    acceptsAnyChild: boolean;
+    allowedChildTypes: string[];
+    requiresParent: string[];
+    canAppearAtRoot: boolean;
+  };
+  dependencies: string[];     // Parent types
+  ui: {
+    icon: string;             // Font Awesome icon
+    category: string;         // HTTP & Web, Data Extraction, etc.
+    paletteGroup: string;     // Grouping in palette
+  };
+}
+```
+
+### Usage in IDE
+
+**Validation:**
+```typescript
+const result = validator.validateDrop('catch', 'try');
+if (!result.valid) {
+  showError(result.message); // "catch requires try parent"
+}
+```
+
+**Palette Filtering:**
+```typescript
+const canAppearAtRoot = plugin.semantics?.canAppearAtRoot;
+if (!canAppearAtRoot) {
+  // Gray out, disable drag
+}
+```
+
+**Documentation Links:**
+```typescript
+<a href={plugin.documentation.url}>View Docs</a>
+```
+
+### Adding New Plugins
+
+**For Core Plugins:**
+1. Add `@CorePlugin` annotation to Java class
+2. PluginMetadataCatalog auto-discovers it
+3. Add curated metadata to `plugin-semantics.json` if needed
+
+**For External Plugins:**
+1. Add to `PluginClassIndex`
+2. Add curated metadata to `plugin-semantics.json`
+3. Rebuild core module
+
+### Documentation
+
+- **README:** `docs/semantic-metadata/README.md`
+- **Inventory:** `docs/semantic-metadata/PLUGIN_INVENTORY.md`
+- **Schema:** `plugin-metadata-schema.json`
 
 ---
 

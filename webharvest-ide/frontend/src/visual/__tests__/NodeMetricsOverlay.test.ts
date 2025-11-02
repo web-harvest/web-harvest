@@ -165,8 +165,8 @@ describe('NodeMetricsOverlay', () => {
 
     describe('throughput calculations', () => {
         it('should calculate data throughput per second', () => {
-            const throughput = overlay.calculateThroughput(131072, 2000); // 128KB in 2s = 64KB/s
-            expect(throughput).toBeCloseTo(64, 0);
+            const throughput = overlay.calculateThroughput(131072, 2000); // 128KB in 2s = 65,536 bytes/s
+            expect(throughput).toBeCloseTo(65536, 0);
         });
 
         it('should handle zero time gracefully', () => {
