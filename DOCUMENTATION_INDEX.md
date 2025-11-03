@@ -1,7 +1,7 @@
 # WebHarvest Documentation Index
 
 **Version**: 2.3.1  
-**Last Updated**: November 2, 2025
+**Last Updated**: November 3, 2025
 
 ---
 
@@ -147,20 +147,20 @@
 
 ## 🔄 Documentation Maintenance
 
-### Latest Consolidation - November 2, 2025
-- **Reduced:** 183 .md files → 26 core files (86% reduction)
-- **Created:** USER_GUIDE.md (unified IDE + Visual Designer guide)
-- **Archived:** All session summaries, plans, status files (150+ files)
-- **Consolidated:** CHANGELOG_IDE.md into main CHANGELOG.md
-- **Added:** PLUGINS.md context-specific plugins section
+### Latest Consolidation - November 3, 2025
+- **Reduced:** 61 .md files → 24 core files (61% reduction)
+- **Archived:** All SUMMARY, COMPLETE, PLAN, STATUS files (~30 files)
+- **Archived:** Session summaries and implementation status files from webharvest-ide/ (~20 files)
+- **Created:** DOCUMENTATION_STATUS.md (current status tracker)
 - **Result:** Clean, organized documentation structure
 
-### Core Files (26 total)
-- Essential: README, USER_GUIDE, DEVELOPER_GUIDE, CHANGELOG, CONTRIBUTING, PLUGINS, BUGS_FIXED
-- Guides: HTTPCLIENT5_MIGRATION, PAUSE_RESUME, ENHANCED_METRICS, XML_SYNTAX, XPATH_BEST_PRACTICES
-- Operations: SFTP-UPLOAD, SOURCEFORGE-SETUP, RELEASE_NOTES, XQUERY_FIX
-- Metadata: PLUGIN_DOCS_GENERATION, DOCUMENTATION_INDEX
-- Modules: docs/semantic-metadata/ + 5 module READMEs
+### Core Files (24 total)
+- **Essential (6):** README, USER_GUIDE, DEVELOPER_GUIDE, CHANGELOG, CONTRIBUTING, PLUGINS
+- **Reference (3):** BUGS_FIXED, COMPONENT_LIBRARY, CONDUCTOR_ANALYSIS_AND_ROADMAP
+- **Guides (6):** HTTPCLIENT5_MIGRATION, PAUSE_RESUME, ENHANCED_METRICS, XML_SYNTAX, XPATH_BEST_PRACTICES, PLUGIN_DOCS_GENERATION
+- **Operations (4):** SFTP-UPLOAD, SOURCEFORGE-SETUP, RELEASE_NOTES, XQUERY_FIX
+- **Utilities (2):** BUILD_AND_TEST, DOCS_UPLOAD_SIMPLIFICATION
+- **Metadata (3):** DOCUMENTATION_INDEX, DOCUMENTATION_STATUS, RELEASE_SCRIPTS_ENHANCEMENT
 
 ---
 
@@ -198,11 +198,11 @@ Archive preserves historical context while keeping root clean and navigable.
 
 ---
 
-**Total Documentation Files**: 19 (streamlined and current)  
+**Total Documentation Files**: 24 (streamlined and current)  
 **Python Scripts**: 4 (in docs/scripts/)  
 **Shell Scripts**: 2 (publish-release.sh, upload-docs.sh)  
-**Archived Files**: 43+ (historical reference)  
+**Archived Files**: 170+ (historical reference in docs/archive/)  
 **Status**: Clean, organized, and up-to-date  
-**Last Review**: October 16, 2025
+**Last Review**: November 3, 2025
 
 
