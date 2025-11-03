@@ -145,7 +145,7 @@ export class VisualDesigner {
 
         this.container = container;
         this.canvasElement = this.createCanvasElement();
-        this.container.appendChild(this.canvasElement);
+        // createCanvasElement() creates wrapper and appends it, so no need to append again
 
         // Initialize semantic validator if plugin manager provided
         if (pluginManager) {
@@ -214,17 +214,24 @@ export class VisualDesigner {
     }
 
     /**
-     * Create canvas element
+     * Create canvas element - use existing #canvas-area container directly
+     * Create inner wrapper for transform (prevents container from floating)
      */
     private createCanvasElement(): HTMLElement {
-        const canvas = document.createElement('div');
-        canvas.className = 'visual-canvas';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.position = 'relative';
-        canvas.style.overflow = 'auto';
-        canvas.style.background = '#f5f5f5';
-        return canvas;
+        // Use the existing #canvas-area container as scrollable wrapper
+        // Create inner content wrapper for transform to prevent container from floating
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'canvas-content-wrapper';
+        contentWrapper.style.position = 'relative';
+        contentWrapper.style.width = '100%';
+        contentWrapper.style.minHeight = '100%';
+        // This wrapper will receive transform, not the scrollable container
+
+        // Append wrapper to container
+        this.container.appendChild(contentWrapper);
+
+        // Return the wrapper - we'll render into it and apply transform to it
+        return contentWrapper;
     }
 
     /**
@@ -454,6 +461,13 @@ export class VisualDesigner {
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '1';
+        // SVG should match container size (canvas-area), not transformed wrapper
+        // Size will be updated in applyTransform()
+        const containerRect = this.container.getBoundingClientRect();
+        if (containerRect.width > 0 && containerRect.height > 0) {
+            svg.setAttribute('width', containerRect.width.toString());
+            svg.setAttribute('height', containerRect.height.toString());
+        }
         return svg;
     }
 
@@ -978,10 +992,8 @@ export class VisualDesigner {
 
                 const template = JSON.parse(templateJSON);
 
-                // Get drop position relative to canvas
-                const canvasRect = this.canvasElement.getBoundingClientRect();
-                const dropX = e.clientX - canvasRect.left;
-                const dropY = e.clientY - canvasRect.top;
+                // Get drop position in canvas coordinates (accounting for transform and scroll)
+                const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
 
                 // Create new node from template
                 const newNode: VisualNode = {
@@ -991,8 +1003,8 @@ export class VisualDesigner {
                     body: null,
                     children: [],
                     position: {
-                        x: dropX - this.NODE_WIDTH / 2, // Center on drop point
-                        y: dropY - this.NODE_HEIGHT / 2
+                        x: canvasPos.x - this.NODE_WIDTH / 2, // Center on drop point
+                        y: canvasPos.y - this.NODE_HEIGHT / 2
                     }
                 };
 
@@ -1136,12 +1148,11 @@ export class VisualDesigner {
         // Setup canvas-wide mouse move/up for connection drag
         this.canvasElement.addEventListener('mousemove', (e) => {
             if (this.connectionDragState?.temporaryLine) {
-                const canvasRect = this.canvasElement.getBoundingClientRect();
-                const currentX = e.clientX - canvasRect.left;
-                const currentY = e.clientY - canvasRect.top;
+                // Convert viewport coordinates to canvas coordinates (SVG uses canvas coords)
+                const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
 
-                this.connectionDragState.temporaryLine.setAttribute('x2', currentX.toString());
-                this.connectionDragState.temporaryLine.setAttribute('y2', currentY.toString());
+                this.connectionDragState.temporaryLine.setAttribute('x2', canvasPos.x.toString());
+                this.connectionDragState.temporaryLine.setAttribute('y2', canvasPos.y.toString());
             }
         });
 
@@ -1175,11 +1186,13 @@ export class VisualDesigner {
             }
 
             isDragging = true;
-            const rect = nodeElement.getBoundingClientRect();
-            startX = e.clientX;
-            startY = e.clientY;
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
+            // Calculate offset in canvas coordinates (accounting for transform)
+            const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
+            startX = canvasPos.x;
+            startY = canvasPos.y;
+            // Offset is the distance from mouse to node's current position (in canvas coords)
+            offsetX = canvasPos.x - (node.position?.x || 0);
+            offsetY = canvasPos.y - (node.position?.y || 0);
 
             nodeElement.style.cursor = 'grabbing';
             e.preventDefault();
@@ -1188,9 +1201,10 @@ export class VisualDesigner {
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
 
-            const canvasRect = this.canvasElement.getBoundingClientRect();
-            const newX = e.clientX - canvasRect.left - offsetX;
-            const newY = e.clientY - canvasRect.top - offsetY;
+            // Convert viewport coordinates to canvas coordinates (accounting for transform)
+            const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
+            const newX = canvasPos.x - offsetX;
+            const newY = canvasPos.y - offsetY;
 
             this.moveNode(node.id, { x: newX, y: newY });
         });
@@ -1228,17 +1242,14 @@ export class VisualDesigner {
                 // Create temporary SVG line
                 if (this.svgElement) {
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    const portRect = port.getBoundingClientRect();
-                    const canvasRect = this.canvasElement.getBoundingClientRect();
+                    // Calculate start position in canvas coordinates
                     const nodeRect = nodeElement.getBoundingClientRect();
+                    const canvasPos = this.viewportToCanvas(nodeRect.left + nodeRect.width / 2, nodeRect.bottom);
 
-                    const startX = nodeRect.left - canvasRect.left + nodeRect.width / 2;
-                    const startY = nodeRect.bottom - canvasRect.top;
-
-                    line.setAttribute('x1', startX.toString());
-                    line.setAttribute('y1', startY.toString());
-                    line.setAttribute('x2', startX.toString());
-                    line.setAttribute('y2', startY.toString());
+                    line.setAttribute('x1', canvasPos.x.toString());
+                    line.setAttribute('y1', canvasPos.y.toString());
+                    line.setAttribute('x2', canvasPos.x.toString());
+                    line.setAttribute('y2', canvasPos.y.toString());
                     line.setAttribute('stroke', 'var(--magenta)');
                     line.setAttribute('stroke-width', '2');
                     line.setAttribute('stroke-dasharray', '5,5');
@@ -1520,12 +1531,17 @@ export class VisualDesigner {
             this.activeContextMenuHandler = null;
         }
 
+        // Convert viewport coordinates to canvas-relative coordinates
+        const canvasRect = this.canvasElement.getBoundingClientRect();
+        const relativeX = x - canvasRect.left;
+        const relativeY = y - canvasRect.top;
+
         const menu = document.createElement('div');
         menu.className = 'node-context-menu';
         menu.style.cssText = `
-            position: fixed;
-            top: ${y}px;
-            left: ${x}px;
+            position: absolute;
+            top: ${relativeY}px;
+            left: ${relativeX}px;
             background: white;
             border: 1px solid var(--gray-300);
             border-radius: var(--radius-md);
@@ -1578,7 +1594,8 @@ export class VisualDesigner {
             menu.appendChild(button);
         });
 
-        document.body.appendChild(menu);
+        // Append to canvas element instead of body for proper positioning
+        this.canvasElement.appendChild(menu);
         this.activeContextMenu = menu;
 
         const closeMenu = (event: MouseEvent) => {
@@ -2075,12 +2092,42 @@ export class VisualDesigner {
     }
 
     /**
+     * Convert viewport coordinates to canvas coordinates (accounting for transform)
+     */
+    private viewportToCanvas(x: number, y: number): { x: number; y: number } {
+        // Get the scrollable container (canvas-area), not the transformed wrapper
+        const container = this.container; // This is #canvas-area
+        const containerRect = container.getBoundingClientRect();
+
+        // Calculate position relative to container (accounting for scroll)
+        const relativeX = x - containerRect.left + container.scrollLeft;
+        const relativeY = y - containerRect.top + container.scrollTop;
+
+        // Account for transform (inverse transform)
+        const canvasX = (relativeX - this.panOffset.x) / this.zoom;
+        const canvasY = (relativeY - this.panOffset.y) / this.zoom;
+
+        return { x: canvasX, y: canvasY };
+    }
+
+    /**
      * Apply zoom + pan transform
      */
     private applyTransform(): void {
+        // Apply transform to canvas content wrapper (not the scrollable container)
         const transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoom})`;
         this.canvasElement.style.transform = transform;
         this.canvasElement.style.transformOrigin = '0 0';
+
+        // Update SVG overlay size if it exists to match zoom level
+        if (this.svgElement && this.container) {
+            const containerRect = this.container.getBoundingClientRect();
+            if (containerRect.width > 0 && containerRect.height > 0) {
+                // SVG should cover the container size (before zoom)
+                this.svgElement.setAttribute('width', containerRect.width.toString());
+                this.svgElement.setAttribute('height', containerRect.height.toString());
+            }
+        }
     }
 
     /**

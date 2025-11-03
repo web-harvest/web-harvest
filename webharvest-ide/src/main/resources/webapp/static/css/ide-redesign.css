@@ -23,27 +23,51 @@
     background: white;
     border-right: 1px solid #e0e0e0;
     min-width: 0;
-    /* Prevent flex overflow */
+    overflow: hidden;
+    /* Prevent flex overflow and ensure content stays within bounds */
 }
 
 .visual-canvas {
-    flex: 1;
+    flex: 1 1 auto;
     display: flex;
+    flex-direction: column;
     min-width: 0;
-    height: 100%;
+    min-height: 0;
+    /* Critical: min-height: 0 allows flex child to shrink below content size */
     padding: 0;
     background: var(--gray-50);
     position: relative;
+    overflow: hidden;
+    /* Prevent canvas from escaping editor-section */
+    /* Height will be determined by parent .editor-section flex */
 }
 
 .canvas-area {
-    flex: 1;
+    flex: 1 1 0%;
+    /* flex: 1 1 0% - take all available space, can shrink, base size 0% */
     width: 100%;
-    min-height: 100%;
+    min-width: 0;
+    min-height: 0;
+    /* Critical: min-height: 0 for flexbox */
     box-sizing: border-box;
     background: white;
     padding: 24px;
     position: relative;
+    /* Position relative - scrollable container */
+    overflow: auto;
+    /* Internal scrolling for canvas content */
+    /* DO NOT use display: flex - nodes are position: absolute */
+    /* Height determined by parent .visual-canvas flex */
+}
+
+/* Inner wrapper for transform - prevents container from floating */
+.canvas-content-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 100%;
+    /* This wrapper receives transform, canvas-area remains static for scrolling */
+    transform-origin: 0 0;
+    /* Transform origin at top-left for proper pan/zoom behavior */
 }
 
 .sidebar-section {

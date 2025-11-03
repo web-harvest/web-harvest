@@ -279,7 +279,18 @@ export class App {
                 this.logsPanel.addLog('info', update.message);
             }
 
-            // Handle COMPLETED status
+            // Handle terminal statuses (COMPLETED, FAILED, ERROR, STOPPED)
+            const terminalStatuses = ['COMPLETED', 'FAILED', 'ERROR', 'STOPPED'];
+            if (terminalStatuses.includes(update.status)) {
+                console.log(`${update.status}! Processing results...`);
+
+                // Hide execution action buttons when execution ends
+                if (this.currentMode === 'visual') {
+                    this.uiManager.showExecutionActionButtons(false);
+                }
+            }
+
+            // Handle COMPLETED status specifically
             if (update.status === 'COMPLETED') {
                 console.log('COMPLETED! Processing results...');
 
@@ -657,6 +668,11 @@ export class App {
             }
 
             this.logsPanel.addLog('success', `✅ Execution started: ${data.executionId}`);
+
+            // Show execution action buttons (Pause/Resume/Stop)
+            if (this.currentMode === 'visual') {
+                this.uiManager.showExecutionActionButtons(true);
+            }
 
             // Connect WebSocket for real-time updates
             await this.wsManager.connect(data.executionId);
@@ -1418,6 +1434,10 @@ export class App {
         if (executionId) {
             this.wsManager.send({ action: 'stop' });
             this.logsPanel.addLog('error', 'Stopping execution...');
+        }
+        // Hide execution action buttons when stopped
+        if (this.currentMode === 'visual') {
+            this.uiManager.showExecutionActionButtons(false);
         }
     }
 

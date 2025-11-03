@@ -90,6 +90,33 @@ export class UIManager {
     }
 
     /**
+     * Show/hide execution controls (Run/Validate buttons)
+     */
+    showExecutionControls(show: boolean): void {
+        const controls = document.getElementById('executionControls');
+        if (controls) {
+            controls.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    /**
+     * Show/hide execution action buttons (Pause/Resume/Stop during execution)
+     */
+    showExecutionActionButtons(show: boolean): void {
+        const actionButtons = document.getElementById('executionActionButtons');
+        if (actionButtons) {
+            actionButtons.style.display = show ? 'flex' : 'none';
+            // Also ensure parent executionControls is visible in Visual mode
+            if (show) {
+                const controls = document.getElementById('executionControls');
+                if (controls) {
+                    controls.style.display = 'flex';
+                }
+            }
+        }
+    }
+
+    /**
      * Switch to XML mode
      */
     switchToXMLMode(): void {
@@ -99,6 +126,7 @@ export class UIManager {
         this.showPluginSidebar(false);
         this.showRightSidebar(true);    // ← ALWAYS visible
         this.showPropertyPanel(false);  // ← HIDE Properties tab + switch to Logs
+        this.showExecutionControls(false); // Hide canvas controls in XML mode
 
         console.log('✅ [UIManager] XML mode: Editor + Right Sidebar (Logs/Results/Variables/Sessions - NO Properties)');
     }
@@ -113,6 +141,8 @@ export class UIManager {
         this.showPluginSidebar(true);
         this.showRightSidebar(true);    // ← ALWAYS visible
         this.showPropertyPanel(true);   // ← SHOW Properties tab as FIRST + make active
+        this.showExecutionControls(true); // Show canvas controls (Run/Validate) in Visual mode
+        this.showExecutionActionButtons(false); // Hide execution action buttons initially
 
         console.log('✅ [UIManager] Visual mode: Plugins + Canvas + Right Sidebar (Properties FIRST, then Logs/Results/Variables/Sessions)');
     }

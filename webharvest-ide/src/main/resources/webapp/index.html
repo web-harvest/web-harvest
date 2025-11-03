@@ -165,15 +165,6 @@
                 <i class="fas fa-book"></i> Examples
             </button>
             <div style="width: 1px; height: 24px; background: var(--gray-300); margin: 0 var(--spacing-2);"></div>
-            <button onclick="window.app.runConfig()" title="Run (⌘R)"
-                style="padding: var(--spacing-2) var(--spacing-4); background: var(--lime); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
-                <i class="fas fa-play"></i> Run
-            </button>
-            <button onclick="window.app.validateConfig()" title="Validate (⌘K)"
-                style="padding: var(--spacing-2) var(--spacing-4); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s;">
-                <i class="fas fa-check"></i> Validate
-            </button>
-            <div style="width: 1px; height: 24px; background: var(--gray-300); margin: 0 var(--spacing-2);"></div>
             <!-- Zoom Controls -->
             <button onclick="window.app.zoomOut()" title="Zoom Out (⌘-)"
                 style="padding: var(--spacing-2) var(--spacing-3); background: var(--gray-100); color: var(--text-primary); border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px;">
@@ -242,20 +233,34 @@
                 </div>
             </div>
 
-            <!-- Execution Controls (Pause/Resume/Stop - floating during execution) -->
+            <!-- Execution Controls (Run/Validate always visible in Visual mode, Pause/Resume/Stop during execution) -->
             <div id="executionControls"
                 style="display: none; position: absolute; top: 8px; right: 8px; z-index: 101; background: white; border-radius: 8px; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 4px;">
-                <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="window.app.pauseExecution()"
-                    title="Pause">
-                    <i class="fas fa-pause"></i>
-                </button>
-                <button id="resumeBtn" class="btn btn-sm btn-success" onclick="window.app.resumeExecution()"
-                    title="Resume" style="display: none;">
+                <!-- Run and Validate buttons (always visible in Visual mode) -->
+                <button id="canvasRunBtn" class="btn btn-sm" onclick="window.app.runConfig()"
+                    title="Run Configuration (⌘R)" style="background: var(--lime, #A4C639); color: white;">
                     <i class="fas fa-play"></i>
                 </button>
-                <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop">
-                    <i class="fas fa-stop"></i>
+                <button id="canvasValidateBtn" class="btn btn-sm" onclick="window.app.validateConfig()"
+                    title="Validate Configuration (⌘K)"
+                    style="background: var(--gray-100, #f3f4f6); color: var(--text-primary, #1F2937);">
+                    <i class="fas fa-check"></i>
                 </button>
+                <!-- Execution control buttons (only during execution) -->
+                <div id="executionActionButtons"
+                    style="display: none; gap: 4px; margin-left: 4px; padding-left: 4px; border-left: 1px solid var(--gray-300, #d1d5db);">
+                    <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="window.app.pauseExecution()"
+                        title="Pause">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button id="resumeBtn" class="btn btn-sm btn-success" onclick="window.app.resumeExecution()"
+                        title="Resume" style="display: none;">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Monaco Editor (XML mode) -->

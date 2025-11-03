@@ -5,7 +5,20 @@ All notable changes to WebHarvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.1] - November 2, 2025
+## [2.3.1] - November 3, 2025
+
+### 🎨 IDE Visual Designer - Canvas Layout Fixes
+- **Fixed:** Canvas layout properly embedded in flexbox (no longer "floating")
+- **Fixed:** Node dragging works correctly with zoom/pan transformations
+- **Fixed:** Drop positions correctly calculated accounting for scroll and transform
+- **Improved:** Coordinate system - `viewportToCanvas()` method for consistent positioning
+- **Improved:** UI cleanup - removed duplicate Run/Validate buttons from header
+- **Improved:** Execution controls (Pause/Resume/Stop) appear only during execution
+
+**Technical Details:**
+- Three-layer canvas structure: `.canvas-area` (scrollable) → `.canvas-content-wrapper` (transform) → nodes
+- Transform applied to wrapper, not scrollable container
+- All coordinate calculations use canvas coordinates (accounts for pan/zoom/scroll)
 
 ### 🎨 IDE Visual Designer (v2.3)
 - **New:** Visual drag-and-drop editor for WebHarvest configurations

@@ -1,7 +1,7 @@
 # WebHarvest Developer Guide
 
 **Version:** 2.3.1  
-**Last Updated:** November 2, 2025
+**Last Updated:** November 3, 2025
 
 ## 🎉 **Recent Achievements**
 
@@ -432,6 +432,34 @@ PluginSemanticsResolver.java  # Runtime semantic resolution
 - `plugin-metadata-schema.json` - JSON Schema validation
 - `PluginMetadataCatalog` - Runtime catalog builder
 
+### Canvas Layout & Coordinate System
+
+**Fixed Canvas Integration (v2.3.1):**
+- Canvas properly embedded in flexbox layout (no longer "floating")
+- Three-layer structure:
+  - `.canvas-area` - Scrollable container (flex: 1 1 0%)
+  - `.canvas-content-wrapper` - Transform wrapper (receives pan/zoom)
+  - Nodes & SVG overlay - Absolute positioned content
+
+**Coordinate System:**
+- **Viewport coordinates** → **Canvas coordinates** conversion
+- Method: `viewportToCanvas(x, y)` accounts for:
+  - Container scroll position (`scrollLeft`, `scrollTop`)
+  - Transform pan offset (`panOffset.x`, `panOffset.y`)
+  - Zoom level (`zoom`)
+- All drop/drag calculations use canvas coordinates for consistency
+
+**Transform Handling:**
+- Transform applied to `.canvas-content-wrapper` (not scrollable container)
+- `transform-origin: 0 0` for top-left origin
+- SVG overlay matches container size (before zoom)
+- All node positions stored in canvas coordinates
+
+**UI Improvements:**
+- Run/Validate buttons moved to canvas area (top-right)
+- Removed duplicate buttons from header toolbar
+- Execution controls (Pause/Resume/Stop) appear during execution only
+
 ### Visual Designer Features
 
 **Implemented:**
@@ -443,6 +471,8 @@ PluginSemanticsResolver.java  # Runtime semantic resolution
 - ✅ XML ↔ Visual synchronization
 - ✅ Undo/Redo/Copy/Paste
 - ✅ History tracking
+- ✅ Node dragging (works correctly with zoom/pan)
+- ✅ Fixed canvas layout (properly embedded in layout)
 
 **Planned:**
 - Manual connections (ports)
