@@ -39,6 +39,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -112,7 +120,12 @@ public class CatchPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.CatchPlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for CatchPlugin.
+     * 
+     * <p>Detail plugin - requires try as parent. Handles exceptions from try block.</p>
+     */
+    public static class CatchPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "catch";
@@ -120,17 +133,17 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Catch Plugin";
+            return "Catch";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Catch plugin that provides the catch block for exception handling";
+            return "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable. Essential for graceful error handling, logging, and fallback processing. Must be used within try element.";
         }
 
         @Override
@@ -146,7 +159,7 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "catch", "exception", "error-handling", "try-catch"};
+            return new String[]{"core", "catch", "exception", "error-handling", "try-catch", "detail"};
         }
 
         @Override
@@ -176,11 +189,97 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
+            return new CatchPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-exclamation-triangle";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for error handling detail
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Control Flow";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 160;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("error", "Error details from try block (${_error} variable)", PortType.STRING, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Result from body execution (error recovery)", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable. Essential for graceful error handling, logging, and fallback processing. Must be used within try element.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Detail plugin - no shortcuts
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Catch Plugin",
+                "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("try", true, "Try"); // Required parent
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // No children
+        }
+    }
+    
+    /**
+     * Configuration schema for CatchPlugin.
+     */
+    public static class CatchPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
                             @Override
                             public String getName() {
                                 return "id";
@@ -226,187 +325,75 @@ public class CatchPlugin extends AbstractPlugin {
                                 return null;
                             }
                         }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
-                    }
-                    // Additional validation can be added here if needed
-                }
-
-                @Override
-                public boolean canAppearAtRoot() {
-                    return false;
-                }
-
-                @Override
-                public String[] getRequiredParents() {
-                    return new String[]{"try"};
-                }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for error recovery
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+            // Additional validation can be added here if needed
+        }
+
+        @Override
+        public boolean canAppearAtRoot() {
+            return false;
+        }
+
+        @Override
+        public String[] getRequiredParents() {
+            return new String[]{"try"};
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new CatchPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the catch element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                // Additional validation can be added here if needed
-            }
-
-            @Override
-            public boolean canAppearAtRoot() {
-                return false;
-            }
-
-            @Override
-            public String[] getRequiredParents() {
-                return new String[]{"try"};
-            }
-        };
+        return new CatchPluginMetadata().getConfigurationSchema();
     }
 
     @Override

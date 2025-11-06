@@ -38,6 +38,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -46,6 +54,8 @@ import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Text tokenizer processor - splits text into tokens using delimiters for iteration.
@@ -213,43 +223,368 @@ import org.webharvest.utils.CommonUtil;
 @CorePlugin(elementName = "tokenize")
 public class TokenizePlugin extends AbstractPlugin {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.TokenizePlugin");
+    
     private static final String DELIMITERS_ATT_NAME = "delimiters";
     private static final String TRIM_TOKENS_ATT_NAME = "trimtokens";
     private static final String ALLOW_EMPTY_TOKENS_ATT_NAME = "allowemptytokens";
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() { return "tokenize"; }
-            @Override
-            public String getName() { return "Tokenize Plugin"; }
-            @Override
-            public String getVersion() { return "2.1.0"; }
-            @Override
-            public String getDescription() { return "Tokenize plugin that splits text into tokens based on delimiters"; }
-            @Override
-            public String getAuthor() { return "Web-Harvest Team"; }
-            @Override
+    /**
+     * Metadata for TokenizePlugin.
+     * 
+     * <p>Standalone plugin - splits text into tokens using delimiters for iteration.</p>
+     */
+    public static class TokenizePluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "tokenize";
+        }
+
+        @Override
+        public String getName() {
+            return "Tokenize";
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Splits text content into individual tokens (words, lines, or custom-delimited parts) and returns them as a list for iteration with loop. Useful for processing CSV data, splitting lines, parsing structured text, or any scenario requiring text segmentation. Supports customizable delimiters, token trimming, and empty token handling.";
+        }
+
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
+
+        @Override
         public String getCategory() {
             CorePlugin annotation = TokenizePlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "core";
         }
-            @Override
-            public String[] getTags() { return new String[]{"core", "tokenize", "split", "text"}; }
-            @Override
-            public String[] getDependencies() { return new String[0]; }
-            @Override
-            public String getClassName() { return TokenizePlugin.class.getName(); }
-            @Override
-            public boolean isCorePlugin() { return true; }
-            @Override
-            public String getElementName() { return "tokenize"; }
-            @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() { return TokenizePlugin.this.getConfigurationSchema(); }
-        };
+
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "tokenize", "split", "text", "parsing", "csv"};
+        }
+
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
+
+        @Override
+        public String getClassName() {
+            return TokenizePlugin.class.getName();
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getElementName() {
+            return "tokenize";
+        }
+
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new TokenizePluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-cut";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for text processing
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Text Processing";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("text", "Text to tokenize (from body content)", PortType.STRING, false),
+                new InputPort("delimiters", "Delimiter characters (from delimiters attribute, default: \\n\\r)", PortType.STRING, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "List of tokens for iteration", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Splits text content into individual tokens using delimiters. Returns tokens as a list for iteration with loop. Useful for processing CSV data, splitting lines, or parsing structured text.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+T", "Add Tokenize", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Tokenize Plugin",
+                "Splits text content into individual tokens using delimiters. Returns tokens as a list for iteration.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for TokenizePlugin.
+     */
+    public static class TokenizePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return DELIMITERS_ATT_NAME;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "\\n\\r";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Delimiters to use for tokenization";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return TRIM_TOKENS_ATT_NAME;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "true";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Whether to trim tokens";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"true", "false"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return ALLOW_EMPTY_TOKENS_ATT_NAME;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "false";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Whether to allow empty tokens";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"true", "false"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{DELIMITERS_ATT_NAME, TRIM_TOKENS_ATT_NAME, ALLOW_EMPTY_TOKENS_ATT_NAME};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No validation needed - all attributes are optional
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new TokenizePluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new TokenizePluginMetadata().getConfigurationSchema();
     }
 
     @Override
@@ -260,201 +595,6 @@ public class TokenizePlugin extends AbstractPlugin {
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
         // No validation needed - all attributes are optional
-    }
-
-    public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return DELIMITERS_ATT_NAME;
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "\\n\\r";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Delimiters to use for tokenization";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return TRIM_TOKENS_ATT_NAME;
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "true";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Whether to trim tokens";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return new String[]{"true", "false"};
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return ALLOW_EMPTY_TOKENS_ATT_NAME;
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "false";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Whether to allow empty tokens";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return new String[]{"true", "false"};
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{DELIMITERS_ATT_NAME, TRIM_TOKENS_ATT_NAME, ALLOW_EMPTY_TOKENS_ATT_NAME};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
     }
 
     @Override

@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -195,279 +203,158 @@ import org.webharvest.runtime.variables.Variable;
 )
 public class XQExpressionPlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for XQExpressionPlugin.
+     * 
+     * <p>Detail plugin - requires xquery as parent. Defines the XQuery expression for complex XML processing. Supports XQuery 1.0 syntax with Saxon engine, FLWOR expressions, and external variable binding.</p>
+     */
+    public static class XQExpressionPluginMetadata implements VisualPluginMetadata {
         @Override
-        public String getId() {
-            return "xq-expression";
-        }
-
+        public String getId() { return "xq-expression"; }
         @Override
-        public String getName() {
-            return "XQExpression Plugin";
-        }
-
+        public String getName() { return "XQuery Expression"; }
         @Override
-        public String getVersion() {
-            return "2.1.0";
-        }
-
+        public String getVersion() { return "2.3.0"; }
         @Override
         public String getDescription() {
-            return "XQExpression plugin that provides XQuery expression evaluation functionality";
+            return "Defines the XQuery expression for complex XML processing. Must be used within xquery element. Supports XQuery 1.0 syntax with Saxon engine, FLWOR expressions (For-Let-Where-Order-Return), XML transformation, aggregation, grouping, and external variable binding. Use CDATA for queries with special XML characters.";
         }
-
         @Override
-        public String getAuthor() {
-            return "Web-Harvest Team";
-        }
-
+        public String getAuthor() { return "Web-Harvest Team"; }
         @Override
         public String getCategory() {
             CorePlugin annotation = XQExpressionPlugin.class.getAnnotation(CorePlugin.class);
-            return annotation != null ? annotation.category() : "core";
+            return annotation != null ? annotation.category() : "Extraction";
         }
-
         @Override
         public String[] getTags() {
-            return new String[]{"core", "xq-expression", "xquery", "xml", "expression", "evaluation", "query"};
+            return new String[]{"core", "xq-expression", "xquery", "xml", "expression", "evaluation", "query", "flwor", "extraction"};
         }
-
         @Override
-        public String[] getDependencies() {
-            return new String[0];
-        }
-
+        public String[] getDependencies() { return new String[]{"Saxon"}; }
         @Override
-        public String getClassName() {
-            return XQExpressionPlugin.class.getName();
-        }
-
+        public String getClassName() { return XQExpressionPlugin.class.getName(); }
         @Override
-        public boolean isCorePlugin() {
-            return true;
-        }
-
+        public boolean isCorePlugin() { return true; }
         @Override
-        public String getElementName() {
-            return "xq-expression";
-        }
-
+        public String getElementName() { return "xq-expression"; }
         @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
-        }
-
+        public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the xq-expression element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new XQExpressionPluginConfigurationSchema();
+        }
+        @Override
+        public String getIcon() { return "fas fa-code"; }
+        @Override
+        public String getColor() { return "#10B981"; }
+        @Override
+        public String getGroup() { return "Extraction"; }
+        @Override
+        public int getDefaultWidth() { return 240; }
+        @Override
+        public int getDefaultHeight() { return 160; }
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("expression", "XQuery expression (from body content)", PortType.STRING, true)
+            };
+        }
+        @Override
+        public OutputPort[] getOutputPorts() { return new OutputPort[0]; }
+        @Override
+        public PortType getPortType() { return PortType.STRING; }
+        @Override
+        public String getTooltip() {
+            return "Defines the XQuery expression for complex XML processing. Supports FLWOR expressions, XML transformation, and aggregation.";
+        }
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() { return new KeyboardShortcut[0]; }
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XQuery Expression Plugin",
+                "Defines the XQuery expression for complex XML processing. Supports FLWOR expressions and XML transformation.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() { return new LinkedServiceMetadata[0]; }
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("xquery", true, "XQuery");
+        }
+        @Override
+        public String[] getAllowedChildPlugins() { return new String[0]; }
+    }
+    
+    /**
+     * Configuration schema for XQExpressionPlugin.
+     */
+    public static class XQExpressionPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() { return "id"; }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    return null;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[]{"xml", "expression"};
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[]{"xml", "expression"};
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public boolean isRequired() { return false; }
+                    @Override
+                    public String getDefaultValue() { return null; }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the xq-expression element";
                     }
+                    @Override
+                    public String[] getAllowedValues() { return null; }
+                    @Override
+                    public Number getMinValue() { return null; }
+                    @Override
+                    public Number getMaxValue() { return null; }
+                    @Override
+                    public String getPattern() { return null; }
                 }
             };
         }
-    };
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) return attr;
+            }
+            return null;
+        }
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        @Override
+        public boolean allowsBody() { return true; }
+        @Override
+        public String[] getRequiredSubElements() { return new String[0]; }
+        @Override
+        public String[] getAllowedSubElements() { return new String[0]; }
+        @Override
+        public String[] getOptionalAttributes() { return new String[]{"id"}; }
+        @Override
+        public String[] getRequiredAttributes() { return new String[0]; }
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new XQExpressionPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the xq-expression element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[]{"xml", "expression"};
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[]{"xml", "expression"};
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
+        return new XQExpressionPluginMetadata().getConfigurationSchema();
     }
 
     @Override

@@ -48,6 +48,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -388,11 +396,11 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     private final List<HtmlParsingStrategy> parsingStrategies = initializeParsingStrategies();
 
     /**
-     * {@inheritDoc}
+     * Metadata for HtmlToXmlPlugin.
+     * 
+     * <p>Standalone plugin - converts HTML content to well-formed XML.</p>
      */
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
+    public static class HtmlToXmlPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "html-to-xml";
@@ -400,17 +408,17 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-                return "html-to-xml";
+            return "HTML to XML";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "HTML to XML plugin that converts HTML content to well-formed XML";
+            return "Converts potentially malformed HTML from web pages into well-formed XML that can be processed using XPath and XQuery. Essential for web scraping as most web pages contain invalid HTML that XML parsers reject. Uses multiple parsing strategies (JSoup, TagSoup, Apache Tika) for maximum compatibility.";
         }
 
         @Override
@@ -426,7 +434,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-                return new String[]{"core", "html", "xml", "conversion", "parser"};
+            return new String[]{"core", "html", "xml", "conversion", "parser", "data-transformation", "web-scraping"};
         }
 
         @Override
@@ -435,8 +443,8 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
         }
 
         @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return HtmlToXmlPlugin.this.getConfigurationSchema();
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new HtmlToXmlPluginConfigurationSchema();
         }
 
         @Override
@@ -445,26 +453,165 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
         }
 
         @Override
-            public String getElementName() {
-                return "html-to-xml";
-                            }
+        public String getElementName() {
+            return "html-to-xml";
+        }
 
-                            @Override
-            public boolean isCorePlugin() {
-                    return true;
-                            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-                            @Override
-            public String getClassName() {
-                return HtmlToXmlPlugin.class.getName();
-                }
-        };
-                }
+        @Override
+        public String getClassName() {
+            return HtmlToXmlPlugin.class.getName();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-code-branch";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for data transformation
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Data Transformation";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 240;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 140;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("html", "HTML content to convert (from body content)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("xml", "Well-formed XML output", PortType.XML)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.XML;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Converts potentially malformed HTML from web pages into well-formed XML that can be processed using XPath and XQuery. Essential for web scraping as most web pages contain invalid HTML that XML parsers reject. Uses multiple parsing strategies for maximum compatibility.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+H", "Add HTML to XML", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "HTML to XML Plugin",
+                "Converts potentially malformed HTML from web pages into well-formed XML that can be processed using XPath and XQuery.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for HTML content generation
+        }
+    }
+    
+    /**
+     * Configuration schema for HtmlToXmlPlugin.
+     */
+    public static class HtmlToXmlPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[0];
+        }
+
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            return null;
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for HTML content generation
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No specific validation needed
+        }
+    }
+    
+    @Override
+    public PluginMetadata getMetadata() {
+        return new HtmlToXmlPluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new HtmlToXmlPluginMetadata().getConfigurationSchema();
+    }
 
     /**
      * {@inheritDoc}
      */
-                @Override
+    @Override
     protected void doInitialize(PluginConfiguration configuration) throws PluginException {
         // No specific initialization needed
     }
@@ -475,58 +622,6 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
         // No specific validation needed
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public AttributeDefinition[] getAttributeDefinitions() {
-                return new AttributeDefinition[0];
-                }
-
-                @Override
-            public AttributeDefinition getAttribute(String name) {
-                return null;
-                }
-
-                @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-                }
-
-                @Override
-            public String[] getOptionalAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-            public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-    @Override
-            public String getVersion() {
-                return "2.1.0";
-    }
-
-    @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                // No specific validation needed
-            }
-        };
     }
 
     @Override

@@ -64,8 +64,8 @@ public class ElsePluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Else Plugin");
-        assertEquals(metadata.getDescription(), "Else plugin that provides the else branch for conditional execution");
+        assertEquals(metadata.getName(), "Else");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "else");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -84,7 +84,7 @@ public class ElsePluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

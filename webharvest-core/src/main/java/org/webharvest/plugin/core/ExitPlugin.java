@@ -40,6 +40,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -145,7 +153,12 @@ public class ExitPlugin extends AbstractPlugin {
     @Inject
     private EventBus eventBus;
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for ExitPlugin.
+     * 
+     * <p>Standalone plugin - terminates scraper execution immediately, optionally with condition and message.</p>
+     */
+    public static class ExitPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "exit";
@@ -153,17 +166,17 @@ public class ExitPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Exit Plugin";
+            return "Exit";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Exit plugin that provides conditional exit functionality";
+            return "Immediately terminates scraper execution, optionally with a custom message. Supports conditional exit based on boolean expression. Useful for early termination on errors, completion conditions, or when specific data is found.";
         }
 
         @Override
@@ -179,7 +192,7 @@ public class ExitPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "exit", "condition", "control-flow"};
+            return new String[]{"core", "exit", "condition", "control-flow", "termination", "utility"};
         }
 
         @Override
@@ -209,401 +222,291 @@ public class ExitPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the exit element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        },
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "condition";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return "true";
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Condition to evaluate for exit. If true, exit will be triggered";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        },
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "message";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return "";
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional message to include in the exit event";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new ExitPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-stop-circle";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#EF4444"; // Red for termination/exit
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Utility";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 180;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("condition", "Boolean condition to evaluate (from condition attribute, default: true)", PortType.STRING, false),
+                new InputPort("message", "Exit message (from message attribute)", PortType.STRING, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[0]; // No output - terminates execution
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Immediately terminates scraper execution, optionally with a custom message. Supports conditional exit based on boolean expression. Useful for early termination on errors or completion conditions.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Rarely used directly
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Exit Plugin",
+                "Immediately terminates scraper execution, optionally with a custom message. Supports conditional exit based on boolean expression.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // No children
+        }
+    }
+    
+    /**
+     * Configuration schema for ExitPlugin.
+     */
+    public static class ExitPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return false;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id", "condition", "message"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    // Additional validation can be added here if needed
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the exit element";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "condition";
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "true";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Condition to evaluate for exit. If true, exit will be triggered";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "message";
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional message to include in the exit event";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return false;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id", "condition", "message"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new ExitPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the exit element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "condition";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "true";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Condition to evaluate for exit. If true, exit will be triggered";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "message";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional message to include in the exit event";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return false;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id", "condition", "message"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                // Additional validation can be added here if needed
-            }
-        };
+        return new ExitPluginMetadata().getConfigurationSchema();
     }
 
     @Override

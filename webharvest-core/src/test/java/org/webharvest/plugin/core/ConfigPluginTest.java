@@ -168,7 +168,7 @@ public class ConfigPluginTest {
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "config");
         assertEquals(metadata.getName(), "Config Plugin");
-        assertEquals(metadata.getVersion(), "2.2.0");
+        assertEquals(metadata.getVersion(), "2.3.0");
         assertEquals(metadata.getElementName(), "config");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
         assertTrue(metadata.isCorePlugin());
@@ -182,7 +182,7 @@ public class ConfigPluginTest {
         // Then
         assertNotNull(schema);
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.2.0");
+        assertEquals(schema.getVersion(), "2.3.0");
         
         // Check required attributes
         String[] requiredAttributes = schema.getRequiredAttributes();

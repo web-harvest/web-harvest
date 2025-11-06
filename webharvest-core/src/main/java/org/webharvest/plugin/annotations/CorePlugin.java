@@ -97,6 +97,28 @@ public @interface CorePlugin {
      * @return the category
      */
     String category() default "Core";
+    
+    /**
+     * Indicates whether this plugin is a system component (not a user-facing plugin).
+     * 
+     * <p>System components are internal framework components that are used automatically
+     * by the framework and should not appear in visual editors or be included in
+     * plugin metadata tests. Examples include:</p>
+     * <ul>
+     *   <li><strong>config</strong> - Root container element, not a regular plugin</li>
+     *   <li><strong>body-processor</strong> - Internal framework component for executing child processors</li>
+     * </ul>
+     * 
+     * <p>System components are excluded from:</p>
+     * <ul>
+     *   <li>Visual editor plugin palettes</li>
+     *   <li>Plugin metadata completeness tests</li>
+     *   <li>User-facing documentation</li>
+     * </ul>
+     * 
+     * @return true if this is a system component, false otherwise (default: false)
+     */
+    boolean systemComponent() default false;
 }
 
 

@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.PluginConfigurationSchema;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -237,117 +245,221 @@ public class DefPlugin extends AbstractPlugin {
     /**
      * {@inheritDoc}
      */
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() { return "def"; }
-            @Override
-            public String getName() { return "def"; }
-            @Override
-            public String getVersion() { return "2.1.0"; }
-            @Override
-            public String getDescription() { return "Defines variables with their values"; }
-            @Override
-            public String getAuthor() { return "Web-Harvest Team"; }
-            @Override
+    /**
+     * Metadata for DefPlugin.
+     * 
+     * <p>Standalone plugin - defines or updates variables in the execution context.</p>
+     */
+    public static class DefPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() { return "def"; }
+        
+        @Override
+        public String getName() { return "Define Variable"; }
+        
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        
+        @Override
+        public String getDescription() { 
+            return "Defines or updates variables in the execution context. Variable value can come from value attribute, child processors, or text content. Supports template interpolation with ${var} syntax.";
+        }
+        
+        @Override
+        public String getAuthor() { return "Web-Harvest Team"; }
+        
+        @Override
         public String getCategory() {
             CorePlugin annotation = DefPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Variables";
         }
-            @Override
-            public String[] getTags() { return new String[0]; }
-            @Override
-            public String[] getDependencies() { return new String[0]; }
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() { return DefPlugin.this.getConfigurationSchema(); }
-            @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
-            @Override
-            public String getElementName() { return "def"; }
-            @Override
-            public boolean isCorePlugin() { return true; }
-            @Override
-            public String getClassName() { return DefPlugin.this.getClass().getName(); }
-        };
+        
+        @Override
+        public String[] getTags() { return new String[]{"core", "def", "variable", "assignment"}; }
+        
+        @Override
+        public String[] getDependencies() { return new String[0]; }
+        
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() { return new DefPluginConfigurationSchema(); }
+        
+        @Override
+        public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
+        
+        @Override
+        public String getElementName() { return "def"; }
+        
+        @Override
+        public boolean isCorePlugin() { return true; }
+        
+        @Override
+        public String getClassName() { return DefPlugin.class.getName(); }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-variable";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for variables
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Variables";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("value", "Variable value (from value attribute or body content)", PortType.MIXED, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Variable value (same as input)", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Defines or updates variables in the execution context. Variable value can come from value attribute, child processors, or text content. Supports template interpolation with ${var} syntax.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+D", "Add Define Variable", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Define Variable Plugin",
+                "Defines or updates variables in the execution context. Variable value can come from value attribute, child processors, or text content.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins (for value computation)
+        }
+    }
+    
+    /**
+     * Configuration schema for DefPlugin.
+     */
+    public static class DefPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[] {
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() { return "var"; }
+                    @Override
+                    public String getDescription() { return "Variable name to define"; }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() { return PluginConfigurationSchema.AttributeType.STRING; }
+                    @Override
+                    public boolean isRequired() { return true; }
+                    @Override
+                    public Number getMaxValue() { return null; }
+                    @Override
+                    public Number getMinValue() { return null; }
+                    @Override
+                    public String[] getAllowedValues() { return null; }
+                    @Override
+                    public String getDefaultValue() { return null; }
+                    @Override
+                    public String getPattern() { return null; }
+                }
+            };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins (for value computation)
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"value"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{"var"};
+        }
+        
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // Validation is handled in doValidateConfiguration
+        }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public PluginMetadata getMetadata() {
+        return new DefPluginMetadata();
+    }
+
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[] {
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() { return "var"; }
-                        @Override
-                        public String getDescription() { return "Variable name to define"; }
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() { return PluginConfigurationSchema.AttributeType.STRING; }
-                        @Override
-                        public boolean isRequired() { return true; }
-                        @Override
-                        public Number getMaxValue() { return null; }
-                        @Override
-                        public Number getMinValue() { return null; }
-                        @Override
-                        public String[] getAllowedValues() { return null; }
-                        @Override
-                        public String getDefaultValue() { return null; }
-                        @Override
-                        public String getPattern() { return null; }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[]{"var"};
-            }
-            
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                // Validation is handled in doValidateConfiguration
-            }
-        };
+        return new DefPluginMetadata().getConfigurationSchema();
     }
 
     /**

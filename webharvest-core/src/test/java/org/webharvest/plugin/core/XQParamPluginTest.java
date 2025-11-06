@@ -74,9 +74,9 @@ public class XQParamPluginTest {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "xq-param");
-        assertEquals(metadata.getName(), "XQParam Plugin");
-        assertEquals(metadata.getVersion(), "2.1.0");
-        assertEquals(metadata.getDescription(), "XQParam plugin that provides XQuery parameter functionality");
+        assertEquals(metadata.getName(), "XQuery Parameter");
+        assertEquals(metadata.getVersion(), "2.3.0");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "xq-param");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

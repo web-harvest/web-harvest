@@ -136,7 +136,7 @@ public class RegexpPluginMassiveTest {
     @Test
     public void testSchema7() {
         RegexpPlugin plugin = new RegexpPlugin();
-        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.1.0");
+        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.3.0");
     }
     
     @Test

@@ -39,6 +39,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -262,7 +270,12 @@ public class WhilePlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.WhilePlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for WhilePlugin.
+     * 
+     * <p>Master plugin - can contain any child plugins. Repeats execution while condition is true.</p>
+     */
+    public static class WhilePluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "while";
@@ -270,17 +283,17 @@ public class WhilePlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "While Plugin";
+            return "While";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "While plugin that provides while loop functionality";
+            return "Repeats execution while condition remains true. Unlike loop which iterates over collections, while continues until condition becomes false or maxloops limit is reached. Essential for pagination, API polling, and conditional repetition.";
         }
 
         @Override
@@ -296,7 +309,7 @@ public class WhilePlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "while", "loop", "iteration", "condition", "control"};
+            return new String[]{"core", "while", "loop", "iteration", "condition", "control", "container", "master"};
         }
 
         @Override
@@ -326,10 +339,98 @@ public class WhilePlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
+            return new WhilePluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-redo";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for control flow
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Control Flow";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 240;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 180;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("condition", "Boolean condition to evaluate (from condition attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Aggregated results from all iterations", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Repeats execution while condition remains true. Unlike loop which iterates over collections, while continues until condition becomes false or maxloops limit is reached. Essential for pagination, API polling, and conditional repetition. Can contain any child plugins.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+W", "Add While", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "While Plugin",
+                "Repeats execution while condition remains true. Unlike loop which iterates over collections, while continues until condition becomes false or maxloops limit is reached.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Empty array means can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for WhilePlugin.
+     */
+    public static class WhilePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
                         new PluginConfigurationSchema.AttributeDefinition() {
                             @Override
                             public String getName() {
@@ -575,7 +676,7 @@ public class WhilePlugin extends AbstractPlugin {
 
                 @Override
                 public String getVersion() {
-                    return "2.1.0";
+                    return "2.3.0";
                 }
 
                 @Override
@@ -590,7 +691,7 @@ public class WhilePlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getAllowedSubElements() {
-                    return new String[0];
+                    return new String[0]; // Empty means can contain any child plugins
                 }
 
                 @Override
@@ -627,318 +728,15 @@ public class WhilePlugin extends AbstractPlugin {
                         }
                     }
                 }
-            };
-        }
-    };
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new WhilePluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the while element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "condition";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return true;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Condition to evaluate for loop continuation";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "index";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Variable name for loop index";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "maxloops";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.INTEGER;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "1000";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Maximum number of loop iterations";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return 1;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return 1000000;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "empty";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "false";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Whether to return empty result (true) or collect results (false)";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return new String[]{"true", "false"};
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id", "index", "maxloops", "empty"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[]{"condition"};
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                
-                String condition = configuration.getProperty("condition");
-                // Allow empty condition - it will be treated as false
-                // if (condition == null || condition.trim().isEmpty()) {
-                //     throw new PluginValidationException("Condition attribute is required");
-                // }
-                
-                String maxloops = configuration.getProperty("maxloops");
-                if (maxloops != null && !maxloops.trim().isEmpty()) {
-                    try {
-                        int maxLoopsValue = Integer.parseInt(maxloops);
-                        if (maxLoopsValue < 1 || maxLoopsValue > 1000000) {
-                            throw new PluginValidationException("Maxloops must be between 1 and 1000000");
-                        }
-                    } catch (NumberFormatException e) {
-                        throw new PluginValidationException("Maxloops must be a valid integer");
-                    }
-                }
-            }
-        };
+        return new WhilePluginMetadata().getConfigurationSchema();
     }
 
     @Override

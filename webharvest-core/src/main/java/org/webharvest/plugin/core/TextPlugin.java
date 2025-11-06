@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
@@ -103,7 +111,12 @@ public class TextPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.TextPlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for TextPlugin.
+     * 
+     * <p>Standalone plugin - wraps text content and optionally converts character encoding.</p>
+     */
+    public static class TextPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "text";
@@ -111,17 +124,17 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Text Plugin";
+            return "Text";
         }
 
         @Override
         public String getVersion() {
-            return "2.2.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Text plugin that processes text content with charset and delimiter support";
+            return "Wraps text content and optionally converts character encoding. Mainly used for explicit text declaration or charset conversion scenarios. In most cases, plain text works without text wrapper.";
         }
 
         @Override
@@ -137,7 +150,7 @@ public class TextPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "text", "processing", "charset", "delimiter", "content"};
+            return new String[]{"core", "text", "processing", "charset", "delimiter", "content", "text-processing"};
         }
 
         @Override
@@ -146,12 +159,118 @@ public class TextPlugin extends AbstractPlugin {
         }
 
         @Override
+        public String getClassName() {
+            return TextPlugin.class.getName();
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getElementName() {
+            return "text";
+        }
+
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public AttributeDefinition[] getAttributeDefinitions() {
-                    return new AttributeDefinition[]{
-                        new AttributeDefinition() {
+            return new TextPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-file-alt";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for text processing
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Text Processing";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("content", "Text content to process (from body content)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Processed text content", PortType.STRING)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Wraps text content and optionally converts character encoding. Mainly used for explicit text declaration or charset conversion scenarios. Supports charset conversion and delimiter joining.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Rarely used directly
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Text Plugin",
+                "Wraps text content and optionally converts character encoding. Mainly used for explicit text declaration or charset conversion scenarios.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for text content generation
+        }
+    }
+    
+    /**
+     * Configuration schema for TextPlugin.
+     */
+    public static class TextPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public AttributeDefinition[] getAttributeDefinitions() {
+            return new AttributeDefinition[]{
+                new AttributeDefinition() {
                             @Override
                             public String getName() {
                                 return "id";
@@ -290,90 +409,69 @@ public class TextPlugin extends AbstractPlugin {
                             }
                         }
                     };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
                 }
-
-                @Override
-                public AttributeDefinition getAttribute(String name) {
-                    for (AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id", "charset", "delimiter"};
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.2.0";
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    // Validate charset if provided
-                    String charset = configuration.getProperty("charset");
-                    if (charset != null && !charset.isEmpty()) {
-                        try {
-                            java.nio.charset.Charset.forName(charset);
-                        } catch (Exception e) {
-                            throw new PluginValidationException("Invalid charset: " + charset);
-                        }
-                    }
-                }
-            };
+            }
+            return null;
+        }
+        
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
         }
 
         @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
+        public String[] getOptionalAttributes() {
+            return new String[]{"id", "charset", "delimiter"};
         }
 
         @Override
-        public String getElementName() {
-            return "text";
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for text content generation
         }
 
         @Override
-        public boolean isCorePlugin() {
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
             return true;
         }
 
         @Override
-        public String getClassName() {
-            return TextPlugin.class.getName();
+        public String getVersion() {
+            return "2.3.0";
         }
-    };
 
-    /**
-     * {@inheritDoc}
-     */
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // Validate charset if provided
+            String charset = configuration.getProperty("charset");
+            if (charset != null && !charset.isEmpty()) {
+                try {
+                    java.nio.charset.Charset.forName(charset);
+                } catch (Exception e) {
+                    throw new PluginValidationException("Invalid charset: " + charset);
+                }
+            }
+        }
+    }
+
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new TextPluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new TextPluginMetadata().getConfigurationSchema();
     }
 
     /**

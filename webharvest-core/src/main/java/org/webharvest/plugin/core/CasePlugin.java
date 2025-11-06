@@ -39,6 +39,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -219,7 +227,12 @@ public class CasePlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.CasePlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for CasePlugin.
+     * 
+     * <p>Master plugin - allows if and else as children. Multi-branch conditional execution.</p>
+     */
+    public static class CasePluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "case";
@@ -227,17 +240,17 @@ public class CasePlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Case Plugin";
+            return "Case";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Case plugin that provides conditional execution with multiple if-else branches";
+            return "Multi-branch conditional processor - evaluates multiple if-else conditions in sequence and executes the first matching branch. Equivalent to if-else-if chains but with cleaner syntax. Provides structured conditional logic for routing execution flow.";
         }
 
         @Override
@@ -253,7 +266,7 @@ public class CasePlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "case", "conditional", "if", "else"};
+            return new String[]{"core", "case", "conditional", "if", "else", "switch", "master"};
         }
 
         @Override
@@ -283,217 +296,200 @@ public class CasePlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the case element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new CasePluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-code-branch";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for control flow
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Control Flow";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 240;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 200;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[0]; // No input ports
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Result from executed branch", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Multi-branch conditional processor - evaluates multiple if-else conditions in sequence and executes the first matching branch. Allows if and else as children. Provides structured conditional logic for routing execution flow.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+C", "Add Case", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Case Plugin",
+                "Multi-branch conditional processor - evaluates multiple if-else conditions in sequence and executes the first matching branch.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"if", "else"}; // Master plugin - allows if and else
+        }
+    }
+    
+    /**
+     * Configuration schema for CasePlugin.
+     */
+    public static class CasePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[]{"if"};
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[]{"if", "else"};
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    // Additional validation can be added here if needed
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the case element";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[]{"if"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[]{"if", "else"};
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new CasePluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the case element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[]{"if"};
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[]{"if", "else"};
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                // Additional validation can be added here if needed
-            }
-        };
+        return new CasePluginMetadata().getConfigurationSchema();
     }
 
     @Override

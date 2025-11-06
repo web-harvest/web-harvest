@@ -58,8 +58,8 @@ public class SleepPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Sleep Plugin");
-        assertEquals(metadata.getDescription(), "Sleep plugin that pauses execution for specified number of milliseconds");
+        assertEquals(metadata.getName(), "Sleep");
+        assertNotNull(metadata.getDescription()); assertTrue(metadata.getDescription().contains("pause") || metadata.getDescription().contains("Pause"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "sleep");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -75,12 +75,13 @@ public class SleepPluginTest {
         PluginConfigurationSchema.AttributeDefinition millisAttr = schema.getAttributeDefinitions()[0];
         assertNotNull(millisAttr);
         assertEquals(millisAttr.getName(), "milliseconds");
-        assertFalse(millisAttr.isRequired());
-        assertEquals(millisAttr.getDefaultValue(), "0");
-        assertEquals(millisAttr.getMinValue(), 0);
+        assertTrue(millisAttr.isRequired(), "milliseconds attribute should be required");
+        assertNull(millisAttr.getDefaultValue(), "milliseconds attribute should not have default value");
+        assertEquals(millisAttr.getMinValue(), 1, "milliseconds attribute should have min value of 1");
         
-        assertFalse(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        // Sleep plugin does not allow body (standalone plugin)
+        assertFalse(schema.allowsBody(), "Sleep plugin should not allow body");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

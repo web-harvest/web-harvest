@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -209,7 +217,12 @@ public class XMLPlugin extends AbstractPlugin {
     
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.XMLPlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for XMLPlugin.
+     * 
+     * <p>Standalone plugin - wraps XML content for explicit declaration and processing.</p>
+     */
+    public static class XMLPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "xml";
@@ -217,17 +230,17 @@ public class XMLPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "XML Plugin";
+            return "XML";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "XML plugin that provides XML processing functionality";
+            return "Wraps XML content for explicit declaration and processing. Rarely needed in modern configurations - most XML is processed directly without this wrapper. Useful when you need to ensure XML content is properly parsed and validated.";
         }
 
         @Override
@@ -243,7 +256,7 @@ public class XMLPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "xml", "processing", "container", "markup"};
+            return new String[]{"core", "xml", "processing", "container", "markup", "xml-json", "data-transformation"};
         }
 
         @Override
@@ -273,215 +286,202 @@ public class XMLPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the xml element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new XMLPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-file-code";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for XML/JSON transformation
+        }
+        
+        @Override
+        public String getGroup() {
+            return "XML & JSON";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("content", "XML content to wrap (from body content)", PortType.XML, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Wrapped XML content", PortType.XML)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.XML;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Wraps XML content for explicit declaration and processing. Rarely needed in modern configurations - most XML is processed directly without this wrapper. Useful when you need to ensure XML content is properly parsed and validated.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+X", "Add XML", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XML Plugin",
+                "Wraps XML content for explicit declaration and processing. Useful when you need to ensure XML content is properly parsed and validated.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for XML content generation
+        }
+    }
+    
+    /**
+     * Configuration schema for XMLPlugin.
+     */
+    public static class XMLPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
 
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
 
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the xml element";
+                    }
 
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
 
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
                     }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+        
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for XML content generation
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new XMLPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the xml element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
+        return new XMLPluginMetadata().getConfigurationSchema();
     }
 
     @Override

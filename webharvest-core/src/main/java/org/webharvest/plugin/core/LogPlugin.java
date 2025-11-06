@@ -10,6 +10,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -268,7 +276,12 @@ public class LogPlugin extends AbstractPlugin {
         return new NodeVariable(message);
     }
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for LogPlugin.
+     * 
+     * <p>Standalone plugin - writes text to standard output (stdout) or standard error (stderr).</p>
+     */
+    public static class LogPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "log";
@@ -276,17 +289,17 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Log Plugin";
+            return "Log";
         }
 
         @Override
         public String getVersion() {
-            return "2.2.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Writes text to standard output (stdout) or standard error (stderr)";
+            return "Writes text to standard output (stdout) or standard error (stderr). Essential for debugging, progress monitoring, and integration with CI/CD pipelines. Supports variable interpolation in messages.";
         }
 
         @Override
@@ -302,7 +315,7 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "log", "output", "debug", "console"};
+            return new String[]{"core", "log", "output", "debug", "console", "utility", "monitoring"};
         }
 
         @Override
@@ -332,15 +345,101 @@ public class LogPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public AttributeDefinition[] getAttributeDefinitions() {
-                    return new AttributeDefinition[]{
-                        new AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "dest";
-                            }
+            return new LogPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-file-alt";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#6B7280"; // Gray for utility plugins
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Utility";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("message", "Log message (from body content)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[0]; // No output - writes to console
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Writes text to standard output (stdout) or standard error (stderr). Essential for debugging, progress monitoring, and integration with CI/CD pipelines. Supports variable interpolation in messages.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+L", "Add Log", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Log Plugin",
+                "Writes text to standard output (stdout) or standard error (stderr). Essential for debugging and progress monitoring.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for message generation
+        }
+    }
+    
+    /**
+     * Configuration schema for LogPlugin.
+     */
+    public static class LogPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "dest";
+                    }
 
                             @Override
                             public AttributeType getType() {
@@ -382,62 +481,64 @@ public class LogPlugin extends AbstractPlugin {
                                 return null;
                             }
                         }
-                    };
-                }
-
-                @Override
-                public AttributeDefinition getAttribute(String name) {
-                    for (AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.2.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"dest"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
-                    }
-                }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+        
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"dest"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for message generation
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new LogPluginMetadata();
+    }
+    
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new LogPluginMetadata().getConfigurationSchema();
     }
 }
 

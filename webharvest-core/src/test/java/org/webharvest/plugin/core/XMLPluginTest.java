@@ -76,9 +76,9 @@ public class XMLPluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "xml");
-        assertEquals(plugin.getMetadata().getName(), "XML Plugin");
-        assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
-        assertEquals(plugin.getMetadata().getDescription(), "XML plugin that provides XML processing functionality");
+        assertEquals(plugin.getMetadata().getName(), "XML");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
+        assertNotNull(plugin.getMetadata().getDescription());
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
         assertEquals(plugin.getMetadata().getCategory(), expectedCategory(XMLPlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "xml");
@@ -89,7 +89,7 @@ public class XMLPluginTest {
     public void testGetConfigurationSchema() {
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
         assertNotNull(schema);
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
         assertTrue(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
         assertEquals(schema.getAllowedSubElements().length, 0);

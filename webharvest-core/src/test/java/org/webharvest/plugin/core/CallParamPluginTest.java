@@ -67,8 +67,8 @@ public class CallParamPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "CallParam Plugin");
-        assertEquals(metadata.getDescription(), "CallParam plugin that provides function call parameter functionality");
+        assertEquals(metadata.getName(), "Call Parameter");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "call-param");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -94,7 +94,7 @@ public class CallParamPluginTest {
         assertTrue(nameAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

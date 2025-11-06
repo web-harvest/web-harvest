@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.plugin.annotations.CorePlugin;
@@ -103,7 +111,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "body-processor",
     description = "Plugin which executes only body and returns variables list",
-    version = "1.0.0"
+    version = "1.0.0",
+    systemComponent = true
 )
 public class BodyProcessorPlugin extends AbstractPlugin {
     
@@ -116,126 +125,213 @@ public class BodyProcessorPlugin extends AbstractPlugin {
         return super.executeBody(context);
     }
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "body-processor";
-            }
+    /**
+     * Metadata for BodyProcessorPlugin.
+     * 
+     * <p>Internal framework plugin - executes body content and returns results. Used by framework for child processor execution.</p>
+     */
+    public static class BodyProcessorPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "body-processor";
+        }
 
-            @Override
-            public String getName() {
-                return "body-processor";
-            }
+        @Override
+        public String getName() {
+            return "Body Processor";
+        }
 
-            @Override
-            public String getVersion() {
-                return "1.0.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "Plugin which executes only body and returns variables list";
-            }
+        @Override
+        public String getDescription() {
+            return "Internal framework processor that executes body content and returns results as a variable list. Used automatically by the framework when processors need to execute their child elements. Provides standardized body execution, result collection, and variable scope management. Rarely used directly in user configurations.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = BodyProcessorPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "core";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "body", "processor", "execution"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "body", "processor", "execution", "internal", "framework"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return BodyProcessorPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return BodyProcessorPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "body-processor";
-            }
+        @Override
+        public String getElementName() {
+            return "body-processor";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return new PluginConfigurationSchema() {
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                        return new PluginConfigurationSchema.AttributeDefinition[0];
-                    }
-                    
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                        return null;
-                    }
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new BodyProcessorPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-cog";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#6B7280"; // Gray for internal/framework plugins
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Framework";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 180;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[0]; // No explicit inputs
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Results from body execution", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Internal framework processor that executes body content and returns results. Used automatically by the framework for child processor execution.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Internal plugin - no shortcuts
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Body Processor Plugin",
+                "Internal framework processor that executes body content and returns results.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for BodyProcessorPlugin.
+     */
+    public static class BodyProcessorPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[0];
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            return null;
+        }
 
-                    @Override
-                    public String getVersion() {
-                        return "1.0.0";
-                    }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-                    @Override
-                    public boolean allowsBody() {
-                        return true;
-                    }
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
 
-                    @Override
-                    public String[] getRequiredSubElements() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
 
-                    @Override
-                    public String[] getAllowedSubElements() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins
+        }
 
-                    @Override
-                    public String[] getOptionalAttributes() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[0];
+        }
 
-                    @Override
-                    public String[] getRequiredAttributes() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
 
-                    @Override
-                    public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                        if (configuration == null) {
-                            throw new PluginValidationException("Configuration cannot be null");
-                        }
-                    }
-                };
-            }
-        };
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No validation needed - no attributes
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new BodyProcessorPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return getMetadata().getConfigurationSchema();
+        return new BodyProcessorPluginMetadata().getConfigurationSchema();
     }
 
     @Override

@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -212,7 +220,12 @@ import org.webharvest.runtime.variables.Variable;
 )
 public class XQParamPlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for XQParamPlugin.
+     * 
+     * <p>Detail plugin - requires xquery as parent. Defines parameters for XQuery expressions, enabling dynamic data binding and type-safe parameter passing.</p>
+     */
+    public static class XQParamPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "xq-param";
@@ -220,17 +233,17 @@ public class XQParamPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "XQParam Plugin";
+            return "XQuery Parameter";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "XQParam plugin that provides XQuery parameter functionality";
+            return "XQuery parameter definition used within XQuery expressions to pass parameters. Enables dynamic data binding and type-safe parameter passing. Supports multiple types: xs:string, xs:integer, xs:double, xs:boolean, and node() for XML content. Parameters can be defined with sequences (integer*, double*, etc.) and support dynamic values using ${var} syntax.";
         }
 
         @Override
@@ -241,12 +254,12 @@ public class XQParamPlugin extends AbstractPlugin {
         @Override
         public String getCategory() {
             CorePlugin annotation = XQParamPlugin.class.getAnnotation(CorePlugin.class);
-            return annotation != null ? annotation.category() : "core";
+            return annotation != null ? annotation.category() : "Extraction";
         }
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "xq-param", "xquery", "parameter", "external"};
+            return new String[]{"core", "xq-param", "xquery", "parameter", "external", "binding"};
         }
 
         @Override
@@ -276,447 +289,314 @@ public class XQParamPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the xq-param element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        },
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "name";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return true;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Name of the XQuery parameter";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        },
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "type";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return "node()";
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Type of the XQuery parameter";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return new String[]{"node()", "node()*", "integer", "integer*", "long", "long*", 
-                                                  "float", "float*", "double", "double*", "boolean", "boolean*", 
-                                                  "string", "string*"};
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new XQParamPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-tag";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for extraction/query
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Extraction";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("value", "Parameter value (from body content)", PortType.MIXED, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[0]; // No output - parameter is bound to XQuery
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "XQuery parameter definition. Defines parameters for XQuery expressions, enabling dynamic data binding and type-safe parameter passing.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Detail plugin - no shortcuts
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XQuery Parameter Plugin",
+                "Defines parameters for XQuery expressions. Enables dynamic data binding and type-safe parameter passing.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("xquery", true, "XQuery");
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for parameter value generation
+        }
+    }
+    
+    /**
+     * Configuration schema for XQParamPlugin.
+     */
+    public static class XQParamPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id", "type"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[]{"name"};
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    
-                    String name = configuration.getProperty("name");
-                    if (name == null || name.trim().isEmpty()) {
-                        throw new PluginValidationException("Name attribute is required");
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
                     }
-                    
-                    String type = configuration.getProperty("type");
-                    if (type != null && !type.trim().isEmpty()) {
-                        String[] allowedTypes = {"node()", "node()*", "integer", "integer*", "long", "long*", 
-                                               "float", "float*", "double", "double*", "boolean", "boolean*", 
-                                               "string", "string*"};
-                        boolean validType = false;
-                        for (String allowedType : allowedTypes) {
-                            if (allowedType.equals(type)) {
-                                validType = true;
-                                break;
-                            }
-                        }
-                        if (!validType) {
-                            throw new PluginValidationException("Invalid type: " + type);
-                        }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the xq-param element";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "name";
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return true;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Name of the XQuery parameter (matches XQuery variable name)";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "type";
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "node()";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "XQuery data type: xs:string, xs:integer, xs:double, xs:boolean, node(), or sequences (integer*, double*, etc.)";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"node()", "node()*", "integer", "integer*", "long", "long*", 
+                                          "float", "float*", "double", "double*", "boolean", "boolean*", 
+                                          "string", "string*"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
                     }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for parameter value generation
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id", "type"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{"name"};
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+            
+            String name = configuration.getProperty("name");
+            if (name == null || name.trim().isEmpty()) {
+                throw new PluginValidationException("Name attribute is required");
+            }
+            
+            String type = configuration.getProperty("type");
+            if (type != null && !type.trim().isEmpty()) {
+                String[] allowedTypes = {"node()", "node()*", "integer", "integer*", "long", "long*", 
+                                       "float", "float*", "double", "double*", "boolean", "boolean*", 
+                                       "string", "string*"};
+                boolean validType = false;
+                for (String allowedType : allowedTypes) {
+                    if (allowedType.equals(type)) {
+                        validType = true;
+                        break;
+                    }
+                }
+                if (!validType) {
+                    throw new PluginValidationException("Invalid type: " + type);
+                }
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new XQParamPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the xq-param element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "name";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return true;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Name of the XQuery parameter";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "type";
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "node()";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Type of the XQuery parameter";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return new String[]{"node()", "node()*", "integer", "integer*", "long", "long*", 
-                                              "float", "float*", "double", "double*", "boolean", "boolean*", 
-                                              "string", "string*"};
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id", "type"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[]{"name"};
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                
-                String name = configuration.getProperty("name");
-                if (name == null || name.trim().isEmpty()) {
-                    throw new PluginValidationException("Name attribute is required");
-                }
-                
-                String type = configuration.getProperty("type");
-                if (type != null && !type.trim().isEmpty()) {
-                    String[] allowedTypes = {"node()", "node()*", "integer", "integer*", "long", "long*", 
-                                           "float", "float*", "double", "double*", "boolean", "boolean*", 
-                                           "string", "string*"};
-                    boolean validType = false;
-                    for (String allowedType : allowedTypes) {
-                        if (allowedType.equals(type)) {
-                            validType = true;
-                            break;
-                        }
-                    }
-                    if (!validType) {
-                        throw new PluginValidationException("Invalid type: " + type);
-                    }
-                }
-            }
-        };
+        return new XQParamPluginMetadata().getConfigurationSchema();
     }
 
     @Override

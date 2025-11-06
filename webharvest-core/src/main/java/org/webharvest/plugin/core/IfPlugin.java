@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -215,7 +223,12 @@ public class IfPlugin extends AbstractPlugin {
     
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.IfPlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for IfPlugin.
+     * 
+     * <p>Master plugin - allows else as child. Conditional execution based on boolean condition.</p>
+     */
+    public static class IfPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "if";
@@ -223,17 +236,17 @@ public class IfPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "If Plugin";
+            return "If";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "If plugin that provides conditional processing";
+            return "Executes body content only if condition is true. Essential for conditional logic, error handling, and data validation. Supports boolean expressions, comparisons, and empty checks.";
         }
 
         @Override
@@ -249,7 +262,7 @@ public class IfPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "if", "conditional", "control"};
+            return new String[]{"core", "if", "conditional", "control", "master"};
         }
 
         @Override
@@ -277,315 +290,251 @@ public class IfPlugin extends AbstractPlugin {
             return true;
         }
 
-
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public AttributeDefinition[] getAttributeDefinitions() {
-                    return new AttributeDefinition[]{
-                        new AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "condition";
-                            }
-
-                            @Override
-                            public AttributeType getType() {
-                                return AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return true;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Condition expression to evaluate";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        },
-                        new AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public AttributeType getType() {
-                                return AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the if element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public AttributeDefinition getAttribute(String name) {
-                    for (AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new IfPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-question-circle";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for control flow
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Control Flow";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 160;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("condition", "Boolean condition to evaluate (from condition attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Result from body execution (if condition is true)", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Executes body content only if condition is true. Essential for conditional logic, error handling, and data validation. Supports boolean expressions, comparisons, and empty checks. Allows else as child.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+I", "Add If", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "If Plugin",
+                "Executes body content only if condition is true. Essential for conditional logic, error handling, and data validation.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"else"}; // Master plugin - allows else child
+        }
+    }
+    
+    /**
+     * Configuration schema for IfPlugin.
+     */
+    public static class IfPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public AttributeDefinition[] getAttributeDefinitions() {
+            return new AttributeDefinition[]{
+                new AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "condition";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[]{"condition"};
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public AttributeType getType() {
+                        return AttributeType.STRING;
                     }
-                    // Additional validation can be added here if needed
+
+                    @Override
+                    public boolean isRequired() {
+                        return true;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Condition expression to evaluate";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
+                    }
+
+                    @Override
+                    public AttributeType getType() {
+                        return AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the if element";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
                 }
             };
         }
+        
+        @Override
+        public AttributeDefinition getAttribute(String name) {
+            for (AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
 
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
 
-    };
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[]{"else"}; // Allows else child
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{"condition"};
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+            // Additional validation can be added here if needed
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new IfPluginMetadata();
     }
-
+    
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public AttributeDefinition[] getAttributeDefinitions() {
-                return new AttributeDefinition[]{
-                    new AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "condition";
-                        }
-
-                        @Override
-                        public AttributeType getType() {
-                            return AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return true;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Condition expression to evaluate";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    },
-                    new AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return "id";
-                        }
-
-                        @Override
-                        public AttributeType getType() {
-                            return AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Optional identifier for the if element";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public AttributeDefinition getAttribute(String name) {
-                for (AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{"id"};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[]{"condition"};
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-                // Additional validation can be added here if needed
-            }
-        };
+        return new IfPluginMetadata().getConfigurationSchema();
     }
 
     @Override

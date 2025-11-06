@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -317,74 +325,269 @@ public class ValueOfPlugin extends AbstractPlugin {
         };
     }
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "value-of";
-            }
+    /**
+     * Metadata for ValueOfPlugin.
+     * 
+     * <p>Standalone plugin - explicitly evaluates ${} expressions and returns their values.</p>
+     */
+    public static class ValueOfPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "value-of";
+        }
 
-            @Override
-            public String getName() {
-                return "ValueOf Plugin";
-            }
+        @Override
+        public String getName() {
+            return "Value Of";
+        }
 
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "ValueOf plugin that evaluates expressions and returns their values";
-            }
+        @Override
+        public String getDescription() {
+            return "Explicitly evaluates template expressions and returns their values. Mostly used for XPath-style value extraction and when you need explicit expression evaluation. In most cases, direct ${} syntax is simpler and preferred.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = ValueOfPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "core";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "value", "expression", "evaluation"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "value", "expression", "evaluation", "template", "xpath"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return ValueOfPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return ValueOfPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "value-of";
-            }
+        @Override
+        public String getElementName() {
+            return "value-of";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return ValueOfPlugin.this.getConfigurationSchema();
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new ValueOfPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-code";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#F59E0B"; // Amber for text processing
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Text Processing";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("expr", "Expression to evaluate (from expr attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Evaluated expression result", PortType.STRING)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Explicitly evaluates template expressions and returns their values. Mostly used for XPath-style value extraction and when you need explicit expression evaluation. Supports ${} template syntax and XPath expressions.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Rarely used directly
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Value Of Plugin",
+                "Explicitly evaluates template expressions and returns their values. Mostly used for XPath-style value extraction.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // No children
+        }
+    }
+    
+    /**
+     * Configuration schema for ValueOfPlugin.
+     */
+    public static class ValueOfPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return ATTR_EXPRESSION;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return true;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Expression to evaluate";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
             }
-        };
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return false;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{ATTR_EXPRESSION};
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+            
+            String expression = configuration.getProperty(ATTR_EXPRESSION);
+            if (expression == null || expression.trim().isEmpty()) {
+                throw new PluginValidationException("Expression attribute is required for value-of plugin");
+            }
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new ValueOfPluginMetadata();
     }
 }

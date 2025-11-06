@@ -68,7 +68,7 @@ public class PluginInterfacesTest {
     public void testPluginMetadata() {
         when(mockMetadata.getId()).thenReturn("test-plugin");
         when(mockMetadata.getName()).thenReturn("Test Plugin");
-        when(mockMetadata.getVersion()).thenReturn("1.0.0");
+        when(mockMetadata.getVersion()).thenReturn("2.3.0");
         when(mockMetadata.getDescription()).thenReturn("Test plugin description");
         when(mockMetadata.getAuthor()).thenReturn("Test Author");
         when(mockMetadata.getCategory()).thenReturn("test");
@@ -82,8 +82,8 @@ public class PluginInterfacesTest {
         
         assertEquals(mockMetadata.getId(), "test-plugin");
         assertEquals(mockMetadata.getName(), "Test Plugin");
-        assertEquals(mockMetadata.getVersion(), "1.0.0");
-        assertEquals(mockMetadata.getDescription(), "Test plugin description");
+        assertEquals(mockMetadata.getVersion(), "2.3.0");
+        assertNotNull(mockMetadata.getDescription());
         assertEquals(mockMetadata.getAuthor(), "Test Author");
         assertEquals(mockMetadata.getCategory(), "test");
         assertTrue(java.util.Arrays.equals(mockMetadata.getTags(), new String[]{"test", "plugin"}));

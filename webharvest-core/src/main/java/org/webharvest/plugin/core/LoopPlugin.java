@@ -42,6 +42,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -357,120 +365,217 @@ public class LoopPlugin extends AbstractPlugin {
         }
     }
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "loop";
-            }
+    /**
+     * Metadata for LoopPlugin.
+     * 
+     * <p>Master plugin - can contain any child plugins. Iterates over collections.</p>
+     */
+    public static class LoopPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "loop";
+        }
 
-            @Override
-            public String getName() {
-                return "Loop Plugin";
-            }
+        @Override
+        public String getName() {
+            return "Loop";
+        }
 
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "Loop plugin for iterations";
-            }
+        @Override
+        public String getDescription() {
+            return "Iterates over collections of data, executing body content once for each item. Supports XPath results, variables, and delimited strings. Essential for scraping paginated data, product lists, and repeating structures.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = LoopPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Control";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"loop", "iteration", "core"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"loop", "iteration", "core", "control", "container"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return LoopPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return LoopPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "loop";
-            }
+        @Override
+        public String getElementName() {
+            return "loop";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return new PluginConfigurationSchema() {
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                        return new PluginConfigurationSchema.AttributeDefinition[0];
-                    }
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new LoopPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-sync-alt";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for control flow
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Control Flow";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 240;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 180;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("collection", "Collection to iterate (from body content)", PortType.MIXED, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Aggregated results from all iterations", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Iterates over collections of data, executing body content once for each item. Supports XPath results, variables, and delimited strings. Can contain any child plugins. Essential for scraping paginated data and repeating structures.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+L", "Add Loop", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Loop Plugin",
+                "Iterates over collections of data, executing body content once for each item. Supports XPath results, variables, and delimited strings.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Empty array means can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for LoopPlugin.
+     */
+    public static class LoopPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[0];
+        }
 
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                        return null;
-                    }
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            return null;
+        }
 
-                    @Override
-                    public String getVersion() {
-                        return "2.1.0";
-                    }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-                    @Override
-                    public boolean allowsBody() {
-                        return true;
-                    }
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
 
-                    @Override
-                    public String[] getRequiredSubElements() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
 
-                    @Override
-                    public String[] getAllowedSubElements() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Empty means can contain any child plugins
+        }
 
-                    @Override
-                    public String[] getOptionalAttributes() {
-                        return new String[]{"item", "index", "maxloops", "filter", "empty"};
-                    }
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"item", "index", "maxloops", "filter", "empty", "delimiter"};
+        }
 
-                    @Override
-                    public String[] getRequiredAttributes() {
-                        return new String[0];
-                    }
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
 
-                    @Override
-                    public void validate(PluginConfiguration configuration) throws org.webharvest.plugin.exceptions.PluginValidationException {
-                        // No validation needed for now
-                    }
-                };
-            }
-        };
+        @Override
+        public void validate(PluginConfiguration configuration) throws org.webharvest.plugin.exceptions.PluginValidationException {
+            // No validation needed for now
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new LoopPluginMetadata();
+    }
+    
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new LoopPluginMetadata().getConfigurationSchema();
     }
 
     @Override

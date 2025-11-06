@@ -66,8 +66,8 @@ public class StylesheetPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Stylesheet Plugin");
-        assertEquals(metadata.getDescription(), "Stylesheet plugin that provides stylesheet functionality");
+        assertEquals(metadata.getName(), "XSLT Stylesheet");
+        assertNotNull(metadata.getDescription()); assertTrue(metadata.getDescription().contains("XSLT") || metadata.getDescription().contains("stylesheet"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "stylesheet");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -87,7 +87,7 @@ public class StylesheetPluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

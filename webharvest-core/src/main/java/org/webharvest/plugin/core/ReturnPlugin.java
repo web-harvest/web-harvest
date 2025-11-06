@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -133,7 +141,12 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 )
 public class ReturnPlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for ReturnPlugin.
+     * 
+     * <p>Detail plugin - used inside function definitions to explicitly return a value and exit the function.</p>
+     */
+    public static class ReturnPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "return";
@@ -141,17 +154,17 @@ public class ReturnPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Return Plugin";
+            return "Return";
         }
 
         @Override
         public String getVersion() {
-            return "2.2.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Return plugin that sets the return value for function calls";
+            return "Explicitly sets function return value and immediately exits the function. Used inside function definitions to return computed results. If no return is used, the function returns the result of its last expression.";
         }
 
         @Override
@@ -167,7 +180,7 @@ public class ReturnPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "return", "function", "control-flow"};
+            return new String[]{"core", "return", "function", "control-flow", "detail"};
         }
 
         @Override
@@ -176,115 +189,8 @@ public class ReturnPlugin extends AbstractPlugin {
         }
 
         @Override
-        public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public AttributeDefinition[] getAttributeDefinitions() {
-                    return new AttributeDefinition[]{
-                        new AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public AttributeType getType() {
-                                return AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the return element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-
-                @Override
-                public AttributeDefinition getAttribute(String name) {
-                    for (AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.2.0";
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    // Return plugin doesn't have complex validation
-                }
-            };
-        }
-
-        @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
-        }
-
-        @Override
-        public String getElementName() {
-            return "return";
+        public String getClassName() {
+            return ReturnPlugin.class.getName();
         }
 
         @Override
@@ -293,17 +199,207 @@ public class ReturnPlugin extends AbstractPlugin {
         }
 
         @Override
-        public String getClassName() {
-            return ReturnPlugin.class.getName();
+        public String getElementName() {
+            return "return";
         }
-    };
 
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new ReturnPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-arrow-left";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#8B5CF6"; // Purple for functions
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Functions & Scripting";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 180;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("value", "Return value (from body content)", PortType.MIXED, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[0]; // No output - terminates function execution
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Explicitly sets function return value and immediately exits the function. Used inside function definitions to return computed results. Must be used within function element.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Detail plugin - no shortcuts
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Return Plugin",
+                "Explicitly sets function return value and immediately exits the function. Used inside function definitions.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("function", true, "Function"); // Required parent
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // No children
+        }
+    }
+    
     /**
-     * {@inheritDoc}
+     * Configuration schema for ReturnPlugin.
      */
+    public static class ReturnPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the return element";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // Return plugin doesn't have complex validation
+        }
+    }
+
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new ReturnPluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new ReturnPluginMetadata().getConfigurationSchema();
     }
 
     /**

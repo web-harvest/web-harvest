@@ -41,6 +41,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -253,39 +261,217 @@ import org.webharvest.runtime.variables.Variable;
 )
 public class XmlToJsonPlugin extends AbstractPlugin {
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() { return "xml-to-json"; }
-            @Override
-            public String getName() { return "XmlToJson Plugin"; }
-            @Override
-            public String getVersion() { return "2.1.0"; }
-            @Override
-            public String getDescription() { return "Converter from XML to JSON"; }
-            @Override
-            public String getAuthor() { return "Web-Harvest Team"; }
-            @Override
+    /**
+     * Metadata for XmlToJsonPlugin.
+     * 
+     * <p>Standalone plugin - converts XML data to JSON format for APIs and JavaScript.</p>
+     */
+    public static class XmlToJsonPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "xml-to-json";
+        }
+
+        @Override
+        public String getName() {
+            return "XML to JSON";
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public String getDescription() {
+            return "Converts XML data into JSON format. Useful when sending scraped data to REST APIs, JavaScript applications, or any system expecting JSON input. It's the reverse operation of json-to-xml. Preserves data types (numbers, booleans, nulls) and converts repeated XML elements to JSON arrays.";
+        }
+
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
+
+        @Override
         public String getCategory() {
             CorePlugin annotation = XmlToJsonPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Extraction";
         }
-            @Override
-            public String[] getTags() { return new String[]{"core", "xml", "json", "converter"}; }
-            @Override
-            public String[] getDependencies() { return new String[0]; }
-            @Override
-            public String getClassName() { return XmlToJsonPlugin.class.getName(); }
-            @Override
-            public boolean isCorePlugin() { return true; }
-            @Override
-            public String getElementName() { return "xml-to-json"; }
-            @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() { return XmlToJsonPlugin.this.getConfigurationSchema(); }
-        };
+
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "xml", "json", "converter", "transformation", "api"};
+        }
+
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
+
+        @Override
+        public String getClassName() {
+            return XmlToJsonPlugin.class.getName();
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getElementName() {
+            return "xml-to-json";
+        }
+
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new XmlToJsonPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-exchange-alt";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#60A5FA"; // Light blue for XML/JSON
+        }
+        
+        @Override
+        public String getGroup() {
+            return "XML & JSON";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("xml", "XML content to convert (from body content)", PortType.XML, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "JSON representation of XML data", PortType.STRING)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Converts XML data into JSON format. Useful when sending scraped data to REST APIs, JavaScript applications, or any system expecting JSON input.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+X", "Add XML to JSON", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XML to JSON Plugin",
+                "Converts XML data into JSON format. Useful when sending scraped data to REST APIs, JavaScript applications, or any system expecting JSON input.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for XmlToJsonPlugin.
+     */
+    public static class XmlToJsonPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[0]; // No attributes
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No validation needed - no attributes required
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new XmlToJsonPluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new XmlToJsonPluginMetadata().getConfigurationSchema();
     }
 
     @Override
@@ -296,57 +482,6 @@ public class XmlToJsonPlugin extends AbstractPlugin {
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
         // No validation needed - no attributes required
-    }
-
-    public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[0];
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
     }
 
     @Override

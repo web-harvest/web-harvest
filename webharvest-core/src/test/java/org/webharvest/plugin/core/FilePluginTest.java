@@ -48,8 +48,8 @@ public class FilePluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals("file", plugin.getMetadata().getId());
-        assertEquals("File Plugin", plugin.getMetadata().getName());
-        assertEquals("2.1.0", plugin.getMetadata().getVersion());
+        assertEquals("File", plugin.getMetadata().getName());
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0", plugin.getMetadata().getVersion());
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
 

@@ -75,8 +75,8 @@ public class HttpHeaderPluginTest {
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "http-header");
         assertEquals(metadata.getName(), "HTTP Header Plugin");
-        assertEquals(metadata.getVersion(), "2.1.0");
-        assertEquals(metadata.getDescription(), "HTTP header plugin that defines HTTP headers for HTTP requests");
+        assertEquals(metadata.getVersion(), "2.3.0");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "http-header");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

@@ -70,7 +70,7 @@ public class TemplatePluginTest {
     @Test(description = "Test template plugin metadata")
     public void testTemplatePluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
-        assertEquals(plugin.getMetadata().getName(), "Template Plugin", 
+        assertEquals(plugin.getMetadata().getName(), "Template", 
                     "Plugin name should be 'Template Plugin'");
     }
 }

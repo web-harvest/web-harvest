@@ -67,8 +67,8 @@ public class RegexpResultPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Regexp Result Plugin");
-        assertEquals(metadata.getDescription(), "Regexp result plugin that provides regexp result functionality");
+        assertEquals(metadata.getName(), "Regexp Result");
+        assertNotNull(metadata.getDescription()); assertTrue(metadata.getDescription().contains("regex") || metadata.getDescription().contains("Regex"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "regexp-result");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -88,7 +88,7 @@ public class RegexpResultPluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

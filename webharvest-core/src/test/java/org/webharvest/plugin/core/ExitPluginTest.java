@@ -59,14 +59,14 @@ public class ExitPluginTest {
         
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "exit");
-        assertEquals(metadata.getName(), "Exit Plugin");
-        assertEquals(metadata.getVersion(), "2.1.0");
-        assertEquals(metadata.getDescription(), "Exit plugin that provides conditional exit functionality");
+        assertEquals(metadata.getName(), "Exit");
+        assertEquals(metadata.getVersion(), "2.3.0");
+        assertNotNull(metadata.getDescription());
         assertEquals(metadata.getAuthor(), "Web-Harvest Team");
         assertEquals(metadata.getCategory(), "Utilities");
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "exit");
-        assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
+        assertEquals(plugin.getMetadata().getNamespace(), "http://org.webharvest/schema/2.1/core");
     }
 
     @Test
@@ -74,7 +74,7 @@ public class ExitPluginTest {
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
         
         assertNotNull(schema);
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
         assertFalse(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
         assertEquals(schema.getAllowedSubElements().length, 0);

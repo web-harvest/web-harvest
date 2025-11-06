@@ -35,24 +35,27 @@ package org.webharvest.plugin.schema;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.Collection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.validation.SchemaResolver;
 import org.webharvest.definition.validation.SchemaResolverPostProcessor;
 import org.webharvest.definition.validation.SchemaSource;
-import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.registry.PluginRegistry;
+import org.webharvest.plugin.metadata.XSDGenerator;
 
 /**
  * Post-processor for the schema resolver that generates XSD schemas dynamically
- * from registered plugins and registers them with the schema resolver.
+ * from plugin metadata and registers them with the schema resolver.
  * This ensures compatibility between the new plugin architecture and existing
  * XSD-based validation.
+ * 
+ * <p>Uses XSDGenerator which generates complete schemas from PluginMetadataCatalog,
+ * including all elements, attributes, bodyElements group, bodyType, and config element.</p>
  *
  * @author Robert Bala
  * @since 2.1.0
+ * @version 2.3.0 - Now uses XSDGenerator instead of DynamicSchemaGenerator
  */
 public class PluginSchemaPostProcessor implements SchemaResolverPostProcessor {
 
@@ -62,16 +65,14 @@ public class PluginSchemaPostProcessor implements SchemaResolverPostProcessor {
     private static final String WH_CORE_10_NAMESPACE = "http://org.webharvest/schema/1.0/config";
 
     private final PluginRegistry pluginRegistry;
-    private final DynamicSchemaGenerator schemaGenerator;
 
     /**
      * Creates a new PluginSchemaPostProcessor.
      *
-     * @param pluginRegistry the plugin registry to get plugins from
+     * @param pluginRegistry the plugin registry (used for validation, but XSDGenerator uses PluginMetadataCatalog)
      */
     public PluginSchemaPostProcessor(PluginRegistry pluginRegistry) {
         this.pluginRegistry = pluginRegistry;
-        this.schemaGenerator = new DynamicSchemaGenerator();
     }
 
     /**
@@ -80,39 +81,21 @@ public class PluginSchemaPostProcessor implements SchemaResolverPostProcessor {
     @Override
     public void postProcess(SchemaResolver resolver) {
         try {
-            if (pluginRegistry == null) {
-                LOG.debug("Plugin registry is null, skipping dynamic schema generation");
-                return;
-            }
-            
-            Collection<Plugin> allPlugins;
-            try {
-                allPlugins = pluginRegistry.getAllPlugins();
-            } catch (Exception e) {
-                LOG.error("Failed to get plugins from registry", e);
-                return;
-            }
-            
-            if (allPlugins.isEmpty()) {
-                LOG.debug("No plugins registered, skipping dynamic schema generation");
-                return;
-            }
-
-            // Generate schema for core namespace (2.1)
-            String coreSchema = schemaGenerator.generateSchema(allPlugins, WH_CORE_NAMESPACE);
+            // Generate schema for core namespace (2.1) using XSDGenerator
+            String coreSchema = XSDGenerator.generateXSD(WH_CORE_NAMESPACE);
             if (coreSchema != null && !coreSchema.trim().isEmpty()) {
                 registerSchemaSource(resolver, coreSchema, WH_CORE_NAMESPACE + "/plugins.xsd");
                 LOG.debug("Generated and registered plugin schema for core namespace: {}", WH_CORE_NAMESPACE);
             }
 
             // Generate schema for legacy namespace (1.0) for backward compatibility
-            String legacySchema = schemaGenerator.generateSchema(allPlugins, WH_CORE_10_NAMESPACE);
+            String legacySchema = XSDGenerator.generateXSD(WH_CORE_10_NAMESPACE);
             if (legacySchema != null && !legacySchema.trim().isEmpty()) {
                 registerSchemaSource(resolver, legacySchema, WH_CORE_10_NAMESPACE + "/plugins.xsd");
                 LOG.debug("Generated and registered plugin schema for legacy namespace: {}", WH_CORE_10_NAMESPACE);
             }
 
-            LOG.info("Successfully generated and registered plugin schemas for {} plugins", allPlugins.size());
+            LOG.info("Successfully generated and registered plugin schemas using XSDGenerator");
 
         } catch (Exception e) {
             LOG.error("Failed to generate plugin schemas", e);

@@ -118,7 +118,7 @@ public class XQueryPluginTest {
     @Test(description = "Test XQuery plugin metadata")
     public void testXQueryPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
-        assertEquals(plugin.getMetadata().getName(), "XQuery Plugin", 
+        assertEquals(plugin.getMetadata().getName(), "XQuery", 
                     "Plugin name should be 'XQuery Plugin'");
     }
 

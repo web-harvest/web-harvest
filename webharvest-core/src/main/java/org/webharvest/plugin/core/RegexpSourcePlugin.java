@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -155,180 +163,158 @@ import org.webharvest.runtime.variables.Variable;
 )
 public class RegexpSourcePlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for RegexpSourcePlugin.
+     * 
+     * <p>Detail plugin - requires regexp as parent. Defines the text content to match against using regular expressions. Supports variable substitution and complex text sources.</p>
+     */
+    public static class RegexpSourcePluginMetadata implements VisualPluginMetadata {
         @Override
-        public String getId() {
-            return "regexp-source";
-        }
-
+        public String getId() { return "regexp-source"; }
         @Override
-        public String getName() {
-            return "Regexp Source Plugin";
-        }
-
+        public String getName() { return "Regexp Source"; }
         @Override
-        public String getVersion() {
-            return "2.1.0";
-        }
-
+        public String getVersion() { return "2.3.0"; }
         @Override
         public String getDescription() {
-            return "Regexp source plugin that provides regexp source functionality";
+            return "Defines the text content to match against using regular expressions. Must be used within regexp element. Supports variable substitution (${var}) and complex text sources from processors, files, and HTTP responses.";
         }
-
         @Override
-        public String getAuthor() {
-            return "Web-Harvest Team";
-        }
-
+        public String getAuthor() { return "Web-Harvest Team"; }
         @Override
         public String getCategory() {
             CorePlugin annotation = RegexpSourcePlugin.class.getAnnotation(CorePlugin.class);
-            return annotation != null ? annotation.category() : "core";
+            return annotation != null ? annotation.category() : "Extraction";
         }
-
         @Override
         public String[] getTags() {
-            return new String[]{"core", "regexp", "source", "regex", "text"};
+            return new String[]{"core", "regexp", "source", "regex", "text", "extraction"};
         }
-
         @Override
-        public String[] getDependencies() {
-            return new String[0];
-        }
-
+        public String[] getDependencies() { return new String[0]; }
         @Override
-        public String getClassName() {
-            return RegexpSourcePlugin.class.getName();
-        }
-
+        public String getClassName() { return RegexpSourcePlugin.class.getName(); }
         @Override
-        public boolean isCorePlugin() {
-            return true;
-        }
-
+        public boolean isCorePlugin() { return true; }
         @Override
-        public String getElementName() {
-            return "regexp-source";
-        }
-
+        public String getElementName() { return "regexp-source"; }
         @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
-        }
-
+        public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the regexp-source element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new RegexpSourcePluginConfigurationSchema();
+        }
+        @Override
+        public String getIcon() { return "fas fa-file-alt"; }
+        @Override
+        public String getColor() { return "#10B981"; }
+        @Override
+        public String getGroup() { return "Extraction"; }
+        @Override
+        public int getDefaultWidth() { return 200; }
+        @Override
+        public int getDefaultHeight() { return 100; }
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("source", "Text content to match against (from body content)", PortType.STRING, true)
+            };
+        }
+        @Override
+        public OutputPort[] getOutputPorts() { return new OutputPort[0]; }
+        @Override
+        public PortType getPortType() { return PortType.STRING; }
+        @Override
+        public String getTooltip() {
+            return "Defines the text content to match against using regular expressions. Supports variable substitution and complex text sources.";
+        }
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() { return new KeyboardShortcut[0]; }
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Regexp Source Plugin",
+                "Defines the text content to match against using regular expressions.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() { return new LinkedServiceMetadata[0]; }
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("regexp", true, "Regular Expression");
+        }
+        @Override
+        public String[] getAllowedChildPlugins() { return new String[0]; }
+    }
+    
+    /**
+     * Configuration schema for RegexpSourcePlugin.
+     */
+    public static class RegexpSourcePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() { return "id"; }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    return null;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public boolean isRequired() { return false; }
+                    @Override
+                    public String getDefaultValue() { return null; }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the regexp-source element";
                     }
+                    @Override
+                    public String[] getAllowedValues() { return null; }
+                    @Override
+                    public Number getMinValue() { return null; }
+                    @Override
+                    public Number getMaxValue() { return null; }
+                    @Override
+                    public String getPattern() { return null; }
                 }
             };
         }
-    };
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) return attr;
+            }
+            return null;
+        }
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        @Override
+        public boolean allowsBody() { return true; }
+        @Override
+        public String[] getRequiredSubElements() { return new String[0]; }
+        @Override
+        public String[] getAllowedSubElements() { return new String[0]; }
+        @Override
+        public String[] getOptionalAttributes() { return new String[]{"id"}; }
+        @Override
+        public String[] getRequiredAttributes() { return new String[0]; }
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new RegexpSourcePluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return METADATA.getConfigurationSchema();
+        return new RegexpSourcePluginMetadata().getConfigurationSchema();
     }
 
     @Override

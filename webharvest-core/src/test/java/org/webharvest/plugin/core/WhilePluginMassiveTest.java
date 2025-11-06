@@ -123,7 +123,7 @@ public class WhilePluginMassiveTest {
     @Test
     public void testSchema7() {
         WhilePlugin plugin = new WhilePlugin();
-        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.1.0");
+        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.3.0");
     }
     
     @Test

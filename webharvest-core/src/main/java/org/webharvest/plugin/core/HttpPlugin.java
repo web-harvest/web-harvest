@@ -39,6 +39,14 @@ import java.util.Map;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.services.HttpResponse;
 import com.google.inject.Inject;
@@ -312,8 +320,10 @@ public class HttpPlugin extends AbstractPlugin {
     
     /**
      * Metadata for HttpPlugin.
+     * 
+     * <p>Master plugin - allows http-header and http-param as children.</p>
      */
-    public static class HttpPluginMetadata implements PluginMetadata {
+    public static class HttpPluginMetadata implements VisualPluginMetadata {
         
         @Override
         public String getId() {
@@ -322,22 +332,22 @@ public class HttpPlugin extends AbstractPlugin {
         
         @Override
         public String getName() {
-            return "HTTP Plugin";
+            return "HTTP Request";
         }
         
         @Override
         public String getDescription() {
-            return "HTTP request plugin with dependency injection support";
+            return "Performs HTTP/HTTPS requests with full support for headers, parameters, authentication, redirects, and binary content. Supports GET and POST methods.";
         }
         
         @Override
         public String getVersion() {
-            return "2.1.0-SNAPSHOT";
+            return "2.3.0";
         }
         
         @Override
         public String[] getTags() {
-            return new String[]{"http", "web", "request", "core"};
+            return new String[]{"http", "web", "request", "core", "network", "api"};
         }
         
         @Override
@@ -379,6 +389,87 @@ public class HttpPlugin extends AbstractPlugin {
         public String getCategory() {
             CorePlugin annotation = HttpPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Network";
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-globe";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#3B82F6"; // Blue for HTTP/Network
+        }
+        
+        @Override
+        public String getGroup() {
+            return "HTTP & Network";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("url", "URL to request (from url attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "HTTP response (XML, JSON, or binary)", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Performs HTTP/HTTPS requests with full support for headers, parameters, authentication, redirects, and binary content. Supports GET and POST methods. Allows http-header and http-param as children.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+H", "Add HTTP Request", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "HTTP Request Plugin",
+                "Performs HTTP/HTTPS requests with full support for headers, parameters, authentication, redirects, and binary content.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Master plugin - no parent required
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"http-header", "http-param"}; // Master plugin - allows these children
         }
     }
     
@@ -488,7 +579,7 @@ public class HttpPlugin extends AbstractPlugin {
         
         @Override
         public String[] getAllowedSubElements() {
-            return new String[0];
+            return new String[]{"http-header", "http-param"}; // Master plugin - allows these children
         }
         
         @Override

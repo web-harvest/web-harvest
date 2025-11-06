@@ -24,7 +24,7 @@ public class HtmlToXmlPluginIntegrationTest extends XmlBasedIntegrationTestBase 
 
     private static final Logger LOG = LoggerFactory.getLogger(HtmlToXmlPluginIntegrationTest.class);
 
-    @Test(groups = {"integration", "html-to-xml"})
+    @Test(groups = {"integration", "HTML to XML"})
     public void testBasicHtmlToXmlConversion() throws Exception {
         LOG.info("Testing basic HTML to XML conversion");
         
@@ -35,7 +35,7 @@ public class HtmlToXmlPluginIntegrationTest extends XmlBasedIntegrationTestBase 
         LOG.info("Basic HTML to XML conversion executed successfully");
     }
     
-    @Test(groups = {"integration", "html-to-xml"})
+    @Test(groups = {"integration", "HTML to XML"})
     public void testHtmlToXmlWithWellFormedHtml() throws Exception {
         LOG.info("Testing HTML to XML with well-formed HTML");
         
@@ -45,7 +45,7 @@ public class HtmlToXmlPluginIntegrationTest extends XmlBasedIntegrationTestBase 
         assertNotNull(ctx);
     }
     
-    @Test(groups = {"integration", "html-to-xml"})
+    @Test(groups = {"integration", "HTML to XML"})
     public void testHtmlToXmlPluginExecution() throws Exception {
         LOG.info("Testing HtmlToXmlPlugin execution flow");
         
@@ -55,7 +55,7 @@ public class HtmlToXmlPluginIntegrationTest extends XmlBasedIntegrationTestBase 
         assertNotNull(ctx);
     }
     
-    @Test(groups = {"integration", "html-to-xml"})
+    @Test(groups = {"integration", "HTML to XML"})
     public void testHtmlToXmlPluginWithFileOutput() throws Exception {
         LOG.info("Testing HtmlToXmlPlugin with file output");
         
@@ -65,7 +65,7 @@ public class HtmlToXmlPluginIntegrationTest extends XmlBasedIntegrationTestBase 
         assertNotNull(ctx);
     }
     
-    @Test(groups = {"integration", "html-to-xml"})
+    @Test(groups = {"integration", "HTML to XML"})
     public void testHtmlToXmlPluginVariableHandling() throws Exception {
         LOG.info("Testing HtmlToXmlPlugin variable handling");
         

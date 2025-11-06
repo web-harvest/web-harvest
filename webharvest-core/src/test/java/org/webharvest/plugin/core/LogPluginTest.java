@@ -233,8 +233,8 @@ public class LogPluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "log");
-        assertEquals(plugin.getMetadata().getName(), "Log Plugin");
-        assertEquals(plugin.getMetadata().getVersion(), "2.2.0");
+        assertEquals(plugin.getMetadata().getName(), "Log");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
 

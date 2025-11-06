@@ -42,6 +42,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -385,9 +393,12 @@ public class FilePlugin extends AbstractPlugin {
     @WorkingDir
     private String workingDir;
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
+    /**
+     * Metadata for FilePlugin.
+     * 
+     * <p>Standalone plugin - provides file system operations (read, write, append, list).</p>
+     */
+    public static class FilePluginMetadata implements VisualPluginMetadata {
             @Override
             public String getId() {
                 return "file";
@@ -395,17 +406,17 @@ public class FilePlugin extends AbstractPlugin {
 
             @Override
             public String getName() {
-                return "File Plugin";
+            return "File";
             }
 
             @Override
             public String getVersion() {
-                return "2.1.0";
+            return "2.3.0";
             }
 
             @Override
             public String getDescription() {
-                return "File plugin that provides file operations (read, write, append, list)";
+            return "Provides file system operations: read files, write/append content, and list directories. Supports both text and binary files with full character encoding support. Essential for saving scraped data and loading configuration files.";
             }
 
             @Override
@@ -421,7 +432,7 @@ public class FilePlugin extends AbstractPlugin {
 
             @Override
             public String[] getTags() {
-                return new String[]{"core", "file", "filesystem", "read", "write", "list"};
+            return new String[]{"core", "file", "filesystem", "read", "write", "list", "storage", "io"};
             }
 
             @Override
@@ -451,516 +462,607 @@ public class FilePlugin extends AbstractPlugin {
 
             @Override
             public PluginConfigurationSchema getConfigurationSchema() {
-                return new PluginConfigurationSchema() {
+            return new FilePluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-file";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#6366F1"; // Indigo for file system operations
+        }
+        
+        @Override
+        public String getGroup() {
+            return "File System";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 140;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("content", "File content to write/append (from body content)", PortType.MIXED, false),
+                new InputPort("path", "File or directory path (from path attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "File content (read) or file list (list action)", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Provides file system operations: read files, write/append content, and list directories. Supports both text and binary files with full character encoding support. Essential for saving scraped data and loading configuration files.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+F", "Add File", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "File Plugin",
+                "Provides file system operations: read files, write/append content, and list directories. Supports both text and binary files.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins (for content generation)
+        }
+    }
+    
+    /**
+     * Configuration schema for FilePlugin.
+     */
+    public static class FilePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
                     @Override
-                    public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                        return new PluginConfigurationSchema.AttributeDefinition[]{
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "id";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Optional identifier for the file element";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.STRING;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "path";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Path to the file or directory";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return true;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.FILE_PATH;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "action";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "File operation to perform (read, write, append, list)";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.ENUM;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "read";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return new String[]{"read", "write", "append", "list"};
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "type";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "File type (text, binary)";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.ENUM;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "text";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return new String[]{"text", "binary"};
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "charset";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Character encoding for text files";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.STRING;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "UTF-8";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "listfilter";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Filter pattern for listing files (supports * and ? wildcards)";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.REGEX;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "listfiles";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Whether to include files in listing";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "true";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return new String[]{"true", "false"};
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "listdirs";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Whether to include directories in listing";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "true";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return new String[]{"true", "false"};
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            },
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "listrecursive";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Whether to list files recursively";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.BOOLEAN;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return "false";
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return new String[]{"true", "false"};
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            }
-                        };
+                    public String getName() {
+                        return "id";
                     }
 
                     @Override
-                    public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                        for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                            if (attr.getName().equals(name)) {
-                                return attr;
-                            }
-                        }
+                    public String getDescription() {
+                        return "Optional identifier for the file element";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
                         return null;
                     }
 
                     @Override
-                    public String getVersion() {
-                        return "2.1.0";
+                    public String[] getAllowedValues() {
+                        return null;
                     }
 
                     @Override
-                    public boolean allowsBody() {
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "path";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Path to the file or directory";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
                         return true;
                     }
 
                     @Override
-                    public String[] getRequiredSubElements() {
-                        return new String[0];
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.FILE_PATH;
                     }
 
                     @Override
-                    public String[] getAllowedSubElements() {
-                        return new String[0];
+                    public String getDefaultValue() {
+                        return null;
                     }
 
                     @Override
-                    public String[] getOptionalAttributes() {
-                        return new String[]{"id", "action", "type", "charset", "listfilter", "listfiles", "listdirs", "listrecursive"};
+                    public String[] getAllowedValues() {
+                        return null;
                     }
 
                     @Override
-                    public String[] getRequiredAttributes() {
-                        return new String[]{"path"};
+                    public Number getMinValue() {
+                        return null;
                     }
 
                     @Override
-                    public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                        if (configuration == null) {
-                            throw new PluginValidationException("Configuration cannot be null");
-                        }
-                        
-                        // Validate required attributes
-                        String path = configuration.getProperty("path");
-                        if (path == null || path.trim().isEmpty()) {
-                            throw new PluginValidationException("Path attribute is required");
-                        }
-                        
-                        // Validate action
-                        String action = configuration.getProperty("action", "read");
-                        String[] allowedActions = {"read", "write", "append", "list"};
-                        boolean validAction = false;
-                        for (String allowed : allowedActions) {
-                            if (allowed.equalsIgnoreCase(action)) {
-                                validAction = true;
-                                break;
-                            }
-                        }
-                        if (!validAction) {
-                            throw new PluginValidationException("Invalid action: " + action + ". Allowed values: " + 
-                                String.join(", ", allowedActions));
-                        }
-                        
-                        // Validate type
-                        String type = configuration.getProperty("type", "text");
-                        String[] allowedTypes = {"text", "binary"};
-                        boolean validType = false;
-                        for (String allowed : allowedTypes) {
-                            if (allowed.equalsIgnoreCase(type)) {
-                                validType = true;
-                                break;
-                            }
-                        }
-                        if (!validType) {
-                            throw new PluginValidationException("Invalid type: " + type + ". Allowed values: " + 
-                                String.join(", ", allowedTypes));
-                        }
+                    public Number getMaxValue() {
+                        return null;
                     }
-                };
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "action";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "File operation to perform (read, write, append, list)";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.ENUM;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "read";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"read", "write", "append", "list"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "type";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "File type (text, binary)";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.ENUM;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "text";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"text", "binary"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "charset";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Character encoding for text files";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "UTF-8";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "listfilter";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Filter pattern for listing files (supports * and ? wildcards)";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.REGEX;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "listfiles";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Whether to include files in listing";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "true";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"true", "false"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "listdirs";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Whether to include directories in listing";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "true";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"true", "false"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                },
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "listrecursive";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Whether to list files recursively";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "false";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return new String[]{"true", "false"};
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
             }
-        };
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins (for content generation)
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id", "action", "type", "charset", "listfilter", "listfiles", "listdirs", "listrecursive"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{"path"};
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+            
+            // Validate required attributes
+            String path = configuration.getProperty("path");
+            if (path == null || path.trim().isEmpty()) {
+                throw new PluginValidationException("Path attribute is required");
+            }
+            
+            // Validate action
+            String action = configuration.getProperty("action", "read");
+            String[] allowedActions = {"read", "write", "append", "list"};
+            boolean validAction = false;
+            for (String allowed : allowedActions) {
+                if (allowed.equalsIgnoreCase(action)) {
+                    validAction = true;
+                    break;
+                }
+            }
+            if (!validAction) {
+                throw new PluginValidationException("Invalid action: " + action + ". Allowed values: " + 
+                    String.join(", ", allowedActions));
+            }
+            
+            // Validate type
+            String type = configuration.getProperty("type", "text");
+            String[] allowedTypes = {"text", "binary"};
+            boolean validType = false;
+            for (String allowed : allowedTypes) {
+                if (allowed.equalsIgnoreCase(type)) {
+                    validType = true;
+                    break;
+                }
+            }
+            if (!validType) {
+                throw new PluginValidationException("Invalid type: " + type + ". Allowed values: " + 
+                    String.join(", ", allowedTypes));
+            }
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new FilePluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return getMetadata().getConfigurationSchema();
+        return new FilePluginMetadata().getConfigurationSchema();
     }
 
     /**

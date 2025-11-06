@@ -131,6 +131,7 @@ public class StreamingXmlParserTest {
         
         assertEquals(tree.getChildCount(), 3, "Should have 3 children");
         
+        // Element name should be "def" (element name, not display name)
         assertEquals(tree.getChildren().get(0).getPluginElementName(), "def");
         assertEquals(tree.getChildren().get(1).getPluginElementName(), "http");
         assertEquals(tree.getChildren().get(2).getPluginElementName(), "file");

@@ -220,7 +220,8 @@ import org.slf4j.LoggerFactory;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "config",
     description = "Config plugin that provides configuration functionality",
-    version = "2.2.0"
+    version = "2.2.0",
+    systemComponent = true
 )
 @ScrapingScope
 public class ConfigPlugin extends AbstractPlugin {
@@ -240,7 +241,7 @@ public class ConfigPlugin extends AbstractPlugin {
 
         @Override
         public String getVersion() {
-            return "2.2.0";
+            return "2.3.0";
         }
 
         @Override
@@ -402,7 +403,7 @@ public class ConfigPlugin extends AbstractPlugin {
 
                 @Override
                 public String getVersion() {
-                    return "2.2.0";
+                    return "2.3.0";
                 }
 
                 @Override

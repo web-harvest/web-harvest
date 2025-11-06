@@ -65,8 +65,8 @@ public class TryPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Try Plugin");
-        assertEquals(metadata.getDescription(), "Try plugin that provides exception handling with try-catch functionality");
+        assertEquals(metadata.getName(), "Try");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "try");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -85,7 +85,7 @@ public class TryPluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

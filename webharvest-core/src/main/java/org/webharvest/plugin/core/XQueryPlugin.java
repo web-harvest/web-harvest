@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -282,7 +290,12 @@ import javax.xml.transform.stream.StreamSource;
 )
 public class XQueryPlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for XQueryPlugin.
+     * 
+     * <p>Master plugin - requires xq-expression and allows xq-param as children. Evaluates XQuery expressions against XML data, providing advanced querying, filtering, transformation, and aggregation capabilities beyond what XPath offers.</p>
+     */
+    public static class XQueryPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "xquery";
@@ -290,17 +303,17 @@ public class XQueryPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "XQuery Plugin";
+            return "XQuery";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "XQuery plugin that provides XQuery processing functionality";
+            return "XQuery expression processor that evaluates XQuery expressions against XML data, providing advanced querying, filtering, transformation, and aggregation capabilities beyond what XPath offers. Supports FLWOR expressions (For-Let-Where-Order-Return), XML transformation, multi-document joins, grouping, and complex aggregations. XQuery is a full-featured query language (similar to SQL for databases) designed specifically for XML data.";
         }
 
         @Override
@@ -310,12 +323,13 @@ public class XQueryPlugin extends AbstractPlugin {
 
         @Override
         public String getCategory() {
-            return "Extraction";
+            CorePlugin annotation = XQueryPlugin.class.getAnnotation(CorePlugin.class);
+            return annotation != null ? annotation.category() : "Extraction";
         }
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "xquery", "xml", "processing", "query", "expression"};
+            return new String[]{"core", "xquery", "xml", "processing", "query", "expression", "flwor", "extraction", "transformation"};
         }
 
         @Override
@@ -345,116 +359,203 @@ public class XQueryPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the xquery element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new XQueryPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-search-plus";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for extraction/query
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Extraction";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 240;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 180;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("xml", "XML data to query", PortType.XML, true),
+                new InputPort("params", "XQuery parameters (via xq-param)", PortType.MIXED, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("result", "XQuery query results", PortType.XML)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.XML;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "XQuery expression processor. Evaluates XQuery expressions against XML data, providing advanced querying, filtering, transformation, and aggregation capabilities beyond XPath.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+Q", "Add XQuery", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XQuery Plugin",
+                "Evaluates XQuery expressions against XML data. Supports FLWOR expressions, XML transformation, and complex aggregations.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"xq-expression", "xq-param"};
+        }
+    }
+    
+    /**
+     * Configuration schema for XQueryPlugin.
+     */
+    public static class XQueryPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
 
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
 
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[]{"xq-expression"};
-                }
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[]{"xq-param", "xq-expression"};
-                }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the xquery element";
+                    }
 
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
 
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
                     }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[]{"xq-expression"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[]{"xq-param", "xq-expression"};
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new XQueryPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return METADATA.getConfigurationSchema();
+        return new XQueryPluginMetadata().getConfigurationSchema();
     }
 
     @Override

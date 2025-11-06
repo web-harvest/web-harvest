@@ -69,8 +69,8 @@ public class RegexpPatternPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Regexp Pattern Plugin");
-        assertEquals(metadata.getDescription(), "Regexp pattern plugin that provides regexp pattern functionality");
+        assertEquals(metadata.getName(), "Regexp Pattern");
+        assertNotNull(metadata.getDescription()); assertTrue(metadata.getDescription().contains("regex") || metadata.getDescription().contains("Regex"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "regexp-pattern");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -90,7 +90,7 @@ public class RegexpPatternPluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

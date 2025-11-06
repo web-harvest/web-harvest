@@ -61,7 +61,7 @@ public class LoopPluginTest {
     @Test(description = "Test loop plugin metadata")
     public void testLoopPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
-        assertEquals(plugin.getMetadata().getName(), "Loop Plugin", 
+        assertEquals(plugin.getMetadata().getName(), "Loop", 
                     "Plugin name should be 'Loop Plugin'");
     }
 }

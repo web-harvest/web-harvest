@@ -98,8 +98,8 @@ public class JsonToXmlPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "JsonToXml Plugin");
-        assertEquals(metadata.getDescription(), "Converter from JSON to XML");
+        assertEquals(metadata.getName(), "JSON to XML");
+        assertNotNull(metadata.getDescription()); assertTrue(metadata.getDescription().contains("JSON") && metadata.getDescription().contains("XML"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "json-to-xml");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -119,7 +119,7 @@ public class JsonToXmlPluginTest {
         assertFalse(tagAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

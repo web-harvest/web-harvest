@@ -111,9 +111,9 @@ public class ScriptPluginEnhancedTest {
     public void testMetadata() {
         // Test metadata is available and correct
         assertNotNull(plugin.getMetadata());
-        assertEquals(plugin.getMetadata().getName(), "Script Plugin");
+        assertEquals(plugin.getMetadata().getName(), "Script");
         assertEquals(plugin.getMetadata().getId(), "script");
-        assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
         assertTrue(plugin.getMetadata().isCorePlugin());
         assertEquals(plugin.getMetadata().getCategory(), "Processing");
     }

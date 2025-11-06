@@ -34,18 +34,19 @@ import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 public final class PluginMetadataCatalog {
 
     private static final Logger LOG = LoggerFactory.getLogger(PluginMetadataCatalog.class);
-    private static final String CATALOG_RESOURCE = "/metadata/plugin-semantics.json";
+    // UI hints are now fully auto-generated from plugin classes - no static file needed
+    // private static final String UI_OVERRIDES_RESOURCE = "/metadata/plugin-ui-overrides.json"; // DEPRECATED - removed
     private static final Gson GSON = new Gson();
     private static final String SCHEMA_RESOURCE = "/metadata/plugin-metadata-schema.json";
 
     private static final Map<String, PluginDescriptor> DESCRIPTORS;
-    private static final String SCHEMA_VERSION;
+    private static final String SCHEMA_VERSION = "2.3.0"; // Dynamic generation version
     private static final Map<String, Object> CATALOG_SCHEMA;
 
     static {
-        CatalogOverrides overrides = loadOverrides();
-        CatalogBundle bundle = buildRuntimeCatalog(overrides);
-        SCHEMA_VERSION = overrides.schemaVersion();
+        // All metadata generated dynamically from plugin classes - no static JSON files needed
+        // UI hints are auto-generated from plugin category and element names
+        CatalogBundle bundle = buildRuntimeCatalog(new UIMetadataOverrides(Map.of()));
         DESCRIPTORS = bundle.descriptors();
         CATALOG_SCHEMA = loadSchemaDocument();
     }
@@ -121,65 +122,87 @@ public final class PluginMetadataCatalog {
         return Map.of();
     }
 
-    private static CatalogOverrides loadOverrides() {
-        JsonObject root;
-        try (Reader reader = new InputStreamReader(
-                Objects.requireNonNull(PluginMetadataCatalog.class.getResourceAsStream(CATALOG_RESOURCE),
-                        "Missing metadata catalog resource: " + CATALOG_RESOURCE),
-                StandardCharsets.UTF_8)) {
-            root = JsonParser.parseReader(reader).getAsJsonObject();
-        } catch (Exception ex) {
-            LOG.warn("Unable to load plugin metadata overrides ({}): {}", CATALOG_RESOURCE, ex.getMessage());
-            return new CatalogOverrides("1.0.0", Map.of());
+    /**
+     * UI hints are now fully auto-generated from plugin classes.
+     * This method is deprecated - all UI hints come from inferUiHints() based on category and element name.
+     */
+    @Deprecated
+    private static UIMetadataOverrides loadUIMetadataOverrides() {
+        // All UI hints are now auto-generated - no static file needed
+        LOG.debug("UI hints are auto-generated from plugin classes - no static file needed");
+        return new UIMetadataOverrides(Map.of());
+    }
+    
+    /**
+     * Applies UI-only overrides to a descriptor.
+     * Only affects UI hints (icon, paletteGroup, tags, color), NOT semantics.
+     */
+    private static PluginDescriptor applyUIOverrides(PluginDescriptor descriptor, UIMetadataOverrides overrides) {
+        Map<String, Object> override = overrides.getOverride(descriptor.getId());
+        if (override == null || override.isEmpty()) {
+            return descriptor;
         }
-
-        String schemaVersion = root.has("schemaVersion")
-                ? root.get("schemaVersion").getAsString()
-                : "1.0.0";
-
-        Map<String, PluginDescriptor> overrides = new LinkedHashMap<>();
-        if (root.has("plugins")) {
-            for (JsonElement element : root.getAsJsonArray("plugins")) {
-                PluginDescriptor descriptor = toDescriptor(element.getAsJsonObject());
-                overrides.put(descriptor.getId(), descriptor);
-            }
+        
+        @SuppressWarnings("unchecked")
+        Map<String, Object> uiOverride = (Map<String, Object>) override.get("ui");
+        if (uiOverride == null || uiOverride.isEmpty()) {
+            return descriptor;
         }
-
-        LOG.info("Loaded {} curated plugin descriptors from overrides (schema v{})",
-                overrides.size(), schemaVersion);
-        return new CatalogOverrides(schemaVersion, overrides);
+        
+        // Apply only UI hints
+        String icon = uiOverride.containsKey("icon") ? (String) uiOverride.get("icon") : descriptor.getUiHints().getIcon();
+        String paletteGroup = uiOverride.containsKey("paletteGroup") ? (String) uiOverride.get("paletteGroup") : descriptor.getUiHints().getPaletteGroup();
+        @SuppressWarnings("unchecked")
+        List<String> tags = uiOverride.containsKey("tags") ? (List<String>) uiOverride.get("tags") : descriptor.getUiHints().getTags();
+        
+        PluginUIHints newUiHints = new PluginUIHints(paletteGroup, icon, tags);
+        
+        // Return new descriptor with updated UI hints, everything else unchanged
+        return new PluginDescriptor(
+            descriptor.getId(),
+            descriptor.getElementName(),
+            descriptor.getDisplayName(),
+            descriptor.getOrigin(),
+            descriptor.getClassName(),
+            descriptor.getCategory(),
+            descriptor.getDescription(),
+            descriptor.getDocumentation(),
+            descriptor.getSemantics(), // Semantics NEVER overridden
+            newUiHints,
+            descriptor.getDependencies(),
+            descriptor.getExtensions()
+        );
     }
 
-    private static CatalogBundle buildRuntimeCatalog(CatalogOverrides overrides) {
+    /**
+     * Builds runtime catalog from dynamically discovered plugins.
+     * All metadata generated from plugin classes - no static JSON files needed.
+     */
+    private static CatalogBundle buildRuntimeCatalog(UIMetadataOverrides uiOverrides) {
         Map<String, PluginDescriptor> descriptors = new LinkedHashMap<>();
-        Map<String, PluginDescriptor> overrideMap = new LinkedHashMap<>(overrides.descriptors());
 
-        for (String className : PluginClassIndex.allPluginClassNames()) {
+        // Generate all metadata dynamically from plugin classes
+        for (String className : PluginClassScanner.allPluginClassNames()) {
             Class<? extends Plugin> pluginClass = tryLoadPluginClass(className);
             if (pluginClass == null) {
                 continue;
             }
             try {
-                PluginDescriptor runtimeDescriptor = createDescriptor(pluginClass);
-                if (runtimeDescriptor == null) {
+                PluginDescriptor descriptor = createDescriptor(pluginClass);
+                if (descriptor == null) {
                     continue;
                 }
 
-                PluginDescriptor override = overrideMap.remove(runtimeDescriptor.getId());
-                PluginDescriptor merged = mergeDescriptors(runtimeDescriptor, override);
-                descriptors.put(merged.getId(), merged);
+                // UI hints are fully auto-generated - no overrides needed
+
+                descriptors.put(descriptor.getId(), descriptor);
             } catch (Exception ex) {
                 LOG.warn("Failed to build metadata for plugin {}: {}",
                         pluginClass.getName(), ex.getMessage());
             }
         }
 
-        // Append remaining overrides for plugins not yet available at runtime (future extensions)
-        for (PluginDescriptor descriptor : overrideMap.values()) {
-            descriptors.putIfAbsent(descriptor.getId(), descriptor);
-        }
-
-        LOG.info("Assembled metadata catalog with {} plugins", descriptors.size());
+        LOG.info("Assembled metadata catalog with {} plugins (all generated dynamically)", descriptors.size());
         return new CatalogBundle(Collections.unmodifiableMap(descriptors));
     }
 
@@ -230,8 +253,97 @@ public final class PluginMetadataCatalog {
 
         List<String> dependencies = collectDependencies(metadata, semantics);
 
+        // Extract complete schema information for extensions
+        Map<String, Object> extensions = extractSchemaExtensions(metadata);
+
         return new PluginDescriptor(id, elementName, displayName, origin, pluginClass.getName(), category, description,
-                documentation, semantics, uiHints, dependencies, Map.of());
+                documentation, semantics, uiHints, dependencies, extensions);
+    }
+    
+    /**
+     * Extracts complete schema information as extensions map.
+     * Includes attribute definitions, namespace, and other schema details.
+     */
+    private static Map<String, Object> extractSchemaExtensions(PluginMetadata metadata) {
+        Map<String, Object> extensions = new LinkedHashMap<>();
+        
+        // Extract namespace
+        if (metadata.getNamespace() != null) {
+            extensions.put("namespace", metadata.getNamespace());
+        }
+        
+        // Extract complete schema information
+        PluginConfigurationSchema schema = metadata.getConfigurationSchema();
+        if (schema != null) {
+            Map<String, Object> schemaInfo = new LinkedHashMap<>();
+            
+            // Extract all attribute definitions with full details
+            List<Map<String, Object>> attributeDefinitions = new ArrayList<>();
+            if (schema.getAttributeDefinitions() != null) {
+                for (PluginConfigurationSchema.AttributeDefinition attr : schema.getAttributeDefinitions()) {
+                    Map<String, Object> attrDef = new LinkedHashMap<>();
+                    attrDef.put("name", attr.getName());
+                    attrDef.put("type", attr.getType() != null ? attr.getType().name() : "STRING");
+                    attrDef.put("required", attr.isRequired());
+                    if (attr.getDefaultValue() != null) {
+                        attrDef.put("defaultValue", attr.getDefaultValue());
+                    }
+                    if (attr.getDescription() != null && !attr.getDescription().isEmpty()) {
+                        attrDef.put("description", attr.getDescription());
+                    }
+                    if (attr.getAllowedValues() != null && attr.getAllowedValues().length > 0) {
+                        attrDef.put("allowedValues", Arrays.asList(attr.getAllowedValues()));
+                    }
+                    if (attr.getMinValue() != null) {
+                        attrDef.put("minValue", attr.getMinValue());
+                    }
+                    if (attr.getMaxValue() != null) {
+                        attrDef.put("maxValue", attr.getMaxValue());
+                    }
+                    if (attr.getPattern() != null && !attr.getPattern().isEmpty()) {
+                        attrDef.put("pattern", attr.getPattern());
+                    }
+                    attributeDefinitions.add(attrDef);
+                }
+            }
+            schemaInfo.put("attributeDefinitions", attributeDefinitions);
+            
+            // Extract required/optional attributes
+            if (schema.getRequiredAttributes() != null && schema.getRequiredAttributes().length > 0) {
+                schemaInfo.put("requiredAttributes", Arrays.asList(schema.getRequiredAttributes()));
+            }
+            if (schema.getOptionalAttributes() != null && schema.getOptionalAttributes().length > 0) {
+                schemaInfo.put("optionalAttributes", Arrays.asList(schema.getOptionalAttributes()));
+            }
+            
+            // Extract allowed/required sub-elements
+            if (schema.getAllowedSubElements() != null && schema.getAllowedSubElements().length > 0) {
+                schemaInfo.put("allowedSubElements", Arrays.asList(schema.getAllowedSubElements()));
+            }
+            if (schema.getRequiredSubElements() != null && schema.getRequiredSubElements().length > 0) {
+                schemaInfo.put("requiredSubElements", Arrays.asList(schema.getRequiredSubElements()));
+            }
+            
+            // Extract body support
+            schemaInfo.put("allowsBody", schema.allowsBody());
+            
+            // Extract root placement
+            schemaInfo.put("canAppearAtRoot", schema.canAppearAtRoot());
+            
+            // Extract required parents
+            if (schema.getRequiredParents() != null && schema.getRequiredParents().length > 0) {
+                schemaInfo.put("requiredParents", Arrays.asList(schema.getRequiredParents()));
+            }
+            
+            // Schema version
+            if (schema.getVersion() != null) {
+                schemaInfo.put("version", schema.getVersion());
+            }
+            
+            extensions.put("schema", schemaInfo);
+        }
+        
+        return Collections.unmodifiableMap(extensions);
     }
 
     private static PluginSemantics toDescriptorSemantics(org.webharvest.plugin.semantic.PluginSemantics semantics) {
@@ -653,21 +765,23 @@ public final class PluginMetadataCatalog {
         return builder.toString();
     }
 
-    private static final class CatalogOverrides {
-        private final String schemaVersion;
-        private final Map<String, PluginDescriptor> descriptors;
+    /**
+     * UI-only overrides container (icon, color, paletteGroup).
+     * Does NOT contain semantic metadata - that must come from plugin classes.
+     */
+    private static final class UIMetadataOverrides {
+        private final Map<String, Map<String, Object>> overrides;
 
-        CatalogOverrides(String schemaVersion, Map<String, PluginDescriptor> descriptors) {
-            this.schemaVersion = schemaVersion;
-            this.descriptors = Map.copyOf(descriptors);
+        UIMetadataOverrides(Map<String, Map<String, Object>> overrides) {
+            this.overrides = Map.copyOf(overrides);
         }
 
-        String schemaVersion() {
-            return schemaVersion;
+        boolean hasOverride(String pluginId) {
+            return overrides.containsKey(pluginId);
         }
 
-        Map<String, PluginDescriptor> descriptors() {
-            return descriptors;
+        Map<String, Object> getOverride(String pluginId) {
+            return overrides.get(pluginId);
         }
     }
 

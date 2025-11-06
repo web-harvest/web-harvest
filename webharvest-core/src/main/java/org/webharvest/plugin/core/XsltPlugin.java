@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -131,7 +139,12 @@ public class XsltPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.XsltPlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for XsltPlugin.
+     * 
+     * <p>Master plugin - requires xml and stylesheet as children. Applies XSLT transformations to XML content using XSLT stylesheets. Supports XSLT 1.0 and 2.0 for complex XML transformations.</p>
+     */
+    public static class XsltPluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "xslt";
@@ -139,17 +152,17 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "XSLT Plugin";
+            return "XSLT Transformation";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "XSLT plugin that provides XSLT transformation functionality";
+            return "XSLT transformation processor that applies XSLT transformations to XML content. Supports XSLT 1.0 and 2.0 for complex XML transformations, XML to HTML conversion, XML restructuring, and data format conversion. XSLT parsing and compilation is cached for performance.";
         }
 
         @Override
@@ -165,7 +178,7 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "xslt", "xml", "transformation", "stylesheet", "processing"};
+            return new String[]{"core", "xslt", "xml", "transformation", "stylesheet", "processing", "xml-processing"};
         }
 
         @Override
@@ -195,116 +208,203 @@ public class XsltPlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the xslt element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new XsltPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-code";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#8B5CF6"; // Purple for processing/transformation
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Processing";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 160;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("xml", "XML content to transform", PortType.XML, true),
+                new InputPort("stylesheet", "XSLT stylesheet", PortType.XML, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("result", "Transformed XML/HTML output", PortType.XML)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.XML;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "XSLT transformation processor. Applies XSLT transformations to XML content. Supports XSLT 1.0 and 2.0 for complex transformations.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+X", "Add XSLT", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XSLT Transformation Plugin",
+                "Applies XSLT transformations to XML content. Supports XSLT 1.0 and 2.0 for complex XML transformations.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"xml", "stylesheet"};
+        }
+    }
+    
+    /**
+     * Configuration schema for XsltPlugin.
+     */
+    public static class XsltPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return "id";
                     }
-                    return null;
-                }
 
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
 
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
 
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[]{"xml", "stylesheet"};
-                }
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[]{"xml", "stylesheet"};
-                }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the xslt element";
+                    }
 
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
 
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
 
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
                     }
                 }
             };
         }
-    };
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[]{"xml", "stylesheet"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[]{"xml", "stylesheet"};
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new XsltPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return METADATA.getConfigurationSchema();
+        return new XsltPluginMetadata().getConfigurationSchema();
     }
 
     @Override

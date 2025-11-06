@@ -138,9 +138,9 @@ public class IncludePluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "include");
-        assertEquals(plugin.getMetadata().getName(), "Include Plugin");
-        assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
-        assertEquals(plugin.getMetadata().getDescription(), "Include plugin that includes external configuration files");
+        assertEquals(plugin.getMetadata().getName(), "Include");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
+        assertNotNull(plugin.getMetadata().getDescription()); assertTrue(plugin.getMetadata().getDescription().contains("include") || plugin.getMetadata().getDescription().contains("Include"));
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
         assertEquals(plugin.getMetadata().getCategory(), expectedCategory(IncludePlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "include");
@@ -151,7 +151,7 @@ public class IncludePluginTest {
     public void testGetConfigurationSchema() {
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
         assertNotNull(schema);
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
         assertFalse(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
         assertEquals(schema.getAllowedSubElements().length, 0);

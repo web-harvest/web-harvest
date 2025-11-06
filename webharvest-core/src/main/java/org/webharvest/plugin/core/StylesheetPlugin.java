@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -227,180 +235,158 @@ import org.webharvest.runtime.variables.Variable;
 )
 public class StylesheetPlugin extends AbstractPlugin {
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for StylesheetPlugin.
+     * 
+     * <p>Detail plugin - requires xslt as parent. Defines the XSLT stylesheet content for XML transformations. Supports XSLT 1.0 and 2.0 transformations with Saxon engine.</p>
+     */
+    public static class StylesheetPluginMetadata implements VisualPluginMetadata {
         @Override
-        public String getId() {
-            return "stylesheet";
-        }
-
+        public String getId() { return "stylesheet"; }
         @Override
-        public String getName() {
-            return "Stylesheet Plugin";
-        }
-
+        public String getName() { return "XSLT Stylesheet"; }
         @Override
-        public String getVersion() {
-            return "2.1.0";
-        }
-
+        public String getVersion() { return "2.3.0"; }
         @Override
         public String getDescription() {
-            return "Stylesheet plugin that provides stylesheet functionality";
+            return "Defines the XSLT stylesheet content for XML transformations. Must be used within xslt element. Supports XSLT 1.0 and 2.0 transformations with Saxon engine. Includes templates (xsl:template), loops (xsl:for-each), conditionals (xsl:if, xsl:choose), sorting (xsl:sort), and parameters (xsl:param). Use CDATA for stylesheets with special XML characters.";
         }
-
         @Override
-        public String getAuthor() {
-            return "Web-Harvest Team";
-        }
-
+        public String getAuthor() { return "Web-Harvest Team"; }
         @Override
         public String getCategory() {
             CorePlugin annotation = StylesheetPlugin.class.getAnnotation(CorePlugin.class);
-            return annotation != null ? annotation.category() : "core";
+            return annotation != null ? annotation.category() : "Processing";
         }
-
         @Override
         public String[] getTags() {
-            return new String[]{"core", "stylesheet", "xslt", "xml", "transformation"};
+            return new String[]{"core", "stylesheet", "xslt", "xml", "transformation", "processing"};
         }
-
         @Override
-        public String[] getDependencies() {
-            return new String[0];
-        }
-
+        public String[] getDependencies() { return new String[]{"TransformerFactory"}; }
         @Override
-        public String getClassName() {
-            return StylesheetPlugin.class.getName();
-        }
-
+        public String getClassName() { return StylesheetPlugin.class.getName(); }
         @Override
-        public boolean isCorePlugin() {
-            return true;
-        }
-
+        public boolean isCorePlugin() { return true; }
         @Override
-        public String getElementName() {
-            return "stylesheet";
-        }
-
+        public String getElementName() { return "stylesheet"; }
         @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
-        }
-
+        public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                    return new PluginConfigurationSchema.AttributeDefinition[]{
-                        new PluginConfigurationSchema.AttributeDefinition() {
-                            @Override
-                            public String getName() {
-                                return "id";
-                            }
-
-                            @Override
-                            public PluginConfigurationSchema.AttributeType getType() {
-                                return PluginConfigurationSchema.AttributeType.STRING;
-                            }
-
-                            @Override
-                            public boolean isRequired() {
-                                return false;
-                            }
-
-                            @Override
-                            public String getDefaultValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDescription() {
-                                return "Optional identifier for the stylesheet element";
-                            }
-
-                            @Override
-                            public String[] getAllowedValues() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMinValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public Number getMaxValue() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getPattern() {
-                                return null;
-                            }
-                        }
-                    };
-                }
-                
-                @Override
-                public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                    for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
+            return new StylesheetPluginConfigurationSchema();
+        }
+        @Override
+        public String getIcon() { return "fas fa-file-code"; }
+        @Override
+        public String getColor() { return "#8B5CF6"; }
+        @Override
+        public String getGroup() { return "Processing"; }
+        @Override
+        public int getDefaultWidth() { return 220; }
+        @Override
+        public int getDefaultHeight() { return 140; }
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("stylesheet", "XSLT stylesheet content (from body content)", PortType.XML, true)
+            };
+        }
+        @Override
+        public OutputPort[] getOutputPorts() { return new OutputPort[0]; }
+        @Override
+        public PortType getPortType() { return PortType.XML; }
+        @Override
+        public String getTooltip() {
+            return "Defines the XSLT stylesheet content for XML transformations. Supports XSLT 1.0 and 2.0 transformations.";
+        }
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() { return new KeyboardShortcut[0]; }
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "XSLT Stylesheet Plugin",
+                "Defines the XSLT stylesheet content for XML transformations. Supports XSLT 1.0 and 2.0 transformations.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() { return new LinkedServiceMetadata[0]; }
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return new ParentChildRelationship("xslt", true, "XSLT Transformation");
+        }
+        @Override
+        public String[] getAllowedChildPlugins() { return new String[0]; }
+    }
+    
+    /**
+     * Configuration schema for StylesheetPlugin.
+     */
+    public static class StylesheetPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() { return "id"; }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
                     }
-                    return null;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id"};
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    if (configuration == null) {
-                        throw new PluginValidationException("Configuration cannot be null");
+                    @Override
+                    public boolean isRequired() { return false; }
+                    @Override
+                    public String getDefaultValue() { return null; }
+                    @Override
+                    public String getDescription() {
+                        return "Optional identifier for the stylesheet element";
                     }
+                    @Override
+                    public String[] getAllowedValues() { return null; }
+                    @Override
+                    public Number getMinValue() { return null; }
+                    @Override
+                    public Number getMaxValue() { return null; }
+                    @Override
+                    public String getPattern() { return null; }
                 }
             };
         }
-    };
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) return attr;
+            }
+            return null;
+        }
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        @Override
+        public boolean allowsBody() { return true; }
+        @Override
+        public String[] getRequiredSubElements() { return new String[0]; }
+        @Override
+        public String[] getAllowedSubElements() { return new String[0]; }
+        @Override
+        public String[] getOptionalAttributes() { return new String[]{"id"}; }
+        @Override
+        public String[] getRequiredAttributes() { return new String[0]; }
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
 
     @Override
     public PluginMetadata getMetadata() {
-        return METADATA;
+        return new StylesheetPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return METADATA.getConfigurationSchema();
+        return new StylesheetPluginMetadata().getConfigurationSchema();
     }
 
     @Override

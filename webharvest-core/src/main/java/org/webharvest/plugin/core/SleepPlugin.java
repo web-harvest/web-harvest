@@ -38,6 +38,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -156,75 +164,263 @@ public class SleepPlugin extends AbstractPlugin {
 
     private static final String MILLISECONDS_ATT_NAME = "milliseconds";
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "sleep";
-            }
+    /**
+     * Metadata for SleepPlugin.
+     * 
+     * <p>Standalone plugin - pauses execution for specified duration.</p>
+     */
+    public static class SleepPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "sleep";
+        }
 
-            @Override
-            public String getName() {
-                return "Sleep Plugin";
-            }
+        @Override
+        public String getName() {
+            return "Sleep";
+        }
 
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "Sleep plugin that pauses execution for specified number of milliseconds";
-            }
+        @Override
+        public String getDescription() {
+            return "Pauses scraper execution for a specified time period. Essential for rate limiting, respecting robots.txt crawl delays, waiting for dynamic content, retry backoff strategies, and avoiding server overload. Supports variable interpolation in duration.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = SleepPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Utilities";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "sleep", "delay", "pause"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "sleep", "delay", "pause", "rate-limiting", "utility"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return SleepPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return SleepPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "sleep";
-            }
+        @Override
+        public String getElementName() {
+            return "sleep";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return SleepPlugin.this.getConfigurationSchema();
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new SleepPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-clock";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#6B7280"; // Gray for utility plugins
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Utility";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 180;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 100;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("milliseconds", "Sleep duration in milliseconds (from milliseconds attribute)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[0]; // No output - just delays execution
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Pauses scraper execution for a specified time period. Essential for rate limiting, respecting robots.txt crawl delays, waiting for dynamic content, retry backoff strategies, and avoiding server overload.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+S", "Add Sleep", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Sleep Plugin",
+                "Pauses scraper execution for a specified time period. Essential for rate limiting and respecting crawl delays.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // No children
+        }
+    }
+    
+    /**
+     * Configuration schema for SleepPlugin.
+     */
+    public static class SleepPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return MILLISECONDS_ATT_NAME;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.INTEGER;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return true;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Sleep duration in milliseconds";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return 1;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
             }
-        };
+            return null;
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[]{MILLISECONDS_ATT_NAME};
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return false;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No specific validation needed - milliseconds is handled in doExecute with default value
+        }
+    }
+    
+    @Override
+    public PluginMetadata getMetadata() {
+        return new SleepPluginMetadata();
     }
 
     @Override
@@ -238,106 +434,7 @@ public class SleepPlugin extends AbstractPlugin {
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return MILLISECONDS_ATT_NAME;
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.INTEGER;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "0";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Number of milliseconds to sleep";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return 0;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return false;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{MILLISECONDS_ATT_NAME};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
+        return new SleepPluginMetadata().getConfigurationSchema();
     }
 
     @Override

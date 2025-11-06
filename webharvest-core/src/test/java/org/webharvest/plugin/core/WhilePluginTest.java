@@ -59,7 +59,7 @@ public class WhilePluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "while");
-        assertEquals(plugin.getMetadata().getName(), "While Plugin");
+        assertEquals(plugin.getMetadata().getName(), "While");
     }
 
     @Test

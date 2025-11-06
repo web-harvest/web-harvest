@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -105,178 +113,269 @@ public class ListPlugin extends AbstractPlugin {
     
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.ListPlugin");
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "list";
-            }
+    /**
+     * Metadata for ListPlugin.
+     * 
+     * <p>Master plugin - builds explicit list variables from multiple values.</p>
+     */
+    public static class ListPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "list";
+        }
 
-            @Override
-            public String getName() {
-                return "List Plugin";
-            }
+        @Override
+        public String getName() {
+            return "List";
+        }
 
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "List plugin that provides list functionality";
-            }
+        @Override
+        public String getDescription() {
+            return "Creates a ListVariable from child elements. Useful for creating explicit lists or combining multiple values. Most processors (XPath, Loop, etc.) return lists automatically - this is mainly used for explicit list construction.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = ListPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "core";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "list", "collection", "variable"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "list", "collection", "variable", "container"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return ListPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return ListPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "list";
-            }
+        @Override
+        public String getElementName() {
+            return "list";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return new PluginConfigurationSchema() {
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new ListPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-list";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#EC4899"; // Pink for variables/collections
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Variables";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 160;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("items", "List items from child elements", PortType.MIXED, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "ListVariable containing all child elements", PortType.MIXED)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Creates a ListVariable from child elements. Useful for creating explicit lists or combining multiple values. Can contain any child plugins.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[0]; // Rarely used directly
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "List Plugin",
+                "Creates a ListVariable from child elements. Useful for creating explicit lists or combining multiple values.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for ListPlugin.
+     */
+    public static class ListPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
                     @Override
-                    public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                        return new PluginConfigurationSchema.AttributeDefinition[]{
-                            new PluginConfigurationSchema.AttributeDefinition() {
-                                @Override
-                                public String getName() {
-                                    return "id";
-                                }
-
-                                @Override
-                                public String getDescription() {
-                                    return "Optional identifier for the list element";
-                                }
-
-                                @Override
-                                public boolean isRequired() {
-                                    return false;
-                                }
-
-                                @Override
-                                public PluginConfigurationSchema.AttributeType getType() {
-                                    return PluginConfigurationSchema.AttributeType.STRING;
-                                }
-
-                                @Override
-                                public String getDefaultValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String[] getAllowedValues() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMinValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public Number getMaxValue() {
-                                    return null;
-                                }
-
-                                @Override
-                                public String getPattern() {
-                                    return null;
-                                }
-                            }
-                        };
+                    public String getName() {
+                        return "id";
                     }
 
                     @Override
-                    public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                        for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                            if (attr.getName().equals(name)) {
-                                return attr;
-                            }
-                        }
+                    public String getDescription() {
+                        return "Optional identifier for the list element";
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
                         return null;
                     }
 
                     @Override
-                    public String getVersion() {
-                        return "2.1.0";
+                    public String[] getAllowedValues() {
+                        return null;
                     }
 
                     @Override
-                    public boolean allowsBody() {
-                        return true;
+                    public Number getMinValue() {
+                        return null;
                     }
 
                     @Override
-                    public String[] getRequiredSubElements() {
-                        return new String[0];
+                    public Number getMaxValue() {
+                        return null;
                     }
 
                     @Override
-                    public String[] getAllowedSubElements() {
-                        return new String[0];
+                    public String getPattern() {
+                        return null;
                     }
-
-                    @Override
-                    public String[] getOptionalAttributes() {
-                        return new String[]{"id"};
-                    }
-
-                    @Override
-                    public String[] getRequiredAttributes() {
-                        return new String[0];
-                    }
-
-                    @Override
-                    public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                        if (configuration == null) {
-                            throw new PluginValidationException("Configuration cannot be null");
-                        }
-                    }
-                };
+                }
+            };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
             }
-        };
+            return null;
+        }
+        
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"id"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
+            }
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new ListPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return getMetadata().getConfigurationSchema();
+        return new ListPluginMetadata().getConfigurationSchema();
     }
 
     @Override

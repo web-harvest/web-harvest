@@ -17,7 +17,7 @@ public class XPathPluginMassiveTest {
     @Test public void testMeta02() { XPathPlugin p = new XPathPlugin(); assertTrue(p.getMetadata().isCorePlugin()); }
     @Test public void testMeta03() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getName()); }
     @Test public void testMeta04() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getId()); }
-    @Test public void testMeta05() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getVersion(), "2.1.0"); }
+    @Test public void testMeta05() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getVersion(), "2.3.0"); }
     @Test public void testMeta06() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getDescription()); }
     @Test public void testMeta07() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getCategory(), "Extraction"); }
     @Test public void testMeta08() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getMetadata().getTags()); }
@@ -35,7 +35,7 @@ public class XPathPluginMassiveTest {
     @Test public void testSchema04() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getConfigurationSchema().getRequiredAttributes()); }
     @Test public void testSchema05() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getConfigurationSchema().getAttributeDefinitions()); }
     @Test public void testSchema06() { XPathPlugin p = new XPathPlugin(); assertTrue(p.getConfigurationSchema().getAttributeDefinitions().length > 0); }
-    @Test public void testSchema07() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getConfigurationSchema().getVersion(), "2.1.0"); }
+    @Test public void testSchema07() { XPathPlugin p = new XPathPlugin(); assertEquals(p.getMetadata().getConfigurationSchema().getVersion(), "2.3.0"); }
     @Test public void testSchema08() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getConfigurationSchema().getRequiredSubElements()); }
     @Test public void testSchema09() { XPathPlugin p = new XPathPlugin(); assertNotNull(p.getConfigurationSchema().getAllowedSubElements()); }
     @Test public void testSchema10() { XPathPlugin p = new XPathPlugin(); var attrs = p.getConfigurationSchema().getAttributeDefinitions(); for (var a : attrs) assertNotNull(a.getName()); }

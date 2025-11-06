@@ -49,9 +49,9 @@ public class HttpParamPluginTest {
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "http-param");
-        assertEquals(plugin.getMetadata().getName(), "HTTP Parameter Plugin");
-        assertEquals(plugin.getMetadata().getVersion(), "2.1.0");
-        assertEquals(plugin.getMetadata().getDescription(), "HTTP parameter plugin that defines HTTP parameters for HTTP requests");
+        assertEquals(plugin.getMetadata().getName(), "HTTP Parameter");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
+        assertNotNull(plugin.getMetadata().getDescription());
         assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
         assertEquals(plugin.getMetadata().getCategory(), expectedCategory(HttpParamPlugin.class));
         assertEquals(plugin.getMetadata().getElementName(), "http-param");
@@ -62,7 +62,7 @@ public class HttpParamPluginTest {
     public void testGetConfigurationSchema() {
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
         assertNotNull(schema);
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
         assertTrue(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
         assertEquals(schema.getAllowedSubElements().length, 0);

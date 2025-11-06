@@ -37,6 +37,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -345,7 +353,12 @@ public class TemplatePlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.TemplatePlugin");
 
-    private static final PluginMetadata METADATA = new PluginMetadata() {
+    /**
+     * Metadata for TemplatePlugin.
+     * 
+     * <p>Standalone plugin - provides template evaluation and variable interpolation.</p>
+     */
+    public static class TemplatePluginMetadata implements VisualPluginMetadata {
         @Override
         public String getId() {
             return "template";
@@ -353,17 +366,17 @@ public class TemplatePlugin extends AbstractPlugin {
 
         @Override
         public String getName() {
-            return "Template Plugin";
+            return "Template";
         }
 
         @Override
         public String getVersion() {
-            return "2.1.0";
+            return "2.3.0";
         }
 
         @Override
         public String getDescription() {
-            return "Template plugin that provides template processing functionality";
+            return "Evaluates ${expression} syntax for variable interpolation and dynamic content generation. Supports multiple scripting languages (BeanShell, JavaScript, Groovy) for expressions. Essential for building dynamic URLs, string concatenation, and computed values.";
         }
 
         @Override
@@ -379,7 +392,7 @@ public class TemplatePlugin extends AbstractPlugin {
 
         @Override
         public String[] getTags() {
-            return new String[]{"core", "template", "scripting", "beanshell", "javascript", "groovy"};
+            return new String[]{"core", "template", "scripting", "beanshell", "javascript", "groovy", "interpolation", "text-processing"};
         }
 
         @Override
@@ -389,11 +402,119 @@ public class TemplatePlugin extends AbstractPlugin {
 
         @Override
         public PluginConfigurationSchema getConfigurationSchema() {
-            return new PluginConfigurationSchema() {
-                @Override
-                public AttributeDefinition[] getAttributeDefinitions() {
-                    return new AttributeDefinition[]{
-                        new AttributeDefinition() {
+            return new TemplatePluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-code";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#8B5CF6"; // Purple for text processing
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Text Processing";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("content", "Template content with ${expressions} (from body content)", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Evaluated template result", PortType.STRING)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.STRING;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Evaluates ${expression} syntax for variable interpolation and dynamic content generation. Supports multiple scripting languages (BeanShell, JavaScript, Groovy) for expressions. Essential for building dynamic URLs, string concatenation, and computed values.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+T", "Add Template", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Template Plugin",
+                "Evaluates ${expression} syntax for variable interpolation and dynamic content generation. Supports multiple scripting languages.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins for content generation
+        }
+        
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public String getElementName() {
+            return "template";
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getClassName() {
+            return TemplatePlugin.class.getName();
+        }
+    }
+    
+    /**
+     * Configuration schema for TemplatePlugin.
+     */
+    public static class TemplatePluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
                             @Override
                             public String getName() {
                                 return "id";
@@ -485,95 +606,67 @@ public class TemplatePlugin extends AbstractPlugin {
                                 return null;
                             }
                         }
-                    };
-                }
-
-                @Override
-                public AttributeDefinition getAttribute(String name) {
-                    for (AttributeDefinition attr : getAttributeDefinitions()) {
-                        if (attr.getName().equals(name)) {
-                            return attr;
-                        }
-                    }
-                    return null;
-                }
-
-                @Override
-                public String[] getRequiredAttributes() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getOptionalAttributes() {
-                    return new String[]{"id", "language"};
-                }
-
-                @Override
-                public String[] getAllowedSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public String[] getRequiredSubElements() {
-                    return new String[0];
-                }
-
-                @Override
-                public boolean allowsBody() {
-                    return true;
-                }
-
-                @Override
-                public String getVersion() {
-                    return "2.1.0";
-                }
-
-                @Override
-                public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                    String language = configuration.getProperty("language");
-                    if (language != null && !language.isEmpty()) {
-                        if (!"beanshell".equals(language) && !"javascript".equals(language) && !"groovy".equals(language)) {
-                            throw new PluginValidationException("Invalid language value: " + language + ". Must be one of: beanshell, javascript, groovy");
-                        }
-                    }
-                }
             };
         }
-
+        
         @Override
-        public String getNamespace() {
-            return "http://org.webharvest/schema/2.1/core";
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+        
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
         }
 
         @Override
-        public String getElementName() {
-            return "template";
+        public String[] getOptionalAttributes() {
+            return new String[]{"id", "language"};
         }
 
         @Override
-        public boolean isCorePlugin() {
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins for content generation
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public boolean allowsBody() {
             return true;
         }
 
         @Override
-        public String getClassName() {
-            return TemplatePlugin.class.getName();
+        public String getVersion() {
+            return "2.3.0";
         }
-    };
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public PluginMetadata getMetadata() {
-        return METADATA;
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            String language = configuration.getProperty("language");
+            if (language != null && !language.isEmpty()) {
+                if (!"beanshell".equals(language) && !"javascript".equals(language) && !"groovy".equals(language)) {
+                    throw new PluginValidationException("Invalid language value: " + language + ". Must be one of: beanshell, javascript, groovy");
+                }
+            }
+        }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public PluginMetadata getMetadata() {
+        return new TemplatePluginMetadata();
+    }
+
     public PluginConfigurationSchema getConfigurationSchema() {
-        return METADATA.getConfigurationSchema();
+        return new TemplatePluginMetadata().getConfigurationSchema();
     }
 
     /**

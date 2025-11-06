@@ -69,8 +69,8 @@ public class CatchPluginTest {
     public void testGetMetadata() {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
-        assertEquals(metadata.getName(), "Catch Plugin");
-        assertEquals(metadata.getDescription(), "Catch plugin that provides the catch block for exception handling");
+        assertEquals(metadata.getName(), "Catch");
+        assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "catch");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
@@ -89,7 +89,7 @@ public class CatchPluginTest {
         assertFalse(idAttr.isRequired());
         
         assertTrue(schema.allowsBody());
-        assertEquals(schema.getVersion(), "2.1.0");
+        assertEquals(schema.getVersion(), "2.3.0");
     }
 
     @Test

@@ -124,7 +124,7 @@ public class FilePluginMassiveTest {
     @Test
     public void testSchema7() {
         FilePlugin plugin = new FilePlugin();
-        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.1.0");
+        assertEquals(plugin.getMetadata().getConfigurationSchema().getVersion(), "2.3.0");
     }
     
     @Test

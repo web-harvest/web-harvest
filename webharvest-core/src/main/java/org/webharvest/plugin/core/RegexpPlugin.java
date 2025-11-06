@@ -44,6 +44,14 @@ import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.plugin.annotations.CorePlugin;
@@ -543,126 +551,220 @@ public class RegexpPlugin extends AbstractPlugin {
     }
 
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "regexp";
-            }
+    /**
+     * Metadata for RegexpPlugin.
+     * 
+     * <p>Master plugin - requires regexp-pattern and regexp-source as children. Provides powerful regular expression capabilities for pattern matching, text extraction using capture groups, search and replace operations, and complex text parsing.</p>
+     */
+    public static class RegexpPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "regexp";
+        }
 
-            @Override
-            public String getName() {
-                return "regexp";
-            }
+        @Override
+        public String getName() {
+            return "Regular Expression";
+        }
 
-            @Override
-            public String getVersion() {
-                return "1.0.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-                       @Override
-                       public String getDescription() {
-                           return "Regular expression replace plugin";
-                       }
+        @Override
+        public String getDescription() {
+            return "Regular expression processor providing powerful pattern matching, text extraction using capture groups, search and replace operations, and complex text parsing. Automatically stores captured groups as variables (group0-group99) for easy access. Supports multiple matches, regex flags (case-insensitive, multiline, dotall, etc.), and search/replace operations with templates.";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = RegexpPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Extraction";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "regexp", "regex", "pattern", "matching", "replacement"};
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "regexp", "regex", "pattern", "matching", "replacement", "extraction", "text-processing"};
+        }
+
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
+
+        @Override
+        public String getClassName() {
+            return RegexpPlugin.class.getName();
+        }
+
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
+
+        @Override
+        public String getElementName() {
+            return "regexp";
+        }
+
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
+
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new RegexpPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-search";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#10B981"; // Green for extraction/text processing
+        }
+        
+        @Override
+        public String getGroup() {
+            return "Extraction";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 220;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 140;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("source", "Text source to match against", PortType.STRING, true)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("matches", "List of matched results", PortType.MIXED),
+                new OutputPort("replaced", "Text with replacements applied (if replace attribute used)", PortType.STRING)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.MIXED;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Regular expression processor for pattern matching, text extraction, and search/replace. Automatically stores captured groups as variables (group0-group99).";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+R", "Add Regexp", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Regular Expression Plugin",
+                "Pattern matching and text extraction using regular expressions. Captures groups automatically as variables.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[]{"regexp-pattern", "regexp-source", "regexp-result"};
+        }
+    }
+    
+    /**
+     * Configuration schema for RegexpPlugin.
+     */
+    public static class RegexpPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[0];
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[]{"regexp-pattern", "regexp-source"};
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[]{"regexp-pattern", "regexp-source", "regexp-result"};
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"replace", "max", "flag-caseinsensitive", "flag-multiline", "flag-dotall", "flag-unicodecase", "flag-canoneq"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            if (configuration == null) {
+                throw new PluginValidationException("Configuration cannot be null");
             }
+        }
+    }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
-
-            @Override
-            public String getClassName() {
-                return RegexpPlugin.class.getName();
-            }
-
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
-
-            @Override
-            public String getElementName() {
-                return "regexp";
-            }
-
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
-
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return new PluginConfigurationSchema() {
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                        return new PluginConfigurationSchema.AttributeDefinition[0];
-                    }
-                    
-                    @Override
-                    public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                        return null;
-                    }
-
-                    @Override
-                    public String getVersion() {
-                        return "2.1.0";
-                    }
-
-                    @Override
-                    public boolean allowsBody() {
-                        return true;
-                    }
-
-                    @Override
-                    public String[] getRequiredSubElements() {
-                        return new String[]{"regexp-pattern", "regexp-source"};
-                    }
-
-                    @Override
-                    public String[] getAllowedSubElements() {
-                        return new String[]{"regexp-pattern", "regexp-source", "regexp-result"};
-                    }
-
-                    @Override
-                    public String[] getOptionalAttributes() {
-                        return new String[]{"replace", "max", "flag-caseinsensitive", "flag-multiline", "flag-dotall", "flag-unicodecase", "flag-canoneq"};
-                    }
-
-                    @Override
-                    public String[] getRequiredAttributes() {
-                        return new String[0];
-                    }
-
-                    @Override
-                    public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                        if (configuration == null) {
-                            throw new PluginValidationException("Configuration cannot be null");
-                        }
-                    }
-                };
-            }
-        };
+    @Override
+    public PluginMetadata getMetadata() {
+        return new RegexpPluginMetadata();
     }
 
     public PluginConfigurationSchema getConfigurationSchema() {
-        return getMetadata().getConfigurationSchema();
+        return new RegexpPluginMetadata().getConfigurationSchema();
     }
 
     @Override

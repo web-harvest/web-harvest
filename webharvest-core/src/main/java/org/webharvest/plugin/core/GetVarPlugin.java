@@ -40,6 +40,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.PluginConfigurationSchema;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -287,39 +295,150 @@ public class GetVarPlugin extends AbstractPlugin {
     /**
      * {@inheritDoc}
      */
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() { return "get"; }
-            @Override
-            public String getName() { return "get"; }
-            @Override
-            public String getVersion() { return "2.1.0"; }
-            @Override
-            public String getDescription() { return "Retrieves a variable value from the context"; }
-            @Override
-            public String getAuthor() { return "Web-Harvest Team"; }
-            @Override
+    /**
+     * Metadata for GetVarPlugin.
+     * 
+     * <p>Standalone plugin - retrieves variable value from execution context, preserving Variable type.</p>
+     */
+    public static class GetVarPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() { return "get-var"; }
+        @Override
+        public String getName() { return "Get Variable"; }
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        @Override
+        public String getDescription() { return "Retrieves the value of a previously defined variable and returns it for use in the current execution flow. Preserves the original Variable type (binary data, XML structure, lists). Commonly used to pass data between different parts of a scraper configuration. In most cases, use ${varname} syntax for text interpolation. Use get-var when you need to pass the actual Variable object without String conversion."; }
+        @Override
+        public String getAuthor() { return "Web-Harvest Team"; }
+        @Override
         public String getCategory() {
             CorePlugin annotation = GetVarPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Variables";
         }
-            @Override
-            public String[] getTags() { return new String[0]; }
-            @Override
-            public String[] getDependencies() { return new String[0]; }
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() { return GetVarPlugin.this.getConfigurationSchema(); }
-            @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
-            @Override
-            public String getElementName() { return "get"; }
-            @Override
-            public boolean isCorePlugin() { return true; }
-            @Override
-            public String getClassName() { return GetVarPlugin.this.getClass().getName(); }
-        };
+        @Override
+        public String[] getTags() { return new String[]{"core", "variable", "get", "retrieve", "context"}; }
+        @Override
+        public String[] getDependencies() { return new String[0]; }
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() { return new GetVarPluginConfigurationSchema(); }
+        @Override
+        public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
+        @Override
+        public String getElementName() { return "get"; }
+        @Override
+        public boolean isCorePlugin() { return true; }
+        @Override
+        public String getClassName() { return GetVarPlugin.class.getName(); }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() { return "fas fa-download"; }
+        @Override
+        public String getColor() { return "#EC4899"; } // Pink for variables
+        @Override
+        public String getGroup() { return "Variables"; }
+        @Override
+        public int getDefaultWidth() { return 180; }
+        @Override
+        public int getDefaultHeight() { return 100; }
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("var", "Variable name to retrieve (from var attribute)", PortType.STRING, true)
+            };
+        }
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "Variable value (preserves original type)", PortType.MIXED)
+            };
+        }
+        @Override
+        public PortType getPortType() { return PortType.MIXED; }
+        @Override
+        public String getTooltip() { return "Retrieves the value of a previously defined variable and returns it for use in the current execution flow. Preserves the original Variable type (binary data, XML structure, lists). Use when you need to pass the actual Variable object without String conversion."; }
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() { return new KeyboardShortcut[0]; } // Rarely used directly
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "Get Variable Plugin",
+                "Retrieves the value of a previously defined variable and returns it for use in the current execution flow.",
+                new String[]{"Tab", "Enter"}
+            );
+        }
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() { return new LinkedServiceMetadata[0]; }
+        @Override
+        public ParentChildRelationship getParentRelationship() { return null; } // Standalone plugin
+        @Override
+        public String[] getAllowedChildPlugins() { return new String[0]; } // No children
+    }
+    
+    /**
+     * Configuration schema for GetVarPlugin.
+     */
+    public static class GetVarPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[] {
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() { return "var"; }
+                    @Override
+                    public String getDescription() { return "Name of the variable to retrieve"; }
+                    @Override
+                    public boolean isRequired() { return true; }
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() { return PluginConfigurationSchema.AttributeType.STRING; }
+                    @Override
+                    public String getPattern() { return null; }
+                    @Override
+                    public Number getMaxValue() { return null; }
+                    @Override
+                    public Number getMinValue() { return null; }
+                    @Override
+                    public String[] getAllowedValues() { return null; }
+                    @Override
+                    public String getDefaultValue() { return null; }
+                }
+            };
+        }
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) { 
+            if ("var".equals(name)) {
+                return getAttributeDefinitions()[0];
+            }
+            return null;
+        }
+        @Override
+        public String getVersion() { return "2.3.0"; }
+        @Override
+        public boolean allowsBody() { return false; }
+        @Override
+        public String[] getRequiredSubElements() { return new String[0]; }
+        @Override
+        public String[] getAllowedSubElements() { return new String[0]; }
+        @Override
+        public String[] getOptionalAttributes() { return new String[0]; }
+        @Override
+        public String[] getRequiredAttributes() { return new String[]{"var"}; }
+        @Override
+        public void validate(PluginConfiguration configuration) throws org.webharvest.plugin.exceptions.PluginValidationException {
+            if (configuration == null) {
+                throw new org.webharvest.plugin.exceptions.PluginValidationException("Configuration cannot be null");
+            }
+            String varName = configuration.getProperty("var");
+            if (varName == null || varName.trim().isEmpty()) {
+                throw new org.webharvest.plugin.exceptions.PluginValidationException("var attribute is required");
+            }
+        }
+    }
+    
+    @Override
+    public PluginMetadata getMetadata() {
+        return new GetVarPluginMetadata();
     }
 
     /**

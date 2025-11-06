@@ -73,9 +73,10 @@ public class HtmlToXmlPluginTest {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "html-to-xml");
-        assertEquals(metadata.getName(), "html-to-xml");
-        assertEquals(metadata.getVersion(), "2.1.0");
-        assertEquals(metadata.getDescription(), "HTML to XML plugin that converts HTML content to well-formed XML");
+        assertEquals(metadata.getName(), "HTML to XML");
+        assertEquals(metadata.getVersion(), "2.3.0");
+        assertNotNull(metadata.getDescription());
+        assertTrue(metadata.getDescription().contains("HTML") || metadata.getDescription().contains("XML"));
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "html-to-xml");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");

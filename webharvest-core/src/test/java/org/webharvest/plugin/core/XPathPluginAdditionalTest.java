@@ -42,7 +42,7 @@ public class XPathPluginAdditionalTest {
 
     @Test
     public void testMetadataName() {
-        assertEquals(plugin.getMetadata().getName(), "XPath Plugin");
+        assertEquals(plugin.getMetadata().getName(), "XPath");
     }
 
     @Test

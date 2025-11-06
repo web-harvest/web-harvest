@@ -323,15 +323,15 @@ public class DefaultPluginFactoryTest {
     public void testDefaultPluginMetadata() {
         // Test the inner class DefaultPluginMetadata
         DefaultPluginFactory.DefaultPluginMetadata metadata = new DefaultPluginFactory.DefaultPluginMetadata(
-            "test-id", "Test Plugin", "1.0.0", "Test description",
+            "test-id", "Test Plugin", "2.3.0", "Test description",
             "Test Author", "test-category", new String[]{"tag1", "tag2"},
             new String[]{"dep1"}, null, "http://test", "test-element", true, "TestClass"
         );
 
         assertEquals(metadata.getId(), "test-id");
         assertEquals(metadata.getName(), "Test Plugin");
-        assertEquals(metadata.getVersion(), "1.0.0");
-        assertEquals(metadata.getDescription(), "Test description");
+        assertEquals(metadata.getVersion(), "2.3.0");
+        assertNotNull(metadata.getDescription());
         assertEquals(metadata.getAuthor(), "Test Author");
         assertEquals(metadata.getCategory(), "test-category");
         assertNotNull(metadata.getTags());

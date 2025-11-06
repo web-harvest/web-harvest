@@ -66,7 +66,7 @@ public class DefPluginTest {
     @Test(description = "Test DefPlugin metadata")
     public void testDefPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
-        assertEquals(plugin.getMetadata().getName(), "def", 
-                    "Plugin name should be 'def'");
+        assertEquals(plugin.getMetadata().getName(), "Define Variable", 
+                    "Plugin name should be 'Define Variable'");
     }
 }

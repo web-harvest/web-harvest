@@ -35,10 +35,11 @@ package org.webharvest.plugin.registry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webharvest.plugin.core.HttpPlugin;
-import org.webharvest.plugin.core.ReturnPlugin;
-import org.webharvest.plugin.core.TextPlugin;
+import org.webharvest.plugin.Plugin;
+import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.utils.ClassPathScanner;
+import org.webharvest.utils.ClassPathScannerImpl;
 
 /**
  * Singleton holder for the global plugin registry instance.
@@ -101,6 +102,9 @@ public final class PluginRegistryHolder {
 
     /**
      * Creates and initializes a new plugin registry with core plugins.
+     * 
+     * <p>Automatically discovers and registers all plugins annotated with {@code @CorePlugin}
+     * from the {@code org.webharvest.plugin.core} package.</p>
      *
      * @return the initialized plugin registry
      */
@@ -108,14 +112,49 @@ public final class PluginRegistryHolder {
         try {
             DefaultPluginRegistry registry = new DefaultPluginRegistry();
             
-            // Register core plugins
-            registry.registerPlugin(TextPlugin.class);
-            registry.registerPlugin(ReturnPlugin.class);
-            registry.registerPlugin(HttpPlugin.class);
+            // Automatically discover all plugins with @CorePlugin annotation
+            ClassPathScanner scanner = new ClassPathScannerImpl("org.webharvest.plugin.core");
+            java.util.Set<Class<?>> pluginClasses = scanner.getTypesAnnotatedWith(CorePlugin.class);
             
-            LOG.info("Initialized plugin registry with {} core plugins", registry.getPluginCount());
+            int registeredCount = 0;
+            int skippedCount = 0;
+            
+            for (Class<?> pluginClass : pluginClasses) {
+                try {
+                    // Verify it's a Plugin class
+                    if (!Plugin.class.isAssignableFrom(pluginClass)) {
+                        LOG.debug("Skipping {} - not a Plugin class", pluginClass.getName());
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Check if it's a concrete class (not abstract or interface)
+                    if (java.lang.reflect.Modifier.isAbstract(pluginClass.getModifiers())) {
+                        LOG.debug("Skipping {} - abstract class", pluginClass.getName());
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    @SuppressWarnings("unchecked")
+                    Class<? extends Plugin> pluginType = (Class<? extends Plugin>) pluginClass;
+                    
+                    // Register plugin
+                    registry.registerPlugin(pluginType);
+                    registeredCount++;
+                    
+                } catch (PluginException e) {
+                    LOG.warn("Failed to register plugin {}: {}", pluginClass.getName(), e.getMessage());
+                    skippedCount++;
+                } catch (Exception e) {
+                    LOG.warn("Error registering plugin {}: {}", pluginClass.getName(), e.getMessage());
+                    skippedCount++;
+                }
+            }
+            
+            LOG.info("Initialized plugin registry with {} core plugins ({} skipped)", 
+                registeredCount, skippedCount);
             return registry;
-        } catch (PluginException e) {
+        } catch (Exception e) {
             LOG.error("Failed to initialize plugin registry", e);
             // Return empty registry to prevent null pointer exceptions
             return new DefaultPluginRegistry();

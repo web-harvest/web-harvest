@@ -42,6 +42,14 @@ import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.PortType;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -258,75 +266,270 @@ public class JsonToXmlPlugin extends AbstractPlugin {
 
     private static final String TAG_ATT_NAME = "tag";
 
-    @Override
-    public PluginMetadata getMetadata() {
-        return new PluginMetadata() {
-            @Override
-            public String getId() {
-                return "json-to-xml";
-            }
+    /**
+     * Metadata for JsonToXmlPlugin.
+     * 
+     * <p>Standalone plugin - converts JSON data to XML for XPath processing.</p>
+     */
+    public static class JsonToXmlPluginMetadata implements VisualPluginMetadata {
+        @Override
+        public String getId() {
+            return "json-to-xml";
+        }
 
-            @Override
-            public String getName() {
-                return "JsonToXml Plugin";
-            }
+        @Override
+        public String getName() {
+            return "JSON to XML";
+        }
 
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
 
-            @Override
-            public String getDescription() {
-                return "Converter from JSON to XML";
-            }
+        @Override
+        public String getDescription() {
+            return "Converts JSON data (from REST APIs, files, etc.) into well-formed XML. Enables unified querying with XPath for both HTML pages and JSON APIs. Essential for processing JSON API responses and extracting nested data structures. All JSON keys are preserved, including 'content' key (Bug #61 fixed in v2.2.0).";
+        }
 
-            @Override
-            public String getAuthor() {
-                return "Web-Harvest Team";
-            }
+        @Override
+        public String getAuthor() {
+            return "Web-Harvest Team";
+        }
 
-            @Override
+        @Override
         public String getCategory() {
             CorePlugin annotation = JsonToXmlPlugin.class.getAnnotation(CorePlugin.class);
             return annotation != null ? annotation.category() : "Extraction";
         }
 
-            @Override
-            public String[] getTags() {
-                return new String[]{"core", "json", "xml", "converter"};
-            }
+        @Override
+        public String[] getTags() {
+            return new String[]{"core", "json", "xml", "converter", "transformation", "api"};
+        }
 
-            @Override
-            public String[] getDependencies() {
-                return new String[0];
-            }
+        @Override
+        public String[] getDependencies() {
+            return new String[0];
+        }
 
-            @Override
-            public String getClassName() {
-                return JsonToXmlPlugin.class.getName();
-            }
+        @Override
+        public String getClassName() {
+            return JsonToXmlPlugin.class.getName();
+        }
 
-            @Override
-            public boolean isCorePlugin() {
-                return true;
-            }
+        @Override
+        public boolean isCorePlugin() {
+            return true;
+        }
 
-            @Override
-            public String getElementName() {
-                return "json-to-xml";
-            }
+        @Override
+        public String getElementName() {
+            return "json-to-xml";
+        }
 
-            @Override
-            public String getNamespace() {
-                return "http://org.webharvest/schema/2.1/core";
-            }
+        @Override
+        public String getNamespace() {
+            return "http://org.webharvest/schema/2.1/core";
+        }
 
-            @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
-                return JsonToXmlPlugin.this.getConfigurationSchema();
+        @Override
+        public PluginConfigurationSchema getConfigurationSchema() {
+            return new JsonToXmlPluginConfigurationSchema();
+        }
+        
+        // VisualPluginMetadata implementation
+        @Override
+        public String getIcon() {
+            return "fas fa-exchange-alt";
+        }
+        
+        @Override
+        public String getColor() {
+            return "#60A5FA"; // Light blue for XML/JSON
+        }
+        
+        @Override
+        public String getGroup() {
+            return "XML & JSON";
+        }
+        
+        @Override
+        public int getDefaultWidth() {
+            return 200;
+        }
+        
+        @Override
+        public int getDefaultHeight() {
+            return 120;
+        }
+        
+        @Override
+        public InputPort[] getInputPorts() {
+            return new InputPort[]{
+                new InputPort("json", "JSON content to convert (from body content)", PortType.STRING, false),
+                new InputPort("tag", "Root XML tag name (from tag attribute, default: data)", PortType.STRING, false)
+            };
+        }
+        
+        @Override
+        public OutputPort[] getOutputPorts() {
+            return new OutputPort[]{
+                new OutputPort("output", "XML representation of JSON data", PortType.XML)
+            };
+        }
+        
+        @Override
+        public PortType getPortType() {
+            return PortType.XML;
+        }
+        
+        @Override
+        public String getTooltip() {
+            return "Converts JSON data into well-formed XML. Enables unified querying with XPath for both HTML pages and JSON APIs. Essential for processing JSON API responses and extracting nested data structures.";
+        }
+        
+        @Override
+        public KeyboardShortcut[] getKeyboardShortcuts() {
+            return new KeyboardShortcut[]{
+                new KeyboardShortcut("Cmd+Shift+J", "Add JSON to XML", false)
+            };
+        }
+        
+        @Override
+        public AccessibilityMetadata getAccessibility() {
+            return new AccessibilityMetadata(
+                "JSON to XML Plugin",
+                "Converts JSON data into well-formed XML. Enables unified querying with XPath for both HTML pages and JSON APIs.",
+                new String[]{"Tab", "Enter", "Escape"}
+            );
+        }
+        
+        @Override
+        public LinkedServiceMetadata[] getLinkedServices() {
+            return new LinkedServiceMetadata[0];
+        }
+        
+        @Override
+        public ParentChildRelationship getParentRelationship() {
+            return null; // Standalone plugin
+        }
+        
+        @Override
+        public String[] getAllowedChildPlugins() {
+            return new String[0]; // Can contain any child plugins
+        }
+    }
+    
+    /**
+     * Configuration schema for JsonToXmlPlugin.
+     */
+    public static class JsonToXmlPluginConfigurationSchema implements PluginConfigurationSchema {
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
+            return new PluginConfigurationSchema.AttributeDefinition[]{
+                new PluginConfigurationSchema.AttributeDefinition() {
+                    @Override
+                    public String getName() {
+                        return TAG_ATT_NAME;
+                    }
+
+                    @Override
+                    public PluginConfigurationSchema.AttributeType getType() {
+                        return PluginConfigurationSchema.AttributeType.STRING;
+                    }
+
+                    @Override
+                    public boolean isRequired() {
+                        return false;
+                    }
+
+                    @Override
+                    public String getDefaultValue() {
+                        return "data";
+                    }
+
+                    @Override
+                    public String getDescription() {
+                        return "Root tag name for XML output";
+                    }
+
+                    @Override
+                    public String[] getAllowedValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMinValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public Number getMaxValue() {
+                        return null;
+                    }
+
+                    @Override
+                    public String getPattern() {
+                        return null;
+                    }
+                }
+            };
+        }
+        
+        @Override
+        public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
+            for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
+                if (attr.getName().equals(name)) {
+                    return attr;
+                }
             }
-        };
+            return null;
+        }
+
+        @Override
+        public String getVersion() {
+            return "2.3.0";
+        }
+
+        @Override
+        public boolean allowsBody() {
+            return true;
+        }
+
+        @Override
+        public String[] getRequiredSubElements() {
+            return new String[0];
+        }
+
+        @Override
+        public String[] getAllowedSubElements() {
+            return new String[0]; // Can contain any child plugins
+        }
+
+        @Override
+        public String[] getOptionalAttributes() {
+            return new String[]{"tag"};
+        }
+
+        @Override
+        public String[] getRequiredAttributes() {
+            return new String[0];
+        }
+
+        @Override
+        public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            // No validation needed - tag is optional
+        }
+    }
+
+    @Override
+    public PluginMetadata getMetadata() {
+        return new JsonToXmlPluginMetadata();
+    }
+
+    public PluginConfigurationSchema getConfigurationSchema() {
+        return new JsonToXmlPluginMetadata().getConfigurationSchema();
     }
 
     @Override
@@ -337,109 +540,6 @@ public class JsonToXmlPlugin extends AbstractPlugin {
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
         // No validation needed - tag is optional
-    }
-
-    public PluginConfigurationSchema getConfigurationSchema() {
-        return new PluginConfigurationSchema() {
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-                return new PluginConfigurationSchema.AttributeDefinition[]{
-                    new PluginConfigurationSchema.AttributeDefinition() {
-                        @Override
-                        public String getName() {
-                            return TAG_ATT_NAME;
-                        }
-
-                        @Override
-                        public PluginConfigurationSchema.AttributeType getType() {
-                            return PluginConfigurationSchema.AttributeType.STRING;
-                        }
-
-                        @Override
-                        public boolean isRequired() {
-                            return false;
-                        }
-
-                        @Override
-                        public String getDefaultValue() {
-                            return "data";
-                        }
-
-                        @Override
-                        public String getDescription() {
-                            return "Root tag name for XML output";
-                        }
-
-                        @Override
-                        public String[] getAllowedValues() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMinValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public Number getMaxValue() {
-                            return null;
-                        }
-
-                        @Override
-                        public String getPattern() {
-                            return null;
-                        }
-                    }
-                };
-            }
-            
-            @Override
-            public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-                for (PluginConfigurationSchema.AttributeDefinition attr : getAttributeDefinitions()) {
-                    if (attr.getName().equals(name)) {
-                        return attr;
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            public String getVersion() {
-                return "2.1.0";
-            }
-
-            @Override
-            public boolean allowsBody() {
-                return true;
-            }
-
-            @Override
-            public String[] getRequiredSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getAllowedSubElements() {
-                return new String[0];
-            }
-
-            @Override
-            public String[] getOptionalAttributes() {
-                return new String[]{TAG_ATT_NAME};
-            }
-
-            @Override
-            public String[] getRequiredAttributes() {
-                return new String[0];
-            }
-
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                if (configuration == null) {
-                    throw new PluginValidationException("Configuration cannot be null");
-                }
-            }
-        };
     }
 
     @Override
