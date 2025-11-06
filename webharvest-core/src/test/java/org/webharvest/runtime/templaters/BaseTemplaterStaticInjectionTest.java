@@ -27,7 +27,10 @@ public class BaseTemplaterStaticInjectionTest {
     @Test
     public void testStaticInjectionWorks() {
         // GIVEN: Guice injector with ScraperModule
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         
         // WHEN: requestStaticInjection is called in ScraperModule.configure()
         // (it's already called in ScraperModule line 209)
@@ -44,7 +47,10 @@ public class BaseTemplaterStaticInjectionTest {
     @Test
     public void testManualInjection() {
         // GIVEN: Guice injector
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         
         // WHEN: We manually get ScriptEngineFactory from injector
         ScriptEngineFactory factory = injector.getInstance(ScriptEngineFactory.class);
@@ -65,7 +71,10 @@ public class BaseTemplaterStaticInjectionTest {
     @Test
     public void testEvaluateToStringWithInjection() {
         // GIVEN: Guice injector with ScraperModule
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         
         // WHEN: BaseTemplater.scriptEngineFactory is injected
         assertNotNull(BaseTemplater.scriptEngineFactory);

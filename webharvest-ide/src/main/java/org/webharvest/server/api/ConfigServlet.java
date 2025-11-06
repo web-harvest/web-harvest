@@ -40,7 +40,7 @@ public class ConfigServlet extends HttpServlet {
     public ConfigServlet() {
         LOG.info("Initializing ConfigServlet with SchemaValidator...");
         Injector injector = Guice.createInjector(
-            new ScraperModule(".")
+            new ScraperModule("target")
         );
         this.configFactory = injector.getInstance(ConfigFactory.class);
         this.schemaValidator = new SchemaValidator();

@@ -78,6 +78,46 @@ export class SemanticValidator {
     }
 
     /**
+     * Get semantic role for a plugin
+     */
+    getRole(pluginType: string): string | null {
+        const plugin = this.pluginManager.findPlugin(pluginType);
+        return plugin?.semantics?.role || null;
+    }
+
+    /**
+     * Check if a plugin allows body content
+     */
+    allowsBody(pluginType: string): boolean {
+        const plugin = this.pluginManager.findPlugin(pluginType);
+        if (!plugin) return false;
+        
+        // Check semantic constraints first
+        if (plugin.semantics?.allowBody !== undefined) {
+            return plugin.semantics.allowBody;
+        }
+        
+        // Fallback to schema
+        return plugin.schema?.canHaveBody === true;
+    }
+
+    /**
+     * Check if a plugin allows text content
+     */
+    allowsTextContent(pluginType: string): boolean {
+        const plugin = this.pluginManager.findPlugin(pluginType);
+        if (!plugin) return false;
+        
+        // Check semantic constraints first
+        if (plugin.semantics?.allowTextContent !== undefined) {
+            return plugin.semantics.allowTextContent;
+        }
+        
+        // Fallback to schema
+        return plugin.schema?.canHaveBody === true;
+    }
+
+    /**
      * Check if a child can be placed in a parent
      */
     canBeChildOf(childType: string, parentType: string | null): boolean {

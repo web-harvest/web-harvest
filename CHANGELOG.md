@@ -10,11 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Working Directory Configuration**: All test and IDE executions now use `target/` as working directory
   - Test base classes (`XmlBasedIntegrationTestBase`, `ScraperTestBase`) initialize `ScraperModule` with `workingDir = "target"`
-  - IDE `ExecutionManager` uses `workingDir = "target"` for all scraper executions
+  - IDE `ExecutionManager` and `ConfigServlet` use `workingDir = "target"` for all scraper executions
   - All generated files (from example XML configurations) now go to `target/` instead of project root
   - Prevents pollution of project root with test output files
   - All test example XML files updated to use relative paths (resolved against `target/`)
   - `.gitignore` updated to remove webharvest-core specific patterns (files now in `target/` which is already ignored)
+  - Fixed: All test classes updated to use `workingDir = "target"` (previously some used `"."` causing files in project root)
+
+### Fixed
+- **IDE Java Version Requirement**: IDE now requires Java 11 (not Java 17/21)
+  - Java 17 and 21 have stricter module access restrictions requiring `--add-opens` flags
+  - Java 11 works without these restrictions and is the recommended version for IDE
+  - Updated documentation to specify Java 11 requirement
+  - Fixed: All test classes updated to use `workingDir = "target"` instead of `"."`
+    - `SessionManagementIntegrationTest`, `HttpPluginWithDependencyInjectionTest`, `DefaultPluginBodyExecutorTest`, `HandlerHolderIntegrationTest`, `HttpClient5MigrationTest`, `BaseTemplaterStaticInjectionTest`, `JSRScriptEngineAdapterVariableConversionTest`
+  - Fixed: IDE `ConfigServlet` uses `workingDir = "target"` (previously used `"."` causing files in project root)
+  - Fixed: Generated files cleanup - removed all test output files from project root and `webharvest-core/` directory
+  - Fixed: "target 2" directory issue - was a one-time Maven clean plugin issue, not a code problem
 
 ## [2.3.1] - November 3, 2025
 

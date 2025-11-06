@@ -66,7 +66,10 @@ public class HandlerHolderIntegrationTest {
     @BeforeClass
     public void setUp() {
         // Note: HttpModule removed during HttpComponents 4.x migration
-        injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        injector = Guice.createInjector(new ScraperModule(targetDir));
         harvest = injector.getInstance(Harvest.class);
         harvest.addEventHandler(new EventHandler<DummyEvent>() {
 

@@ -232,6 +232,9 @@ export class PropertyPanel {
                 const summaryEl = document.createElement('div');
                 summaryEl.style.color = 'var(--gray-700)';
                 summaryEl.innerHTML = `<strong>Summary:</strong> ${plugin.documentation.summary}`;
+                // Add tooltip on hover
+                summaryEl.title = plugin.documentation.summary;
+                summaryEl.style.cursor = 'help';
                 metaContainer.appendChild(summaryEl);
             }
 
@@ -246,6 +249,38 @@ export class PropertyPanel {
                 linkEl.style.color = 'var(--magenta)';
                 linkEl.style.fontWeight = '600';
                 metaContainer.appendChild(linkEl);
+            }
+
+            // Show examples in collapsible section
+            if (plugin.documentation?.examples && plugin.documentation.examples.length > 0) {
+                const examplesContainer = document.createElement('div');
+                examplesContainer.style.marginTop = '12px';
+                
+                const examplesToggle = document.createElement('button');
+                examplesToggle.textContent = 'Show Examples';
+                examplesToggle.style.cssText = 'background: none; border: none; color: var(--magenta); cursor: pointer; font-size: 12px; padding: 4px 0; text-decoration: underline;';
+                examplesToggle.type = 'button';
+                
+                const examplesContent = document.createElement('div');
+                examplesContent.style.display = 'none';
+                examplesContent.style.marginTop = '8px';
+                examplesContent.style.padding = '8px';
+                examplesContent.style.background = 'var(--gray-100)';
+                examplesContent.style.borderRadius = 'var(--radius-sm)';
+                examplesContent.style.fontFamily = 'monospace';
+                examplesContent.style.fontSize = '11px';
+                examplesContent.style.whiteSpace = 'pre-wrap';
+                examplesContent.textContent = plugin.documentation.examples.join('\n\n');
+                
+                examplesToggle.addEventListener('click', () => {
+                    const isVisible = examplesContent.style.display !== 'none';
+                    examplesContent.style.display = isVisible ? 'none' : 'block';
+                    examplesToggle.textContent = isVisible ? 'Show Examples' : 'Hide Examples';
+                });
+                
+                examplesContainer.appendChild(examplesToggle);
+                examplesContainer.appendChild(examplesContent);
+                metaContainer.appendChild(examplesContainer);
             }
 
             if (plugin.dependencies && plugin.dependencies.length > 0) {
@@ -270,12 +305,34 @@ export class PropertyPanel {
             // Use SchemaEditor for schema-driven form
             this.schemaEditor.generateEditor(form, plugin, this.currentNode.attributes);
 
-            // Register onChange callback
+            // Register onChange callback with validation
             this.schemaEditor.onChange((attributes) => {
                 if (this.currentNode && this.onChangeCallback) {
-                    this.currentNode.attributes = attributes;
-                    this.onChangeCallback(this.currentNode);
+                    // Validate before updating
+                    const errors = this.schemaEditor?.validate() || [];
+                    if (errors.length === 0) {
+                        this.currentNode.attributes = attributes;
+                        this.onChangeCallback(this.currentNode);
+                    } else {
+                        console.warn('⚠️ [PropertyPanel] Validation errors:', errors);
+                        // Still update, but show errors
+                        this.currentNode.attributes = attributes;
+                        this.onChangeCallback(this.currentNode);
+                    }
                 }
+            });
+
+            // Add real-time validation on input
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    const errors = this.schemaEditor?.validate() || [];
+                    // Errors are already marked by SchemaEditor
+                });
+                input.addEventListener('blur', () => {
+                    const errors = this.schemaEditor?.validate() || [];
+                    // Errors are already marked by SchemaEditor
+                });
             });
 
             this.container.appendChild(form);
@@ -345,8 +402,12 @@ export class PropertyPanel {
             });
         }
 
-        // Body
-        if (this.currentNode.body !== null) {
+        // Body (only if plugin allows body/text content)
+        const pluginForBody = this.getPluginSchema(this.currentNode.type);
+        const allowsBody = pluginForBody?.semantics?.allowBody || pluginForBody?.semantics?.allowTextContent || 
+                          pluginForBody?.schema?.canHaveBody || false;
+        
+        if (allowsBody && this.currentNode.body !== null) {
             const bodyLabel = document.createElement('div');
             bodyLabel.innerHTML = '<strong>Body:</strong>';
             bodyLabel.style.marginTop = '16px';
@@ -381,6 +442,17 @@ export class PropertyPanel {
             } else {
                 form.appendChild(bodyInput);
             }
+        } else if (!allowsBody && this.currentNode.body !== null) {
+            // Show read-only message if body is not allowed
+            const bodyInfo = document.createElement('div');
+            bodyInfo.style.marginTop = '16px';
+            bodyInfo.style.padding = '8px';
+            bodyInfo.style.background = 'var(--gray-100)';
+            bodyInfo.style.borderRadius = 'var(--radius-sm)';
+            bodyInfo.style.fontSize = '12px';
+            bodyInfo.style.color = 'var(--gray-600)';
+            bodyInfo.textContent = 'This plugin does not support body content.';
+            form.appendChild(bodyInfo);
         }
 
         console.log('🔧 [PropertyPanel] Appending form to container');

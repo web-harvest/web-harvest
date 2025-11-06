@@ -39,7 +39,10 @@ public class HttpPluginWithDependencyInjectionTest {
     @BeforeMethod
     public void setUp() {
         // Create Guice injector
-        injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        injector = Guice.createInjector(new ScraperModule(targetDir));
         
         // Get REAL ScraperContext
         context = injector.getInstance(ScraperContext.class);

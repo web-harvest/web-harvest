@@ -32,7 +32,10 @@ public class JSRScriptEngineAdapterVariableConversionTest {
     @BeforeMethod
     public void setUp() {
         // Create Guice injector to get ScriptEngineFactory
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         factory = (JSRScriptEngineFactory) injector.getInstance(
             org.webharvest.runtime.scripting.ScriptEngineFactory.class);
         

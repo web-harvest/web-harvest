@@ -2,7 +2,7 @@
  * PluginManager - Manages plugin data and palette
  */
 
-import type { Plugin } from '../types';
+import type { Plugin, PluginDocumentationSummary, PluginSemanticsModel } from '../types';
 
 export class PluginManager {
     private plugins: Plugin[] = [];
@@ -34,7 +34,16 @@ export class PluginManager {
                 schema: plugin.schema,
                 semantics: plugin.semantics,
                 helpUrl: plugin.helpUrl || plugin.documentation?.url,
-                documentation: plugin.documentation,
+                // Full PluginDocumentation mapping
+                documentation: plugin.documentation ? {
+                    summary: plugin.documentation.summary || plugin.description || '',
+                    url: plugin.documentation.url || plugin.helpUrl,
+                    examples: plugin.documentation.examples || []
+                } : {
+                    summary: plugin.description || '',
+                    url: plugin.helpUrl,
+                    examples: []
+                },
                 dependencies: plugin.dependencies || [],
                 // VisualPluginMetadata fields
                 color: plugin.color,
@@ -98,17 +107,26 @@ export class PluginManager {
     }
 
     /**
-     * Search plugins
+     * Search plugins (by name, description, id, and tags)
      */
     searchPlugins(query: string): Plugin[] {
         if (!query) return this.plugins;
 
         const lowerQuery = query.toLowerCase();
-        return this.plugins.filter(p =>
-            p.name.toLowerCase().includes(lowerQuery) ||
-            p.description.toLowerCase().includes(lowerQuery) ||
-            p.id.toLowerCase().includes(lowerQuery)
-        );
+        return this.plugins.filter(p => {
+            // Search in name, description, id
+            const matchesBasic = 
+                p.name.toLowerCase().includes(lowerQuery) ||
+                p.description.toLowerCase().includes(lowerQuery) ||
+                p.id.toLowerCase().includes(lowerQuery);
+            
+            // Search in tags
+            const matchesTags = p.tags && p.tags.some(tag => 
+                tag.toLowerCase().includes(lowerQuery)
+            );
+            
+            return matchesBasic || matchesTags;
+        });
     }
 
     /**
@@ -124,6 +142,71 @@ export class PluginManager {
     getCategories(): string[] {
         const categories = new Set(this.plugins.map(p => (p.paletteGroup || p.category || 'Other')));
         return Array.from(categories).sort();
+    }
+
+    /**
+     * Get documentation for a plugin
+     */
+    getDocumentation(pluginId: string): PluginDocumentationSummary | null {
+        const plugin = this.findPlugin(pluginId);
+        return plugin?.documentation || null;
+    }
+
+    /**
+     * Get UI hints for a plugin
+     */
+    getUIHints(pluginId: string): { paletteGroup?: string; icon?: string; tags?: string[] } | null {
+        const plugin = this.findPlugin(pluginId);
+        if (!plugin) return null;
+        
+        return {
+            paletteGroup: plugin.paletteGroup,
+            icon: plugin.icon,
+            tags: plugin.tags
+        };
+    }
+
+    /**
+     * Get semantics for a plugin
+     */
+    getSemantics(pluginId: string): PluginSemanticsModel | null {
+        const plugin = this.findPlugin(pluginId);
+        return plugin?.semantics || null;
+    }
+
+    /**
+     * Get all plugins that can appear at root level
+     */
+    getRootLevelPlugins(): Plugin[] {
+        return this.plugins.filter(p => {
+            if (p.semantics?.canAppearAtRoot === false) return false;
+            if (p.schema?.canAppearAtRoot === false) return false;
+            if (p.semantics?.requiredParentTypes && p.semantics.requiredParentTypes.length > 0) return false;
+            if (p.schema?.requiredParents && p.schema.requiredParents.length > 0) return false;
+            return true;
+        });
+    }
+
+    /**
+     * Get dependent plugins (require a parent)
+     */
+    getDependentPlugins(): Plugin[] {
+        return this.plugins.filter(p => {
+            const requiredParents = p.semantics?.requiredParentTypes || p.schema?.requiredParents || [];
+            return requiredParents.length > 0;
+        });
+    }
+
+    /**
+     * Get master plugins (allow specific children)
+     */
+    getMasterPlugins(): Plugin[] {
+        return this.plugins.filter(p => {
+            const allowedChildren = p.semantics?.allowedChildTypes || p.schema?.allowedSubElements || [];
+            const hasAllowedChildren = allowedChildren.length > 0;
+            const hasAllowedChildPlugins = p.allowedChildPlugins && p.allowedChildPlugins.length > 0;
+            return hasAllowedChildren || hasAllowedChildPlugins;
+        });
     }
 }
 

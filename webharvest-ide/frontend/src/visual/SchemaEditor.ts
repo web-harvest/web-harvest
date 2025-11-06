@@ -70,7 +70,7 @@ export class SchemaEditor {
             gap: 6px;
         `;
 
-        // Label
+        // Label with tooltip
         const label = document.createElement('label');
         label.textContent = attrDef.name + (attrDef.required ? ' *' : '');
         label.style.cssText = `
@@ -78,6 +78,11 @@ export class SchemaEditor {
             font-weight: 600;
             color: var(--text-primary);
         `;
+        // Add tooltip with description if available
+        if (attrDef.description) {
+            label.title = attrDef.description;
+            label.style.cursor = 'help';
+        }
         fieldContainer.appendChild(label);
 
         // Description
@@ -89,6 +94,8 @@ export class SchemaEditor {
                 color: var(--gray-600);
                 margin-top: -4px;
             `;
+            // Also add tooltip for description
+            description.title = attrDef.description;
             fieldContainer.appendChild(description);
         }
 

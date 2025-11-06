@@ -26,6 +26,7 @@ export class PluginPalette {
     private selectedCategory: string | null = null;
     private collapsedCategories: Set<string> = new Set();
     private onAddNodeCallback: ((node: VisualNode) => void) | null = null;
+    private selectedMasterPlugin: string | null = null; // Track selected master plugin for highlighting allowed children
 
     constructor(containerId: string) {
         console.log('🔌🔌🔌 [PluginPalette] Constructor called for ID:', containerId);
@@ -96,7 +97,12 @@ export class PluginPalette {
                 inputPorts: p.inputPorts,
                 outputPorts: p.outputPorts,
                 portType: p.portType,
-                tooltip: p.tooltip || p.description
+                tooltip: p.tooltip || p.description,
+                // Metadata for filtering and search
+                tags: p.tags || p.ui?.tags || [],
+                semantics: p.semantics,
+                requiredParentTypes: p.semantics?.requiredParentTypes || p.schema?.requiredParents || [],
+                allowedChildTypes: p.semantics?.allowedChildTypes || p.schema?.allowedSubElements || []
             }));
 
             this.filteredTemplates = [...this.templates];
@@ -161,6 +167,23 @@ export class PluginPalette {
     }
 
     /**
+     * Set selected master plugin to highlight allowed children
+     */
+    setSelectedMasterPlugin(pluginType: string | null): void {
+        this.selectedMasterPlugin = pluginType;
+        this.render(); // Re-render to update highlighting
+    }
+
+    /**
+     * Get allowed children for a master plugin
+     */
+    private getMasterPluginAllowedChildren(pluginType: string): string[] {
+        const template = this.templates.find(t => t.type === pluginType);
+        if (!template) return [];
+        return (template as any).allowedChildTypes || [];
+    }
+
+    /**
      * Search plugins by term
      */
     search(term: string): void {
@@ -193,20 +216,32 @@ export class PluginPalette {
      */
     private applyFilters(): void {
         this.filteredTemplates = this.templates.filter(template => {
-            // Search term filter
+            // Search term filter (name, description, type, and tags)
             if (this.searchTerm) {
-                const matchesSearch =
+                const matchesBasic =
                     template.type.toLowerCase().includes(this.searchTerm) ||
                     template.label.toLowerCase().includes(this.searchTerm) ||
                     template.description.toLowerCase().includes(this.searchTerm);
+                
+                // Search in tags
+                const matchesTags = (template as any).tags && 
+                    (template as any).tags.some((tag: string) => 
+                        tag.toLowerCase().includes(this.searchTerm)
+                    );
 
-                if (!matchesSearch) {
+                if (!matchesBasic && !matchesTags) {
                     return false;
                 }
             }
 
             // Category filter
             if (this.selectedCategory && template.category !== this.selectedCategory) {
+                return false;
+            }
+
+            // Filter out dependent plugins from root-level palette
+            // Only show plugins that can appear at root level
+            if (!template.canAppearAtRoot) {
                 return false;
             }
 
@@ -422,15 +457,6 @@ export class PluginPalette {
             item.title = template.description;
         }
 
-        // Mark dependent plugins as disabled
-        if (template.canAppearAtRoot === false) {
-            item.classList.add('dependent-plugin');
-            item.style.opacity = '0.6';
-            item.style.cursor = 'not-allowed';
-            item.setAttribute('aria-disabled', 'true');
-            item.title = `This plugin requires a parent element`;
-        }
-
         // Icon + Label
         const content = document.createElement('div');
         content.style.display = 'flex';
@@ -448,7 +474,82 @@ export class PluginPalette {
         label.style.fontWeight = '500';
         content.appendChild(label);
 
+        // Add tag badges if available
+        const tags = (template as any).tags || [];
+        if (tags.length > 0) {
+            const tagsContainer = document.createElement('div');
+            tagsContainer.style.display = 'flex';
+            tagsContainer.style.flexWrap = 'wrap';
+            tagsContainer.style.gap = '4px';
+            tagsContainer.style.marginTop = '6px';
+            tagsContainer.style.fontSize = '10px';
+            
+            tags.slice(0, 3).forEach((tag: string) => {
+                const tagBadge = document.createElement('span');
+                tagBadge.textContent = tag;
+                tagBadge.style.padding = '2px 6px';
+                tagBadge.style.background = 'var(--gray-100)';
+                tagBadge.style.borderRadius = '3px';
+                tagBadge.style.color = 'var(--gray-700)';
+                tagBadge.style.fontWeight = '500';
+                tagsContainer.appendChild(tagBadge);
+            });
+            
+            if (tags.length > 3) {
+                const moreBadge = document.createElement('span');
+                moreBadge.textContent = `+${tags.length - 3}`;
+                moreBadge.style.padding = '2px 6px';
+                moreBadge.style.background = 'var(--gray-200)';
+                moreBadge.style.borderRadius = '3px';
+                moreBadge.style.color = 'var(--gray-600)';
+                tagsContainer.appendChild(moreBadge);
+            }
+            
+            content.appendChild(tagsContainer);
+        }
+
         item.appendChild(content);
+
+        // Show parent requirement tooltip for dependent plugins
+        const requiredParents = (template as any).requiredParentTypes || [];
+        if (requiredParents.length > 0) {
+            const parentTooltip = `Requires parent: ${requiredParents.join(', ')}`;
+            if (!item.title) {
+                item.title = parentTooltip;
+            } else {
+                item.title = `${item.title}. ${parentTooltip}`;
+            }
+            item.setAttribute('aria-description', parentTooltip);
+            
+            // Add visual indicator
+            const indicator = document.createElement('span');
+            indicator.textContent = '🔗';
+            indicator.style.marginLeft = '4px';
+            indicator.style.fontSize = '10px';
+            indicator.title = parentTooltip;
+            content.appendChild(indicator);
+        }
+
+        // Mark dependent plugins as disabled (if filtering is enabled)
+        if (template.canAppearAtRoot === false) {
+            item.classList.add('dependent-plugin');
+            item.style.opacity = '0.6';
+            item.style.cursor = 'not-allowed';
+            item.setAttribute('aria-disabled', 'true');
+            if (!item.title) {
+                item.title = `This plugin requires a parent element`;
+            }
+        }
+
+        // Highlight allowed children when master plugin is selected
+        if (this.selectedMasterPlugin) {
+            const masterAllowedChildren = this.getMasterPluginAllowedChildren(this.selectedMasterPlugin);
+            if (masterAllowedChildren.includes(template.type)) {
+                item.style.border = '2px solid #4CAF50';
+                item.style.boxShadow = '0 0 8px rgba(76, 175, 80, 0.4)';
+                item.style.background = '#f1f8f4';
+            }
+        }
 
         // Hover effect
         item.onmouseenter = () => {

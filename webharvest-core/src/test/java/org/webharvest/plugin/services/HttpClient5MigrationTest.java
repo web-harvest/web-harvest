@@ -40,7 +40,10 @@ public class HttpClient5MigrationTest {
 
     @BeforeMethod
     public void setUp() {
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         httpService = injector.getInstance(HttpService.class);
     }
 

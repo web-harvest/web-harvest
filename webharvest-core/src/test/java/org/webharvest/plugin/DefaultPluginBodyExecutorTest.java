@@ -38,7 +38,10 @@ public class DefaultPluginBodyExecutorTest {
         executor = new DefaultPluginBodyExecutor();
         
         // Initialize registry
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         // v2.2.x: DefinitionResolver removed
         // DefinitionResolver resolver = injector.getInstance(DefinitionResolver.class);
         

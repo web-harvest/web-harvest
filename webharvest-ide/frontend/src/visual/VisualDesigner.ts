@@ -632,6 +632,15 @@ export class VisualDesigner {
         container.style.top = `${containerY}px`;
         container.style.zIndex = '2';
 
+        // Apply role-based styling for containers
+        if (this.semanticValidator) {
+            const role = this.semanticValidator.getRole(node.type);
+            if (role) {
+                container.dataset.role = role;
+                this.applyRoleBasedStyling(container, role);
+            }
+        }
+
         // Check expansion state using ContainerRenderer
         const isExpanded = this.containerRenderer.isExpanded(node.id);
         if (!isExpanded && !this.collapsedContainers.has(node.id)) {
@@ -741,6 +750,15 @@ export class VisualDesigner {
         nodeElement.style.cursor = 'pointer';
         nodeElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
+        // Apply role-based styling
+        if (this.semanticValidator) {
+            const role = this.semanticValidator.getRole(node.type);
+            if (role) {
+                nodeElement.dataset.role = role;
+                this.applyRoleBasedStyling(nodeElement, role);
+            }
+        }
+
         // Header with icon
         const header = document.createElement('div');
         header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
@@ -785,6 +803,14 @@ export class VisualDesigner {
 
         // Setup drag handlers for moving node
         this.setupNodeDragHandlers(nodeElement, node);
+
+        // Apply role-based styling
+        if (this.semanticValidator) {
+            const role = this.semanticValidator.getRole(node.type);
+            if (role) {
+                this.applyRoleBasedStyling(nodeElement, role);
+            }
+        }
 
         // Apply accessibility metadata (Apple HIG compliance)
         if (this.pluginManager) {
@@ -3581,8 +3607,50 @@ export class VisualDesigner {
      * Set plugin manager for semantic validation (called after plugins are loaded)
      */
     setPluginManager(pluginManager: PluginManager): void {
+        this.pluginManager = pluginManager;
         this.semanticValidator = new SemanticValidator(pluginManager);
         console.log('✅ [VisualDesigner] Semantic validator initialized');
+    }
+
+    /**
+     * Apply role-based styling to node element
+     */
+    private applyRoleBasedStyling(element: HTMLElement, role: string): void {
+        // Remove existing role classes
+        element.classList.remove('role-root-container', 'role-context-container', 'role-body-evaluator', 'role-dependent', 'role-leaf');
+
+        switch (role) {
+            case 'ROOT_CONTAINER':
+                element.classList.add('role-root-container');
+                element.style.borderWidth = '3px';
+                element.style.borderStyle = 'dashed';
+                element.style.background = 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)';
+                break;
+            case 'CONTEXT_CONTAINER':
+                element.classList.add('role-context-container');
+                element.style.borderWidth = '2px';
+                element.style.borderStyle = 'solid';
+                element.style.background = '#fafafa';
+                break;
+            case 'BODY_EVALUATOR':
+                element.classList.add('role-body-evaluator');
+                element.style.borderWidth = '2px';
+                element.style.borderStyle = 'solid';
+                element.style.borderColor = '#4CAF50';
+                break;
+            case 'DEPENDENT':
+                element.classList.add('role-dependent');
+                element.style.borderWidth = '2px';
+                element.style.borderStyle = 'dotted';
+                element.style.opacity = '0.9';
+                element.style.background = '#fff9e6';
+                break;
+            case 'LEAF':
+            default:
+                element.classList.add('role-leaf');
+                // Default styling already applied
+                break;
+        }
     }
 
     /**

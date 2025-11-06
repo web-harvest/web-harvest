@@ -204,8 +204,15 @@ Results Display  ←WS→       ExecutionManager  ─┘
    mvn install -DskipTests
    # Creates: webharvest-ide/target/webharvest-ide-2.3.1.jar
    
-   # Step 3: Run IDE
-   java -jar target/webharvest-ide-2.3.1.jar
+   # Step 3: Run IDE (⚠️ REQUIRES Java 11, not Java 17/21)
+   # Java 17/21 have stricter module access restrictions requiring --add-opens flags
+   # Java 11 works without these restrictions and is the recommended version
+   # On macOS with Homebrew:
+   export JAVA_HOME=$(/usr/libexec/java_home -v 11)
+   export PATH=$JAVA_HOME/bin:$PATH
+   mvn exec:java -Dexec.mainClass="org.webharvest.server.WebHarvestServer" -Dexec.args="--port 8080"
+   # Or use JAR:
+   # java -jar target/webharvest-ide-2.3.1.jar
    ```
 
 **IMPORTANT**: After ANY frontend changes:
@@ -313,7 +320,7 @@ mvn install -DskipTests
 java -jar target/webharvest-ide-2.3.1.jar
 ```
 
-**When only changing Java backend:**
+**When only changing Java backend (use Java 11):**
 
 ```bash
 # Skip frontend build, just compile Java
@@ -1405,9 +1412,12 @@ XML Configurations:
 **CRITICAL RULE**: All test outputs go to `target/` directory
 
 **Working Directory Configuration:**
-- **Tests**: `ScraperModule` is initialized with `workingDir = "target"` in test base classes
-- **IDE**: `ExecutionManager` uses `workingDir = "target"` for all executions
-- **Result**: All `<file>` operations write to `target/` by default
+- **Tests**: `ScraperModule` is initialized with `workingDir = "target"` in ALL test base classes
+  - `XmlBasedIntegrationTestBase` - uses `workingDir = "target"`
+  - `ScraperTestBase` - uses `workingDir = "target"`
+  - All individual test classes updated (previously some used `"."` causing files in project root)
+- **IDE**: `ExecutionManager` and `ConfigServlet` use `workingDir = "target"` for all executions
+- **Result**: All `<file>` operations write to `target/` by default, preventing pollution of project root
 
 ```java
 // GOOD ✅ - Relative path resolves to target/output.txt
@@ -1419,6 +1429,12 @@ XML Configurations:
 // BAD ❌ - Old pattern (no longer needed)
 <file action="write" path="target/test-output/output.txt">...</file>  // Creates target/target/test-output/...
 ```
+
+**Fixed Issues:**
+- ✅ All test classes now use `workingDir = "target"` (fixed: `SessionManagementIntegrationTest`, `HttpPluginWithDependencyInjectionTest`, `DefaultPluginBodyExecutorTest`, `HandlerHolderIntegrationTest`, `HttpClient5MigrationTest`, `BaseTemplaterStaticInjectionTest`, `JSRScriptEngineAdapterVariableConversionTest`)
+- ✅ IDE `ConfigServlet` uses `workingDir = "target"` (previously used `"."` causing files in project root)
+- ✅ All example XML files updated to use relative paths
+- ✅ Generated files cleanup: removed from project root and `webharvest-core/` directory
 
 **Cleanup**:
 ```java
