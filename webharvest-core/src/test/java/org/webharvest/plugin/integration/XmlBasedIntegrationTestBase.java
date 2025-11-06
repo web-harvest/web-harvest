@@ -82,6 +82,8 @@ public abstract class XmlBasedIntegrationTestBase {
         
         // Initialize Guice injector with required modules
         // Note: HttpModule removed during HttpComponents 4.x migration
+        // Use project root (.) as working directory - example XML files use full paths like target/test-output/...
+        // This ensures FilePlugin resolves paths correctly (workingDir + path from XML)
         injector = Guice.createInjector(
             new ScraperModule(".")
         );

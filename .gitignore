@@ -183,3 +183,24 @@ ENV/
 # ============================================
 .svn/
 
+
+# Generated test output files in webharvest-core (from example XML configurations)
+webharvest-core/*.html
+webharvest-core/*.xml
+webharvest-core/*.txt
+webharvest-core/*.csv
+!webharvest-core/pom.xml
+!webharvest-core/src/**/*.xml
+!webharvest-core/src/**/*.html
+!webharvest-core/src/**/*.txt
+!webharvest-core/src/**/*.csv
+
+# Generated test output directories in webharvest-core
+webharvest-core/canon/
+webharvest-core/expekt/
+webharvest-core/product_catalog/
+webharvest-core/scripts/
+webharvest-core/flickr/
+webharvest-core/google_images/
+webharvest-core/nytimes/
+webharvest-core/spider/
