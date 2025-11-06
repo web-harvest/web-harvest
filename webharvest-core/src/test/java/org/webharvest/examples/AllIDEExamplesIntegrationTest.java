@@ -46,11 +46,7 @@ public class AllIDEExamplesIntegrationTest extends ScraperTestBase {
         
         System.out.println("✅ xquery.xml PASSED");
         
-        // Cleanup and move to test-output for traceability
-        Path targetOutput = Paths.get("target/test-output/xquerytest.xml");
-        Files.createDirectories(targetOutput.getParent());
-        Files.copy(outputPath, targetOutput, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        Files.deleteIfExists(outputPath);
+        // File is already in target/ directory - no need to move it
     }
     
     @Test(groups = {"integration", "ide-examples"}, 

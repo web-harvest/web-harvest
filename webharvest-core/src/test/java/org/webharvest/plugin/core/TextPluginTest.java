@@ -84,15 +84,18 @@ public class TextPluginTest {
         
         // v2.2.x CRITICAL: Initialize BaseTemplater.scriptEngineFactory via Guice
         // AND create real ScraperContext for interpolation tests
+        // Use target/ as working directory to prevent polluting project root
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
         com.google.inject.Injector injector;
         if (org.webharvest.runtime.templaters.BaseTemplater.scriptEngineFactory == null) {
             injector = com.google.inject.Guice.createInjector(
-                new org.webharvest.ioc.ScraperModule("."));
+                new org.webharvest.ioc.ScraperModule(targetDir));
             // Static injection happens in ScraperModule.configure()
         } else {
             // BaseTemplater already initialized, but we still need injector for context
             injector = com.google.inject.Guice.createInjector(
-                new org.webharvest.ioc.ScraperModule("."));
+                new org.webharvest.ioc.ScraperModule(targetDir));
         }
         
         // v2.2.x: Create REAL ScraperContext for EVERY test

@@ -37,7 +37,10 @@ public class HttpServiceImplBasicTest {
     @BeforeMethod
     public void setUp() {
         // Create Guice injector to get HttpService
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory to prevent polluting project root
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         httpService = injector.getInstance(HttpService.class);
     }
 

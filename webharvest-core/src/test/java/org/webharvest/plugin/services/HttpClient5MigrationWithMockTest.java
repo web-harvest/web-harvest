@@ -43,7 +43,10 @@ public class HttpClient5MigrationWithMockTest {
         baseUrl = "http://localhost:" + wireMockServer.port();
         
         // Create HttpService via Guice
-        Injector injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory to prevent polluting project root
+        String targetDir = "target";
+        new java.io.File(targetDir).mkdirs();
+        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
         httpService = injector.getInstance(HttpService.class);
     }
 
