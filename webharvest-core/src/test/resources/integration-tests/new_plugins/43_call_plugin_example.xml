@@ -6,7 +6,7 @@
         <template>Call content: ${testVar}</template>
     </call>
     
-    <file action="write" path="target/test-output/call_output.txt">
+    <file action="write" path="call_output.txt">
         <template>Call plugin test completed</template>
     </file>
 </config>

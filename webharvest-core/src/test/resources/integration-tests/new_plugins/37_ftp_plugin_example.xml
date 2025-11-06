@@ -15,7 +15,7 @@
       <template>This is a test file for FTP upload</template>
     </ftp-put>
   </ftp>
-  <file action="write" path="target/test-output/ftp_output.txt">
+  <file action="write" path="ftp_output.txt">
     <template>FTP operations completed successfully</template>
   </file>
   <config>

@@ -16,7 +16,7 @@
       <template>This is test file 3 in subdirectory</template>
     </zip-entry>
   </zip>
-  <file action="write" path="target/test-output/zip_output.txt">
+  <file action="write" path="zip_output.txt">
     <template>Zip operations completed successfully</template>
   </file>
   <config>

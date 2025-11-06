@@ -29,7 +29,7 @@
     </def>
     
     <!-- Write result for verification -->
-    <file action="write" path="target/test-output/bug55_output.txt">
+    <file action="write" path="bug55_output.txt">
         <text>Requested URL query params:
 </text>
         <get var="actualUrl"/>

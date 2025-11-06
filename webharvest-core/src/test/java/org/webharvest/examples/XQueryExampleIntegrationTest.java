@@ -54,9 +54,9 @@ public class XQueryExampleIntegrationTest extends ScraperTestBase {
         String output = resultVar.toString();
         System.out.println("XQuery output:\n" + output);
         
-        // Also verify file was created
-        Path outputFile = Path.of("xquerytest.xml");
-        assertTrue(Files.exists(outputFile), "Output file xquerytest.xml should be created");
+        // Also verify file was created (in target/ directory)
+        Path outputFile = Path.of("target/xquerytest.xml");
+        assertTrue(Files.exists(outputFile), "Output file xquerytest.xml should be created in target/");
         
         String fileContent = Files.readString(outputFile);
         assertEquals(fileContent.trim(), output.trim(), "File content should match result variable");

@@ -246,6 +246,14 @@ export interface PluginTemplate {
     defaultAttributes: Record<string, string>;
     description: string;
     canAppearAtRoot?: boolean; // For semantic filtering
+    // VisualPluginMetadata fields
+    color?: string; // Hex color for category
+    defaultWidth?: number; // Default node width in canvas
+    defaultHeight?: number; // Default node height in canvas
+    inputPorts?: Array<{ name: string; description?: string; type: string; required: boolean }>;
+    outputPorts?: Array<{ name: string; description?: string; type: string }>;
+    portType?: string; // STRING, XML, BINARY, MIXED, etc.
+    tooltip?: string; // Extended tooltip
 }
 
 /**

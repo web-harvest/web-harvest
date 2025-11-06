@@ -17,6 +17,7 @@ import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 
+import java.io.File;
 import java.util.UUID;
 
 import static org.testng.Assert.assertNotNull;
@@ -39,7 +40,10 @@ public abstract class ScraperTestBase {
     @BeforeMethod
     public void setUp() {
         LOG.info("Setting up v2.2 Scraper test environment");
-        injector = Guice.createInjector(new ScraperModule("."));
+        // Use target/ as working directory - all generated files will go to target/
+        String targetDir = "target";
+        new File(targetDir).mkdirs();
+        injector = Guice.createInjector(new ScraperModule(targetDir));
         configFactory = injector.getInstance(ConfigFactory.class);
     }
     

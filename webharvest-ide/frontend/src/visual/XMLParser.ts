@@ -1,11 +1,22 @@
 /**
  * XMLParser - Implementation (TDD Green Phase)
- * Converts XML string to VisualNode array
+ * Converts XML string to VisualNode array with automatic positioning using VisualPluginMetadata
  */
 
 import type { VisualNode } from '../types';
+import type { PluginManager } from '../core/PluginManager';
 
 export class XMLParser {
+    private pluginManager: PluginManager | null = null;
+    private readonly DEFAULT_X = 50;
+    private readonly DEFAULT_Y = 50;
+    private readonly DEFAULT_SPACING = 150;
+    private readonly NESTED_SPACING = 30;
+
+    constructor(pluginManager?: PluginManager | null) {
+        this.pluginManager = pluginManager || null;
+    }
+
     /**
      * Generate unique ID for node
      */
@@ -14,7 +25,7 @@ export class XMLParser {
     }
 
     /**
-     * Parse XML string into VisualNode array
+     * Parse XML string into VisualNode array with automatic positioning
      */
     parse(xml: string): VisualNode[] {
         if (!xml || xml.trim() === '') {
@@ -46,6 +57,9 @@ export class XMLParser {
                 nodes.push(node);
             }
         }
+
+        // Auto-position nodes using VisualPluginMetadata
+        this.autoPositionNodes(nodes);
 
         return nodes;
     }
@@ -104,13 +118,107 @@ export class XMLParser {
             }
         }
 
-        return {
+        const node: VisualNode = {
             id: this.generateId(),
             type: element.tagName.toLowerCase(),
             attributes,
             body,
             children,
         };
+
+        // Auto-position children recursively
+        if (children.length > 0) {
+            this.autoPositionNodes(children);
+        }
+
+        return node;
+    }
+
+    /**
+     * Auto-position nodes using VisualPluginMetadata
+     * Uses defaultWidth/defaultHeight from metadata for intelligent layout
+     */
+    private autoPositionNodes(nodes: VisualNode[], startX: number = this.DEFAULT_X, startY: number = this.DEFAULT_Y): void {
+        if (!this.pluginManager || nodes.length === 0) {
+            // Fallback: simple vertical layout if no plugin manager
+            nodes.forEach((node, index) => {
+                if (!node.position) {
+                    node.position = {
+                        x: startX,
+                        y: startY + index * this.DEFAULT_SPACING
+                    };
+                }
+            });
+            return;
+        }
+
+        let currentY = startY;
+        const groupMap = new Map<string, number>(); // Track Y position per group
+
+        nodes.forEach((node, index) => {
+            if (node.position) {
+                // Node already has position, skip auto-positioning
+                return;
+            }
+
+            const plugin = this.pluginManager!.findPlugin(node.type);
+            const group = plugin?.group || 'General';
+            const dimensions = this.getNodeDimensions(node.type);
+
+            // Use group-based positioning for better visual organization
+            let x = startX;
+            if (groupMap.has(group)) {
+                // Same group - position horizontally
+                x = groupMap.get(group)! + dimensions.width + 20;
+            }
+
+            node.position = {
+                x,
+                y: currentY
+            };
+
+            // Update group map
+            groupMap.set(group, x);
+
+            // Position children within parent node (nested)
+            if (node.children && node.children.length > 0) {
+                const childStartX = x + this.NESTED_SPACING;
+                const childStartY = currentY + dimensions.height + 20;
+                this.autoPositionNodes(node.children, childStartX, childStartY);
+            }
+
+            // Move to next row if node is large or if we've positioned many nodes horizontally
+            const nextNodeY = currentY + dimensions.height + this.DEFAULT_SPACING;
+            if (index < nodes.length - 1) {
+                const nextNode = nodes[index + 1];
+                const nextPlugin = this.pluginManager!.findPlugin(nextNode.type);
+                const nextGroup = nextPlugin?.group || 'General';
+
+                // Start new row if different group or if we've positioned too many horizontally
+                if (nextGroup !== group || (index > 0 && index % 5 === 0)) {
+                    currentY = nextNodeY;
+                    groupMap.clear(); // Reset group map for new row
+                } else {
+                    currentY = Math.max(currentY, nextNodeY);
+                }
+            }
+        });
+    }
+
+    /**
+     * Get node dimensions from VisualPluginMetadata or use defaults
+     */
+    private getNodeDimensions(nodeType: string): { width: number; height: number } {
+        if (this.pluginManager) {
+            const plugin = this.pluginManager.findPlugin(nodeType);
+            if (plugin) {
+                return {
+                    width: plugin.defaultWidth || 250,
+                    height: plugin.defaultHeight || 100
+                };
+            }
+        }
+        return { width: 250, height: 100 };
     }
 }
 

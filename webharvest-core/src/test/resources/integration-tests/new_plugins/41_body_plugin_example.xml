@@ -6,7 +6,7 @@
         <template>Body content: ${testVar}</template>
     </body>
     
-    <file action="write" path="target/test-output/body_output.txt">
+    <file action="write" path="body_output.txt">
         <template>Body plugin test completed</template>
     </file>
 </config>

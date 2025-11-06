@@ -60,7 +60,9 @@ export class VisualDesigner {
     private svgElement: SVGSVGElement | null = null;
     private selectedNodeId: string | null = null;
     private selectedNodeIds: string[] = [];
+    private selectedConnectionId: string | null = null;
     private eventListeners: Map<string, EventListener[]> = new Map();
+    private connectionLineElements: Map<string, SVGLineElement> = new Map(); // Store connection line references
 
     // Execution state visualization
     private stateRenderer: NodeStateRenderer = new NodeStateRenderer();
@@ -82,13 +84,16 @@ export class VisualDesigner {
     // Container expand/collapse state
     private collapsedContainers: Set<string> = new Set();
 
-    // Layout constants
-    private readonly NODE_WIDTH = 250;
-    private readonly NODE_HEIGHT = 100;
+    // Layout constants (fallback values if metadata not available)
+    private readonly DEFAULT_NODE_WIDTH = 250;
+    private readonly DEFAULT_NODE_HEIGHT = 100;
     private readonly SPACING = 120;
     private readonly START_X = 50;
     private readonly START_Y = 50;
     private readonly PADDING = 20;
+
+    // PluginManager reference for accessing VisualPluginMetadata
+    private pluginManager: PluginManager | null = null;
 
     // Drag & move state
     private dragState: {
@@ -144,6 +149,7 @@ export class VisualDesigner {
         }
 
         this.container = container;
+        this.pluginManager = pluginManager || null;
         this.canvasElement = this.createCanvasElement();
         // createCanvasElement() creates wrapper and appends it, so no need to append again
 
@@ -353,24 +359,7 @@ export class VisualDesigner {
      * Find node by ID
      */
     findNode(nodeId: string): VisualNode | null {
-        return this.findNodeRecursive(this.nodes, nodeId);
-    }
-
-    private findNodeRecursive(nodes: VisualNode[], nodeId: string): VisualNode | null {
-        for (const node of nodes) {
-            if (node.id === nodeId) {
-                return node;
-            }
-
-            if (node.children && node.children.length > 0) {
-                const found = this.findNodeRecursive(node.children, nodeId);
-                if (found) {
-                    return found;
-                }
-            }
-        }
-
-        return null;
+        return this.findNodeRecursive(nodeId, this.nodes);
     }
 
     /**
@@ -387,7 +376,6 @@ export class VisualDesigner {
      * Select node
      */
     selectNode(nodeId: string, options?: { addToSelection?: boolean }): void {
-        console.log(`🎯 [VisualDesigner] selectNode() called for: ${nodeId}`);
 
         if (options?.addToSelection) {
             if (!this.selectedNodeIds.includes(nodeId)) {
@@ -401,9 +389,7 @@ export class VisualDesigner {
         this.highlightSelectedNodes();
 
         // Emit event
-        console.log(`📡 [VisualDesigner] Emitting 'nodeSelected' event for: ${nodeId}`);
         this.emit('nodeSelected', nodeId);
-        console.log(`✅ [VisualDesigner] selectNode() complete`);
     }
 
     /**
@@ -720,14 +706,34 @@ export class VisualDesigner {
     }
 
     /**
+     * Get node dimensions from VisualPluginMetadata or use defaults
+     */
+    private getNodeDimensions(nodeType: string): { width: number; height: number } {
+        if (this.pluginManager) {
+            const plugin = this.pluginManager.findPlugin(nodeType);
+            if (plugin) {
+                return {
+                    width: plugin.defaultWidth || this.DEFAULT_NODE_WIDTH,
+                    height: plugin.defaultHeight || this.DEFAULT_NODE_HEIGHT
+                };
+            }
+        }
+        return {
+            width: this.DEFAULT_NODE_WIDTH,
+            height: this.DEFAULT_NODE_HEIGHT
+        };
+    }
+
+    /**
      * Create basic node element (reusable)
      */
     private createBasicNodeElement(node: VisualNode): HTMLElement {
+        const dimensions = this.getNodeDimensions(node.type);
         const nodeElement = document.createElement('div');
         nodeElement.className = 'visual-node connected-node';
         nodeElement.dataset.nodeId = node.id;
-        nodeElement.style.width = `${this.NODE_WIDTH}px`;
-        nodeElement.style.minHeight = `${this.NODE_HEIGHT}px`;
+        nodeElement.style.width = `${dimensions.width}px`;
+        nodeElement.style.minHeight = `${dimensions.height}px`;
         nodeElement.style.padding = '12px';
         nodeElement.style.background = 'white';
         nodeElement.style.border = '2px solid #FFC107';
@@ -774,18 +780,33 @@ export class VisualDesigner {
 
         // Add ports to node
         this.portSystem.addPorts(nodeElement, node);
-        console.log(`🔌 [VisualDesigner] Added ports to node ${node.id}, type: ${node.type}`);
-
-        // Verify ports were added
-        const ports = nodeElement.querySelectorAll('.port');
-        console.log(`🔌 [VisualDesigner] Node ${node.id} has ${ports.length} ports rendered`);
-
         // Setup port event handlers for connections
         this.setupPortHandlers(nodeElement, node);
-        console.log(`🔌 [VisualDesigner] Setup port handlers for node ${node.id}`);
 
         // Setup drag handlers for moving node
         this.setupNodeDragHandlers(nodeElement, node);
+
+        // Apply accessibility metadata (Apple HIG compliance)
+        if (this.pluginManager) {
+            const plugin = this.pluginManager.findPlugin(node.type);
+            if (plugin && plugin.accessibility) {
+                nodeElement.setAttribute('role', 'button');
+                nodeElement.setAttribute('aria-label', plugin.accessibility.ariaLabel || node.type);
+                if (plugin.accessibility.ariaDescription) {
+                    nodeElement.setAttribute('aria-description', plugin.accessibility.ariaDescription);
+                    nodeElement.title = plugin.accessibility.ariaDescription; // Fallback
+                }
+                // Keyboard navigation hints are handled by keyboard event handlers
+            } else {
+                // Fallback accessibility
+                nodeElement.setAttribute('role', 'button');
+                nodeElement.setAttribute('aria-label', node.type);
+            }
+        } else {
+            // Fallback accessibility
+            nodeElement.setAttribute('role', 'button');
+            nodeElement.setAttribute('aria-label', node.type);
+        }
 
         nodeElement.onclick = (e) => {
             // Don't select if clicking on port
@@ -805,30 +826,89 @@ export class VisualDesigner {
     private renderConnections(): void {
         if (!this.svgElement) return;
 
+        // Remove all existing event listeners before clearing
+        this.connectionLineElements.forEach((line, connectionId) => {
+            // Clone to remove all event listeners
+            const newLine = line.cloneNode(false) as SVGLineElement;
+            line.parentNode?.replaceChild(newLine, line);
+        });
+        this.connectionLineElements.clear();
+
+        // Clear existing connections from SVG (both lines and arrowheads)
+        const existingLines = this.svgElement.querySelectorAll('.connection-line');
+        const existingArrows = this.svgElement.querySelectorAll('.connection-arrow');
+        existingLines.forEach(line => line.remove());
+        existingArrows.forEach(arrow => arrow.remove());
+
         // Get all connections: automatic + manual
+        const manualConnections = this.connectionManager.getConnections();
+
+        // Convert automatic connections to compatible format
+        const autoConnections = this.connections.map(conn => ({
+            from: conn.from,
+            to: conn.to,
+            type: conn.type as 'sequential' | 'conditional' | 'error',
+            id: undefined // Automatic connections don't have id
+        }));
+
         const allConnections = [
-            ...this.connections, // Automatic connections (from XML parsing)
-            ...this.connectionManager.getConnections() // Manual connections (user-created)
+            ...autoConnections,
+            ...manualConnections // Manual connections (user-created) have id
         ];
 
         if (allConnections.length === 0) return;
 
         allConnections.forEach(connection => {
-            const fromNode = this.nodes.find(n => n.id === connection.from);
-            const toNode = this.nodes.find(n => n.id === connection.to);
+            try {
+                const fromNode = this.findNodeRecursive(connection.from, this.nodes);
+                const toNode = this.findNodeRecursive(connection.to, this.nodes);
 
-            if (!fromNode || !toNode || !fromNode.position || !toNode.position) {
-                return;
+                if (!fromNode || !toNode || !fromNode.position || !toNode.position) {
+                    console.warn(`[VisualDesigner] Cannot render connection: nodes not found or positioned`, {
+                        from: connection.from,
+                        to: connection.to,
+                        fromNode: fromNode ? 'found' : 'missing',
+                        toNode: toNode ? 'found' : 'missing'
+                    });
+                    return;
+                }
+
+                // Calculate connection points using node dimensions from metadata
+                const fromDimensions = this.getNodeDimensions(fromNode.type);
+                const toDimensions = this.getNodeDimensions(toNode.type);
+                const x1 = fromNode.position.x + fromDimensions.width / 2;
+                const y1 = fromNode.position.y + fromDimensions.height;
+                const x2 = toNode.position.x + toDimensions.width / 2;
+                const y2 = toNode.position.y;
+
+                // Determine connection ID (manual connections have id, automatic ones need generated id)
+                const connectionId = (connection.id && typeof connection.id === 'string')
+                    ? connection.id
+                    : `auto-${connection.from}-${connection.to}`;
+                const isSelected = this.selectedConnectionId === connectionId;
+                const isManual = connectionId.startsWith('conn-');
+
+                this.createArrow(x1, y1, x2, y2, connection.type, connectionId, isSelected, isManual);
+            } catch (error) {
+                console.error(`[VisualDesigner] Error rendering connection:`, error, connection);
             }
-
-            // Calculate connection points
-            const x1 = fromNode.position.x + this.NODE_WIDTH / 2;
-            const y1 = fromNode.position.y + this.NODE_HEIGHT;
-            const x2 = toNode.position.x + this.NODE_WIDTH / 2;
-            const y2 = toNode.position.y;
-
-            this.createArrow(x1, y1, x2, y2, connection.type);
         });
+    }
+
+    /**
+     * Find node recursively (including in nested children)
+     */
+    private findNodeRecursive(nodeId: string, nodes: VisualNode[]): VisualNode | null {
+        for (const node of nodes) {
+            if (node.id === nodeId) {
+                return node;
+            }
+            if (node.children && node.children.length > 0) {
+                const found = this.findNodeRecursive(nodeId, node.children);
+                if (found) return found;
+            }
+        }
+        return null;
     }
 
     /**
@@ -839,13 +919,17 @@ export class VisualDesigner {
         y1: number,
         x2: number,
         y2: number,
-        type: 'sequential' | 'conditional' | 'error'
+        type: 'sequential' | 'conditional' | 'error',
+        connectionId?: string,
+        isSelected?: boolean,
+        isManual: boolean = false
     ): void {
         if (!this.svgElement) return;
 
         // Determine style
         let stroke = '#333';
         let strokeDasharray = 'none';
+        let strokeWidth = '2';
 
         if (type === 'conditional') {
             stroke = '#4CAF50';
@@ -854,15 +938,67 @@ export class VisualDesigner {
             stroke = '#F44336';
         }
 
+        // Selected connection styling
+        if (isSelected) {
+            stroke = 'var(--primary-color, #3b82f6)';
+            strokeWidth = '3';
+        }
+
         // Create line
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'connection-line');
+        if (connectionId) {
+            line.setAttribute('data-connection-id', connectionId);
+        }
         line.setAttribute('x1', x1.toString());
         line.setAttribute('y1', y1.toString());
         line.setAttribute('x2', x2.toString());
         line.setAttribute('y2', y2.toString());
         line.setAttribute('stroke', stroke);
-        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-width', strokeWidth);
         line.setAttribute('stroke-dasharray', strokeDasharray);
+
+        // Make line clickable and hoverable (only for manual connections)
+        if (connectionId && isManual) {
+            line.style.cursor = 'pointer';
+            line.style.opacity = isSelected ? '1' : '0.7';
+            line.style.pointerEvents = 'all';
+
+            const handleMouseEnter = () => {
+                if (!isSelected) {
+                    line.style.opacity = '1';
+                    line.setAttribute('stroke-width', (parseInt(strokeWidth) + 1).toString());
+                }
+            };
+
+            const handleMouseLeave = () => {
+                if (!isSelected) {
+                    line.style.opacity = '0.7';
+                    line.setAttribute('stroke-width', strokeWidth);
+                }
+            };
+
+            const handleClick = (e: MouseEvent) => {
+                e.stopPropagation();
+                this.handleConnectionClick(connectionId);
+            };
+
+            const handleContextMenu = (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.showConnectionContextMenu(connectionId, { x: e.clientX, y: e.clientY });
+            };
+
+            line.addEventListener('mouseenter', handleMouseEnter);
+            line.addEventListener('mouseleave', handleMouseLeave);
+            line.addEventListener('click', handleClick);
+            line.addEventListener('contextmenu', handleContextMenu);
+
+            // Store reference for cleanup
+            this.connectionLineElements.set(connectionId, line);
+        } else {
+            line.style.pointerEvents = 'none';
+        }
 
         this.svgElement.appendChild(line);
 
@@ -880,6 +1016,12 @@ export class VisualDesigner {
         ];
         arrow.setAttribute('points', points.map(p => p.join(',')).join(' '));
         arrow.setAttribute('fill', stroke);
+
+        // Add class for cleanup
+        arrow.setAttribute('class', 'connection-arrow');
+        if (connectionId) {
+            arrow.setAttribute('data-connection-id', connectionId);
+        }
 
         this.svgElement.appendChild(arrow);
     }
@@ -995,6 +1137,9 @@ export class VisualDesigner {
                 // Get drop position in canvas coordinates (accounting for transform and scroll)
                 const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
 
+                // Get node dimensions from metadata
+                const dimensions = this.getNodeDimensions(template.type);
+
                 // Create new node from template
                 const newNode: VisualNode = {
                     id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -1003,8 +1148,8 @@ export class VisualDesigner {
                     body: null,
                     children: [],
                     position: {
-                        x: canvasPos.x - this.NODE_WIDTH / 2, // Center on drop point
-                        y: canvasPos.y - this.NODE_HEIGHT / 2
+                        x: canvasPos.x - dimensions.width / 2, // Center on drop point
+                        y: canvasPos.y - dimensions.height / 2
                     }
                 };
 
@@ -1032,7 +1177,6 @@ export class VisualDesigner {
                         }
 
                         // Drop into nested container - add as child
-                        console.log(`📦 [VisualDesigner] Dropping ${newNode.type} into nested container ${nestedContainer.type} (${nestedContainerId})`);
 
                         // Remove drop zone classes
                         nestedContainerElement.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
@@ -1081,7 +1225,6 @@ export class VisualDesigner {
                             }
 
                             // Drop into container - add as child
-                            console.log(`📦 [VisualDesigner] Dropping ${newNode.type} into container ${container.type} (${containerId})`);
 
                             // Remove drop-target highlight
                             containerNodeElement.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
@@ -1106,7 +1249,6 @@ export class VisualDesigner {
                 });
 
                 // Drop on canvas - add to root level
-                console.log(`📄 [VisualDesigner] Dropping ${newNode.type} on canvas (root level)`);
 
                 // Semantic validation before root-level drop
                 if (this.semanticValidator) {
@@ -1160,6 +1302,20 @@ export class VisualDesigner {
             // Cancel connection drag if mouse released outside a port
             if (this.connectionDragState) {
                 this.cancelConnectionDrag();
+            }
+        });
+
+        // Click on canvas to deselect connections
+        this.canvasElement.addEventListener('click', (e) => {
+            // Only deselect if clicking directly on canvas wrapper (not on nodes or connections)
+            const target = e.target as HTMLElement | SVGSVGElement;
+            if (target === this.canvasElement ||
+                (this.svgElement && target === this.svgElement) ||
+                (target.tagName === 'div' && target.classList.contains('canvas-content-wrapper')) ||
+                (target.tagName === 'svg' && target === this.svgElement)) {
+                this.selectedConnectionId = null;
+                this.selectedNodeId = null;
+                this.render();
             }
         });
     }
@@ -1221,10 +1377,19 @@ export class VisualDesigner {
      * Setup port handlers for connection creation
      */
     private setupPortHandlers(nodeElement: HTMLElement, node: VisualNode): void {
+        // Remove existing listeners to prevent duplicates
         const outputPorts = nodeElement.querySelectorAll('.port-output');
-        console.log(`🔌 [VisualDesigner] setupPortHandlers for ${node.id}: found ${outputPorts.length} output ports`);
 
+        // Clone and replace to remove all event listeners
         outputPorts.forEach(portElement => {
+            const newPort = portElement.cloneNode(true);
+            portElement.parentNode?.replaceChild(newPort, portElement);
+        });
+
+        // Re-query after clone
+        const freshOutputPorts = nodeElement.querySelectorAll('.port-output');
+
+        freshOutputPorts.forEach(portElement => {
             portElement.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
 
@@ -1259,13 +1424,20 @@ export class VisualDesigner {
                     this.connectionDragState.temporaryLine = line;
                 }
 
-                console.log(`🔗 [VisualDesigner] Started connection drag from ${node.id}`);
             });
         });
 
+        // Remove existing listeners for input ports too
         const inputPorts = nodeElement.querySelectorAll('.port-input');
 
         inputPorts.forEach(portElement => {
+            const newPort = portElement.cloneNode(true);
+            portElement.parentNode?.replaceChild(newPort, portElement);
+        });
+
+        const freshInputPorts = nodeElement.querySelectorAll('.port-input');
+
+        freshInputPorts.forEach(portElement => {
             portElement.addEventListener('mouseup', (e) => {
                 e.stopPropagation();
 
@@ -1297,7 +1469,6 @@ export class VisualDesigner {
                         node.id,
                         (this.connectionDragState.fromPortType as ConnectionType) || 'sequential'
                     );
-                    console.log(`✅ [VisualDesigner] Created connection: ${this.connectionDragState.fromNodeId} → ${node.id}`);
                 } catch (error) {
                     console.warn('Failed to create manual connection:', error);
                 }
@@ -1474,8 +1645,13 @@ export class VisualDesigner {
 
     private buildContextMenuItems(nodeId: string): ContextMenuItem[] {
         const clipboardAvailable = this.clipboard.length > 0;
+        const node = this.findNodeRecursive(nodeId, this.nodes);
+        const isRootNode = node !== null && this.nodes.some(n => n.id === nodeId);
+        const rootIndex = isRootNode ? this.nodes.findIndex(n => n.id === nodeId) : -1;
+        const canMoveUp = isRootNode && rootIndex > 0;
+        const canMoveDown = isRootNode && rootIndex >= 0 && rootIndex < this.nodes.length - 1;
 
-        return [
+        const items: ContextMenuItem[] = [
             {
                 label: 'Edit Properties',
                 icon: 'fas fa-edit',
@@ -1483,7 +1659,37 @@ export class VisualDesigner {
                     this.selectNode(nodeId);
                     this.emit('nodeSelected', nodeId);
                 }
-            },
+            }
+        ];
+
+        // Add reordering options for root nodes
+        if (isRootNode) {
+            items.push(
+                {
+                    label: 'Move Up',
+                    icon: 'fas fa-arrow-up',
+                    disabled: !canMoveUp,
+                    action: () => {
+                        if (canMoveUp) {
+                            this.reorderRootNode(nodeId, 'up');
+                        }
+                    }
+                },
+                {
+                    label: 'Move Down',
+                    icon: 'fas fa-arrow-down',
+                    disabled: !canMoveDown,
+                    action: () => {
+                        if (canMoveDown) {
+                            this.reorderRootNode(nodeId, 'down');
+                        }
+                    }
+                },
+                { type: 'divider' }
+            );
+        }
+
+        items.push(
             {
                 label: 'Delete',
                 icon: 'fas fa-trash',
@@ -1518,7 +1724,146 @@ export class VisualDesigner {
                     }
                 }
             }
+        );
+
+        return items;
+    }
+
+    /**
+     * Handle connection click
+     */
+    private handleConnectionClick(connectionId: string): void {
+        this.selectedConnectionId = connectionId;
+        this.selectedNodeId = null; // Deselect nodes when selecting connection
+        this.render();
+        this.emit('connectionSelected', connectionId);
+    }
+
+    /**
+     * Show context menu for connection
+     */
+    private showConnectionContextMenu(connectionId: string, position: { x: number; y: number }): void {
+        const connection = this.connectionManager.getConnection(connectionId);
+        if (!connection) return;
+
+        const items: ContextMenuItem[] = [
+            {
+                label: 'Edit Connection',
+                icon: 'fas fa-edit',
+                action: () => {
+                    this.editConnection(connectionId);
+                }
+            },
+            {
+                label: 'Delete Connection',
+                icon: 'fas fa-trash',
+                danger: true,
+                action: () => {
+                    this.deleteConnection(connectionId);
+                }
+            }
         ];
+
+        const menu = this.renderContextMenu(position.x, position.y, items);
+        this.activeContextMenu = menu;
+    }
+
+    /**
+     * Delete connection (public API)
+     */
+    deleteConnection(connectionId: string): boolean {
+        if (!this.connectionManager.getConnection(connectionId)) {
+            return false;
+        }
+
+        this.pushHistorySnapshot();
+        const deleted = this.deleteConnectionInternal(connectionId);
+        if (deleted) {
+            if (this.selectedConnectionId === connectionId) {
+                this.selectedConnectionId = null;
+            }
+            this.markDirty();
+            this.render();
+            return true;
+        }
+
+        this.undoStack.pop();
+        return false;
+    }
+
+    /**
+     * Edit connection (redefine source/target/type)
+     */
+    private editConnection(connectionId: string): void {
+        const connection = this.connectionManager.getConnection(connectionId);
+        if (!connection) return;
+
+        // For now, show a simple prompt-based editor
+        // TODO: Replace with proper modal dialog
+        const newFromId = prompt(`Edit connection ${connectionId}\n\nSource node ID:`, connection.from);
+        if (newFromId === null) return;
+
+        const newToId = prompt('Target node ID:', connection.to);
+        if (newToId === null) return;
+
+        // Validate changes
+        if (newFromId === connection.from && newToId === connection.to) {
+            return; // No changes
+        }
+
+        const validation = this.connectionManager.validateConnection(newFromId, newToId);
+        if (!validation.valid) {
+            alert(`Invalid connection: ${validation.error}`);
+            return;
+        }
+
+        // Update connection
+        const updated = this.connectionManager.updateConnection(connectionId, {
+            from: newFromId,
+            to: newToId
+        });
+
+        if (updated) {
+            this.pushHistorySnapshot();
+            this.markDirty();
+            this.render();
+        }
+    }
+
+    /**
+     * Reorder root node (move up or down in root nodes array)
+     */
+    reorderRootNode(nodeId: string, direction: 'up' | 'down'): boolean {
+        const index = this.nodes.findIndex(n => n.id === nodeId);
+        if (index === -1) {
+            console.warn(`[VisualDesigner] Cannot reorder: node ${nodeId} not found in root nodes`);
+            return false;
+        }
+
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= this.nodes.length) {
+            console.warn(`[VisualDesigner] Cannot reorder: invalid new index ${newIndex}`);
+            return false;
+        }
+
+        this.pushHistorySnapshot();
+
+        // Swap nodes
+        const node = this.nodes[index];
+        this.nodes[index] = this.nodes[newIndex];
+        this.nodes[newIndex] = node;
+
+        // Update positions to reflect new order (simple vertical layout)
+        const spacing = 150;
+        this.nodes.forEach((n, i) => {
+            if (n.position) {
+                n.position.y = this.START_Y + i * spacing;
+            }
+        });
+
+        this.markDirty();
+        this.render();
+        return true;
     }
 
     private renderContextMenu(x: number, y: number, items: ContextMenuItem[]): HTMLElement {
@@ -1531,17 +1876,17 @@ export class VisualDesigner {
             this.activeContextMenuHandler = null;
         }
 
-        // Convert viewport coordinates to canvas-relative coordinates
-        const canvasRect = this.canvasElement.getBoundingClientRect();
-        const relativeX = x - canvasRect.left;
-        const relativeY = y - canvasRect.top;
+        // Use viewport coordinates directly for fixed positioning
+        // Menu should be positioned relative to viewport, not canvas (which may be scrolled/transformed)
+        const menuX = x;
+        const menuY = y;
 
         const menu = document.createElement('div');
         menu.className = 'node-context-menu';
         menu.style.cssText = `
-            position: absolute;
-            top: ${relativeY}px;
-            left: ${relativeX}px;
+            position: fixed;
+            top: ${menuY}px;
+            left: ${menuX}px;
             background: white;
             border: 1px solid var(--gray-300);
             border-radius: var(--radius-md);
@@ -1595,7 +1940,8 @@ export class VisualDesigner {
         });
 
         // Append to canvas element instead of body for proper positioning
-        this.canvasElement.appendChild(menu);
+        // Append to body for fixed positioning (relative to viewport)
+        document.body.appendChild(menu);
         this.activeContextMenu = menu;
 
         const closeMenu = (event: MouseEvent) => {
@@ -1625,6 +1971,16 @@ export class VisualDesigner {
         if (!isContainerNode(container.type)) {
             console.warn(`[VisualDesigner] Node ${containerId} is not a container`);
             return false;
+        }
+
+        // Semantic validation before adding
+        if (this.semanticValidator) {
+            const validation = this.semanticValidator.validateDrop(childNode.type, container.type);
+            if (!validation.valid) {
+                this.showError(validation.message);
+                console.warn(`❌ Cannot add ${childNode.type} to ${container.type}: ${validation.message}`);
+                return false;
+            }
         }
 
         this.pushHistorySnapshot();
@@ -1856,9 +2212,14 @@ export class VisualDesigner {
      * Move node to new position
      */
     moveNode(nodeId: string, position: { x: number; y: number }): boolean {
-        const node = this.findNode(nodeId);
+        const node = this.findNodeRecursive(nodeId, this.nodes);
         if (!node) {
             return false;
+        }
+
+        // Initialize position if missing
+        if (!node.position) {
+            node.position = { x: 0, y: 0 };
         }
 
         // Apply grid snap if enabled
@@ -1874,13 +2235,46 @@ export class VisualDesigner {
         x = Math.max(0, x);
         y = Math.max(0, y);
 
+        // Calculate offset from previous position
+        const oldX = node.position.x;
+        const oldY = node.position.y;
+        const offsetX = x - oldX;
+        const offsetY = y - oldY;
+
         // Update position
         node.position = { x, y };
+
+        // If node has children, move them too maintaining relative positions
+        if (node.children && node.children.length > 0 && (offsetX !== 0 || offsetY !== 0)) {
+            this.moveNodeChildren(node, offsetX, offsetY);
+        }
 
         // Re-render
         this.render();
 
         return true;
+    }
+
+    /**
+     * Move node children recursively maintaining relative positions
+     */
+    private moveNodeChildren(node: VisualNode, offsetX: number, offsetY: number): void {
+        if (!node.children) return;
+
+        node.children.forEach(child => {
+            // Initialize position if missing
+            if (!child.position) {
+                child.position = { x: 0, y: 0 };
+            }
+
+            child.position.x += offsetX;
+            child.position.y += offsetY;
+
+            // Recursively move grandchildren
+            if (child.children && child.children.length > 0) {
+                this.moveNodeChildren(child, offsetX, offsetY);
+            }
+        });
     }
 
     /**
@@ -2291,8 +2685,9 @@ export class VisualDesigner {
             }
 
             // Check if node is inside rectangle
-            const nodeRight = node.position.x + this.NODE_WIDTH;
-            const nodeBottom = node.position.y + this.NODE_HEIGHT;
+            const dimensions = this.getNodeDimensions(node.type);
+            const nodeRight = node.position.x + dimensions.width;
+            const nodeBottom = node.position.y + dimensions.height;
             const rectRight = rect.x + rect.width;
             const rectBottom = rect.y + rect.height;
 
@@ -2550,26 +2945,6 @@ export class VisualDesigner {
         this.markDirty();
         this.render();
         return connection;
-    }
-
-    /**
-     * Delete connection
-     */
-    deleteConnection(connectionId: string): boolean {
-        if (!this.connectionManager.getConnection(connectionId)) {
-            return false;
-        }
-
-        this.pushHistorySnapshot();
-        const deleted = this.deleteConnectionInternal(connectionId);
-        if (deleted) {
-            this.markDirty();
-            this.render();
-            return true;
-        }
-
-        this.undoStack.pop();
-        return false;
     }
 
     /**
@@ -3028,6 +3403,7 @@ export class VisualDesigner {
      */
     generateXML(): string {
         const generator = new XMLGenerator();
+        // prepareNodesForExport() already applies connection-based ordering
         const exportNodes = this.prepareNodesForExport();
         const body = generator.generate(exportNodes, 1);
         const hasContent = body.trim().length > 0;

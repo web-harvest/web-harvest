@@ -4,7 +4,7 @@
     <def var="response">
         <http url="${url}"/>
     </def>
-    <file action="write" path="target/test-output/http_output.txt">
+    <file action="write" path="http_output.txt">
         <get var="response"/>
     </file>
 </config>

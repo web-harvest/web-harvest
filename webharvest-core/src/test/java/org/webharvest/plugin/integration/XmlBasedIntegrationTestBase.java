@@ -82,10 +82,12 @@ public abstract class XmlBasedIntegrationTestBase {
         
         // Initialize Guice injector with required modules
         // Note: HttpModule removed during HttpComponents 4.x migration
-        // Use project root (.) as working directory - example XML files use full paths like target/test-output/...
-        // This ensures FilePlugin resolves paths correctly (workingDir + path from XML)
+        // Use target/ as working directory - all generated files will go to target/
+        // This prevents polluting project root with test output files
+        String targetDir = "target";
+        new File(targetDir).mkdirs();
         injector = Guice.createInjector(
-            new ScraperModule(".")
+            new ScraperModule(targetDir)
         );
         
         harvest = injector.getInstance(Harvest.class);
@@ -205,8 +207,8 @@ public abstract class XmlBasedIntegrationTestBase {
      * @return Content of the output file
      */
     protected String executeAndReadOutputFile(String xmlFilePath, String outputFilePath) throws Exception {
-        // Test outputs now go to target/test-output/ directory
-        String fullOutputPath = "target/test-output/" + outputFilePath;
+        // Test outputs now go to target/ directory (workingDir is set to "target")
+        String fullOutputPath = "target/" + outputFilePath;
         
         // Add to cleanup list
         outputFilesToCleanup.add(fullOutputPath);
@@ -214,7 +216,7 @@ public abstract class XmlBasedIntegrationTestBase {
         // Execute configuration
         executeXmlConfig(xmlFilePath);
         
-        // Read output file from target/test-output/
+        // Read output file from target/
         Path outputPath = Paths.get(fullOutputPath);
         assertTrue(Files.exists(outputPath), "Output file should exist: " + fullOutputPath);
         

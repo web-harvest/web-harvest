@@ -10,7 +10,7 @@
     <!-- Take screenshot -->
     <template>Take screenshot</template>
   </web-browser>
-  <file action="write" path="target/test-output/webbrowser_output.txt">
+  <file action="write" path="webbrowser_output.txt">
     <template>WebBrowser operations completed successfully</template>
   </file>
   <config>

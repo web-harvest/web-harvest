@@ -4,7 +4,7 @@
     <def var="xmlData">&lt;root&gt;&lt;item&gt;Test Item&lt;/item&gt;&lt;/root&gt;</def>
     <def var="xslStylesheet">&lt;xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"&gt;&lt;xsl:template match="/"&gt;&lt;result&gt;&lt;xsl:value-of select="//item"/&gt;&lt;/result&gt;&lt;/xsl:template&gt;&lt;/xsl:stylesheet&gt;</def>
     
-    <file action="write" path="target/test-output/xslt_output.xml">
+    <file action="write" path="xslt_output.xml">
         <xslt>
             <stylesheet>
                 <get var="xslStylesheet"/>

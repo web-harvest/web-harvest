@@ -35,7 +35,21 @@ export class PluginManager {
                 semantics: plugin.semantics,
                 helpUrl: plugin.helpUrl || plugin.documentation?.url,
                 documentation: plugin.documentation,
-                dependencies: plugin.dependencies || []
+                dependencies: plugin.dependencies || [],
+                // VisualPluginMetadata fields
+                color: plugin.color,
+                group: plugin.group || plugin.paletteGroup || plugin.category || 'General',
+                defaultWidth: plugin.defaultWidth,
+                defaultHeight: plugin.defaultHeight,
+                inputPorts: plugin.inputPorts,
+                outputPorts: plugin.outputPorts,
+                portType: plugin.portType,
+                tooltip: plugin.tooltip,
+                keyboardShortcuts: plugin.keyboardShortcuts,
+                accessibility: plugin.accessibility,
+                linkedServices: plugin.linkedServices,
+                parentRelationship: plugin.parentRelationship,
+                allowedChildPlugins: plugin.allowedChildPlugins
             }));
             this.loaded = true;
 

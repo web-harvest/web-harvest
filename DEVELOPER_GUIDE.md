@@ -356,6 +356,31 @@ java -jar target/webharvest-ide-2.3.1.jar &
 
 ## Visual Designer Architecture
 
+### Advanced Features (v2.3.1)
+
+**Connection Management:**
+- Manual connections between nodes via port system
+- Connection selection and context menu (Edit/Delete)
+- Connection redefinition with validation
+- Visual feedback for selected connections
+
+**Node Management:**
+- Root node reordering (Move Up/Down in context menu)
+- Container movement with nested children
+- Position initialization for nodes without positions
+- Recursive child movement maintaining relative positions
+
+**Context Menu:**
+- Fixed positioning relative to viewport
+- Root node detection for reordering options
+- Connection-specific menu items
+- Proper cleanup on close
+
+**Event Listener Management:**
+- `connectionLineElements` Map tracks connection line references
+- Cleanup before each render prevents duplicate listeners
+- Clone/replace pattern for removing event listeners
+
 ### Overview
 
 The Visual Designer is a complete drag-and-drop editor for creating WebHarvest configurations visually, introduced in v2.3.
@@ -400,6 +425,9 @@ PluginMetadataCatalog.java    # Unified metadata catalog (55 plugins)
 PluginDescriptor.java         # Plugin metadata structure
 PluginSemantics.java          # Semantic roles and constraints
 PluginSemanticsResolver.java  # Runtime semantic resolution
+PluginClassScanner.java       # Dynamic plugin discovery
+XSDGenerator.java             # Dynamic XSD schema generation
+XSDMetadataParser.java        # XSD metadata extraction
 ```
 
 ### Semantic Metadata System
@@ -428,9 +456,86 @@ PluginSemanticsResolver.java  # Runtime semantic resolution
 ```
 
 **Files:**
-- `plugin-semantics.json` - Curated metadata with overrides
-- `plugin-metadata-schema.json` - JSON Schema validation
+- `plugin-metadata-schema.json` - JSON Schema validation (for API responses)
 - `PluginMetadataCatalog` - Runtime catalog builder
+- `PluginClassScanner` - Dynamic plugin discovery from classpath
+- `XSDGenerator` - Dynamic XSD schema generation from metadata
+
+**Deprecated/Removed:**
+- `plugin-semantics.json` - ❌ Removed (all metadata generated dynamically)
+- `plugin-ui-overrides.json` - ❌ Removed (UI hints auto-generated from category/element name)
+
+### Dynamic Metadata Generation (v2.3.0+)
+
+**All metadata is now generated dynamically from plugin classes - no static JSON files required.**
+
+**Key Components:**
+
+1. **PluginClassScanner** - Discovers all `@CorePlugin` classes at runtime
+   - Uses Reflections library for classpath scanning
+   - Caches results for performance
+   - Provides `allPluginClassNames()` method
+
+2. **PluginMetadataCatalog** - Builds unified metadata catalog
+   - Extracts metadata from plugin classes and `PluginConfigurationSchema`
+   - Applies optional UI overrides from `plugin-ui-overrides.json`
+   - Generates complete semantic information (roles, constraints, dependencies)
+   - Schema version: 2.3.0
+
+3. **XSDGenerator** - Generates XSD schemas dynamically
+   - Creates complete XSD from `PluginDescriptor` objects
+   - Generates `config` element, `bodyElements` group, `bodyType`, and all plugin elements
+   - Supports custom namespaces
+   - Generates attributes, complex types, and child element structures
+   - **Usage:**
+     ```java
+     // Generate XSD for default namespace
+     String xsd = XSDGenerator.generateXSD(null);
+     
+     // Generate XSD for custom namespace
+     String xsd = XSDGenerator.generateXSD("http://custom.namespace/schema/1.0");
+     
+     // Generate XSD for specific descriptors
+     List<PluginDescriptor> descriptors = PluginMetadataCatalog.getAllDescriptors();
+     String xsd = XSDGenerator.generateXSD(descriptors, namespace);
+     ```
+
+4. **XSDMetadataParser** - Extracts metadata from existing XSD files
+   - Can be used to fill gaps in plugin metadata
+   - Parses XSD elements, attributes, and types
+   - Useful for legacy plugin support
+
+5. **PluginMetadataValidator** - Validates completeness and correctness of plugin metadata
+   - Checks for required metadata fields (id, elementName, description, etc.)
+   - Validates missing attribute definitions
+   - Checks for inconsistent child/parent relationships
+   - Detects circular dependencies
+   - Identifies orphaned plugins (dependencies that don't exist)
+   - Generates warnings for incomplete metadata
+   - **Usage:**
+     ```java
+     // Validate all plugins
+     ValidationResult result = PluginMetadataValidator.validateAll();
+     
+     // Validate specific descriptors
+     List<PluginDescriptor> descriptors = PluginMetadataCatalog.getAllDescriptors();
+     ValidationResult result = PluginMetadataValidator.validate(descriptors);
+     
+     // Check results
+     if (!result.isValid()) {
+         List<ValidationIssue> errors = result.getErrors();
+         List<ValidationIssue> warnings = result.getWarnings();
+         PluginMetadataValidator.logValidationResults(result);
+     }
+     ```
+
+**Benefits:**
+- ✅ **No static files** - All metadata comes from code
+- ✅ **Always in sync** - Metadata matches actual plugin classes
+- ✅ **Extensible** - New plugins automatically discovered
+- ✅ **Type-safe** - Metadata extracted from Java annotations and schemas
+- ✅ **Validated** - PluginMetadataValidator ensures completeness
+- ✅ **Testable** - Full unit test coverage for all components
 
 ### Canvas Layout & Coordinate System
 
@@ -1297,14 +1402,22 @@ XML Configurations:
 
 #### Test Output Management
 
-**CRITICAL RULE**: Always write test outputs to `target/test-output/`
+**CRITICAL RULE**: All test outputs go to `target/` directory
+
+**Working Directory Configuration:**
+- **Tests**: `ScraperModule` is initialized with `workingDir = "target"` in test base classes
+- **IDE**: `ExecutionManager` uses `workingDir = "target"` for all executions
+- **Result**: All `<file>` operations write to `target/` by default
 
 ```java
-// GOOD ✅
-<file action="write" path="target/test-output/bug47_output.txt">...</file>
+// GOOD ✅ - Relative path resolves to target/output.txt
+<file action="write" path="output.txt">...</file>
 
-// BAD ❌
-<file action="write" path="bug47_output.txt">...</file>  // Project root pollution!
+// GOOD ✅ - Absolute paths still work
+<file action="write" path="/tmp/output.txt">...</file>
+
+// BAD ❌ - Old pattern (no longer needed)
+<file action="write" path="target/test-output/output.txt">...</file>  // Creates target/target/test-output/...
 ```
 
 **Cleanup**:
@@ -1746,7 +1859,7 @@ Regression         | After any fix            | bugs, regression
 Integration (XML)  | End-to-end scenarios     | integration, bugs
 Edge Case          | Boundary conditions      | bugs, edge-case
 
-Output Location: target/test-output/
+Output Location: target/ (workingDir is set to "target" in test base classes)
 Coverage Target: 50%+ (core), 100% (bug fixes)
 Pass Requirement: 100% (zero failures)
 Regression Policy: Zero tolerance

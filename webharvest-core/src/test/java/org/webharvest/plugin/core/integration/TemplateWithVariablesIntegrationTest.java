@@ -58,16 +58,16 @@ public class TemplateWithVariablesIntegrationTest extends XmlBasedIntegrationTes
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <def var=\"name\">John</def>\n" +
             "    <def var=\"age\">30</def>\n" +
-            "    <file action=\"write\" path=\"target/test-output/template_test.txt\">\n" +
+            "    <file action=\"write\" path=\"template_test.txt\">\n" +
             "        <template>Name: ${name}, Age: ${age}</template>\n" +
             "    </file>\n" +
             "</config>";
         
         DynamicScopeContext context = executeXmlString(xml);
         
-        // Read file content
-        java.io.File outputFile = new java.io.File("target/test-output/template_test.txt");
-        assertTrue(outputFile.exists(), "Output file should be created");
+        // Read file content (in target/ directory)
+        java.io.File outputFile = new java.io.File("target/template_test.txt");
+        assertTrue(outputFile.exists(), "Output file should be created in target/");
         
         String content = new String(java.nio.file.Files.readAllBytes(outputFile.toPath()));
         System.out.println("File content: [" + content + "]");

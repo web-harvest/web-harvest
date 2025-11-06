@@ -4,7 +4,7 @@
     <def var="xmlData">&lt;root&gt;&lt;item&gt;Test Item&lt;/item&gt;&lt;item&gt;Another Item&lt;/item&gt;&lt;/root&gt;</def>
     <def var="xqueryExpression">for $item in //item return &lt;result&gt;{$item/text()}&lt;/result&gt;</def>
     
-    <file action="write" path="target/test-output/xquery_output.xml">
+    <file action="write" path="xquery_output.xml">
         <xquery>
             <xq-expression>
                 <get var="xqueryExpression"/>

@@ -10,6 +10,7 @@ import { UIManager } from './UIManager';
 import { PluginManager } from './PluginManager';
 import { ExamplesManager } from './ExamplesManager';
 import { ExecutionStateManager } from './ExecutionStateManager';
+import { KeyboardShortcutManager } from './KeyboardShortcutManager';
 import { LogsPanel } from '../panels/LogsPanel';
 import { ResultsPanel } from '../panels/ResultsPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
@@ -38,6 +39,7 @@ export class App {
     private pluginPalette: PluginPalette;
     private xmlParser: XMLParser;
     private xmlGenerator: XMLGenerator;
+    private keyboardShortcutManager: KeyboardShortcutManager;
     private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
     private gridEnabled: boolean = false;
 
@@ -62,6 +64,7 @@ export class App {
         this.pluginPalette = new PluginPalette('plugin-palette');
         this.xmlParser = new XMLParser();
         this.xmlGenerator = new XMLGenerator();
+        this.keyboardShortcutManager = new KeyboardShortcutManager();
 
         // Initialize
         this.initialize();
@@ -147,9 +150,16 @@ export class App {
         try {
             const plugins = await this.pluginManager.loadPlugins();
             this.uiManager.renderPluginPalette(plugins);
+            
+            // Update XMLParser with plugin manager for VisualPluginMetadata support
+            this.xmlParser = new XMLParser(this.pluginManager);
 
             // Initialize semantic validator in VisualDesigner
             this.visualDesigner.setPluginManager(this.pluginManager);
+
+            // Initialize keyboard shortcut manager with plugin manager
+            this.keyboardShortcutManager.setPluginManager(this.pluginManager);
+            this.setupKeyboardShortcuts();
 
             console.log('✅ Plugin palette rendered');
         } catch (error) {
@@ -445,22 +455,88 @@ export class App {
         });
 
         console.log('✅ Event handlers configured');
+    }
 
-        // Keyboard shortcuts (Visual mode only)
+    /**
+     * Setup keyboard shortcuts from VisualPluginMetadata (Apple HIG compliant)
+     */
+    private setupKeyboardShortcuts(): void {
+        // Register global shortcuts (handled in App)
+        this.keyboardShortcutManager.registerGlobalShortcut('Cmd+A', () => {
+            if (this.currentMode === 'visual') {
+                this.visualDesigner.selectAll();
+            }
+        });
+
+        this.keyboardShortcutManager.registerGlobalShortcut('Cmd+Delete', () => {
+            if (this.currentMode === 'visual') {
+                this.visualDesigner.deleteSelectedNodes();
+            }
+        });
+
+        this.keyboardShortcutManager.registerGlobalShortcut('Cmd+Equal', () => {
+            if (this.currentMode === 'visual') {
+                this.visualDesigner.zoomIn();
+            }
+        });
+
+        this.keyboardShortcutManager.registerGlobalShortcut('Cmd+Minus', () => {
+            if (this.currentMode === 'visual') {
+                this.visualDesigner.zoomOut();
+            }
+        });
+
+        this.keyboardShortcutManager.registerGlobalShortcut('Cmd+0', () => {
+            if (this.currentMode === 'visual') {
+                this.visualDesigner.resetView();
+            }
+        });
+
+        // Register plugin-specific shortcuts
+        const plugins = this.pluginManager.getPlugins();
+        for (const plugin of plugins) {
+            if (plugin.keyboardShortcuts && plugin.keyboardShortcuts.length > 0) {
+                this.keyboardShortcutManager.registerHandler(plugin.id, (pluginId, event) => {
+                    // Handle plugin-specific shortcuts (e.g., add plugin to canvas)
+                    if (this.currentMode === 'visual') {
+                        // For now, log the shortcut - can be extended to add plugin
+                        console.log(`[KeyboardShortcut] Plugin ${pluginId} shortcut triggered`);
+                        // TODO: Add plugin to canvas when shortcut is pressed
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+
+        // Setup global keyboard event listener
         document.addEventListener('keydown', (e: KeyboardEvent) => {
             // Ignore when typing in inputs/textareas
             const target = e.target as HTMLElement;
             const tag = target?.tagName?.toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+            if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) {
+                return;
+            }
 
+            // Handle standard shortcuts first (for backwards compatibility)
             const meta = e.metaKey || e.ctrlKey;
+            
             // Delete selected
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 if (this.currentMode === 'visual') {
                     this.visualDesigner.deleteSelectedNodes();
                     e.preventDefault();
+                    return;
                 }
             }
+
+            // Try KeyboardShortcutManager (handles plugin shortcuts and registered globals)
+            const handled = this.keyboardShortcutManager.handleKeyDown(e);
+            if (handled) {
+                return;
+            }
+
+            // Fallback: standard shortcuts (if not handled by manager)
             // Select All
             if (meta && e.key.toLowerCase() === 'a') {
                 if (this.currentMode === 'visual') {
@@ -1459,4 +1535,5 @@ export class App {
         this.sessionPanel.loadSessionHistory();
     }
 }
+
 

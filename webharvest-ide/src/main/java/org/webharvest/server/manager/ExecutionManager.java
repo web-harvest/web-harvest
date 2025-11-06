@@ -23,6 +23,7 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionMetrics;
 
+import java.io.File;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -64,8 +65,12 @@ public class ExecutionManager {
         
         // Initialize Guice injector
         // Note: HttpModule removed during HttpComponents 4.x migration
+        // Use target/ as working directory - all generated files will go to target/
+        // This prevents polluting project root with output files from IDE examples
+        String targetDir = "target";
+        new File(targetDir).mkdirs();
         this.injector = Guice.createInjector(
-            new ScraperModule(".")
+            new ScraperModule(targetDir)
         );
         
         LOG.info("ExecutionManager initialized successfully");

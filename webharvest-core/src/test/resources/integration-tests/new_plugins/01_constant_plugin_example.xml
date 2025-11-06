@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-    <file action="write" path="target/test-output/constant_output.txt">
+    <file action="write" path="constant_output.txt">
         <constant>Hello from Constant Plugin!</constant>
     </file>
 </config>

@@ -15,7 +15,7 @@
       <template>Default case</template>
     </else>
   </case>
-  <file path="target/test-output/case_output.txt" action="write">
+  <file path="case_output.txt" action="write">
         Case plugin executed successfully. Value was: ${value}
     </file>
 </config>

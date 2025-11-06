@@ -41,7 +41,7 @@ public class XQueryComplexTypesIntegrationTest extends ScraperTestBase {
         // This is EXACT XML from IDE xquery.xml example
         String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
-                "    <file action=\"write\" path=\"target/test-output/xquerytest.xml\">\n" +
+                "    <file action=\"write\" path=\"xquerytest.xml\">\n" +
                 "        <xquery>\n" +
                 "            <xq-param name=\"logicvalue\" type=\"boolean\">true</xq-param>\n" +
                 "            <xq-param name=\"numbervalue\" type=\"double\">12</xq-param>\n" +
@@ -123,9 +123,9 @@ public class XQueryComplexTypesIntegrationTest extends ScraperTestBase {
         // Execute configuration
         executeXmlString(configXml);
         
-        // Verify output file was created
-        Path outputPath = Paths.get("target/test-output/xquerytest.xml");
-        assertTrue(Files.exists(outputPath), "Output file should be created");
+        // Verify output file was created (in target/ directory)
+        Path outputPath = Paths.get("target/xquerytest.xml");
+        assertTrue(Files.exists(outputPath), "Output file should be created in target/");
         
         // Read and verify content
         String content = new String(Files.readAllBytes(outputPath));

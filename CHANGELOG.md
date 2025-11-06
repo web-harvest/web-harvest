@@ -5,9 +5,37 @@ All notable changes to WebHarvest will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Working Directory Configuration**: All test and IDE executions now use `target/` as working directory
+  - Test base classes (`XmlBasedIntegrationTestBase`, `ScraperTestBase`) initialize `ScraperModule` with `workingDir = "target"`
+  - IDE `ExecutionManager` uses `workingDir = "target"` for all scraper executions
+  - All generated files (from example XML configurations) now go to `target/` instead of project root
+  - Prevents pollution of project root with test output files
+  - All test example XML files updated to use relative paths (resolved against `target/`)
+  - `.gitignore` updated to remove webharvest-core specific patterns (files now in `target/` which is already ignored)
+
 ## [2.3.1] - November 3, 2025
 
-### 🎨 IDE Visual Designer - Canvas Layout Fixes
+### 🎨 IDE Visual Designer - Advanced Features & Fixes
+
+#### ✅ Connection Management
+- **New:** Connection selection - click on manual connections to select them
+- **New:** Connection context menu - right-click on connections for Edit/Delete options
+- **New:** Connection redefinition - edit connection source/target (temporary prompt-based UI)
+- **New:** Connection deletion - remove connections from context menu
+- **Fixed:** Event listeners properly cleaned up on re-render (no duplicate listeners)
+- **Fixed:** Connection visual feedback - selected connections highlighted in blue with thicker stroke
+- **Improved:** Connection ID detection - proper distinction between manual and automatic connections
+
+#### ✅ Node Management
+- **New:** Root node reordering - Move Up/Down options in context menu for root-level nodes
+- **Fixed:** Container movement - containers now move with all nested children recursively
+- **Fixed:** Position initialization - missing positions are initialized before movement calculations
+- **Improved:** Context menu positioning - uses `position: fixed` relative to viewport for correct placement
+
+#### ✅ Canvas Layout Fixes
 - **Fixed:** Canvas layout properly embedded in flexbox (no longer "floating")
 - **Fixed:** Node dragging works correctly with zoom/pan transformations
 - **Fixed:** Drop positions correctly calculated accounting for scroll and transform
@@ -15,10 +43,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved:** UI cleanup - removed duplicate Run/Validate buttons from header
 - **Improved:** Execution controls (Pause/Resume/Stop) appear only during execution
 
+#### ✅ Plugin Metadata
+- **Updated:** `html-to-xml` plugin metadata - now allows children (`acceptsAnyChild: true`)
+- **Support:** Nested configurations with `html-to-xml` containing `<get>` elements
+
+#### ✅ Dynamic Metadata Generation (v2.3.0+)
+- **New:** `PluginClassScanner` - Dynamic plugin discovery from classpath using Reflections
+- **New:** `XSDGenerator` - Dynamic XSD schema generation from plugin metadata
+- **New:** `XSDMetadataParser` - Extracts metadata from existing XSD files
+- **New:** `PluginMetadataValidator` - Validates completeness and correctness of plugin metadata
+  - Checks for required fields, missing attributes, inconsistent relationships
+  - Detects circular dependencies and orphaned plugins
+  - Generates comprehensive validation reports
+- **New:** XSD API endpoints - `/api/plugins/xsd` and `/api/plugins/xsd/{version}`
+- **Refactored:** `PluginMetadataCatalog` - Now generates all metadata dynamically from plugin classes
+- **Removed:** All static JSON metadata files - completely eliminated
+  - `plugin-semantics.json` - deprecated, no longer used
+  - `plugin-ui-overrides.json` - removed, UI hints now fully auto-generated
+  - All metadata (semantic + UI) now generated dynamically from plugin classes
+  - Icons, palette groups, and tags inferred from plugin category and element names
+- **Benefits:** 
+  - All metadata comes from code (always in sync)
+  - New plugins automatically discovered
+  - Type-safe metadata extraction
+  - Validated metadata ensures completeness
+  - Full test coverage (40+ tests for metadata components)
+
 **Technical Details:**
 - Three-layer canvas structure: `.canvas-area` (scrollable) → `.canvas-content-wrapper` (transform) → nodes
 - Transform applied to wrapper, not scrollable container
 - All coordinate calculations use canvas coordinates (accounts for pan/zoom/scroll)
+- Connection event listeners managed via `connectionLineElements` Map for proper cleanup
+- Context menu appended to `document.body` with `position: fixed` for viewport-relative positioning
+
+**Tests:**
+- ✅ 870 tests passed (61 test suites)
+- ✅ New integration tests: `NestedConfigSupport.test.ts` (11 tests), `ConnectionOperations.test.ts` (7 tests), `VisualDesignerFixes.test.ts` (8 tests)
 
 ### 🎨 IDE Visual Designer (v2.3)
 - **New:** Visual drag-and-drop editor for WebHarvest configurations

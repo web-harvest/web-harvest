@@ -8,7 +8,7 @@
   <mail smtp-host="${smtpHost}" smtp-port="${smtpPort}" from="${smtpUser}" to="recipient@example.com" subject="Test Email from Web-Harvest">
     <template>This is a test email sent from Web-Harvest MailPlugin.</template>
   </mail>
-  <file action="write" path="target/test-output/mail_output.txt">
+  <file action="write" path="mail_output.txt">
     <template>Mail sent successfully</template>
   </file>
   <config>

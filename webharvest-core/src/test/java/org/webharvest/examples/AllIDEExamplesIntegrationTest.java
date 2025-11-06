@@ -30,9 +30,9 @@ public class AllIDEExamplesIntegrationTest extends ScraperTestBase {
         System.out.println("\n### IDE Example: xquery.xml ###");
         testExampleFile("xquery.xml");
         
-        // Verify output file was created (example writes to project root)
-        Path outputPath = Paths.get("xquerytest.xml");
-        assertTrue(Files.exists(outputPath), "xquerytest.xml should be created");
+        // Verify output file was created (example writes to target/ directory)
+        Path outputPath = Paths.get("target/xquerytest.xml");
+        assertTrue(Files.exists(outputPath), "xquerytest.xml should be created in target/");
         
         String content = new String(Files.readAllBytes(outputPath));
         System.out.println("XQuery output length: " + content.length() + " bytes");

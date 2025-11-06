@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://webharvest.org/schemas/plugin-metadata-2.3.0.json",
+  "title": "Web-Harvest Plugin Metadata Schema",
+  "description": "JSON schema for Web-Harvest plugin metadata used by visual editor. Matches VisualPluginMetadata Java interface structure.",
+  "version": "2.3.0",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "example": "2.3.0"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when metadata was generated"
+    },
+    "pluginCount": {
+      "type": "integer",
+      "description": "Total number of plugins in the metadata",
+      "minimum": 0
+    },
+    "plugins": {
+      "type": "array",
+      "description": "Array of plugin metadata objects",
+      "items": {
+        "$ref": "#/$defs/PluginMetadata"
+      }
+    }
+  },
+  "required": ["version", "generatedAt", "pluginCount", "plugins"],
+  "$defs": {
+    "PluginMetadata": {
+      "type": "object",
+      "description": "Complete plugin metadata including visual editor information",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique plugin identifier (element name)",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "examples": ["http", "xpath", "loop", "http-header"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable plugin name",
+          "examples": ["HTTP Request", "XPath Expression", "Loop", "HTTP Header"]
+        },
+        "elementName": {
+          "type": "string",
+          "description": "XML element name",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "XML namespace URI",
+          "format": "uri",
+          "examples": ["http://org.webharvest/schema/2.1/core"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Plugin version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed plugin description"
+        },
+        "author": {
+          "type": "string",
+          "description": "Plugin author or team"
+        },
+        "category": {
+          "type": "string",
+          "description": "Plugin category",
+          "examples": ["HTTP & Network", "XML Processing", "Control Flow", "Extraction"]
+        },
+        "tags": {
+          "type": "array",
+          "description": "Array of tags for categorization",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "External dependencies required by this plugin",
+          "items": {
+            "type": "string"
+          }
+        },
+        "className": {
+          "type": "string",
+          "description": "Fully qualified Java class name",
+          "pattern": "^[a-z][a-z0-9_.]*\\.[A-Z][a-zA-Z0-9_]*$"
+        },
+        "corePlugin": {
+          "type": "boolean",
+          "description": "True if this is a core plugin"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon identifier (FontAwesome class or SVG path)",
+          "examples": ["fas fa-globe", "fas fa-code", "fas fa-sync-alt"]
+        },
+        "color": {
+          "type": "string",
+          "description": "Category color in hex format",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "examples": ["#3B82F6", "#10B981", "#8B5CF6"]
+        },
+        "group": {
+          "type": "string",
+          "description": "Visual group for palette organization",
+          "examples": ["HTTP & Network", "XML Processing", "Control Flow", "Extraction"]
+        },
+        "defaultWidth": {
+          "type": "integer",
+          "description": "Default node width in canvas (pixels)",
+          "minimum": 100,
+          "maximum": 500,
+          "default": 200
+        },
+        "defaultHeight": {
+          "type": "integer",
+          "description": "Default node height in canvas (pixels)",
+          "minimum": 60,
+          "maximum": 300,
+          "default": 100
+        },
+        "tooltip": {
+          "type": "string",
+          "description": "Extended tooltip for UI display"
+        },
+        "portType": {
+          "type": "string",
+          "description": "Primary data type for this plugin",
+          "enum": ["STRING", "XML", "JSON", "BINARY", "MIXED"]
+        },
+        "inputPorts": {
+          "type": "array",
+          "description": "Input ports (NiFi-style)",
+          "items": {
+            "$ref": "#/$defs/InputPort"
+          }
+        },
+        "outputPorts": {
+          "type": "array",
+          "description": "Output ports (NiFi-style)",
+          "items": {
+            "$ref": "#/$defs/OutputPort"
+          }
+        },
+        "keyboardShortcuts": {
+          "type": "array",
+          "description": "Keyboard shortcuts (Apple HIG)",
+          "items": {
+            "$ref": "#/$defs/KeyboardShortcut"
+          }
+        },
+        "accessibility": {
+          "$ref": "#/$defs/AccessibilityMetadata",
+          "description": "Accessibility metadata (Apple HIG)"
+        },
+        "linkedServices": {
+          "type": "array",
+          "description": "Linked services (Azure Data Factory style)",
+          "items": {
+            "$ref": "#/$defs/LinkedServiceMetadata"
+          }
+        },
+        "parentRelationship": {
+          "$ref": "#/$defs/ParentChildRelationship",
+          "description": "Parent-child relationship (for detail plugins)"
+        },
+        "allowedChildPlugins": {
+          "type": "array",
+          "description": "Allowed child plugins (for master plugins)",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "elementName",
+        "namespace",
+        "version",
+        "description",
+        "category",
+        "icon",
+        "color",
+        "group",
+        "defaultWidth",
+        "defaultHeight",
+        "portType"
+      ]
+    },
+    "InputPort": {
+      "type": "object",
+      "description": "Input port definition (NiFi-style)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name",
+          "examples": ["url", "xml", "pattern", "source"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable port description"
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type for this port",
+          "enum": ["STRING", "XML", "JSON", "BINARY", "MIXED"]
+        },
+        "required": {
+          "type": "boolean",
+          "description": "True if this input is required",
+          "default": false
+        }
+      },
+      "required": ["name", "description", "type", "required"]
+    },
+    "OutputPort": {
+      "type": "object",
+      "description": "Output port definition (NiFi-style)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name",
+          "examples": ["output", "result", "error"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable port description"
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type for this port",
+          "enum": ["STRING", "XML", "JSON", "BINARY", "MIXED"]
+        }
+      },
+      "required": ["name", "description", "type"]
+    },
+    "KeyboardShortcut": {
+      "type": "object",
+      "description": "Keyboard shortcut definition (Apple HIG)",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Key combination",
+          "examples": ["Cmd+N", "Cmd+Shift+H", "Ctrl+Enter"]
+        },
+        "action": {
+          "type": "string",
+          "description": "Action description",
+          "examples": ["Add HTTP plugin", "Execute", "Save"]
+        },
+        "isGlobal": {
+          "type": "boolean",
+          "description": "True if global shortcut, false if context-specific",
+          "default": false
+        }
+      },
+      "required": ["key", "action", "isGlobal"]
+    },
+    "AccessibilityMetadata": {
+      "type": "object",
+      "description": "Accessibility metadata (Apple HIG / WCAG)",
+      "properties": {
+        "ariaLabel": {
+          "type": "string",
+          "description": "ARIA label for screen readers (concise)",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "ariaDescription": {
+          "type": "string",
+          "description": "Extended ARIA description for screen readers",
+          "minLength": 1
+        },
+        "keyboardNavigation": {
+          "type": "array",
+          "description": "Keyboard navigation hints",
+          "items": {
+            "type": "string",
+            "examples": ["Tab", "Enter", "Escape", "Arrow keys"]
+          }
+        }
+      },
+      "required": ["ariaLabel", "ariaDescription", "keyboardNavigation"]
+    },
+    "LinkedServiceMetadata": {
+      "type": "object",
+      "description": "Linked service metadata (Azure Data Factory style)",
+      "properties": {
+        "serviceType": {
+          "type": "string",
+          "description": "Type of service",
+          "examples": ["HTTP", "Database", "FTP", "Mail"]
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "Name of the service",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Service description"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "True if this service is required for the plugin",
+          "default": false
+        }
+      },
+      "required": ["serviceType", "serviceName", "description", "required"]
+    },
+    "ParentChildRelationship": {
+      "type": "object",
+      "description": "Parent-child relationship for master/detail plugin patterns",
+      "properties": {
+        "parentElementName": {
+          "type": "string",
+          "description": "XML element name of the parent plugin",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "examples": ["http", "xquery", "regexp", "xslt"]
+        },
+        "required": {
+          "type": "boolean",
+          "description": "True if parent is required (detail plugin cannot exist standalone)",
+          "default": true
+        },
+        "parentDisplayName": {
+          "type": "string",
+          "description": "Human-readable display name of the parent",
+          "examples": ["HTTP Request", "XQuery", "Regular Expression", "XSLT Transformation"]
+        }
+      },
+      "required": ["parentElementName", "required", "parentDisplayName"]
+    }
+  }
+}
+

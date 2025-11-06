@@ -29,18 +29,34 @@ import org.webharvest.plugin.metadata.PluginDocumentation;
 import org.webharvest.plugin.metadata.PluginSemantics;
 import org.webharvest.plugin.metadata.PluginUIHints;
 import org.webharvest.plugin.metadata.PluginSemanticRole;
+import org.webharvest.plugin.metadata.XSDGenerator;
+import org.webharvest.plugin.VisualPluginMetadata;
+import org.webharvest.plugin.InputPort;
+import org.webharvest.plugin.OutputPort;
+import org.webharvest.plugin.KeyboardShortcut;
+import org.webharvest.plugin.AccessibilityMetadata;
+import org.webharvest.plugin.LinkedServiceMetadata;
+import org.webharvest.plugin.ParentChildRelationship;
 
 /**
- * Servlet providing plugin metadata for the Visual Designer.
+ * Servlet providing plugin metadata and XSD schemas for the Visual Designer.
  * 
- * Returns JSON with all registered plugins, their schemas, and metadata.
+ * Endpoints:
+ * - GET /api/plugins/metadata - Returns JSON with all registered plugins, their schemas, and metadata
+ * - GET /api/plugins/xsd - Returns generated XSD schema for default namespace
+ * - GET /api/plugins/xsd/{version} - Returns generated XSD schema for specific version/namespace
+ * 
  * This endpoint is used by the visual designer frontend to populate
- * the plugin palette and generate property panels.
+ * the plugin palette, generate property panels, and validate configurations.
  * 
  * @author WebHarvest Team
  * @since 2.2.0
  */
-@WebServlet(name = "PluginMetadataServlet", urlPatterns = {"/api/plugins/metadata"})
+@WebServlet(name = "PluginMetadataServlet", urlPatterns = {
+    "/api/plugins/metadata",
+    "/api/plugins/xsd",
+    "/api/plugins/xsd/*"
+})
 public class PluginMetadataServlet extends HttpServlet {
     
     private static final long serialVersionUID = 1L;
@@ -53,6 +69,16 @@ public class PluginMetadataServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
             throws ServletException, IOException {
         
+        String pathInfo = req.getPathInfo();
+        String requestURI = req.getRequestURI();
+        
+        // Handle XSD endpoints
+        if (requestURI.contains("/xsd")) {
+            handleXSDRequest(req, resp, requestURI);
+            return;
+        }
+        
+        // Handle metadata endpoint (default)
         try {
             // Try semantic catalog first, fallback to runtime registry
             List<Map<String, Object>> plugins;
@@ -80,6 +106,8 @@ public class PluginMetadataServlet extends HttpServlet {
                 response.put("schema", catalogSchema);
             }
             response.put("timestamp", System.currentTimeMillis());
+            // Add XSD endpoint reference
+            response.put("xsdUrl", req.getContextPath() + "/api/plugins/xsd");
             
             // Set response headers
             resp.setContentType("application/json");
@@ -96,6 +124,67 @@ public class PluginMetadataServlet extends HttpServlet {
             
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to load plugin metadata");
+            error.put("message", e.getMessage());
+            error.put("timestamp", System.currentTimeMillis());
+            
+            resp.getWriter().write(GSON.toJson(error));
+        }
+    }
+    
+    /**
+     * Handle XSD generation requests
+     */
+    private void handleXSDRequest(HttpServletRequest req, HttpServletResponse resp, 
+                                   String requestURI) throws IOException {
+        try {
+            // Extract version from path if present
+            // /api/plugins/xsd or /api/plugins/xsd/2.1 or /api/plugins/xsd/2.1/core
+            String namespace = "http://org.webharvest/schema/2.1/core"; // Default
+            
+            if (requestURI.contains("/xsd/")) {
+                String[] parts = requestURI.split("/xsd/");
+                if (parts.length > 1) {
+                    String versionPart = parts[1];
+                    // Map version to namespace
+                    if (versionPart.startsWith("2.1")) {
+                        namespace = "http://org.webharvest/schema/2.1/core";
+                    } else if (versionPart.startsWith("2.0")) {
+                        namespace = "http://org.webharvest/schema/2.0/core";
+                    } else if (versionPart.startsWith("1.0")) {
+                        namespace = "http://web-harvest.sourceforge.net/schema/1.0/config";
+                    } else {
+                        // Treat as custom namespace (URL-encoded)
+                        namespace = java.net.URLDecoder.decode(versionPart, "UTF-8");
+                    }
+                }
+            }
+            
+            // Generate XSD
+            String xsd = XSDGenerator.generateXSD(namespace);
+            
+            // Set response headers
+            resp.setContentType("application/xml");
+            resp.setCharacterEncoding("UTF-8");
+            resp.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+            resp.setHeader("Content-Disposition", 
+                String.format("attachment; filename=\"webharvest-schema-%s.xsd\"", 
+                    namespace.replaceAll("[^a-zA-Z0-9]", "-")));
+            
+            // Write XSD response
+            resp.getWriter().write(xsd);
+            resp.setStatus(HttpServletResponse.SC_OK);
+            
+            LOG.info("Generated XSD schema for namespace: {}", namespace);
+            
+        } catch (Exception e) {
+            LOG.error("Failed to generate XSD schema", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to generate XSD schema");
             error.put("message", e.getMessage());
             error.put("timestamp", System.currentTimeMillis());
             
@@ -185,6 +274,21 @@ public class PluginMetadataServlet extends HttpServlet {
         // Runtime schema (for backward compatibility)
         Map<String, Object> schema = extractSchemaFromDescriptor(desc);
         visual.put("schema", schema);
+        
+        // Try to get VisualPluginMetadata from runtime plugin class
+        try {
+            Class<? extends org.webharvest.plugin.Plugin> pluginClass = 
+                Class.forName(desc.getClassName()).asSubclass(org.webharvest.plugin.Plugin.class);
+            org.webharvest.plugin.Plugin pluginInstance = pluginClass.getDeclaredConstructor().newInstance();
+            org.webharvest.plugin.PluginMetadata metadata = pluginInstance.getMetadata();
+            
+            if (metadata instanceof VisualPluginMetadata) {
+                VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
+                addVisualMetadataFields(visual, visualMetadata);
+            }
+        } catch (Exception e) {
+            LOG.debug("Failed to load VisualPluginMetadata for {}: {}", desc.getId(), e.getMessage());
+        }
         
         return visual;
     }
@@ -305,6 +409,12 @@ public class PluginMetadataServlet extends HttpServlet {
                 }
                 if (metadata.getAuthor() != null && !metadata.getAuthor().trim().isEmpty()) {
                     author = metadata.getAuthor();
+                }
+                
+                // 3. Add VisualPluginMetadata fields if available
+                if (metadata instanceof VisualPluginMetadata) {
+                    VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
+                    addVisualMetadataFields(visual, visualMetadata);
                 }
             }
         } catch (Exception e) {
@@ -740,6 +850,134 @@ public class PluginMetadataServlet extends HttpServlet {
         }
         
         return attr;
+    }
+    
+    /**
+     * Add VisualPluginMetadata fields to the response map
+     */
+    private void addVisualMetadataFields(Map<String, Object> visual, VisualPluginMetadata visualMetadata) {
+        // Color and group (use group instead of category for visual grouping)
+        if (visualMetadata.getColor() != null && !visualMetadata.getColor().isEmpty()) {
+            visual.put("color", visualMetadata.getColor());
+        }
+        if (visualMetadata.getGroup() != null && !visualMetadata.getGroup().isEmpty()) {
+            visual.put("group", visualMetadata.getGroup());
+        }
+        
+        // Dimensions
+        if (visualMetadata.getDefaultWidth() > 0) {
+            visual.put("defaultWidth", visualMetadata.getDefaultWidth());
+        }
+        if (visualMetadata.getDefaultHeight() > 0) {
+            visual.put("defaultHeight", visualMetadata.getDefaultHeight());
+        }
+        
+        // Tooltip
+        if (visualMetadata.getTooltip() != null && !visualMetadata.getTooltip().isEmpty()) {
+            visual.put("tooltip", visualMetadata.getTooltip());
+        }
+        
+        // Port type
+        if (visualMetadata.getPortType() != null) {
+            visual.put("portType", visualMetadata.getPortType().name());
+        }
+        
+        // Input ports
+        if (visualMetadata.getInputPorts() != null && visualMetadata.getInputPorts().length > 0) {
+            List<Map<String, Object>> inputPortsJson = new ArrayList<>();
+            for (InputPort port : visualMetadata.getInputPorts()) {
+                Map<String, Object> portJson = new HashMap<>();
+                portJson.put("name", port.getName());
+                if (port.getDescription() != null) {
+                    portJson.put("description", port.getDescription());
+                }
+                if (port.getType() != null) {
+                    portJson.put("type", port.getType().name());
+                }
+                portJson.put("required", port.isRequired());
+                inputPortsJson.add(portJson);
+            }
+            visual.put("inputPorts", inputPortsJson);
+        }
+        
+        // Output ports
+        if (visualMetadata.getOutputPorts() != null && visualMetadata.getOutputPorts().length > 0) {
+            List<Map<String, Object>> outputPortsJson = new ArrayList<>();
+            for (OutputPort port : visualMetadata.getOutputPorts()) {
+                Map<String, Object> portJson = new HashMap<>();
+                portJson.put("name", port.getName());
+                if (port.getDescription() != null) {
+                    portJson.put("description", port.getDescription());
+                }
+                if (port.getType() != null) {
+                    portJson.put("type", port.getType().name());
+                }
+                outputPortsJson.add(portJson);
+            }
+            visual.put("outputPorts", outputPortsJson);
+        }
+        
+        // Keyboard shortcuts
+        if (visualMetadata.getKeyboardShortcuts() != null && visualMetadata.getKeyboardShortcuts().length > 0) {
+            List<Map<String, Object>> shortcutsJson = new ArrayList<>();
+            for (KeyboardShortcut shortcut : visualMetadata.getKeyboardShortcuts()) {
+                Map<String, Object> shortcutJson = new HashMap<>();
+                shortcutJson.put("key", shortcut.getKey());
+                shortcutJson.put("action", shortcut.getAction());
+                shortcutJson.put("isGlobal", shortcut.isGlobal());
+                shortcutsJson.add(shortcutJson);
+            }
+            visual.put("keyboardShortcuts", shortcutsJson);
+        }
+        
+        // Accessibility
+        if (visualMetadata.getAccessibility() != null) {
+            Map<String, Object> accJson = new HashMap<>();
+            AccessibilityMetadata acc = visualMetadata.getAccessibility();
+            if (acc.getAriaLabel() != null) {
+                accJson.put("ariaLabel", acc.getAriaLabel());
+            }
+            if (acc.getAriaDescription() != null) {
+                accJson.put("ariaDescription", acc.getAriaDescription());
+            }
+            if (acc.getKeyboardNavigation() != null && acc.getKeyboardNavigation().length > 0) {
+                accJson.put("keyboardNavigation", Arrays.asList(acc.getKeyboardNavigation()));
+            }
+            visual.put("accessibility", accJson);
+        }
+        
+        // Linked services
+        if (visualMetadata.getLinkedServices() != null && visualMetadata.getLinkedServices().length > 0) {
+            List<Map<String, Object>> servicesJson = new ArrayList<>();
+            for (LinkedServiceMetadata service : visualMetadata.getLinkedServices()) {
+                Map<String, Object> serviceJson = new HashMap<>();
+                serviceJson.put("serviceType", service.getServiceType());
+                serviceJson.put("serviceName", service.getServiceName());
+                if (service.getDescription() != null) {
+                    serviceJson.put("description", service.getDescription());
+                }
+                serviceJson.put("required", service.isRequired());
+                servicesJson.add(serviceJson);
+            }
+            visual.put("linkedServices", servicesJson);
+        }
+        
+        // Parent-child relationship (for detail plugins)
+        if (visualMetadata.getParentRelationship() != null) {
+            Map<String, Object> parentJson = new HashMap<>();
+            ParentChildRelationship parent = visualMetadata.getParentRelationship();
+            parentJson.put("parentElementName", parent.getParentElementName());
+            parentJson.put("required", parent.isRequired());
+            if (parent.getParentDisplayName() != null) {
+                parentJson.put("parentDisplayName", parent.getParentDisplayName());
+            }
+            visual.put("parentRelationship", parentJson);
+        }
+        
+        // Allowed child plugins (for master plugins)
+        if (visualMetadata.getAllowedChildPlugins() != null && visualMetadata.getAllowedChildPlugins().length > 0) {
+            visual.put("allowedChildPlugins", Arrays.asList(visualMetadata.getAllowedChildPlugins()));
+        }
     }
     
     @Override

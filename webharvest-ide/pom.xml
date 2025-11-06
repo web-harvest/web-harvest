@@ -124,6 +124,29 @@
                     <installDirectory>${project.basedir}/target</installDirectory>
                 </configuration>
             </plugin>
+            <!-- Generate Plugin Metadata JSON -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-plugin-metadata-json</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.webharvest.plugin.metadata.PluginMetadataJsonGenerator</mainClass>
+                            <classpathScope>runtime</classpathScope>
+                            <includeProjectDependencies>true</includeProjectDependencies>
+                            <arguments>
+                                <argument>${project.build.outputDirectory}/webapp/static/metadata/plugins.json</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
                 <executions>

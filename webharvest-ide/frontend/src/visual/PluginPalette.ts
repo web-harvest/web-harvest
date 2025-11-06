@@ -80,14 +80,23 @@ export class PluginPalette {
             console.log('🔌 [PluginPalette] Received data:', data.count, 'plugins');
 
             // Map API response to PluginTemplate[]
+            // Use VisualPluginMetadata fields: group (instead of category) and color
             this.templates = data.plugins.map((p: any) => ({
                 type: p.id,
-                category: p.paletteGroup || p.ui?.paletteGroup || p.category || 'General',
+                category: p.group || p.paletteGroup || p.ui?.paletteGroup || p.category || 'General', // Use VisualPluginMetadata.group
                 icon: p.icon || p.ui?.icon || 'fa-puzzle-piece',
                 label: p.name,
                 defaultAttributes: this.extractDefaultAttributes(p.schema),
                 description: p.description || '',
-                canAppearAtRoot: p.semantics?.canAppearAtRoot !== false && p.schema?.canAppearAtRoot !== false
+                canAppearAtRoot: p.semantics?.canAppearAtRoot !== false && p.schema?.canAppearAtRoot !== false,
+                // VisualPluginMetadata fields
+                color: p.color, // Hex color for category
+                defaultWidth: p.defaultWidth,
+                defaultHeight: p.defaultHeight,
+                inputPorts: p.inputPorts,
+                outputPorts: p.outputPorts,
+                portType: p.portType,
+                tooltip: p.tooltip || p.description
             }));
 
             this.filteredTemplates = [...this.templates];
@@ -392,16 +401,33 @@ export class PluginPalette {
         item.style.padding = '10px 12px';
         item.style.margin = '4px 8px';
         item.style.background = 'white';
-        item.style.border = '1px solid #ddd';
+        // Use VisualPluginMetadata color if available
+        const borderColor = template.color || '#ddd';
+        item.style.border = `1px solid ${borderColor}`;
+        item.style.borderLeft = `3px solid ${borderColor}`; // Left border accent with color
         item.style.borderRadius = '4px';
         item.style.cursor = 'grab';
         item.style.transition = 'all 0.2s';
+
+        // Apply accessibility metadata (Apple HIG compliance)
+        // Note: We need to get accessibility metadata from plugin manager
+        // For now, use basic accessibility attributes
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', template.label || template.type);
+        if (template.tooltip) {
+            item.setAttribute('aria-description', template.tooltip);
+            item.title = template.tooltip; // Fallback for browsers without aria-description support
+        } else if (template.description) {
+            item.setAttribute('aria-description', template.description);
+            item.title = template.description;
+        }
 
         // Mark dependent plugins as disabled
         if (template.canAppearAtRoot === false) {
             item.classList.add('dependent-plugin');
             item.style.opacity = '0.6';
             item.style.cursor = 'not-allowed';
+            item.setAttribute('aria-disabled', 'true');
             item.title = `This plugin requires a parent element`;
         }
 

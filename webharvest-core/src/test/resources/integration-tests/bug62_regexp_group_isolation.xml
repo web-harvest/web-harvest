@@ -54,7 +54,7 @@
     </def>
 
     <!-- Output results -->
-    <file action="write" path="target/test-output/bug62_output.txt">
+    <file action="write" path="bug62_output.txt">
         <get var="results"/>
     </file>
 </config>

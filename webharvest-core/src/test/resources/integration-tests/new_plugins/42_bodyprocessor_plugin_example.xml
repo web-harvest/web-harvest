@@ -6,7 +6,7 @@
         <template>BodyProcessor content: ${testVar}</template>
     </body-processor>
     
-    <file action="write" path="target/test-output/bodyprocessor_output.txt">
+    <file action="write" path="bodyprocessor_output.txt">
         <template>BodyProcessor plugin test completed</template>
     </file>
 </config>

@@ -66,6 +66,59 @@ export interface Plugin {
     helpUrl?: string;
     documentation?: PluginDocumentationSummary;
     dependencies?: string[];
+    
+    // VisualPluginMetadata fields (from generated JSON)
+    color?: string; // Hex color for category (e.g., "#3B82F6")
+    group?: string; // Visual group name (e.g., "HTTP & Network")
+    defaultWidth?: number; // Default node width in canvas
+    defaultHeight?: number; // Default node height in canvas
+    inputPorts?: InputPort[]; // Input ports (NiFi-style)
+    outputPorts?: OutputPort[]; // Output ports (NiFi-style)
+    portType?: string; // Data type: STRING, XML, BINARY, MIXED, etc.
+    tooltip?: string; // Extended tooltip for UI
+    keyboardShortcuts?: KeyboardShortcut[]; // Apple HIG shortcuts
+    accessibility?: AccessibilityMetadata; // Screen reader support
+    linkedServices?: LinkedServiceMetadata[]; // Azure Data Factory style
+    parentRelationship?: ParentChildRelationship; // For detail plugins
+    allowedChildPlugins?: string[]; // For master plugins
+}
+
+export interface InputPort {
+    name: string;
+    description?: string;
+    type: string; // STRING, XML, BINARY, etc.
+    required: boolean;
+}
+
+export interface OutputPort {
+    name: string;
+    description?: string;
+    type: string; // STRING, XML, BINARY, etc.
+}
+
+export interface KeyboardShortcut {
+    key: string; // e.g., "Cmd+N"
+    action: string;
+    isGlobal: boolean;
+}
+
+export interface AccessibilityMetadata {
+    ariaLabel?: string;
+    ariaDescription?: string;
+    keyboardNavigation?: string[];
+}
+
+export interface LinkedServiceMetadata {
+    serviceType: string;
+    serviceName: string;
+    description?: string;
+    required: boolean;
+}
+
+export interface ParentChildRelationship {
+    parentElementName: string;
+    required: boolean;
+    parentDisplayName?: string;
 }
 
 export interface PluginSchema {

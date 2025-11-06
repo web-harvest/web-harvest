@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
     <def var="condition">true</def>
-    <file action="write" path="target/test-output/if_output.txt">
+    <file action="write" path="if_output.txt">
         <if test="${condition}">
             <text>Condition is true!</text>
         </if>

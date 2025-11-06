@@ -86,6 +86,13 @@ export class SemanticValidator {
             return this.canAppearAtRoot(childType);
         }
 
+        // Prevent self-nesting for certain container types
+        // These containers should not accept themselves as children
+        const nonNestableContainers = ['try', 'catch', 'if', 'else'];
+        if (childType === parentType && nonNestableContainers.includes(childType)) {
+            return false;
+        }
+
         const childPlugin = this.pluginManager.findPlugin(childType);
         const parentPlugin = this.pluginManager.findPlugin(parentType);
 
@@ -136,6 +143,16 @@ export class SemanticValidator {
             return {
                 valid: true,
                 message: `"${childType}" can be placed at root level`
+            };
+        }
+
+        // Prevent self-nesting for certain container types
+        const nonNestableContainers = ['try', 'catch', 'if', 'else'];
+        if (childType === parentType && nonNestableContainers.includes(childType)) {
+            const childName = childPlugin.name || childType;
+            return {
+                valid: false,
+                message: `"${childName}" cannot be nested inside another "${childName}" block`
             };
         }
 
