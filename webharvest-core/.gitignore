@@ -1,0 +1,27 @@
+# Generated test output files (created by example XML configurations)
+*.html
+*.xml
+*.txt
+*.csv
+!pom.xml
+!src/**/*.xml
+!src/**/*.html
+!src/**/*.txt
+!src/**/*.csv
+
+# Generated test output directories (created by example XML configurations)
+canon/
+expekt/
+flickr/
+google_images/
+nytimes/
+product_catalog/
+scripts/
+spider/
+test_output/
+results/
+
+# Maven target directories (including duplicates)
+target/
+target */
+target*/
