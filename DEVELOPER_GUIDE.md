@@ -710,6 +710,19 @@ as standalone tiles on the canvas.
   instead of trying to place detail nodes at the root
 - Reference UX: [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http)
 
+#### Conditional Flow UX (If/Else & Try/Catch)
+
+- `else` and `catch` remain dependent plugins in metadata, but the designer now
+  exposes inline cards inside the parent `if` or `try` containers for adding,
+  reordering, and removing branches
+- Each card renders a dedicated drop zone for the branch body, so authors drag
+  true-path, else-path, and catch-handling plugins straight into the summary
+- Context menus and toolbar buttons guide authors to use these controls instead
+  of dragging detail tiles onto the canvas, keeping the UI consistent with the
+  HTTP workflow
+- Drop validation emits tailored guidance ("Use the if toolbar to add an else")
+  when someone tries to place `else` or `catch` directly on the canvas
+
 Semantic roles are now produced directly from plugin metadata. Each
 `PluginMetadata` implementation contributes an enum set of roles based on
 its configuration schema and visual metadata (allowed children, required

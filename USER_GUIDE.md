@@ -692,6 +692,14 @@ W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
 - Próba przeciągnięcia `http-header` na canvas wyświetli komunikat, że należy użyć panelu HTTP – nie jest to samodzielny kafelek na płótnie
 - Interfejs został zestrojony z [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http) dla znajomego przepływu konfiguracji
 
+#### If/Else oraz Try/Catch
+
+- Węzły `if` i `try` zawierają wbudowane karty z gałęziami `else` i `catch`
+- Kliknij przycisk **Add Else** / **Add Catch**, aby utworzyć nową gałąź – kafelki detail nie są wystawione na palecie
+- Każda gałąź ma własną strefę „Drop plugins here” – przeciągnij w nią elementy opisujące zachowanie ścieżki
+- Przyciski na pasku kart umożliwiają otwarcie właściwości, usunięcie gałęzi oraz (dla `catch`) zmianę kolejności
+- Drag & drop `else` lub `catch` poza kartą wyświetli wskazówkę z informacją, żeby użyć narzędzi dostępnych w węźle nadrzędnym
+
 #### Zmiana Kolejności Pluginów ⬆️⬇️
 
 Każdy plugin wewnątrz kontenera ma **przyciski strzałek** w prawym górnym rogu:

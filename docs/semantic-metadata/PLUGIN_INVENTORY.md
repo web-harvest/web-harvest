@@ -73,6 +73,10 @@ catalog.
 > visual designer now creates and edits them from the parent HTTP node (toolbar,
 > inline summary, property panel) instead of exposing them as standalone tiles,
 > matching the [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http).
+>
+> **Control Flow UX:** `else` and `catch` branches are still modelled as dependent
+> plugins, yet the designer surfaces dedicated cards inside the parent `if` / `try`
+> nodes so authors manage those branches without dragging the detail tiles around.
 
 > **Runtime Heuristic:** BODY_EVALUATOR plugins that allow body content and do
 > not declare required parents are now automatically flagged as accepting any

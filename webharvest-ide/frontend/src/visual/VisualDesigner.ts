@@ -35,6 +35,12 @@ import {
     summarizeHttpDetail,
     type HttpDetailType
 } from './http/HttpNodeUtils';
+import {
+    ControlDetailType,
+    createControlDetailNode,
+    partitionIfChildren,
+    partitionTryChildren
+} from './control/ControlNodeUtils';
 
 type DesignerSnapshot = {
     nodes: VisualNode[];
@@ -716,14 +722,16 @@ export class VisualDesigner {
 
                 if (this.isHttpNode(node)) {
                     this.renderHttpContainer(childrenArea, node);
+                } else if (this.isIfNode(node)) {
+                    const { elseNode, primaryChildren } = partitionIfChildren(node);
+                    this.renderIfDetail(childrenArea, node, elseNode);
+                    this.renderStandardChildren(primaryChildren, node, childrenArea);
+                } else if (this.isTryNode(node)) {
+                    const { catchNodes, primaryChildren } = partitionTryChildren(node);
+                    this.renderTryDetail(childrenArea, node, catchNodes);
+                    this.renderStandardChildren(primaryChildren, node, childrenArea);
                 } else {
-                    node.children.forEach((child, index) => {
-                        const childElement = this.renderNodeWithStrategy(child, childrenArea);
-                        childElement.dataset.parentId = node.id;
-                        childElement.dataset.childIndex = index.toString();
-
-                        this.addReorderButtons(childElement, node.id, child.id, index, node.children.length);
-                    });
+                    this.renderStandardChildren(node.children || [], node, childrenArea);
                 }
             } else {
                 console.warn(`[VisualDesigner] Container children area not found for node ${node.id}`);
@@ -745,6 +753,16 @@ export class VisualDesigner {
         parentContainer.appendChild(container);
 
         return container;
+    }
+
+    private renderStandardChildren(children: VisualNode[], parentNode: VisualNode, container: HTMLElement): void {
+        children.forEach((child, index) => {
+            const childElement = this.renderNodeWithStrategy(child, container);
+            childElement.dataset.parentId = parentNode.id;
+            childElement.dataset.childIndex = index.toString();
+
+            this.addReorderButtons(childElement, parentNode.id, child.id, index, children.length);
+        });
     }
 
     /**
@@ -4870,6 +4888,223 @@ export class VisualDesigner {
             return value;
         }
         return `${value.slice(0, maxLength - 1)}…`;
+    }
+
+    private isIfNode(node: VisualNode | null | undefined): boolean {
+        return Boolean(node?.type && node.type.toLowerCase() === 'if');
+    }
+
+    private isTryNode(node: VisualNode | null | undefined): boolean {
+        return Boolean(node?.type && node.type.toLowerCase() === 'try');
+    }
+
+    private renderIfDetail(childrenArea: HTMLElement, parentNode: VisualNode, elseNode: VisualNode | null): void {
+        const summary = document.createElement('div');
+        summary.className = 'control-summary control-summary--if';
+        summary.dataset.parentId = parentNode.id;
+
+        const header = document.createElement('div');
+        header.className = 'control-summary__header';
+
+        const title = document.createElement('span');
+        title.textContent = 'Else branch';
+
+        const actions = document.createElement('div');
+        actions.className = 'control-summary__actions';
+
+        if (!elseNode) {
+            const addButton = this.createControlActionButton('fas fa-plus', 'Add else branch', () => {
+                this.addControlDetail(parentNode.id, 'else');
+            });
+            actions.appendChild(addButton);
+        } else {
+            const removeButton = this.createControlActionButton('fas fa-trash', 'Remove else branch', () => {
+                this.removeControlDetail(elseNode.id, parentNode.id);
+            });
+            const openButton = this.createControlActionButton('fas fa-pen', 'Edit else properties', () => {
+                this.selectNode(elseNode.id);
+            });
+            actions.appendChild(openButton);
+            actions.appendChild(removeButton);
+        }
+
+        header.appendChild(title);
+        header.appendChild(actions);
+        summary.appendChild(header);
+
+        if (elseNode) {
+            const card = this.renderControlDetailCard(parentNode, elseNode, 'Else branch', 'else', 0, 1);
+            summary.appendChild(card);
+        } else {
+            const empty = document.createElement('div');
+            empty.className = 'control-summary__empty';
+            empty.textContent = 'No else branch defined. Use the button above to add fallback logic.';
+            summary.appendChild(empty);
+        }
+
+        childrenArea.appendChild(summary);
+    }
+
+    private renderTryDetail(childrenArea: HTMLElement, parentNode: VisualNode, catchNodes: VisualNode[]): void {
+        const summary = document.createElement('div');
+        summary.className = 'control-summary control-summary--try';
+        summary.dataset.parentId = parentNode.id;
+
+        const header = document.createElement('div');
+        header.className = 'control-summary__header';
+
+        const title = document.createElement('span');
+        title.textContent = 'Catch blocks';
+
+        const actions = document.createElement('div');
+        actions.className = 'control-summary__actions';
+
+        const addButton = this.createControlActionButton('fas fa-plus', 'Add catch block', () => {
+            this.addControlDetail(parentNode.id, 'catch');
+        });
+        actions.appendChild(addButton);
+
+        header.appendChild(title);
+        header.appendChild(actions);
+        summary.appendChild(header);
+
+        if (catchNodes.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'control-summary__empty';
+            empty.textContent = 'No catch blocks defined. Add at least one catch to handle errors in the try block.';
+            summary.appendChild(empty);
+        } else {
+            catchNodes.forEach((catchNode, index) => {
+                const card = this.renderControlDetailCard(parentNode, catchNode, `Catch #${index + 1}`, 'catch', index, catchNodes.length);
+                summary.appendChild(card);
+            });
+        }
+
+        childrenArea.appendChild(summary);
+    }
+
+    private renderControlDetailCard(
+        parentNode: VisualNode,
+        detailNode: VisualNode,
+        label: string,
+        detailType: ControlDetailType,
+        index: number,
+        total: number
+    ): HTMLElement {
+        const card = document.createElement('div');
+        card.className = 'control-detail-card';
+        card.dataset.nodeId = detailNode.id;
+
+        const header = document.createElement('div');
+        header.className = 'control-detail-card__header';
+
+        const title = document.createElement('span');
+        title.textContent = label;
+
+        const actions = document.createElement('div');
+        actions.className = 'control-detail-card__actions';
+
+        const propertiesButton = this.createControlActionButton('fas fa-pen', 'Edit properties', () => {
+            this.selectNode(detailNode.id);
+        });
+        actions.appendChild(propertiesButton);
+
+        if (detailType === 'catch') {
+            const upButton = this.createControlActionButton('fas fa-arrow-up', 'Move catch up', () => {
+                this.moveControlDetail(parentNode.id, detailNode.id, 'up');
+            }, index === 0);
+            const downButton = this.createControlActionButton('fas fa-arrow-down', 'Move catch down', () => {
+                this.moveControlDetail(parentNode.id, detailNode.id, 'down');
+            }, index === total - 1);
+            actions.appendChild(upButton);
+            actions.appendChild(downButton);
+        }
+
+        const removeButton = this.createControlActionButton('fas fa-trash', detailType === 'else' ? 'Remove else branch' : 'Remove catch block', () => {
+            this.removeControlDetail(detailNode.id, parentNode.id);
+        });
+        removeButton.classList.add('danger');
+        actions.appendChild(removeButton);
+
+        header.appendChild(title);
+        header.appendChild(actions);
+        card.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'control-detail-card__body container-children';
+        body.dataset.nodeId = detailNode.id;
+        body.dataset.parentId = parentNode.id;
+
+        if (!detailNode.children || detailNode.children.length === 0) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'control-detail-card__empty';
+            placeholder.textContent = 'Drop plugins here to define this branch.';
+            body.appendChild(placeholder);
+        } else {
+            detailNode.children.forEach((child, childIndex) => {
+                const childElement = this.renderNodeWithStrategy(child, body);
+                childElement.dataset.parentId = detailNode.id;
+                childElement.dataset.childIndex = childIndex.toString();
+                this.addReorderButtons(childElement, detailNode.id, child.id, childIndex, detailNode.children!.length);
+            });
+        }
+
+        card.appendChild(body);
+        return card;
+    }
+
+    private createControlActionButton(icon: string, title: string, handler: () => void, disabled = false): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'control-action-button';
+        button.innerHTML = `<i class="${icon}"></i>`;
+        button.title = title;
+        button.disabled = disabled;
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (!button.disabled) {
+                handler();
+            }
+        });
+        return button;
+    }
+
+    private addControlDetail(parentId: string, detailType: ControlDetailType): void {
+        const parentNode = this.findNode(parentId);
+        if (!parentNode) {
+            return;
+        }
+
+        if (detailType === 'else') {
+            const existingElse = (parentNode.children || []).some(child => child.type === 'else');
+            if (existingElse) {
+                this.showError('This if block already has an else branch. Remove it before adding another.');
+                return;
+            }
+        }
+
+        const detailNode = createControlDetailNode(detailType);
+        const added = this.addChildToContainer(parentId, detailNode);
+        if (added) {
+            this.selectNode(detailNode.id);
+        }
+    }
+
+    private removeControlDetail(detailId: string, parentId: string): void {
+        const removed = this.removeNode(detailId);
+        if (removed) {
+            this.selectNode(parentId);
+        }
+    }
+
+    private moveControlDetail(parentId: string, detailId: string, direction: 'up' | 'down'): void {
+        const moved = direction === 'up'
+            ? this.moveChildUp(parentId, detailId)
+            : this.moveChildDown(parentId, detailId);
+
+        if (moved) {
+            this.selectNode(parentId);
+        }
     }
 }
 

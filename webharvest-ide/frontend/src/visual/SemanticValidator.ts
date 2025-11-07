@@ -219,16 +219,23 @@ export class SemanticValidator {
             };
         }
 
-        // Check root placement
+        const dependentPlacementHints: Record<string, string> = {
+            'http-header': 'HTTP headers are configured from the HTTP node. Use the HTTP toolbar to add a header.',
+            'http-param': 'HTTP parameters are configured from the HTTP node. Use the HTTP toolbar to add a parameter.',
+            'else': 'Else branches are created from the if node. Use the if toolbar to add an else block.',
+            'catch': 'Catch blocks are created from the try node. Use the try toolbar to add a catch block.'
+        };
+
         if (parentType === null) {
             if (!this.canAppearAtRoot(childType)) {
                 const requiredParents = this.getRequiredParents(childType);
                 const parentList = requiredParents.join(', ');
 
-                if (['http-header', 'http-param'].includes(childType)) {
+                const dependentMessage = dependentPlacementHints[childType];
+                if (dependentMessage) {
                     return {
                         valid: false,
-                        message: 'HTTP headers and parameters are configured inside the HTTP task. Open the HTTP node and use the in-node controls to add them.'
+                        message: dependentMessage
                     };
                 }
 
@@ -270,10 +277,11 @@ export class SemanticValidator {
             const allowedChildren = this.getAllowedChildren(parentType);
             if (allowedChildren.length > 0) {
                 const childList = allowedChildren.join(', ');
-                if (['http-header', 'http-param'].includes(childType)) {
+                const dependentMessage = dependentPlacementHints[childType];
+                if (dependentMessage) {
                     return {
                         valid: false,
-                        message: 'Use the HTTP task configuration panel to add headers or parameters instead of dropping them manually.'
+                        message: dependentMessage
                     };
                 }
                 return {

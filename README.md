@@ -578,6 +578,7 @@ WebHarvest IDE is a modern, web-based development environment for creating and t
 - **BPMN Cues** - Start/End markers, NiFi-style resize handles, and palette help tooltips
 - **Recursive Containers** - Containers can nest arbitrarily; root-level containers now participate in sequential auto-connections
 - **HTTP Task UX:** Headers and query parameters are managed inside the HTTP node via toolbar/context menu shortcuts and a dedicated editor, aligning with [Orkes Conductor’s HTTP task](https://orkes.io/content/reference-docs/system-tasks/http)
+- **Conditional UX:** `if`/`else` and `try`/`catch` blocks expose in-card controls for adding, reordering, and editing branches without hunting for detail tiles
 
 ### Running the IDE
 
