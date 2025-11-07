@@ -1,27 +1,29 @@
 package org.webharvest.server.manager;
 
+import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Module;
+import com.google.inject.util.Modules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.Config;
 import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
-import com.google.common.eventbus.EventBus;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
-import org.webharvest.runtime.variables.Variable;
-import org.webharvest.utils.KeyValuePair;
-import org.webharvest.server.IDEClientContext;
-import org.webharvest.runtime.tracking.TokenTracker;
-import org.webharvest.runtime.tracking.TokenTrackerImpl;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionMetrics;
+import org.webharvest.runtime.tracking.TokenTracker;
+import org.webharvest.runtime.tracking.TokenTrackerImpl;
+import org.webharvest.runtime.variables.Variable;
+import org.webharvest.server.IDEClientContext;
+import org.webharvest.utils.KeyValuePair;
 
 import java.io.File;
 import java.time.Instant;
@@ -43,6 +45,7 @@ public class ExecutionManager {
     
     private static final Logger LOG = LoggerFactory.getLogger(ExecutionManager.class);
     private static final ExecutionManager INSTANCE = new ExecutionManager();
+    public static final String INJECTOR_OVERRIDE_MODULE_PROPERTY = "webharvest.ide.overrideModule";
     
     // v2.2: ThreadLocal for pause/resume access from plugins
     private static final ThreadLocal<ExecutionJob> CURRENT_JOB = new ThreadLocal<>();
@@ -69,9 +72,28 @@ public class ExecutionManager {
         // This prevents polluting project root with output files from IDE examples
         String targetDir = "target";
         new File(targetDir).mkdirs();
-        this.injector = Guice.createInjector(
-            new ScraperModule(targetDir)
-        );
+        Module baseModule = new ScraperModule(targetDir);
+        Module injectorModule = baseModule;
+        String overrideModuleClass = System.getProperty(INJECTOR_OVERRIDE_MODULE_PROPERTY);
+        
+        if (overrideModuleClass != null && !overrideModuleClass.isBlank()) {
+            try {
+                Class<?> clazz = Class.forName(overrideModuleClass.trim());
+                Object moduleInstance = clazz.getDeclaredConstructor().newInstance();
+                if (moduleInstance instanceof Module) {
+                    injectorModule = Modules.override(baseModule).with((Module) moduleInstance);
+                    LOG.info("Applying override module '{}' for ExecutionManager injector", overrideModuleClass);
+                } else {
+                    LOG.warn("Override module '{}' does not implement com.google.inject.Module - using default injector", overrideModuleClass);
+                    injectorModule = baseModule;
+                }
+            } catch (Exception e) {
+                LOG.warn("Failed to load override module '{}'. Falling back to default injector.", overrideModuleClass, e);
+                injectorModule = baseModule;
+            }
+        }
+        
+        this.injector = Guice.createInjector(injectorModule);
         
         LOG.info("ExecutionManager initialized successfully");
         LOG.info("Thread pool size: 5, max concurrent executions: 5");

@@ -574,12 +574,18 @@ XSDMetadataParser.java        # XSD metadata extraction
 - ✅ Plugin nesting (containers)
 - ✅ Reordering plugins with ⬆️⬇️ buttons
 - ✅ Nested container drops
+- ✅ Recursive container rendering (containers inside containers) with preserved drag/drop + connections
 - ✅ Semantic validation
 - ✅ XML ↔ Visual synchronization
 - ✅ Undo/Redo/Copy/Paste
 - ✅ History tracking
 - ✅ Node dragging (works correctly with zoom/pan)
 - ✅ Fixed canvas layout (properly embedded in layout)
+- ✅ Multi-level containers (nested loops/ifs/try blocks render recursively)
+- ✅ Root-level containers participate in sequential connections; BPMN start/end markers flank every configuration
+- ✅ BPMN-style start/end markers framing each configuration
+- ✅ Palette tooltips on dedicated help icon (`?`)
+- ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style)
 
 **Planned:**
 - Manual connections (ports)
@@ -685,9 +691,53 @@ master/detail pair make sure to mirror it in the plugin metadata
 (`PluginConfigurationSchema#getAllowedSubElements()` /
 `getRequiredParents()` and the generated JSON catalog).
 
-The Visual Designer now treats these master plugins as genuine containers,
-so dependent tiles (e.g. `http-header`, `http-param`, `ftp-put`) can be
-dragged directly onto their parents and validated in real time.
+The Visual Designer handles these master plugins as genuine containers.
+Detail tiles for FTP/ZIP/CALL can still be dragged directly onto their
+parents and validated in real time, while the HTTP task now mirrors the
+Orkes Conductor experience: headers and query parameters are added from the
+HTTP node itself (toolbar/context menu + property panel editor) rather than
+as standalone tiles on the canvas.
+
+#### HTTP Task UX (Orkes parity)
+
+- Palette intentionally hides `http-header` / `http-param`; they are created
+  from the HTTP node toolbar or context menu
+- The HTTP container renders an inline summary for headers and parameters with
+  quick actions (add, reorder, delete, jump to properties)
+- The property panel hosts a dedicated HTTP editor with side-by-side sections
+  for request basics, query parameters, and headers
+- Drag/drop validation now nudges authors back to the HTTP configuration panel
+  instead of trying to place detail nodes at the root
+- Reference UX: [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http)
+
+Semantic roles are now produced directly from plugin metadata. Each
+`PluginMetadata` implementation contributes an enum set of roles based on
+its configuration schema and visual metadata (allowed children, required
+parents, body evaluation flags, etc.). A single plugin can therefore expose
+multiple roles – for example `<loop>` is both a `CONTEXT_CONTAINER` and a
+`BODY_EVALUATOR`, while `<http-param>` is simultaneously `DEPENDENT` and a
+body evaluator. The resolver simply merges these declared roles, so no
+hard-coded element name lists are required.
+
+On top of curated master/detail metadata we now promote every root-level
+plugin that accepts body content to a general-purpose container. The
+`PluginSemanticsResolver` automatically toggles `allowsAnyChild=true` for
+any descriptor that:
+
+- has no required parent elements, and
+- advertises body support via `PluginConfigurationSchema#allowsBody()`.
+
+This heuristic covers processors such as `xpath`, `regexp`, `script`,
+`template`, `def`, and `log` without hand-maintained allowlists and lets the
+canvas accept arbitrary child nodes beneath them. The palette uses the same
+semantics to decide whether an item can appear at root level, so the change
+is reflected consistently in drag/drop validation, grouping, and filtering.
+
+As of November 2025, metadata producers also report **multi-role semantics**.
+Each plugin can now advertise a set of roles (e.g. `CONTEXT_CONTAINER` plus
+`BODY_EVALUATOR`). The resolver merges declared roles with runtime behaviour
+so the IDE can style nodes, validate drops, and emit JSON with both
+`roles[]` and a legacy `role` string for backwards compatibility.
 
 ### Usage in IDE
 

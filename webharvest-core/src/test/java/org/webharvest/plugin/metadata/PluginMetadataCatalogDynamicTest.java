@@ -111,8 +111,8 @@ public class PluginMetadataCatalogDynamicTest {
         for (PluginDescriptor desc : descriptors) {
             assertNotNull(desc.getSemantics(), 
                 "Plugin " + desc.getId() + " should have semantics");
-            assertNotNull(desc.getSemantics().getRole(), 
-                "Plugin " + desc.getId() + " should have semantic role");
+            assertFalse(desc.getSemantics().getRoles().isEmpty(), 
+                "Plugin " + desc.getId() + " should have at least one semantic role");
         }
     }
 

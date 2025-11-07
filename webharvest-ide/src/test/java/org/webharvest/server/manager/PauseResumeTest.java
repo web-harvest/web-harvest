@@ -6,6 +6,7 @@ import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketAdapter;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.testng.annotations.Test;
+import org.webharvest.server.support.EmbeddedIdeTestServer;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -36,8 +37,9 @@ import static org.testng.Assert.*;
  */
 public class PauseResumeTest {
     
-    private static final String BASE_URL = "http://localhost:8080";
-    private static final String WS_BASE_URL = "ws://localhost:8080";
+    private static final EmbeddedIdeTestServer SERVER = EmbeddedIdeTestServer.getInstance();
+    private static final String BASE_URL = SERVER.getBaseHttpUrl();
+    private static final String WS_BASE_URL = SERVER.getBaseWsUrl();
     
     /**
      * Test: Pause execution mid-run

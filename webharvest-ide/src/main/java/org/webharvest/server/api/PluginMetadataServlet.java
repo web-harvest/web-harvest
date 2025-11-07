@@ -250,7 +250,7 @@ public class PluginMetadataServlet extends HttpServlet {
         PluginSemantics semantics = desc.getSemantics();
         if (semantics != null) {
             Map<String, Object> semanticsMap = new HashMap<>();
-            semanticsMap.put("role", semantics.getRole().toString());
+            semanticsMap.put("roles", new ArrayList<>(semantics.getRoles()));
             semanticsMap.put("allowsChildren", semantics.allowsChildren());
             semanticsMap.put("acceptsAnyChild", semantics.acceptsAnyChild());
             semanticsMap.put("allowsBody", semantics.allowsBody());

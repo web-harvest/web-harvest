@@ -33,9 +33,10 @@ public class PluginSemanticsResolverTest {
 
         PluginSemantics semantics = PluginSemanticsResolver.resolve(DefPlugin.class, metadata);
 
-        assertEquals(semantics.getRole(), PluginNodeRole.BODY_EVALUATOR);
+        assertTrue(semantics.hasRole(PluginNodeRole.BODY_EVALUATOR));
         assertTrue(semantics.allowsChildPlugins());
         assertFalse(semantics.requiresParent());
+        assertTrue(semantics.allowsAnyChild(), "Body evaluators should accept arbitrary nested plugins");
     }
 
     @Test
@@ -44,7 +45,9 @@ public class PluginSemanticsResolverTest {
 
         PluginSemantics semantics = PluginSemanticsResolver.resolve(LoopPlugin.class, metadata);
 
-        assertEquals(semantics.getRole(), PluginNodeRole.CONTEXT_CONTAINER);
+        assertTrue(semantics.hasRole(PluginNodeRole.CONTEXT_CONTAINER));
+        assertTrue(semantics.hasRole(PluginNodeRole.BODY_EVALUATOR),
+                "loop should evaluate its body in addition to being a container");
         assertTrue(semantics.providesExecutionContext());
         assertTrue(semantics.allowsChildPlugins());
     }
@@ -56,11 +59,12 @@ public class PluginSemanticsResolverTest {
 
         PluginSemantics semantics = PluginSemanticsResolver.resolve(org.webharvest.plugin.core.HttpPlugin.class, metadata);
 
-        assertEquals(semantics.getRole(), PluginNodeRole.CONTEXT_CONTAINER,
+        assertTrue(semantics.hasRole(PluginNodeRole.CONTEXT_CONTAINER),
                 "http plugin should be treated as a context container");
         assertTrue(semantics.allowsChildPlugins(), "http plugin should allow child components");
         assertTrue(semantics.getAllowedChildElements().contains("http-header"));
         assertTrue(semantics.getAllowedChildElements().contains("http-param"));
+        assertFalse(semantics.allowsAnyChild(), "http plugin should restrict children to explicit metadata");
     }
 
     @Test
@@ -69,7 +73,7 @@ public class PluginSemanticsResolverTest {
 
         PluginSemantics semantics = PluginSemanticsResolver.resolve(CatchPlugin.class, metadata);
 
-        assertEquals(semantics.getRole(), PluginNodeRole.DEPENDENT);
+        assertTrue(semantics.hasRole(PluginNodeRole.DEPENDENT));
         assertTrue(semantics.requiresParent());
         assertTrue(semantics.getRequiredParentElements().contains("try"));
     }
@@ -81,8 +85,8 @@ public class PluginSemanticsResolverTest {
         PluginSemantics semantics = PluginSemanticsResolver.resolve(HttpHeaderPlugin.class, metadata);
 
         // http-header role may be BODY_EVALUATOR (context-specific) or DEPENDENT
-        assertTrue(semantics.getRole() == PluginNodeRole.DEPENDENT || 
-                   semantics.getRole() == PluginNodeRole.BODY_EVALUATOR,
+        assertTrue(semantics.hasRole(PluginNodeRole.DEPENDENT) || 
+                   semantics.hasRole(PluginNodeRole.BODY_EVALUATOR),
                    "http-header should be DEPENDENT or BODY_EVALUATOR");
         // http-header requires parent http, but may not be detected if dependencies are empty
         // Check if requiresParent or has required parent elements

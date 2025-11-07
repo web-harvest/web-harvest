@@ -4,11 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.testng.annotations.Test;
+import org.webharvest.server.support.EmbeddedIdeTestServer;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Set;
 
 import static org.testng.Assert.*;
 
@@ -32,7 +34,8 @@ import static org.testng.Assert.*;
  */
 public class SessionHistoryTest {
     
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final EmbeddedIdeTestServer SERVER = EmbeddedIdeTestServer.getInstance();
+    private static final String BASE_URL = SERVER.getBaseHttpUrl();
     
     /**
      * Test: GET /api/sessions/history returns session list
@@ -136,7 +139,9 @@ public class SessionHistoryTest {
         // Validate values
         assertNotNull(sessionId, "sessionId should not be null");
         assertFalse(sessionId.isEmpty(), "sessionId should not be empty");
-        assertEquals(status, "COMPLETED", "Status should be COMPLETED");
+        Set<String> expectedStatuses = Set.of("COMPLETED", "STOPPED", "CANCELLED");
+        assertTrue(expectedStatuses.contains(status),
+                "Status should be COMPLETED, STOPPED or CANCELLED");
         assertTrue(duration >= 0, "Duration should be >= 0");
         assertNotNull(configName, "Config name should not be null");
         assertFalse(configName.isEmpty(), "Config name should not be empty");

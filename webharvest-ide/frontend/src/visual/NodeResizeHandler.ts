@@ -109,15 +109,16 @@ export class NodeResizeHandler {
         handle.dataset.nodeId = nodeId;
         handle.style.cssText = `
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background: #4CAF50;
-            border: 2px solid white;
+            width: 14px;
+            height: 14px;
+            background: #1d4ed8;
+            border: 2px solid #ffffff;
             border-radius: 50%;
             cursor: ${this.getCursorForPosition(position)};
             pointer-events: all;
             z-index: 101;
             transition: all 0.1s;
+            box-shadow: 0 0 6px rgba(29, 78, 216, 0.35);
         `;
 
         // Position the handle
@@ -125,11 +126,11 @@ export class NodeResizeHandler {
 
         // Add hover effect
         handle.addEventListener('mouseenter', () => {
-            handle.style.background = '#45a049';
+            handle.style.background = '#2563eb';
             handle.style.transform = 'scale(1.2)';
         });
         handle.addEventListener('mouseleave', () => {
-            handle.style.background = '#4CAF50';
+            handle.style.background = '#1d4ed8';
             handle.style.transform = 'scale(1)';
         });
 
@@ -147,7 +148,7 @@ export class NodeResizeHandler {
      * Position handle based on corner/edge
      */
     private positionHandle(handle: HTMLElement, position: ResizeHandlePosition): void {
-        const offset = -5; // Half of handle size (10px / 2)
+        const offset = -7; // Half of handle size (14px / 2)
 
         switch (position) {
             case 'nw': // Top-left

@@ -8,8 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **HTTP Task UX Alignment**: HTTP containers now manage headers and query parameters directly inside the node, mirroring the Orkes Conductor HTTP task experience; the canvas shows an inline summary with quick actions, context menus add detail entries, and drop validation points authors back to the HTTP configuration panel rather than dragging detail plugins separately ([reference](https://orkes.io/content/reference-docs/system-tasks/http))
 - **Semantic Metadata Master/Detail Coverage**: synchronized plugin metadata with XML configurations; `try/catch`, `if/else`, `call/call-param`, `http/{http-header,http-param}`, `zip/zip-entry`, and `ftp/{ftp-get,ftp-put,ftp-list}` now expose explicit parent/child constraints in both Java schemas and generated JSON
 - **Visual Designer Containers**: the semantic drop validator now treats HTTP/FTP/ZIP/CALL masters as containers so detail plugins can be dragged directly into their parents in the canvas
+- **Semantic Metadata Containers v2**: `PluginSemanticsResolver` now promotes any root-level plugin that allows body content to `allowsAnyChild=true`, making top-level processors (`xpath`, `script`, `regexp`, `template`, etc.) behave as general-purpose containers without manual allowlists
+- **Semantic Metadata Roles**: plugin metadata now emits multi-role semantics derived directly from runtime metadata; REST/JSON payloads expose `roles[]` alongside legacy `role` for backwards compatibility, enabling IDE styling and validation to distinguish combined container/body/dependent behaviors.
+- **Visual Designer UX**: added BPMN-style start/end markers for every configuration, repositioned child reorder controls to the card footer, surfaced palette help via a dedicated `?` icon, and refreshed NiFi-style resize handles on corners and edges
+- **Nested Container Rendering**: container nodes now render recursively inside other containers with preserved drag/drop, resize, and reorder affordances, and root-level containers participate in sequential connection autowiring so the primary flow remains visible even when top-level nodes are all containers.
 - **Working Directory Configuration**: All test and IDE executions now use `target/` as working directory
   - Test base classes (`XmlBasedIntegrationTestBase`, `ScraperTestBase`) initialize `ScraperModule` with `workingDir = "target"`
   - IDE `ExecutionManager` and `ConfigServlet` use `workingDir = "target"` for all scraper executions

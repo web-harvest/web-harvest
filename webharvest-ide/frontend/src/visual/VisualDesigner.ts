@@ -29,6 +29,12 @@ import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
 import { NodeResizeHandler } from './NodeResizeHandler';
 import type { PluginManager } from '../core/PluginManager';
+import {
+    createHttpDetailNode,
+    partitionHttpChildren,
+    summarizeHttpDetail,
+    type HttpDetailType
+} from './http/HttpNodeUtils';
 
 type DesignerSnapshot = {
     nodes: VisualNode[];
@@ -60,6 +66,7 @@ export class VisualDesigner {
     private container: HTMLElement;
     private canvasElement: HTMLElement;
     private svgElement: SVGSVGElement | null = null;
+    private processMarkersLayer: HTMLElement | null = null;
     private selectedNodeId: string | null = null;
     private selectedNodeIds: string[] = [];
     private selectedConnectionId: string | null = null;
@@ -483,8 +490,8 @@ export class VisualDesigner {
         this.svgElement = this.createSVGOverlay();
         this.canvasElement.appendChild(this.svgElement);
 
-        // Calculate default positions for root-level nodes
-        const linearNodes = this.nodes.filter(n => !isContainerNode(n.type) || n.children.length === 0);
+        // Calculate default positions for root-level nodes (preserve ordering of all root nodes)
+        const linearNodes = [...this.nodes];
 
         if (linearNodes.length > 0) {
             const positions = calculateLinearLayout(linearNodes, {
@@ -509,7 +516,13 @@ export class VisualDesigner {
         }
 
         // Render nodes
-        this.nodes.forEach(node => this.renderNodeWithStrategy(node));
+        this.nodes.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
+
+        const rootNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
+            .filter((element): element is HTMLElement => element instanceof HTMLElement)
+            .filter(element => element.dataset.nodeId && !element.dataset.parentId);
+
+        this.renderProcessMarkers(rootNodeElements);
 
         // Render connections
         this.renderConnections();
@@ -604,56 +617,74 @@ export class VisualDesigner {
     /**
      * Render node with strategy selection
      */
-    private renderNodeWithStrategy(node: VisualNode): void {
+    private renderNodeWithStrategy(node: VisualNode, parentContainer: HTMLElement = this.canvasElement): HTMLElement {
         const strategy = getRenderingStrategy(node);
 
         if (strategy === 'nested') {
-            this.renderNestedNode(node);
-        } else {
-            this.renderConnectedNode(node);
+            return this.renderNestedNode(node, parentContainer);
         }
+
+        return this.renderConnectedNode(node, parentContainer);
     }
 
     /**
      * Render nested container node using ContainerRenderer (FULL SCALE!)
      */
-    private renderNestedNode(node: VisualNode): void {
-        // Calculate nested layout for container + children
-        const positions = calculateNestedLayout(node, {
-            x: node.position?.x || this.START_X,
-            y: node.position?.y || this.START_Y,
-            padding: this.PADDING
-        });
+    private renderNestedNode(node: VisualNode, parentContainer: HTMLElement): HTMLElement {
+        const isRootLevel = parentContainer === this.canvasElement;
+        let containerX = node.position?.x ?? this.START_X;
+        let containerY = node.position?.y ?? this.START_Y;
 
-        // Apply positions only when they are not already defined (preserve manual placement)
-        if (!node.position && positions[node.id]) {
-            node.position = positions[node.id];
+        if (isRootLevel) {
+            // Calculate nested layout for container + children when rendering at root level
+            const positions = calculateNestedLayout(node, {
+                x: containerX,
+                y: containerY,
+                padding: this.PADDING
+            });
+
+            if (!node.position && positions[node.id]) {
+                node.position = positions[node.id];
+                containerX = node.position.x;
+                containerY = node.position.y;
+            }
+
+            node.children.forEach(child => {
+                if (!child.position && positions[child.id]) {
+                    child.position = positions[child.id];
+                }
+            });
         }
 
-        node.children.forEach(child => {
-            if (!child.position && positions[child.id]) {
-                child.position = positions[child.id];
-            }
-        });
-
-        // Render container using ContainerRenderer (FULL SCALE!)
+        // Render container using ContainerRenderer
         const container = document.createElement('div');
         container.className = 'visual-node nested-container';
         container.dataset.nodeId = node.id;
-        const containerX = node.position?.x ?? this.START_X;
-        const containerY = node.position?.y ?? this.START_Y;
 
-        container.style.position = 'absolute';
-        container.style.left = `${containerX}px`;
-        container.style.top = `${containerY}px`;
-        container.style.zIndex = '2';
+        if (!isRootLevel && parentContainer.dataset.nodeId) {
+            container.dataset.parentId = parentContainer.dataset.nodeId;
+        }
+
+        if (!isRootLevel) {
+            container.style.position = 'relative';
+            container.style.left = '0';
+            container.style.top = '0';
+            container.style.zIndex = '1';
+            container.style.margin = '8px 0';
+        } else {
+            container.style.position = 'absolute';
+            container.style.left = `${containerX}px`;
+            container.style.top = `${containerY}px`;
+            container.style.zIndex = '2';
+        }
 
         // Apply role-based styling for containers
         if (this.semanticValidator) {
-            const role = this.semanticValidator.getRole(node.type);
-            if (role) {
-                container.dataset.role = role;
-                this.applyRoleBasedStyling(container, role, node);
+            const roles = this.semanticValidator.getRoles(node.type);
+            container.dataset.roles = roles.join(',');
+            if (roles.length > 0) {
+                container.dataset.primaryRole = roles[0];
+                this.applyRoleBasedStyling(container, roles, node);
             }
         }
 
@@ -678,25 +709,22 @@ export class VisualDesigner {
             this.containerRenderer.renderExpanded(container, node);
 
             // Clear default children rendered by ContainerRenderer and use our own rendering
-            const childrenArea = container.querySelector('.container-children');
+            const childrenArea = container.querySelector('.container-children') as HTMLElement | null;
             if (childrenArea) {
                 // Clear default simple children
                 childrenArea.innerHTML = '';
 
-                // Render children using our createBasicNodeElement logic
-                // This ensures children also get ports and event handlers
-                node.children.forEach((child, index) => {
-                    const childElement = this.createBasicNodeElement(child);
-                    // Mark as child element and store container ID
-                    childElement.dataset.parentId = node.id;
-                    childElement.dataset.childIndex = index.toString();
+                if (this.isHttpNode(node)) {
+                    this.renderHttpContainer(childrenArea, node);
+                } else {
+                    node.children.forEach((child, index) => {
+                        const childElement = this.renderNodeWithStrategy(child, childrenArea);
+                        childElement.dataset.parentId = node.id;
+                        childElement.dataset.childIndex = index.toString();
 
-                    // Add reorder buttons for children
-                    this.addReorderButtons(childElement, node.id, child.id, index, node.children.length);
-
-                    // Children are rendered inside container's children area
-                    childrenArea.appendChild(childElement);
-                });
+                        this.addReorderButtons(childElement, node.id, child.id, index, node.children.length);
+                    });
+                }
             } else {
                 console.warn(`[VisualDesigner] Container children area not found for node ${node.id}`);
             }
@@ -714,23 +742,42 @@ export class VisualDesigner {
         // Setup drag handlers for container movement
         this.setupNodeDragHandlers(container, node);
 
-        this.canvasElement.appendChild(container);
+        parentContainer.appendChild(container);
+
+        return container;
     }
 
     /**
      * Render connected action node
      */
-    private renderConnectedNode(node: VisualNode): void {
+    private renderConnectedNode(node: VisualNode, parentContainer: HTMLElement): HTMLElement {
         const nodeElement = this.createBasicNodeElement(node);
-        const nodeX = node.position?.x ?? this.START_X;
-        const nodeY = node.position?.y ?? this.START_Y;
+        const isRootLevel = parentContainer === this.canvasElement;
 
-        nodeElement.style.position = 'absolute';
-        nodeElement.style.left = `${nodeX}px`;
-        nodeElement.style.top = `${nodeY}px`;
-        nodeElement.style.zIndex = '2';
+        if (!isRootLevel && parentContainer.dataset.nodeId) {
+            nodeElement.dataset.parentId = parentContainer.dataset.nodeId;
+        }
 
-        this.canvasElement.appendChild(nodeElement);
+        if (!isRootLevel) {
+            nodeElement.style.position = 'relative';
+            nodeElement.style.left = '0';
+            nodeElement.style.top = '0';
+            nodeElement.style.margin = '4px 0';
+            nodeElement.style.zIndex = '1';
+            parentContainer.appendChild(nodeElement);
+        } else {
+            const nodeX = node.position?.x ?? this.START_X;
+            const nodeY = node.position?.y ?? this.START_Y;
+
+            nodeElement.style.position = 'absolute';
+            nodeElement.style.left = `${nodeX}px`;
+            nodeElement.style.top = `${nodeY}px`;
+            nodeElement.style.zIndex = '2';
+
+            parentContainer.appendChild(nodeElement);
+        }
+
+        return nodeElement;
     }
 
     /**
@@ -777,10 +824,11 @@ export class VisualDesigner {
 
         // Apply role-based styling
         if (this.semanticValidator) {
-            const role = this.semanticValidator.getRole(node.type);
-            if (role) {
-                nodeElement.dataset.role = role;
-                this.applyRoleBasedStyling(nodeElement, role, node);
+            const roles = this.semanticValidator.getRoles(node.type);
+            nodeElement.dataset.roles = roles.join(',');
+            if (roles.length > 0) {
+                nodeElement.dataset.primaryRole = roles[0];
+                this.applyRoleBasedStyling(nodeElement, roles, node);
             }
         }
 
@@ -869,6 +917,81 @@ export class VisualDesigner {
         };
 
         return nodeElement;
+    }
+
+    private renderProcessMarkers(rootNodeElements: HTMLElement[]): void {
+        if (this.processMarkersLayer) {
+            this.processMarkersLayer.remove();
+            this.processMarkersLayer = null;
+        }
+
+        const layer = document.createElement('div');
+        layer.className = 'process-markers-layer';
+
+        const positions = this.calculateProcessMarkerPositions(rootNodeElements);
+
+        const startMarker = this.createProcessMarker('start', positions.startX, positions.startY, 'Start');
+        const endMarker = this.createProcessMarker('end', positions.endX, positions.endY, 'End');
+
+        layer.appendChild(startMarker);
+        layer.appendChild(endMarker);
+
+        this.canvasElement.appendChild(layer);
+        this.processMarkersLayer = layer;
+    }
+
+    private calculateProcessMarkerPositions(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
+        if (rootNodeElements.length === 0) {
+            const defaultCenterX = this.START_X + this.DEFAULT_NODE_WIDTH / 2;
+            return {
+                startX: defaultCenterX,
+                startY: Math.max(this.START_Y - 100, 30),
+                endX: defaultCenterX,
+                endY: this.START_Y + this.DEFAULT_NODE_HEIGHT + 120
+            };
+        }
+
+        let minLeft = Number.POSITIVE_INFINITY;
+        let maxRight = Number.NEGATIVE_INFINITY;
+        let minTop = Number.POSITIVE_INFINITY;
+        let maxBottom = Number.NEGATIVE_INFINITY;
+
+        rootNodeElements.forEach(element => {
+            const left = Number.parseFloat(element.style.left || '') || element.offsetLeft || this.START_X;
+            const top = Number.parseFloat(element.style.top || '') || element.offsetTop || this.START_Y;
+            const width = element.offsetWidth || this.DEFAULT_NODE_WIDTH;
+            const height = element.offsetHeight || this.DEFAULT_NODE_HEIGHT;
+
+            minLeft = Math.min(minLeft, left);
+            maxRight = Math.max(maxRight, left + width);
+            minTop = Math.min(minTop, top);
+            maxBottom = Math.max(maxBottom, top + height);
+        });
+
+        const centerX = minLeft + (maxRight - minLeft) / 2;
+
+        return {
+            startX: centerX,
+            startY: Math.max(minTop - 100, 30),
+            endX: centerX,
+            endY: maxBottom + 120
+        };
+    }
+
+    private createProcessMarker(type: 'start' | 'end', x: number, y: number, label: string): HTMLElement {
+        const marker = document.createElement('div');
+        marker.className = `process-marker process-marker-${type}`;
+        marker.style.left = `${x}px`;
+        marker.style.top = `${y}px`;
+
+        const text = document.createElement('span');
+        text.textContent = label;
+        text.style.fontSize = '10px';
+        text.style.fontWeight = '700';
+
+        marker.appendChild(text);
+
+        return marker;
     }
 
     /**
@@ -1972,6 +2095,10 @@ export class VisualDesigner {
         return { items, element };
     }
 
+    private isDividerItem(item: ContextMenuItem): item is { type: 'divider' } {
+        return typeof item === 'object' && 'type' in item && (item as { type?: string }).type === 'divider';
+    }
+
     private buildContextMenuItems(nodeId: string): ContextMenuItem[] {
         const clipboardAvailable = this.clipboard.length > 0;
         const node = this.findNodeRecursive(nodeId, this.nodes);
@@ -1990,6 +2117,26 @@ export class VisualDesigner {
                 }
             }
         ];
+
+        if (node && this.isHttpNode(node)) {
+            items.push(
+                {
+                    label: 'Add Header',
+                    icon: 'fas fa-plus',
+                    action: () => {
+                        this.addHttpDetail(node.id, 'http-header');
+                    }
+                },
+                {
+                    label: 'Add Query Parameter',
+                    icon: 'fas fa-plus-circle',
+                    action: () => {
+                        this.addHttpDetail(node.id, 'http-param');
+                    }
+                }
+            );
+            items.push({ type: 'divider' });
+        }
 
         // Add reordering options for root nodes
         if (isRootNode) {
@@ -2013,9 +2160,11 @@ export class VisualDesigner {
                             this.reorderRootNode(nodeId, 'down');
                         }
                     }
-                },
-                { type: 'divider' }
+                }
             );
+            if (items.length > 0 && !this.isDividerItem(items[items.length - 1])) {
+                items.push({ type: 'divider' });
+            }
         }
 
         items.push(
@@ -2530,7 +2679,7 @@ export class VisualDesigner {
         buttonContainer.className = 'child-reorder-buttons';
         buttonContainer.style.cssText = `
             position: absolute;
-            top: 8px;
+            bottom: 8px;
             right: 8px;
             display: flex;
             gap: 4px;
@@ -4141,7 +4290,7 @@ export class VisualDesigner {
     /**
      * Apply role-based styling to node element
      */
-    private applyRoleBasedStyling(element: HTMLElement, role: string, node?: VisualNode): void {
+    private applyRoleBasedStyling(element: HTMLElement, roles: string[], node?: VisualNode): void {
         // Remove existing role classes
         element.classList.remove('role-root-container', 'role-context-container', 'role-body-evaluator', 'role-dependent', 'role-leaf');
 
@@ -4151,7 +4300,9 @@ export class VisualDesigner {
             plugin = this.pluginManager.findPlugin(node.type);
         }
 
-        switch (role) {
+        const primaryRole = roles[0] || 'LEAF';
+
+        switch (primaryRole) {
             case 'ROOT_CONTAINER':
                 element.classList.add('role-root-container');
                 element.style.borderWidth = '3px';
@@ -4205,8 +4356,11 @@ export class VisualDesigner {
         // Add semantic metadata tooltip
         if (plugin?.semantics) {
             const tooltipParts: string[] = [];
-            if (plugin.semantics.role) {
-                tooltipParts.push(`Role: ${plugin.semantics.role}`);
+            const tooltipRoles: string[] = Array.isArray(plugin.semantics.roles)
+                ? plugin.semantics.roles
+                : (plugin.semantics.role ? [plugin.semantics.role] : []);
+            if (tooltipRoles.length > 0) {
+                tooltipParts.push(`Roles: ${tooltipRoles.join(', ')}`);
             }
             if (plugin.semantics.requiredParentTypes && plugin.semantics.requiredParentTypes.length > 0) {
                 tooltipParts.push(`Requires: ${plugin.semantics.requiredParentTypes.join(', ')}`);
@@ -4218,6 +4372,9 @@ export class VisualDesigner {
                 element.title = tooltipParts.join(' | ');
             }
         }
+
+        element.dataset.primaryRole = primaryRole;
+        element.dataset.roles = roles.join(',');
     }
 
     /**
@@ -4501,6 +4658,218 @@ export class VisualDesigner {
                 }
             }, 300);
         }, 3000);
+    }
+
+    private isHttpNode(node: VisualNode | null | undefined): boolean {
+        return Boolean(node?.type && node.type.toLowerCase() === 'http');
+    }
+
+    private renderHttpContainer(childrenArea: HTMLElement, node: VisualNode): void {
+        childrenArea.classList.add('http-container');
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'http-summary-toolbar';
+
+        const manageButton = document.createElement('button');
+        manageButton.type = 'button';
+        manageButton.className = 'http-summary-button';
+        manageButton.innerHTML = '<i class="fas fa-sliders-h"></i> Configure HTTP Task';
+        manageButton.onclick = (event) => {
+            event.stopPropagation();
+            this.openHttpProperties(node.id);
+        };
+
+        toolbar.appendChild(manageButton);
+        childrenArea.appendChild(toolbar);
+
+        const { params, headers } = partitionHttpChildren(node);
+
+        const paramsSection = this.createHttpDetailSection(
+            node,
+            'Query Parameters',
+            'http-param',
+            params,
+            'No query parameters defined yet.'
+        );
+        const headersSection = this.createHttpDetailSection(
+            node,
+            'Headers',
+            'http-header',
+            headers,
+            'No headers defined yet.'
+        );
+
+        childrenArea.appendChild(paramsSection);
+        childrenArea.appendChild(headersSection);
+    }
+
+    private createHttpDetailSection(
+        containerNode: VisualNode,
+        title: string,
+        detailType: HttpDetailType,
+        details: VisualNode[],
+        emptyLabel: string
+    ): HTMLElement {
+        const section = document.createElement('div');
+        section.className = 'http-detail-section';
+
+        const header = document.createElement('div');
+        header.className = 'http-detail-section__header';
+
+        const titleEl = document.createElement('span');
+        titleEl.className = 'http-detail-section__title';
+        titleEl.textContent = `${title} (${details.length})`;
+
+        const headerActions = document.createElement('div');
+        headerActions.className = 'http-detail-section__actions';
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'http-detail-action';
+        addBtn.innerHTML = `<i class="fas fa-plus"></i> ${detailType === 'http-param' ? 'Add Parameter' : 'Add Header'}`;
+        addBtn.onclick = (event) => {
+            event.stopPropagation();
+            this.addHttpDetail(containerNode.id, detailType);
+        };
+
+        headerActions.appendChild(addBtn);
+        header.appendChild(titleEl);
+        header.appendChild(headerActions);
+
+        const list = document.createElement('div');
+        list.className = 'http-detail-list';
+
+        if (details.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'http-detail-empty';
+            empty.textContent = emptyLabel;
+            list.appendChild(empty);
+        } else {
+            details.forEach((detail, index) => {
+                const row = this.createHttpDetailRow(containerNode, detail, detailType, index, details.length);
+                list.appendChild(row);
+            });
+        }
+
+        section.appendChild(header);
+        section.appendChild(list);
+
+        return section;
+    }
+
+    private createHttpDetailRow(
+        containerNode: VisualNode,
+        detail: VisualNode,
+        detailType: HttpDetailType,
+        index: number,
+        total: number
+    ): HTMLElement {
+        const row = document.createElement('div');
+        row.className = 'http-detail-row';
+        row.dataset.detailId = detail.id;
+
+        const { name, value } = summarizeHttpDetail(detail);
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'http-detail-row__label';
+        if (name) {
+            nameEl.textContent = name;
+        } else {
+            nameEl.textContent = detailType === 'http-param' ? '(name not set)' : '(header name not set)';
+            nameEl.classList.add('http-detail-row__label--empty');
+        }
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'http-detail-row__value';
+        if (value) {
+            valueEl.textContent = this.truncateHttpValue(value);
+        } else {
+            valueEl.textContent = '—';
+            valueEl.classList.add('http-detail-row__value--empty');
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'http-detail-row__actions';
+
+        const editBtn = this.createHttpActionButton('fas fa-pen', 'Edit in properties', () => {
+            this.openHttpProperties(containerNode.id);
+        });
+
+        const moveUpBtn = this.createHttpActionButton('fas fa-arrow-up', 'Move up', () => {
+            this.moveHttpDetail(containerNode.id, detail.id, 'up');
+        }, index === 0);
+
+        const moveDownBtn = this.createHttpActionButton('fas fa-arrow-down', 'Move down', () => {
+            this.moveHttpDetail(containerNode.id, detail.id, 'down');
+        }, index === total - 1);
+
+        const deleteBtn = this.createHttpActionButton('fas fa-trash', 'Remove', () => {
+            this.removeHttpDetail(containerNode.id, detail.id);
+        });
+        deleteBtn.classList.add('danger');
+
+        actions.appendChild(editBtn);
+        actions.appendChild(moveUpBtn);
+        actions.appendChild(moveDownBtn);
+        actions.appendChild(deleteBtn);
+
+        row.appendChild(nameEl);
+        row.appendChild(valueEl);
+        row.appendChild(actions);
+
+        return row;
+    }
+
+    private createHttpActionButton(iconClass: string, title: string, action: () => void, disabled = false): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'http-detail-row__action';
+        button.innerHTML = `<i class="${iconClass}"></i>`;
+        button.title = title;
+        button.disabled = disabled;
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (!button.disabled) {
+                action();
+            }
+        });
+        return button;
+    }
+
+    private openHttpProperties(nodeId: string): void {
+        this.selectNode(nodeId);
+    }
+
+    private addHttpDetail(containerId: string, detailType: HttpDetailType): void {
+        const detailNode = createHttpDetailNode(detailType);
+        const added = this.addChildToContainer(containerId, detailNode);
+        if (added) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private removeHttpDetail(containerId: string, detailId: string): void {
+        const removed = this.removeNode(detailId);
+        if (removed) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private moveHttpDetail(containerId: string, detailId: string, direction: 'up' | 'down'): void {
+        const moved = direction === 'up'
+            ? this.moveChildUp(containerId, detailId)
+            : this.moveChildDown(containerId, detailId);
+
+        if (moved) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private truncateHttpValue(value: string, maxLength: number = 80): string {
+        if (value.length <= maxLength) {
+            return value;
+        }
+        return `${value.slice(0, maxLength - 1)}…`;
     }
 }
 

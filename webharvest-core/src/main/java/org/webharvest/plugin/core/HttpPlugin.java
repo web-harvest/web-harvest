@@ -33,7 +33,13 @@
 
 package org.webharvest.plugin.core;
 
-import java.util.HashMap;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.webharvest.plugin.AbstractPlugin;
@@ -201,6 +207,14 @@ public class HttpPlugin extends AbstractPlugin {
         // Plugin initialization logic
     }
     
+    private static final String HEADER_CONTENT_TYPE = "Content-Type";
+    private static final String TEXT_CONTENT_PROPERTY = "_textContent";
+    private static final String CHILD_HTTP_HEADER = "http-header";
+    private static final String CHILD_HTTP_PARAM = "http-param";
+    private static final List<String> SUPPORTED_METHODS = List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE");
+    private static final List<String> METHODS_USING_GET = List.of("GET", "HEAD");
+
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("HttpPlugin.doExecute: START - Method entered!");
@@ -227,18 +241,35 @@ public class HttpPlugin extends AbstractPlugin {
 
             String url = urlVar != null ? urlVar.toString() : urlTemplate;
             String method = methodVar != null ? methodVar.toString() : methodTemplate;
-            
-            Map<String, String> headers = new HashMap<>();
-            // Add any custom headers from configuration
-            
+
+            if (method == null) {
+                method = "GET";
+            }
+
+            String normalizedMethod = method.trim().toUpperCase(Locale.ROOT);
+            if (!SUPPORTED_METHODS.contains(normalizedMethod)) {
+                throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+            }
+
+            Map<String, String> headers = collectHeaders(getConfiguration());
+            List<Map.Entry<String, String>> queryParams = collectParameters(getConfiguration());
+            String urlWithParams = appendQueryParameters(url, queryParams);
+
+            String bodyTemplate = getConfiguration().getProperty("body", "");
+            Variable bodyVar = BaseTemplater.evaluateToVariable(bodyTemplate, ScriptingLanguage.BEANSHELL, context);
+            String body = bodyVar != null ? bodyVar.toString() : bodyTemplate;
+
+            if (body == null) {
+                body = "";
+            }
+
             HttpResponse response;
-            if ("POST".equalsIgnoreCase(method)) {
-                String bodyTemplate = getConfiguration().getProperty("body", "");
-                Variable bodyVar = BaseTemplater.evaluateToVariable(bodyTemplate, ScriptingLanguage.BEANSHELL, context);
-                String body = bodyVar != null ? bodyVar.toString() : bodyTemplate;
-                response = httpService.post(url, body, headers);
+            if ("GET".equals(normalizedMethod)) {
+                response = httpService.get(urlWithParams, headers);
+            } else if ("POST".equals(normalizedMethod)) {
+                response = httpService.post(urlWithParams, body, headers);
             } else {
-                response = httpService.get(url, headers);
+                response = httpService.request(normalizedMethod, urlWithParams, body, headers);
             }
             
             // Bug #39 Fix: Check if response should be treated as binary
@@ -261,6 +292,116 @@ public class HttpPlugin extends AbstractPlugin {
             
         } catch (Exception e) {
             throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
+        }
+    }
+
+    private Map<String, String> collectHeaders(PluginConfiguration configuration) {
+        Map<String, String> headers = new LinkedHashMap<>();
+
+        if (configuration == null || !configuration.hasChildren()) {
+            return headers;
+        }
+
+        for (PluginConfiguration child : configuration.getChildren()) {
+            if (child == null) {
+                continue;
+            }
+
+            String elementName = child.getElementName();
+            if (elementName == null) {
+                continue;
+            }
+
+            if (CHILD_HTTP_HEADER.equalsIgnoreCase(elementName)) {
+                String name = child.getProperty("name");
+                if (name == null || name.trim().isEmpty()) {
+                    LOGGER.warn("Skipping http-header child with empty name.");
+                    continue;
+                }
+
+                String value = child.getProperty(TEXT_CONTENT_PROPERTY, "");
+                addHeader(headers, name.trim(), value == null ? "" : value);
+            }
+        }
+
+        return headers;
+    }
+
+    private List<Map.Entry<String, String>> collectParameters(PluginConfiguration configuration) {
+        List<Map.Entry<String, String>> params = new ArrayList<>();
+
+        if (configuration == null || !configuration.hasChildren()) {
+            return params;
+        }
+
+        for (PluginConfiguration child : configuration.getChildren()) {
+            if (child == null) {
+                continue;
+            }
+
+            String elementName = child.getElementName();
+            if (elementName == null) {
+                continue;
+            }
+
+            if (CHILD_HTTP_PARAM.equalsIgnoreCase(elementName)) {
+                String name = child.getProperty("name");
+                if (name == null || name.trim().isEmpty()) {
+                    LOGGER.warn("Skipping http-param child with empty name.");
+                    continue;
+                }
+
+                String value = child.getProperty(TEXT_CONTENT_PROPERTY, "");
+                params.add(new AbstractMap.SimpleEntry<>(name.trim(), value == null ? "" : value));
+            }
+        }
+
+        return params;
+    }
+
+    private String appendQueryParameters(String originalUrl, List<Map.Entry<String, String>> params) {
+        if (params.isEmpty()) {
+            return originalUrl;
+        }
+
+        StringBuilder urlBuilder = new StringBuilder(originalUrl);
+        char separator = originalUrl.contains("?") ? '&' : '?';
+
+        for (Map.Entry<String, String> param : params) {
+            if (param.getKey() == null || param.getKey().isEmpty()) {
+                continue;
+            }
+
+            urlBuilder.append(separator);
+            separator = '&';
+
+            urlBuilder.append(encode(param.getKey()));
+            urlBuilder.append('=');
+            urlBuilder.append(encode(param.getValue() == null ? "" : param.getValue()));
+        }
+
+        return urlBuilder.toString();
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private void addHeader(Map<String, String> headers, String name, String value) {
+        String existingKey = headers.keySet().stream()
+                .filter(k -> k.equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
+
+        if (existingKey == null) {
+            headers.put(name, value);
+        } else {
+            String current = headers.get(existingKey);
+            if (current == null || current.isEmpty()) {
+                headers.put(existingKey, value);
+            } else if (value != null && !value.isEmpty()) {
+                headers.put(existingKey, current + ", " + value);
+            }
         }
     }
     
@@ -307,8 +448,13 @@ public class HttpPlugin extends AbstractPlugin {
         }
         
         String method = configuration.getProperty("method", "GET");
-        if (!"GET".equals(method) && !"POST".equals(method)) {
-            throw new IllegalArgumentException("Method must be GET or POST");
+            if (method == null || method.trim().isEmpty()) {
+                throw new IllegalArgumentException("HTTP method is required");
+            }
+
+            String normalized = method.trim().toUpperCase(Locale.ROOT);
+            if (!SUPPORTED_METHODS.contains(normalized)) {
+                throw new IllegalArgumentException("Unsupported HTTP method: " + method);
         }
     }
     
@@ -511,9 +657,9 @@ public class HttpPlugin extends AbstractPlugin {
                     @Override
                     public String getDefaultValue() { return "GET"; }
                     @Override
-                    public String getDescription() { return "HTTP method (GET, POST)"; }
+                    public String getDescription() { return "HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE)"; }
                     @Override
-                    public String[] getAllowedValues() { return new String[]{"GET", "POST"}; }
+                    public String[] getAllowedValues() { return SUPPORTED_METHODS.toArray(new String[0]); }
                     @Override
                     public Number getMinValue() { return null; }
                     @Override

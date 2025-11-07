@@ -43,6 +43,7 @@ import org.webharvest.plugin.VisualPluginMetadata;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.registry.PluginRegistry;
 import org.webharvest.plugin.registry.PluginRegistryHolder;
+import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -56,6 +57,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * JSON generator for plugin metadata.
@@ -318,6 +320,30 @@ public class PluginMetadataJsonGenerator {
         
         // Allowed child plugins
         json.allowedChildPlugins = metadata.getAllowedChildPlugins();
+
+        // Semantic metadata
+        PluginSemanticsJson semanticsJson = null;
+        try {
+            Class<? extends Plugin> pluginClass = Class.forName(metadata.getClassName()).asSubclass(Plugin.class);
+            org.webharvest.plugin.semantic.PluginSemantics runtimeSemantics =
+                    PluginSemanticsResolver.resolve(pluginClass, metadata);
+
+            semanticsJson = new PluginSemanticsJson();
+            semanticsJson.roles = runtimeSemantics.getRoles().stream()
+                    .map(Enum::name)
+                    .collect(Collectors.toList());
+            semanticsJson.canAppearAtRoot = !runtimeSemantics.requiresParent();
+            semanticsJson.allowsChildren = runtimeSemantics.allowsChildPlugins();
+            semanticsJson.acceptsAnyChild = runtimeSemantics.allowsAnyChild();
+            semanticsJson.allowBody = runtimeSemantics.allowsTextContent();
+            semanticsJson.allowTextContent = runtimeSemantics.allowsTextContent();
+            semanticsJson.allowedChildTypes = new ArrayList<>(runtimeSemantics.getAllowedChildElements());
+            semanticsJson.requiredParentTypes = new ArrayList<>(runtimeSemantics.getRequiredParentElements());
+        } catch (ClassNotFoundException e) {
+            LOGGER.warn("Unable to load plugin class {} for semantics generation", metadata.getClassName(), e);
+        }
+
+        json.semantics = semanticsJson;
         
         return json;
     }
@@ -357,6 +383,7 @@ public class PluginMetadataJsonGenerator {
         List<LinkedServiceMetadataJson> linkedServices;
         ParentChildRelationshipJson parentRelationship;
         String[] allowedChildPlugins;
+        PluginSemanticsJson semantics;
     }
     
     /**
@@ -413,6 +440,20 @@ public class PluginMetadataJsonGenerator {
         String parentElementName;
         boolean required;
         String parentDisplayName;
+    }
+
+    /**
+     * JSON representation of plugin semantics.
+     */
+    private static class PluginSemanticsJson {
+        List<String> roles;
+        boolean canAppearAtRoot;
+        boolean allowsChildren;
+        boolean acceptsAnyChild;
+        boolean allowBody;
+        boolean allowTextContent;
+        List<String> allowedChildTypes;
+        List<String> requiredParentTypes;
     }
     
     /**

@@ -44,7 +44,8 @@ export interface PluginDocumentationSummary {
 }
 
 export interface PluginSemanticsModel {
-    role: 'ROOT_CONTAINER' | 'CONTEXT_CONTAINER' | 'BODY_EVALUATOR' | 'DEPENDENT' | 'LEAF';
+    roles: Array<'ROOT_CONTAINER' | 'CONTEXT_CONTAINER' | 'BODY_EVALUATOR' | 'DEPENDENT' | 'LEAF'>;
+    role?: 'ROOT_CONTAINER' | 'CONTEXT_CONTAINER' | 'BODY_EVALUATOR' | 'DEPENDENT' | 'LEAF';
     canAppearAtRoot: boolean;
     allowsChildren: boolean;
     acceptsAnyChild: boolean;

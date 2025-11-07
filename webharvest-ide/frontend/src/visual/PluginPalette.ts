@@ -244,8 +244,9 @@ export class PluginPalette {
 
             // Filter by semantic role
             if (this.filterByRole) {
-                const templateRole = (template as any).semantics?.role;
-                if (templateRole !== this.filterByRole) {
+                const templateRoles: string[] = (template as any).semantics?.roles
+                    || ((template as any).semantics?.role ? [(template as any).semantics.role] : []);
+                if (!templateRoles.includes(this.filterByRole)) {
                     return false;
                 }
             }
@@ -269,7 +270,7 @@ export class PluginPalette {
 
             // Filter out dependent plugins from root-level palette
             // Only show plugins that can appear at root level
-            if (!template.canAppearAtRoot) {
+            if (template.canAppearAtRoot === false) {
                 return false;
             }
 
@@ -360,8 +361,9 @@ export class PluginPalette {
             if (this.filterByRole) {
                 // Group by role when role filter is active
                 const roleTemplates = this.filteredTemplates.filter(t => {
-                    const templateRole = (t as any).semantics?.role;
-                    return templateRole === this.filterByRole;
+                    const templateRoles: string[] = (t as any).semantics?.roles
+                        || ((t as any).semantics?.role ? [(t as any).semantics.role] : []);
+                    return templateRoles.includes(this.filterByRole!);
                 });
                 
                 if (roleTemplates.length > 0) {
@@ -613,10 +615,8 @@ export class PluginPalette {
         item.setAttribute('aria-label', template.label || template.type);
         if (template.tooltip) {
             item.setAttribute('aria-description', template.tooltip);
-            item.title = template.tooltip; // Fallback for browsers without aria-description support
         } else if (template.description) {
             item.setAttribute('aria-description', template.description);
-            item.title = template.description;
         }
 
         // Icon + Label
@@ -670,6 +670,14 @@ export class PluginPalette {
             content.appendChild(tagsContainer);
         }
 
+        const metaContainer = document.createElement('div');
+        metaContainer.className = 'plugin-item-meta';
+        metaContainer.style.display = 'flex';
+        metaContainer.style.alignItems = 'center';
+        metaContainer.style.gap = '6px';
+        metaContainer.style.marginLeft = 'auto';
+        content.appendChild(metaContainer);
+
         item.appendChild(content);
 
         // Enhanced tooltip with semantic information
@@ -691,26 +699,47 @@ export class PluginPalette {
             tooltipParts.push('Accepts any child plugin');
         }
         
-        const role = (template as any).semantics?.role;
-        if (role) {
-            tooltipParts.push(`Role: ${role}`);
+        const roles: string[] = (template as any).semantics?.roles
+            || ((template as any).semantics?.role ? [(template as any).semantics.role] : []);
+        const primaryRole = roles[0];
+        if (roles.length > 0) {
+            tooltipParts.push(`Roles: ${roles.join(', ')}`);
         }
         
-        if (tooltipParts.length > 0) {
-            item.title = tooltipParts.join('\n');
-            item.setAttribute('aria-description', tooltipParts.join('. '));
+        const tooltipText = tooltipParts.join('\n');
+        const tooltipAria = tooltipParts.join('. ');
+        const fallbackTooltip = template.tooltip || template.description || '';
+
+        if (tooltipAria) {
+            item.setAttribute('aria-description', tooltipAria);
+        } else if (fallbackTooltip) {
+            item.setAttribute('aria-description', fallbackTooltip);
         }
 
         // Visual indicators for dependent plugins
         if (requiredParents.length > 0) {
             const indicator = document.createElement('span');
             indicator.innerHTML = '<i class="fas fa-link"></i>';
-            indicator.style.marginLeft = 'auto';
+            indicator.style.marginLeft = '0';
             indicator.style.fontSize = '11px';
             indicator.style.color = '#FF9800';
             indicator.title = `Requires parent: ${requiredParents.join(', ')}`;
-            content.appendChild(indicator);
+            metaContainer.appendChild(indicator);
         }
+
+        // Help icon with tooltip overlay
+        const helpIcon = document.createElement('span');
+        helpIcon.className = 'plugin-help-icon';
+        helpIcon.textContent = '?';
+        helpIcon.setAttribute('role', 'button');
+        helpIcon.tabIndex = 0;
+
+        const tooltipContainer = document.createElement('div');
+        tooltipContainer.className = 'plugin-help-tooltip';
+        tooltipContainer.textContent = tooltipText || fallbackTooltip || 'No additional information';
+
+        helpIcon.appendChild(tooltipContainer);
+        metaContainer.appendChild(helpIcon);
 
         // Visual indicators for container plugins
         if (allowedChildren.length > 0 || allowsAnyChild) {
@@ -724,25 +753,25 @@ export class PluginPalette {
             containerIndicator.style.fontSize = '11px';
             containerIndicator.style.color = '#2196F3';
             containerIndicator.title = childTooltip;
-            content.appendChild(containerIndicator);
+            metaContainer.appendChild(containerIndicator);
         }
 
         // Semantic role badge
-        if (role) {
+        if (roles.length > 0) {
             const roleBadge = document.createElement('span');
-            roleBadge.textContent = this.getRoleLabel(role);
+            roleBadge.textContent = this.getRoleLabel(primaryRole);
             roleBadge.style.cssText = `
                 margin-left: 4px;
                 padding: 2px 6px;
-                background: ${this.getRoleColor(role)};
+                background: ${this.getRoleColor(primaryRole)};
                 color: white;
                 border-radius: 3px;
                 font-size: 9px;
                 font-weight: 600;
                 text-transform: uppercase;
             `;
-            roleBadge.title = `Semantic role: ${role}`;
-            content.appendChild(roleBadge);
+            roleBadge.title = `Semantic role: ${roles.join(', ')}`;
+            metaContainer.appendChild(roleBadge);
         }
 
         // Mark dependent plugins as disabled (if filtering is enabled)
@@ -751,9 +780,6 @@ export class PluginPalette {
             item.style.opacity = '0.6';
             item.style.cursor = 'not-allowed';
             item.setAttribute('aria-disabled', 'true');
-            if (!item.title) {
-                item.title = `This plugin requires a parent element`;
-            }
         }
 
         // Highlight allowed children when master plugin is selected

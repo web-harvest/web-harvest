@@ -198,13 +198,25 @@ public interface VisualPluginMetadata extends PluginMetadata {
     String[] getAllowedChildPlugins();
     
     /**
+     * Indicates whether this plugin accepts arbitrary child plugins ("*" semantics).
+     * Implementations should override this when the processor is designed to host any
+     * nested plugin without explicit allowlists (e.g. {@code <loop>}, {@code <while>}).
+     *
+     * @return true if the plugin accepts any child plugin, false otherwise
+     */
+    default boolean acceptsArbitraryChildren() {
+        return false;
+    }
+
+    /**
      * Checks if this is a master plugin (allows child plugins).
      * 
      * @return true if master plugin, false otherwise
      */
     default boolean isMasterPlugin() {
         String[] children = getAllowedChildPlugins();
-        return children != null && children.length > 0;
+        boolean hasExplicitChildren = children != null && children.length > 0;
+        return hasExplicitChildren || acceptsArbitraryChildren();
     }
     
     /**

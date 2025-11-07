@@ -69,4 +69,19 @@ catalog.
 > exposed for completeness because legacy configurations occasionally reference
 > it directly.
 
+> **HTTP UX:** `http-header` and `http-param` stay semantically dependent, but the
+> visual designer now creates and edits them from the parent HTTP node (toolbar,
+> inline summary, property panel) instead of exposing them as standalone tiles,
+> matching the [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http).
+
+> **Runtime Heuristic:** BODY_EVALUATOR plugins that allow body content and do
+> not declare required parents are now automatically flagged as accepting any
+> child in the generated semantics (`allowsAnyChild = true`). The role column
+> above remains the canonical classification, but the visual designer and
+> palette will treat processors such as `xpath`, `script`, `regexp`, `template`,
+> `def`, and `xml` as container-capable nodes at runtime. JSON exports now
+> include a `roles[]` array (with a legacy `role` string for backwards
+> compatibility), allowing plugins to describe combined behaviours such as
+> `CONTEXT_CONTAINER` + `BODY_EVALUATOR` in a single descriptor.
+
 

@@ -1,14 +1,16 @@
 package org.webharvest.plugin.metadata;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Semantic constraints and capabilities for a plugin node.
  */
 public final class PluginSemantics {
 
-    private final PluginSemanticRole role;
+    private final Set<PluginSemanticRole> roles;
     private final boolean canAppearAtRoot;
     private final boolean allowsChildren;
     private final boolean acceptsAnyChild;
@@ -25,7 +27,21 @@ public final class PluginSemantics {
             boolean allowTextContent,
             List<String> allowedChildTypes,
             List<String> requiredParentTypes) {
-        this.role = role;
+        this(EnumSet.of(role), canAppearAtRoot, allowsChildren, acceptsAnyChild, allowBody, allowTextContent, allowedChildTypes, requiredParentTypes);
+    }
+
+    public PluginSemantics(Set<PluginSemanticRole> roles,
+            boolean canAppearAtRoot,
+            boolean allowsChildren,
+            boolean acceptsAnyChild,
+            boolean allowBody,
+            boolean allowTextContent,
+            List<String> allowedChildTypes,
+            List<String> requiredParentTypes) {
+        EnumSet<PluginSemanticRole> roleSet = roles.isEmpty()
+                ? EnumSet.of(PluginSemanticRole.LEAF)
+                : EnumSet.copyOf(roles);
+        this.roles = Collections.unmodifiableSet(roleSet);
         this.canAppearAtRoot = canAppearAtRoot;
         this.allowsChildren = allowsChildren;
         this.acceptsAnyChild = allowsChildren && acceptsAnyChild;
@@ -39,8 +55,20 @@ public final class PluginSemantics {
                 : List.copyOf(requiredParentTypes);
     }
 
+    public Set<PluginSemanticRole> getRoles() {
+        return roles;
+    }
+
+    /**
+     * @deprecated Use {@link #getRoles()} or {@link #hasRole(PluginSemanticRole)} instead.
+     */
+    @Deprecated
     public PluginSemanticRole getRole() {
-        return role;
+        return roles.iterator().next();
+    }
+
+    public boolean hasRole(PluginSemanticRole role) {
+        return roles.contains(role);
     }
 
     public boolean canAppearAtRoot() {

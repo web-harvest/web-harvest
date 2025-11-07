@@ -59,7 +59,7 @@ public class PluginMetadataCatalogTest {
             return;
         }
         PluginSemantics ftpSemantics = ftp.getSemantics();
-        assertEquals(ftpSemantics.getRole(), PluginSemanticRole.CONTEXT_CONTAINER);
+        assertTrue(ftpSemantics.hasRole(PluginSemanticRole.CONTEXT_CONTAINER));
         assertTrue(ftpSemantics.allowsChildren(), "FTP container must accept child operations");
         assertTrue(ftpSemantics.getAllowedChildTypes().containsAll(List.of("ftp-get", "ftp-put", "ftp-list")),
                 "FTP container should list FTP operations as allowed children");
@@ -70,7 +70,7 @@ public class PluginMetadataCatalogTest {
             return;
         }
         PluginSemantics ftpGetSemantics = ftpGet.getSemantics();
-        assertEquals(ftpGetSemantics.getRole(), PluginSemanticRole.DEPENDENT);
+        assertTrue(ftpGetSemantics.hasRole(PluginSemanticRole.DEPENDENT));
         assertTrue(ftpGetSemantics.getRequiredParentTypes().contains("ftp"),
                 "ftp-get must require <ftp> parent");
     }

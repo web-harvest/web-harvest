@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.webharvest.plugin.semantic.PluginNodeRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.Plugin;
@@ -352,7 +355,10 @@ public final class PluginMetadataCatalog {
                     false, false, List.of(), List.of());
         }
 
-        PluginSemanticRole role = PluginSemanticRole.valueOf(semantics.getRole().name());
+        Set<PluginSemanticRole> roles = semantics.getRoles().stream()
+                .map(PluginNodeRole::name)
+                .map(PluginSemanticRole::valueOf)
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(PluginSemanticRole.class)));
         boolean allowsChildren = semantics.allowsChildPlugins();
         boolean allowsText = semantics.allowsTextContent();
         boolean allowsBody = allowsChildren || allowsText;
@@ -365,7 +371,7 @@ public final class PluginMetadataCatalog {
                 ? List.of()
                 : semantics.getRequiredParentElements().stream().sorted().collect(Collectors.toList());
 
-        return new PluginSemantics(role, canAppearAtRoot, allowsChildren, semantics.allowsAnyChild(),
+        return new PluginSemantics(roles, canAppearAtRoot, allowsChildren, semantics.allowsAnyChild(),
                 allowsBody, allowsText, allowedChildTypes, requiredParents);
     }
 
@@ -454,9 +460,17 @@ public final class PluginMetadataCatalog {
                     false, false, List.of(), List.of());
         }
 
-        PluginSemanticRole role = semanticsObj.has("role")
-                ? PluginSemanticRole.valueOf(semanticsObj.get("role").getAsString())
-                : PluginSemanticRole.LEAF;
+        EnumSet<PluginSemanticRole> roles = EnumSet.noneOf(PluginSemanticRole.class);
+        if (semanticsObj.has("roles")) {
+            for (JsonElement el : semanticsObj.getAsJsonArray("roles")) {
+                roles.add(PluginSemanticRole.valueOf(el.getAsString()));
+            }
+        } else if (semanticsObj.has("role")) {
+            roles.add(PluginSemanticRole.valueOf(semanticsObj.get("role").getAsString()));
+        }
+        if (roles.isEmpty()) {
+            roles.add(PluginSemanticRole.LEAF);
+        }
 
         boolean canAppearAtRoot = semanticsObj.has("canAppearAtRoot")
                 && semanticsObj.get("canAppearAtRoot").getAsBoolean();
@@ -464,8 +478,8 @@ public final class PluginMetadataCatalog {
                 && semanticsObj.get("allowsChildren").getAsBoolean();
         boolean acceptsAnyChild = semanticsObj.has("acceptsAnyChild")
                 && semanticsObj.get("acceptsAnyChild").getAsBoolean();
-        boolean allowBody = semanticsObj.has("allowBody")
-                && semanticsObj.get("allowBody").getAsBoolean();
+        boolean allowBody = semanticsObj.has("allowsBody")
+                && semanticsObj.get("allowsBody").getAsBoolean();
         boolean allowTextContent = semanticsObj.has("allowTextContent")
                 && semanticsObj.get("allowTextContent").getAsBoolean();
 
@@ -483,7 +497,7 @@ public final class PluginMetadataCatalog {
             }
         }
 
-        return new PluginSemantics(role, canAppearAtRoot, allowsChildren, acceptsAnyChild,
+        return new PluginSemantics(roles, canAppearAtRoot, allowsChildren, acceptsAnyChild,
                 allowBody, allowTextContent, allowedChildTypes, requiredParentTypes);
     }
 

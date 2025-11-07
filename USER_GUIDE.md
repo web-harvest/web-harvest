@@ -682,6 +682,16 @@ W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
 3. Przeciągnij kolejne pluginy **do środka** kontenera
 4. Pluginy pojawią się jako dzieci
 
+> **Uwaga (HTTP):** Węzeł `http` posiada własny panel z przyciskami „Add Header” / „Add Parameter”. `http-header` i `http-param` są ukryte w palecie – dodajesz je bezpośrednio z poziomu węzła HTTP (toolbar, menu kontekstowe lub panel właściwości), zgodnie z UX znanym z [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http).
+
+#### HTTP Task (nagłówki i parametry)
+
+- Kliknij węzeł `http`, aby otworzyć dedykowany edytor (Method, URL, Body, Query Parameters, Headers)
+- Sekcja kontenera pokazuje dwie listy („Query Parameters” i „Headers”) z podsumowaniem, przyciskami dodawania, usuwania oraz szybkiego przejścia do właściwości
+- Menu kontekstowe węzła `http` zawiera opcje **Add Header** / **Add Query Parameter** (tworzą puste elementy, które wypełniasz w edytorze)
+- Próba przeciągnięcia `http-header` na canvas wyświetli komunikat, że należy użyć panelu HTTP – nie jest to samodzielny kafelek na płótnie
+- Interfejs został zestrojony z [Orkes Conductor HTTP task](https://orkes.io/content/reference-docs/system-tasks/http) dla znajomego przepływu konfiguracji
+
 #### Zmiana Kolejności Pluginów ⬆️⬇️
 
 Każdy plugin wewnątrz kontenera ma **przyciski strzałek** w prawym górnym rogu:
@@ -746,7 +756,7 @@ Visual Designer obsługuje **wielopoziomowe zagnieżdżenie**:
 - `catch` - **wymaga** rodzica `try`
 - `ftp-put` - **wymaga** rodzica `ftp`
 - `call-param` - **wymaga** rodzica `call`
-- `http-header` - **wymaga** rodzica `http`
+- `http-header` - **wymaga** rodzica `http` (dodaj z panelu HTTP, a nie przez drag & drop)
 
 **2. Wizualna Informacja Zwrotna:**
 - **🟢 Zielony border** = dopuszczalne upuszczenie

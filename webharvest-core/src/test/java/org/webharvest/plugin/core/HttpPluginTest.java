@@ -33,6 +33,7 @@
 
 package org.webharvest.plugin.core;
 
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
@@ -47,7 +48,9 @@ import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.*;
@@ -92,6 +95,9 @@ public class HttpPluginTest {
         // Default HttpService mock configuration
         when(httpService.get(anyString(), anyMap())).thenReturn(httpResponse);
         when(httpService.post(anyString(), anyString(), anyMap())).thenReturn(httpResponse);
+
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(Collections.emptyList());
     }
     
     private HttpPlugin createHttpPluginWithInjection() throws Exception {
@@ -122,9 +128,75 @@ public class HttpPluginTest {
         assertEquals(result.toString(), "HTTP Response Body");
         // Verify result is NodeVariable with correct content
         
-        verify(httpService).get("https://httpbin.org/get", new HashMap<>());
+        verify(httpService).get(eq("https://httpbin.org/get"), anyMap());
     }
     
+    @Test
+    public void testHttpPluginPutRequestUsesGenericRequest() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+        when(configuration.getProperty("url")).thenReturn("https://api.example.com/users/42");
+        when(configuration.getProperty("method", "GET")).thenReturn("PUT");
+        when(configuration.getProperty("body", "")).thenReturn("{\"name\":\"Alice\"}");
+        when(httpService.request(anyString(), anyString(), anyString(), anyMap())).thenReturn(httpResponse);
+
+        plugin.initialize(configuration);
+        Variable result = plugin.execute(context);
+
+        assertNotNull(result);
+        verify(httpService).request(eq("PUT"), eq("https://api.example.com/users/42"), eq("{\"name\":\"Alice\"}"), anyMap());
+    }
+
+    @Test
+    public void testHttpPluginAppendsQueryParametersToUrl() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+
+        PluginConfiguration param = mock(PluginConfiguration.class);
+        when(param.getElementName()).thenReturn("http-param");
+        when(param.getProperty("name")).thenReturn("q");
+        when(param.getProperty("_textContent", "")).thenReturn("web harvest");
+
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(List.of(param));
+        when(configuration.getProperty("url")).thenReturn("https://example.com/search");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
+
+        plugin.initialize(configuration);
+        plugin.execute(context);
+
+        verify(httpService).get(eq("https://example.com/search?q=web+harvest"), anyMap());
+
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(Collections.emptyList());
+    }
+
+    @Test
+    public void testHttpPluginCollectsHeadersFromChildren() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+
+        PluginConfiguration header = mock(PluginConfiguration.class);
+        when(header.getElementName()).thenReturn("http-header");
+        when(header.getProperty("name")).thenReturn("Authorization");
+        when(header.getProperty("_textContent", "")).thenReturn("Bearer token");
+
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(List.of(header));
+        when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
+
+        plugin.initialize(configuration);
+        plugin.execute(context);
+
+        ArgumentCaptor<Map<String, String>> headerCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(httpService).get(eq("https://httpbin.org/get"), headerCaptor.capture());
+
+        Map<String, String> capturedHeaders = headerCaptor.getValue();
+        assertTrue(capturedHeaders.containsKey("Authorization"));
+        assertEquals(capturedHeaders.get("Authorization"), "Bearer token");
+
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(Collections.emptyList());
+    }
+
     @Test
     public void testHttpPostRequest() throws Exception {
         // Given
@@ -142,7 +214,7 @@ public class HttpPluginTest {
         assertNotNull(result);
         assertEquals(result.toString(), "HTTP Response Body");
         
-        verify(httpService).post("https://httpbin.org/post", "test body", new HashMap<>());
+        verify(httpService).post(eq("https://httpbin.org/post"), eq("test body"), anyMap());
     }
     
     @Test
@@ -167,7 +239,7 @@ public class HttpPluginTest {
         assertNotNull(result);
         assertEquals(result.toString(), "HTTP Response Body");
         
-        verify(httpService).get("https://httpbin.org/get", new HashMap<>());
+        verify(httpService).get(eq("https://httpbin.org/get"), anyMap());
     }
     
     @Test

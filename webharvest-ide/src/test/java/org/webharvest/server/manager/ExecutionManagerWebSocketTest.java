@@ -9,6 +9,7 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.*;
+import org.webharvest.server.support.TestEnvironment;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.net.URI;
@@ -65,6 +66,7 @@ public class ExecutionManagerWebSocketTest {
         client = new WebSocketClient();
         client.start();
         
+        TestEnvironment.ensure();
         executionManager = ExecutionManager.getInstance();
         
         System.out.println("✓ Test server started on port " + testPort);

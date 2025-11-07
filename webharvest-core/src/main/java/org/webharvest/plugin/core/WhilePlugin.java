@@ -422,6 +422,11 @@ public class WhilePlugin extends AbstractPlugin {
         public String[] getAllowedChildPlugins() {
             return new String[0]; // Empty array means can contain any child plugins
         }
+
+        @Override
+        public boolean acceptsArbitraryChildren() {
+            return true;
+        }
     }
     
     /**

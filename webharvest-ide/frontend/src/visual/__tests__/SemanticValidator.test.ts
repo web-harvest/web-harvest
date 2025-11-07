@@ -23,6 +23,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: false
         },
         semantics: {
+            roles: ['BODY_EVALUATOR', 'CONTEXT_CONTAINER'],
             role: 'BODY_EVALUATOR',
             canAppearAtRoot: true,
             allowsChildren: true,
@@ -48,6 +49,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: true
         },
         semantics: {
+            roles: ['DEPENDENT'],
             role: 'DEPENDENT',
             canAppearAtRoot: false,
             allowsChildren: false,
@@ -73,6 +75,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: true
         },
         semantics: {
+            roles: ['DEPENDENT'],
             role: 'DEPENDENT',
             canAppearAtRoot: false,
             allowsChildren: false,
@@ -98,6 +101,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: false
         },
         semantics: {
+            roles: ['CONTEXT_CONTAINER'],
             role: 'CONTEXT_CONTAINER',
             canAppearAtRoot: true,
             allowsChildren: true,
@@ -123,6 +127,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: true
         },
         semantics: {
+            roles: ['DEPENDENT'],
             role: 'DEPENDENT',
             canAppearAtRoot: false,
             allowsChildren: true,
@@ -148,6 +153,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: false
         },
         semantics: {
+            roles: ['CONTEXT_CONTAINER'],
             role: 'CONTEXT_CONTAINER',
             canAppearAtRoot: true,
             allowsChildren: true,
@@ -173,6 +179,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: true
         },
         semantics: {
+            roles: ['DEPENDENT'],
             role: 'DEPENDENT',
             canAppearAtRoot: false,
             allowsChildren: false,
@@ -198,6 +205,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: false
         },
         semantics: {
+            roles: ['CONTEXT_CONTAINER'],
             role: 'CONTEXT_CONTAINER',
             canAppearAtRoot: true,
             allowsChildren: true,
@@ -223,6 +231,7 @@ const mockPlugins: Plugin[] = [
             isContextSpecific: true
         },
         semantics: {
+            roles: ['DEPENDENT'],
             role: 'DEPENDENT',
             canAppearAtRoot: false,
             allowsChildren: false,

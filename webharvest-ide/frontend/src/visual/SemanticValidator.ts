@@ -111,11 +111,27 @@ export class SemanticValidator {
     }
 
     /**
-     * Get semantic role for a plugin
+     * Get semantic roles for a plugin (primary role first)
      */
-    getRole(pluginType: string): string | null {
+    getRoles(pluginType: string): string[] {
         const plugin = this.pluginManager.findPlugin(pluginType);
-        return plugin?.semantics?.role || null;
+        if (!plugin || !plugin.semantics) {
+            return [];
+        }
+
+        if (Array.isArray(plugin.semantics.roles) && plugin.semantics.roles.length > 0) {
+            return plugin.semantics.roles;
+        }
+
+        if ((plugin.semantics as any).role) {
+            return [(plugin.semantics as any).role];
+        }
+
+        return [];
+    }
+
+    hasRole(pluginType: string, role: string): boolean {
+        return this.getRoles(pluginType).includes(role);
     }
 
     /**
@@ -208,6 +224,14 @@ export class SemanticValidator {
             if (!this.canAppearAtRoot(childType)) {
                 const requiredParents = this.getRequiredParents(childType);
                 const parentList = requiredParents.join(', ');
+
+                if (['http-header', 'http-param'].includes(childType)) {
+                    return {
+                        valid: false,
+                        message: 'HTTP headers and parameters are configured inside the HTTP task. Open the HTTP node and use the in-node controls to add them.'
+                    };
+                }
+
                 return {
                     valid: false,
                     message: `"${childType}" requires a parent element. Parent must be: ${parentList}`
@@ -246,6 +270,12 @@ export class SemanticValidator {
             const allowedChildren = this.getAllowedChildren(parentType);
             if (allowedChildren.length > 0) {
                 const childList = allowedChildren.join(', ');
+                if (['http-header', 'http-param'].includes(childType)) {
+                    return {
+                        valid: false,
+                        message: 'Use the HTTP task configuration panel to add headers or parameters instead of dropping them manually.'
+                    };
+                }
                 return {
                     valid: false,
                     message: `"${childType}" is not allowed inside ${parentName}. Allowed children: ${childList}`

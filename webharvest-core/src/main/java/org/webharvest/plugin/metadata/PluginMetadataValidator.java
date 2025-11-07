@@ -213,7 +213,7 @@ public final class PluginMetadataValidator {
                 "Missing semantic information - required for validation"));
         } else {
             // Validate semantic consistency
-            if (semantics.getRole() == null) {
+            if (semantics.getRoles() == null || semantics.getRoles().isEmpty()) {
                 issues.add(ValidationIssue.error(pluginId, 
                     ValidationIssue.IssueType.MISSING_SEMANTIC_INFO, 
                     "Missing semantic role"));
@@ -229,7 +229,7 @@ public final class PluginMetadataValidator {
             }
             
             // Dependent plugins should have requiredParentTypes
-            if (semantics.getRole() == PluginSemanticRole.DEPENDENT) {
+            if (semantics.hasRole(PluginSemanticRole.DEPENDENT)) {
                 if (semantics.getRequiredParentTypes().isEmpty()) {
                     issues.add(ValidationIssue.error(pluginId, 
                         ValidationIssue.IssueType.INCONSISTENT_CHILD_PARENT, 

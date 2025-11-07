@@ -4,6 +4,7 @@
  */
 
 import type { VisualNode, Plugin } from '../types';
+import { HttpEditor } from './editors/HttpEditor';
 
 interface PropertyPanelOptions {
     autoLoad?: boolean;
@@ -83,8 +84,8 @@ export class PropertyPanel {
                     type: attr.type ? attr.type.toLowerCase() : 'string'
                 }));
 
-                const semantics = plugin.semantics || {
-                    role: 'LEAF',
+                const semantics = plugin.semantics ? { ...plugin.semantics } : {
+                    roles: ['LEAF'] as string[],
                     canAppearAtRoot: true,
                     allowsChildren: false,
                     acceptsAnyChild: false,
@@ -93,12 +94,16 @@ export class PropertyPanel {
                     allowedChildTypes: [] as string[],
                     requiredParentTypes: [] as string[]
                 };
+                if (!Array.isArray(semantics.roles) || semantics.roles.length === 0) {
+                    const legacyRole = (semantics as any).role;
+                    semantics.roles = legacyRole ? [legacyRole] : ['LEAF'];
+                }
 
                 const allowedSubElements: string[] = plugin.schema.allowedSubElements || [];
                 const requiredParents: string[] = plugin.schema.requiredParents || semantics.requiredParentTypes || [];
                 const canHaveBody = plugin.schema.canHaveBody ?? plugin.schema.allowsBody ?? semantics.allowTextContent;
                 const canHaveChildren = plugin.schema.canHaveChildren ?? (semantics.allowsChildren || allowedSubElements.length > 0);
-                const canAppearAtRoot = plugin.schema.canAppearAtRoot ?? (requiredParents.length === 0 && semantics.role !== 'DEPENDENT');
+                const canAppearAtRoot = plugin.schema.canAppearAtRoot ?? (requiredParents.length === 0 && !semantics.roles.includes('DEPENDENT'));
                 const isContextSpecific = plugin.schema.isContextSpecific ?? requiredParents.length > 0;
 
                 return {
@@ -164,7 +169,7 @@ export class PropertyPanel {
      */
     async showNode(node: VisualNode): Promise<void> {
         console.log('🔧 [PropertyPanel] showNode() called for:', node.type, node);
-        this.currentNode = { ...node };
+        this.currentNode = this.deepCloneNode(node);
         await this.render();
         console.log('🔧 [PropertyPanel] showNode() complete');
     }
@@ -283,19 +288,31 @@ export class PropertyPanel {
                 metaContainer.appendChild(examplesContainer);
             }
 
-            // Show semantic role and context
-            if (plugin.semantics?.role) {
-                const roleEl = document.createElement('div');
-                roleEl.style.marginTop = '8px';
-                roleEl.style.padding = '6px 8px';
-                roleEl.style.background = this.getRoleColor(plugin.semantics.role);
-                roleEl.style.color = 'white';
-                roleEl.style.borderRadius = '4px';
-                roleEl.style.fontSize = '11px';
-                roleEl.style.fontWeight = '600';
-                roleEl.textContent = `Role: ${this.getRoleLabel(plugin.semantics.role)}`;
-                roleEl.title = `Semantic role: ${plugin.semantics.role}`;
-                metaContainer.appendChild(roleEl);
+            // Show semantic roles and context
+            const semanticRoles: string[] = Array.isArray(plugin.semantics?.roles)
+                ? plugin.semantics.roles
+                : (plugin.semantics?.role ? [plugin.semantics.role] : []);
+            if (semanticRoles.length > 0) {
+                const rolesWrapper = document.createElement('div');
+                rolesWrapper.style.marginTop = '8px';
+                rolesWrapper.style.display = 'flex';
+                rolesWrapper.style.flexWrap = 'wrap';
+                rolesWrapper.style.gap = '6px';
+
+                semanticRoles.forEach(role => {
+                    const roleEl = document.createElement('div');
+                    roleEl.style.padding = '6px 8px';
+                    roleEl.style.background = this.getRoleColor(role);
+                    roleEl.style.color = 'white';
+                    roleEl.style.borderRadius = '4px';
+                    roleEl.style.fontSize = '11px';
+                    roleEl.style.fontWeight = '600';
+                    roleEl.textContent = this.getRoleLabel(role);
+                    roleEl.title = `Semantic role: ${this.getRoleLabel(role)}`;
+                    rolesWrapper.appendChild(roleEl);
+                });
+
+                metaContainer.appendChild(rolesWrapper);
             }
 
             // Show required parent types
@@ -344,6 +361,23 @@ export class PropertyPanel {
             }
         }
 
+        if (plugin && this.currentNode.type.toLowerCase() === 'http') {
+            const httpEditor = new HttpEditor({
+                node: this.deepCloneNode(this.currentNode),
+                plugin,
+                onChange: (updatedNode) => {
+                    this.currentNode = this.deepCloneNode(updatedNode);
+                    if (this.onChangeCallback) {
+                        this.onChangeCallback(this.deepCloneNode(updatedNode));
+                    }
+                }
+            });
+
+            form.appendChild(httpEditor.render());
+            this.container.appendChild(form);
+            return;
+        }
+
         if (plugin && plugin.schema && this.schemaEditor) {
             console.log(`✅ [PropertyPanel] Using SchemaEditor for plugin: ${this.currentNode.type}`);
 
@@ -352,17 +386,19 @@ export class PropertyPanel {
 
             // Register onChange callback with validation
             this.schemaEditor.onChange((attributes) => {
-                if (this.currentNode && this.onChangeCallback) {
+                if (this.currentNode) {
                     // Validate before updating
                     const errors = this.schemaEditor?.validate() || [];
+
+                    const updatedNode = this.deepCloneNode(this.currentNode);
+                    updatedNode.attributes = { ...attributes };
+                    this.currentNode = updatedNode;
+
                     if (errors.length === 0) {
-                        this.currentNode.attributes = attributes;
-                        this.onChangeCallback(this.currentNode);
+                        this.onChangeCallback?.(this.deepCloneNode(updatedNode));
                     } else {
                         console.warn('⚠️ [PropertyPanel] Validation errors:', errors);
-                        // Still update, but show errors
-                        this.currentNode.attributes = attributes;
-                        this.onChangeCallback(this.currentNode);
+                        this.onChangeCallback?.(this.deepCloneNode(updatedNode));
                     }
                 }
             });
@@ -714,6 +750,13 @@ export class PropertyPanel {
                 modal.remove();
             }
         });
+    }
+
+    private deepCloneNode(node: VisualNode): VisualNode {
+        if (typeof structuredClone === 'function') {
+            return structuredClone(node);
+        }
+        return JSON.parse(JSON.stringify(node));
     }
 
     /**

@@ -1,6 +1,8 @@
 package org.webharvest.plugin.semantic;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
@@ -14,7 +16,7 @@ public final class PluginSemantics {
 
     public static final PluginSemantics DEFAULT = PluginSemantics.builder().build();
 
-    private final PluginNodeRole role;
+    private final Set<PluginNodeRole> roles;
     private final boolean allowsChildPlugins;
     private final boolean allowsTextContent;
     private final boolean providesExecutionContext;
@@ -24,7 +26,7 @@ public final class PluginSemantics {
     private final Set<String> requiredParentElements;
 
     private PluginSemantics(Builder builder) {
-        this.role = builder.role;
+        this.roles = Collections.unmodifiableSet(EnumSet.copyOf(builder.roles));
         this.allowsChildPlugins = builder.allowsChildPlugins;
         this.allowsTextContent = builder.allowsTextContent;
         this.providesExecutionContext = builder.providesExecutionContext;
@@ -38,8 +40,23 @@ public final class PluginSemantics {
         return new Builder();
     }
 
+    /**
+     * Returns an immutable view of all semantic roles assigned to this plugin.
+     */
+    public Set<PluginNodeRole> getRoles() {
+        return roles;
+    }
+
+    /**
+     * @deprecated Use {@link #getRoles()} or {@link #hasRole(PluginNodeRole)} instead.
+     */
+    @Deprecated
     public PluginNodeRole getRole() {
-        return role;
+        return roles.iterator().next();
+    }
+
+    public boolean hasRole(PluginNodeRole role) {
+        return roles.contains(role);
     }
 
     public boolean allowsChildPlugins() {
@@ -76,7 +93,8 @@ public final class PluginSemantics {
 
     public java.util.Map<String, Object> toMap() {
         java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
-        map.put("role", role.name());
+        map.put("roles", new ArrayList<>(roles));
+        map.put("role", roles.iterator().next().name());
         map.put("allowsChildPlugins", allowsChildPlugins);
         map.put("allowsTextContent", allowsTextContent);
         map.put("providesExecutionContext", providesExecutionContext);
@@ -92,7 +110,7 @@ public final class PluginSemantics {
      */
     public static final class Builder {
 
-        private PluginNodeRole role = PluginNodeRole.LEAF;
+        private final EnumSet<PluginNodeRole> roles = EnumSet.noneOf(PluginNodeRole.class);
         private boolean allowsChildPlugins = false;
         private boolean allowsTextContent = false;
         private boolean providesExecutionContext = false;
@@ -105,7 +123,22 @@ public final class PluginSemantics {
         }
 
         public Builder role(PluginNodeRole role) {
-            this.role = Objects.requireNonNull(role, "role");
+            Objects.requireNonNull(role, "role");
+            this.roles.clear();
+            this.roles.add(role);
+            return this;
+        }
+
+        public Builder addRole(PluginNodeRole role) {
+            Objects.requireNonNull(role, "role");
+            this.roles.add(role);
+            return this;
+        }
+
+        public Builder addRoles(Set<PluginNodeRole> roles) {
+            if (roles != null && !roles.isEmpty()) {
+                roles.forEach(this::addRole);
+            }
             return this;
         }
 
@@ -176,6 +209,9 @@ public final class PluginSemantics {
         }
 
         public PluginSemantics build() {
+            if (roles.isEmpty()) {
+                roles.add(PluginNodeRole.LEAF);
+            }
             if (!allowsChildPlugins) {
                 allowedChildElements.clear();
                 allowsAnyChild = false;

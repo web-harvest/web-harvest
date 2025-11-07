@@ -1,53 +1,23 @@
 package org.webharvest.plugin.semantic;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 
+import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
+import org.webharvest.plugin.VisualPluginMetadata;
 
 /**
- * Builds {@link PluginSemantics} descriptors combining static heuristics with
- * metadata supplied by {@link PluginMetadata} and {@link PluginConfigurationSchema}.
+ * Builds {@link PluginSemantics} descriptors using the metadata declared by
+ * each plugin (configuration schema, visual metadata, declared roles).
  */
 public final class PluginSemanticsResolver {
-
-    private static final Set<String> CONTEXT_CONTAINERS = Set.of(
-        "config",
-        "loop",
-        "while",
-        "if",
-        "try",
-        "switch",
-        "case",
-        "function",
-        "ftp",
-        "mail",
-        "zip",
-        "database",
-        "webbrowser",
-        "call",
-        "http"
-    );
-
-    private static final Set<String> BODY_EVALUATORS = Set.of(
-        "def",
-        "xpath",
-        "xquery",
-        "regexp",
-        "script",
-        "template",
-        "xslt",
-        "json-to-xml",
-        "xml-to-json",
-        "html-to-xml",
-        "xml",
-        "text",
-        "list",
-        "empty",
-        "constant"
-    );
 
     private PluginSemanticsResolver() {
     }
@@ -63,58 +33,92 @@ public final class PluginSemanticsResolver {
         if (elementName == null || elementName.isEmpty()) {
             elementName = pluginClass.getSimpleName();
         }
-        String normalizedName = elementName.toLowerCase(Locale.ROOT);
 
         PluginConfigurationSchema schema = metadata.getConfigurationSchema();
-        boolean allowsBody = schema != null && schema.allowsBody();
-        String[] allowedChildren = schema != null ? schema.getAllowedSubElements() : null;
-        boolean hasExplicitChildren = allowedChildren != null && allowedChildren.length > 0;
-        String[] requiredParents = schema != null ? schema.getRequiredParents() : new String[0];
+        VisualPluginMetadata visualMetadata = metadata instanceof VisualPluginMetadata
+                ? (VisualPluginMetadata) metadata
+                : null;
+
+        Set<PluginNodeRole> declaredRoles = metadata.getDeclaredRoles() == null
+                ? Collections.emptySet()
+                : metadata.getDeclaredRoles();
+
+        EnumSet<PluginNodeRole> roles = declaredRoles.isEmpty()
+                ? EnumSet.noneOf(PluginNodeRole.class)
+                : EnumSet.copyOf(declaredRoles);
+
+        boolean allowsBody = roles.contains(PluginNodeRole.BODY_EVALUATOR)
+                || (schema != null && schema.allowsBody());
+        if (allowsBody) {
+            roles.add(PluginNodeRole.BODY_EVALUATOR);
+        }
+
+        Set<String> allowedChildren = new LinkedHashSet<>();
+        if (schema != null && schema.getAllowedSubElements() != null) {
+            allowedChildren.addAll(Arrays.asList(schema.getAllowedSubElements()));
+        }
+        if (visualMetadata != null && visualMetadata.getAllowedChildPlugins() != null) {
+            allowedChildren.addAll(Arrays.asList(visualMetadata.getAllowedChildPlugins()));
+        }
+
+        Set<String> requiredParents = new LinkedHashSet<>();
+        if (schema != null && schema.getRequiredParents() != null) {
+            requiredParents.addAll(Arrays.asList(schema.getRequiredParents()));
+        }
+        ParentChildRelationship parentRelationship = visualMetadata != null ? visualMetadata.getParentRelationship() : null;
+        if (parentRelationship != null && parentRelationship.getParentElementName() != null) {
+            requiredParents.add(parentRelationship.getParentElementName());
+        }
+
+        boolean acceptsAnyChild = visualMetadata != null && visualMetadata.acceptsArbitraryChildren();
+        if (acceptsAnyChild) {
+            roles.add(PluginNodeRole.CONTEXT_CONTAINER);
+        }
+
+        boolean requiresParent = !requiredParents.isEmpty()
+                || (parentRelationship != null && parentRelationship.isRequired())
+                || roles.contains(PluginNodeRole.DEPENDENT);
+        if (requiresParent) {
+            roles.add(PluginNodeRole.DEPENDENT);
+        }
+
+        if (!allowedChildren.isEmpty()) {
+            roles.add(PluginNodeRole.CONTEXT_CONTAINER);
+        }
+
+        if (roles.isEmpty()) {
+            roles.add(PluginNodeRole.LEAF);
+        }
+
+        boolean allowsChildren = roles.contains(PluginNodeRole.CONTEXT_CONTAINER)
+                || roles.contains(PluginNodeRole.ROOT_CONTAINER);
+
+        builder.addRoles(roles);
+
+        if (allowsChildren) {
+            builder.allowsChildPlugins(true)
+                   .providesExecutionContext(roles.contains(PluginNodeRole.CONTEXT_CONTAINER)
+                           || roles.contains(PluginNodeRole.ROOT_CONTAINER));
+        }
 
         if (allowsBody) {
-            builder.allowsChildPlugins(true)
-                   .allowsTextContent(true);
+            builder.allowsTextContent(true)
+                   .allowsChildPlugins(true);
         }
 
-        builder.allowedChildElements(allowedChildren);
-        builder.requiredParentElements(requiredParents);
-
-        if ("config".equals(normalizedName)) {
-            builder.role(PluginNodeRole.ROOT_CONTAINER)
-                   .allowsChildPlugins(true)
-                   .allowsTextContent(false)
+        if (roles.contains(PluginNodeRole.ROOT_CONTAINER)) {
+            builder.executable(false)
                    .providesExecutionContext(true)
-                   .executable(false)
-                   .allowsAnyChild(true);
-            return builder.build();
+                   .allowsChildPlugins(true);
         }
 
-        boolean requiresParent = requiredParents.length > 0;
-        if (requiresParent) {
-            builder.role(PluginNodeRole.DEPENDENT);
-        }
+        final boolean allowsAnyChild = acceptsAnyChild || (allowsBody && allowedChildren.isEmpty());
 
-        if (BODY_EVALUATORS.contains(normalizedName) || (allowsBody && !hasExplicitChildren && !requiresParent
-                && !CONTEXT_CONTAINERS.contains(normalizedName))) {
-            builder.role(PluginNodeRole.BODY_EVALUATOR)
-                   .allowsChildPlugins(true)
-                   .allowsTextContent(true);
-        }
-
-        if (CONTEXT_CONTAINERS.contains(normalizedName)) {
-            builder.role(PluginNodeRole.CONTEXT_CONTAINER)
-                   .allowsChildPlugins(true)
-                   .providesExecutionContext(true)
-                   .allowsAnyChild(!hasExplicitChildren);
-        }
-
-        if (!allowsBody && !hasExplicitChildren && !CONTEXT_CONTAINERS.contains(normalizedName)) {
-            if (requiresParent) {
-                builder.role(PluginNodeRole.DEPENDENT);
-            } else if (!BODY_EVALUATORS.contains(normalizedName)) {
-                builder.role(PluginNodeRole.LEAF);
-            }
-        }
+        builder.allowedChildElements(allowedChildren.isEmpty()
+                ? null
+                : allowedChildren.toArray(String[]::new));
+        builder.requiredParentElements(requiredParents.toArray(String[]::new));
+        builder.allowsAnyChild(allowsAnyChild);
 
         return builder.build();
     }

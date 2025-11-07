@@ -36,8 +36,13 @@
 */
 package org.webharvest.plugin;
 
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.webharvest.plugin.semantic.PluginNodeRole;
 
 /**
  * Metadata information about a plugin.
@@ -110,6 +115,50 @@ public interface PluginMetadata {
      * @return configuration schema
      */
     PluginConfigurationSchema getConfigurationSchema();
+
+    /**
+     * Declares the semantic roles associated with this plugin. Implementations can
+     * override to provide richer metadata; by default no explicit roles are declared
+     * and the semantic resolver will infer them heuristically.
+     *
+     * @return immutable set of semantic roles declared for this plugin
+     */
+    default Set<PluginNodeRole> getDeclaredRoles() {
+        EnumSet<PluginNodeRole> roles = EnumSet.noneOf(PluginNodeRole.class);
+
+        PluginConfigurationSchema schema = getConfigurationSchema();
+        if (schema != null) {
+            String[] requiredParents = schema.getRequiredParents();
+            if (requiredParents != null && requiredParents.length > 0) {
+                roles.add(PluginNodeRole.DEPENDENT);
+            }
+
+            if (schema.allowsBody()) {
+                roles.add(PluginNodeRole.BODY_EVALUATOR);
+            }
+
+            String[] allowedSubElements = schema.getAllowedSubElements();
+            if (allowedSubElements != null && allowedSubElements.length > 0) {
+                roles.add(PluginNodeRole.CONTEXT_CONTAINER);
+            }
+        }
+
+        if (this instanceof VisualPluginMetadata) {
+            VisualPluginMetadata visualMetadata = (VisualPluginMetadata) this;
+            if (visualMetadata.isDetailPlugin()) {
+                roles.add(PluginNodeRole.DEPENDENT);
+            }
+            if (visualMetadata.isMasterPlugin()) {
+                roles.add(PluginNodeRole.CONTEXT_CONTAINER);
+            }
+        }
+
+        if (roles.isEmpty()) {
+            roles.add(PluginNodeRole.LEAF);
+        }
+
+        return Collections.unmodifiableSet(roles);
+    }
 
     /**
      * Gets the plugin namespace.
