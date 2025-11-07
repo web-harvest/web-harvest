@@ -316,42 +316,52 @@ public class LoopPlugin extends AbstractPlugin {
             
             LOGGER.debug("LoopPlugin: items=" + itemsStr + ", delimiter=" + delimiter);
             
-            if (itemsStr.isEmpty()) {
-                LOGGER.debug("LoopPlugin: No items specified");
-                return EmptyVariable.INSTANCE;
-            }
-            
-            // Split items by delimiter
-            String[] items = itemsStr.split(delimiter);
-            LOGGER.debug("LoopPlugin: Found " + items.length + " items");
-            
+            String itemVarName = item == null || item.trim().isEmpty() ? "_item" : item.trim();
+            String indexVarName = index == null || index.trim().isEmpty() ? "_index" : index.trim();
+
+            int maxIterations = parseMaxLoops(maxloops);
+
             StringBuilder result = new StringBuilder();
-            
-            // Loop through items
-            for (int i = 0; i < items.length; i++) {
-                final String currentItem = items[i].trim();
-                final int iteration = i;
-                LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
-                
-                // Bug #19 Fix: Execute each iteration in nested context
-                // This automatically cleans up variables created in loop body
-                // Prevents memory leak when looping 1000s of items
-                try {
-                    Variable bodyResult = context.executeWithinNewContext(() -> {
-                        // Set current item in nested context
-                        context.setLocalVar("item", new NodeVariable(currentItem));
-                        context.setLocalVar("index", new NodeVariable(String.valueOf(iteration)));
-                        
-                        // Execute body content for each item
-                        return executeBody(context);
-                    });
-                    
+
+            if (!itemsStr.isEmpty()) {
+                // Split items by delimiter when explicit collection provided
+                String[] items = itemsStr.split(delimiter);
+                LOGGER.debug("LoopPlugin: Found " + items.length + " items");
+
+                int iterations = items.length;
+                if (maxIterations >= 0) {
+                    iterations = Math.min(iterations, maxIterations);
+                }
+
+                for (int i = 0; i < iterations; i++) {
+                    final String currentItem = items[i].trim();
+                    LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
+
+                    // Persist iteration variables in shared context (legacy semantics)
+                    context.setLocalVar(itemVarName, new NodeVariable(currentItem));
+                    context.setLocalVar(indexVarName, new NodeVariable(String.valueOf(i)));
+
+                    Variable bodyResult = executeBody(context);
+
                     if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
                         result.append(bodyResult.toString());
                     }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw e;
+                }
+            } else {
+                // Fallback: iterate based on maxloops even without explicit items
+                int iterations = maxIterations < 0 ? 0 : maxIterations;
+                LOGGER.debug("LoopPlugin: No explicit items – running {} iterations based on maxloops", iterations);
+
+                for (int i = 0; i < iterations; i++) {
+                    LOGGER.debug("LoopPlugin: executing iteration {} (fallback mode)", i);
+                    context.setLocalVar(itemVarName, new NodeVariable(""));
+                    context.setLocalVar(indexVarName, new NodeVariable(String.valueOf(i)));
+
+                    Variable bodyResult = executeBody(context);
+
+                    if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
+                        result.append(bodyResult.toString());
+                    }
                 }
             }
             
@@ -362,6 +372,19 @@ public class LoopPlugin extends AbstractPlugin {
             LOGGER.debug("LoopPlugin: Error: " + e.getMessage());
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
             return EmptyVariable.INSTANCE;
+        }
+    }
+
+    private int parseMaxLoops(String maxloops) {
+        if (maxloops == null) {
+            return 100;
+        }
+
+        try {
+            return Integer.parseInt(maxloops.trim());
+        } catch (NumberFormatException e) {
+            LOGGER.warn("LoopPlugin: Invalid maxloops '{}', defaulting to 100", maxloops);
+            return 100;
         }
     }
 

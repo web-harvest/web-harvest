@@ -78,6 +78,39 @@ export class SemanticValidator {
     }
 
     /**
+     * Determine if a plugin allows nested child plugins
+     */
+    allowsChildren(pluginType: string): boolean {
+        const plugin = this.pluginManager.findPlugin(pluginType);
+        if (!plugin) {
+            return false;
+        }
+
+        if (plugin.semantics) {
+            if (plugin.semantics.allowedChildTypes && plugin.semantics.allowedChildTypes.length > 0) {
+                return true;
+            }
+            if (plugin.semantics.acceptsAnyChild) {
+                return true;
+            }
+            if (plugin.semantics.allowsChildren) {
+                return true;
+            }
+        }
+
+        if (plugin.schema) {
+            if (plugin.schema.canHaveChildren) {
+                return true;
+            }
+            if (plugin.schema.allowedSubElements && plugin.schema.allowedSubElements.length > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get semantic role for a plugin
      */
     getRole(pluginType: string): string | null {

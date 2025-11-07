@@ -194,6 +194,11 @@ public class FtpListPlugin extends AbstractPlugin {
                 }
 
                 @Override
+                public String[] getRequiredParents() {
+                    return new String[]{"ftp"};
+                }
+
+                @Override
                 public AttributeDefinition getAttribute(String name) {
                     return null;
                 }

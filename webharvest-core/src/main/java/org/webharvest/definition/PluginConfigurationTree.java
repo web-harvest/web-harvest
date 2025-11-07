@@ -80,7 +80,7 @@ import java.util.List;
  * 
  * @author WebHarvest Team
  * @since 3.0.0
- * @see org.webharvest.definition.v3.StreamingXmlParser
+ * @see StreamingXmlParser
  */
 public class PluginConfigurationTree {
 

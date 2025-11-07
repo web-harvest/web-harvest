@@ -36,7 +36,8 @@ public class PluginSchemaValidationTest {
     
     /**
      * Expected core plugins for schema validation.
-     * ConfigPlugin is excluded as it's a root container.
+     * The root <config> element is handled by {@link org.webharvest.runtime.RootConfigurationExecutor}
+     * and therefore excluded from plugin metadata assertions.
      */
     private static final String[] EXPECTED_CORE_PLUGINS = {
         "http", "xpath", "def", "loop", "if", "else", "file", "template",

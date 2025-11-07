@@ -468,6 +468,11 @@ public class CallParamPlugin extends AbstractPlugin {
         }
 
         @Override
+        public String[] getRequiredParents() {
+            return new String[]{"call"};
+        }
+
+        @Override
         public String[] getOptionalAttributes() {
             return new String[]{"id"};
         }

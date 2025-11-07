@@ -38,14 +38,13 @@ public class AllPluginsMetadataAuditTest {
     public void setUp() {
         metadataIssues = new ArrayList<>();
         
-        // List all CORE plugins (only from webharvest-core module) - 45 total (removed deprecated VarPlugin, SetVarPlugin)
+        // List all CORE plugins (only from webharvest-core module) - 44 total (removed deprecated VarPlugin, SetVarPlugin)
         allPluginClasses = new ArrayList<>();
         allPluginClasses.add(BodyProcessorPlugin.class);
         allPluginClasses.add(CallParamPlugin.class);
         allPluginClasses.add(CallPlugin.class);
         allPluginClasses.add(CasePlugin.class);
         allPluginClasses.add(CatchPlugin.class);
-        allPluginClasses.add(ConfigPlugin.class);
         allPluginClasses.add(ConstantPlugin.class);
         allPluginClasses.add(DefPlugin.class);
         allPluginClasses.add(ElsePlugin.class);

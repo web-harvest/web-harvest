@@ -104,7 +104,6 @@ import java.util.Stack;
  * @author WebHarvest Team
  * @since 3.0.0
  * @see PluginConfigurationTree
- * @see ConfigurationBuilder
  */
 public class StreamingXmlParser implements ConfigParser {
 

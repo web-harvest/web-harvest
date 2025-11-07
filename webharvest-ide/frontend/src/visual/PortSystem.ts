@@ -296,7 +296,7 @@ export class PortSystem {
     }
 
     /**
-     * Check if two ports are compatible for connection
+     * Check if two ports are compatible for connection (basic check)
      */
     arePortsCompatible(sourcePort: string, targetPort: string): boolean {
         // Output ports can connect to input ports
@@ -310,6 +310,101 @@ export class PortSystem {
         }
 
         return false;
+    }
+
+    /**
+     * Validate port type compatibility for connection
+     * Checks if source port type (sequential/conditional/error) matches target port requirements
+     */
+    validatePortTypeCompatibility(sourcePortType: PortType, targetPortType: PortType | null): { valid: boolean; error?: string } {
+        // If target port type is not specified, assume sequential input (most common case)
+        if (!targetPortType) {
+            // Sequential outputs can connect to any input
+            if (sourcePortType === 'sequential') {
+                return { valid: true };
+            }
+            // Conditional and error outputs require specific input types
+            return {
+                valid: false,
+                error: `Cannot connect ${sourcePortType} output to standard sequential input`
+            };
+        }
+
+        // Sequential outputs can connect to sequential inputs
+        if (sourcePortType === 'sequential' && targetPortType === 'sequential') {
+            return { valid: true };
+        }
+
+        // Conditional outputs can connect to conditional inputs (for if/case nodes)
+        if (sourcePortType === 'conditional' && targetPortType === 'conditional') {
+            return { valid: true };
+        }
+
+        // Error outputs can connect to error inputs (for try/catch)
+        if (sourcePortType === 'error' && targetPortType === 'error') {
+            return { valid: true };
+        }
+
+        // Sequential outputs can connect to conditional inputs (normal flow to conditional branches)
+        if (sourcePortType === 'sequential' && targetPortType === 'conditional') {
+            return { valid: true };
+        }
+
+        // Error outputs cannot connect to sequential/conditional inputs
+        if (sourcePortType === 'error' && (targetPortType === 'sequential' || targetPortType === 'conditional')) {
+            return {
+                valid: false,
+                error: `Cannot connect error output to ${targetPortType} input. Use error input port.`
+            };
+        }
+
+        // Conditional outputs cannot connect to sequential inputs (requires explicit handling)
+        if (sourcePortType === 'conditional' && targetPortType === 'sequential') {
+            return {
+                valid: false,
+                error: `Cannot connect conditional output to sequential input. Use conditional input port or merge node.`
+            };
+        }
+
+        // All other combinations are invalid
+        return {
+            valid: false,
+            error: `Incompatible port types: ${sourcePortType} output cannot connect to ${targetPortType} input`
+        };
+    }
+
+    /**
+     * Get port type from port element
+     */
+    getPortTypeFromElement(portElement: HTMLElement): PortType {
+        const portTypeAttr = portElement.dataset.portConnectionType;
+        if (portTypeAttr === 'conditional' || portTypeAttr === 'error' || portTypeAttr === 'sequential') {
+            return portTypeAttr;
+        }
+        return 'sequential'; // Default
+    }
+
+    /**
+     * Find port element by type and direction for a node
+     */
+    findPortElement(nodeElement: HTMLElement, direction: 'input' | 'output', portType?: PortType): HTMLElement | null {
+        const ports = nodeElement.querySelectorAll(`.port-${direction}`);
+        
+        if (!portType) {
+            // Return first port of the requested direction
+            return ports.length > 0 ? (ports[0] as HTMLElement) : null;
+        }
+
+        // Find port with matching type
+        for (let i = 0; i < ports.length; i++) {
+            const port = ports[i] as HTMLElement;
+            const portTypeAttr = port.dataset.portConnectionType;
+            if (portTypeAttr === portType) {
+                return port;
+            }
+        }
+
+        return null;
     }
 
     /**

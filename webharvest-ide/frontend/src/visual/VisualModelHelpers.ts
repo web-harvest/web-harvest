@@ -16,13 +16,26 @@ import type { VisualNode } from '../types';
  */
 const CONTAINER_TYPES = [
     'loop', 'while', 'if', 'try', 'catch', 'case',
-    'function', 'body', 'config', 'switch'
+    'function', 'body', 'config', 'switch',
+    'http', 'ftp', 'call', 'zip'
 ];
+
+type ContainerResolver = (type: string) => boolean;
+
+let dynamicContainerResolver: ContainerResolver | null = null;
+
+export function setContainerResolver(resolver: ContainerResolver | null): void {
+    dynamicContainerResolver = resolver;
+}
 
 /**
  * Check if node type is a container (nested rendering)
  */
 export function isContainerNode(type: string): boolean {
+    if (dynamicContainerResolver && dynamicContainerResolver(type)) {
+        return true;
+    }
+
     return CONTAINER_TYPES.includes(type.toLowerCase());
 }
 

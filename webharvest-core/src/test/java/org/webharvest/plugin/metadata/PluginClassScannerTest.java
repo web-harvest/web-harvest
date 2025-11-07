@@ -30,12 +30,12 @@ public class PluginClassScannerTest {
     public void testAllPluginClassNamesContainsCorePlugins() {
         List<String> classNames = PluginClassScanner.allPluginClassNames();
         
-        assertTrue(classNames.contains("org.webharvest.plugin.core.ConfigPlugin"),
-            "Should contain ConfigPlugin");
         assertTrue(classNames.contains("org.webharvest.plugin.core.HttpPlugin"),
             "Should contain HttpPlugin");
         assertTrue(classNames.contains("org.webharvest.plugin.core.TryPlugin"),
             "Should contain TryPlugin");
+        assertTrue(classNames.contains("org.webharvest.plugin.core.LoopPlugin"),
+            "Should contain LoopPlugin");
     }
 
     @Test
@@ -93,8 +93,8 @@ public class PluginClassScannerTest {
             .anyMatch(name -> name.startsWith("org.webharvest.plugin.db"));
         
         // At least core plugins should be present
-        assertTrue(classNames.size() >= 40, 
-            "Should discover at least 40 core plugins");
+        assertTrue(classNames.size() >= 39, 
+            "Should discover at least 39 core plugins");
     }
 }
 

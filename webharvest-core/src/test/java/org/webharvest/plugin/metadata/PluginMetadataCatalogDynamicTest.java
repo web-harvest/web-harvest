@@ -29,13 +29,18 @@ public class PluginMetadataCatalogDynamicTest {
         assertFalse(descriptors.isEmpty(), "Should discover plugins dynamically");
         
         // Verify core plugins are present
-        PluginDescriptor config = descriptors.stream()
-            .filter(d -> "config".equals(d.getElementName()))
+        PluginDescriptor http = descriptors.stream()
+            .filter(d -> "http".equals(d.getElementName()))
             .findFirst()
             .orElse(null);
-        
-        assertNotNull(config, "Should find config plugin");
-        assertEquals(config.getElementName(), "config");
+
+        PluginDescriptor loop = descriptors.stream()
+            .filter(d -> "loop".equals(d.getElementName()))
+            .findFirst()
+            .orElse(null);
+
+        assertNotNull(http, "Should find http plugin descriptor");
+        assertNotNull(loop, "Should find loop plugin descriptor");
     }
 
     @Test

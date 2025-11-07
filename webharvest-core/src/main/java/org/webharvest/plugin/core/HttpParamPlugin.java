@@ -590,6 +590,11 @@ public class HttpParamPlugin extends AbstractPlugin {
         }
 
         @Override
+        public String[] getRequiredParents() {
+            return new String[]{"http"};
+        }
+
+        @Override
         public String[] getOptionalAttributes() {
             return new String[]{"id", "isfile", "filename", "contenttype"};
         }

@@ -5,7 +5,6 @@ import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.core.CatchPlugin;
-import org.webharvest.plugin.core.ConfigPlugin;
 import org.webharvest.plugin.core.DefPlugin;
 import org.webharvest.plugin.core.HttpHeaderPlugin;
 import org.webharvest.plugin.core.LoopPlugin;
@@ -29,17 +28,6 @@ public class PluginSemanticsResolverTest {
     }
 
     @Test
-    public void configPluginIsRootContainer() {
-        PluginMetadata metadata = new ConfigPlugin().getMetadata();
-
-        PluginSemantics semantics = PluginSemanticsResolver.resolve(ConfigPlugin.class, metadata);
-
-        assertEquals(semantics.getRole(), PluginNodeRole.ROOT_CONTAINER);
-        assertTrue(semantics.allowsChildPlugins());
-        assertFalse(semantics.isExecutable());
-    }
-
-    @Test
     public void defPluginIsBodyEvaluator() {
         PluginMetadata metadata = new DefPlugin().getMetadata();
 
@@ -59,6 +47,20 @@ public class PluginSemanticsResolverTest {
         assertEquals(semantics.getRole(), PluginNodeRole.CONTEXT_CONTAINER);
         assertTrue(semantics.providesExecutionContext());
         assertTrue(semantics.allowsChildPlugins());
+    }
+
+    @Test
+    public void httpPluginRecognisesDetailChildren() {
+        org.webharvest.plugin.core.HttpPlugin plugin = new org.webharvest.plugin.core.HttpPlugin();
+        PluginMetadata metadata = plugin.getMetadata();
+
+        PluginSemantics semantics = PluginSemanticsResolver.resolve(org.webharvest.plugin.core.HttpPlugin.class, metadata);
+
+        assertEquals(semantics.getRole(), PluginNodeRole.CONTEXT_CONTAINER,
+                "http plugin should be treated as a context container");
+        assertTrue(semantics.allowsChildPlugins(), "http plugin should allow child components");
+        assertTrue(semantics.getAllowedChildElements().contains("http-header"));
+        assertTrue(semantics.getAllowedChildElements().contains("http-param"));
     }
 
     @Test

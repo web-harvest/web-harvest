@@ -328,6 +328,11 @@ public class ZipEntryPlugin extends AbstractPlugin {
             }
 
             @Override
+            public String[] getRequiredParents() {
+                return new String[]{"zip"};
+            }
+
+            @Override
             public String[] getAllowedSubElements() {
                 return new String[0];
             }

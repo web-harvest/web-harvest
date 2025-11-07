@@ -3,7 +3,7 @@
 WebHarvest Core Plugin Documentation Generator
 Generates HTML documentation pages from JavaDoc comments in core plugin classes.
 
-Core Plugins: 47 built-in plugins with @CorePlugin annotation
+Core Plugins: 46 built-in plugins with @CorePlugin annotation
 """
 
 import re
@@ -20,7 +20,7 @@ CATEGORIES = {
                   'ScriptPlugin', 'TemplatePlugin', 'JsonToXmlPlugin', 'XmlToJsonPlugin', 'IfPlugin', 'XQueryPlugin', 'IncludePlugin'],
     'COMMON': ['EmptyPlugin', 'SleepPlugin', 'ExitPlugin', 'TryPlugin', 'CatchPlugin',
                'ReturnPlugin', 'TextPlugin', 'CasePlugin', 'ConstantPlugin', 'VarPlugin', 'LogPlugin'],
-    'ADVANCED': ['ConfigPlugin', 'ValueOfPlugin', 'XMLPlugin', 'XQExpressionPlugin', 
+    'ADVANCED': ['ValueOfPlugin', 'XMLPlugin', 'XQExpressionPlugin', 
                  'XQParamPlugin', 'XsltPlugin', 'StylesheetPlugin', 'HttpHeaderPlugin',
                  'HttpParamPlugin', 'CallParamPlugin', 'ElsePlugin', 'RegexpPatternPlugin',
                  'RegexpSourcePlugin', 'RegexpResultPlugin', 'ListPlugin', 'BodyProcessorPlugin']
@@ -57,7 +57,6 @@ PLUGIN_NAMES = {
     'ConstantPlugin': 'constant',
     'VarPlugin': 'var',
     'LogPlugin': 'log',
-    'ConfigPlugin': 'config',
     'ValueOfPlugin': 'value-of',
     'XMLPlugin': 'xml',
     'XQExpressionPlugin': 'xq-expression',

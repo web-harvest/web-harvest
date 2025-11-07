@@ -266,7 +266,7 @@ public class FtpPlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getAllowedSubElements() {
-                    return new String[0];
+                    return new String[]{"ftp-get", "ftp-put", "ftp-list"};
                 }
 
                 @Override

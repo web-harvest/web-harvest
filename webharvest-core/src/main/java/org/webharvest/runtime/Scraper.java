@@ -55,15 +55,15 @@ public class Scraper implements WebScraper {
 
     private static final Logger LOG = LoggerFactory.getLogger(Scraper.class);
 
-    @Inject
-    private EventBus eventBus;
+    private final EventBus eventBus;
+    private final RootConfigurationExecutor rootExecutor;
     
     /**
      * Default constructor for non-Guice usage.
      * Creates a new EventBus instance.
      */
     public Scraper() {
-        this.eventBus = new EventBus();
+        this(new EventBus(), new RootConfigurationExecutor());
     }
     
     /**
@@ -72,7 +72,13 @@ public class Scraper implements WebScraper {
      * @param eventBus the EventBus to use
      */
     public Scraper(EventBus eventBus) {
-        this.eventBus = eventBus;
+        this(eventBus, new RootConfigurationExecutor());
+    }
+
+    @Inject
+    public Scraper(EventBus eventBus, RootConfigurationExecutor rootExecutor) {
+        this.eventBus = eventBus != null ? eventBus : new EventBus();
+        this.rootExecutor = rootExecutor != null ? rootExecutor : new RootConfigurationExecutor();
     }
 
     public void execute(final DynamicScopeContext context) {
@@ -89,24 +95,19 @@ public class Scraper implements WebScraper {
             if (tree != null) {
                 final PluginConfiguration rootConfig = tree.getConfiguration();
                 if (rootConfig != null) {
-                    // Get plugin class from registry
-                    CorePluginRegistry registry = CorePluginRegistry.getInstance();
-                    Class<? extends Plugin> pluginClass = registry.getPluginClass(rootConfig.getElementName());
-                    
-                    if (pluginClass != null) {
-                        // Create plugin instance (like DefaultPluginBodyExecutor does)
-                        Plugin plugin = pluginClass.newInstance();
-                        
-                        // Initialize plugin with configuration
-                        plugin.initialize(rootConfig);
-                        
-                        // Execute plugin
-                        plugin.execute(context);
-                        
-                        // Note: SessionCompletedEvent is published by ScraperSessionImpl.markCompleted()
-                        // after this method returns. Context variables remain accessible there.
+                    if ("config".equals(rootConfig.getElementName())) {
+                        rootExecutor.execute(tree, context);
                     } else {
-                        LOG.warn("Plugin class not found for root element: {}", rootConfig.getElementName());
+                        CorePluginRegistry registry = CorePluginRegistry.getInstance();
+                        Class<? extends Plugin> pluginClass = registry.getPluginClass(rootConfig.getElementName());
+
+                        if (pluginClass != null) {
+                            Plugin plugin = pluginClass.newInstance();
+                            plugin.initialize(rootConfig);
+                            plugin.execute(context);
+                        } else {
+                            LOG.warn("Plugin class not found for root element: {}", rootConfig.getElementName());
+                        }
                     }
                 }
             }

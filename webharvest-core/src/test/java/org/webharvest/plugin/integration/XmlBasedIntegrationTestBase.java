@@ -33,8 +33,10 @@
 
 package org.webharvest.plugin.integration;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.util.Modules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
@@ -46,14 +48,21 @@ import org.webharvest.definition.FileConfigSource;
 import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.plugin.services.HttpResponse;
+import org.webharvest.plugin.services.HttpService;
+import org.webharvest.plugin.services.HttpServiceException;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.testng.Assert.*;
 
@@ -87,7 +96,7 @@ public abstract class XmlBasedIntegrationTestBase {
         String targetDir = "target";
         new File(targetDir).mkdirs();
         injector = Guice.createInjector(
-            new ScraperModule(targetDir)
+            Modules.override(new ScraperModule(targetDir)).with(new HttpStubModule())
         );
         
         harvest = injector.getInstance(Harvest.class);
@@ -304,6 +313,110 @@ public abstract class XmlBasedIntegrationTestBase {
         
         assertNotNull(resultContext[0], "Execution context should not be null");
         return resultContext[0];
+    }
+    private static final class HttpStubModule extends AbstractModule {
+
+        @Override
+        protected void configure() {
+            bind(HttpService.class).toInstance(new StubHttpService());
+        }
+
+        private static final class StubHttpService implements HttpService {
+            private final Map<String, StubResponse> responses;
+
+            private StubHttpService() {
+                Map<String, StubResponse> map = new HashMap<>();
+                map.put("https://httpbin.org/html", StubResponse.html("<html><head><title>Sample</title></head><body><h1>Sample</h1></body></html>"));
+                String slideshowJson = "{" +
+                        "\"slideshow\": {" +
+                        "  \"title\": \"Sample Slide Deck\"," +
+                        "  \"author\": \"Yours Truly\"," +
+                        "  \"date\": \"2025-01-01\"," +
+                        "  \"slides\": [{\"title\": \"Wake up to WonderWidgets!\"}]" +
+                        "}}";
+                map.put("https://httpbin.org/json", StubResponse.json(slideshowJson));
+                map.put("https://example.com", StubResponse.html("<html><head><title>Example Domain</title></head><body><h1>Example Domain</h1></body></html>"));
+                this.responses = Collections.unmodifiableMap(map);
+            }
+
+            @Override
+            public HttpResponse get(String url, Map<String, String> headers) throws HttpServiceException {
+                return respond("GET", url);
+            }
+
+            @Override
+            public HttpResponse post(String url, String body, Map<String, String> headers) throws HttpServiceException {
+                return respond("POST", url);
+            }
+
+            @Override
+            public HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException {
+                return respond(method, url);
+            }
+
+            private HttpResponse respond(String method, String url) throws HttpServiceException {
+                StubResponse response = responses.get(url);
+                if (response == null) {
+                    throw new HttpServiceException("No stub response for " + method + " " + url);
+                }
+                return response;
+            }
+        }
+
+        private static final class StubResponse implements HttpResponse {
+            private final int statusCode;
+            private final String body;
+            private final String contentType;
+
+            private StubResponse(int statusCode, String body, String contentType) {
+                this.statusCode = statusCode;
+                this.body = body;
+                this.contentType = contentType;
+            }
+
+            static StubResponse html(String body) {
+                return new StubResponse(200, body, "text/html");
+            }
+
+            static StubResponse json(String body) {
+                return new StubResponse(200, body, "application/json");
+            }
+
+            @Override
+            public int getStatusCode() {
+                return statusCode;
+            }
+
+            @Override
+            public String getBody() {
+                return body;
+            }
+
+            @Override
+            public byte[] getBodyAsBinary() {
+                return body.getBytes(StandardCharsets.UTF_8);
+            }
+
+            @Override
+            public Map<String, String> getHeaders() {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public String getHeader(String name) {
+                return null;
+            }
+
+            @Override
+            public String getContentType() {
+                return contentType;
+            }
+
+            @Override
+            public String getCharset() {
+                return "UTF-8";
+            }
+        }
     }
 }
 

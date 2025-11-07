@@ -19,7 +19,16 @@ public class ExecutionWebSocketHandler {
     public void onConnect(Session session) {
         String executionId = getExecutionIdFromPath(session);
         LOG.info("🔌 WebSocket onConnect called! URI: {}", session.getUpgradeRequest().getRequestURI());
-        if (executionId != null) {
+
+        // Support legacy query-based connection (?id=123)
+        if (executionId == null || executionId.isEmpty()) {
+            executionId = getExecutionIdFromQuery(session);
+            if (executionId != null && LOG.isInfoEnabled()) {
+                LOG.info("✓ Execution ID resolved from query parameter: {}", executionId);
+            }
+        }
+
+        if (executionId != null && !executionId.isEmpty()) {
             LOG.info("✓ WebSocket connected for execution: {}", executionId);
             executionManager.registerWebSocket(executionId, session);
         } else {
@@ -40,6 +49,9 @@ public class ExecutionWebSocketHandler {
     @OnWebSocketClose
     public void onClose(Session session, int statusCode, String reason) {
         String executionId = getExecutionIdFromPath(session);
+        if ((executionId == null || executionId.isEmpty())) {
+            executionId = getExecutionIdFromQuery(session);
+        }
         if (executionId != null && LOG.isInfoEnabled()) {
             LOG.info("WebSocket closed for execution: " + executionId + " (code: " + statusCode + ", reason: " + reason + ")");
             executionManager.unregisterWebSocket(executionId);
@@ -51,6 +63,9 @@ public class ExecutionWebSocketHandler {
     @OnWebSocketError
     public void onError(Session session, Throwable error) {
         String executionId = getExecutionIdFromPath(session);
+        if ((executionId == null || executionId.isEmpty())) {
+            executionId = getExecutionIdFromQuery(session);
+        }
         if (LOG.isErrorEnabled()) {
             LOG.error("WebSocket error for execution: " + executionId, error);
         }
@@ -66,10 +81,17 @@ public class ExecutionWebSocketHandler {
             LOG.debug("Extracting execution ID from path: {}", path);
             
             // Path format: /ws/execution/{executionId}
-            if (path != null && path.startsWith("/ws/execution/")) {
-                String executionId = path.substring("/ws/execution/".length());
-                LOG.info("✓ Extracted execution ID: {}", executionId);
-                return executionId;
+            if (path != null && path.startsWith("/ws/execution")) {
+                // Handle both /ws/execution/<id> and /ws/execution
+                if (path.length() == "/ws/execution".length()) {
+                    return null; // No ID segment
+                }
+
+                if (path.startsWith("/ws/execution/")) {
+                    String executionId = path.substring("/ws/execution/".length());
+                    LOG.info("✓ Extracted execution ID: {}", executionId);
+                    return executionId;
+                }
             }
             
             LOG.warn("⚠ Could not extract execution ID from path: {}", path);

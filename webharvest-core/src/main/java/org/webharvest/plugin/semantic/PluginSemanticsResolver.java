@@ -27,7 +27,8 @@ public final class PluginSemanticsResolver {
         "zip",
         "database",
         "webbrowser",
-        "call"
+        "call",
+        "http"
     );
 
     private static final Set<String> BODY_EVALUATORS = Set.of(

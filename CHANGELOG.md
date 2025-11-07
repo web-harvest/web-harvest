@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Semantic Metadata Master/Detail Coverage**: synchronized plugin metadata with XML configurations; `try/catch`, `if/else`, `call/call-param`, `http/{http-header,http-param}`, `zip/zip-entry`, and `ftp/{ftp-get,ftp-put,ftp-list}` now expose explicit parent/child constraints in both Java schemas and generated JSON
+- **Visual Designer Containers**: the semantic drop validator now treats HTTP/FTP/ZIP/CALL masters as containers so detail plugins can be dragged directly into their parents in the canvas
 - **Working Directory Configuration**: All test and IDE executions now use `target/` as working directory
   - Test base classes (`XmlBasedIntegrationTestBase`, `ScraperTestBase`) initialize `ScraperModule` with `workingDir = "target"`
   - IDE `ExecutionManager` and `ConfigServlet` use `workingDir = "target"` for all scraper executions
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **IDE Java Version Requirement**: IDE now requires Java 11 (not Java 17/21)
+- **Documentation**: Developer guide updated with a "Master/Detail Relationship Coverage" section explaining how palette validation is derived from curated XML examples.
   - Java 17 and 21 have stricter module access restrictions requiring `--add-opens` flags
   - Java 11 works without these restrictions and is the recommended version for IDE
   - Updated documentation to specify Java 11 requirement
@@ -505,11 +508,17 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 
 ### 🏗️ Architecture Improvements
 
-**ConfigPlugin Scope Fix** (r693)
-- **Issue**: Variables defined in `<config>` were cleaned up after execution
-- **Fix**: Override `executeBody()` to execute children in root scope (not nested)
-- **Impact**: IDE and tools can now properly extract result variables
-- **Tests**: 4 comprehensive WebSocket integration tests
+**Root Configuration Executor** (r7xx)
+- **Change**: Removed legacy `ConfigPlugin`; root `<config>` is now executed directly by the runtime
+- **Impact**: Charset/scriptlang settings applied by core, variables stay in global scope without plugin indirection
+- **Implementation**: New `RootConfigurationExecutor` drives child execution via `DefaultPluginBodyExecutor`
+- **Tests**: Added TDD coverage (`ScraperRootExecutionTest`) plus updated metadata audits
+
+**HTTP Test Fixtures** (r7xx)
+- **Change**: IDE and core integration suites bind `HttpService` to in-memory fixtures (example.com, httpbin.org)
+- **Impact**: Test runs no longer depend on external network availability; XPath/JSON assertions have deterministic payloads
+- **Shared Assets**: Stubs reused between `EmbeddedExamplesExecutionTest` and `XmlBasedIntegrationTestBase`
+- **Tests**: `EmbeddedExamplesExecutionTest`, `DefPluginIntegrationTest` (no network) and full `webharvest-core` suite
 
 **Plugin Discovery** (r694, r695)
 - PluginProcessorAdapter for automatic plugin wrapping

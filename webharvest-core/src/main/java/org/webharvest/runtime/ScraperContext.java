@@ -74,7 +74,12 @@ public class ScraperContext implements DynamicScopeContext {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScraperContext.class);
 
-    private Stack<Set<String>> variablesNamesStack = new Stack<Set<String>>();
+    private static final class ScopeFrame {
+        private final Set<String> createdVariables = new HashSet<>();
+        private final Map<String, Integer> overrideDepths = new HashMap<>();
+    }
+
+    private Stack<ScopeFrame> scopeStack = new Stack<>();
 
     private Map<String, Stack<Variable>> centralReferenceTable = new HashMap<String, Stack<Variable>>();
 
@@ -96,7 +101,7 @@ public class ScraperContext implements DynamicScopeContext {
     private ScraperSession session;
 
     public ScraperContext() {
-        variablesNamesStack.push(new HashSet<String>());
+        scopeStack.push(new ScopeFrame());
     }
 
     @PostConstruct
@@ -115,16 +120,19 @@ public class ScraperContext implements DynamicScopeContext {
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         Stack<Variable> variableValueStack = centralReferenceTable.get(name);
-        final Set<String> localVariableNames = variablesNamesStack.peek();
+        final ScopeFrame scopeFrame = scopeStack.peek();
 
         if (variableValueStack == null) {
             variableValueStack = new Stack<Variable>();
             centralReferenceTable.put(name, variableValueStack);
-            localVariableNames.add(name);
-        } else if (localVariableNames.contains(name)) {
-            variableValueStack.pop();
+            scopeFrame.createdVariables.add(name);
+        } else if (scopeFrame.createdVariables.contains(name)) {
+            // re-definition within same scope -> replace last value
+            if (!variableValueStack.isEmpty()) {
+                variableValueStack.pop();
+            }
         } else {
-            localVariableNames.add(name);
+            scopeFrame.overrideDepths.putIfAbsent(name, variableValueStack.size());
         }
         variableValueStack.push((Variable) ObjectUtils.defaultIfNull(variable, EmptyVariable.INSTANCE));
         // Trace logging removed - use debugger instead
@@ -170,7 +178,7 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     public <R> R executeWithinNewContext(Callable<R> callable) throws InterruptedException {
         try {
-            variablesNamesStack.push(new HashSet<String>());
+            scopeStack.push(new ScopeFrame());
             return callable.call();
 
         } catch (InterruptedException e) {
@@ -181,8 +189,22 @@ public class ScraperContext implements DynamicScopeContext {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            for (String varName : variablesNamesStack.pop()) {
+            ScopeFrame frame = scopeStack.pop();
+            for (String varName : frame.createdVariables) {
                 removeVarFromCRT(varName);
+            }
+            for (Map.Entry<String, Integer> entry : frame.overrideDepths.entrySet()) {
+                final Stack<Variable> stack = centralReferenceTable.get(entry.getKey());
+                if (stack == null) {
+                    continue;
+                }
+                final int targetDepth = entry.getValue();
+                while (stack.size() > targetDepth) {
+                    stack.pop();
+                }
+                if (stack.isEmpty()) {
+                    centralReferenceTable.remove(entry.getKey());
+                }
             }
         }
     }

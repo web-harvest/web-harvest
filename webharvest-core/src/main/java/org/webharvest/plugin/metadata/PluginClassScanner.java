@@ -160,7 +160,6 @@ public final class PluginClassScanner {
         
         // Core plugin classes
         Collections.addAll(names,
-                "org.webharvest.plugin.core.ConfigPlugin",
                 "org.webharvest.plugin.core.LoopPlugin",
                 "org.webharvest.plugin.core.WhilePlugin",
                 "org.webharvest.plugin.core.IfPlugin",

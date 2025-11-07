@@ -74,9 +74,25 @@ export class XMLParser {
 
         // Extract attributes
         const attributes: Record<string, string> = {};
+        let dimensions: { width: number; height: number } | undefined = undefined;
+        
         for (let i = 0; i < element.attributes.length; i++) {
             const attr = element.attributes[i];
-            attributes[attr.name] = attr.value;
+            
+            // Handle dimension attributes (data-width, data-height)
+            if (attr.name === 'data-width' || attr.name === 'data-height') {
+                if (!dimensions) {
+                    dimensions = { width: 0, height: 0 };
+                }
+                if (attr.name === 'data-width') {
+                    dimensions.width = parseInt(attr.value, 10) || 0;
+                } else if (attr.name === 'data-height') {
+                    dimensions.height = parseInt(attr.value, 10) || 0;
+                }
+            } else {
+                // Regular attributes
+                attributes[attr.name] = attr.value;
+            }
         }
 
         // Extract body (text content or CDATA)
@@ -124,6 +140,7 @@ export class XMLParser {
             attributes,
             body,
             children,
+            dimensions: dimensions // Include custom dimensions if present
         };
 
         // Auto-position children recursively

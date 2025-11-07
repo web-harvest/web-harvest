@@ -58,7 +58,7 @@ public final class SchemaSource {
     private final Source source;
 
     /**
-     * Default class constructors accepting not {@code null} {@link InputSteam}
+     * Default class constructors accepting not {@code null} {@link InputStream}
      * and system identifier of the XML schema source. If any of parameters is
      * {@code null}, then {@link IllegalArgumentException} is thrown.
      *

@@ -210,6 +210,9 @@ public class ExecutionManager {
             
             // CRITICAL: Reload config to parse and load configuration tree
             config.reload();
+
+            // Maintain legacy log expectation for IDE tests/UI
+            sendLog(job.getId(), "INFO", "Configuration loaded");
             
             // Create execution context
             DynamicScopeContext context = new ScraperContext();
@@ -247,7 +250,7 @@ public class ExecutionManager {
             LOG.info("Execution completed: {}", job.getId());
             
             // Extract variables from completed context
-            // NOTE: With our ConfigPlugin fix, variables are now in ROOT scope, not nested!
+            // NOTE: RootConfigurationExecutor keeps variables in ROOT scope (no nested config plugin)
             Map<String, String> resultMap = new ConcurrentHashMap<>();
             extractVariables(context, resultMap);
             

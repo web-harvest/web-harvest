@@ -42,7 +42,6 @@ public class CorePluginsRegistrar {
         // registry.registerMapping(null, CallParamPlugin.class, "call-param"); // TODO: Create CallParamPlugin
         registry.registerMapping(null, CasePlugin.class, "case");
         registry.registerMapping(null, CatchPlugin.class, "catch");
-        registry.registerMapping(null, ConfigPlugin.class, "config");
         registry.registerMapping(null, ConstantPlugin.class, "constant");
         registry.registerMapping(null, DefPlugin.class, "def");
         registry.registerMapping(null, ElsePlugin.class, "else");
@@ -80,7 +79,7 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, XQParamPlugin.class, "xq-param");
         registry.registerMapping(null, XsltPlugin.class, "xslt");
         
-        LOG.info("Registered 37 core plugins (legacy var/set-var removed - use def instead)");
+        LOG.info("Registered 36 core plugins (legacy var/set-var removed - use def instead)");
         initialized = true;
     }
     

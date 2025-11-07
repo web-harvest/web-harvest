@@ -27,6 +27,9 @@ export class PluginPalette {
     private collapsedCategories: Set<string> = new Set();
     private onAddNodeCallback: ((node: VisualNode) => void) | null = null;
     private selectedMasterPlugin: string | null = null; // Track selected master plugin for highlighting allowed children
+    private filterByRole: string | null = null; // Filter by PluginSemanticRole
+    private showDependentsOnly: boolean = false; // Show only dependent plugins
+    private showContainersOnly: boolean = false; // Show only container plugins
 
     constructor(containerId: string) {
         console.log('🔌🔌🔌 [PluginPalette] Constructor called for ID:', containerId);
@@ -239,6 +242,31 @@ export class PluginPalette {
                 return false;
             }
 
+            // Filter by semantic role
+            if (this.filterByRole) {
+                const templateRole = (template as any).semantics?.role;
+                if (templateRole !== this.filterByRole) {
+                    return false;
+                }
+            }
+
+            // Filter by dependents only
+            if (this.showDependentsOnly) {
+                const requiredParents = (template as any).requiredParentTypes || [];
+                if (requiredParents.length === 0) {
+                    return false;
+                }
+            }
+
+            // Filter by containers only
+            if (this.showContainersOnly) {
+                const allowsChildren = (template as any).semantics?.allowsChildren || 
+                                     (template as any).allowedChildTypes?.length > 0;
+                if (!allowsChildren) {
+                    return false;
+                }
+            }
+
             // Filter out dependent plugins from root-level palette
             // Only show plugins that can appear at root level
             if (!template.canAppearAtRoot) {
@@ -247,6 +275,33 @@ export class PluginPalette {
 
             return true;
         });
+    }
+
+    /**
+     * Filter by semantic role
+     */
+    setRoleFilter(role: string | null): void {
+        this.filterByRole = role;
+        this.applyFilters();
+        this.render();
+    }
+
+    /**
+     * Toggle show dependents only
+     */
+    toggleDependentsOnly(): void {
+        this.showDependentsOnly = !this.showDependentsOnly;
+        this.applyFilters();
+        this.render();
+    }
+
+    /**
+     * Toggle show containers only
+     */
+    toggleContainersOnly(): void {
+        this.showContainersOnly = !this.showContainersOnly;
+        this.applyFilters();
+        this.render();
     }
 
     /**
@@ -286,6 +341,12 @@ export class PluginPalette {
             this.container.appendChild(searchBox);
             console.log('✅ [PluginPalette] Search box added');
 
+            // Add filter controls for semantic roles
+            const filterControls = this.createFilterControls();
+            filterControls.style.flexShrink = '0';
+            this.container.appendChild(filterControls);
+            console.log('✅ [PluginPalette] Filter controls added');
+
             console.log('🎨 [PluginPalette] Creating categories container...');
             const categoriesContainer = document.createElement('div');
             categoriesContainer.className = 'categories-container';
@@ -293,34 +354,53 @@ export class PluginPalette {
             categoriesContainer.style.overflowY = 'auto';
             categoriesContainer.style.overflowX = 'hidden';
 
-            // Group by category (use CURRENT templates, not hardcoded!)
-            console.log('🎨 [PluginPalette] Getting categories from current templates...');
-            const categories = this.getCategories();
-            console.log('🎨 [PluginPalette] Categories to render:', categories);
-
+            // Group by category or semantic role based on filter
             let renderedCount = 0;
-            categories.forEach(category => {
-                console.log(`🔍 [PluginPalette] Processing category "${category}"...`);
-
-                const categoryTemplates = this.filteredTemplates.filter(t => t.category === category);
-                console.log(`🔍 [PluginPalette] Filtering "${category}": found ${categoryTemplates.length} templates`);
-
-                if (categoryTemplates.length === 0) {
-                    console.log(`⚠️ [PluginPalette] Skipping empty category "${category}"`);
-                    return;
-                }
-
-                console.log(`🎨 [PluginPalette] Creating section for "${category}" with ${categoryTemplates.length} plugins`);
-
-                try {
-                    const categorySection = this.createCategorySection(category, categoryTemplates);
-                    categoriesContainer.appendChild(categorySection);
+            
+            if (this.filterByRole) {
+                // Group by role when role filter is active
+                const roleTemplates = this.filteredTemplates.filter(t => {
+                    const templateRole = (t as any).semantics?.role;
+                    return templateRole === this.filterByRole;
+                });
+                
+                if (roleTemplates.length > 0) {
+                    const roleSection = this.createCategorySection(
+                        `Role: ${this.getRoleLabel(this.filterByRole!)}`,
+                        roleTemplates
+                    );
+                    categoriesContainer.appendChild(roleSection);
                     renderedCount++;
-                    console.log(`✅ [PluginPalette] Added category "${category}" to DOM`);
-                } catch (err) {
-                    console.error(`❌ [PluginPalette] Failed to create section for "${category}":`, err);
                 }
-            });
+            } else {
+                // Group by category (use CURRENT templates, not hardcoded!)
+                console.log('🎨 [PluginPalette] Getting categories from current templates...');
+                const categories = this.getCategories();
+                console.log('🎨 [PluginPalette] Categories to render:', categories);
+
+                categories.forEach(category => {
+                    console.log(`🔍 [PluginPalette] Processing category "${category}"...`);
+
+                    const categoryTemplates = this.filteredTemplates.filter(t => t.category === category);
+                    console.log(`🔍 [PluginPalette] Filtering "${category}": found ${categoryTemplates.length} templates`);
+
+                    if (categoryTemplates.length === 0) {
+                        console.log(`⚠️ [PluginPalette] Skipping empty category "${category}"`);
+                        return;
+                    }
+
+                    console.log(`🎨 [PluginPalette] Creating section for "${category}" with ${categoryTemplates.length} plugins`);
+
+                    try {
+                        const categorySection = this.createCategorySection(category, categoryTemplates);
+                        categoriesContainer.appendChild(categorySection);
+                        renderedCount++;
+                        console.log(`✅ [PluginPalette] Added category "${category}" to DOM`);
+                    } catch (err) {
+                        console.error(`❌ [PluginPalette] Failed to create section for "${category}":`, err);
+                    }
+                });
+            }
 
             console.log('🎨 [PluginPalette] Appending categories container to main container...');
             this.container.appendChild(categoriesContainer);
@@ -357,6 +437,88 @@ export class PluginPalette {
 
         searchContainer.appendChild(input);
         return searchContainer;
+    }
+
+    /**
+     * Create filter controls for semantic roles
+     */
+    private createFilterControls(): HTMLElement {
+        const filterContainer = document.createElement('div');
+        filterContainer.style.padding = '8px 12px';
+        filterContainer.style.borderBottom = '1px solid #ddd';
+        filterContainer.style.background = '#f9f9f9';
+        filterContainer.style.display = 'flex';
+        filterContainer.style.flexWrap = 'wrap';
+        filterContainer.style.gap = '6px';
+        filterContainer.style.fontSize = '12px';
+
+        // Role filter buttons
+        const roles = [
+            { value: null, label: 'All', icon: 'fa-list' },
+            { value: 'ROOT_CONTAINER', label: 'Root', icon: 'fa-home' },
+            { value: 'CONTEXT_CONTAINER', label: 'Containers', icon: 'fa-folder' },
+            { value: 'BODY_EVALUATOR', label: 'Evaluators', icon: 'fa-code' },
+            { value: 'DEPENDENT', label: 'Dependent', icon: 'fa-link' },
+            { value: 'LEAF', label: 'Leaf', icon: 'fa-circle' }
+        ];
+
+        roles.forEach(role => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.innerHTML = `<i class="fas ${role.icon}"></i> ${role.label}`;
+            button.style.cssText = `
+                padding: 4px 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: ${this.filterByRole === role.value ? '#4CAF50' : 'white'};
+                color: ${this.filterByRole === role.value ? 'white' : '#333'};
+                cursor: pointer;
+                font-size: 11px;
+                transition: all 0.2s;
+            `;
+            button.onclick = () => {
+                this.setRoleFilter(role.value);
+            };
+            filterContainer.appendChild(button);
+        });
+
+        // Toggle buttons
+        const dependentsButton = document.createElement('button');
+        dependentsButton.type = 'button';
+        dependentsButton.innerHTML = '<i class="fas fa-link"></i> Dependents';
+        dependentsButton.style.cssText = `
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: ${this.showDependentsOnly ? '#FF9800' : 'white'};
+            color: ${this.showDependentsOnly ? 'white' : '#333'};
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: auto;
+        `;
+        dependentsButton.onclick = () => {
+            this.toggleDependentsOnly();
+        };
+        filterContainer.appendChild(dependentsButton);
+
+        const containersButton = document.createElement('button');
+        containersButton.type = 'button';
+        containersButton.innerHTML = '<i class="fas fa-folder"></i> Containers';
+        containersButton.style.cssText = `
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: ${this.showContainersOnly ? '#2196F3' : 'white'};
+            color: ${this.showContainersOnly ? 'white' : '#333'};
+            cursor: pointer;
+            font-size: 11px;
+        `;
+        containersButton.onclick = () => {
+            this.toggleContainersOnly();
+        };
+        filterContainer.appendChild(containersButton);
+
+        return filterContainer;
     }
 
     /**
@@ -510,24 +672,77 @@ export class PluginPalette {
 
         item.appendChild(content);
 
-        // Show parent requirement tooltip for dependent plugins
+        // Enhanced tooltip with semantic information
+        const tooltipParts: string[] = [];
+        if (template.description) {
+            tooltipParts.push(template.description);
+        }
+        
         const requiredParents = (template as any).requiredParentTypes || [];
         if (requiredParents.length > 0) {
-            const parentTooltip = `Requires parent: ${requiredParents.join(', ')}`;
-            if (!item.title) {
-                item.title = parentTooltip;
-            } else {
-                item.title = `${item.title}. ${parentTooltip}`;
-            }
-            item.setAttribute('aria-description', parentTooltip);
-            
-            // Add visual indicator
+            tooltipParts.push(`Requires parent: ${requiredParents.join(', ')}`);
+        }
+        
+        const allowedChildren = (template as any).allowedChildTypes || [];
+        const allowsAnyChild = (template as any).semantics?.acceptsAnyChild || false;
+        if (allowedChildren.length > 0) {
+            tooltipParts.push(`Allowed children: ${allowedChildren.join(', ')}`);
+        } else if (allowsAnyChild) {
+            tooltipParts.push('Accepts any child plugin');
+        }
+        
+        const role = (template as any).semantics?.role;
+        if (role) {
+            tooltipParts.push(`Role: ${role}`);
+        }
+        
+        if (tooltipParts.length > 0) {
+            item.title = tooltipParts.join('\n');
+            item.setAttribute('aria-description', tooltipParts.join('. '));
+        }
+
+        // Visual indicators for dependent plugins
+        if (requiredParents.length > 0) {
             const indicator = document.createElement('span');
-            indicator.textContent = '🔗';
-            indicator.style.marginLeft = '4px';
-            indicator.style.fontSize = '10px';
-            indicator.title = parentTooltip;
+            indicator.innerHTML = '<i class="fas fa-link"></i>';
+            indicator.style.marginLeft = 'auto';
+            indicator.style.fontSize = '11px';
+            indicator.style.color = '#FF9800';
+            indicator.title = `Requires parent: ${requiredParents.join(', ')}`;
             content.appendChild(indicator);
+        }
+
+        // Visual indicators for container plugins
+        if (allowedChildren.length > 0 || allowsAnyChild) {
+            const childTooltip = allowsAnyChild 
+                ? 'Accepts any child plugin'
+                : `Allowed children: ${allowedChildren.join(', ')}`;
+            
+            const containerIndicator = document.createElement('span');
+            containerIndicator.innerHTML = '<i class="fas fa-folder"></i>';
+            containerIndicator.style.marginLeft = '4px';
+            containerIndicator.style.fontSize = '11px';
+            containerIndicator.style.color = '#2196F3';
+            containerIndicator.title = childTooltip;
+            content.appendChild(containerIndicator);
+        }
+
+        // Semantic role badge
+        if (role) {
+            const roleBadge = document.createElement('span');
+            roleBadge.textContent = this.getRoleLabel(role);
+            roleBadge.style.cssText = `
+                margin-left: 4px;
+                padding: 2px 6px;
+                background: ${this.getRoleColor(role)};
+                color: white;
+                border-radius: 3px;
+                font-size: 9px;
+                font-weight: 600;
+                text-transform: uppercase;
+            `;
+            roleBadge.title = `Semantic role: ${role}`;
+            content.appendChild(roleBadge);
         }
 
         // Mark dependent plugins as disabled (if filtering is enabled)
@@ -588,6 +803,34 @@ export class PluginPalette {
         };
 
         return item;
+    }
+
+    /**
+     * Get human-readable label for semantic role
+     */
+    private getRoleLabel(role: string): string {
+        const labels: Record<string, string> = {
+            'ROOT_CONTAINER': 'ROOT',
+            'CONTEXT_CONTAINER': 'CTX',
+            'BODY_EVALUATOR': 'EVAL',
+            'DEPENDENT': 'DEP',
+            'LEAF': 'LEAF'
+        };
+        return labels[role] || role;
+    }
+
+    /**
+     * Get color for semantic role
+     */
+    private getRoleColor(role: string): string {
+        const colors: Record<string, string> = {
+            'ROOT_CONTAINER': '#9C27B0',
+            'CONTEXT_CONTAINER': '#2196F3',
+            'BODY_EVALUATOR': '#4CAF50',
+            'DEPENDENT': '#FF9800',
+            'LEAF': '#757575'
+        };
+        return colors[role] || '#999';
     }
 
     /**

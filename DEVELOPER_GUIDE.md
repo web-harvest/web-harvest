@@ -1,7 +1,7 @@
 # WebHarvest Developer Guide
 
 **Version:** 2.3.1  
-**Last Updated:** November 3, 2025
+**Last Updated:** November 7, 2025
 
 ## 🎉 **Recent Achievements**
 
@@ -31,13 +31,21 @@
 
 #### 🔧 Critical Core Fix:
 
-**ConfigPlugin Scope Enhancement:**
-Variables created by `<def>` now execute in ROOT scope instead of nested scopes, ensuring they persist after configuration execution.
+**Root Configuration Executor:**
+The legacy `ConfigPlugin` was retired. The runtime now executes the `<config>` root element directly, applying charset/scriptlang settings and running children in the global scope.
 
 **Result:** 
-- ✅ **Variables accessible to IDE and tools**
-- ✅ **No cleanup of user variables**
-- ✅ **Full backward compatibility**
+- ✅ **Variables remain accessible to IDE and tools (no nested scope cleanup)**
+- ✅ **Charset/scriptlang handled centrally by the engine**
+- ✅ **Simpler plugin catalog (root is no longer a plugin)**
+
+**Offline HTTP Stubs:**
+The core integration suite and IDE embedded-example tests bind `HttpService` to deterministic fixtures (httpbin/json/example.com) so CI runs without outbound network calls.
+
+**Result:**
+- ✅ **Stable, fast tests** that no longer depend on external services
+- ✅ **Consistent payloads** for XPath/JSON assertions (e.g., slideshow title)
+- ✅ **Identical behavior between IDE and core suites via shared stub contract**
 
 ---
 
@@ -220,44 +228,31 @@ Results Display  ←WS→       ExecutionManager  ─┘
 - Must rebuild JAR to include new frontend assets
 - Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R) to clear cache
 
-### ConfigPlugin Scope Fix (CRITICAL)
+### Root Configuration Execution (CRITICAL)
 
 **Background:**  
-Originally, `ConfigPlugin` used `super.executeBody()` which delegates to `BodyProcessor`. `BodyProcessor` executes children in nested scopes via `context.executeWithinNewContext()`. When execution completed, the `finally` block cleaned up all variables from nested scopes.
+The legacy `ConfigPlugin` executed `<config>` by delegating to `BodyProcessor`, which wrapped the body in a nested scope. Variables defined inside `<config>` were removed when that temporary scope closed.
 
-**Problem:**
+**Solution:**
 ```java
-// ScraperContext.executeWithinNewContext() - lines 164-181
-public <R> R executeWithinNewContext(Callable<R> callable) {
-    try {
-        variablesNamesStack.push(new HashSet<String>());
-        return callable.call();
-    } finally {
-        for (String varName : variablesNamesStack.pop()) {
-            removeVarFromCRT(varName); // CLEANUP - variables deleted!
-        }
-    }
+// RootConfigurationExecutor.java
+void execute(PluginConfigurationTree rootTree, DynamicScopeContext context) {
+    PluginConfiguration configuration = rootTree.getConfiguration();
+    applyRuntimeSettings(configuration, context);   // charset + scriptlang
+    ensureChildConfigurationConsistency(rootTree, configuration);
+
+    Variable result = bodyExecutor.executeBody(configuration, context);
+    context.setLocalVar("configResult", result != null ? result : EmptyVariable.INSTANCE);
 }
 ```
-
-**Solution in ConfigPlugin.executeBody():**
-```java
-@Override
-protected Variable executeBody(DynamicScopeContext context) {
-    // Execute children DIRECTLY in current scope (no nesting!)
-    final IElementDef[] defs = getElementDef().getOperationDefs();
-    
-    for (IElementDef def : defs) {
-        final Processor processor = ProcessorFactory.INSTANCE.createProcessor(context, def);
-        processor.run(context); // Variables stay in ROOT context!
-    }
-    // Return combined results
-}
-```
+- `RootConfigurationExecutor` lives in the runtime layer and replaces `ConfigPlugin`
+- Charset/scriptlang attributes are applied before any child executes
+- Child plugins run through `DefaultPluginBodyExecutor`, so they share the root scope
+- `configResult` is published as a convenience variable for downstream tooling
 
 **Testing:**
-- Unit test: `ScraperContextTest.testExecuteWithinNewContext()` demonstrates the scope behavior
-- Integration test: `ExecutionManagerWebSocketTest.testMultiVariablePipeline_CRITICAL()` verifies variables are extracted
+- New TDD coverage: `ScraperRootExecutionTest` asserts charset/scriptlang + child execution
+- Existing IDE WebSocket tests continue to validate variable extraction
 
 ### Testing IDE
 
@@ -669,6 +664,30 @@ interface PluginDescriptor {
   };
 }
 ```
+
+### Master/Detail Relationship Coverage *(November 2025 refresh)*
+
+Semantic metadata is now synchronised with the XML examples in
+`webharvest-core/src/test/resources/integration-tests`. The following
+master/detail pairs are explicitly captured in plugin semantics and the
+TypeScript palette:
+
+- `try` ⟶ `catch`
+- `if` / `case` ⟶ `else`
+- `http` ⟶ `http-header`, `http-param`
+- `call` ⟶ `call-param`
+- `zip` ⟶ `zip-entry`
+- `ftp` ⟶ `ftp-get`, `ftp-put`, `ftp-list`
+
+These relationships drive palette badges, drag&drop validation, and the
+ConnectionPropertyPanel reconnect UI. When new XML examples introduce a
+master/detail pair make sure to mirror it in the plugin metadata
+(`PluginConfigurationSchema#getAllowedSubElements()` /
+`getRequiredParents()` and the generated JSON catalog).
+
+The Visual Designer now treats these master plugins as genuine containers,
+so dependent tiles (e.g. `http-header`, `http-param`, `ftp-put`) can be
+dragged directly onto their parents and validated in real time.
 
 ### Usage in IDE
 
@@ -1233,8 +1252,25 @@ public void testAsciiConfigFile_NoRegression() throws Exception {
 
 **When to use**:
 - Testing plugin interactions
-- End-to-end scenarios
-- Real-world use cases
+- Validating full scraping workflows
+- Testing side effects (files, database entries)
+- Ensuring compatibility between plugins
+
+**Structure**:
+```java
+@Test(groups = {"integration", "plugins"})
+public void testRegexPluginExample() throws Exception {
+    assertTrue(executeAndVerifyNoException(
+        getNewPluginExamplePath("08_regexp_plugin_example.xml")));
+}
+```
+
+**HTTP fixtures**: `XmlBasedIntegrationTestBase` binds `HttpService` to an in-memory stub, so `https://example.com` and `https://httpbin.org/*` return deterministic payloads (shared with IDE tests). No external network access is required.
+
+**Examples**:
+- `integration-tests/new_plugins/08_regexp_plugin_example.xml`
+- `integration-tests/new_plugins/07_xpath_plugin_example.xml`
+- `integration-tests/new_plugins/10_xml_to_json_plugin_example.xml`
 
 **Base Class Pattern**:
 ```java

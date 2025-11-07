@@ -62,23 +62,23 @@ public interface Cache<K, V> {
     void put(K key, V value);
 
     /**
-     * Returns {@link true} if {@link Cache} contains object identified by the
+     * Returns {@code true} if {@link Cache} contains object identified by the
      * given key.
      *
      * @param key
      *            key of the object being looked up in the {@link Cache}
-     * @return {@link true} if cache contains object identified by the given
-     *         key; {@link false} is returned otherwise
+     * @return {@code true} if cache contains object identified by the given
+     *         key; {@code false} is returned otherwise
      */
     boolean contains(K key);
 
     /**
      * Returns value associated with the specified key. If for the given key, no
-     * value is currently cached, then {@link null} is returned.
+     * value is currently cached, then {@code null} is returned.
      *
      * @param key
      *            key of the object being looked up in the {@link Cache}
-     * @return object associated with the specified key, or {@link null} if
+     * @return object associated with the specified key, or {@code null} if
      *         there is no such object
      */
     V lookup(K key);

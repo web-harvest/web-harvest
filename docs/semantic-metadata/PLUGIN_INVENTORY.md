@@ -4,11 +4,12 @@ The table below lists every plugin surfaced by the unified metadata catalog.
 `Role` corresponds to the semantic classification consumed by the visual
 designer and LLM tooling. `Metadata Source` indicates whether the descriptor is
 explicitly curated in `plugin-semantics.json` or derived at runtime from the
-Java metadata APIs.
+Java metadata APIs. The `<config>` root element is now handled by the runtime
+(`RootConfigurationExecutor`) and therefore no longer appears in the plugin
+catalog.
 
 | Plugin | Class | Role | Category | Metadata Source |
 | --- | --- | --- | --- | --- |
-| config | org.webharvest.plugin.core.ConfigPlugin | ROOT_CONTAINER | Configuration | Curated |
 | loop | org.webharvest.plugin.core.LoopPlugin | CONTEXT_CONTAINER | Control | Curated |
 | while | org.webharvest.plugin.core.WhilePlugin | CONTEXT_CONTAINER | Control | Curated |
 | if | org.webharvest.plugin.core.IfPlugin | CONTEXT_CONTAINER | Control | Curated |

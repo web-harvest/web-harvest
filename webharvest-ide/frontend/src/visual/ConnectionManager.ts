@@ -105,7 +105,12 @@ export class ConnectionManager {
     /**
      * Validate connection before creation
      */
-    validateConnection(fromNodeId: string, toNodeId: string): ConnectionValidation {
+    validateConnection(
+        fromNodeId: string, 
+        toNodeId: string, 
+        connectionType?: ConnectionType,
+        excludeConnectionId?: string // For reconnect: exclude this connection from duplicate check
+    ): ConnectionValidation {
         // Rule 1: Cannot connect node to itself
         if (fromNodeId === toNodeId) {
             return {
@@ -114,9 +119,14 @@ export class ConnectionManager {
             };
         }
 
-        // Rule 2: Check for duplicate connection
+        // Rule 2: Check for duplicate connection (exclude the connection being modified during reconnect)
         const exists = Array.from(this.connections.values()).some(
-            conn => conn.from === fromNodeId && conn.to === toNodeId
+            conn => {
+                if (excludeConnectionId && conn.id === excludeConnectionId) {
+                    return false; // Skip the connection being modified
+                }
+                return conn.from === fromNodeId && conn.to === toNodeId;
+            }
         );
 
         if (exists) {
@@ -127,7 +137,7 @@ export class ConnectionManager {
         }
 
         // Rule 3: Check for cycles
-        if (this.wouldCreateCycle(fromNodeId, toNodeId)) {
+        if (this.wouldCreateCycle(fromNodeId, toNodeId, excludeConnectionId)) {
             return {
                 valid: false,
                 error: 'Connection would create a cycle'
@@ -138,13 +148,58 @@ export class ConnectionManager {
     }
 
     /**
+     * Validate semantic compatibility of ports during reconnect
+     * This method checks if the source and target ports are semantically compatible
+     * beyond basic type matching (e.g., sequential, conditional, error)
+     */
+    validateReconnectSemantics(
+        fromNodeId: string,
+        toNodeId: string,
+        sourcePortType: string,
+        targetPortType: string | null,
+        nodes: VisualNode[],
+        getNodeType: (nodeId: string) => string | null
+    ): ConnectionValidation {
+        const fromNodeType = getNodeType(fromNodeId);
+        const toNodeType = getNodeType(toNodeId);
+
+        if (!fromNodeType || !toNodeType) {
+            // If we can't determine node types, allow the connection (backwards compatibility)
+            return { valid: true };
+        }
+
+        // Check if source port type matches target port type (basic compatibility)
+        if (targetPortType && sourcePortType !== targetPortType) {
+            // This should be caught by port validation, but double-check here
+            // Sequential can connect to any input, but conditional/error should match
+            if (sourcePortType !== 'sequential' && sourcePortType !== targetPortType) {
+                return {
+                    valid: false,
+                    error: `Port type mismatch: source port is "${sourcePortType}" but target expects "${targetPortType}"`
+                };
+            }
+        }
+
+        // Additional semantic checks can be added here:
+        // - Check if node types are compatible (e.g., certain plugins should only connect to specific others)
+        // - Check if connection makes sense in the workflow context
+        // - Validate against plugin metadata constraints
+
+        return { valid: true };
+    }
+
+    /**
      * Check if connection would create cycle (DFS)
      */
-    wouldCreateCycle(fromNodeId: string, toNodeId: string): boolean {
+    wouldCreateCycle(fromNodeId: string, toNodeId: string, excludeConnectionId?: string): boolean {
         // Build adjacency list
         const graph = new Map<string, string[]>();
 
         this.connections.forEach(conn => {
+            // Skip the connection being modified during reconnect
+            if (excludeConnectionId && conn.id === excludeConnectionId) {
+                return;
+            }
             if (!graph.has(conn.from)) {
                 graph.set(conn.from, []);
             }

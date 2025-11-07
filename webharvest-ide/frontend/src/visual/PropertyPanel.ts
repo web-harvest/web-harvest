@@ -283,11 +283,56 @@ export class PropertyPanel {
                 metaContainer.appendChild(examplesContainer);
             }
 
-            if (plugin.dependencies && plugin.dependencies.length > 0) {
+            // Show semantic role and context
+            if (plugin.semantics?.role) {
+                const roleEl = document.createElement('div');
+                roleEl.style.marginTop = '8px';
+                roleEl.style.padding = '6px 8px';
+                roleEl.style.background = this.getRoleColor(plugin.semantics.role);
+                roleEl.style.color = 'white';
+                roleEl.style.borderRadius = '4px';
+                roleEl.style.fontSize = '11px';
+                roleEl.style.fontWeight = '600';
+                roleEl.textContent = `Role: ${this.getRoleLabel(plugin.semantics.role)}`;
+                roleEl.title = `Semantic role: ${plugin.semantics.role}`;
+                metaContainer.appendChild(roleEl);
+            }
+
+            // Show required parent types
+            const requiredParents = plugin.semantics?.requiredParentTypes || plugin.dependencies || [];
+            if (requiredParents.length > 0) {
                 const depsEl = document.createElement('div');
                 depsEl.style.marginTop = '8px';
-                depsEl.innerHTML = `<strong>Requires parent:</strong> ${plugin.dependencies.join(', ')}`;
+                depsEl.style.padding = '6px 8px';
+                depsEl.style.background = '#fff9e6';
+                depsEl.style.border = '1px solid #FF9800';
+                depsEl.style.borderRadius = '4px';
+                depsEl.style.fontSize = '11px';
+                depsEl.innerHTML = `<strong>⚠️ Requires parent:</strong> ${requiredParents.join(', ')}`;
+                depsEl.title = `This plugin must be placed inside one of: ${requiredParents.join(', ')}`;
                 metaContainer.appendChild(depsEl);
+            }
+
+            // Show allowed child types
+            const allowedChildren = plugin.semantics?.allowedChildTypes || [];
+            const acceptsAnyChild = plugin.semantics?.acceptsAnyChild || false;
+            if (allowedChildren.length > 0 || acceptsAnyChild) {
+                const childrenEl = document.createElement('div');
+                childrenEl.style.marginTop = '8px';
+                childrenEl.style.padding = '6px 8px';
+                childrenEl.style.background = '#f1f8f4';
+                childrenEl.style.border = '1px solid #4CAF50';
+                childrenEl.style.borderRadius = '4px';
+                childrenEl.style.fontSize = '11px';
+                if (acceptsAnyChild) {
+                    childrenEl.innerHTML = `<strong>✓ Accepts:</strong> Any child plugin`;
+                } else {
+                    childrenEl.innerHTML = `<strong>✓ Accepts children:</strong> ${allowedChildren.join(', ')}`;
+                }
+                childrenEl.title = acceptsAnyChild 
+                    ? 'This plugin can contain any child plugin'
+                    : `This plugin can contain: ${allowedChildren.join(', ')}`;
+                metaContainer.appendChild(childrenEl);
             }
 
             if (metaContainer.children.length > 0) {
@@ -669,6 +714,34 @@ export class PropertyPanel {
                 modal.remove();
             }
         });
+    }
+
+    /**
+     * Get human-readable label for semantic role
+     */
+    private getRoleLabel(role: string): string {
+        const labels: Record<string, string> = {
+            'ROOT_CONTAINER': 'Root Container',
+            'CONTEXT_CONTAINER': 'Context Container',
+            'BODY_EVALUATOR': 'Body Evaluator',
+            'DEPENDENT': 'Dependent',
+            'LEAF': 'Leaf'
+        };
+        return labels[role] || role;
+    }
+
+    /**
+     * Get color for semantic role
+     */
+    private getRoleColor(role: string): string {
+        const colors: Record<string, string> = {
+            'ROOT_CONTAINER': '#9C27B0',
+            'CONTEXT_CONTAINER': '#2196F3',
+            'BODY_EVALUATOR': '#4CAF50',
+            'DEPENDENT': '#FF9800',
+            'LEAF': '#757575'
+        };
+        return colors[role] || '#999';
     }
 }
 

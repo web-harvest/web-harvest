@@ -23,15 +23,16 @@ export class XMLGenerator {
     private generateNode(node: VisualNode, indentLevel: number): string {
         const indent = '    '.repeat(indentLevel);
         const attributes = this.generateAttributes(node.attributes);
+        const dimensionsAttrs = this.generateDimensionsAttributes(node);
         const tag = node.type;
 
         // Self-closing tag (no body, no children)
         if (node.body === null && node.children.length === 0) {
-            return `${indent}<${tag}${attributes}/>`;
+            return `${indent}<${tag}${attributes}${dimensionsAttrs}/>`;
         }
 
         // Opening tag
-        let xml = `${indent}<${tag}${attributes}>`;
+        let xml = `${indent}<${tag}${attributes}${dimensionsAttrs}>`;
 
         // Body content
         if (node.body !== null && node.body !== '') {
@@ -70,6 +71,24 @@ export class XMLGenerator {
         return ' ' + keys
             .map(key => `${key}="${this.escapeAttribute(attributes[key])}"`)
             .join(' ');
+    }
+
+    /**
+     * Generate dimensions attributes (if custom dimensions are set)
+     */
+    private generateDimensionsAttributes(node: VisualNode): string {
+        if (!node.dimensions) {
+            return '';
+        }
+
+        const attrs: string[] = [];
+        if (node.dimensions.width) {
+            attrs.push(`data-width="${node.dimensions.width}"`);
+        }
+        if (node.dimensions.height) {
+            attrs.push(`data-height="${node.dimensions.height}"`);
+        }
+        return attrs.length > 0 ? ' ' + attrs.join(' ') : '';
     }
 
     /**

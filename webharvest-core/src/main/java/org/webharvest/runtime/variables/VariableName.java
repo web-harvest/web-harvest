@@ -35,6 +35,8 @@ package org.webharvest.runtime.variables;
 
 import static java.text.MessageFormat.format;
 
+import java.util.Set;
+
 import org.apache.commons.lang3.StringUtils;
 import org.webharvest.exception.VariableException;
 
@@ -75,6 +77,7 @@ import org.webharvest.exception.VariableException;
 public final class VariableName {
 
     private final String name;
+    private static final Set<String> SYSTEM_VARIABLES = Set.of("_index", "_item");
 
     /**
      * Creates new {@link org.webharvest.runtime.variables.Variable} name.
@@ -86,8 +89,13 @@ public final class VariableName {
      * @throws VariableException if name is null, empty, or doesn't match pattern
      */
     public VariableName(final String name) {
-        if (StringUtils.isBlank(name)
-                || !name.matches("^[a-zA-Z][a-zA-Z0-9_]*?$")) {
+        if (StringUtils.isBlank(name)) {
+            throw new VariableException(format("Invalid variable name ''{0}''",
+                    name));
+        }
+
+        if (!name.matches("^[a-zA-Z][a-zA-Z0-9_]*?$")
+                && !SYSTEM_VARIABLES.contains(name)) {
             throw new VariableException(format("Invalid variable name ''{0}''",
                     name));
         }

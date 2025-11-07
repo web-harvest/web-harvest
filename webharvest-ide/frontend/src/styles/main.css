@@ -19,6 +19,72 @@ body {
     height: 100vh;
 }
 
+/* Visual Designer - Drop Zone Validation Styles */
+.drop-zone-valid {
+    border: 3px solid #4CAF50 !important;
+    background: rgba(76, 175, 80, 0.1) !important;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.4) !important;
+    animation: pulse-valid 1s ease-in-out infinite;
+}
+
+.drop-zone-invalid {
+    border: 3px solid #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+    animation: pulse-invalid 1s ease-in-out infinite;
+    cursor: not-allowed !important;
+}
+
+@keyframes pulse-valid {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+}
+
+@keyframes pulse-invalid {
+    0%, 100% {
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    }
+}
+
+/* Validation Error Styling */
+.validation-error {
+    border-color: #ef4444 !important;
+    border-width: 3px !important;
+    border-style: dashed !important;
+    background: #fee !important;
+}
+
+.validation-error-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 20;
+    cursor: help;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
 
 
 

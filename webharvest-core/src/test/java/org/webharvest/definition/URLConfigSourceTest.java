@@ -36,10 +36,15 @@ package org.webharvest.definition;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 
 import org.webharvest.definition.URLConfigSource.URLLocation;
 
@@ -61,8 +66,8 @@ public class URLConfigSourceTest {
      @BeforeMethod
      public void setUp() throws Exception {
         mockVisitor = mock(ConfigLocationVisitor.class);
-         url = new URL("http://sourceforge.net/");
-         source = new URLConfigSource(url);
+        url = new URL(null, "memory://config", new InMemoryUrlStreamHandler("<config/>"));
+        source = new URLConfigSource(url);
      }
 
      @AfterMethod
@@ -103,4 +108,28 @@ public class URLConfigSourceTest {
          new URLConfigSource(mockLocation).visit(mockVisitor);
      }
 
+    private static final class InMemoryUrlStreamHandler extends URLStreamHandler {
+
+        private final byte[] data;
+
+        private InMemoryUrlStreamHandler(String body) {
+            this.data = body.getBytes(StandardCharsets.UTF_8);
+        }
+
+        @Override
+        protected URLConnection openConnection(URL u) {
+            return new URLConnection(u) {
+                @Override
+                public void connect() {
+                    connected = true;
+                }
+
+                @Override
+                public InputStream getInputStream() {
+                    connected = true;
+                    return new ByteArrayInputStream(data);
+                }
+            };
+        }
+    }
 }

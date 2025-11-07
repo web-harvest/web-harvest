@@ -26,11 +26,61 @@ const mockPlugins: Plugin[] = [
             role: 'BODY_EVALUATOR',
             canAppearAtRoot: true,
             allowsChildren: true,
-            acceptsAnyChild: true,
+            acceptsAnyChild: false,
             allowBody: true,
             allowTextContent: false,
-            allowedChildTypes: [],
+            allowedChildTypes: ['http-header', 'http-param'],
             requiredParentTypes: []
+        }
+    },
+    {
+        id: 'http-header',
+        name: 'HTTP Header',
+        description: 'HTTP header',
+        category: 'Network',
+        icon: 'fa-tag',
+        schema: {
+            attributes: [],
+            canHaveBody: true,
+            canHaveChildren: false,
+            canAppearAtRoot: false,
+            requiredParents: ['http'],
+            isContextSpecific: true
+        },
+        semantics: {
+            role: 'DEPENDENT',
+            canAppearAtRoot: false,
+            allowsChildren: false,
+            acceptsAnyChild: false,
+            allowBody: true,
+            allowTextContent: true,
+            allowedChildTypes: [],
+            requiredParentTypes: ['http']
+        }
+    },
+    {
+        id: 'http-param',
+        name: 'HTTP Parameter',
+        description: 'HTTP parameter',
+        category: 'Network',
+        icon: 'fa-list',
+        schema: {
+            attributes: [],
+            canHaveBody: true,
+            canHaveChildren: false,
+            canAppearAtRoot: false,
+            requiredParents: ['http'],
+            isContextSpecific: true
+        },
+        semantics: {
+            role: 'DEPENDENT',
+            canAppearAtRoot: false,
+            allowsChildren: false,
+            acceptsAnyChild: false,
+            allowBody: true,
+            allowTextContent: true,
+            allowedChildTypes: [],
+            requiredParentTypes: ['http']
         }
     },
     {
@@ -260,11 +310,11 @@ describe('SemanticValidator', () => {
     describe('getAllowedChildren', () => {
         it('should return allowed child types for containers', () => {
             expect(validator.getAllowedChildren('call')).toEqual(['call-param']);
+            expect(validator.getAllowedChildren('http')).toEqual(['http-header', 'http-param']);
         });
 
         it('should return empty array for containers that accept any child', () => {
             expect(validator.getAllowedChildren('try')).toEqual([]);
-            expect(validator.getAllowedChildren('http')).toEqual([]);
         });
 
         it('should return empty array for non-container plugins', () => {
@@ -273,11 +323,27 @@ describe('SemanticValidator', () => {
         });
     });
 
+    describe('allowsChildren', () => {
+        it('should return true for plugins that expose child slots', () => {
+            expect(validator.allowsChildren('call')).toBe(true);
+            expect(validator.allowsChildren('http')).toBe(true);
+            expect(validator.allowsChildren('try')).toBe(true);
+        });
+
+        it('should return false for leaf or dependent plugins', () => {
+            expect(validator.allowsChildren('call-param')).toBe(false);
+            expect(validator.allowsChildren('http-header')).toBe(false);
+            expect(validator.allowsChildren('ftp-put')).toBe(false);
+        });
+    });
+
     describe('canBeChildOf', () => {
         it('should return true when child is allowed in parent', () => {
             expect(validator.canBeChildOf('catch', 'try')).toBe(true);
             expect(validator.canBeChildOf('call-param', 'call')).toBe(true);
             expect(validator.canBeChildOf('ftp-put', 'ftp')).toBe(true);
+            expect(validator.canBeChildOf('http-header', 'http')).toBe(true);
+            expect(validator.canBeChildOf('http-param', 'http')).toBe(true);
             expect(validator.canBeChildOf('http', 'try')).toBe(true); // acceptsAnyChild
         });
 
@@ -316,6 +382,13 @@ describe('SemanticValidator', () => {
             const result = validator.validateDrop('catch', 'http');
             expect(result.valid).toBe(false);
             expect(result.message).toContain('requires parent');
+        });
+
+        it('should allow http detail plugins inside http container', () => {
+            const headerResult = validator.validateDrop('http-header', 'http');
+            const paramResult = validator.validateDrop('http-param', 'http');
+            expect(headerResult.valid).toBe(true);
+            expect(paramResult.valid).toBe(true);
         });
 
         it('should reject plugins dropped in parent that does not accept them', () => {

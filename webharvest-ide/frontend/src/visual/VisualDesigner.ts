@@ -14,7 +14,8 @@ import {
     calculateLinearLayout,
     calculateNestedLayout,
     generateConnections,
-    type Connection
+    type Connection,
+    setContainerResolver
 } from './VisualModelHelpers';
 import { NodeStateRenderer, type NodeExecutionState } from './NodeStateRenderer';
 import { NodeMetricsOverlay, type NodeMetrics } from './NodeMetricsOverlay';
@@ -22,10 +23,11 @@ import { GridSystem } from './GridSystem';
 import { Minimap } from './Minimap';
 import { IconLibrary } from './IconLibrary';
 import { ContainerRenderer } from './ContainerRenderer';
-import { PortSystem } from './PortSystem';
+import { PortSystem, type PortType } from './PortSystem';
 import { ConnectionManager, type Connection as ManualConnection, type ConnectionType } from './ConnectionManager';
 import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
+import { NodeResizeHandler } from './NodeResizeHandler';
 import type { PluginManager } from '../core/PluginManager';
 
 type DesignerSnapshot = {
@@ -110,6 +112,9 @@ export class VisualDesigner {
         fromPortElement: HTMLElement;
         fromPortType: string;
         temporaryLine: SVGLineElement | null;
+        isReconnect: boolean; // True if reconnecting existing connection
+        existingConnectionId: string | null; // ID of connection being reconnected
+        reconnectEnd: 'source' | 'target' | null; // Which end is being reconnected
     } | null = null;
 
     // Zoom & pan state
@@ -140,6 +145,11 @@ export class VisualDesigner {
 
     // Semantic validation
     private semanticValidator: SemanticValidator | null = null;
+    private validationErrors: Map<string, string> = new Map(); // nodeId -> error message
+    private invalidConnections: Set<string> = new Set(); // connection IDs with validation errors
+
+    // Node resize handler
+    private resizeHandler!: NodeResizeHandler; // Initialized in constructor
 
     constructor(containerId: string, pluginManager?: PluginManager | null) {
         const container = document.getElementById(containerId);
@@ -157,6 +167,12 @@ export class VisualDesigner {
         if (pluginManager) {
             this.semanticValidator = new SemanticValidator(pluginManager);
         }
+
+        // Initialize resize handler
+        this.resizeHandler = new NodeResizeHandler();
+        this.resizeHandler.setOnResize((nodeId, dimensions) => {
+            this.handleNodeResize(nodeId, dimensions);
+        });
 
         // Setup drag & drop
         this.setupDragAndDrop();
@@ -637,7 +653,7 @@ export class VisualDesigner {
             const role = this.semanticValidator.getRole(node.type);
             if (role) {
                 container.dataset.role = role;
-                this.applyRoleBasedStyling(container, role);
+                this.applyRoleBasedStyling(container, role, node);
             }
         }
 
@@ -695,6 +711,9 @@ export class VisualDesigner {
             }
         });
 
+        // Setup drag handlers for container movement
+        this.setupNodeDragHandlers(container, node);
+
         this.canvasElement.appendChild(container);
     }
 
@@ -715,11 +734,17 @@ export class VisualDesigner {
     }
 
     /**
-     * Get node dimensions from VisualPluginMetadata or use defaults
+     * Get node dimensions from VisualPluginMetadata, node.dimensions, or use defaults
      */
-    private getNodeDimensions(nodeType: string): { width: number; height: number } {
+    private getNodeDimensions(node: VisualNode): { width: number; height: number } {
+        // Use custom dimensions if set
+        if (node.dimensions) {
+            return node.dimensions;
+        }
+
+        // Use metadata defaults
         if (this.pluginManager) {
-            const plugin = this.pluginManager.findPlugin(nodeType);
+            const plugin = this.pluginManager.findPlugin(node.type);
             if (plugin) {
                 return {
                     width: plugin.defaultWidth || this.DEFAULT_NODE_WIDTH,
@@ -737,7 +762,7 @@ export class VisualDesigner {
      * Create basic node element (reusable)
      */
     private createBasicNodeElement(node: VisualNode): HTMLElement {
-        const dimensions = this.getNodeDimensions(node.type);
+        const dimensions = this.getNodeDimensions(node);
         const nodeElement = document.createElement('div');
         nodeElement.className = 'visual-node connected-node';
         nodeElement.dataset.nodeId = node.id;
@@ -755,8 +780,14 @@ export class VisualDesigner {
             const role = this.semanticValidator.getRole(node.type);
             if (role) {
                 nodeElement.dataset.role = role;
-                this.applyRoleBasedStyling(nodeElement, role);
+                this.applyRoleBasedStyling(nodeElement, role, node);
             }
+        }
+
+        // Apply validation error styling if node has errors
+        const validationError = this.validationErrors.get(node.id);
+        if (validationError) {
+            this.applyValidationErrorStyling(nodeElement, validationError);
         }
 
         // Header with icon
@@ -804,13 +835,7 @@ export class VisualDesigner {
         // Setup drag handlers for moving node
         this.setupNodeDragHandlers(nodeElement, node);
 
-        // Apply role-based styling
-        if (this.semanticValidator) {
-            const role = this.semanticValidator.getRole(node.type);
-            if (role) {
-                this.applyRoleBasedStyling(nodeElement, role);
-            }
-        }
+        // Role-based styling already applied above, skip duplicate
 
         // Apply accessibility metadata (Apple HIG compliance)
         if (this.pluginManager) {
@@ -900,8 +925,8 @@ export class VisualDesigner {
                 }
 
                 // Calculate connection points using node dimensions from metadata
-                const fromDimensions = this.getNodeDimensions(fromNode.type);
-                const toDimensions = this.getNodeDimensions(toNode.type);
+                const fromDimensions = this.getNodeDimensions(fromNode);
+                const toDimensions = this.getNodeDimensions(toNode);
                 const x1 = fromNode.position.x + fromDimensions.width / 2;
                 const y1 = fromNode.position.y + fromDimensions.height;
                 const x2 = toNode.position.x + toDimensions.width / 2;
@@ -1242,11 +1267,20 @@ export class VisualDesigner {
                                 if (!validation.valid) {
                                     this.showError(validation.message);
                                     console.warn(`❌ Validation failed: ${validation.message}`);
-                                    // Remove all drop zone classes
-                                    this.canvasElement.querySelectorAll('.drop-target, .drop-zone-valid, .drop-zone-invalid').forEach(el => {
-                                        el.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
-                                    });
+                                    // Mark as invalid drop zone
+                                    containerNodeElement.classList.add('drop-zone-invalid');
+                                    containerNodeElement.classList.remove('drop-zone-valid');
+                                    // Remove all drop zone classes after delay
+                                    setTimeout(() => {
+                                        this.canvasElement.querySelectorAll('.drop-target, .drop-zone-valid, .drop-zone-invalid').forEach(el => {
+                                            el.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
+                                        });
+                                    }, 2000);
                                     return; // Reject the drop
+                                } else {
+                                    // Mark as valid drop zone
+                                    containerNodeElement.classList.add('drop-zone-valid');
+                                    containerNodeElement.classList.remove('drop-zone-invalid');
                                 }
                             }
 
@@ -1321,6 +1355,15 @@ export class VisualDesigner {
 
                 this.connectionDragState.temporaryLine.setAttribute('x2', canvasPos.x.toString());
                 this.connectionDragState.temporaryLine.setAttribute('y2', canvasPos.y.toString());
+
+                // Visual feedback for reconnect mode (orange line)
+                if (this.connectionDragState.isReconnect) {
+                    this.connectionDragState.temporaryLine.setAttribute('stroke', '#FF9800');
+                    this.connectionDragState.temporaryLine.setAttribute('stroke-width', '3');
+                } else {
+                    this.connectionDragState.temporaryLine.setAttribute('stroke', 'var(--magenta)');
+                    this.connectionDragState.temporaryLine.setAttribute('stroke-width', '2');
+                }
             }
         });
 
@@ -1422,13 +1465,29 @@ export class VisualDesigner {
                 const port = portElement as HTMLElement;
                 const portType = port.dataset.portConnectionType || 'sequential';
 
-                // Start connection drag
+                // Check if this port already has a connection (reconnect mode)
+                const existingConnections = this.connectionManager.getConnectionsForNode(node.id, 'output');
+                const existingConnection = existingConnections.find(conn => {
+                    // Match by port type if connection has type info
+                    return conn.type === portType || (portType === 'sequential' && !conn.type);
+                });
+
+                // Start connection drag (new or reconnect)
                 this.connectionDragState = {
                     fromNodeId: node.id,
                     fromPortElement: port,
                     fromPortType: portType,
-                    temporaryLine: null
+                    temporaryLine: null,
+                    isReconnect: !!existingConnection,
+                    existingConnectionId: existingConnection?.id || null,
+                    reconnectEnd: existingConnection ? 'source' : null
                 };
+
+                // Visual feedback for reconnect mode
+                if (existingConnection) {
+                    port.style.background = '#FF9800'; // Orange for reconnect
+                    port.style.borderColor = '#FF9800';
+                }
 
                 // Create temporary SVG line
                 if (this.svgElement) {
@@ -1441,8 +1500,15 @@ export class VisualDesigner {
                     line.setAttribute('y1', canvasPos.y.toString());
                     line.setAttribute('x2', canvasPos.x.toString());
                     line.setAttribute('y2', canvasPos.y.toString());
-                    line.setAttribute('stroke', 'var(--magenta)');
-                    line.setAttribute('stroke-width', '2');
+
+                    // Color based on reconnect mode
+                    if (this.connectionDragState.isReconnect) {
+                        line.setAttribute('stroke', '#FF9800'); // Orange for reconnect
+                        line.setAttribute('stroke-width', '3');
+                    } else {
+                        line.setAttribute('stroke', 'var(--magenta)');
+                        line.setAttribute('stroke-width', '2');
+                    }
                     line.setAttribute('stroke-dasharray', '5,5');
                     line.style.pointerEvents = 'none';
 
@@ -1464,6 +1530,41 @@ export class VisualDesigner {
         const freshInputPorts = nodeElement.querySelectorAll('.port-input');
 
         freshInputPorts.forEach(portElement => {
+            // Also handle mousedown for input ports (to reconnect source)
+            portElement.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+
+                // Check if this input port already has a connection (reconnect source mode)
+                const existingConnections = this.connectionManager.getConnectionsForNode(node.id, 'input');
+                const existingConnection = existingConnections.find(conn => conn.to === node.id);
+
+                if (existingConnection) {
+                    // Start reconnect mode for source
+                    const fromNode = this.findNode(existingConnection.from);
+                    if (fromNode) {
+                        const fromNodeElement = this.canvasElement.querySelector(`[data-node-id="${existingConnection.from}"]`) as HTMLElement;
+                        const fromPortElement = fromNodeElement?.querySelector('.port-output') as HTMLElement;
+
+                        if (fromPortElement) {
+                            this.connectionDragState = {
+                                fromNodeId: existingConnection.from,
+                                fromPortElement: fromPortElement,
+                                fromPortType: existingConnection.type || 'sequential',
+                                temporaryLine: null,
+                                isReconnect: true,
+                                existingConnectionId: existingConnection.id,
+                                reconnectEnd: 'target' // Reconnecting target (this input port)
+                            };
+
+                            // Visual feedback
+                            const portEl = portElement as HTMLElement;
+                            portEl.style.background = '#FF9800';
+                            portEl.style.borderColor = '#FF9800';
+                        }
+                    }
+                }
+            });
+
             portElement.addEventListener('mouseup', (e) => {
                 e.stopPropagation();
 
@@ -1477,26 +1578,221 @@ export class VisualDesigner {
                     return;
                 }
 
-                // Create connection
-                const validation = this.connectionManager.validateConnection(
-                    this.connectionDragState.fromNodeId,
-                    node.id
-                );
+                const connectionType = (this.connectionDragState.fromPortType as ConnectionType) || 'sequential';
 
-                if (!validation.valid) {
-                    console.warn(`⚠️ [VisualDesigner] Connection validation failed: ${validation.error}`);
-                    this.cancelConnectionDrag();
-                    return;
-                }
+                // Handle reconnect vs new connection
+                if (this.connectionDragState.isReconnect && this.connectionDragState.existingConnectionId) {
+                    // Reconnect existing connection - change target or source
+                    const existingConn = this.connectionManager.getConnection(this.connectionDragState.existingConnectionId);
+                    if (!existingConn) {
+                        this.cancelConnectionDrag();
+                        return;
+                    }
 
-                try {
-                    this.createManualConnection(
-                        this.connectionDragState.fromNodeId,
-                        node.id,
-                        (this.connectionDragState.fromPortType as ConnectionType) || 'sequential'
+                    const reconnectEnd = this.connectionDragState.reconnectEnd || 'target';
+
+                    if (reconnectEnd === 'target') {
+                        // Reconnect target: change toNodeId
+
+                        // Step 1: Validate port type compatibility
+                        const targetNodeElement = nodeElement;
+                        const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
+                        const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
+
+                        const sourcePortType = (this.connectionDragState.fromPortType as PortType) || 'sequential';
+
+                        const portValidation = this.portSystem.validatePortTypeCompatibility(
+                            sourcePortType,
+                            targetPortType
+                        );
+
+                        if (!portValidation.valid) {
+                            this.showError(`Port compatibility error: ${portValidation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 1.5: Validate semantic compatibility of ports
+                        const semanticValidation = this.connectionManager.validateReconnectSemantics(
+                            existingConn.from,
+                            node.id,
+                            sourcePortType,
+                            targetPortType,
+                            this.nodes,
+                            (nodeId: string) => {
+                                const foundNode = this.findNode(nodeId);
+                                return foundNode?.type || null;
+                            }
+                        );
+
+                        if (!semanticValidation.valid) {
+                            this.showError(`Semantic validation failed: ${semanticValidation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 1.6: Additional semantic checks using SemanticValidator
+                        if (this.semanticValidator) {
+                            const fromNode = this.findNode(existingConn.from);
+                            const toNode = this.findNode(node.id);
+
+                            if (fromNode && toNode) {
+                                // Check if nodes are in parent-child relationship (should use nesting, not connections)
+                                const areRelated = this.areNodesRelated(fromNode, toNode);
+                                if (areRelated) {
+                                    this.showError('Cannot connect nodes that are in a parent-child relationship. Use nesting instead.');
+                                    this.cancelConnectionDrag();
+                                    return;
+                                }
+                            }
+                        }
+
+                        // Step 2: Validate connection rules (no duplicates, no cycles)
+                        const validation = this.connectionManager.validateConnection(
+                            existingConn.from,
+                            node.id,
+                            connectionType,
+                            this.connectionDragState.existingConnectionId
+                        );
+                        if (!validation.valid) {
+                            this.showError(`Reconnection validation failed: ${validation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 3: Update connection
+                        this.pushHistorySnapshot();
+                        this.connectionManager.updateConnection(this.connectionDragState.existingConnectionId, {
+                            to: node.id,
+                            type: connectionType
+                        });
+                        this.markDirty();
+                    } else if (reconnectEnd === 'source') {
+                        // Reconnect source: change fromNodeId
+
+                        // Step 1: Validate port type compatibility
+                        const sourceNodeElement = this.canvasElement.querySelector(`[data-node-id="${this.connectionDragState.fromNodeId}"]`) as HTMLElement;
+                        const sourceOutputPort = sourceNodeElement ? this.portSystem.findPortElement(sourceNodeElement, 'output', connectionType as PortType) : null;
+                        const sourcePortType = sourceOutputPort ? this.portSystem.getPortTypeFromElement(sourceOutputPort) : (connectionType as PortType);
+
+                        const targetNodeElement = nodeElement;
+                        const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
+                        const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
+
+                        const portValidation = this.portSystem.validatePortTypeCompatibility(
+                            sourcePortType,
+                            targetPortType
+                        );
+
+                        if (!portValidation.valid) {
+                            this.showError(`Port compatibility error: ${portValidation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 1.5: Validate semantic compatibility of ports
+                        const semanticValidation = this.connectionManager.validateReconnectSemantics(
+                            this.connectionDragState.fromNodeId,
+                            existingConn.to,
+                            sourcePortType,
+                            targetPortType,
+                            this.nodes,
+                            (nodeId: string) => {
+                                const foundNode = this.findNode(nodeId);
+                                return foundNode?.type || null;
+                            }
+                        );
+
+                        if (!semanticValidation.valid) {
+                            this.showError(`Semantic validation failed: ${semanticValidation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 1.6: Additional semantic checks using SemanticValidator
+                        if (this.semanticValidator) {
+                            const fromNode = this.findNode(this.connectionDragState.fromNodeId);
+                            const toNode = this.findNode(existingConn.to);
+
+                            if (fromNode && toNode) {
+                                // Check if nodes are in parent-child relationship (should use nesting, not connections)
+                                const areRelated = this.areNodesRelated(fromNode, toNode);
+                                if (areRelated) {
+                                    this.showError('Cannot connect nodes that are in a parent-child relationship. Use nesting instead.');
+                                    this.cancelConnectionDrag();
+                                    return;
+                                }
+                            }
+                        }
+
+                        // Step 2: Validate connection rules
+                        const validation = this.connectionManager.validateConnection(
+                            this.connectionDragState.fromNodeId,
+                            existingConn.to,
+                            connectionType,
+                            this.connectionDragState.existingConnectionId
+                        );
+                        if (!validation.valid) {
+                            this.showError(`Reconnection validation failed: ${validation.error}`);
+                            this.cancelConnectionDrag();
+                            return;
+                        }
+
+                        // Step 3: Update connection
+                        this.pushHistorySnapshot();
+                        this.connectionManager.updateConnection(this.connectionDragState.existingConnectionId, {
+                            from: this.connectionDragState.fromNodeId,
+                            type: connectionType
+                        });
+                        this.markDirty();
+                    }
+
+                    // Re-render to show updated connection
+                    this.render();
+                } else {
+                    // Create new connection
+
+                    // Step 1: Validate port type compatibility
+                    const sourceNodeElement = this.canvasElement.querySelector(`[data-node-id="${this.connectionDragState.fromNodeId}"]`) as HTMLElement;
+                    const sourceOutputPort = sourceNodeElement ? this.portSystem.findPortElement(sourceNodeElement, 'output', connectionType as PortType) : null;
+                    const sourcePortType = sourceOutputPort ? this.portSystem.getPortTypeFromElement(sourceOutputPort) : (connectionType as PortType);
+
+                    const targetNodeElement = nodeElement;
+                    const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
+                    const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
+
+                    const portValidation = this.portSystem.validatePortTypeCompatibility(
+                        sourcePortType,
+                        targetPortType
                     );
-                } catch (error) {
-                    console.warn('Failed to create manual connection:', error);
+
+                    if (!portValidation.valid) {
+                        this.showError(`Port compatibility error: ${portValidation.error}`);
+                        this.cancelConnectionDrag();
+                        return;
+                    }
+
+                    // Step 2: Validate connection rules
+                    const validation = this.connectionManager.validateConnection(
+                        this.connectionDragState.fromNodeId,
+                        node.id
+                    );
+
+                    if (!validation.valid) {
+                        this.showError(`Connection validation failed: ${validation.error}`);
+                        this.cancelConnectionDrag();
+                        return;
+                    }
+
+                    try {
+                        this.createManualConnection(
+                            this.connectionDragState.fromNodeId,
+                            node.id,
+                            connectionType
+                        );
+                    } catch (error) {
+                        this.showError(`Failed to create connection: ${error}`);
+                    }
                 }
 
                 this.cancelConnectionDrag();
@@ -1511,6 +1807,13 @@ export class VisualDesigner {
         if (this.connectionDragState?.temporaryLine) {
             this.connectionDragState.temporaryLine.remove();
         }
+
+        // Reset port visual feedback
+        if (this.connectionDragState?.fromPortElement) {
+            this.connectionDragState.fromPortElement.style.background = '';
+            this.connectionDragState.fromPortElement.style.borderColor = '';
+        }
+
         this.connectionDragState = null;
     }
 
@@ -1774,6 +2077,28 @@ export class VisualDesigner {
 
         const items: ContextMenuItem[] = [
             {
+                label: 'Change Source',
+                icon: 'fas fa-arrow-left',
+                action: () => {
+                    this.reconnectConnectionSource(connectionId);
+                }
+            },
+            {
+                label: 'Change Target',
+                icon: 'fas fa-arrow-right',
+                action: () => {
+                    this.reconnectConnectionTarget(connectionId);
+                }
+            },
+            {
+                label: 'Swap Direction',
+                icon: 'fas fa-exchange-alt',
+                action: () => {
+                    this.swapConnectionDirection(connectionId);
+                }
+            },
+            { type: 'divider' },
+            {
                 label: 'Edit Connection',
                 icon: 'fas fa-edit',
                 action: () => {
@@ -1815,6 +2140,101 @@ export class VisualDesigner {
 
         this.undoStack.pop();
         return false;
+    }
+
+    /**
+     * Reconnect connection source (change fromNodeId)
+     */
+    private reconnectConnectionSource(connectionId: string): void {
+        const connection = this.connectionManager.getConnection(connectionId);
+        if (!connection) return;
+
+        // Start connection drag from current source to allow reconnecting
+        this.startConnectionDrag(connection.from, 'output');
+        this.connectionDragState = {
+            ...this.connectionDragState!,
+            isReconnect: true,
+            existingConnectionId: connectionId,
+            reconnectEnd: 'source'
+        };
+
+        // Show message to user
+        this.showError('Drag from a different output port to change source');
+    }
+
+    /**
+     * Reconnect connection target (change toNodeId)
+     */
+    private reconnectConnectionTarget(connectionId: string): void {
+        const connection = this.connectionManager.getConnection(connectionId);
+        if (!connection) return;
+
+        // Start connection drag from current source
+        this.startConnectionDrag(connection.from, 'output');
+        this.connectionDragState = {
+            ...this.connectionDragState!,
+            isReconnect: true,
+            existingConnectionId: connectionId,
+            reconnectEnd: 'target'
+        };
+
+        // Show message to user
+        this.showError('Drop on a different input port to change target');
+    }
+
+    /**
+     * Swap connection direction (swap from and to)
+     */
+    private swapConnectionDirection(connectionId: string): void {
+        const connection = this.connectionManager.getConnection(connectionId);
+        if (!connection) return;
+
+        // Get node elements
+        const fromNodeElement = this.canvasElement.querySelector(`[data-node-id="${connection.to}"]`) as HTMLElement;
+        const toNodeElement = this.canvasElement.querySelector(`[data-node-id="${connection.from}"]`) as HTMLElement;
+
+        if (!fromNodeElement || !toNodeElement) {
+            this.showError('Cannot swap: node elements not found');
+            return;
+        }
+
+        // Step 1: Validate port type compatibility (swapped direction)
+        const newSourceOutputPort = this.portSystem.findPortElement(fromNodeElement, 'output', connection.type);
+        const newSourcePortType = newSourceOutputPort ? this.portSystem.getPortTypeFromElement(newSourceOutputPort) : connection.type as PortType;
+
+        const newTargetInputPort = this.portSystem.findPortElement(toNodeElement, 'input');
+        const newTargetPortType = newTargetInputPort ? this.portSystem.getPortTypeFromElement(newTargetInputPort) : null;
+
+        const portValidation = this.portSystem.validatePortTypeCompatibility(
+            newSourcePortType,
+            newTargetPortType
+        );
+
+        if (!portValidation.valid) {
+            this.showError(`Cannot swap direction: ${portValidation.error}`);
+            return;
+        }
+
+        // Step 2: Validate swapped connection (no duplicates, no cycles)
+        const validation = this.connectionManager.validateConnection(
+            connection.to,
+            connection.from,
+            connection.type,
+            connectionId // Exclude this connection from duplicate check
+        );
+        if (!validation.valid) {
+            this.showError(`Cannot swap direction: ${validation.error}`);
+            return;
+        }
+
+        // Step 3: Update connection with swapped from/to
+        this.pushHistorySnapshot();
+        this.connectionManager.updateConnection(connectionId, {
+            from: connection.to,
+            to: connection.from
+        });
+        this.markDirty();
+        this.render();
     }
 
     /**
@@ -2711,7 +3131,7 @@ export class VisualDesigner {
             }
 
             // Check if node is inside rectangle
-            const dimensions = this.getNodeDimensions(node.type);
+            const dimensions = this.getNodeDimensions(node);
             const nodeRight = node.position.x + dimensions.width;
             const nodeBottom = node.position.y + dimensions.height;
             const rectRight = rect.x + rect.width;
@@ -2744,13 +3164,43 @@ export class VisualDesigner {
             (nodeEl as HTMLElement).classList.remove('node-selected');
         });
 
-        // Highlight selected nodes
+        // Hide all resize handles
+        this.resizeHandler.hideAllHandles();
+
+        // Highlight selected nodes and show resize handles
         this.selectedNodeIds.forEach(nodeId => {
             const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
             if (nodeElement) {
                 nodeElement.classList.add('node-selected');
+
+                // Add resize handles for selected node
+                const node = this.findNode(nodeId);
+                if (node) {
+                    this.resizeHandler.addResizeHandles(nodeElement, node);
+
+                    // Set constraints based on metadata
+                    if (this.pluginManager) {
+                        const plugin = this.pluginManager.findPlugin(node.type);
+                        if (plugin) {
+                            const minWidth = Math.max(80, (plugin.defaultWidth || this.DEFAULT_NODE_WIDTH) * 0.5);
+                            const minHeight = Math.max(60, (plugin.defaultHeight || this.DEFAULT_NODE_HEIGHT) * 0.5);
+                            const maxWidth = (plugin.defaultWidth || this.DEFAULT_NODE_WIDTH) * 3;
+                            const maxHeight = (plugin.defaultHeight || this.DEFAULT_NODE_HEIGHT) * 3;
+
+                            this.resizeHandler.setConstraints(nodeId, {
+                                minWidth,
+                                minHeight,
+                                maxWidth,
+                                maxHeight
+                            });
+                        }
+                    }
+                }
             }
         });
+
+        // Show handles for selected nodes
+        this.resizeHandler.showHandlesForNodes(this.selectedNodeIds);
     }
 
     // ========================================================================
@@ -2800,6 +3250,45 @@ export class VisualDesigner {
             return [];
         }
         return this.collectNodeAndDescendantIds(node, []);
+    }
+
+    /**
+     * Check if two nodes are in a parent-child relationship
+     * (one is an ancestor of the other)
+     */
+    private areNodesRelated(node1: VisualNode, node2: VisualNode): boolean {
+        // Check if node2 is a descendant of node1 (node1 contains node2 in its subtree)
+        if (this.isNodeInSubtree(node1, node2.id)) {
+            return true;
+        }
+
+        // Check if node1 is a descendant of node2 (node2 contains node1 in its subtree)
+        if (this.isNodeInSubtree(node2, node1.id)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a node with given ID exists in the subtree of the given node
+     * (recursive search through children)
+     */
+    private isNodeInSubtree(node: VisualNode, targetId: string): boolean {
+        // Check children recursively
+        if (node.children && node.children.length > 0) {
+            for (const child of node.children) {
+                if (child.id === targetId) {
+                    return true;
+                }
+                // Recursively check subtree
+                if (this.isNodeInSubtree(child, targetId)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private generateNodeId(type: string = 'node'): string {
@@ -3000,11 +3489,21 @@ export class VisualDesigner {
             throw new Error(`Port ${portDirection} not found on node ${fromNodeId}`);
         }
 
+        // Check if this port already has a connection (reconnect mode)
+        const existingConnections = this.connectionManager.getConnectionsForNode(fromNodeId, 'output');
+        const existingConnection = existingConnections.find(conn => {
+            const portType = portElement.dataset.portConnectionType || 'sequential';
+            return conn.type === portType || (portType === 'sequential' && !conn.type);
+        });
+
         this.connectionDragState = {
             fromNodeId,
             fromPortElement: portElement,
             fromPortType: portElement.dataset.portConnectionType || 'sequential',
-            temporaryLine: null
+            temporaryLine: null,
+            isReconnect: !!existingConnection,
+            existingConnectionId: existingConnection?.id || null,
+            reconnectEnd: existingConnection ? 'source' : null
         };
     }
 
@@ -3426,10 +3925,16 @@ export class VisualDesigner {
 
     /**
      * Generate XML from current nodes
+     * 
+     * This method respects reconnected connections - it uses the current state
+     * from ConnectionManager, which includes all source/target changes made
+     * via reconnect operations (drag ports or context menu).
      */
     generateXML(): string {
         const generator = new XMLGenerator();
         // prepareNodesForExport() already applies connection-based ordering
+        // It uses current connections from ConnectionManager, which includes
+        // all reconnected (source/target changed) connections
         const exportNodes = this.prepareNodesForExport();
         const body = generator.generate(exportNodes, 1);
         const hasContent = body.trim().length > 0;
@@ -3445,9 +3950,23 @@ export class VisualDesigner {
         return lines.join('\n');
     }
 
+    /**
+     * Prepare nodes for export with connection-based ordering
+     * 
+     * This method:
+     * 1. Gets current connections from ConnectionManager (includes reconnected connections)
+     * 2. Clones nodes to avoid mutating originals
+     * 3. Orders nodes based on connection topology (respects reconnected source/target)
+     * 
+     * Reconnected connections (changed source/target) are automatically respected
+     * because ConnectionManager.updateConnection() updates the from/to fields,
+     * and getConnections() returns the updated state.
+     */
     private prepareNodesForExport(): VisualNode[] {
+        // Get current connections (includes all reconnected connections with updated from/to)
         const connections: ManualConnection[] = this.connectionManager.getConnections().map(conn => ({ ...conn }));
         const cloned = this.cloneNodes(this.nodes);
+        // Order nodes based on connections (topological sort respects reconnected connections)
         return this.orderNodesRecursively(cloned, connections);
     }
 
@@ -3610,14 +4129,27 @@ export class VisualDesigner {
         this.pluginManager = pluginManager;
         this.semanticValidator = new SemanticValidator(pluginManager);
         console.log('✅ [VisualDesigner] Semantic validator initialized');
+
+        setContainerResolver((type: string) => {
+            if (!this.semanticValidator) {
+                return false;
+            }
+            return this.semanticValidator.allowsChildren(type);
+        });
     }
 
     /**
      * Apply role-based styling to node element
      */
-    private applyRoleBasedStyling(element: HTMLElement, role: string): void {
+    private applyRoleBasedStyling(element: HTMLElement, role: string, node?: VisualNode): void {
         // Remove existing role classes
         element.classList.remove('role-root-container', 'role-context-container', 'role-body-evaluator', 'role-dependent', 'role-leaf');
+
+        // Get plugin metadata for additional styling
+        let plugin: any = null;
+        if (node && this.pluginManager) {
+            plugin = this.pluginManager.findPlugin(node.type);
+        }
 
         switch (role) {
             case 'ROOT_CONTAINER':
@@ -3625,18 +4157,29 @@ export class VisualDesigner {
                 element.style.borderWidth = '3px';
                 element.style.borderStyle = 'dashed';
                 element.style.background = 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)';
+                element.style.borderColor = '#9C27B0';
+                // Add icon indicator
+                this.addRoleIndicator(element, 'ROOT_CONTAINER', node);
                 break;
             case 'CONTEXT_CONTAINER':
                 element.classList.add('role-context-container');
                 element.style.borderWidth = '2px';
                 element.style.borderStyle = 'solid';
                 element.style.background = '#fafafa';
+                element.style.borderColor = '#2196F3';
+                // Add expand/collapse indicator with child count
+                this.addRoleIndicator(element, 'CONTEXT_CONTAINER', node);
+                if (node && node.children && node.children.length > 0) {
+                    this.addChildCountBadge(element, node.children.length);
+                }
                 break;
             case 'BODY_EVALUATOR':
                 element.classList.add('role-body-evaluator');
                 element.style.borderWidth = '2px';
                 element.style.borderStyle = 'solid';
                 element.style.borderColor = '#4CAF50';
+                element.style.background = '#f1f8f4';
+                this.addRoleIndicator(element, 'BODY_EVALUATOR', node);
                 break;
             case 'DEPENDENT':
                 element.classList.add('role-dependent');
@@ -3644,13 +4187,285 @@ export class VisualDesigner {
                 element.style.borderStyle = 'dotted';
                 element.style.opacity = '0.9';
                 element.style.background = '#fff9e6';
+                element.style.borderColor = '#FF9800';
+                // Add parent requirement indicator
+                this.addRoleIndicator(element, 'DEPENDENT', node);
+                if (plugin?.semantics?.requiredParentTypes && plugin.semantics.requiredParentTypes.length > 0) {
+                    this.addParentRequirementIndicator(element, plugin.semantics.requiredParentTypes);
+                }
                 break;
             case 'LEAF':
             default:
                 element.classList.add('role-leaf');
+                element.style.borderColor = '#757575';
                 // Default styling already applied
                 break;
         }
+
+        // Add semantic metadata tooltip
+        if (plugin?.semantics) {
+            const tooltipParts: string[] = [];
+            if (plugin.semantics.role) {
+                tooltipParts.push(`Role: ${plugin.semantics.role}`);
+            }
+            if (plugin.semantics.requiredParentTypes && plugin.semantics.requiredParentTypes.length > 0) {
+                tooltipParts.push(`Requires: ${plugin.semantics.requiredParentTypes.join(', ')}`);
+            }
+            if (plugin.semantics.allowedChildTypes && plugin.semantics.allowedChildTypes.length > 0) {
+                tooltipParts.push(`Allows: ${plugin.semantics.allowedChildTypes.join(', ')}`);
+            }
+            if (tooltipParts.length > 0) {
+                element.title = tooltipParts.join(' | ');
+            }
+        }
+    }
+
+    /**
+     * Add role indicator icon/badge to element
+     */
+    private addRoleIndicator(element: HTMLElement, role: string, node?: VisualNode): void {
+        // Check if indicator already exists
+        if (element.querySelector('.role-indicator')) {
+            return;
+        }
+
+        const indicator = document.createElement('div');
+        indicator.className = 'role-indicator';
+        indicator.style.cssText = `
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            z-index: 10;
+        `;
+
+        const roleColors: Record<string, string> = {
+            'ROOT_CONTAINER': '#9C27B0',
+            'CONTEXT_CONTAINER': '#2196F3',
+            'BODY_EVALUATOR': '#4CAF50',
+            'DEPENDENT': '#FF9800',
+            'LEAF': '#757575'
+        };
+
+        const roleIcons: Record<string, string> = {
+            'ROOT_CONTAINER': '🏠',
+            'CONTEXT_CONTAINER': '📦',
+            'BODY_EVALUATOR': '⚡',
+            'DEPENDENT': '🔗',
+            'LEAF': '●'
+        };
+
+        indicator.style.background = roleColors[role] || '#999';
+        indicator.textContent = roleIcons[role] || '●';
+        indicator.title = `Semantic role: ${role}`;
+
+        // Ensure element has relative positioning
+        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
+            element.style.position = 'relative';
+        }
+
+        element.appendChild(indicator);
+    }
+
+    /**
+     * Add child count badge for containers
+     */
+    private addChildCountBadge(element: HTMLElement, childCount: number): void {
+        // Check if badge already exists
+        if (element.querySelector('.child-count-badge')) {
+            return;
+        }
+
+        const badge = document.createElement('div');
+        badge.className = 'child-count-badge';
+        badge.textContent = `${childCount}`;
+        badge.style.cssText = `
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 10;
+        `;
+        badge.title = `${childCount} child plugin${childCount !== 1 ? 's' : ''}`;
+
+        // Ensure element has relative positioning
+        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
+            element.style.position = 'relative';
+        }
+
+        element.appendChild(badge);
+    }
+
+    /**
+     * Add parent requirement indicator for dependent plugins
+     */
+    private addParentRequirementIndicator(element: HTMLElement, requiredParents: string[]): void {
+        // Check if indicator already exists
+        if (element.querySelector('.parent-requirement-indicator')) {
+            return;
+        }
+
+        const indicator = document.createElement('div');
+        indicator.className = 'parent-requirement-indicator';
+        indicator.innerHTML = '<i class="fas fa-link"></i>';
+        indicator.style.cssText = `
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 152, 0, 0.2);
+            border-radius: 50%;
+            color: #FF9800;
+            font-size: 10px;
+            z-index: 10;
+        `;
+        indicator.title = `Requires parent: ${requiredParents.join(', ')}`;
+
+        // Ensure element has relative positioning
+        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
+            element.style.position = 'relative';
+        }
+
+        element.appendChild(indicator);
+    }
+
+    /**
+     * Apply validation error styling to node
+     */
+    private applyValidationErrorStyling(element: HTMLElement, errorMessage: string): void {
+        element.classList.add('validation-error');
+        element.style.borderColor = '#ef4444';
+        element.style.borderWidth = '3px';
+        element.style.borderStyle = 'dashed';
+        element.style.background = '#fee';
+
+        // Add error indicator
+        if (!element.querySelector('.validation-error-indicator')) {
+            const errorIndicator = document.createElement('div');
+            errorIndicator.className = 'validation-error-indicator';
+            errorIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            errorIndicator.style.cssText = `
+                position: absolute;
+                top: 4px;
+                left: 4px;
+                width: 24px;
+                height: 24px;
+                background: #ef4444;
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                z-index: 20;
+                cursor: help;
+            `;
+            errorIndicator.title = errorMessage;
+            element.appendChild(errorIndicator);
+        }
+    }
+
+    /**
+     * Clear validation errors for a node
+     */
+    clearValidationError(nodeId: string): void {
+        this.validationErrors.delete(nodeId);
+        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
+        if (nodeElement) {
+            nodeElement.classList.remove('validation-error');
+            const errorIndicator = nodeElement.querySelector('.validation-error-indicator');
+            if (errorIndicator) {
+                errorIndicator.remove();
+            }
+        }
+    }
+
+    /**
+     * Validate all nodes and highlight errors
+     */
+    validateAllNodes(): void {
+        this.validationErrors.clear();
+
+        if (!this.semanticValidator) {
+            return;
+        }
+
+        // Validate all nodes
+        const validateNode = (node: VisualNode, parentType: string | null) => {
+            const validation = this.semanticValidator!.validateDrop(node.type, parentType);
+            if (!validation.valid) {
+                this.validationErrors.set(node.id, validation.message);
+            }
+
+            // Validate children
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    validateNode(child, node.type);
+                });
+            }
+        };
+
+        // Validate root nodes
+        this.nodes.forEach(node => {
+            validateNode(node, null);
+        });
+
+        // Re-render to show errors
+        this.render();
+    }
+
+    /**
+     * Handle node resize
+     */
+    private handleNodeResize(nodeId: string, dimensions: { width: number; height: number }): void {
+        const node = this.findNode(nodeId);
+        if (!node) return;
+
+        // Update node dimensions
+        node.dimensions = dimensions;
+
+        // Update node element
+        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
+        if (nodeElement) {
+            nodeElement.style.width = `${dimensions.width}px`;
+            nodeElement.style.height = `${dimensions.height}px`;
+        }
+
+        // Update port positions (ports are positioned relative to node)
+        // PortSystem will handle this on next render, but we can trigger update here
+        this.updatePortPositions(nodeId);
+
+        // Update connections (connection lines need to be redrawn)
+        this.renderConnections();
+
+        // Mark dirty
+        this.markDirty();
+    }
+
+    /**
+     * Update port positions after resize
+     */
+    private updatePortPositions(nodeId: string): void {
+        // Port positions are calculated relative to node center/edges
+        // They will be updated automatically on next render
+        // This is a placeholder for future optimization
     }
 
     /**

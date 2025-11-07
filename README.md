@@ -495,17 +495,19 @@ java -jar target/webharvest-ide-2.2.0.jar
 
 ## 🔧 **Critical Core Improvements - October 2025**
 
-### ✅ **ConfigPlugin Scope Fix**
+### ✅ **Root Configuration Executor**
 
-**Problem:** Variables created by `<def>` elements were executed in nested scopes and cleaned up after configuration completed, making them inaccessible to IDE and other tools.
+**Problem:** The legacy `ConfigPlugin` executed `<config>` inside a nested scope, cleaning up variables once execution completed.
 
-**Solution:** `ConfigPlugin.executeBody()` now executes children directly in ROOT scope instead of creating nested scopes.
+**Solution:** `RootConfigurationExecutor` (runtime layer) now drives `<config>`: it applies charset/scriptlang, reuses `DefaultPluginBodyExecutor` for children, and stores `configResult` without relying on a plugin.
 
 **Impact:**
 - ✅ Variables persist after configuration execution
 - ✅ IDE can extract and display all variables
-- ✅ All 2556 core tests still pass (100% - no regression!)
-- ✅ All 4 IDE integration tests pass (100%)
+- ✅ Simpler plugin catalog (root is no longer implemented as a plugin)
+- ✅ All core/IDE tests remain green
+
+**Bonus:** IDE and core integration suites now run completely offline—the shared `HttpService` stub provides deterministic responses for `https://example.com` and `https://httpbin.org/*`, matching the new XML fixtures.
 
 ### ✅ **Enhanced Event System**
 

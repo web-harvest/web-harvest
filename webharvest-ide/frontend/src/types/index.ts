@@ -34,6 +34,7 @@ export interface VisualNode {
     body: string | null;
     children: VisualNode[];
     position?: { x: number; y: number };
+    dimensions?: { width: number; height: number }; // Custom node dimensions (for resize)
 }
 
 export interface PluginDocumentationSummary {

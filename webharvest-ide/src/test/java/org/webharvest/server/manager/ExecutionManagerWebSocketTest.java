@@ -12,8 +12,8 @@ import org.testng.annotations.*;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -306,8 +306,8 @@ public class ExecutionManagerWebSocketTest {
      * Captures execution output for verification
      */
     private static class ExecutionCapture {
-        public final List<String> allMessages = new ArrayList<>();
-        public final List<String> logs = new ArrayList<>();
+        public final List<String> allMessages = new CopyOnWriteArrayList<>();
+        public final List<String> logs = new CopyOnWriteArrayList<>();
         public final CountDownLatch latch = new CountDownLatch(1);
         public boolean completed = false;
         public String status = null;
