@@ -362,9 +362,14 @@ java -jar target/webharvest-ide-2.3.1.jar &
 
 **Connection Management:**
 - Manual connections between nodes via port system
+- Ports render automatically for sequential action nodes (e.g., `def`, `xpath`, `script`); master-detail hosts (`http`, `ftp`, `zip`, `call`) stay container-only to keep detail editors in sync
 - Connection selection and context menu (Edit/Delete)
 - Connection redefinition with validation
 - Visual feedback for selected connections
+
+**Import Flow (Visual mode):**
+- `App.openFileInVisual()` reads XML with `XMLParser.parse` and defers to `visualDesigner.loadNodesWithPrompt()` so users can confirm replacement of dirty canvases
+- Tests mock `loadNodesWithPrompt` instead of the legacy `loadNodes` helper; keep this in mind when stubbing VisualDesigner in new specs
 
 **Node Management:**
 - Root node reordering (Move Up/Down in context menu)
@@ -555,6 +560,13 @@ XSDMetadataParser.java        # XSD metadata extraction
 - This eliminates the `"[VisualDesigner] Cannot render connection: anchor not found"` warning spam reported when expanding HTTP cards and keeps the zoomed-in canvas clean.
 - Regression coverage: `visual/__tests__/VisualDesigner.drilldown.test.ts` verifies that HTTP headers remain connection-free during focus mode while broader breadcrumb behaviour still works.
 
+### HTTP Detail Editing & Summaries
+
+- `MasterDetailRegistry` now harvests detail sections from both `allowedChildPlugins` _and_ semantic metadata (`allowedChildTypes` / `allowedSubElements`), so HTTP, XQuery and other master/detail plugins expose their dependent editors without bespoke wiring.
+- `MasterDetailEditor` renders metadata-aware inputs (name/value/body) with accessible labels, while the canvas mirrors those values through `.http-detail-summary` elements for quick inspection during drill-down.
+- The NYTimes sample remains horizontally aligned via the existing auto-layout, and HTTP cards keep their inline summaries in sync with the property panel.
+- Regression coverage: `visual/detail/__tests__/MasterDetailEditor.test.ts` checks the inline editors + change propagation, and `visual/__tests__/NYTimesLayout.test.ts` guards root positioning alongside the rendered HTTP summaries.
+
 **Coordinate System:**
 - **Viewport coordinates** → **Canvas coordinates** conversion
 - Method: `viewportToCanvas(x, y)` accounts for:
@@ -594,6 +606,7 @@ XSDMetadataParser.java        # XSD metadata extraction
 - ✅ BPMN-style start/end markers framing each configuration
 - ✅ Palette tooltips on dedicated help icon (`?`)
 - ✅ Dependent detail plugins (HTTP headers, query params, else/catch, zip-entry, etc.) are now managed from their parent cards/property panel and removed from the draggable palette to reduce invalid drops
+- ✅ Schema-driven property panel controls (boolean toggles, segmented enums, styled number/url inputs) reuse the shared `SchemaEditor` across HTTP and non-HTTP plugins
 - ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style) aligned exactly on card geometry, with grab/grabbing cursors during drag
 - ✅ Always-on grid overlay that stretches with the canvas; start/end markers can be repositioned manually with persisted locations
 - ✅ Connection lines redraw instantly while dragging nodes, keeping sequenced flows visually accurate

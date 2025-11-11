@@ -441,7 +441,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
     describe('Auto-Layout', () => {
         it('should arrange nodes in grid layout', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] },
                 { id: 'n3', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n4', type: 'file', attributes: {}, body: null, children: [] }
@@ -460,7 +460,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
 
         it('should arrange nodes in vertical flow', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] },
                 { id: 'n3', type: 'def', attributes: {}, body: null, children: [] }
             ];
@@ -478,7 +478,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
     describe('Node Connections (Manual)', () => {
         it('should create connection by dragging from output to input', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] }
             ];
 
@@ -497,7 +497,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
 
         it('should prevent circular connections', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] }
             ];
 
@@ -514,7 +514,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
 
         it('should delete connection', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] }
             ];
 
@@ -532,7 +532,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
 
         it('should include manual connections in configuration snapshot', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'xpath', attributes: {}, body: null, children: [] }
             ];
 
@@ -549,7 +549,7 @@ describe('Canvas Interaction (TDD - Apple HIG)', () => {
 
         it('should export connection-ordered nodes without mutating internal state', () => {
             const nodes: VisualNode[] = [
-                { id: 'n1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: 'n1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n2', type: 'def', attributes: {}, body: null, children: [] },
                 { id: 'n3', type: 'xpath', attributes: {}, body: null, children: [] }
             ];

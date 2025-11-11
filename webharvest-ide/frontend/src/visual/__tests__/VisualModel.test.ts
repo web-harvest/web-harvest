@@ -46,7 +46,7 @@ describe('Visual Model Architecture (TDD)', () => {
 
         it('should classify linear/action nodes correctly', () => {
             const linearTypes = [
-                'http', 'xpath', 'xquery', 'def', 'regexp',
+                'xpath', 'xquery', 'def', 'regexp',
                 'html-to-xml', 'json-to-xml', 'xml-to-json',
                 'file', 'script', 'template', 'text'
             ];
@@ -91,13 +91,6 @@ describe('Visual Model Architecture (TDD)', () => {
         it('should use connected rendering for linear sequence', () => {
             const nodes: VisualNode[] = [
                 {
-                    id: 'http-1',
-                    type: 'http',
-                    attributes: { url: 'https://api.com' },
-                    body: null,
-                    children: []
-                },
-                {
                     id: 'xpath-1',
                     type: 'xpath',
                     attributes: { expression: '//title' },
@@ -108,6 +101,13 @@ describe('Visual Model Architecture (TDD)', () => {
                     id: 'def-1',
                     type: 'def',
                     attributes: { var: 'title' },
+                    body: null,
+                    children: []
+                },
+                {
+                    id: 'script-1',
+                    type: 'script',
+                    attributes: { language: 'groovy' },
                     body: null,
                     children: []
                 }
@@ -126,9 +126,9 @@ describe('Visual Model Architecture (TDD)', () => {
                 attributes: {},
                 body: null,
                 children: [
-                    { id: 'http-1', type: 'http', attributes: {}, body: null, children: [] },
+                    { id: 'def-1', type: 'def', attributes: {}, body: null, children: [] },
                     { id: 'xpath-1', type: 'xpath', attributes: {}, body: null, children: [] },
-                    { id: 'def-1', type: 'def', attributes: {}, body: null, children: [] }
+                    { id: 'script-1', type: 'script', attributes: {}, body: null, children: [] }
                 ]
             };
 
@@ -145,9 +145,9 @@ describe('Visual Model Architecture (TDD)', () => {
     describe('Visual Layout', () => {
         it('should calculate positions for linear sequence (vertical flowchart)', () => {
             const nodes: VisualNode[] = [
-                { id: '1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: '1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: '2', type: 'xpath', attributes: {}, body: null, children: [] },
-                { id: '3', type: 'def', attributes: {}, body: null, children: [] }
+                { id: '3', type: 'script', attributes: {}, body: null, children: [] }
             ];
 
             const positions = calculateLinearLayout(nodes, { startX: 100, startY: 100, spacing: 120 });
@@ -183,8 +183,8 @@ describe('Visual Model Architecture (TDD)', () => {
     describe('Connection Lines (for connected model)', () => {
         it('should generate connection between sequential nodes', () => {
             const from: VisualNode = {
-                id: 'http-1',
-                type: 'http',
+                id: 'def-1',
+                type: 'def',
                 attributes: {},
                 body: null,
                 children: [],
@@ -202,7 +202,7 @@ describe('Visual Model Architecture (TDD)', () => {
 
             const connection = createConnection(from, to);
 
-            expect(connection.from).toBe('http-1');
+            expect(connection.from).toBe('def-1');
             expect(connection.to).toBe('xpath-1');
             expect(connection.type).toBe('sequential');
         });
@@ -239,17 +239,17 @@ describe('Visual Model Architecture (TDD)', () => {
     describe('Drag & Drop for Connected Model', () => {
         it('should allow reordering linear nodes', () => {
             const nodes: VisualNode[] = [
-                { id: '1', type: 'http', attributes: {}, body: null, children: [] },
+                { id: '1', type: 'def', attributes: {}, body: null, children: [] },
                 { id: '2', type: 'xpath', attributes: {}, body: null, children: [] },
-                { id: '3', type: 'def', attributes: {}, body: null, children: [] }
+                { id: '3', type: 'script', attributes: {}, body: null, children: [] }
             ];
 
-            // Drag node '2' (xpath) before node '1' (http)
+            // Drag node '2' (xpath) before node '1' (def)
             const reordered = reorderNodes(nodes, '2', 0);
 
             expect(reordered[0].id).toBe('2'); // xpath first
-            expect(reordered[1].id).toBe('1'); // http second
-            expect(reordered[2].id).toBe('3'); // def last
+            expect(reordered[1].id).toBe('1'); // def second
+            expect(reordered[2].id).toBe('3'); // script last
         });
 
         it('should allow adding node to container', () => {

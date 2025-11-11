@@ -33,14 +33,12 @@ export class PortSystem {
         const nodeId = node.id;
         const portsConfig = this.getPortsForNodeType(node.type);
 
-        // Ensure element has relative positioning for absolute port positioning
         if (!element.style.position || element.style.position === 'static') {
             element.style.position = 'relative';
         }
 
         const nodePorts: Port[] = [];
 
-        // Add input port
         const inputPortElement = this.createPortElement('input', 'sequential', nodeId);
         this.positionPort(inputPortElement, 'top', '50%');
         element.appendChild(inputPortElement);
@@ -52,17 +50,12 @@ export class PortSystem {
             element: inputPortElement
         });
 
-        // Add output port(s)
         if (portsConfig.outputs && portsConfig.outputs.length > 1) {
-            // Multiple outputs (if, case, try)
             const outputCount = portsConfig.outputs.length;
             portsConfig.outputs.forEach((portConfig, index) => {
                 const portElement = this.createPortElement('output', portConfig.type, nodeId, portConfig.label);
-
-                // Distribute ports evenly across bottom
                 const leftPercent = ((index + 1) / (outputCount + 1)) * 100;
                 this.positionPort(portElement, 'bottom', `${leftPercent}%`);
-
                 element.appendChild(portElement);
 
                 nodePorts.push({
@@ -74,7 +67,6 @@ export class PortSystem {
                 });
             });
         } else {
-            // Single output port
             const outputPortElement = this.createPortElement('output', 'sequential', nodeId);
             this.positionPort(outputPortElement, 'bottom', '50%');
             element.appendChild(outputPortElement);

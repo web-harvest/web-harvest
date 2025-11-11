@@ -381,6 +381,10 @@ export class App {
             this.stopExecution();
         });
 
+        this.visualDesigner.addEventListener('focusSummaryUpdated', (payload) => {
+            this.propertyPanel.updateFocusSummary(payload);
+        });
+
         // Visual Designer → XML (when node added)
         this.visualDesigner.addEventListener('nodeAdded', (node: any) => {
             console.log('Node added, syncing to XML:', node.type);

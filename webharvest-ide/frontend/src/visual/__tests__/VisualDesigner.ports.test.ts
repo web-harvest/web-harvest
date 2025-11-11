@@ -27,7 +27,7 @@ const createNode = (id: string, type: string, x = 100, y = 100): VisualNode => (
 describe('VisualDesigner – ports', () => {
     it('renders input and output ports for a basic node', () => {
         const designer = createDesigner();
-        designer.addNode(createNode('node-1', 'http'));
+        designer.addNode(createNode('node-1', 'def'));
         designer.render();
 
         const nodeElement = document.querySelector('[data-node-id="node-1"]') as HTMLElement;
@@ -40,7 +40,7 @@ describe('VisualDesigner – ports', () => {
 describe('VisualDesigner – manual connections', () => {
     it('creates a manual connection via API helper', () => {
         const designer = createDesigner();
-        designer.addNode(createNode('node-a', 'http'));
+        designer.addNode(createNode('node-a', 'def'));
         designer.addNode(createNode('node-b', 'xpath', 300, 100));
 
         const connection = designer.createManualConnection('node-a', 'node-b');
@@ -51,7 +51,7 @@ describe('VisualDesigner – manual connections', () => {
 
     it('prevents cycles when creating manual connections', () => {
         const designer = createDesigner();
-        designer.addNode(createNode('node-a', 'http'));
+        designer.addNode(createNode('node-a', 'def'));
         designer.addNode(createNode('node-b', 'xpath', 300, 100));
         designer.createManualConnection('node-a', 'node-b');
 

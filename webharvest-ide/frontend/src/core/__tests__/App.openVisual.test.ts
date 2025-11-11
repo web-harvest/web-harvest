@@ -1,4 +1,5 @@
 import { App } from '../App';
+import { XMLParser } from '../../visual/XMLParser';
 
 const mockMonaco = {
     editor: {
@@ -28,7 +29,7 @@ describe('App - open visual configuration', () => {
     let visualDesigner: any;
     let logsSpy: jest.SpyInstance;
     let updateToolbarSpy: jest.SpyInstance;
-    let loadNodesSpy: jest.SpyInstance;
+    let loadNodesWithPromptSpy: jest.SpyInstance;
     let setFilenameSpy: jest.SpyInstance;
     let markCleanSpy: jest.SpyInstance;
     let parseSpy: jest.SpyInstance;
@@ -113,11 +114,11 @@ describe('App - open visual configuration', () => {
 
         logsSpy = jest.spyOn((app as any).logsPanel, 'addLog').mockImplementation(() => { });
         updateToolbarSpy = jest.spyOn(app, 'updateUnifiedToolbar').mockImplementation(() => { });
-        loadNodesSpy = jest.spyOn(visualDesigner, 'loadNodesWithPrompt').mockResolvedValue(true);
+        loadNodesWithPromptSpy = jest.spyOn(visualDesigner, 'loadNodesWithPrompt').mockResolvedValue(true);
         setFilenameSpy = jest.spyOn(visualDesigner, 'setCurrentFilename').mockImplementation(() => { });
         markCleanSpy = jest.spyOn(visualDesigner, 'markClean').mockImplementation(() => { });
 
-        parseSpy = jest.spyOn((app as any).xmlParser, 'parse').mockReturnValue([
+        parseSpy = jest.spyOn(XMLParser.prototype, 'parse').mockReturnValue([
             {
                 id: 'node-1',
                 type: 'http',
@@ -133,7 +134,7 @@ describe('App - open visual configuration', () => {
         fileReaderSpy.mockRestore();
         if (logsSpy) logsSpy.mockRestore();
         if (updateToolbarSpy) updateToolbarSpy.mockRestore();
-        if (loadNodesSpy) loadNodesSpy.mockRestore();
+        if (loadNodesWithPromptSpy) loadNodesWithPromptSpy.mockRestore();
         if (setFilenameSpy) setFilenameSpy.mockRestore();
         if (markCleanSpy) markCleanSpy.mockRestore();
         if (parseSpy) parseSpy.mockRestore();
@@ -168,7 +169,7 @@ describe('App - open visual configuration', () => {
         await flushPromises();
 
         expect(parseSpy).toHaveBeenCalledWith(fileContent);
-        expect(loadNodesSpy).toHaveBeenCalled();
+        expect(loadNodesWithPromptSpy).toHaveBeenCalled();
         expect(setFilenameSpy).toHaveBeenCalledWith('workflow.xml');
         expect(markCleanSpy).toHaveBeenCalled();
         expect(updateToolbarSpy).toHaveBeenCalled();
