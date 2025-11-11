@@ -548,6 +548,13 @@ XSDMetadataParser.java        # XSD metadata extraction
   - `.canvas-content-wrapper` - Transform wrapper (receives pan/zoom)
   - Nodes & SVG overlay - Absolute positioned content
 
+### Focus Mode & Detail Connections
+
+- Drill-down focus relies on `DrillDownManager` to scope `VisualDesigner.render()` to a single container; when that focus is active we must suppress sequential auto-wiring for master/detail plugins (headers, params, etc.).
+- `VisualDesigner.filterNodesForConnections()` now removes any child whose type appears in the `MasterDetailRegistry`, preventing connection planning from targeting detail cards that never expose anchors.
+- This eliminates the `"[VisualDesigner] Cannot render connection: anchor not found"` warning spam reported when expanding HTTP cards and keeps the zoomed-in canvas clean.
+- Regression coverage: `visual/__tests__/VisualDesigner.drilldown.test.ts` verifies that HTTP headers remain connection-free during focus mode while broader breadcrumb behaviour still works.
+
 **Coordinate System:**
 - **Viewport coordinates** → **Canvas coordinates** conversion
 - Method: `viewportToCanvas(x, y)` accounts for:
@@ -583,9 +590,13 @@ XSDMetadataParser.java        # XSD metadata extraction
 - ✅ Fixed canvas layout (properly embedded in layout)
 - ✅ Multi-level containers (nested loops/ifs/try blocks render recursively)
 - ✅ Root-level containers participate in sequential connections; BPMN start/end markers flank every configuration
+- ✅ Horizontal auto-layout: measured node widths drive left→right placement; manual drags opt the node out of auto layout while preserving connection planning
 - ✅ BPMN-style start/end markers framing each configuration
 - ✅ Palette tooltips on dedicated help icon (`?`)
-- ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style)
+- ✅ Dependent detail plugins (HTTP headers, query params, else/catch, zip-entry, etc.) are now managed from their parent cards/property panel and removed from the draggable palette to reduce invalid drops
+- ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style) aligned exactly on card geometry, with grab/grabbing cursors during drag
+- ✅ Always-on grid overlay that stretches with the canvas; start/end markers can be repositioned manually with persisted locations
+- ✅ Connection lines redraw instantly while dragging nodes, keeping sequenced flows visually accurate
 
 **Planned:**
 - Manual connections (ports)

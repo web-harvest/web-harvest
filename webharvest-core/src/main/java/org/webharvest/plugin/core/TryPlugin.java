@@ -315,6 +315,11 @@ public class TryPlugin extends AbstractPlugin {
         public String[] getAllowedChildPlugins() {
             return new String[]{"catch"}; // Master plugin - allows catch child
         }
+
+        @Override
+        public boolean acceptsArbitraryChildren() {
+            return true;
+        }
     }
     
     /**

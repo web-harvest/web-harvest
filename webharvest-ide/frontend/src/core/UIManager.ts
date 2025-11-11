@@ -117,6 +117,43 @@ export class UIManager {
     }
 
     /**
+     * Update execution control buttons to reflect workflow state
+     */
+    setExecutionState(state: 'idle' | 'running' | 'paused'): void {
+        const runBtn = document.getElementById('canvasRunBtn') as HTMLButtonElement | null;
+        const validateBtn = document.getElementById('canvasValidateBtn') as HTMLButtonElement | null;
+        const pauseBtn = document.getElementById('pauseBtn') as HTMLButtonElement | null;
+        const resumeBtn = document.getElementById('resumeBtn') as HTMLButtonElement | null;
+
+        const isRunning = state === 'running' || state === 'paused';
+        const isPaused = state === 'paused';
+
+        if (runBtn) {
+            runBtn.disabled = isRunning;
+            runBtn.style.opacity = isRunning ? '0.5' : '1';
+            runBtn.style.cursor = isRunning ? 'not-allowed' : 'pointer';
+            runBtn.title = isRunning ? 'Execution in progress…' : 'Run Configuration (⌘R)';
+        }
+
+        if (validateBtn) {
+            validateBtn.disabled = isRunning;
+            validateBtn.style.opacity = isRunning ? '0.5' : '1';
+            validateBtn.style.cursor = isRunning ? 'not-allowed' : 'pointer';
+            validateBtn.title = isRunning ? 'Validation disabled during execution' : 'Validate Configuration (⌘K)';
+        }
+
+        if (pauseBtn) {
+            pauseBtn.disabled = !isRunning;
+            pauseBtn.style.opacity = !isRunning ? '0.5' : '1';
+            pauseBtn.style.cursor = !isRunning ? 'not-allowed' : 'pointer';
+        }
+
+        if (resumeBtn) {
+            resumeBtn.style.display = isPaused ? 'inline-flex' : 'none';
+        }
+    }
+
+    /**
      * Switch to XML mode
      */
     switchToXMLMode(): void {
@@ -143,6 +180,7 @@ export class UIManager {
         this.showPropertyPanel(true);   // ← SHOW Properties tab as FIRST + make active
         this.showExecutionControls(true); // Show canvas controls (Run/Validate) in Visual mode
         this.showExecutionActionButtons(false); // Hide execution action buttons initially
+        this.setExecutionState('idle');
 
         console.log('✅ [UIManager] Visual mode: Plugins + Canvas + Right Sidebar (Properties FIRST, then Logs/Results/Variables/Sessions)');
     }

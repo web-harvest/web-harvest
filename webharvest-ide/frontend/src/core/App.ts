@@ -157,6 +157,9 @@ export class App {
             // Initialize semantic validator in VisualDesigner
             this.visualDesigner.setPluginManager(this.pluginManager);
 
+            // Share plugin metadata with property panel for schema-driven editors
+            this.propertyPanel.setPluginManager(this.pluginManager);
+
             // Initialize keyboard shortcut manager with plugin manager
             this.keyboardShortcutManager.setPluginManager(this.pluginManager);
             this.setupKeyboardShortcuts();
@@ -297,6 +300,8 @@ export class App {
                 // Hide execution action buttons when execution ends
                 if (this.currentMode === 'visual') {
                     this.uiManager.showExecutionActionButtons(false);
+                    this.uiManager.setExecutionState('idle');
+                    this.visualDesigner.setWorkflowStatus('idle');
                 }
             }
 
@@ -364,6 +369,16 @@ export class App {
             } else {
                 console.warn(`⚠️ [App] Node not found: ${nodeId}`);
             }
+        });
+
+        this.visualDesigner.addEventListener('workflowStartRequested', () => {
+            if (this.currentMode === 'visual') {
+                void this.runConfig();
+            }
+        });
+
+        this.visualDesigner.addEventListener('workflowStopRequested', () => {
+            this.stopExecution();
         });
 
         // Visual Designer → XML (when node added)
@@ -718,6 +733,8 @@ export class App {
                 const nodesForTracking = this.visualDesigner.getAllNodes();
                 this.executionStateManager.registerNodes(nodesForTracking);
                 this.visualDesigner.clearExecutionStates();
+                this.visualDesigner.setWorkflowStatus('running');
+                this.uiManager.setExecutionState('running');
             } else {
                 this.executionStateManager.reset();
             }
@@ -757,6 +774,11 @@ export class App {
         } catch (error) {
             console.error('❌ Failed to start execution:', error);
             this.logsPanel.addLog('error', `❌ Failed to start: ${error}`);
+            if (this.currentMode === 'visual') {
+                this.uiManager.setExecutionState('idle');
+                this.uiManager.showExecutionActionButtons(false);
+                this.visualDesigner.setWorkflowStatus('idle');
+            }
         }
     }
 
@@ -1488,6 +1510,9 @@ export class App {
         if (executionId) {
             this.wsManager.send({ action: 'pause' });
             this.logsPanel.addLog('warning', 'Pausing execution...');
+            if (this.currentMode === 'visual') {
+                this.uiManager.setExecutionState('paused');
+            }
         }
     }
 
@@ -1499,6 +1524,9 @@ export class App {
         if (executionId) {
             this.wsManager.send({ action: 'resume' });
             this.logsPanel.addLog('info', 'Resuming execution...');
+            if (this.currentMode === 'visual') {
+                this.uiManager.setExecutionState('running');
+            }
         }
     }
 
@@ -1514,6 +1542,8 @@ export class App {
         // Hide execution action buttons when stopped
         if (this.currentMode === 'visual') {
             this.uiManager.showExecutionActionButtons(false);
+            this.uiManager.setExecutionState('idle');
+            this.visualDesigner.setWorkflowStatus('idle');
         }
     }
 

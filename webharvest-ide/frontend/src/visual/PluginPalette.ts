@@ -12,24 +12,32 @@
 import type { VisualNode } from '../types';
 import {
     getPluginTemplates,
-    getPluginCategories,
-    getPluginTemplatesByCategory,
     createNodeFromTemplate,
     type PluginTemplate
 } from './VisualModelHelpers';
+import {
+    buildPaletteViewModel,
+    type PaletteTemplate,
+    type PaletteGroup,
+    type PaletteFilterOptions
+} from './PluginPaletteModel';
+import {
+    getDependentsHintVisibility,
+    dismissDependentsHint
+} from './PalettePreferences';
 
 export class PluginPalette {
     private container: HTMLElement;
-    private templates: PluginTemplate[];
-    private filteredTemplates: PluginTemplate[];
+    private templates: PaletteTemplate[];
+    private filteredTemplates: PaletteTemplate[];
+    private primaryGroups: PaletteGroup[] = [];
     private searchTerm: string = '';
-    private selectedCategory: string | null = null;
-    private collapsedCategories: Set<string> = new Set();
     private onAddNodeCallback: ((node: VisualNode) => void) | null = null;
     private selectedMasterPlugin: string | null = null; // Track selected master plugin for highlighting allowed children
     private filterByRole: string | null = null; // Filter by PluginSemanticRole
-    private showDependentsOnly: boolean = false; // Show only dependent plugins
     private showContainersOnly: boolean = false; // Show only container plugins
+    private activeSegment: 'all' | 'workflow' | 'utilities' = 'all';
+    private showDependentsHint: boolean = true;
 
     constructor(containerId: string) {
         console.log('🔌🔌🔌 [PluginPalette] Constructor called for ID:', containerId);
@@ -44,7 +52,7 @@ export class PluginPalette {
         this.container = container;
 
         // Initialize with hardcoded templates first (will be replaced by API)
-        this.templates = getPluginTemplates();
+        this.templates = getPluginTemplates() as PaletteTemplate[];
         console.log('🔌 [PluginPalette] Hardcoded templates loaded:', this.templates.length);
         console.log('🔌 [PluginPalette] First template:', this.templates[0]);
 
@@ -54,6 +62,8 @@ export class PluginPalette {
         // Render initial state
         console.log('🔌 [PluginPalette] About to call render() from constructor...');
         try {
+            this.showDependentsHint = getDependentsHintVisibility();
+            this.applyFilters();
             this.render();
             console.log('✅✅✅ [PluginPalette] render() completed successfully!');
         } catch (error) {
@@ -62,6 +72,32 @@ export class PluginPalette {
             throw error;
         }
         console.log('✅✅✅ [PluginPalette] Constructor COMPLETE!');
+    }
+
+    private createSegmentedControl(): HTMLElement {
+        const segmented = document.createElement('div');
+        segmented.className = 'plugin-palette__segments';
+
+        const segments: Array<{ id: 'all' | 'workflow' | 'utilities'; label: string; icon: string }> = [
+            { id: 'all', label: 'All', icon: 'fa-layer-group' },
+            { id: 'workflow', label: 'Workflow', icon: 'fa-diagram-project' },
+            { id: 'utilities', label: 'Utilities', icon: 'fa-wrench' }
+        ];
+
+        segments.forEach(segment => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'plugin-palette__segment';
+            button.dataset.segmentId = segment.id;
+            button.innerHTML = `<i class="fas ${segment.icon}"></i> ${segment.label}`;
+            if (this.activeSegment === segment.id) {
+                button.classList.add('is-active');
+            }
+            button.onclick = () => this.setActiveSegment(segment.id);
+            segmented.appendChild(button);
+        });
+
+        return segmented;
     }
 
     /**
@@ -109,10 +145,7 @@ export class PluginPalette {
             }));
 
             this.filteredTemplates = [...this.templates];
-
-            console.log('🔌 [PluginPalette] Mapped to', this.templates.length, 'templates');
-            console.log('🔌 [PluginPalette] Categories:', this.getCategories());
-
+            this.applyFilters();
             this.render();
 
             console.log(`✅ [PluginPalette] Loaded ${this.templates.length} plugins from API!`);
@@ -161,14 +194,6 @@ export class PluginPalette {
     /**
      * Get all categories from CURRENT templates (not hardcoded!)
      */
-    getCategories(): string[] {
-        const categories = new Set<string>();
-        this.templates.forEach(t => categories.add(t.category));
-        const result = Array.from(categories).sort();
-        console.log('📂 [PluginPalette] getCategories() from current templates:', result);
-        return result;
-    }
-
     /**
      * Set selected master plugin to highlight allowed children
      */
@@ -186,6 +211,27 @@ export class PluginPalette {
         return (template as any).allowedChildTypes || [];
     }
 
+    private filterGroupsBySegment(groups: PaletteGroup[]): PaletteGroup[] {
+        const segment = this.activeSegment;
+        const isWorkflowGroup = (groupName: string) => groupName === 'Workflow Blocks';
+
+        return groups
+            .filter(group => {
+                if (segment === 'all') {
+                    return true;
+                }
+                if (segment === 'workflow') {
+                    return isWorkflowGroup(group.name);
+                }
+                return !isWorkflowGroup(group.name);
+            })
+            .map(group => ({
+                name: group.name,
+                templates: [...group.templates]
+            }))
+            .filter(group => group.templates.length > 0);
+    }
+
     /**
      * Search plugins by term
      */
@@ -195,11 +241,8 @@ export class PluginPalette {
         this.render();
     }
 
-    /**
-     * Filter by category
-     */
-    filterByCategory(category: string): void {
-        this.selectedCategory = category;
+    setActiveSegment(segment: 'all' | 'workflow' | 'utilities'): void {
+        this.activeSegment = segment;
         this.applyFilters();
         this.render();
     }
@@ -209,7 +252,9 @@ export class PluginPalette {
      */
     clearFilters(): void {
         this.searchTerm = '';
-        this.selectedCategory = null;
+        this.filterByRole = null;
+        this.showContainersOnly = false;
+        this.activeSegment = 'all';
         this.applyFilters();
         this.render();
     }
@@ -218,64 +263,15 @@ export class PluginPalette {
      * Apply current filters
      */
     private applyFilters(): void {
-        this.filteredTemplates = this.templates.filter(template => {
-            // Search term filter (name, description, type, and tags)
-            if (this.searchTerm) {
-                const matchesBasic =
-                    template.type.toLowerCase().includes(this.searchTerm) ||
-                    template.label.toLowerCase().includes(this.searchTerm) ||
-                    template.description.toLowerCase().includes(this.searchTerm);
-                
-                // Search in tags
-                const matchesTags = (template as any).tags && 
-                    (template as any).tags.some((tag: string) => 
-                        tag.toLowerCase().includes(this.searchTerm)
-                    );
+        const commonOptions: PaletteFilterOptions = {
+            searchTerm: this.searchTerm,
+            containersOnly: this.showContainersOnly,
+            roleFilter: this.filterByRole
+        };
 
-                if (!matchesBasic && !matchesTags) {
-                    return false;
-                }
-            }
-
-            // Category filter
-            if (this.selectedCategory && template.category !== this.selectedCategory) {
-                return false;
-            }
-
-            // Filter by semantic role
-            if (this.filterByRole) {
-                const templateRoles: string[] = (template as any).semantics?.roles
-                    || ((template as any).semantics?.role ? [(template as any).semantics.role] : []);
-                if (!templateRoles.includes(this.filterByRole)) {
-                    return false;
-                }
-            }
-
-            // Filter by dependents only
-            if (this.showDependentsOnly) {
-                const requiredParents = (template as any).requiredParentTypes || [];
-                if (requiredParents.length === 0) {
-                    return false;
-                }
-            }
-
-            // Filter by containers only
-            if (this.showContainersOnly) {
-                const allowsChildren = (template as any).semantics?.allowsChildren || 
-                                     (template as any).allowedChildTypes?.length > 0;
-                if (!allowsChildren) {
-                    return false;
-                }
-            }
-
-            // Filter out dependent plugins from root-level palette
-            // Only show plugins that can appear at root level
-            if (template.canAppearAtRoot === false) {
-                return false;
-            }
-
-            return true;
-        });
+        const viewModel = buildPaletteViewModel(this.templates, commonOptions);
+        this.primaryGroups = this.filterGroupsBySegment(viewModel.primaryGroups);
+        this.filteredTemplates = this.primaryGroups.flatMap(group => group.templates);
     }
 
     /**
@@ -287,13 +283,45 @@ export class PluginPalette {
         this.render();
     }
 
-    /**
-     * Toggle show dependents only
-     */
-    toggleDependentsOnly(): void {
-        this.showDependentsOnly = !this.showDependentsOnly;
-        this.applyFilters();
-        this.render();
+    private createDependentsInfoBanner(): HTMLElement | null {
+        if (!this.showDependentsHint) {
+            return null;
+        }
+
+        const banner = document.createElement('section');
+        banner.className = 'plugin-palette__dependents-info';
+
+        const icon = document.createElement('div');
+        icon.className = 'plugin-palette__dependents-icon';
+        icon.innerHTML = '<i class="fas fa-info-circle"></i>';
+
+        const copy = document.createElement('div');
+        copy.className = 'plugin-palette__dependents-copy';
+
+        const heading = document.createElement('strong');
+        heading.textContent = 'Looking for headers, params, or branches?';
+
+        const body = document.createElement('p');
+        body.textContent = 'Add detail components from inside their parent cards. Select a plugin and use the Properties panel to add nested items.';
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'plugin-palette__dependents-dismiss';
+        closeButton.setAttribute('aria-label', 'Hide dependent component help');
+        closeButton.innerHTML = '<i class="fas fa-xmark"></i>';
+        closeButton.onclick = () => {
+            dismissDependentsHint();
+            this.showDependentsHint = false;
+            this.render();
+        };
+
+        copy.appendChild(heading);
+        copy.appendChild(body);
+
+        banner.appendChild(icon);
+        banner.appendChild(copy);
+        banner.appendChild(closeButton);
+        return banner;
     }
 
     /**
@@ -305,109 +333,43 @@ export class PluginPalette {
         this.render();
     }
 
-    /**
-     * Render palette
-     */
     render(): void {
         try {
-            console.log('🎨🎨🎨 [PluginPalette] render() ENTRY POINT');
-            console.log('🎨 [PluginPalette] this.container:', this.container);
-            console.log('🎨 [PluginPalette] Templates count:', this.filteredTemplates.length);
-
-            console.log('🎨 [PluginPalette] Clearing container...');
             this.container.innerHTML = '';
-
-            console.log('🎨 [PluginPalette] Setting container styles...');
             this.container.className = 'plugin-palette';
             this.container.style.display = 'flex';
             this.container.style.flexDirection = 'column';
             this.container.style.height = '100%';
-            this.container.style.overflow = 'hidden';
+            this.container.style.background = '#f8f9fb';
 
-            // Check if we have templates
-            if (this.filteredTemplates.length === 0) {
-                console.warn('⚠️ [PluginPalette] No templates! Showing empty state.');
-                this.container.innerHTML = `
-                    <div style="padding: 48px 16px; text-align: center; color: #999;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
-                        <p style="margin: 12px 0 0; font-size: 13px;">No plugins loaded</p>
-                    </div>
-                `;
-                return;
-            }
+            const header = document.createElement('div');
+            header.className = 'plugin-palette__header';
+            header.appendChild(this.createSearchBox());
+            header.appendChild(this.createSegmentedControl());
+            this.container.appendChild(header);
 
-            console.log('🎨 [PluginPalette] Creating search box...');
-            const searchBox = this.createSearchBox();
-            searchBox.style.flexShrink = '0';
-            this.container.appendChild(searchBox);
-            console.log('✅ [PluginPalette] Search box added');
+            this.container.appendChild(this.createFilterControls());
 
-            // Add filter controls for semantic roles
-            const filterControls = this.createFilterControls();
-            filterControls.style.flexShrink = '0';
-            this.container.appendChild(filterControls);
-            console.log('✅ [PluginPalette] Filter controls added');
+            const listContainer = document.createElement('div');
+            listContainer.className = 'plugin-palette__list';
+            listContainer.style.flex = '1';
+            listContainer.style.overflowY = 'auto';
+            listContainer.style.padding = '12px';
 
-            console.log('🎨 [PluginPalette] Creating categories container...');
-            const categoriesContainer = document.createElement('div');
-            categoriesContainer.className = 'categories-container';
-            categoriesContainer.style.flex = '1';
-            categoriesContainer.style.overflowY = 'auto';
-            categoriesContainer.style.overflowX = 'hidden';
-
-            // Group by category or semantic role based on filter
-            let renderedCount = 0;
-            
-            if (this.filterByRole) {
-                // Group by role when role filter is active
-                const roleTemplates = this.filteredTemplates.filter(t => {
-                    const templateRoles: string[] = (t as any).semantics?.roles
-                        || ((t as any).semantics?.role ? [(t as any).semantics.role] : []);
-                    return templateRoles.includes(this.filterByRole!);
-                });
-                
-                if (roleTemplates.length > 0) {
-                    const roleSection = this.createCategorySection(
-                        `Role: ${this.getRoleLabel(this.filterByRole!)}`,
-                        roleTemplates
-                    );
-                    categoriesContainer.appendChild(roleSection);
-                    renderedCount++;
-                }
+            if (this.primaryGroups.length === 0) {
+                listContainer.appendChild(this.createEmptyState());
             } else {
-                // Group by category (use CURRENT templates, not hardcoded!)
-                console.log('🎨 [PluginPalette] Getting categories from current templates...');
-                const categories = this.getCategories();
-                console.log('🎨 [PluginPalette] Categories to render:', categories);
-
-                categories.forEach(category => {
-                    console.log(`🔍 [PluginPalette] Processing category "${category}"...`);
-
-                    const categoryTemplates = this.filteredTemplates.filter(t => t.category === category);
-                    console.log(`🔍 [PluginPalette] Filtering "${category}": found ${categoryTemplates.length} templates`);
-
-                    if (categoryTemplates.length === 0) {
-                        console.log(`⚠️ [PluginPalette] Skipping empty category "${category}"`);
-                        return;
-                    }
-
-                    console.log(`🎨 [PluginPalette] Creating section for "${category}" with ${categoryTemplates.length} plugins`);
-
-                    try {
-                        const categorySection = this.createCategorySection(category, categoryTemplates);
-                        categoriesContainer.appendChild(categorySection);
-                        renderedCount++;
-                        console.log(`✅ [PluginPalette] Added category "${category}" to DOM`);
-                    } catch (err) {
-                        console.error(`❌ [PluginPalette] Failed to create section for "${category}":`, err);
-                    }
+                this.primaryGroups.forEach(group => {
+                    listContainer.appendChild(this.renderGroupSection(group, 'primary'));
                 });
             }
 
-            console.log('🎨 [PluginPalette] Appending categories container to main container...');
-            this.container.appendChild(categoriesContainer);
+            this.container.appendChild(listContainer);
 
-            console.log(`✅✅✅ [PluginPalette] Render COMPLETE! ${renderedCount} categories, ${this.filteredTemplates.length} total plugins`);
+            const dependentsBanner = this.createDependentsInfoBanner();
+            if (dependentsBanner) {
+                this.container.appendChild(dependentsBanner);
+            }
         } catch (error) {
             console.error('❌❌❌ [PluginPalette] RENDER CRASHED:', error);
             console.error('Error details:', error);
@@ -420,24 +382,38 @@ export class PluginPalette {
      */
     private createSearchBox(): HTMLElement {
         const searchContainer = document.createElement('div');
-        searchContainer.style.padding = '12px';
-        searchContainer.style.borderBottom = '1px solid #ddd';
+        searchContainer.className = 'plugin-palette__search';
+
+        const icon = document.createElement('span');
+        icon.className = 'plugin-palette__search-icon';
+        icon.innerHTML = '<i class="fas fa-search"></i>';
 
         const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = 'Search plugins...';
+        input.type = 'search';
+        input.placeholder = 'Search components';
         input.value = this.searchTerm;
-        input.style.width = '100%';
-        input.style.padding = '8px';
-        input.style.border = '1px solid #ddd';
-        input.style.borderRadius = '4px';
-        input.style.fontSize = '14px';
+        input.autocomplete = 'off';
+        input.className = 'plugin-palette__search-input';
 
         input.oninput = () => {
             this.search(input.value);
         };
 
+        const clearButton = document.createElement('button');
+        clearButton.type = 'button';
+        clearButton.className = 'plugin-palette__search-clear';
+        clearButton.innerHTML = '<i class="fas fa-times-circle"></i>';
+        clearButton.title = 'Clear search';
+        clearButton.onclick = () => {
+            if (this.searchTerm.length === 0) {
+                return;
+            }
+            this.clearFilters();
+        };
+
+        searchContainer.appendChild(icon);
         searchContainer.appendChild(input);
+        searchContainer.appendChild(clearButton);
         return searchContainer;
     }
 
@@ -445,147 +421,87 @@ export class PluginPalette {
      * Create filter controls for semantic roles
      */
     private createFilterControls(): HTMLElement {
-        const filterContainer = document.createElement('div');
-        filterContainer.style.padding = '8px 12px';
-        filterContainer.style.borderBottom = '1px solid #ddd';
-        filterContainer.style.background = '#f9f9f9';
-        filterContainer.style.display = 'flex';
-        filterContainer.style.flexWrap = 'wrap';
-        filterContainer.style.gap = '6px';
-        filterContainer.style.fontSize = '12px';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'plugin-palette__filters';
 
-        // Role filter buttons
+        const rolesRow = document.createElement('div');
+        rolesRow.className = 'plugin-palette__role-row';
+
         const roles = [
-            { value: null, label: 'All', icon: 'fa-list' },
-            { value: 'ROOT_CONTAINER', label: 'Root', icon: 'fa-home' },
-            { value: 'CONTEXT_CONTAINER', label: 'Containers', icon: 'fa-folder' },
+            { value: null, label: 'All', icon: 'fa-layer-group' },
+            { value: 'ROOT_CONTAINER', label: 'Root', icon: 'fa-house' },
+            { value: 'CONTEXT_CONTAINER', label: 'Containers', icon: 'fa-folder-open' },
             { value: 'BODY_EVALUATOR', label: 'Evaluators', icon: 'fa-code' },
-            { value: 'DEPENDENT', label: 'Dependent', icon: 'fa-link' },
-            { value: 'LEAF', label: 'Leaf', icon: 'fa-circle' }
+            { value: 'LEAF', label: 'Leaf', icon: 'fa-puzzle-piece' }
         ];
 
         roles.forEach(role => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.innerHTML = `<i class="fas ${role.icon}"></i> ${role.label}`;
-            button.style.cssText = `
-                padding: 4px 8px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                background: ${this.filterByRole === role.value ? '#4CAF50' : 'white'};
-                color: ${this.filterByRole === role.value ? 'white' : '#333'};
-                cursor: pointer;
-                font-size: 11px;
-                transition: all 0.2s;
-            `;
-            button.onclick = () => {
-                this.setRoleFilter(role.value);
-            };
-            filterContainer.appendChild(button);
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'plugin-palette__role-chip';
+            chip.innerHTML = `<i class="fas ${role.icon}"></i> ${role.label}`;
+            if (this.filterByRole === role.value) {
+                chip.classList.add('is-active');
+            }
+            chip.onclick = () => this.setRoleFilter(role.value);
+            rolesRow.appendChild(chip);
         });
 
-        // Toggle buttons
-        const dependentsButton = document.createElement('button');
-        dependentsButton.type = 'button';
-        dependentsButton.innerHTML = '<i class="fas fa-link"></i> Dependents';
-        dependentsButton.style.cssText = `
-            padding: 4px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: ${this.showDependentsOnly ? '#FF9800' : 'white'};
-            color: ${this.showDependentsOnly ? 'white' : '#333'};
-            cursor: pointer;
-            font-size: 11px;
-            margin-left: auto;
-        `;
-        dependentsButton.onclick = () => {
-            this.toggleDependentsOnly();
-        };
-        filterContainer.appendChild(dependentsButton);
+        const togglesRow = document.createElement('div');
+        togglesRow.className = 'plugin-palette__toggle-row';
 
         const containersButton = document.createElement('button');
         containersButton.type = 'button';
-        containersButton.innerHTML = '<i class="fas fa-folder"></i> Containers';
-        containersButton.style.cssText = `
-            padding: 4px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: ${this.showContainersOnly ? '#2196F3' : 'white'};
-            color: ${this.showContainersOnly ? 'white' : '#333'};
-            cursor: pointer;
-            font-size: 11px;
-        `;
-        containersButton.onclick = () => {
-            this.toggleContainersOnly();
-        };
-        filterContainer.appendChild(containersButton);
+        containersButton.className = 'plugin-palette__toggle';
+        containersButton.innerHTML = '<i class="fas fa-boxes-stacked"></i> Containers only';
+        if (this.showContainersOnly) {
+            containersButton.classList.add('is-active');
+        }
+        containersButton.onclick = () => this.toggleContainersOnly();
+        togglesRow.appendChild(containersButton);
 
-        return filterContainer;
+        wrapper.appendChild(rolesRow);
+        wrapper.appendChild(togglesRow);
+        return wrapper;
     }
 
-    /**
-     * Create category section
-     */
-    private createCategorySection(category: string, templates: PluginTemplate[]): HTMLElement {
-        const section = document.createElement('div');
-        section.className = 'plugin-category-section';
-        section.style.borderBottom = '1px solid #eee';
+    private createEmptyState(): HTMLElement {
+        const empty = document.createElement('div');
+        empty.className = 'plugin-palette__empty';
+        empty.innerHTML = `
+            <i class="fas fa-stars"></i>
+            <p>No components match the current filters.</p>
+            <button type="button" class="plugin-palette__empty-reset">
+                <i class="fas fa-undo"></i> Reset filters
+            </button>
+        `;
 
-        // Category header
-        const header = document.createElement('div');
-        header.className = 'category-header';
-        header.dataset.category = category;
-        header.style.padding = '12px';
-        header.style.fontWeight = '600';
-        header.style.cursor = 'pointer';
-        header.style.background = '#f9f9f9';
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.style.alignItems = 'center';
+        const resetButton = empty.querySelector('.plugin-palette__empty-reset') as HTMLButtonElement;
+        resetButton.onclick = () => this.clearFilters();
 
-        const title = document.createElement('span');
-        title.textContent = category.charAt(0).toUpperCase() + category.slice(1);
-        header.appendChild(title);
+        return empty;
+    }
 
-        const count = document.createElement('span');
-        count.style.fontSize = '12px';
-        count.style.color = '#666';
-        count.textContent = templates.length.toString();
-        header.appendChild(count);
+    private renderGroupSection(group: PaletteGroup, tone: 'primary' | 'advanced'): HTMLElement {
+        const section = document.createElement('section');
+        section.className = `plugin-group plugin-group--${tone}`;
 
-        // Toggle collapse on click
-        header.onclick = () => {
-            this.toggleCategoryCollapse(category);
-        };
-
+        const header = document.createElement('header');
+        header.className = 'plugin-group__header';
+        header.innerHTML = `
+            <div class="plugin-group__title">${group.name}</div>
+            <span class="plugin-group__count">${group.templates.length}</span>
+        `;
         section.appendChild(header);
 
-        // Plugin items
-        if (!this.collapsedCategories.has(category)) {
-            const itemsContainer = document.createElement('div');
-            itemsContainer.dataset.pluginCategory = category;
-
-            templates.forEach(template => {
-                const item = this.createPluginItem(template);
-                itemsContainer.appendChild(item);
-            });
-
-            section.appendChild(itemsContainer);
-        }
+        const grid = document.createElement('div');
+        grid.className = 'plugin-group__grid';
+        group.templates.forEach(template => {
+            grid.appendChild(this.createPluginItem(template));
+        });
+        section.appendChild(grid);
 
         return section;
-    }
-
-    /**
-     * Toggle category collapse
-     */
-    private toggleCategoryCollapse(category: string): void {
-        if (this.collapsedCategories.has(category)) {
-            this.collapsedCategories.delete(category);
-        } else {
-            this.collapsedCategories.add(category);
-        }
-        this.render();
     }
 
     /**
@@ -597,234 +513,134 @@ export class PluginPalette {
         item.draggable = true;
         item.tabIndex = 0;
         item.dataset.pluginType = template.type;
-        item.style.padding = '10px 12px';
-        item.style.margin = '4px 8px';
-        item.style.background = 'white';
-        // Use VisualPluginMetadata color if available
-        const borderColor = template.color || '#ddd';
-        item.style.border = `1px solid ${borderColor}`;
-        item.style.borderLeft = `3px solid ${borderColor}`; // Left border accent with color
-        item.style.borderRadius = '4px';
-        item.style.cursor = 'grab';
-        item.style.transition = 'all 0.2s';
-
-        // Apply accessibility metadata (Apple HIG compliance)
-        // Note: We need to get accessibility metadata from plugin manager
-        // For now, use basic accessibility attributes
         item.setAttribute('role', 'button');
         item.setAttribute('aria-label', template.label || template.type);
-        if (template.tooltip) {
-            item.setAttribute('aria-description', template.tooltip);
-        } else if (template.description) {
-            item.setAttribute('aria-description', template.description);
+        if (template.color) {
+            item.style.setProperty('--plugin-accent', template.color);
         }
 
-        // Icon + Label
-        const content = document.createElement('div');
-        content.style.display = 'flex';
-        content.style.alignItems = 'center';
-        content.style.gap = '8px';
+        const header = document.createElement('div');
+        header.className = 'plugin-item__header';
 
         const icon = document.createElement('span');
+        icon.className = 'plugin-item__icon';
         icon.textContent = this.getIconForType(template.type);
-        icon.style.fontSize = '16px';
-        content.appendChild(icon);
-
-        const label = document.createElement('span');
-        label.textContent = template.label;
-        label.style.fontSize = '13px';
-        label.style.fontWeight = '500';
-        content.appendChild(label);
-
-        // Add tag badges if available
-        const tags = (template as any).tags || [];
-        if (tags.length > 0) {
-            const tagsContainer = document.createElement('div');
-            tagsContainer.style.display = 'flex';
-            tagsContainer.style.flexWrap = 'wrap';
-            tagsContainer.style.gap = '4px';
-            tagsContainer.style.marginTop = '6px';
-            tagsContainer.style.fontSize = '10px';
-            
-            tags.slice(0, 3).forEach((tag: string) => {
-                const tagBadge = document.createElement('span');
-                tagBadge.textContent = tag;
-                tagBadge.style.padding = '2px 6px';
-                tagBadge.style.background = 'var(--gray-100)';
-                tagBadge.style.borderRadius = '3px';
-                tagBadge.style.color = 'var(--gray-700)';
-                tagBadge.style.fontWeight = '500';
-                tagsContainer.appendChild(tagBadge);
-            });
-            
-            if (tags.length > 3) {
-                const moreBadge = document.createElement('span');
-                moreBadge.textContent = `+${tags.length - 3}`;
-                moreBadge.style.padding = '2px 6px';
-                moreBadge.style.background = 'var(--gray-200)';
-                moreBadge.style.borderRadius = '3px';
-                moreBadge.style.color = 'var(--gray-600)';
-                tagsContainer.appendChild(moreBadge);
-            }
-            
-            content.appendChild(tagsContainer);
+        if (template.color) {
+            icon.style.color = template.color;
         }
 
-        const metaContainer = document.createElement('div');
-        metaContainer.className = 'plugin-item-meta';
-        metaContainer.style.display = 'flex';
-        metaContainer.style.alignItems = 'center';
-        metaContainer.style.gap = '6px';
-        metaContainer.style.marginLeft = 'auto';
-        content.appendChild(metaContainer);
+        const titleBlock = document.createElement('div');
+        titleBlock.className = 'plugin-item__title-block';
 
-        item.appendChild(content);
+        const title = document.createElement('span');
+        title.className = 'plugin-item__title';
+        title.textContent = template.label;
+        titleBlock.appendChild(title);
 
-        // Enhanced tooltip with semantic information
-        const tooltipParts: string[] = [];
-        if (template.description) {
-            tooltipParts.push(template.description);
+        const subtitleText = this.getPluginSubtitle(template);
+        if (subtitleText) {
+            const subtitle = document.createElement('span');
+            subtitle.className = 'plugin-item__subtitle';
+            subtitle.textContent = subtitleText;
+            titleBlock.appendChild(subtitle);
         }
-        
-        const requiredParents = (template as any).requiredParentTypes || [];
-        if (requiredParents.length > 0) {
-            tooltipParts.push(`Requires parent: ${requiredParents.join(', ')}`);
+
+        const infoButton = document.createElement('button');
+        infoButton.type = 'button';
+        infoButton.className = 'plugin-item__info';
+        infoButton.innerHTML = '<i class="fas fa-circle-info"></i>';
+        infoButton.setAttribute('aria-label', `Learn about ${template.label}`);
+        const infoText = this.getInfoText(template);
+        if (infoText) {
+            infoButton.title = infoText;
+            infoButton.setAttribute('aria-description', infoText);
         }
-        
-        const allowedChildren = (template as any).allowedChildTypes || [];
-        const allowsAnyChild = (template as any).semantics?.acceptsAnyChild || false;
+        infoButton.onmousedown = event => event.stopPropagation();
+        infoButton.onclick = event => event.stopPropagation();
+
+        header.appendChild(icon);
+        header.appendChild(titleBlock);
+        header.appendChild(infoButton);
+
+        const body = document.createElement('p');
+        body.className = 'plugin-item__description';
+        const descriptionText = this.getDescriptionText(template);
+        body.textContent = descriptionText;
+        if (descriptionText) {
+            item.setAttribute('aria-description', descriptionText);
+        } else if (infoText) {
+            item.setAttribute('aria-description', infoText);
+        }
+
+        const footer = document.createElement('div');
+        footer.className = 'plugin-item__footer';
+
+        const roles = this.getTemplateRoles(template);
+        if (roles.length > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'plugin-item__badge';
+            badge.textContent = this.getRoleLabel(roles[0]);
+            badge.title = `Semantic role: ${roles.join(', ')}`;
+            footer.appendChild(badge);
+        }
+
+        if (this.templateAllowsChildren(template)) {
+            item.classList.add('plugin-item--container');
+
+            const childHint = document.createElement('span');
+            childHint.className = 'plugin-item__hint';
+            childHint.innerHTML = '<i class="fas fa-layer-group"></i> Supports nested steps';
+            footer.appendChild(childHint);
+        }
+
+        const allowedChildren = this.getTemplateAllowedChildren(template);
         if (allowedChildren.length > 0) {
-            tooltipParts.push(`Allowed children: ${allowedChildren.join(', ')}`);
-        } else if (allowsAnyChild) {
-            tooltipParts.push('Accepts any child plugin');
-        }
-        
-        const roles: string[] = (template as any).semantics?.roles
-            || ((template as any).semantics?.role ? [(template as any).semantics.role] : []);
-        const primaryRole = roles[0];
-        if (roles.length > 0) {
-            tooltipParts.push(`Roles: ${roles.join(', ')}`);
-        }
-        
-        const tooltipText = tooltipParts.join('\n');
-        const tooltipAria = tooltipParts.join('. ');
-        const fallbackTooltip = template.tooltip || template.description || '';
-
-        if (tooltipAria) {
-            item.setAttribute('aria-description', tooltipAria);
-        } else if (fallbackTooltip) {
-            item.setAttribute('aria-description', fallbackTooltip);
+            const compatibility = document.createElement('span');
+            compatibility.className = 'plugin-item__hint';
+            compatibility.textContent = `Allows ${allowedChildren.length} child type${allowedChildren.length > 1 ? 's' : ''}`;
+            footer.appendChild(compatibility);
         }
 
-        // Visual indicators for dependent plugins
-        if (requiredParents.length > 0) {
-            const indicator = document.createElement('span');
-            indicator.innerHTML = '<i class="fas fa-link"></i>';
-            indicator.style.marginLeft = '0';
-            indicator.style.fontSize = '11px';
-            indicator.style.color = '#FF9800';
-            indicator.title = `Requires parent: ${requiredParents.join(', ')}`;
-            metaContainer.appendChild(indicator);
+        item.appendChild(header);
+        if (descriptionText) {
+            item.appendChild(body);
+        }
+        if (footer.childElementCount > 0) {
+            item.appendChild(footer);
         }
 
-        // Help icon with tooltip overlay
-        const helpIcon = document.createElement('span');
-        helpIcon.className = 'plugin-help-icon';
-        helpIcon.textContent = '?';
-        helpIcon.setAttribute('role', 'button');
-        helpIcon.tabIndex = 0;
-
-        const tooltipContainer = document.createElement('div');
-        tooltipContainer.className = 'plugin-help-tooltip';
-        tooltipContainer.textContent = tooltipText || fallbackTooltip || 'No additional information';
-
-        helpIcon.appendChild(tooltipContainer);
-        metaContainer.appendChild(helpIcon);
-
-        // Visual indicators for container plugins
-        if (allowedChildren.length > 0 || allowsAnyChild) {
-            const childTooltip = allowsAnyChild 
-                ? 'Accepts any child plugin'
-                : `Allowed children: ${allowedChildren.join(', ')}`;
-            
-            const containerIndicator = document.createElement('span');
-            containerIndicator.innerHTML = '<i class="fas fa-folder"></i>';
-            containerIndicator.style.marginLeft = '4px';
-            containerIndicator.style.fontSize = '11px';
-            containerIndicator.style.color = '#2196F3';
-            containerIndicator.title = childTooltip;
-            metaContainer.appendChild(containerIndicator);
-        }
-
-        // Semantic role badge
-        if (roles.length > 0) {
-            const roleBadge = document.createElement('span');
-            roleBadge.textContent = this.getRoleLabel(primaryRole);
-            roleBadge.style.cssText = `
-                margin-left: 4px;
-                padding: 2px 6px;
-                background: ${this.getRoleColor(primaryRole)};
-                color: white;
-                border-radius: 3px;
-                font-size: 9px;
-                font-weight: 600;
-                text-transform: uppercase;
-            `;
-            roleBadge.title = `Semantic role: ${roles.join(', ')}`;
-            metaContainer.appendChild(roleBadge);
-        }
-
-        // Mark dependent plugins as disabled (if filtering is enabled)
-        if (template.canAppearAtRoot === false) {
-            item.classList.add('dependent-plugin');
-            item.style.opacity = '0.6';
-            item.style.cursor = 'not-allowed';
-            item.setAttribute('aria-disabled', 'true');
-        }
-
-        // Highlight allowed children when master plugin is selected
         if (this.selectedMasterPlugin) {
             const masterAllowedChildren = this.getMasterPluginAllowedChildren(this.selectedMasterPlugin);
             if (masterAllowedChildren.includes(template.type)) {
-                item.style.border = '2px solid #4CAF50';
-                item.style.boxShadow = '0 0 8px rgba(76, 175, 80, 0.4)';
-                item.style.background = '#f1f8f4';
+                item.classList.add('plugin-item--highlight');
+                item.setAttribute('aria-current', 'true');
             }
         }
 
-        // Hover effect
-        item.onmouseenter = () => {
-            item.style.background = '#f5f5f5';
-            item.style.borderColor = '#FFC107';
-        };
-        item.onmouseleave = () => {
-            item.style.background = 'white';
-            item.style.borderColor = '#ddd';
-        };
+        item.onmouseenter = () => item.classList.add('is-hovered');
+        item.onmouseleave = () => item.classList.remove('is-hovered');
 
-        // Drag events
-        item.ondragstart = (e) => {
-            this.onDragStart(e, template);
-            item.style.cursor = 'grabbing';
+        item.ondragstart = (event) => {
+            this.onDragStart(event, template);
+            item.classList.add('is-dragging');
         };
 
         item.ondragend = () => {
-            item.style.cursor = 'grab';
+            item.classList.remove('is-dragging');
         };
 
-        // Keyboard: Enter to add
-        item.onkeydown = (e) => {
-            if (e.key === 'Enter' && this.onAddNodeCallback) {
+        item.onkeydown = (event) => {
+            if (event.key === 'Enter' && this.onAddNodeCallback) {
                 const newNode = createNodeFromTemplate(template);
                 this.onAddNodeCallback(newNode);
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                const next = item.nextElementSibling as HTMLElement;
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                const next = item.nextElementSibling as HTMLElement | null;
                 next?.focus();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                const prev = item.previousElementSibling as HTMLElement;
-                prev?.focus();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                const previous = item.previousElementSibling as HTMLElement | null;
+                previous?.focus();
             }
         };
 
@@ -834,29 +650,96 @@ export class PluginPalette {
     /**
      * Get human-readable label for semantic role
      */
-    private getRoleLabel(role: string): string {
-        const labels: Record<string, string> = {
-            'ROOT_CONTAINER': 'ROOT',
-            'CONTEXT_CONTAINER': 'CTX',
-            'BODY_EVALUATOR': 'EVAL',
-            'DEPENDENT': 'DEP',
-            'LEAF': 'LEAF'
-        };
-        return labels[role] || role;
+    private getTemplateRoles(template: PaletteTemplate): string[] {
+        const roles = (template as any).semantics?.roles;
+        if (Array.isArray(roles) && roles.length > 0) {
+            return roles;
+        }
+        const legacyRole = (template as any).semantics?.role;
+        return legacyRole ? [legacyRole] : [];
     }
 
-    /**
-     * Get color for semantic role
-     */
-    private getRoleColor(role: string): string {
-        const colors: Record<string, string> = {
-            'ROOT_CONTAINER': '#9C27B0',
-            'CONTEXT_CONTAINER': '#2196F3',
-            'BODY_EVALUATOR': '#4CAF50',
-            'DEPENDENT': '#FF9800',
-            'LEAF': '#757575'
+    private templateAllowsChildren(template: PaletteTemplate): boolean {
+        const semantics = (template as any).semantics;
+        if (semantics?.allowsAnyChild || semantics?.acceptsAnyChild) {
+            return true;
+        }
+        const allowed = this.getTemplateAllowedChildren(template);
+        if (allowed.length > 0) {
+            return true;
+        }
+        return this.getTemplateRoles(template).includes('CONTEXT_CONTAINER');
+    }
+
+    private getTemplateAllowedChildren(template: PaletteTemplate): string[] {
+        if (template.allowedChildTypes && template.allowedChildTypes.length > 0) {
+            return template.allowedChildTypes;
+        }
+        const semantics = (template as any).semantics;
+        if (semantics?.allowedChildTypes && semantics.allowedChildTypes.length > 0) {
+            return semantics.allowedChildTypes;
+        }
+        return [];
+    }
+
+    private getPluginSubtitle(template: PaletteTemplate): string | null {
+        const roles = this.getTemplateRoles(template);
+        if (roles.includes('ROOT_CONTAINER')) {
+            return 'Workflow entry';
+        }
+        if (roles.includes('CONTEXT_CONTAINER')) {
+            return 'Container';
+        }
+        if (roles.includes('BODY_EVALUATOR')) {
+            return 'Evaluator';
+        }
+        if (roles.includes('LEAF')) {
+            return 'Action';
+        }
+        if (roles.includes('DEPENDENT')) {
+            return 'Detail';
+        }
+        return null;
+    }
+
+    private getInfoText(template: PaletteTemplate): string {
+        const parts: string[] = [];
+        if (template.description) {
+            parts.push(template.description.trim());
+        }
+        const requiredParents = (template as any).requiredParentTypes ?? [];
+        if (requiredParents.length > 0) {
+            parts.push(`Requires parent: ${requiredParents.join(', ')}`);
+        }
+        const allowedChildren = this.getTemplateAllowedChildren(template);
+        if (allowedChildren.length > 0) {
+            parts.push(`Available inside: ${allowedChildren.join(', ')}`);
+        } else if (this.templateAllowsChildren(template)) {
+            parts.push('Accepts nested steps via Properties panel');
+        }
+        return parts.join('. ');
+    }
+
+    private getDescriptionText(template: PaletteTemplate): string {
+        if (!template.description) {
+            return '';
+        }
+        const trimmed = template.description.trim();
+        if (trimmed.length <= 120) {
+            return trimmed;
+        }
+        return `${trimmed.slice(0, 117)}…`;
+    }
+
+    private getRoleLabel(role: string): string {
+        const labels: Record<string, string> = {
+            'ROOT_CONTAINER': 'Root flow',
+            'CONTEXT_CONTAINER': 'Container',
+            'BODY_EVALUATOR': 'Evaluator',
+            'DEPENDENT': 'Detail',
+            'LEAF': 'Action'
         };
-        return colors[role] || '#999';
+        return labels[role] || role;
     }
 
     /**

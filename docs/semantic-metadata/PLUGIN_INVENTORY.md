@@ -77,6 +77,17 @@ catalog.
 > **Control Flow UX:** `else` and `catch` branches are still modelled as dependent
 > plugins, yet the designer surfaces dedicated cards inside the parent `if` / `try`
 > nodes so authors manage those branches without dragging the detail tiles around.
+>
+> **Unified Detail Manager:** Every master plugin that declares detail children now
+> feeds the same registry-driven UI for both the property panel and canvas. HTTP kept
+> its request summary, but headers/params, `call-param`, `zip-entry`, FTP operations,
+> and future detail plugins automatically gain inline list management and metadata-
+> driven labels without bespoke UI hooks.
+>
+> **Palette Scope:** Because of the inline editors above, the IDE palette now only lists
+> runnable workflow blocks and utility processors. Dependent plugins stay in this inventory
+> for documentation and validation, but are surfaced to users via the add-buttons inside
+> their master nodes rather than as draggable tiles.
 
 > **Runtime Heuristic:** BODY_EVALUATOR plugins that allow body content and do
 > not declare required parents are now automatically flagged as accepting any

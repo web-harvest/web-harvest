@@ -67,7 +67,8 @@ export class PluginManager {
                     accessibility: plugin.accessibility,
                     linkedServices: plugin.linkedServices,
                     parentRelationship: plugin.parentRelationship,
-                    allowedChildPlugins: plugin.allowedChildPlugins
+                    allowedChildPlugins: plugin.allowedChildPlugins,
+                    ui: plugin.ui
                 };
             });
             

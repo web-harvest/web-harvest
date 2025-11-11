@@ -1,3 +1,40 @@
+import { describe, expect, it } from '@jest/globals';
+import { BreadcrumbNav, type BreadcrumbItem } from '../BreadcrumbNav';
+
+describe('BreadcrumbNav', () => {
+    it('renders breadcrumb items with icons and handles navigation', () => {
+        const nav = new BreadcrumbNav();
+        const container = document.createElement('div');
+        const visited: string[] = [];
+
+        nav.setIconResolver((item: BreadcrumbItem) => {
+            const icon = document.createElement('i');
+            icon.className = `test-icon-${item.id}`;
+            return icon;
+        });
+
+        nav.onNavigate((item) => {
+            visited.push(item.id);
+        });
+
+        nav.render(container, [
+            { id: '__root__', label: 'Workflow', level: 0 },
+            { id: 'node-1', label: 'Function', level: 1, nodeType: 'function' }
+        ]);
+
+        const items = container.querySelectorAll('.breadcrumb-item');
+        expect(items).toHaveLength(2);
+        expect(items[0].classList.contains('breadcrumb-item--current')).toBe(false);
+        expect(items[1].classList.contains('breadcrumb-item--current')).toBe(true);
+
+        const icon = container.querySelector('.test-icon-__root__');
+        expect(icon).not.toBeNull();
+
+        (items[0] as HTMLButtonElement).click();
+        expect(visited).toContain('__root__');
+    });
+});
+
 /**
  * BreadcrumbNav - TDD Tests
  * Tests for breadcrumb navigation in nested containers

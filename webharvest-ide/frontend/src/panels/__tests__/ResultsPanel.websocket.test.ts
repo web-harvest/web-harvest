@@ -96,3 +96,4 @@ describe('ResultsPanel - WebSocket Integration', () => {
 
 
 
+

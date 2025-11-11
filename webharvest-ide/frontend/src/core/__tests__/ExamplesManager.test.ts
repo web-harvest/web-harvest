@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { ExamplesManager } from '../ExamplesManager';
+import { ExamplesManager, DEFAULT_EXAMPLES } from '../ExamplesManager';
 
 // Mock fetch
 global.fetch = jest.fn((url) => {
@@ -38,7 +38,7 @@ describe('ExamplesManager', () => {
             await manager.loadExamples();
 
             // Should not fetch again and should expose full catalog
-            expect(manager.getExamples()).toHaveLength(10);
+            expect(manager.getExamples()).toHaveLength(DEFAULT_EXAMPLES.length);
         });
     });
 
@@ -56,8 +56,8 @@ describe('ExamplesManager', () => {
         it('should find example by filename', async () => {
             await manager.loadExamples();
 
-            const example = manager.findExample('simple_test.xml');
-            expect(example?.name).toBe('Simple Test');
+            const example = manager.findExample('advanced_search_example.xml');
+            expect(example?.name).toBe('Advanced Search');
         });
     });
 });

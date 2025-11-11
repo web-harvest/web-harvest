@@ -35,6 +35,7 @@ export interface VisualNode {
     children: VisualNode[];
     position?: { x: number; y: number };
     dimensions?: { width: number; height: number }; // Custom node dimensions (for resize)
+    isManualPositioned?: boolean; // True when user has manually repositioned the node
 }
 
 export interface PluginDocumentationSummary {
@@ -83,6 +84,7 @@ export interface Plugin {
     linkedServices?: LinkedServiceMetadata[]; // Azure Data Factory style
     parentRelationship?: ParentChildRelationship; // For detail plugins
     allowedChildPlugins?: string[]; // For master plugins
+    ui?: PluginUIHints;
 }
 
 export interface InputPort {
@@ -115,6 +117,23 @@ export interface LinkedServiceMetadata {
     serviceName: string;
     description?: string;
     required: boolean;
+}
+
+export interface PluginDetailSectionHint {
+    type: string;
+    title?: string;
+    addLabel?: string;
+    emptyLabel?: string;
+    primaryAttribute?: string;
+    secondaryAttribute?: string;
+    summaryEmptyLabel?: string;
+    usesBody?: boolean;
+}
+
+export interface PluginUIHints {
+    paletteGroup?: string;
+    tags?: string[];
+    detailSections?: PluginDetailSectionHint[];
 }
 
 export interface ParentChildRelationship {

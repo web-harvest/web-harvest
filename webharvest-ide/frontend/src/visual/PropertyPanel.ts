@@ -3,7 +3,13 @@
  * Displays and edits properties of selected node using advanced editors
  */
 
-import type { VisualNode, Plugin } from '../types';
+import type { VisualNode, Plugin, AttributeDefinition, PluginSemanticsModel } from '../types';
+import type { PluginManager } from '../core/PluginManager';
+import { MasterDetailRegistry } from './detail/MasterDetailRegistry';
+import { MasterDetailEditor } from './detail/MasterDetailEditor';
+
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE'];
+const METHODS_WITH_BODY = new Set(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE']);
 import { HttpEditor } from './editors/HttpEditor';
 
 interface PropertyPanelOptions {
@@ -18,6 +24,9 @@ export class PropertyPanel {
     private container: HTMLElement;
     private currentNode: VisualNode | null = null;
     private onChangeCallback: ((node: VisualNode) => void) | null = null;
+    private detailRegistry: MasterDetailRegistry | null = null;
+
+    private pluginManager: PluginManager | null = null;
 
     // Advanced editors
     private expressionBuilder: ExpressionBuilder | null = null;
@@ -66,60 +75,8 @@ export class PropertyPanel {
         }
 
         try {
-            const response = await fetch('/api/plugins/metadata');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch plugin metadata: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const rawPlugins: Plugin[] = data.plugins || [];
-
-            this.pluginMetadata = rawPlugins.map(plugin => {
-                if (!plugin.schema) {
-                    return plugin;
-                }
-
-                const normalisedAttributes = plugin.schema.attributes.map(attr => ({
-                    ...attr,
-                    type: attr.type ? attr.type.toLowerCase() : 'string'
-                }));
-
-                const semantics = plugin.semantics ? { ...plugin.semantics } : {
-                    roles: ['LEAF'] as string[],
-                    canAppearAtRoot: true,
-                    allowsChildren: false,
-                    acceptsAnyChild: false,
-                    allowBody: false,
-                    allowTextContent: false,
-                    allowedChildTypes: [] as string[],
-                    requiredParentTypes: [] as string[]
-                };
-                if (!Array.isArray(semantics.roles) || semantics.roles.length === 0) {
-                    const legacyRole = (semantics as any).role;
-                    semantics.roles = legacyRole ? [legacyRole] : ['LEAF'];
-                }
-
-                const allowedSubElements: string[] = plugin.schema.allowedSubElements || [];
-                const requiredParents: string[] = plugin.schema.requiredParents || semantics.requiredParentTypes || [];
-                const canHaveBody = plugin.schema.canHaveBody ?? plugin.schema.allowsBody ?? semantics.allowTextContent;
-                const canHaveChildren = plugin.schema.canHaveChildren ?? (semantics.allowsChildren || allowedSubElements.length > 0);
-                const canAppearAtRoot = plugin.schema.canAppearAtRoot ?? (requiredParents.length === 0 && !semantics.roles.includes('DEPENDENT'));
-                const isContextSpecific = plugin.schema.isContextSpecific ?? requiredParents.length > 0;
-
-                return {
-                    ...plugin,
-                    semantics,
-                    schema: {
-                        ...plugin.schema,
-                        attributes: normalisedAttributes,
-                        canHaveBody,
-                        canHaveChildren,
-                        canAppearAtRoot,
-                        requiredParents,
-                        isContextSpecific
-                    }
-                } as Plugin;
-            });
+            const rawPlugins = this.pluginManager ? this.pluginManager.getPlugins() : await this.fetchPluginMetadata();
+            this.pluginMetadata = rawPlugins.map(plugin => this.normalisePluginMetadata(plugin));
             this.metadataLoaded = true;
 
             console.log(`✅ [PropertyPanel] Loaded ${this.pluginMetadata.length} plugin schemas`);
@@ -127,6 +84,115 @@ export class PropertyPanel {
             console.error('❌ [PropertyPanel] Error loading plugin metadata:', error);
             this.metadataLoaded = true; // Mark as loaded to prevent retry loops
         }
+    }
+
+    setPluginManager(manager: PluginManager): void {
+        this.pluginManager = manager;
+        this.metadataLoaded = false;
+        this.detailRegistry = new MasterDetailRegistry(manager);
+        void this.loadPluginMetadata();
+    }
+
+    private async fetchPluginMetadata(): Promise<Plugin[]> {
+        const response = await fetch('/api/plugins/metadata');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch plugin metadata: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return (data.plugins || []) as Plugin[];
+    }
+
+    private normalisePluginMetadata(plugin: Plugin): Plugin {
+        const clone = this.clonePlugin(plugin);
+        const semantics = this.normaliseSemantics(clone.semantics);
+
+        const schema = clone.schema ? { ...clone.schema } : null;
+        if (schema) {
+            const attributes = this.normaliseAttributes(schema.attributes);
+            const allowedSubElements = schema.allowedSubElements ?? semantics.allowedChildTypes;
+            const requiredParents = schema.requiredParents ?? semantics.requiredParentTypes;
+            const canHaveBody = schema.canHaveBody ?? schema.allowsBody ?? semantics.allowTextContent;
+            const canHaveChildren = schema.canHaveChildren ?? (semantics.allowsChildren || allowedSubElements.length > 0);
+            const canAppearAtRoot = schema.canAppearAtRoot ?? (requiredParents.length === 0 && !semantics.roles.includes('DEPENDENT'));
+            const isContextSpecific = schema.isContextSpecific ?? requiredParents.length > 0;
+
+            clone.schema = {
+                ...schema,
+                attributes,
+                allowedSubElements,
+                requiredParents,
+                canHaveBody,
+                canHaveChildren,
+                canAppearAtRoot,
+                isContextSpecific
+            };
+        }
+
+        clone.semantics = semantics;
+        return clone;
+    }
+
+    private normaliseSemantics(input?: PluginSemanticsModel): PluginSemanticsModel {
+        const allowedRoles: PluginSemanticsModel['roles'][number][] = ['ROOT_CONTAINER', 'CONTEXT_CONTAINER', 'BODY_EVALUATOR', 'DEPENDENT', 'LEAF'];
+        const ensureRole = (role?: string): PluginSemanticsModel['roles'][number] | null => {
+            if (!role) return null;
+            const upper = role.toUpperCase() as PluginSemanticsModel['roles'][number];
+            return allowedRoles.includes(upper) ? upper : null;
+        };
+
+        const semantics: PluginSemanticsModel = input ? { ...input } : {
+            roles: ['LEAF'],
+            canAppearAtRoot: true,
+            allowsChildren: false,
+            acceptsAnyChild: false,
+            allowBody: false,
+            allowTextContent: false,
+            allowedChildTypes: [],
+            requiredParentTypes: []
+        };
+
+        const roles = Array.isArray(semantics.roles)
+            ? semantics.roles.map(role => ensureRole(role)).filter((role): role is PluginSemanticsModel['roles'][number] => role !== null)
+            : [];
+
+        if (roles.length === 0) {
+            const fallback = ensureRole((semantics as any).role);
+            semantics.roles = fallback ? [fallback] : ['LEAF'];
+        } else {
+            semantics.roles = roles;
+        }
+
+        semantics.allowedChildTypes = Array.isArray(semantics.allowedChildTypes) ? semantics.allowedChildTypes : [];
+        semantics.requiredParentTypes = Array.isArray(semantics.requiredParentTypes) ? semantics.requiredParentTypes : [];
+
+        return semantics;
+    }
+
+    private normaliseAttributes(attributes: AttributeDefinition[]): AttributeDefinition[] {
+        if (!Array.isArray(attributes)) {
+            return [];
+        }
+
+        const allowedTypes: AttributeDefinition['type'][] = ['string', 'number', 'boolean', 'url', 'xpath', 'enum'];
+
+        return attributes.map(attr => {
+            const rawType = (attr.type || 'string').toString().toLowerCase();
+            const normalisedType = allowedTypes.includes(rawType as AttributeDefinition['type'])
+                ? rawType as AttributeDefinition['type']
+                : 'string';
+
+            return {
+                ...attr,
+                type: normalisedType
+            };
+        });
+    }
+
+    private clonePlugin(plugin: Plugin): Plugin {
+        if (typeof structuredClone === 'function') {
+            return structuredClone(plugin);
+        }
+        return JSON.parse(JSON.stringify(plugin));
     }
 
     /**
@@ -170,6 +236,7 @@ export class PropertyPanel {
     async showNode(node: VisualNode): Promise<void> {
         console.log('🔧 [PropertyPanel] showNode() called for:', node.type, node);
         this.currentNode = this.deepCloneNode(node);
+        this.currentNode.attributes = this.currentNode.attributes || {};
         await this.render();
         console.log('🔧 [PropertyPanel] showNode() complete');
     }
@@ -361,35 +428,22 @@ export class PropertyPanel {
             }
         }
 
-        if (plugin && this.currentNode.type.toLowerCase() === 'http') {
-            const httpEditor = new HttpEditor({
-                node: this.deepCloneNode(this.currentNode),
-                plugin,
-                onChange: (updatedNode) => {
-                    this.currentNode = this.deepCloneNode(updatedNode);
-                    if (this.onChangeCallback) {
-                        this.onChangeCallback(this.deepCloneNode(updatedNode));
-                    }
-                }
-            });
+        const detailSections = this.detailRegistry ? this.detailRegistry.getSections(this.currentNode.type) : [];
+        const isHttp = this.currentNode.type && this.currentNode.type.toLowerCase() === 'http';
+        let handledAttributes = false;
 
-            form.appendChild(httpEditor.render());
-            this.container.appendChild(form);
-            return;
+        if (plugin && isHttp) {
+            this.renderHttpRequestSection(form);
+            handledAttributes = true;
         }
 
-        if (plugin && plugin.schema && this.schemaEditor) {
+        if (!handledAttributes && plugin && plugin.schema && this.schemaEditor) {
             console.log(`✅ [PropertyPanel] Using SchemaEditor for plugin: ${this.currentNode.type}`);
 
-            // Use SchemaEditor for schema-driven form
             this.schemaEditor.generateEditor(form, plugin, this.currentNode.attributes);
-
-            // Register onChange callback with validation
             this.schemaEditor.onChange((attributes) => {
                 if (this.currentNode) {
-                    // Validate before updating
                     const errors = this.schemaEditor?.validate() || [];
-
                     const updatedNode = this.deepCloneNode(this.currentNode);
                     updatedNode.attributes = { ...attributes };
                     this.currentNode = updatedNode;
@@ -403,140 +457,132 @@ export class PropertyPanel {
                 }
             });
 
-            // Add real-time validation on input
             const inputs = form.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
                 input.addEventListener('input', () => {
-                    const errors = this.schemaEditor?.validate() || [];
-                    // Errors are already marked by SchemaEditor
+                    this.schemaEditor?.validate();
                 });
                 input.addEventListener('blur', () => {
-                    const errors = this.schemaEditor?.validate() || [];
-                    // Errors are already marked by SchemaEditor
+                    this.schemaEditor?.validate();
                 });
             });
 
-            this.container.appendChild(form);
-            return;
+            handledAttributes = true;
         }
 
-        // Fallback: Use simple inputs when schema not available
-        console.log(`⚠️ [PropertyPanel] Schema not available for ${this.currentNode.type}, using simple inputs`);
+        if (!handledAttributes) {
+            console.log(`⚠️ [PropertyPanel] Schema not available for ${this.currentNode.type}, using simple inputs`);
 
-        // Attributes with advanced editors
-        if (Object.keys(this.currentNode.attributes).length > 0) {
-            const attrsLabel = document.createElement('div');
-            attrsLabel.innerHTML = '<strong>Attributes:</strong>';
-            attrsLabel.style.marginBottom = '12px';
-            attrsLabel.style.fontSize = '13px';
-            form.appendChild(attrsLabel);
+            if (Object.keys(this.currentNode.attributes).length > 0) {
+                const attrsLabel = document.createElement('div');
+                attrsLabel.innerHTML = '<strong>Attributes:</strong>';
+                attrsLabel.style.marginBottom = '12px';
+                attrsLabel.style.fontSize = '13px';
+                form.appendChild(attrsLabel);
 
-            // Fallback: simple text inputs
-            Object.entries(this.currentNode.attributes).forEach(([key, value]) => {
-                const fieldContainer = document.createElement('div');
-                fieldContainer.style.marginBottom = '12px';
+                Object.entries(this.currentNode.attributes).forEach(([key, value]) => {
+                    const fieldContainer = document.createElement('div');
+                    fieldContainer.style.marginBottom = '12px';
 
-                const label = document.createElement('label');
-                label.textContent = key + ':';
-                label.style.display = 'block';
-                label.style.fontSize = '13px';
-                label.style.fontWeight = '600';
-                label.style.marginBottom = '6px';
-                fieldContainer.appendChild(label);
+                    const label = document.createElement('label');
+                    label.textContent = key + ':';
+                    label.style.display = 'block';
+                    label.style.fontSize = '13px';
+                    label.style.fontWeight = '600';
+                    label.style.marginBottom = '6px';
+                    fieldContainer.appendChild(label);
 
-                // Detect field type
-                let isXPath = key.toLowerCase().includes('xpath') || key.toLowerCase() === 'expression';
-                let isRegex = key.toLowerCase().includes('regex') || key.toLowerCase().includes('pattern');
-                let hasExpression = value.includes('${');
+                    const isXPath = key.toLowerCase().includes('xpath') || key.toLowerCase() === 'expression';
+                    const isRegex = key.toLowerCase().includes('regex') || key.toLowerCase().includes('pattern');
+                    const hasExpression = typeof value === 'string' && value.includes('${');
 
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = value;
-                input.style.width = '100%';
-                input.style.padding = '8px';
-                input.style.border = '1px solid var(--gray-300)';
-                input.style.borderRadius = 'var(--radius-md)';
-                input.style.fontSize = '13px';
-                input.onchange = () => {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = value;
+                    input.className = 'detail-input';
+                    input.onchange = () => {
+                        if (this.currentNode && this.onChangeCallback) {
+                            this.currentNode.attributes[key] = input.value;
+                            this.onChangeCallback(this.deepCloneNode(this.currentNode));
+                        }
+                    };
+                    fieldContainer.appendChild(input);
+
+                    if (isXPath) {
+                        this.addAdvancedEditorButton(fieldContainer, key, 'XPath Tester', 'xpath');
+                    } else if (isRegex) {
+                        this.addAdvancedEditorButton(fieldContainer, key, 'Regex Validator', 'regex');
+                    } else if (hasExpression) {
+                        this.addAdvancedEditorButton(fieldContainer, key, 'Expression Builder', 'expression');
+                    }
+
+                    form.appendChild(fieldContainer);
+                });
+            }
+
+            const pluginForBody = this.getPluginSchema(this.currentNode.type);
+            const allowsBody = pluginForBody?.semantics?.allowBody || pluginForBody?.semantics?.allowTextContent || 
+                              pluginForBody?.schema?.canHaveBody || false;
+            
+            if (allowsBody && this.currentNode.body !== null) {
+                const bodyLabel = document.createElement('div');
+                bodyLabel.innerHTML = '<strong>Body:</strong>';
+                bodyLabel.style.marginTop = '16px';
+                bodyLabel.style.marginBottom = '8px';
+                bodyLabel.style.fontSize = '13px';
+                form.appendChild(bodyLabel);
+
+                const bodyInput = document.createElement('textarea');
+                bodyInput.value = this.currentNode.body || '';
+                bodyInput.className = 'detail-input';
+                bodyInput.style.minHeight = '100px';
+                bodyInput.onchange = () => {
                     if (this.currentNode && this.onChangeCallback) {
-                        this.currentNode.attributes[key] = input.value;
-                        this.onChangeCallback(this.currentNode);
+                        this.currentNode.body = bodyInput.value;
+                        this.onChangeCallback(this.deepCloneNode(this.currentNode));
                     }
                 };
-                fieldContainer.appendChild(input);
 
-                // Add advanced editor button RIGHT AFTER input (in same fieldContainer)
-                if (isXPath) {
-                    console.log(`🔧 [PropertyPanel] Adding XPath button for field: ${key}`);
-                    this.addAdvancedEditorButton(fieldContainer, key, 'XPath Tester', 'xpath');
-                } else if (isRegex) {
-                    console.log(`🔧 [PropertyPanel] Adding Regex button for field: ${key}`);
-                    this.addAdvancedEditorButton(fieldContainer, key, 'Regex Validator', 'regex');
-                } else if (hasExpression) {
-                    console.log(`🔧 [PropertyPanel] Adding Expression button for field: ${key}`);
-                    this.addAdvancedEditorButton(fieldContainer, key, 'Expression Builder', 'expression');
+                if (bodyInput.value.includes('${')) {
+                    const bodyContainer = document.createElement('div');
+                    bodyContainer.appendChild(bodyInput);
+                    this.addAdvancedEditorButton(bodyContainer, 'body', 'Expression Builder', 'expression');
+                    form.appendChild(bodyContainer);
                 } else {
-                    console.log(`🔧 [PropertyPanel] No advanced button for field: ${key} (isXPath=${isXPath}, isRegex=${isRegex}, hasExpr=${hasExpression})`);
+                    form.appendChild(bodyInput);
                 }
-
-                form.appendChild(fieldContainer);
-            });
-        }
-
-        // Body (only if plugin allows body/text content)
-        const pluginForBody = this.getPluginSchema(this.currentNode.type);
-        const allowsBody = pluginForBody?.semantics?.allowBody || pluginForBody?.semantics?.allowTextContent || 
-                          pluginForBody?.schema?.canHaveBody || false;
-        
-        if (allowsBody && this.currentNode.body !== null) {
-            const bodyLabel = document.createElement('div');
-            bodyLabel.innerHTML = '<strong>Body:</strong>';
-            bodyLabel.style.marginTop = '16px';
-            bodyLabel.style.marginBottom = '8px';
-            bodyLabel.style.fontSize = '13px';
-            form.appendChild(bodyLabel);
-
-            const bodyInput = document.createElement('textarea');
-            bodyInput.value = this.currentNode.body || '';
-            bodyInput.style.width = '100%';
-            bodyInput.style.minHeight = '100px';
-            bodyInput.style.padding = '10px';
-            bodyInput.style.border = '1px solid var(--gray-300)';
-            bodyInput.style.borderRadius = 'var(--radius-md)';
-            bodyInput.style.fontFamily = 'monospace';
-            bodyInput.style.fontSize = '12px';
-            bodyInput.onchange = () => {
-                if (this.currentNode && this.onChangeCallback) {
-                    this.currentNode.body = bodyInput.value;
-                    this.onChangeCallback(this.currentNode);
-                }
-            };
-
-            // If body contains ${}, add Expression Builder button
-            if (bodyInput.value.includes('${')) {
-                console.log('🔧 [PropertyPanel] Body contains ${}, adding Expression Builder button');
-                // Create wrapper for body + button
-                const bodyContainer = document.createElement('div');
-                bodyContainer.appendChild(bodyInput);
-                this.addAdvancedEditorButton(bodyContainer, 'body', 'Expression Builder', 'expression');
-                form.appendChild(bodyContainer);
-            } else {
-                form.appendChild(bodyInput);
+            } else if (!allowsBody && this.currentNode.body !== null) {
+                const bodyInfo = document.createElement('div');
+                bodyInfo.style.marginTop = '16px';
+                bodyInfo.style.padding = '8px';
+                bodyInfo.style.background = 'var(--gray-100)';
+                bodyInfo.style.borderRadius = 'var(--radius-sm)';
+                bodyInfo.style.fontSize = '12px';
+                bodyInfo.style.color = 'var(--gray-600)';
+                bodyInfo.textContent = 'This plugin does not support body content.';
+                form.appendChild(bodyInfo);
             }
-        } else if (!allowsBody && this.currentNode.body !== null) {
-            // Show read-only message if body is not allowed
-            const bodyInfo = document.createElement('div');
-            bodyInfo.style.marginTop = '16px';
-            bodyInfo.style.padding = '8px';
-            bodyInfo.style.background = 'var(--gray-100)';
-            bodyInfo.style.borderRadius = 'var(--radius-sm)';
-            bodyInfo.style.fontSize = '12px';
-            bodyInfo.style.color = 'var(--gray-600)';
-            bodyInfo.textContent = 'This plugin does not support body content.';
-            form.appendChild(bodyInfo);
         }
 
-        console.log('🔧 [PropertyPanel] Appending form to container');
+        if (detailSections.length > 0 && this.detailRegistry) {
+            const detailHeading = document.createElement('h3');
+            detailHeading.className = 'detail-editor__heading';
+            detailHeading.textContent = 'Detail Items';
+            form.appendChild(detailHeading);
+
+            const detailEditor = new MasterDetailEditor({
+                node: this.deepCloneNode(this.currentNode),
+                sections: detailSections,
+                registry: this.detailRegistry,
+                onChange: (updatedNode) => {
+                    this.currentNode = this.deepCloneNode(updatedNode);
+                    this.onChangeCallback?.(this.deepCloneNode(updatedNode));
+                }
+            });
+
+            form.appendChild(detailEditor.render());
+        }
+
         this.container.appendChild(form);
         console.log('✅ [PropertyPanel] render() complete');
     }
@@ -587,6 +633,100 @@ export class PropertyPanel {
         container.appendChild(buttonContainer);
 
         console.log(`✅ [PropertyPanel] Button added to DOM for ${fieldName}`);
+    }
+
+    private renderHttpRequestSection(form: HTMLElement): void {
+        if (!this.currentNode) {
+            return;
+        }
+
+        this.currentNode.attributes = this.currentNode.attributes || {};
+        const attrs = this.currentNode.attributes;
+
+        const requestSection = document.createElement('div');
+        requestSection.className = 'http-request-section';
+
+        const methodField = this.createLabeledField('Method', 'Select HTTP method for the request.');
+        const methodSelect = document.createElement('select');
+        methodSelect.className = 'detail-input';
+
+        HTTP_METHODS.forEach(method => {
+            const option = document.createElement('option');
+            option.value = method;
+            option.textContent = method;
+            methodSelect.appendChild(option);
+        });
+
+        let currentMethod = (attrs.method || 'GET').toString().toUpperCase();
+        if (!HTTP_METHODS.includes(currentMethod)) {
+            currentMethod = 'GET';
+        }
+        attrs.method = currentMethod;
+        methodSelect.value = currentMethod;
+
+        methodSelect.addEventListener('change', () => {
+            const selected = methodSelect.value.toUpperCase();
+            attrs.method = selected;
+            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+            const shouldShow = METHODS_WITH_BODY.has(selected);
+            bodyField.container.style.display = shouldShow ? 'flex' : 'none';
+        });
+
+        methodField.control.appendChild(methodSelect);
+        requestSection.appendChild(methodField.container);
+
+        const urlField = this.createLabeledField('URL', 'Fully qualified HTTP or HTTPS URL.');
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.required = true;
+        urlInput.placeholder = 'https://service.example.com/resource';
+        urlInput.className = 'detail-input';
+        urlInput.value = attrs.url || '';
+        urlInput.addEventListener('input', () => {
+            attrs.url = urlInput.value;
+            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+        });
+
+        urlField.control.appendChild(urlInput);
+        requestSection.appendChild(urlField.container);
+
+        const bodyField = this.createLabeledField('Body', 'Optional request payload for methods that support it.');
+        const bodyInput = document.createElement('textarea');
+        bodyInput.className = 'detail-input detail-input--textarea';
+        bodyInput.placeholder = '{ "payload": true }';
+        bodyInput.value = attrs.body || '';
+        bodyInput.addEventListener('input', () => {
+            attrs.body = bodyInput.value;
+            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+        });
+
+        bodyField.control.appendChild(bodyInput);
+        const shouldShowBody = METHODS_WITH_BODY.has(currentMethod);
+        bodyField.container.style.display = shouldShowBody ? 'flex' : 'none';
+        requestSection.appendChild(bodyField.container);
+
+        form.appendChild(requestSection);
+    }
+
+    private createLabeledField(label: string, description?: string): { container: HTMLDivElement; control: HTMLDivElement } {
+        const container = document.createElement('div');
+        container.className = 'http-request-field';
+
+        const labelEl = document.createElement('label');
+        labelEl.textContent = label;
+        container.appendChild(labelEl);
+
+        if (description) {
+            const descEl = document.createElement('small');
+            descEl.textContent = description;
+            container.appendChild(descEl);
+        }
+
+        const control = document.createElement('div');
+        control.className = 'http-request-field__control';
+        container.appendChild(control);
+
+        return { container, control };
     }
 
     /**

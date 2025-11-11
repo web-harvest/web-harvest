@@ -347,6 +347,68 @@ describe('Nested Configuration Support', () => {
             expect(defXmlContent?.children[0].children).toHaveLength(1);
             expect(defXmlContent?.children[0].children[0].type).toBe('get');
         });
+
+        it('maps multi-level function/while/http stack for focus workflows', () => {
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <function name="download-multipage-list">
+        <return>
+            <while condition="\${pageUrl.toString().length() != 0}" maxloops="\${maxloops}" index="i">
+                <def var="content">
+                    <html-to-xml advancedxmlescape="true" specialentities="true" unicodechars="true" allowmultiwordattributes="true" omitunknowntags="true">
+                        <http url="\${pageUrl}" method="GET">
+                            <http-header id="" name="x-foo1"/>
+                            <http-header id="" name="x-foo2"/>
+                            <http-param id="" name="asas" isfile="false" filename="" contenttype=""/>
+                        </http>
+                    </html-to-xml>
+                </def>
+                <def var="nextLinkUrl">
+                    <xpath expression="\${nextXPath}">
+                        <get var="content"/>
+                    </xpath>
+                </def>
+                <def var="pageUrl">
+                    <template>\${sys.fullUrl(pageUrl.toString(), nextLinkUrl.toString())}</template>
+                </def>
+                <xpath expression="\${itemXPath}">
+                    <get var="content"/>
+                </xpath>
+            </while>
+        </return>
+    </function>
+</config>`;
+
+            const parser = new XMLParser();
+            const nodes = parser.parse(xml);
+            expect(nodes).toHaveLength(1);
+
+            const functionNode = nodes[0];
+            expect(functionNode.type).toBe('function');
+            expect(functionNode.children).toHaveLength(1);
+            expect(functionNode.children?.[0].type).toBe('return');
+
+            const returnNode = functionNode.children?.[0];
+            expect(returnNode?.children).toHaveLength(1);
+            expect(returnNode?.children?.[0].type).toBe('while');
+
+            const whileNode = returnNode?.children?.[0];
+            expect(whileNode?.children).toHaveLength(4);
+
+            const defContent = whileNode?.children?.[0];
+            expect(defContent?.type).toBe('def');
+            expect(defContent?.children).toHaveLength(1);
+            expect(defContent?.children?.[0].type).toBe('html-to-xml');
+
+            const htmlToXmlNode = defContent?.children?.[0];
+            expect(htmlToXmlNode?.children).toHaveLength(1);
+            expect(htmlToXmlNode?.children?.[0].type).toBe('http');
+
+            const httpNode = htmlToXmlNode?.children?.[0];
+            expect(httpNode?.children).toHaveLength(3);
+            const childTypes = httpNode?.children?.map(child => child.type);
+            expect(childTypes).toEqual(['http-header', 'http-header', 'http-param']);
+        });
     });
 });
 

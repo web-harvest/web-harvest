@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Plugin Palette Apple HIG Refresh**: Palette toolbar now features segmented controls for All/Workflow/Utilities, search adopts native Mac styling, dependent plugins are no longer exposed as draggable tiles (a guidance banner links users to the parent card actions instead), and the primary list focuses on runnable workflow blocks and utilities.
+- **Breadcrumb Navigation Focus Mode**: Canvas top bar renders an Apple HIG breadcrumb with drill-down trails; selecting breadcrumbs resets focus levels without re-render jitter, and empty workflow levels surface inline guidance instead of blank canvases.
+- **Horizontal Flow Layout**: Root-level nodes now auto-arrange from left to right using measured card widths; manual placements are respected, and sequential links anchor to the lateral edges of nodes/start/end markers for a BPMN-style main path.
+- **Drag & Resize Ergonomics**: Resize handles sit exactly on corners and mid-edges, dragging uses grab/grabbing cursors with selection locking, and expanded containers gain scrollable, padded interiors with refreshed Apple HIG-inspired styling for deeply nested flows.
+- **Process Markers & Grid**: Start/end markers are fully draggable with manual positions persisted, the background grid renders by default and resizes with the workspace, and connection lines update instantly while nodes are dragged.
+- **Master/Detail Editor Refresh**: Property panel and canvas now share a metadata-driven detail manager. The HTTP request card retains its dedicated request configuration, but headers/params – along with CALL, ZIP, FTP, and other detail plugins – render through the same reusable component with add/reorder/remove controls on both canvas and property panel.
+- **Workflow Marker Anchors**: BPMN start/end markers received compact styling and now auto-connect to the nearest root container nodes, eliminating the detached line segments that previously appeared when all top-level plugins were containers.
 - **HTTP Task UX Alignment**: HTTP containers now manage headers and query parameters directly inside the node, mirroring the Orkes Conductor HTTP task experience; the canvas shows an inline summary with quick actions, context menus add detail entries, and drop validation points authors back to the HTTP configuration panel rather than dragging detail plugins separately ([reference](https://orkes.io/content/reference-docs/system-tasks/http))
 - **Control Flow Branching UX**: `if`/`else` and `try`/`catch` blocks surface inline branch cards inside the parent node for adding, reordering, and editing detail plugins. Branch drop zones accept child nodes directly, and drag/drop validation now nudges authors to use these controls instead of placing `else`/`catch` tiles manually.
 - **Semantic Metadata Master/Detail Coverage**: synchronized plugin metadata with XML configurations; `try/catch`, `if/else`, `call/call-param`, `http/{http-header,http-param}`, `zip/zip-entry`, and `ftp/{ftp-get,ftp-put,ftp-list}` now expose explicit parent/child constraints in both Java schemas and generated JSON
@@ -36,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed: IDE `ConfigServlet` uses `workingDir = "target"` (previously used `"."` causing files in project root)
   - Fixed: Generated files cleanup - removed all test output files from project root and `webharvest-core/` directory
   - Fixed: "target 2" directory issue - was a one-time Maven clean plugin issue, not a code problem
+- **Drill-down Detail Connections**: Focused containers no longer attempt to render auto-connections for detail plugins (HTTP headers, params, etc.), eliminating the "anchor not found" warnings and keeping the focus canvas free of stray arrows; covered by `VisualDesigner.drilldown.test.ts`.
 
 ## [2.3.1] - November 3, 2025
 

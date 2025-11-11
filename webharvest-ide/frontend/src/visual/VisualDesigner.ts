@@ -11,8 +11,6 @@ import type { VisualNode } from '../types';
 import {
     isContainerNode,
     getRenderingStrategy,
-    calculateLinearLayout,
-    calculateNestedLayout,
     generateConnections,
     type Connection,
     setContainerResolver
@@ -28,20 +26,18 @@ import { ConnectionManager, type Connection as ManualConnection, type Connection
 import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
 import { NodeResizeHandler } from './NodeResizeHandler';
+import { BreadcrumbNav, type BreadcrumbItem } from './BreadcrumbNav';
+import { DrillDownManager } from './DrillDownManager';
 import type { PluginManager } from '../core/PluginManager';
-import {
-    createHttpDetailNode,
-    partitionHttpChildren,
-    summarizeHttpDetail,
-    type HttpDetailType
-} from './http/HttpNodeUtils';
 import {
     ControlDetailType,
     createControlDetailNode,
     partitionIfChildren,
     partitionTryChildren
 } from './control/ControlNodeUtils';
-
+import { planConnections } from './connections/ConnectionPlanner';
+import { MasterDetailRegistry, type DetailSectionDefinition } from './detail/MasterDetailRegistry';
+import { analyzeHierarchy, analyzeContainer } from './HierarchyInspector';
 type DesignerSnapshot = {
     nodes: VisualNode[];
     connections: ManualConnection[];
@@ -66,6 +62,8 @@ type ContextMenuModel = {
 
 type EventListener = (data: any) => void;
 
+type WorkflowStatus = 'idle' | 'running' | 'paused';
+
 export class VisualDesigner {
     private nodes: VisualNode[] = [];
     private connections: Connection[] = [];
@@ -83,11 +81,18 @@ export class VisualDesigner {
     private stateRenderer: NodeStateRenderer = new NodeStateRenderer();
     private metricsOverlay: NodeMetricsOverlay = new NodeMetricsOverlay();
     private gridSystem: GridSystem = new GridSystem(20);
+    private gridInitialized = false;
+    private gridVisible: boolean = true;
     private minimap: Minimap = new Minimap();
     private iconLibrary: IconLibrary = new IconLibrary();
     private containerRenderer: ContainerRenderer = new ContainerRenderer();
     private portSystem: PortSystem = new PortSystem();
     private connectionManager: ConnectionManager = new ConnectionManager();
+    private breadcrumbNav: BreadcrumbNav = new BreadcrumbNav();
+    private breadcrumbContainer: HTMLElement | null = null;
+    private focusSummaryContainer: HTMLElement | null = null;
+    private drillDownManager: DrillDownManager = new DrillDownManager();
+    private visibleNodes: VisualNode[] = [];
 
     // History & clipboard
     private undoStack: DesignerSnapshot[] = [];
@@ -102,13 +107,24 @@ export class VisualDesigner {
     // Layout constants (fallback values if metadata not available)
     private readonly DEFAULT_NODE_WIDTH = 250;
     private readonly DEFAULT_NODE_HEIGHT = 100;
-    private readonly SPACING = 120;
+    private readonly HORIZONTAL_GAP = 180;
     private readonly START_X = 50;
     private readonly START_Y = 50;
     private readonly PADDING = 20;
 
     // PluginManager reference for accessing VisualPluginMetadata
     private pluginManager: PluginManager | null = null;
+
+    // Auto-layout measurement caches
+    private measuredNodeSizes: Map<string, { width: number; height: number }> = new Map();
+    private currentRenderMeasurements: Map<string, { width: number; height: number }> | null = null;
+    private pendingRelayout = false;
+    private isNodeDragging = false;
+    private startMarkerPosition: { x: number; y: number } | null = null;
+    private endMarkerPosition: { x: number; y: number } | null = null;
+    private startMarkerManual = false;
+    private endMarkerManual = false;
+    private isMarkerDragging = false;
 
     // Drag & move state
     private dragState: {
@@ -164,6 +180,14 @@ export class VisualDesigner {
     // Node resize handler
     private resizeHandler!: NodeResizeHandler; // Initialized in constructor
 
+    // Workflow execution state for process markers
+    private workflowStatus: WorkflowStatus = 'idle';
+
+    private startMarkerElement: HTMLElement | null = null;
+    private endMarkerElement: HTMLElement | null = null;
+    private lastClickTime: number = 0;
+    private detailRegistry: MasterDetailRegistry | null = null;
+
     constructor(containerId: string, pluginManager?: PluginManager | null) {
         const container = document.getElementById(containerId);
 
@@ -172,13 +196,26 @@ export class VisualDesigner {
         }
 
         this.container = container;
+        if (!this.container.hasAttribute('tabindex')) {
+            this.container.tabIndex = 0;
+        }
         this.pluginManager = pluginManager || null;
+        this.breadcrumbNav.setIconResolver((item) => {
+            if (item.level === 0) {
+                return this.createFontAwesomeIcon('fa-house', '#636366', 12);
+            }
+            if (item.nodeType) {
+                return this.iconLibrary.getIconElement(item.nodeType, 12);
+            }
+            return null;
+        });
         this.canvasElement = this.createCanvasElement();
         // createCanvasElement() creates wrapper and appends it, so no need to append again
 
         // Initialize semantic validator if plugin manager provided
         if (pluginManager) {
             this.semanticValidator = new SemanticValidator(pluginManager);
+            this.detailRegistry = new MasterDetailRegistry(pluginManager);
         }
 
         // Initialize resize handler
@@ -199,6 +236,16 @@ export class VisualDesigner {
                 this.collapsedContainers.add(containerId);
             }
             this.render(); // Re-render to update container state
+        });
+
+        this.breadcrumbNav.onNavigate((item) => {
+            this.handleBreadcrumbNavigate(item);
+        });
+
+        this.container.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.exitFocusLevel();
+            }
         });
     }
 
@@ -253,19 +300,41 @@ export class VisualDesigner {
      * Create inner wrapper for transform (prevents container from floating)
      */
     private createCanvasElement(): HTMLElement {
-        // Use the existing #canvas-area container as scrollable wrapper
-        // Create inner content wrapper for transform to prevent container from floating
+        const shell = document.createElement('div');
+        shell.className = 'canvas-shell';
+        shell.style.display = 'flex';
+        shell.style.flexDirection = 'column';
+        shell.style.width = '100%';
+        shell.style.height = '100%';
+
+        const breadcrumbBar = document.createElement('div');
+        breadcrumbBar.className = 'canvas-breadcrumb-bar';
+
+        const breadcrumbWrapper = document.createElement('div');
+        breadcrumbWrapper.className = 'breadcrumb-nav';
+        breadcrumbBar.appendChild(breadcrumbWrapper);
+        this.breadcrumbContainer = breadcrumbWrapper;
+
+        const focusSummary = document.createElement('div');
+        focusSummary.className = 'focus-summary';
+        breadcrumbBar.appendChild(focusSummary);
+        this.focusSummaryContainer = focusSummary;
+
+        shell.appendChild(breadcrumbBar);
+
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'canvas-content-wrapper';
         contentWrapper.style.position = 'relative';
         contentWrapper.style.width = '100%';
         contentWrapper.style.minHeight = '100%';
-        // This wrapper will receive transform, not the scrollable container
+        contentWrapper.style.flex = '1';
 
-        // Append wrapper to container
-        this.container.appendChild(contentWrapper);
+        shell.appendChild(contentWrapper);
+        this.container.appendChild(shell);
 
-        // Return the wrapper - we'll render into it and apply transform to it
+        this.updateBreadcrumbTrail();
+        this.updateFocusSummary();
+
         return contentWrapper;
     }
 
@@ -274,6 +343,11 @@ export class VisualDesigner {
      */
     loadNodes(nodes: VisualNode[]): void {
         this.nodes = this.cloneNodes(nodes);
+        this.measuredNodeSizes.clear();
+        this.startMarkerManual = false;
+        this.endMarkerManual = false;
+        this.startMarkerPosition = null;
+        this.endMarkerPosition = null;
         this.connectionManager.clear();
         this.clearHistory();
         this.selectedNodeIds = [];
@@ -465,6 +539,211 @@ export class VisualDesigner {
     }
 
     /**
+     * Apply horizontal auto-layout to root-level nodes, respecting manual overrides.
+     */
+    private applyAutoLayoutToRootNodes(nodes: VisualNode[]): void {
+        if (!nodes || nodes.length === 0) {
+            return;
+        }
+
+        let cursorX = this.START_X;
+        const baselineY = this.START_Y;
+        const gap = this.HORIZONTAL_GAP;
+
+        nodes.forEach((node) => {
+            const { width } = this.getNodeDimensions(node);
+
+            if (node.isManualPositioned && node.position) {
+                // Honour manual placement but ensure subsequent auto nodes start after it
+                cursorX = Math.max(cursorX, node.position.x + width + gap);
+                return;
+            }
+
+            if (!node.position) {
+                node.position = { x: cursorX, y: baselineY };
+            } else {
+                node.position.x = cursorX;
+                node.position.y = baselineY;
+            }
+
+            node.isManualPositioned = false;
+            cursorX += width + gap;
+        });
+    }
+
+    private recordMeasuredNodeSize(nodeId: string, element: HTMLElement): void {
+        if (!this.currentRenderMeasurements) {
+            return;
+        }
+
+        const rect = element.getBoundingClientRect();
+        if (!rect.width || !rect.height) {
+            return;
+        }
+
+        const width = Math.round(rect.width / this.zoom);
+        const height = Math.round(rect.height / this.zoom);
+        this.currentRenderMeasurements.set(nodeId, { width, height });
+    }
+
+    private finalizeRenderMeasurements(): void {
+        if (!this.currentRenderMeasurements) {
+            return;
+        }
+
+        const newMeasurements = this.currentRenderMeasurements;
+        let changed = false;
+
+        if (newMeasurements.size !== this.measuredNodeSizes.size) {
+            changed = true;
+        } else {
+            for (const [nodeId, size] of newMeasurements) {
+                const existing = this.measuredNodeSizes.get(nodeId);
+                if (!existing || Math.abs(existing.width - size.width) > 1 || Math.abs(existing.height - size.height) > 1) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        this.measuredNodeSizes = new Map(newMeasurements);
+        this.currentRenderMeasurements = null;
+
+        if (changed && !this.pendingRelayout && !this.isNodeDragging) {
+            this.pendingRelayout = true;
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => {
+                    this.pendingRelayout = false;
+                    this.render();
+                });
+            } else {
+                setTimeout(() => {
+                    this.pendingRelayout = false;
+                    this.render();
+                }, 16);
+            }
+        }
+    }
+
+    private ensureGridOverlay(): void {
+        if (!this.gridVisible) {
+            return;
+        }
+        const existingOverlay = this.canvasElement.querySelector('.grid-overlay');
+        if (!this.gridInitialized || !existingOverlay) {
+            this.gridSystem.render(this.canvasElement);
+            this.gridInitialized = true;
+        } else {
+            this.gridSystem.updateDimensions();
+        }
+    }
+
+    private rebuildConnections(reapplyLayout: boolean = true, sourceNodes?: VisualNode[]): VisualNode[] {
+        const originNodes = sourceNodes ?? this.nodes;
+        const linearNodes = [...originNodes];
+
+        if (reapplyLayout) {
+            this.applyAutoLayoutToRootNodes(linearNodes);
+        }
+
+        linearNodes.sort((a, b) => {
+            const ax = a.position?.x ?? 0;
+            const bx = b.position?.x ?? 0;
+            if (ax !== bx) {
+                return ax - bx;
+            }
+            const ay = a.position?.y ?? 0;
+            const by = b.position?.y ?? 0;
+            return ay - by;
+        });
+
+        const inFocus = this.drillDownManager.getCurrentId() !== null;
+        const connectionCandidates = this.filterNodesForConnections(linearNodes);
+        const planned = (!inFocus && connectionCandidates.length > 0)
+            ? planConnections(connectionCandidates, 'workflow-start', 'workflow-end')
+            : [];
+        const manualConnections = connectionCandidates.length > 0
+            ? generateConnections(connectionCandidates)
+            : [];
+        this.connections = [...planned, ...manualConnections];
+
+        return linearNodes;
+    }
+
+    private filterNodesForConnections(nodes: VisualNode[]): VisualNode[] {
+        if (!nodes.length) {
+            return nodes;
+        }
+
+        if (!this.detailRegistry) {
+            return nodes;
+        }
+
+        const detailTypes = this.collectDetailTypesForConnections();
+        if (detailTypes.size === 0) {
+            return nodes;
+        }
+
+        return nodes.filter(node => !detailTypes.has(node.type));
+    }
+
+    private collectDetailTypesForConnections(): Set<string> {
+        const types = new Set<string>();
+
+        if (!this.detailRegistry) {
+            return types;
+        }
+
+        const queue: VisualNode[] = [...this.nodes];
+        const visited = new Set<string>();
+
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            if (visited.has(current.id)) {
+                continue;
+            }
+            visited.add(current.id);
+
+            const sections = this.detailRegistry.getSections(current.type);
+            sections.forEach(section => types.add(section.detailType));
+
+            if (current.children && current.children.length > 0) {
+                queue.push(...current.children);
+            }
+        }
+
+        return types;
+    }
+
+    private updateProcessMarkersPosition(): void {
+        if (!this.processMarkersLayer || !this.startMarkerElement || !this.endMarkerElement) {
+            return;
+        }
+
+        const rootNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
+            .filter((element): element is HTMLElement => element instanceof HTMLElement)
+            .filter(element => element.dataset.nodeId && !element.dataset.parentId);
+
+        if (rootNodeElements.length === 0) {
+            return;
+        }
+
+        const positions = this.calculateProcessMarkerPositions(rootNodeElements);
+
+        if (!this.startMarkerManual) {
+            this.startMarkerPosition = { x: positions.startX, y: positions.startY };
+            this.startMarkerElement.style.left = `${positions.startX}px`;
+            this.startMarkerElement.style.top = `${positions.startY}px`;
+        }
+
+        if (!this.endMarkerManual) {
+            this.endMarkerPosition = { x: positions.endX, y: positions.endY };
+            this.endMarkerElement.style.left = `${positions.endX}px`;
+            this.endMarkerElement.style.top = `${positions.endY}px`;
+        }
+    }
+
+    /**
      * Create SVG overlay for connections
      */
     private createSVGOverlay(): SVGSVGElement {
@@ -490,60 +769,57 @@ export class VisualDesigner {
      * Render all nodes with hybrid model (nested + connected)
      */
     private render(): void {
+        const focusedContainer = this.getFocusedContainer();
+        this.updateBreadcrumbTrail();
+        const nodesToRender = focusedContainer ? (focusedContainer.children || []) : this.nodes;
+        this.visibleNodes = nodesToRender;
+
         this.canvasElement.innerHTML = '';
+        this.currentRenderMeasurements = new Map();
 
         // Create SVG overlay for connections
         this.svgElement = this.createSVGOverlay();
         this.canvasElement.appendChild(this.svgElement);
 
-        // Calculate default positions for root-level nodes (preserve ordering of all root nodes)
-        const linearNodes = [...this.nodes];
-
-        if (linearNodes.length > 0) {
-            const positions = calculateLinearLayout(linearNodes, {
-                startX: this.START_X,
-                startY: this.START_Y,
-                spacing: this.SPACING
-            });
-
-            // Only assign a layout position if the node does not already have one
-            linearNodes.forEach(node => {
-                if (!node.position && positions[node.id]) {
-                    node.position = positions[node.id];
-                }
-            });
-        }
-
-        // Generate connections for linear sequences
-        if (linearNodes.length > 1) {
-            this.connections = generateConnections(linearNodes);
-        } else {
-            this.connections = [];
-        }
+        const shouldAutoLayout = !focusedContainer;
+        this.rebuildConnections(shouldAutoLayout, nodesToRender);
 
         // Render nodes
-        this.nodes.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
+        nodesToRender.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
 
         const rootNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
             .filter((element): element is HTMLElement => element instanceof HTMLElement)
             .filter(element => element.dataset.nodeId && !element.dataset.parentId);
 
-        this.renderProcessMarkers(rootNodeElements);
+        if (!focusedContainer) {
+            this.renderProcessMarkers(rootNodeElements);
+            this.updateProcessMarkersPosition();
+        } else {
+            this.clearProcessMarkers();
+        }
 
         // Render connections
         this.renderConnections();
 
         // Render minimap if enabled
-        if (this.minimapVisible) {
-            this.minimap.render(this.canvasElement, this.nodes);
+        if (this.minimapVisible && !focusedContainer) {
+            this.minimap.render(this.canvasElement, nodesToRender);
 
             // Setup navigation callback
             this.minimap.onNavigate((position) => {
                 this.handleMinimapClick(position);
             });
+        } else if (this.minimapVisible && focusedContainer) {
+            const existingMinimap = this.canvasElement.querySelector('.minimap');
+            if (existingMinimap) {
+                existingMinimap.remove();
+            }
         }
 
+        this.ensureGridOverlay();
+        this.finalizeRenderMeasurements();
         this.highlightSelectedNodes();
+        this.updateFocusSummary();
     }
 
     /**
@@ -641,31 +917,18 @@ export class VisualDesigner {
         let containerX = node.position?.x ?? this.START_X;
         let containerY = node.position?.y ?? this.START_Y;
 
-        if (isRootLevel) {
-            // Calculate nested layout for container + children when rendering at root level
-            const positions = calculateNestedLayout(node, {
-                x: containerX,
-                y: containerY,
-                padding: this.PADDING
-            });
-
-            if (!node.position && positions[node.id]) {
-                node.position = positions[node.id];
-                containerX = node.position.x;
-                containerY = node.position.y;
-            }
-
-            node.children.forEach(child => {
-                if (!child.position && positions[child.id]) {
-                    child.position = positions[child.id];
-                }
-            });
+        if (isRootLevel && node.position) {
+            containerX = node.position.x;
+            containerY = node.position.y;
         }
 
         // Render container using ContainerRenderer
         const container = document.createElement('div');
         container.className = 'visual-node nested-container';
         container.dataset.nodeId = node.id;
+        const containerDimensions = this.getNodeDimensions(node);
+        container.style.minWidth = `${containerDimensions.width}px`;
+        container.style.minHeight = `${containerDimensions.height}px`;
 
         if (!isRootLevel && parentContainer.dataset.nodeId) {
             container.dataset.parentId = parentContainer.dataset.nodeId;
@@ -682,6 +945,7 @@ export class VisualDesigner {
             container.style.left = `${containerX}px`;
             container.style.top = `${containerY}px`;
             container.style.zIndex = '2';
+            container.classList.add('nested-root');
         }
 
         // Apply role-based styling for containers
@@ -720,9 +984,9 @@ export class VisualDesigner {
                 // Clear default simple children
                 childrenArea.innerHTML = '';
 
-                if (this.isHttpNode(node)) {
-                    this.renderHttpContainer(childrenArea, node);
-                } else if (this.isIfNode(node)) {
+                const detailSections = this.detailRegistry ? this.detailRegistry.getSections(node.type) : [];
+
+                if (this.isIfNode(node)) {
                     const { elseNode, primaryChildren } = partitionIfChildren(node);
                     this.renderIfDetail(childrenArea, node, elseNode);
                     this.renderStandardChildren(primaryChildren, node, childrenArea);
@@ -730,11 +994,21 @@ export class VisualDesigner {
                     const { catchNodes, primaryChildren } = partitionTryChildren(node);
                     this.renderTryDetail(childrenArea, node, catchNodes);
                     this.renderStandardChildren(primaryChildren, node, childrenArea);
+                } else if (detailSections.length > 0 && this.detailRegistry) {
+                    this.renderMasterDetailContainer(childrenArea, node, detailSections);
                 } else {
                     this.renderStandardChildren(node.children || [], node, childrenArea);
                 }
             } else {
                 console.warn(`[VisualDesigner] Container children area not found for node ${node.id}`);
+            }
+
+            const headerElement = container.querySelector('.container-header');
+            if (headerElement) {
+                headerElement.addEventListener('dblclick', (event) => {
+                    event.stopPropagation();
+                    this.enterContainer(node.id);
+                });
             }
         }
 
@@ -751,6 +1025,9 @@ export class VisualDesigner {
         this.setupNodeDragHandlers(container, node);
 
         parentContainer.appendChild(container);
+        if (isRootLevel) {
+            this.recordMeasuredNodeSize(node.id, container);
+        }
 
         return container;
     }
@@ -793,6 +1070,7 @@ export class VisualDesigner {
             nodeElement.style.zIndex = '2';
 
             parentContainer.appendChild(nodeElement);
+            this.recordMeasuredNodeSize(node.id, nodeElement);
         }
 
         return nodeElement;
@@ -801,15 +1079,24 @@ export class VisualDesigner {
     /**
      * Get node dimensions from VisualPluginMetadata, node.dimensions, or use defaults
      */
-    private getNodeDimensions(node: VisualNode): { width: number; height: number } {
-        // Use custom dimensions if set
-        if (node.dimensions) {
-            return node.dimensions;
+    private getNodeDimensions(nodeOrType: VisualNode | string): { width: number; height: number } {
+        const isVisualNode = typeof nodeOrType !== 'string';
+        if (isVisualNode) {
+            const visualNode = nodeOrType as VisualNode;
+            if (visualNode.dimensions) {
+                return visualNode.dimensions;
+            }
+
+            const measured = this.measuredNodeSizes.get(visualNode.id);
+            if (measured) {
+                return measured;
+            }
         }
 
-        // Use metadata defaults
+        const type = isVisualNode ? (nodeOrType as VisualNode).type : nodeOrType;
+
         if (this.pluginManager) {
-            const plugin = this.pluginManager.findPlugin(node.type);
+            const plugin = this.pluginManager.findPlugin(type);
             if (plugin) {
                 return {
                     width: plugin.defaultWidth || this.DEFAULT_NODE_WIDTH,
@@ -817,6 +1104,7 @@ export class VisualDesigner {
                 };
             }
         }
+
         return {
             width: this.DEFAULT_NODE_WIDTH,
             height: this.DEFAULT_NODE_HEIGHT
@@ -948,14 +1236,46 @@ export class VisualDesigner {
 
         const positions = this.calculateProcessMarkerPositions(rootNodeElements);
 
-        const startMarker = this.createProcessMarker('start', positions.startX, positions.startY, 'Start');
-        const endMarker = this.createProcessMarker('end', positions.endX, positions.endY, 'End');
+        const startPosition = this.startMarkerManual && this.startMarkerPosition
+            ? this.startMarkerPosition
+            : { x: positions.startX, y: positions.startY };
+        if (!this.startMarkerManual) {
+            this.startMarkerPosition = startPosition;
+        }
+
+        const endPosition = this.endMarkerManual && this.endMarkerPosition
+            ? this.endMarkerPosition
+            : { x: positions.endX, y: positions.endY };
+        if (!this.endMarkerManual) {
+            this.endMarkerPosition = endPosition;
+        }
+
+        const startMarker = this.createProcessMarker('start', startPosition.x, startPosition.y, 'Start');
+        const endMarker = this.createProcessMarker('end', endPosition.x, endPosition.y, 'End');
 
         layer.appendChild(startMarker);
         layer.appendChild(endMarker);
 
         this.canvasElement.appendChild(layer);
         this.processMarkersLayer = layer;
+
+        startMarker.dataset.nodeId = 'workflow-start';
+        endMarker.dataset.nodeId = 'workflow-end';
+
+        this.startMarkerElement = startMarker;
+        this.endMarkerElement = endMarker;
+
+        this.setupMarkerDrag(startMarker, 'start');
+        this.setupMarkerDrag(endMarker, 'end');
+    }
+
+    private clearProcessMarkers(): void {
+        if (this.processMarkersLayer) {
+            this.processMarkersLayer.remove();
+            this.processMarkersLayer = null;
+        }
+        this.startMarkerElement = null;
+        this.endMarkerElement = null;
     }
 
     private calculateProcessMarkerPositions(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
@@ -1002,14 +1322,127 @@ export class VisualDesigner {
         marker.style.left = `${x}px`;
         marker.style.top = `${y}px`;
 
-        const text = document.createElement('span');
-        text.textContent = label;
-        text.style.fontSize = '10px';
-        text.style.fontWeight = '700';
+        if (type === 'start') {
+            const icon = document.createElement('i');
+            icon.className = this.workflowStatus === 'running' ? 'fas fa-stop' : 'fas fa-play';
+            icon.setAttribute('aria-hidden', 'true');
 
-        marker.appendChild(text);
+            const text = document.createElement('span');
+            text.textContent = this.workflowStatus === 'running' ? 'Stop' : label;
+            text.style.fontSize = '10px';
+            text.style.fontWeight = '700';
+
+            marker.appendChild(icon);
+            marker.appendChild(text);
+
+            marker.style.pointerEvents = 'auto';
+            marker.style.cursor = 'pointer';
+            marker.title = this.workflowStatus === 'running'
+                ? 'Stop workflow execution'
+                : 'Start workflow execution';
+
+            if (this.workflowStatus === 'running') {
+                marker.classList.add('process-marker-start--running');
+            }
+
+            marker.addEventListener('click', (event) => {
+                if (this.isMarkerDragging) {
+                    this.isMarkerDragging = false;
+                    return;
+                }
+                event.stopPropagation();
+                if (this.workflowStatus === 'running') {
+                    this.emit('workflowStopRequested', {});
+                } else {
+                    this.emit('workflowStartRequested', {});
+                }
+            });
+        } else {
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-flag-checkered';
+            icon.setAttribute('aria-hidden', 'true');
+
+            const text = document.createElement('span');
+            text.textContent = label;
+            text.style.fontSize = '10px';
+            text.style.fontWeight = '700';
+
+            marker.appendChild(icon);
+            marker.appendChild(text);
+            marker.title = 'Workflow end marker';
+            marker.style.pointerEvents = 'auto';
+            marker.style.cursor = 'grab';
+        }
 
         return marker;
+    }
+
+    private setupMarkerDrag(marker: HTMLElement, type: 'start' | 'end'): void {
+        const handleMouseDown = (event: MouseEvent) => {
+            event.preventDefault();
+            const initialCanvasPos = this.viewportToCanvas(event.clientX, event.clientY);
+            const basePosition = type === 'start'
+                ? (this.startMarkerPosition ?? { x: initialCanvasPos.x, y: initialCanvasPos.y })
+                : (this.endMarkerPosition ?? { x: initialCanvasPos.x, y: initialCanvasPos.y });
+
+            const offsetX = initialCanvasPos.x - basePosition.x;
+            const offsetY = initialCanvasPos.y - basePosition.y;
+            let dragged = false;
+
+            const handleMouseMove = (moveEvent: MouseEvent) => {
+                const canvasPos = this.viewportToCanvas(moveEvent.clientX, moveEvent.clientY);
+                const deltaX = canvasPos.x - initialCanvasPos.x;
+                const deltaY = canvasPos.y - initialCanvasPos.y;
+
+                if (!dragged && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+                    dragged = true;
+                    this.isMarkerDragging = true;
+                    marker.style.cursor = 'grabbing';
+                    event.stopPropagation();
+                }
+
+                if (!dragged) {
+                    return;
+                }
+
+                const newPosition = {
+                    x: canvasPos.x - offsetX,
+                    y: canvasPos.y - offsetY
+                };
+
+                marker.style.left = `${newPosition.x}px`;
+                marker.style.top = `${newPosition.y}px`;
+
+                if (type === 'start') {
+                    this.startMarkerPosition = newPosition;
+                    this.startMarkerManual = true;
+                } else {
+                    this.endMarkerPosition = newPosition;
+                    this.endMarkerManual = true;
+                }
+
+                this.renderConnections();
+            };
+
+            const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+                document.body.style.userSelect = '';
+                if (dragged) {
+                    marker.style.cursor = type === 'start' ? 'pointer' : 'grab';
+                    setTimeout(() => {
+                        this.isMarkerDragging = false;
+                    }, 0);
+                }
+            };
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp, { once: true });
+            document.body.style.userSelect = 'none';
+            event.stopPropagation();
+        };
+
+        marker.addEventListener('mousedown', handleMouseDown);
     }
 
     /**
@@ -1052,28 +1485,66 @@ export class VisualDesigner {
 
         allConnections.forEach(connection => {
             try {
-                const fromNode = this.findNodeRecursive(connection.from, this.nodes);
-                const toNode = this.findNodeRecursive(connection.to, this.nodes);
+                const fromAnchor = this.getConnectionAnchor(connection.from);
+                const toAnchor = this.getConnectionAnchor(connection.to);
 
-                if (!fromNode || !toNode || !fromNode.position || !toNode.position) {
-                    console.warn(`[VisualDesigner] Cannot render connection: nodes not found or positioned`, {
-                        from: connection.from,
-                        to: connection.to,
-                        fromNode: fromNode ? 'found' : 'missing',
-                        toNode: toNode ? 'found' : 'missing'
-                    });
+                if (!fromAnchor || !toAnchor) {
+                    console.warn('[VisualDesigner] Cannot render connection: anchor not found', connection);
                     return;
                 }
 
-                // Calculate connection points using node dimensions from metadata
-                const fromDimensions = this.getNodeDimensions(fromNode);
-                const toDimensions = this.getNodeDimensions(toNode);
-                const x1 = fromNode.position.x + fromDimensions.width / 2;
-                const y1 = fromNode.position.y + fromDimensions.height;
-                const x2 = toNode.position.x + toDimensions.width / 2;
-                const y2 = toNode.position.y;
+                let x1 = fromAnchor.centerX;
+                let y1 = fromAnchor.centerY;
+                let x2 = toAnchor.centerX;
+                let y2 = toAnchor.centerY;
 
-                // Determine connection ID (manual connections have id, automatic ones need generated id)
+                const verticalExitOffset = 14;
+                const verticalEntryOffset = 14;
+
+                const setDownstreamAnchor = () => {
+                    x1 = fromAnchor.centerX;
+                    y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
+                    if (fromAnchor.type === 'marker' && connection.from === 'workflow-end') {
+                        y1 = fromAnchor.centerY - fromAnchor.height / 2 - verticalExitOffset;
+                    }
+                };
+
+                const setUpstreamAnchor = () => {
+                    x2 = toAnchor.centerX;
+                    y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
+                    if (toAnchor.type === 'marker' && connection.to === 'workflow-start') {
+                        y2 = toAnchor.centerY + toAnchor.height / 2 + verticalEntryOffset;
+                    }
+                };
+
+                if (connection.type === 'sequential') {
+                    setDownstreamAnchor();
+                    setUpstreamAnchor();
+                } else {
+                    if (fromAnchor.type === 'node') {
+                        x1 = fromAnchor.centerX;
+                        y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
+                    } else {
+                        x1 = fromAnchor.centerX;
+                        y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
+                        if (connection.from === 'workflow-end') {
+                            y1 = fromAnchor.centerY - fromAnchor.height / 2 - verticalExitOffset;
+                        }
+                    }
+
+                    if (toAnchor.type === 'node') {
+                        x2 = toAnchor.centerX;
+                        y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
+                    } else {
+                        x2 = toAnchor.centerX;
+                        y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
+                        if (connection.to === 'workflow-start') {
+                            y2 = toAnchor.centerY + toAnchor.height / 2 + verticalEntryOffset;
+                        }
+                    }
+                }
+
+
                 const connectionId = (connection.id && typeof connection.id === 'string')
                     ? connection.id
                     : `auto-${connection.from}-${connection.to}`;
@@ -1082,7 +1553,7 @@ export class VisualDesigner {
 
                 this.createArrow(x1, y1, x2, y2, connection.type, connectionId, isSelected, isManual);
             } catch (error) {
-                console.error(`[VisualDesigner] Error rendering connection:`, error, connection);
+                console.error('[VisualDesigner] Error rendering connection:', error, connection);
             }
         });
     }
@@ -1373,8 +1844,8 @@ export class VisualDesigner {
                         // Remove drop zone classes
                         nestedContainerElement.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
 
-                        // Position will be calculated by calculateNestedLayout
-                        newNode.position = undefined; // Let layout algorithm handle it
+                        // Position handled by container layout logic
+                        newNode.position = undefined; // Let container rendering determine placement
 
                         this.addChildToContainer(nestedContainerId!, newNode);
 
@@ -1430,8 +1901,8 @@ export class VisualDesigner {
                             // Remove drop-target highlight
                             containerNodeElement.classList.remove('drop-target', 'drop-zone-valid', 'drop-zone-invalid');
 
-                            // Position will be calculated by calculateNestedLayout
-                            newNode.position = undefined; // Let layout algorithm handle it
+                            // Position handled by container layout logic
+                            newNode.position = undefined; // Let container rendering determine placement
 
                             this.addChildToContainer(containerId, newNode);
 
@@ -1540,6 +2011,8 @@ export class VisualDesigner {
         let offsetX = 0;
         let offsetY = 0;
 
+        nodeElement.style.cursor = 'grab';
+
         nodeElement.addEventListener('mousedown', (e) => {
             // Don't start drag if clicking on port
             if ((e.target as HTMLElement).closest('.port')) {
@@ -1552,6 +2025,7 @@ export class VisualDesigner {
             }
 
             isDragging = true;
+            this.isNodeDragging = true;
             // Calculate offset in canvas coordinates (accounting for transform)
             const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
             startX = canvasPos.x;
@@ -1561,24 +2035,31 @@ export class VisualDesigner {
             offsetY = canvasPos.y - (node.position?.y || 0);
 
             nodeElement.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
             e.preventDefault();
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
 
-            // Convert viewport coordinates to canvas coordinates (accounting for transform)
             const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
             const newX = canvasPos.x - offsetX;
             const newY = canvasPos.y - offsetY;
 
-            this.moveNode(node.id, { x: newX, y: newY });
+            this.moveNode(node.id, { x: newX, y: newY }, { skipRender: true });
+            this.rebuildConnections(false);
+            this.renderConnections();
+            this.updateProcessMarkersPosition();
+            this.ensureGridOverlay();
         });
 
         document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
-                nodeElement.style.cursor = 'pointer';
+                this.isNodeDragging = false;
+                nodeElement.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+                this.render();
             }
         });
     }
@@ -2136,24 +2617,27 @@ export class VisualDesigner {
             }
         ];
 
-        if (node && this.isHttpNode(node)) {
-            items.push(
-                {
-                    label: 'Add Header',
-                    icon: 'fas fa-plus',
-                    action: () => {
-                        this.addHttpDetail(node.id, 'http-header');
-                    }
-                },
-                {
-                    label: 'Add Query Parameter',
-                    icon: 'fas fa-plus-circle',
-                    action: () => {
-                        this.addHttpDetail(node.id, 'http-param');
-                    }
-                }
-            );
+        if (node && isContainerNode(node.type)) {
+            items.push({
+                label: 'Focus on this container',
+                icon: 'fas fa-crop-alt',
+                action: () => this.enterContainer(node.id)
+            });
             items.push({ type: 'divider' });
+        }
+
+        if (node && this.detailRegistry) {
+            const detailSections = this.detailRegistry.getSections(node.type);
+            if (detailSections.length > 0) {
+                detailSections.forEach(section => {
+                    items.push({
+                        label: section.addLabel,
+                        icon: 'fas fa-plus',
+                        action: () => this.addDetailNode(node.id, section.detailType)
+                    });
+                });
+                items.push({ type: 'divider' });
+            }
         }
 
         // Add reordering options for root nodes
@@ -2824,7 +3308,7 @@ export class VisualDesigner {
     /**
      * Move node to new position
      */
-    moveNode(nodeId: string, position: { x: number; y: number }): boolean {
+    moveNode(nodeId: string, position: { x: number; y: number }, options?: { skipRender?: boolean }): boolean {
         const node = this.findNodeRecursive(nodeId, this.nodes);
         if (!node) {
             return false;
@@ -2856,14 +3340,23 @@ export class VisualDesigner {
 
         // Update position
         node.position = { x, y };
+        node.isManualPositioned = true;
 
         // If node has children, move them too maintaining relative positions
         if (node.children && node.children.length > 0 && (offsetX !== 0 || offsetY !== 0)) {
             this.moveNodeChildren(node, offsetX, offsetY);
         }
 
-        // Re-render
-        this.render();
+        if (options?.skipRender) {
+            const element = this.canvasElement.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement | null;
+            if (element && element.style.position === 'absolute') {
+                element.style.left = `${x}px`;
+                element.style.top = `${y}px`;
+            }
+            this.highlightSelectedNodes();
+        } else {
+            this.render();
+        }
 
         return true;
     }
@@ -2928,7 +3421,11 @@ export class VisualDesigner {
         const newX = mousePos.x - dragInfo.offsetX;
         const newY = mousePos.y - dragInfo.offsetY;
 
-        this.moveNode(dragInfo.nodeId, { x: newX, y: newY });
+        this.moveNode(dragInfo.nodeId, { x: newX, y: newY }, { skipRender: true });
+        this.rebuildConnections(false);
+        this.renderConnections();
+        this.updateProcessMarkersPosition();
+        this.ensureGridOverlay();
     }
 
     /**
@@ -4295,6 +4792,7 @@ export class VisualDesigner {
     setPluginManager(pluginManager: PluginManager): void {
         this.pluginManager = pluginManager;
         this.semanticValidator = new SemanticValidator(pluginManager);
+        this.detailRegistry = new MasterDetailRegistry(pluginManager);
         console.log('✅ [VisualDesigner] Semantic validator initialized');
 
         setContainerResolver((type: string) => {
@@ -4678,218 +5176,6 @@ export class VisualDesigner {
         }, 3000);
     }
 
-    private isHttpNode(node: VisualNode | null | undefined): boolean {
-        return Boolean(node?.type && node.type.toLowerCase() === 'http');
-    }
-
-    private renderHttpContainer(childrenArea: HTMLElement, node: VisualNode): void {
-        childrenArea.classList.add('http-container');
-
-        const toolbar = document.createElement('div');
-        toolbar.className = 'http-summary-toolbar';
-
-        const manageButton = document.createElement('button');
-        manageButton.type = 'button';
-        manageButton.className = 'http-summary-button';
-        manageButton.innerHTML = '<i class="fas fa-sliders-h"></i> Configure HTTP Task';
-        manageButton.onclick = (event) => {
-            event.stopPropagation();
-            this.openHttpProperties(node.id);
-        };
-
-        toolbar.appendChild(manageButton);
-        childrenArea.appendChild(toolbar);
-
-        const { params, headers } = partitionHttpChildren(node);
-
-        const paramsSection = this.createHttpDetailSection(
-            node,
-            'Query Parameters',
-            'http-param',
-            params,
-            'No query parameters defined yet.'
-        );
-        const headersSection = this.createHttpDetailSection(
-            node,
-            'Headers',
-            'http-header',
-            headers,
-            'No headers defined yet.'
-        );
-
-        childrenArea.appendChild(paramsSection);
-        childrenArea.appendChild(headersSection);
-    }
-
-    private createHttpDetailSection(
-        containerNode: VisualNode,
-        title: string,
-        detailType: HttpDetailType,
-        details: VisualNode[],
-        emptyLabel: string
-    ): HTMLElement {
-        const section = document.createElement('div');
-        section.className = 'http-detail-section';
-
-        const header = document.createElement('div');
-        header.className = 'http-detail-section__header';
-
-        const titleEl = document.createElement('span');
-        titleEl.className = 'http-detail-section__title';
-        titleEl.textContent = `${title} (${details.length})`;
-
-        const headerActions = document.createElement('div');
-        headerActions.className = 'http-detail-section__actions';
-
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'http-detail-action';
-        addBtn.innerHTML = `<i class="fas fa-plus"></i> ${detailType === 'http-param' ? 'Add Parameter' : 'Add Header'}`;
-        addBtn.onclick = (event) => {
-            event.stopPropagation();
-            this.addHttpDetail(containerNode.id, detailType);
-        };
-
-        headerActions.appendChild(addBtn);
-        header.appendChild(titleEl);
-        header.appendChild(headerActions);
-
-        const list = document.createElement('div');
-        list.className = 'http-detail-list';
-
-        if (details.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'http-detail-empty';
-            empty.textContent = emptyLabel;
-            list.appendChild(empty);
-        } else {
-            details.forEach((detail, index) => {
-                const row = this.createHttpDetailRow(containerNode, detail, detailType, index, details.length);
-                list.appendChild(row);
-            });
-        }
-
-        section.appendChild(header);
-        section.appendChild(list);
-
-        return section;
-    }
-
-    private createHttpDetailRow(
-        containerNode: VisualNode,
-        detail: VisualNode,
-        detailType: HttpDetailType,
-        index: number,
-        total: number
-    ): HTMLElement {
-        const row = document.createElement('div');
-        row.className = 'http-detail-row';
-        row.dataset.detailId = detail.id;
-
-        const { name, value } = summarizeHttpDetail(detail);
-
-        const nameEl = document.createElement('span');
-        nameEl.className = 'http-detail-row__label';
-        if (name) {
-            nameEl.textContent = name;
-        } else {
-            nameEl.textContent = detailType === 'http-param' ? '(name not set)' : '(header name not set)';
-            nameEl.classList.add('http-detail-row__label--empty');
-        }
-
-        const valueEl = document.createElement('span');
-        valueEl.className = 'http-detail-row__value';
-        if (value) {
-            valueEl.textContent = this.truncateHttpValue(value);
-        } else {
-            valueEl.textContent = '—';
-            valueEl.classList.add('http-detail-row__value--empty');
-        }
-
-        const actions = document.createElement('div');
-        actions.className = 'http-detail-row__actions';
-
-        const editBtn = this.createHttpActionButton('fas fa-pen', 'Edit in properties', () => {
-            this.openHttpProperties(containerNode.id);
-        });
-
-        const moveUpBtn = this.createHttpActionButton('fas fa-arrow-up', 'Move up', () => {
-            this.moveHttpDetail(containerNode.id, detail.id, 'up');
-        }, index === 0);
-
-        const moveDownBtn = this.createHttpActionButton('fas fa-arrow-down', 'Move down', () => {
-            this.moveHttpDetail(containerNode.id, detail.id, 'down');
-        }, index === total - 1);
-
-        const deleteBtn = this.createHttpActionButton('fas fa-trash', 'Remove', () => {
-            this.removeHttpDetail(containerNode.id, detail.id);
-        });
-        deleteBtn.classList.add('danger');
-
-        actions.appendChild(editBtn);
-        actions.appendChild(moveUpBtn);
-        actions.appendChild(moveDownBtn);
-        actions.appendChild(deleteBtn);
-
-        row.appendChild(nameEl);
-        row.appendChild(valueEl);
-        row.appendChild(actions);
-
-        return row;
-    }
-
-    private createHttpActionButton(iconClass: string, title: string, action: () => void, disabled = false): HTMLButtonElement {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'http-detail-row__action';
-        button.innerHTML = `<i class="${iconClass}"></i>`;
-        button.title = title;
-        button.disabled = disabled;
-        button.addEventListener('click', (event) => {
-            event.stopPropagation();
-            if (!button.disabled) {
-                action();
-            }
-        });
-        return button;
-    }
-
-    private openHttpProperties(nodeId: string): void {
-        this.selectNode(nodeId);
-    }
-
-    private addHttpDetail(containerId: string, detailType: HttpDetailType): void {
-        const detailNode = createHttpDetailNode(detailType);
-        const added = this.addChildToContainer(containerId, detailNode);
-        if (added) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private removeHttpDetail(containerId: string, detailId: string): void {
-        const removed = this.removeNode(detailId);
-        if (removed) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private moveHttpDetail(containerId: string, detailId: string, direction: 'up' | 'down'): void {
-        const moved = direction === 'up'
-            ? this.moveChildUp(containerId, detailId)
-            : this.moveChildDown(containerId, detailId);
-
-        if (moved) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private truncateHttpValue(value: string, maxLength: number = 80): string {
-        if (value.length <= maxLength) {
-            return value;
-        }
-        return `${value.slice(0, maxLength - 1)}…`;
-    }
-
     private isIfNode(node: VisualNode | null | undefined): boolean {
         return Boolean(node?.type && node.type.toLowerCase() === 'if');
     }
@@ -5105,6 +5391,507 @@ export class VisualDesigner {
         if (moved) {
             this.selectNode(parentId);
         }
+    }
+
+    setWorkflowStatus(status: WorkflowStatus): void {
+        if (this.workflowStatus === status) {
+            return;
+        }
+        this.workflowStatus = status;
+        this.render();
+    }
+
+    getWorkflowStatus(): WorkflowStatus {
+        return this.workflowStatus;
+    }
+
+    private getConnectionAnchor(targetId: string): ({ centerX: number; centerY: number; width: number; height: number; type: 'node' | 'marker' }) | null {
+        const computeMarkerAnchor = (element: HTMLElement): { centerX: number; centerY: number; width: number; height: number; type: 'marker' } => {
+            const canvasRect = this.canvasElement.getBoundingClientRect();
+            const markerRect = element.getBoundingClientRect();
+            const width = markerRect.width || element.offsetWidth || 56;
+            const height = markerRect.height || element.offsetHeight || 56;
+            const centerX = markerRect.left - canvasRect.left + width / 2;
+            const centerY = markerRect.top - canvasRect.top + height / 2;
+            return { centerX, centerY, width, height, type: 'marker' };
+        };
+
+        if (targetId === 'workflow-start' && this.startMarkerElement) {
+            return computeMarkerAnchor(this.startMarkerElement);
+        }
+
+        if (targetId === 'workflow-end' && this.endMarkerElement) {
+            return computeMarkerAnchor(this.endMarkerElement);
+        }
+
+        const node = this.findNodeRecursive(targetId, this.nodes);
+        if (!node || !node.position) {
+            return null;
+        }
+
+        const dimensions = this.getNodeDimensions(node);
+        return {
+            centerX: node.position.x + dimensions.width / 2,
+            centerY: node.position.y + dimensions.height / 2,
+            width: dimensions.width,
+            height: dimensions.height,
+            type: 'node'
+        };
+    }
+
+    getDetailRegistry(): MasterDetailRegistry | null {
+        return this.detailRegistry;
+    }
+
+    private renderMasterDetailContainer(childrenArea: HTMLElement, containerNode: VisualNode, sections: DetailSectionDefinition[]): void {
+        if (!this.detailRegistry) {
+            this.renderStandardChildren(containerNode.children || [], containerNode, childrenArea);
+            return;
+        }
+
+        childrenArea.classList.add('http-container');
+
+        const partition = this.detailRegistry.partitionChildren(containerNode);
+
+        sections.forEach(section => {
+            const detailNodes = partition.sections[section.detailType] || [];
+            const sectionElement = this.createDetailSectionElement(containerNode, section, detailNodes);
+            childrenArea.appendChild(sectionElement);
+        });
+
+        if (partition.unmatched.length > 0) {
+            this.renderStandardChildren(partition.unmatched, containerNode, childrenArea);
+        }
+    }
+
+    private createDetailSectionElement(
+        containerNode: VisualNode,
+        section: DetailSectionDefinition,
+        details: VisualNode[]
+    ): HTMLElement {
+        const sectionEl = document.createElement('div');
+        sectionEl.className = 'http-detail-section';
+
+        const header = document.createElement('div');
+        header.className = 'http-detail-section__header';
+
+        const titleEl = document.createElement('span');
+        titleEl.className = 'http-detail-section__title';
+        titleEl.textContent = `${section.sectionTitle} (${details.length})`;
+
+        const actions = document.createElement('div');
+        actions.className = 'http-detail-section__actions';
+
+        const addButton = this.createDetailActionButton('fas fa-plus', section.addLabel, () => {
+            this.addDetailNode(containerNode.id, section.detailType);
+        });
+        actions.appendChild(addButton);
+
+        header.appendChild(titleEl);
+        header.appendChild(actions);
+        sectionEl.appendChild(header);
+
+        const list = document.createElement('div');
+        list.className = 'http-detail-list';
+
+        if (details.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'http-detail-empty';
+            empty.textContent = section.emptyLabel;
+            list.appendChild(empty);
+        } else {
+            details.forEach((detail, index) => {
+                const row = this.createDetailRow(containerNode, section, detail, index, details.length);
+                list.appendChild(row);
+            });
+        }
+
+        sectionEl.appendChild(list);
+        return sectionEl;
+    }
+
+    private createDetailRow(
+        containerNode: VisualNode,
+        section: DetailSectionDefinition,
+        detail: VisualNode,
+        index: number,
+        total: number
+    ): HTMLElement {
+        const row = document.createElement('div');
+        row.className = 'http-detail-row';
+        row.dataset.detailId = detail.id;
+
+        const summary = this.detailRegistry!.summarizeDetail(detail);
+
+        const nameEl = document.createElement('span');
+        nameEl.className = summary.isEmpty ? 'http-detail-row__label http-detail-row__label--empty' : 'http-detail-row__label';
+        nameEl.textContent = summary.primaryText;
+
+        const valueEl = document.createElement('span');
+        valueEl.className = summary.secondaryText ? 'http-detail-row__value' : 'http-detail-row__value http-detail-row__value--empty';
+        valueEl.textContent = summary.secondaryText ?? '—';
+
+        const actions = document.createElement('div');
+        actions.className = 'http-detail-row__actions';
+
+        const editButton = this.createDetailActionButton('fas fa-pen', 'Edit in properties', () => {
+            this.selectNode(detail.id);
+        });
+        actions.appendChild(editButton);
+
+        const moveUpButton = this.createDetailActionButton('fas fa-arrow-up', 'Move up', () => {
+            this.moveDetailNode(containerNode.id, detail.id, 'up');
+        }, index === 0);
+        actions.appendChild(moveUpButton);
+
+        const moveDownButton = this.createDetailActionButton('fas fa-arrow-down', 'Move down', () => {
+            this.moveDetailNode(containerNode.id, detail.id, 'down');
+        }, index === total - 1);
+        actions.appendChild(moveDownButton);
+
+        const duplicateButton = this.createDetailActionButton('fas fa-clone', 'Duplicate', () => {
+            this.duplicateDetailNode(containerNode.id, detail.id);
+        });
+        actions.appendChild(duplicateButton);
+
+        const deleteButton = this.createDetailActionButton('fas fa-trash', 'Remove', () => {
+            this.removeDetailNode(containerNode.id, detail.id);
+        });
+        deleteButton.classList.add('danger');
+        actions.appendChild(deleteButton);
+
+        row.appendChild(nameEl);
+        row.appendChild(valueEl);
+        row.appendChild(actions);
+
+        return row;
+    }
+
+    private createDetailActionButton(iconClass: string, title: string, action: () => void, disabled = false): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'http-detail-row__action';
+        button.innerHTML = `<i class="${iconClass}"></i>`;
+        button.title = title;
+        button.disabled = disabled;
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (!button.disabled) {
+                action();
+            }
+        });
+        return button;
+    }
+
+    private addDetailNode(containerId: string, detailType: string): void {
+        if (!this.detailRegistry) {
+            return;
+        }
+        const detailNode = this.detailRegistry.createDetailNode(detailType);
+        if (!detailNode) {
+            this.showError(`Cannot create detail of type ${detailType}`);
+            return;
+        }
+        const added = this.addChildToContainer(containerId, detailNode);
+        if (added) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private removeDetailNode(containerId: string, detailId: string): void {
+        const removed = this.removeNode(detailId);
+        if (removed) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private moveDetailNode(containerId: string, detailId: string, direction: 'up' | 'down'): void {
+        const moved = direction === 'up'
+            ? this.moveChildUp(containerId, detailId)
+            : this.moveChildDown(containerId, detailId);
+
+        if (moved) {
+            this.selectNode(containerId);
+        }
+    }
+
+    private duplicateDetailNode(containerId: string, detailId: string): void {
+        if (!this.detailRegistry) {
+            return;
+        }
+
+        const container = this.findNode(containerId);
+        const original = this.findNode(detailId);
+
+        if (!container || !original) {
+            return;
+        }
+
+        const duplicate = this.detailRegistry.createDetailNode(original.type);
+        if (!duplicate) {
+            this.showError(`Cannot duplicate detail of type ${original.type}`);
+            return;
+        }
+
+        duplicate.attributes = {
+            ...original.attributes
+        };
+        duplicate.body = original.body;
+        duplicate.children = original.children ? this.cloneNodes(original.children) : [];
+
+        const updatedContainer = this.cloneNode(container);
+        updatedContainer.children = [
+            ...(updatedContainer.children || []),
+            duplicate
+        ];
+
+        const updated = this.updateNode(containerId, updatedContainer);
+        if (updated) {
+            this.selectNode(duplicate.id);
+        }
+    }
+
+    private getFocusedContainer(): VisualNode | null {
+        const focusId = this.drillDownManager.getCurrentId();
+        if (!focusId) {
+            return null;
+        }
+        const node = this.findNode(focusId);
+        if (!node || !isContainerNode(node.type)) {
+            this.drillDownManager.reset();
+            return null;
+        }
+        return node;
+    }
+
+    private getNodeDisplayLabel(node: VisualNode): string {
+        const nameAttr = (node.attributes?.name || node.attributes?.id || '').toString().trim();
+        const titleCaseType = node.type.charAt(0).toUpperCase() + node.type.slice(1);
+        if (nameAttr.length > 0) {
+            return `${titleCaseType}: ${nameAttr}`;
+        }
+        return titleCaseType;
+    }
+
+    private updateFocusSummary(): void {
+        if (!this.focusSummaryContainer) {
+            return;
+        }
+
+        const container = this.focusSummaryContainer;
+        container.innerHTML = '';
+        container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
+
+        const focusNode = this.getFocusedContainer();
+
+        if (!focusNode) {
+            const overview = document.createElement('div');
+            overview.className = 'focus-summary__content';
+            const title = this.createSummaryTitle('Workflow overview', this.createFontAwesomeIcon('fa-layer-group', '#636366', 12));
+            overview.appendChild(title);
+
+            const stats = analyzeHierarchy(this.nodes);
+            const chipsRow = document.createElement('div');
+            chipsRow.className = 'focus-summary__chips';
+            chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-diagram-project'), 'Total nodes', stats.totalNodes.toString()));
+            chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-boxes'), 'Containers', stats.containerCount.toString()));
+            chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-atom'), 'Leaves', stats.leafCount.toString()));
+            overview.appendChild(chipsRow);
+
+            const topTypes = this.collectTypeFrequency(this.nodes).slice(0, 3);
+            if (topTypes.length > 0) {
+                const section = this.createSummarySection('Top components', topTypes.map(entry => {
+                    const icon = this.iconLibrary.getIconElement(entry.type, 11);
+                    return this.createSummaryChip(icon, entry.type, `×${entry.count}`);
+                }));
+                overview.appendChild(section);
+            }
+
+            container.appendChild(overview);
+            container.appendChild(this.createSummaryHint('Execution metrics will appear while the workflow runs.'));
+            return;
+        }
+
+        const summary = analyzeContainer(focusNode, this.detailRegistry);
+        const content = document.createElement('div');
+        content.className = 'focus-summary__content';
+
+        const title = this.createSummaryTitle(this.getNodeDisplayLabel(focusNode), this.iconLibrary.getIconElement(focusNode.type, 12));
+        content.appendChild(title);
+
+        const chipsRow = document.createElement('div');
+        chipsRow.className = 'focus-summary__chips';
+        chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-list-check'), 'Children', summary.childCount.toString()));
+        chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-layer-group'), 'Nested containers', summary.containerCount.toString()));
+        chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-code-branch'), 'Leaves', summary.leafCount.toString()));
+        chipsRow.appendChild(this.createSummaryChip(this.createFontAwesomeIcon('fa-link'), 'Details', summary.detailCount.toString()));
+        content.appendChild(chipsRow);
+
+        const topChildren = summary.typeFrequency.slice(0, 3);
+        if (topChildren.length > 0) {
+            const section = this.createSummarySection('Top child components', topChildren.map(entry => {
+                const icon = this.iconLibrary.getIconElement(entry.type, 11);
+                return this.createSummaryChip(icon, entry.type, `×${entry.count}`, true);
+            }));
+            content.appendChild(section);
+        }
+
+        if (summary.attributeHighlights.length > 0) {
+            const attributeSection = this.createSummarySection('Key settings', summary.attributeHighlights.map(({ key, value }) => {
+                const icon = this.createFontAwesomeIcon('fa-sliders-h', '#636366', 11);
+                return this.createSummaryChip(icon, key, value, true);
+            }));
+            content.appendChild(attributeSection);
+        }
+
+        container.appendChild(content);
+    }
+
+    private createSummaryTitle(label: string, icon: HTMLElement | null): HTMLElement {
+        const title = document.createElement('div');
+        title.className = 'focus-summary__title';
+        if (icon) {
+            icon.classList.add('focus-summary__title-icon');
+            title.appendChild(icon);
+        }
+        const text = document.createElement('span');
+        text.textContent = label;
+        title.appendChild(text);
+        return title;
+    }
+
+    private createSummaryChip(icon: HTMLElement | null, label: string, value: string, muted: boolean = false): HTMLElement {
+        const chip = document.createElement('div');
+        chip.className = 'focus-summary__chip';
+        if (muted) {
+            chip.classList.add('focus-summary__chip--muted');
+        }
+
+        if (icon) {
+            icon.classList.add('focus-summary__chip-icon');
+            chip.appendChild(icon);
+        }
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'focus-summary__chip-label';
+        labelEl.textContent = label;
+        chip.appendChild(labelEl);
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'focus-summary__chip-value';
+        valueEl.textContent = value;
+        chip.appendChild(valueEl);
+
+        return chip;
+    }
+
+    private createSummarySection(title: string, chips: HTMLElement[]): HTMLElement {
+        const section = document.createElement('div');
+        section.className = 'focus-summary__section';
+
+        const label = document.createElement('span');
+        label.className = 'focus-summary__section-label';
+        label.textContent = title;
+        section.appendChild(label);
+
+        const chipRow = document.createElement('div');
+        chipRow.className = 'focus-summary__section-chips';
+        chips.forEach(chip => chipRow.appendChild(chip));
+        section.appendChild(chipRow);
+
+        return section;
+    }
+
+    private createSummaryHint(text: string): HTMLElement {
+        const hint = document.createElement('span');
+        hint.className = 'focus-summary__hint';
+        hint.textContent = text;
+        return hint;
+    }
+
+    private createFontAwesomeIcon(iconClass: string, color: string = '#636366', size: number = 12): HTMLElement {
+        const icon = document.createElement('i');
+        icon.className = `fas ${iconClass}`;
+        icon.style.color = color;
+        icon.style.fontSize = `${size}px`;
+        return icon;
+    }
+
+    private collectTypeFrequency(nodes: VisualNode[]): Array<{ type: string; count: number }> {
+        const map = new Map<string, number>();
+
+        const visit = (node: VisualNode): void => {
+            map.set(node.type, (map.get(node.type) ?? 0) + 1);
+            (node.children || []).forEach(visit);
+        };
+
+        nodes.forEach(visit);
+
+        return Array.from(map.entries())
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => b.count - a.count);
+    }
+
+    private updateBreadcrumbTrail(): void {
+        if (!this.breadcrumbContainer) {
+            return;
+        }
+
+        const trail: BreadcrumbItem[] = [
+            { id: '__root__', label: 'Workflow', level: 0, nodeType: 'root' }
+        ];
+
+        const stack = this.drillDownManager.getTrail();
+        stack.forEach((id, index) => {
+            const node = this.findNode(id);
+            if (!node) {
+                return;
+            }
+            trail.push({
+                id,
+                label: this.getNodeDisplayLabel(node),
+                level: index + 1,
+                nodeType: node.type
+            });
+        });
+
+        this.breadcrumbNav.render(this.breadcrumbContainer, trail);
+        this.updateFocusSummary();
+    }
+
+    private handleBreadcrumbNavigate(item: BreadcrumbItem): void {
+        if (item.level === 0) {
+            if (this.drillDownManager.getTrail().length === 0) {
+                return;
+            }
+            this.drillDownManager.reset();
+        } else {
+            this.drillDownManager.navigateToLevel(item.level);
+        }
+        this.updateBreadcrumbTrail();
+        this.render();
+    }
+
+    private enterContainer(containerId: string): void {
+        const node = this.findNode(containerId);
+        if (!node || !isContainerNode(node.type)) {
+            return;
+        }
+        this.drillDownManager.enter(containerId);
+        this.container.focus();
+        this.updateBreadcrumbTrail();
+        this.render();
+    }
+
+    private exitFocusLevel(): void {
+        const exited = this.drillDownManager.exit();
+        if (exited === null) {
+            return;
+        }
+        this.container.focus();
+        this.updateBreadcrumbTrail();
+        this.render();
     }
 }
 

@@ -384,13 +384,13 @@ describe('SemanticValidator', () => {
         it('should reject dependent plugins dropped at root', () => {
             const result = validator.validateDrop('catch', null);
             expect(result.valid).toBe(false);
-            expect(result.message).toContain('requires a parent element');
+            expect(result.message).toMatch(/try/i);
         });
 
         it('should reject dependent plugins dropped in wrong parent', () => {
             const result = validator.validateDrop('catch', 'http');
             expect(result.valid).toBe(false);
-            expect(result.message).toContain('requires parent');
+            expect(result.message.toLowerCase()).toContain('try');
         });
 
         it('should allow http detail plugins inside http container', () => {

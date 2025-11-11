@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { PropertyPanel } from '../PropertyPanel';
 import type { VisualNode, Plugin } from '../../types';
+import type { PluginManager } from '../../core/PluginManager';
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -14,6 +15,10 @@ global.fetch = mockFetch as jest.Mock;
 describe('PropertyPanel - SchemaEditor Integration', () => {
     let container: HTMLElement;
     let propertyPanel: PropertyPanel;
+    const createPluginManager = (plugins: Plugin[]): PluginManager => ({
+        getPlugins: () => plugins,
+        findPlugin: (id: string) => plugins.find(p => p.id === id) ?? null
+    }) as unknown as PluginManager;
 
     beforeEach(async () => {
         // Create container
@@ -191,11 +196,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
                 }
             ];
 
-            mockFetch.mockResolvedValueOnce({
-                ok: true,
-                json: async () => ({ plugins: mockPlugins })
-            });
-
+            propertyPanel.setPluginManager(createPluginManager(mockPlugins));
             await (propertyPanel as any).loadPluginMetadata();
             await propertyPanel.showNode(node);
 
@@ -222,11 +223,7 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
                 children: []
             };
 
-            mockFetch.mockResolvedValueOnce({
-                ok: true,
-                json: async () => ({ plugins: [] })
-            });
-
+            propertyPanel.setPluginManager(createPluginManager([]));
             await (propertyPanel as any).loadPluginMetadata();
             await propertyPanel.showNode(node);
 

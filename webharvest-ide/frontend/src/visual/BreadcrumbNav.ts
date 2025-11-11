@@ -14,6 +14,7 @@ export class BreadcrumbNav {
     private container: HTMLElement | null = null;
     private trail: BreadcrumbItem[] = [];
     private onNavigateCallback: ((item: BreadcrumbItem) => void) | null = null;
+    private iconResolver: ((item: BreadcrumbItem) => HTMLElement | null) | null = null;
 
     /**
      * Render breadcrumb trail
@@ -23,62 +24,49 @@ export class BreadcrumbNav {
         this.trail = [...trail];
 
         container.innerHTML = '';
-        container.className = 'breadcrumb-nav';
-        container.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: var(--gray-50);
-            border-bottom: 1px solid var(--gray-200);
-            font-size: 13px;
-        `;
+        container.classList.add('breadcrumb-nav');
+
+        const trailWrapper = document.createElement('div');
+        trailWrapper.className = 'breadcrumb-nav__trail';
+        container.appendChild(trailWrapper);
 
         trail.forEach((item, index) => {
-            // Breadcrumb item
-            const itemElement = document.createElement('div');
-            itemElement.className = 'breadcrumb-item';
-            itemElement.dataset.itemId = item.id;
-            itemElement.textContent = item.label;
-            itemElement.style.cssText = `
-                padding: 4px 8px;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: all 0.2s;
-                color: var(--gray-700);
-            `;
+            const isCurrent = index === trail.length - 1;
+            const element = isCurrent ? document.createElement('span') : document.createElement('button');
+            element.className = 'breadcrumb-item';
+            element.dataset.itemId = item.id;
 
-            // Highlight current (last) level
-            if (index === trail.length - 1) {
-                itemElement.classList.add('breadcrumb-current');
-                itemElement.style.background = 'var(--purple)';
-                itemElement.style.color = 'white';
-                itemElement.style.fontWeight = '600';
-                itemElement.style.cursor = 'default';
+            if (isCurrent) {
+                element.classList.add('breadcrumb-item--current');
+                element.classList.add('breadcrumb-current');
+                element.setAttribute('aria-current', 'location');
             } else {
-                // Clickable for navigation
-                itemElement.addEventListener('mouseenter', () => {
-                    itemElement.style.background = 'var(--gray-100)';
-                });
-
-                itemElement.addEventListener('mouseleave', () => {
-                    itemElement.style.background = '';
-                });
-
-                itemElement.addEventListener('click', () => {
+                (element as HTMLButtonElement).type = 'button';
+                element.addEventListener('click', () => {
                     this.navigateTo(item.id);
                 });
             }
 
-            container.appendChild(itemElement);
+            if (this.iconResolver) {
+                const icon = this.iconResolver(item);
+                if (icon) {
+                    icon.classList.add('breadcrumb-item__icon');
+                    element.appendChild(icon);
+                }
+            }
 
-            // Separator (except after last item)
+            const label = document.createElement('span');
+            label.className = 'breadcrumb-item__label';
+            label.textContent = item.label;
+            element.appendChild(label);
+
+            trailWrapper.appendChild(element);
+
             if (index < trail.length - 1) {
                 const separator = document.createElement('span');
                 separator.className = 'breadcrumb-separator';
-                separator.textContent = '>';
-                separator.style.cssText = 'color: var(--gray-400); font-size: 12px;';
-                container.appendChild(separator);
+                separator.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                trailWrapper.appendChild(separator);
             }
         });
     }
@@ -107,6 +95,13 @@ export class BreadcrumbNav {
         }
 
         console.log(`[BreadcrumbNav] Navigated to ${item.label} (level ${item.level})`);
+    }
+
+    /**
+     * Provide resolver for icons
+     */
+    setIconResolver(resolver: ((item: BreadcrumbItem) => HTMLElement | null) | null): void {
+        this.iconResolver = resolver;
     }
 
     /**

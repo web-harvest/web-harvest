@@ -76,6 +76,52 @@ describe('VisualDesigner', () => {
         });
     });
 
+    describe('breadcrumb navigation', () => {
+        it('renders breadcrumb trail for drill-down navigation', () => {
+            const designerAny = designer as unknown as Record<string, any>;
+            const nodes: VisualNode[] = [
+                {
+                    id: 'loop-1',
+                    type: 'loop',
+                    attributes: { name: 'Items' },
+                    body: null,
+                    children: [
+                        {
+                            id: 'child-1',
+                            type: 'http',
+                            attributes: {},
+                            body: null,
+                            children: []
+                        }
+                    ]
+                }
+            ];
+
+            designer.loadNodes(nodes);
+
+            const initialCrumbs = Array.from(
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+            ).map(el => el.textContent?.trim());
+            expect(initialCrumbs).toEqual(['Workflow']);
+
+            designerAny.enterContainer('loop-1');
+
+            const drillDownCrumbs = Array.from(
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+            ).map(el => el.textContent?.trim());
+            expect(drillDownCrumbs).toEqual(['Workflow', 'Loop: Items']);
+
+            const rootCrumb = container.querySelector('.breadcrumb-nav .breadcrumb-item');
+            expect(rootCrumb).toBeTruthy();
+            rootCrumb?.dispatchEvent(new Event('click'));
+
+            const afterNavigate = Array.from(
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+            ).map(el => el.textContent?.trim());
+            expect(afterNavigate).toEqual(['Workflow']);
+        });
+    });
+
     describe('addNode', () => {
         it('should add node to canvas', () => {
             const node: VisualNode = {

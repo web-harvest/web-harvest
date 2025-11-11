@@ -375,6 +375,11 @@ public class IfPlugin extends AbstractPlugin {
         public String[] getAllowedChildPlugins() {
             return new String[]{"else"}; // Master plugin - allows else child
         }
+
+        @Override
+        public boolean acceptsArbitraryChildren() {
+            return true;
+        }
     }
     
     /**

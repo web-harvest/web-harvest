@@ -23,10 +23,15 @@ import {
     reorderNodes,
     addNodeToContainer,
     hasCircularReference,
+    setContainerResolver,
     type PluginTemplate
 } from '../VisualModelHelpers';
 
 describe('Visual Model Architecture (TDD)', () => {
+    beforeEach(() => {
+        setContainerResolver(null);
+    });
+
     describe('Node Classification', () => {
         it('should classify container nodes correctly', () => {
             const containerTypes = [

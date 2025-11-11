@@ -19,8 +19,11 @@ export class GridSystem {
     private enabled: boolean = true;
     private canvas: HTMLElement | null = null;
     private gridOverlay: SVGSVGElement | null = null;
+    private gridBackground: SVGRectElement | null = null;
     private alignmentGuides: HTMLElement[] = [];
     private snapThreshold: number = 10; // pixels
+    private resizeObserver: ResizeObserver | null = null;
+    private scrollListener: (() => void) | null = null;
 
     constructor(gridSize: number = 20) {
         this.gridSize = gridSize;
@@ -32,11 +35,7 @@ export class GridSystem {
     render(canvas: HTMLElement): void {
         this.canvas = canvas;
 
-        // Remove existing grid
-        const existing = canvas.querySelector('.grid-overlay');
-        if (existing) {
-            existing.remove();
-        }
+        this.detachListeners();
 
         // Create SVG grid
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -45,20 +44,19 @@ export class GridSystem {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
             pointer-events: none;
             z-index: 0;
         `;
 
         // Get canvas dimensions
-        const width = parseInt(canvas.style.width) || canvas.clientWidth || 2000;
-        const height = parseInt(canvas.style.height) || canvas.clientHeight || 2000;
+        const { width, height } = this.computeDimensions(canvas);
+        this.applyDimensions(svg, width, height);
 
         // Create grid pattern
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
-        pattern.id = 'grid-pattern';
+        const patternId = `grid-pattern-${Date.now()}`;
+        pattern.id = patternId;
         pattern.setAttribute('width', this.gridSize.toString());
         pattern.setAttribute('height', this.gridSize.toString());
         pattern.setAttribute('patternUnits', 'userSpaceOnUse');
@@ -75,17 +73,75 @@ export class GridSystem {
         svg.appendChild(defs);
 
         // Apply pattern
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('width', '100%');
-        rect.setAttribute('height', '100%');
-        rect.setAttribute('fill', 'url(#grid-pattern)');
-        svg.appendChild(rect);
+        const backgroundRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        backgroundRect.setAttribute('width', width.toString());
+        backgroundRect.setAttribute('height', height.toString());
+        backgroundRect.setAttribute('fill', `url(#${patternId})`);
+        svg.appendChild(backgroundRect);
 
-        canvas.appendChild(svg);
+        canvas.prepend(svg);
         this.gridOverlay = svg;
+        this.gridBackground = backgroundRect;
 
-        console.log(`[GridSystem] Rendered grid with ${this.gridSize}px spacing`);
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.updateDimensions();
+            });
+            this.resizeObserver.observe(canvas);
+        } else {
+            this.resizeObserver = null;
+        }
+
+        this.scrollListener = () => this.updateDimensions();
+        canvas.addEventListener('scroll', this.scrollListener, { passive: true });
+        window.addEventListener('resize', this.updateDimensions);
+
     }
+
+    private detachListeners(): void {
+        if (this.gridOverlay) {
+            this.gridOverlay.remove();
+        }
+        if (this.resizeObserver && this.canvas) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        if (this.canvas && this.scrollListener) {
+            this.canvas.removeEventListener('scroll', this.scrollListener);
+        }
+        window.removeEventListener('resize', this.updateDimensions);
+        this.scrollListener = null;
+        this.gridOverlay = null;
+        this.gridBackground = null;
+    }
+
+    private computeDimensions(canvas: HTMLElement): { width: number; height: number } {
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(canvas.scrollWidth, rect.width, 2000);
+        const height = Math.max(canvas.scrollHeight, rect.height, 2000);
+        return { width, height };
+    }
+
+    private applyDimensions(svg: SVGSVGElement, width: number, height: number): void {
+        svg.setAttribute('width', width.toString());
+        svg.setAttribute('height', height.toString());
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.style.width = `${width}px`;
+        svg.style.height = `${height}px`;
+    }
+
+    updateDimensions = (): void => {
+        if (!this.canvas || !this.gridOverlay) {
+            return;
+        }
+
+        const { width, height } = this.computeDimensions(this.canvas);
+        this.applyDimensions(this.gridOverlay, width, height);
+        if (this.gridBackground) {
+            this.gridBackground.setAttribute('width', width.toString());
+            this.gridBackground.setAttribute('height', height.toString());
+        }
+    };
 
     /**
      * Snap coordinates to grid

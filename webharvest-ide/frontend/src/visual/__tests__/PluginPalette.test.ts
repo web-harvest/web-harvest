@@ -9,7 +9,7 @@
  */
 
 import { PluginPalette } from '../PluginPalette';
-import { getPluginTemplates, getPluginCategories } from '../VisualModelHelpers';
+import { getPluginTemplates } from '../VisualModelHelpers';
 
 describe('PluginPalette (TDD)', () => {
     let palette: PluginPalette;
@@ -38,13 +38,23 @@ describe('PluginPalette (TDD)', () => {
             }));
         });
 
-        it('should group plugins by category', () => {
-            const categories = palette.getCategories();
+        it('should render utility group by default and workflow group when requested', () => {
+            palette.render();
+            const titles = Array.from(document.querySelectorAll('.plugin-group__title'))
+                .map(header => header.textContent?.trim());
 
-            expect(categories).toContain('network');
-            expect(categories).toContain('extraction');
-            expect(categories).toContain('control');
-            expect(categories).toContain('variables');
+            expect(titles).toContain('Utilities');
+
+            palette.setActiveSegment('workflow');
+            palette.render();
+            const workflowTitles = Array.from(document.querySelectorAll('.plugin-group__title'))
+                .map(header => header.textContent?.trim());
+
+            if (workflowTitles.length > 0) {
+                expect(workflowTitles).toContain('Workflow Blocks');
+            } else {
+                expect(document.querySelector('.plugin-palette__empty')).toBeTruthy();
+            }
         });
     });
 
@@ -64,20 +74,28 @@ describe('PluginPalette (TDD)', () => {
             expect(filtered).toHaveLength(0);
         });
 
-        it('should filter by category', () => {
-            palette.filterByCategory('network');
-            const filtered = palette.getFilteredTemplates();
+        it('should filter by active segment', () => {
+            const baseline = palette.getFilteredTemplates().length;
+            palette.setActiveSegment('workflow');
+            const workflowFiltered = palette.getFilteredTemplates();
 
-            expect(filtered.length).toBeGreaterThan(0);
-            expect(filtered.every(t => t.category === 'network')).toBe(true);
+            expect(workflowFiltered.length).toBeLessThanOrEqual(baseline);
+            expect(workflowFiltered.every(template => template.semantics?.roles?.includes('ROOT_CONTAINER')
+                || template.semantics?.roles?.includes('CONTEXT_CONTAINER'))).toBe(true);
         });
 
         it('should clear filters', () => {
+            const baseline = palette.getFilteredTemplates().length;
             palette.search('http');
             palette.clearFilters();
             const filtered = palette.getFilteredTemplates();
 
-            expect(filtered.length).toBe(palette.getTemplates().length);
+            expect(filtered.length).toBe(baseline);
+        });
+
+        it('should exclude dependent templates from primary list', () => {
+            const filtered = palette.getFilteredTemplates();
+            expect(filtered.every(template => template.canAppearAtRoot !== false)).toBe(true);
         });
     });
 
@@ -130,7 +148,7 @@ describe('PluginPalette (TDD)', () => {
             palette.render();
 
             const paletteEl = document.getElementById('test-palette')!;
-            const categories = paletteEl.querySelectorAll('.plugin-category-section');
+            const categories = paletteEl.querySelectorAll('.plugin-group');
 
             expect(categories.length).toBeGreaterThan(0);
         });
@@ -149,11 +167,12 @@ describe('PluginPalette (TDD)', () => {
         it('should show plugin count per category', () => {
             palette.render();
 
-            const networkCategory = document.querySelector('[data-category="network"]');
-            expect(networkCategory).toBeTruthy();
-
-            const networkTemplates = getPluginTemplates().filter(t => t.category === 'network');
-            expect(networkCategory!.textContent).toContain(networkTemplates.length.toString());
+            const sections = Array.from(document.querySelectorAll('.plugin-group'));
+            sections.forEach(section => {
+                const count = Number(section.querySelector('.plugin-group__count')?.textContent ?? '0');
+                const items = section.querySelectorAll('.plugin-group__grid .plugin-item').length;
+                expect(count).toBe(items);
+            });
         });
     });
 
@@ -186,37 +205,6 @@ describe('PluginPalette (TDD)', () => {
 
             // Should trigger add node callback
             expect(palette).toBeDefined(); // Placeholder assertion
-        });
-    });
-
-    describe('Category Collapse/Expand', () => {
-        it('should collapse category on click', () => {
-            palette.render();
-
-            const categoryHeader = document.querySelector('[data-category="network"]') as HTMLElement;
-            categoryHeader?.click();
-
-            const categoryItems = document.querySelectorAll('[data-plugin-category="network"]');
-            categoryItems.forEach(item => {
-                expect((item as HTMLElement).style.display).toBe('none');
-            });
-        });
-
-        it('should expand collapsed category on second click', () => {
-            palette.render();
-
-            const categoryHeader = document.querySelector('[data-category="network"]') as HTMLElement;
-
-            // First click: collapse
-            categoryHeader?.click();
-
-            // Second click: expand
-            categoryHeader?.click();
-
-            const categoryItems = document.querySelectorAll('[data-plugin-category="network"]');
-            categoryItems.forEach(item => {
-                expect((item as HTMLElement).style.display).not.toBe('none');
-            });
         });
     });
 

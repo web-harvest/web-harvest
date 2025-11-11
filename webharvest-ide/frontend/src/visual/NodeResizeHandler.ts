@@ -127,11 +127,13 @@ export class NodeResizeHandler {
         // Add hover effect
         handle.addEventListener('mouseenter', () => {
             handle.style.background = '#2563eb';
-            handle.style.transform = 'scale(1.2)';
+            const base = handle.dataset.baseTransform || '';
+            const combined = `${base} scale(1.15)`.trim();
+            handle.style.transform = combined;
         });
         handle.addEventListener('mouseleave', () => {
             handle.style.background = '#1d4ed8';
-            handle.style.transform = 'scale(1)';
+            handle.style.transform = handle.dataset.baseTransform || '';
         });
 
         // Add drag handlers
@@ -148,46 +150,56 @@ export class NodeResizeHandler {
      * Position handle based on corner/edge
      */
     private positionHandle(handle: HTMLElement, position: ResizeHandlePosition): void {
-        const offset = -7; // Half of handle size (14px / 2)
+        handle.style.transform = '';
+        handle.style.top = '';
+        handle.style.left = '';
+        handle.style.right = '';
+        handle.style.bottom = '';
 
         switch (position) {
             case 'nw': // Top-left
-                handle.style.top = `${offset}px`;
-                handle.style.left = `${offset}px`;
+                handle.style.top = '0';
+                handle.style.left = '0';
+                handle.style.transform = 'translate(-50%, -50%)';
                 break;
             case 'n': // Top
-                handle.style.top = `${offset}px`;
+                handle.style.top = '0';
                 handle.style.left = '50%';
-                handle.style.transform = 'translateX(-50%)';
+                handle.style.transform = 'translate(-50%, -50%)';
                 break;
             case 'ne': // Top-right
-                handle.style.top = `${offset}px`;
-                handle.style.right = `${offset}px`;
+                handle.style.top = '0';
+                handle.style.right = '0';
+                handle.style.transform = 'translate(50%, -50%)';
                 break;
             case 'e': // Right
                 handle.style.top = '50%';
-                handle.style.right = `${offset}px`;
-                handle.style.transform = 'translateY(-50%)';
+                handle.style.right = '0';
+                handle.style.transform = 'translate(50%, -50%)';
                 break;
             case 'se': // Bottom-right
-                handle.style.bottom = `${offset}px`;
-                handle.style.right = `${offset}px`;
+                handle.style.bottom = '0';
+                handle.style.right = '0';
+                handle.style.transform = 'translate(50%, 50%)';
                 break;
             case 's': // Bottom
-                handle.style.bottom = `${offset}px`;
+                handle.style.bottom = '0';
                 handle.style.left = '50%';
-                handle.style.transform = 'translateX(-50%)';
+                handle.style.transform = 'translate(-50%, 50%)';
                 break;
             case 'sw': // Bottom-left
-                handle.style.bottom = `${offset}px`;
-                handle.style.left = `${offset}px`;
+                handle.style.bottom = '0';
+                handle.style.left = '0';
+                handle.style.transform = 'translate(-50%, 50%)';
                 break;
             case 'w': // Left
                 handle.style.top = '50%';
-                handle.style.left = `${offset}px`;
-                handle.style.transform = 'translateY(-50%)';
+                handle.style.left = '0';
+                handle.style.transform = 'translate(-50%, -50%)';
                 break;
         }
+
+        handle.dataset.baseTransform = handle.style.transform || '';
     }
 
     /**

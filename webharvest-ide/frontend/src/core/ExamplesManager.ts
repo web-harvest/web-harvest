@@ -8,6 +8,94 @@ export interface Example {
     description?: string;
 }
 
+export const DEFAULT_EXAMPLES: Example[] = [
+    {
+        file: 'advanced_search_example.xml',
+        name: 'Advanced Search',
+        description: 'Complex web scraping workflow using XPath selectors.',
+    },
+    {
+        file: 'amazon_test.xml',
+        name: 'Amazon Test',
+        description: 'Sample Amazon product scraping configuration.',
+    },
+    {
+        file: 'canon_with_namespace.xml',
+        name: 'Canon (Namespaces)',
+        description: 'Demonstrates namespace-aware scraping with XPath.',
+    },
+    {
+        file: 'crawler.xml',
+        name: 'Crawler',
+        description: 'Iterative crawler with pagination support.',
+    },
+    {
+        file: 'data_processing_pipeline.xml',
+        name: 'Processing Pipeline',
+        description: 'Chained processors for complex data transformation.',
+    },
+    {
+        file: 'database_example.xml',
+        name: 'Database Example',
+        description: 'Connects to a database and processes query results.',
+    },
+    {
+        file: 'expekt.xml',
+        name: 'Expekt',
+        description: 'Legacy sportsbook scraping example.',
+    },
+    {
+        file: 'ftp_plugin_demo.xml',
+        name: 'FTP Plugin',
+        description: 'Shows FTP download and upload operations.',
+    },
+    {
+        file: 'functions.xml',
+        name: 'Functions',
+        description: 'User-defined functions with parameters and return values.',
+    },
+    {
+        file: 'google_images.xml',
+        name: 'Google Images',
+        description: 'Scrapes Google Images search results.',
+    },
+    {
+        file: 'mail_plugin_demo.xml',
+        name: 'Mail Plugin',
+        description: 'Sending e-mail notifications from a workflow.',
+    },
+    {
+        file: 'nytimes.xml',
+        name: 'NYTimes',
+        description: 'New York Times headline scraping example.',
+    },
+    {
+        file: 'product_catalog.xml',
+        name: 'Product Catalog',
+        description: 'Builds a catalogue by aggregating multiple sources.',
+    },
+    {
+        file: 'social_media_analytics.xml',
+        name: 'Social Media Analytics',
+        description: 'Collects and normalises social media metrics.',
+    },
+    {
+        file: 'webbrowser_plugin_demo.xml',
+        name: 'Web Browser',
+        description: 'Headless browser automation through the webbrowser plugin.',
+    },
+    {
+        file: 'xquery.xml',
+        name: 'XQuery',
+        description: 'Transforms XML responses using XQuery.',
+    },
+    {
+        file: 'yahoomail.xml',
+        name: 'Yahoo Mail',
+        description: 'Mail scraping and processing example.',
+    },
+];
+
 export class ExamplesManager {
     private examples: Example[] = [];
     private loaded: boolean = false;
@@ -21,60 +109,7 @@ export class ExamplesManager {
         }
 
         try {
-            // Hardcoded examples for now (API can be added later)
-            this.examples = [
-                {
-                    file: 'basic_variables_example.xml',
-                    name: 'Basic Variables',
-                    description: 'Simple variable definition and usage',
-                },
-                {
-                    file: 'advanced_search_example.xml',
-                    name: 'Advanced Search',
-                    description: 'Complex web scraping with XPath',
-                },
-                {
-                    file: 'database_example.xml',
-                    name: 'Database Operations',
-                    description: 'Database connection and queries',
-                },
-                {
-                    file: 'database_plugin_demo.xml',
-                    name: 'Database Plugin',
-                    description: 'Database plugin demonstration',
-                },
-                {
-                    file: 'ftp_plugin_demo.xml',
-                    name: 'FTP Plugin',
-                    description: 'FTP operations example',
-                },
-                {
-                    file: 'mail_plugin_demo.xml',
-                    name: 'Mail Plugin',
-                    description: 'Email operations example',
-                },
-                {
-                    file: 'webbrowser_plugin_demo.xml',
-                    name: 'Web Browser',
-                    description: 'Browser automation example',
-                },
-                {
-                    file: 'xquery.xml',
-                    name: 'XQuery',
-                    description: 'XQuery transformation',
-                },
-                {
-                    file: 'simple_test.xml',
-                    name: 'Simple Test',
-                    description: 'Basic HTTP request test',
-                },
-                {
-                    file: 'modern_web_scraping.xml',
-                    name: 'Modern Web Scraping',
-                    description: 'Advanced scraping techniques',
-                },
-            ];
-
+            this.examples = [...DEFAULT_EXAMPLES];
             this.loaded = true;
             console.log(`✅ Loaded ${this.examples.length} examples`);
             return this.examples;
