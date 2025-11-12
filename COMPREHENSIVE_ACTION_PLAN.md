@@ -83,7 +83,7 @@ Integracja pełnej metadanych pluginów dla visual editora, zgodnie z istniejąc
 **Zrealizowane:**
 1. ✅ Analiza wszystkich 39 core pluginów
 2. ✅ Mapowanie istniejących `PluginSemantics` do `VisualPluginMetadata`
-3. ✅ Implementacja `VisualPluginMetadata` dla 44 pluginów:
+3. ✅ Implementacja `VisualPluginMetadata` dla 43 pluginów:
    - Ikony i kolory (zgodnie z grupami)
    - Input/Output ports
    - Grupy palette (z `PluginUIHints.paletteGroup`)
@@ -91,7 +91,7 @@ Integracja pełnej metadanych pluginów dla visual editora, zgodnie z istniejąc
 4. ✅ Testy TDD dla każdego pluginu
 
 **Wyniki testów:**
-- 42/43 pluginów mają VisualPluginMetadata (1 system component - BodyProcessorPlugin - celowo wykluczony)
+- 43/43 pluginów mają VisualPluginMetadata (systemowy `BodyProcessorPlugin` został usunięty w 2.3.x)
 - Wszystkie testy przechodzą ✅
 
 ### FAZA 4: JSON Schema Generator ✅ COMPLETED
@@ -108,7 +108,7 @@ Integracja pełnej metadanych pluginów dla visual editora, zgodnie z istniejąc
 4. ✅ Generowanie do `target/classes/webapp/static/metadata/plugins.json`
 5. ✅ Testy dla generatora
 
-**Wynik:** Generator działa, generuje 43 pluginy (2 system components wykluczone)
+**Wynik:** Generator działa, generuje 42 pluginy (system components obecnie brak)
 
 ### FAZA 5: Frontend Integration ✅ COMPLETED
 

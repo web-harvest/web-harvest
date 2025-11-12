@@ -245,19 +245,6 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
     }
 
     @Test(groups = {"integration", "core-plugins"})
-    public void testBodyProcessorPlugin() throws Exception {
-        LOG.info("Testing BodyProcessorPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("42_bodyprocessor_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // BodyProcessor plugin should execute successfully
-        assertTrue(true, "BodyProcessorPlugin should execute successfully");
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
     public void testCallPlugin() throws Exception {
         LOG.info("Testing CallPlugin integration with XML example");
         

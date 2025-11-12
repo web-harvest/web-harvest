@@ -23,7 +23,7 @@ CATEGORIES = {
     'ADVANCED': ['ValueOfPlugin', 'XMLPlugin', 'XQExpressionPlugin', 
                  'XQParamPlugin', 'XsltPlugin', 'StylesheetPlugin', 'HttpHeaderPlugin',
                  'HttpParamPlugin', 'CallParamPlugin', 'ElsePlugin', 'RegexpPatternPlugin',
-                 'RegexpSourcePlugin', 'RegexpResultPlugin', 'ListPlugin', 'BodyProcessorPlugin']
+                 'RegexpSourcePlugin', 'RegexpResultPlugin', 'ListPlugin']
 }
 
 # Plugin name mappings (Plugin class name -> element name)
@@ -73,7 +73,6 @@ PLUGIN_NAMES = {
     'RegexpSourcePlugin': 'regexp-source',
     'RegexpResultPlugin': 'regexp-result',
     'ListPlugin': 'list',
-    'BodyProcessorPlugin': 'body-processor'
 }
 
 def extract_javadoc(java_file: Path) -> str:

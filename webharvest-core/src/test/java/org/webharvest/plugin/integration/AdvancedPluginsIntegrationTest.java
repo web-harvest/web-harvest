@@ -154,16 +154,6 @@ public class AdvancedPluginsIntegrationTest extends XmlBasedIntegrationTestBase 
     }
 
     @Test(groups = {"integration", "advanced-plugins"})
-    public void testBodyProcessorPluginWithProcessing() throws Exception {
-        LOG.info("Testing BodyProcessor plugin with processing");
-        
-        String xmlPath = getNewPluginExamplePath("42_bodyprocessor_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "BodyProcessor plugin should work");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
     public void testCallParamPluginWithParameters() throws Exception {
         LOG.info("Testing CallParam plugin with parameters");
         

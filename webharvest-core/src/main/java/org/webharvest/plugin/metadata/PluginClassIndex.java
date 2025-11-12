@@ -49,7 +49,6 @@ final class PluginClassIndex {
                 "org.webharvest.plugin.core.CallPlugin",
                 "org.webharvest.plugin.core.CallParamPlugin",
                 "org.webharvest.plugin.core.ReturnPlugin",
-                "org.webharvest.plugin.core.BodyProcessorPlugin",
                 "org.webharvest.plugin.core.HttpPlugin",
                 "org.webharvest.plugin.core.HttpHeaderPlugin",
                 "org.webharvest.plugin.core.HttpParamPlugin",

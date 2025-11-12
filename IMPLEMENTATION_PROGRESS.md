@@ -173,7 +173,6 @@
    - RegexpPatternPlugin (detail - requires regexp)
    - RegexpSourcePlugin (detail - requires regexp)
    - RegexpResultPlugin (detail - optional regexp parent)
-   - BodyProcessorPlugin
 
 ## 🎯 Next Steps
 

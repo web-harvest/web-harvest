@@ -40,7 +40,6 @@ catalog.
 | call | org.webharvest.plugin.core.CallPlugin | CONTEXT_CONTAINER | Control | Curated |
 | call-param | org.webharvest.plugin.core.CallParamPlugin | DEPENDENT | Control | Curated |
 | return | org.webharvest.plugin.core.ReturnPlugin | DEPENDENT | Control | Curated |
-| body-processor | org.webharvest.plugin.core.BodyProcessorPlugin | CONTEXT_CONTAINER | Utility | Curated |
 | http | org.webharvest.plugin.core.HttpPlugin | BODY_EVALUATOR | Network | Curated |
 | http-header | org.webharvest.plugin.core.HttpHeaderPlugin | DEPENDENT | Network | Curated |
 | http-param | org.webharvest.plugin.core.HttpParamPlugin | DEPENDENT | Network | Curated |
