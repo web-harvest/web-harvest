@@ -103,51 +103,73 @@ export class MasterDetailEditor {
         row.className = 'http-detail-row';
         row.dataset.detailId = detail.id;
 
+        const primaryCell = document.createElement('div');
+        primaryCell.className = 'http-detail-cell';
+
         if (section.primaryAttribute) {
-            const primaryInput = document.createElement('input');
-            primaryInput.type = 'text';
-            primaryInput.className = 'detail-input';
-            primaryInput.placeholder = section.primaryAttribute;
-            primaryInput.value = (detail.attributes?.[section.primaryAttribute] ?? '').toString();
-            primaryInput.addEventListener('input', () => {
-                this.updateDetailAttribute(detail.id, section.primaryAttribute!, primaryInput.value);
+            const primaryField = this.createDetailField(
+                `${section.detailType}-${detail.id}-primary`,
+                section.primaryAttributeLabel ?? section.primaryAttribute,
+                detail.attributes?.[section.primaryAttribute] ?? '',
+                section.primaryAttributeDescription
+            );
+            primaryField.input.addEventListener('input', () => {
+                this.updateDetailAttribute(detail.id, section.primaryAttribute!, primaryField.input.value);
             });
-            row.appendChild(primaryInput);
+            primaryCell.appendChild(primaryField.wrapper);
         } else {
             const summary = this.registry.summarizeDetail(detail);
             const label = document.createElement('span');
-            label.className = 'http-detail-row__label';
+            label.className = summary.isEmpty ? 'http-detail-row__label http-detail-row__label--empty' : 'http-detail-row__label';
             label.textContent = summary.primaryText;
-            row.appendChild(label);
+            primaryCell.appendChild(label);
         }
 
+        row.appendChild(primaryCell);
+
+        const secondaryCell = document.createElement('div');
+        secondaryCell.className = 'http-detail-cell';
+
         if (section.usesBody) {
-            const bodyInput = document.createElement('input');
-            bodyInput.type = 'text';
-            bodyInput.className = 'detail-input';
-            bodyInput.placeholder = 'Value';
-            bodyInput.value = (detail.body ?? '').toString();
-            bodyInput.addEventListener('input', () => {
-                this.updateDetailBody(detail.id, bodyInput.value);
+            const bodyField = this.createDetailField(
+                `${section.detailType}-${detail.id}-body`,
+                'Value',
+                detail.body ?? '',
+                undefined,
+                true
+            );
+            bodyField.input.addEventListener('input', () => {
+                this.updateDetailBody(detail.id, bodyField.input.value);
             });
-            row.appendChild(bodyInput);
+            secondaryCell.appendChild(bodyField.wrapper);
         } else if (section.secondaryAttribute) {
-            const secondaryInput = document.createElement('input');
-            secondaryInput.type = 'text';
-            secondaryInput.className = 'detail-input';
-            secondaryInput.placeholder = section.secondaryAttribute;
-            secondaryInput.value = (detail.attributes?.[section.secondaryAttribute] ?? '').toString();
-            secondaryInput.addEventListener('input', () => {
-                this.updateDetailAttribute(detail.id, section.secondaryAttribute!, secondaryInput.value);
+            const secondaryInitialValue =
+                detail.attributes?.[section.secondaryAttribute] ??
+                (typeof detail.body === 'string' ? detail.body : '');
+
+            const secondaryField = this.createDetailField(
+                `${section.detailType}-${detail.id}-secondary`,
+                section.secondaryAttributeLabel ?? section.secondaryAttribute,
+                secondaryInitialValue,
+                section.secondaryAttributeDescription
+            );
+            secondaryField.input.addEventListener('input', () => {
+                const nextValue = secondaryField.input.value;
+                this.updateDetailAttribute(detail.id, section.secondaryAttribute!, nextValue);
+                if (typeof detail.body === 'string') {
+                    this.updateDetailBody(detail.id, nextValue);
+                }
             });
-            row.appendChild(secondaryInput);
+            secondaryCell.appendChild(secondaryField.wrapper);
         } else {
             const summary = this.registry.summarizeDetail(detail);
             const valueEl = document.createElement('span');
             valueEl.className = summary.isEmpty ? 'http-detail-row__value http-detail-row__value--empty' : 'http-detail-row__value';
             valueEl.textContent = summary.secondaryText ?? '—';
-            row.appendChild(valueEl);
+            secondaryCell.appendChild(valueEl);
         }
+
+        row.appendChild(secondaryCell);
 
         const actions = document.createElement('div');
         actions.className = 'http-detail-row__actions';
@@ -193,12 +215,54 @@ export class MasterDetailEditor {
         if (!newDetail) {
             return;
         }
+        const definition = this.registry.getDetailDefinition(detailType);
+        if (definition?.secondaryAttribute && typeof newDetail.body === 'string') {
+            newDetail.body = newDetail.attributes?.[definition.secondaryAttribute] ?? '';
+        }
         this.node = this.cloneNode({
             ...this.node,
             children: [...(this.node.children || []), newDetail]
         });
         this.emitChange();
         this.renderSections();
+    }
+
+    private createDetailField(
+        id: string,
+        labelText: string,
+        value: string,
+        description?: string,
+        multiline: boolean = false
+    ): { wrapper: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement } {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'detail-field';
+        wrapper.setAttribute('for', id);
+
+        const label = document.createElement('span');
+        label.className = 'detail-field__label';
+        label.textContent = labelText;
+        wrapper.appendChild(label);
+
+        if (description) {
+            wrapper.title = description;
+        }
+
+        const input = multiline ? document.createElement('textarea') : document.createElement('input');
+        input.id = id;
+        input.className = multiline ? 'detail-input detail-input--textarea' : 'detail-input';
+        if (!multiline) {
+            const textInput = input as HTMLInputElement;
+            textInput.type = 'text';
+            textInput.placeholder = description || labelText;
+        } else {
+            const textArea = input as HTMLTextAreaElement;
+            textArea.placeholder = description || '';
+        }
+        input.value = value.toString();
+
+        wrapper.appendChild(input);
+
+        return { wrapper, input };
     }
 
     private duplicateDetail(detailId: string): void {

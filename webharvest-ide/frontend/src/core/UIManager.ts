@@ -61,14 +61,7 @@ export class UIManager {
                 tab.setAttribute('aria-hidden', 'false');
 
                 // Auto-activate Properties tab when entering Visual mode
-                const allTabs = document.querySelectorAll('.sidebar-nav-btn');
-                const allPanels = document.querySelectorAll('.sidebar-panel');
-
-                allTabs.forEach(t => t.classList.remove('active'));
-                allPanels.forEach(p => p.classList.remove('active'));
-
-                tab.classList.add('active');
-                panel.classList.add('active');
+                this.activateSidebarTabElement(tab, panel);
                 panel.style.display = 'block';
             } else {
                 // Hide Properties tab in XML mode
@@ -77,16 +70,31 @@ export class UIManager {
                 panel.classList.remove('active');
                 panel.style.display = 'none';
 
-                // Switch to Logs tab when hiding Properties
-                const logsTab = document.querySelector('[data-panel="logs"]') as HTMLElement;
-                const logsPanel = document.getElementById('logsPanel');
+                // Prefer Run & Test tab when Properties are hidden; fallback to Logs
+                const runTab = document.querySelector('[data-panel="run"]') as HTMLElement | null;
+                const runPanel = document.getElementById('runPanel');
 
-                if (logsTab && logsPanel) {
-                    logsTab.classList.add('active');
-                    logsPanel.classList.add('active');
+                if (runTab && runPanel) {
+                    this.activateSidebarTabElement(runTab, runPanel);
+                } else {
+                    const logsTab = document.querySelector('[data-panel="logs"]') as HTMLElement | null;
+                    const logsPanel = document.getElementById('logsPanel');
+                    if (logsTab && logsPanel) {
+                        this.activateSidebarTabElement(logsTab, logsPanel);
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Helper to set specific sidebar panel active given the elements
+     */
+    private activateSidebarTabElement(tabEl: HTMLElement, panelEl: HTMLElement): void {
+        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.sidebar-panel').forEach(panel => panel.classList.remove('active'));
+        tabEl.classList.add('active');
+        panelEl.classList.add('active');
     }
 
     /**

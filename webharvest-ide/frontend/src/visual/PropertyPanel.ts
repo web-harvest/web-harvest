@@ -4,6 +4,7 @@
  */
 
 import type { VisualNode, Plugin, AttributeDefinition, PluginSemanticsModel } from '../types';
+import type { ContainerSummary } from './HierarchyInspector';
 import type { PluginManager } from '../core/PluginManager';
 import { MasterDetailRegistry } from './detail/MasterDetailRegistry';
 import { MasterDetailEditor } from './detail/MasterDetailEditor';
@@ -40,6 +41,9 @@ export class PropertyPanel {
 
     // Available variables for expression builder
     private availableVariables: string[] = [];
+    private currentFocusSummary: { nodeId: string; summary: ContainerSummary } | null = null;
+    private currentForm: HTMLElement | null = null;
+    private focusSummaryElement: HTMLElement | null = null;
 
     constructor(containerId: string, options?: PropertyPanelOptions | ((node: VisualNode) => void)) {
         const container = document.getElementById(containerId);
@@ -283,6 +287,8 @@ export class PropertyPanel {
         form.style.padding = '16px';
         form.style.maxHeight = 'calc(100vh - 200px)';
         form.style.overflowY = 'auto';
+        this.currentForm = form;
+        this.focusSummaryElement = null;
 
         // Type (read-only)
         const typeLabel = document.createElement('div');
@@ -290,6 +296,8 @@ export class PropertyPanel {
         typeLabel.style.fontSize = '14px';
         typeLabel.innerHTML = `<strong style="color: var(--magenta);">Type:</strong> ${this.currentNode.type}`;
         form.appendChild(typeLabel);
+
+        this.appendFocusSummarySection(form);
 
         // Try to use SchemaEditor if plugin schema is available
         const plugin = this.getPluginSchema(this.currentNode.type);
@@ -440,7 +448,11 @@ export class PropertyPanel {
         if (!handledAttributes && plugin && plugin.schema && this.schemaEditor) {
             console.log(`✅ [PropertyPanel] Using SchemaEditor for plugin: ${this.currentNode.type}`);
 
-            this.schemaEditor.generateEditor(form, plugin, this.currentNode.attributes);
+            const schemaContainer = document.createElement('div');
+            schemaContainer.className = 'schema-editor-wrapper';
+            form.appendChild(schemaContainer);
+
+            this.schemaEditor.generateEditor(schemaContainer, plugin, this.currentNode.attributes);
             this.schemaEditor.onChange((attributes) => {
                 if (this.currentNode) {
                     const errors = this.schemaEditor?.validate() || [];
@@ -457,7 +469,7 @@ export class PropertyPanel {
                 }
             });
 
-            const inputs = form.querySelectorAll('input, select, textarea');
+            const inputs = schemaContainer.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
                 input.addEventListener('input', () => {
                     this.schemaEditor?.validate();
@@ -587,6 +599,21 @@ export class PropertyPanel {
         console.log('✅ [PropertyPanel] render() complete');
     }
 
+    updateFocusSummary(payload: { nodeId: string; summary: ContainerSummary } | null): void {
+        if (payload) {
+            this.currentFocusSummary = {
+                nodeId: payload.nodeId,
+                summary: payload.summary
+            };
+        } else {
+            this.currentFocusSummary = null;
+        }
+
+        if (this.currentForm) {
+            this.appendFocusSummarySection(this.currentForm);
+        }
+    }
+
     /**
      * Add button to open advanced editor
      */
@@ -633,6 +660,105 @@ export class PropertyPanel {
         container.appendChild(buttonContainer);
 
         console.log(`✅ [PropertyPanel] Button added to DOM for ${fieldName}`);
+    }
+
+    private appendFocusSummarySection(form: HTMLElement): void {
+        if (this.focusSummaryElement) {
+            this.focusSummaryElement.remove();
+            this.focusSummaryElement = null;
+        }
+
+        if (!this.currentNode || !this.currentFocusSummary || this.currentFocusSummary.nodeId !== this.currentNode.id) {
+            return;
+        }
+
+        this.focusSummaryElement = this.createFocusSummaryPanel(this.currentFocusSummary.summary);
+        form.appendChild(this.focusSummaryElement);
+    }
+
+    private createFocusSummaryPanel(summary: ContainerSummary): HTMLElement {
+        const panel = document.createElement('section');
+        panel.className = 'property-focus-summary';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'property-focus-summary__title';
+        titleRow.textContent = 'Focus overview';
+        panel.appendChild(titleRow);
+
+        const metricsRow = document.createElement('div');
+        metricsRow.className = 'property-focus-summary__metrics';
+        metricsRow.appendChild(this.createFocusChip('Children', summary.childCount.toString()));
+        metricsRow.appendChild(this.createFocusChip('Nested containers', summary.containerCount.toString()));
+        metricsRow.appendChild(this.createFocusChip('Leaves', summary.leafCount.toString()));
+        metricsRow.appendChild(this.createFocusChip('Details', summary.detailCount.toString()));
+        metricsRow.appendChild(this.createFocusChip('Execution', 'Idle'));
+        panel.appendChild(metricsRow);
+
+        if (summary.attributeHighlights.length > 0) {
+            const highlightList = document.createElement('ul');
+            highlightList.className = 'property-focus-summary__list';
+            summary.attributeHighlights.forEach(({ key, value }) => {
+                const item = document.createElement('li');
+                item.className = 'property-focus-summary__list-item';
+                item.textContent = `${key}: ${value}`;
+                highlightList.appendChild(item);
+            });
+            panel.appendChild(highlightList);
+        }
+
+        if (summary.detailBreakdown.length > 0) {
+            const detailGrid = document.createElement('div');
+            detailGrid.className = 'property-focus-summary__detail-grid';
+
+            summary.detailBreakdown.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'property-focus-summary__detail-card';
+
+                const heading = document.createElement('div');
+                heading.className = 'property-focus-summary__detail-title';
+                heading.textContent = `${entry.title} (${entry.count})`;
+                card.appendChild(heading);
+
+                const list = document.createElement('ul');
+                list.className = 'property-focus-summary__detail-list';
+                entry.preview.forEach(text => {
+                    const li = document.createElement('li');
+                    li.className = 'property-focus-summary__detail-item';
+                    li.textContent = text;
+                    list.appendChild(li);
+                });
+                const remaining = entry.count - entry.preview.length;
+                if (remaining > 0) {
+                    const li = document.createElement('li');
+                    li.className = 'property-focus-summary__detail-item property-focus-summary__detail-item--muted';
+                    li.textContent = `+${remaining} more…`;
+                    list.appendChild(li);
+                }
+                card.appendChild(list);
+                detailGrid.appendChild(card);
+            });
+
+            panel.appendChild(detailGrid);
+        }
+
+        return panel;
+    }
+
+    private createFocusChip(label: string, value: string): HTMLElement {
+        const chip = document.createElement('div');
+        chip.className = 'property-focus-summary__chip';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'property-focus-summary__chip-label';
+        labelEl.textContent = label;
+        chip.appendChild(labelEl);
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'property-focus-summary__chip-value';
+        valueEl.textContent = value;
+        chip.appendChild(valueEl);
+
+        return chip;
     }
 
     private renderHttpRequestSection(form: HTMLElement): void {

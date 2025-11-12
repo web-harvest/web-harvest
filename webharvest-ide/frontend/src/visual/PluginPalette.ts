@@ -194,6 +194,11 @@ export class PluginPalette {
     /**
      * Get all categories from CURRENT templates (not hardcoded!)
      */
+    getCategories(): string[] {
+        const categories = this.filteredTemplates.map(template => template.category || 'General');
+        return Array.from(new Set(categories));
+    }
+
     /**
      * Set selected master plugin to highlight allowed children
      */
@@ -510,6 +515,7 @@ export class PluginPalette {
     private createPluginItem(template: PluginTemplate): HTMLElement {
         const item = document.createElement('div');
         item.className = 'plugin-item';
+        item.classList.add('palette-plugin');
         item.draggable = true;
         item.tabIndex = 0;
         item.dataset.pluginType = template.type;

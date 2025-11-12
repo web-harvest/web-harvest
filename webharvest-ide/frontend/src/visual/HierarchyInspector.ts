@@ -15,6 +15,7 @@ export interface ContainerSummary {
     detailCount: number;
     typeFrequency: Array<{ type: string; count: number }>;
     attributeHighlights: Array<{ key: string; value: string }>;
+    detailBreakdown: Array<{ title: string; count: number; preview: string[] }>;
 }
 
 export function analyzeHierarchy(nodes: VisualNode[]): HierarchyStats {
@@ -46,11 +47,34 @@ export function analyzeContainer(
 ): ContainerSummary {
     const children = node.children || [];
     const detailIds = new Set<string>();
+    const detailBreakdown: Array<{ title: string; count: number; preview: string[] }> = [];
 
     if (detailRegistry) {
         const partition = detailRegistry.partitionChildren(node);
+        const sections = detailRegistry.getSections(node.type);
         Object.values(partition.sections).forEach(sectionNodes => {
             sectionNodes.forEach(detailNode => detailIds.add(detailNode.id));
+        });
+
+        sections.forEach(section => {
+            const sectionDetails = partition.sections[section.detailType] || [];
+            if (sectionDetails.length === 0) {
+                return;
+            }
+
+            const preview = sectionDetails.slice(0, 2).map(detailNode => {
+                const summary = detailRegistry.summarizeDetail(detailNode);
+                if (summary.secondaryText) {
+                    return `${summary.primaryText} → ${summary.secondaryText}`;
+                }
+                return summary.primaryText;
+            });
+
+            detailBreakdown.push({
+                title: section.sectionTitle,
+                count: sectionDetails.length,
+                preview
+            });
         });
     }
 
@@ -83,7 +107,8 @@ export function analyzeContainer(
         leafCount,
         detailCount: detailIds.size,
         typeFrequency,
-        attributeHighlights
+        attributeHighlights,
+        detailBreakdown
     };
 }
 

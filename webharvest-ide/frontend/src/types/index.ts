@@ -21,6 +21,7 @@ export interface Tab {
     tokenUsage?: TokenUsage;
     visualNodes?: VisualNode[];
     activeSidebarPanel?: string;
+    runPanelState?: RunPanelState;
 }
 
 // ============================================================================
@@ -207,6 +208,7 @@ export type ExecutionStatus =
     | 'RESUMED'
     | 'COMPLETED'
     | 'ERROR'
+    | 'FAILED'
     | 'STOPPED';
 
 export interface ExecutionResult {
@@ -313,6 +315,42 @@ export interface TabEvent {
     type: 'add' | 'remove' | 'switch' | 'update';
     tabId: string;
     tab?: Tab;
+}
+
+// ============================================================================
+// Run/Validate Panel
+// ============================================================================
+
+export interface RunPanelPayload {
+    inputJson: string;
+    correlationId?: string;
+    idempotencyKey?: string;
+    taskDomainJson?: string;
+}
+
+export type RunHistoryScope = 'workflow' | 'task';
+
+export type RunHistoryStatus =
+    | 'QUEUED'
+    | 'RUNNING'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'STOPPED'
+    | 'CANCELLED';
+
+export interface RunHistoryEntry {
+    id: string;
+    createdAt: number;
+    scope: RunHistoryScope;
+    payload: RunPanelPayload;
+    executionId?: string;
+    nodeId?: string;
+    nodeLabel?: string;
+    status?: RunHistoryStatus;
+}
+
+export interface RunPanelState extends RunPanelPayload {
+    history: RunHistoryEntry[];
 }
 
 export interface ExecutionEvent {

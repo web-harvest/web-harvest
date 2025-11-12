@@ -50,7 +50,8 @@ export class SchemaEditor {
 
         // Generate fields for each attribute
         plugin.schema.attributes.forEach(attrDef => {
-            const field = this.createField(attrDef, currentAttributes[attrDef.name] || attrDef.defaultValue || '');
+            const currentValue = currentAttributes[attrDef.name] || attrDef.defaultValue || '';
+            const field = this.createField(attrDef, currentValue);
             form.appendChild(field.element);
             this.fields.set(attrDef.name, field);
         });
@@ -62,6 +63,14 @@ export class SchemaEditor {
      * Create form field based on attribute definition
      */
     private createField(attrDef: AttributeDefinition, value: string): EditorField {
+        if (attrDef.type === 'boolean') {
+            return this.createBooleanField(attrDef, value);
+        }
+
+        if (attrDef.type === 'enum') {
+            return this.createEnumField(attrDef, value);
+        }
+
         const fieldContainer = document.createElement('div');
         fieldContainer.className = 'editor-field';
         fieldContainer.style.cssText = `
@@ -103,20 +112,12 @@ export class SchemaEditor {
         let inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
         switch (attrDef.type) {
-            case 'boolean':
-                inputElement = this.createCheckbox(attrDef, value);
-                break;
-
             case 'number':
                 inputElement = this.createNumberInput(attrDef, value);
                 break;
 
             case 'url':
                 inputElement = this.createUrlInput(attrDef, value);
-                break;
-
-            case 'enum':
-                inputElement = this.createSelect(attrDef, value);
                 break;
 
             case 'xpath':
@@ -182,20 +183,173 @@ export class SchemaEditor {
     }
 
     /**
-     * Create checkbox
+     * Create segmented control for enums (<=3 options) or dropdown fallback
      */
-    private createCheckbox(attrDef: AttributeDefinition, value: string): HTMLInputElement {
+    private createEnumField(attrDef: AttributeDefinition, value: string): EditorField {
+        const fieldContainer = document.createElement('div');
+        fieldContainer.className = 'editor-field';
+        fieldContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        `;
+
+        const label = document.createElement('label');
+        label.textContent = attrDef.name + (attrDef.required ? ' *' : '');
+        label.style.cssText = `
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        `;
+        if (attrDef.description) {
+            label.title = attrDef.description;
+            label.style.cursor = 'help';
+        }
+        fieldContainer.appendChild(label);
+
+        if (attrDef.description) {
+            const description = document.createElement('div');
+            description.textContent = attrDef.description;
+            description.style.cssText = `
+                font-size: 11px;
+                color: var(--gray-600);
+                margin-top: -4px;
+            `;
+            description.title = attrDef.description;
+            fieldContainer.appendChild(description);
+        }
+
+        const values = attrDef.allowedValues ?? [];
+        const useSegmented = values.length > 0 && values.length <= 3;
+
+        if (!useSegmented) {
+            const select = this.createSelect(attrDef, value);
+            fieldContainer.appendChild(select);
+            return {
+                name: attrDef.name,
+                type: attrDef.type,
+                element: fieldContainer,
+                required: attrDef.required
+            };
+        }
+
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = attrDef.name;
+        hiddenInput.value = value || values[0];
+        fieldContainer.appendChild(hiddenInput);
+
+        const control = document.createElement('div');
+        control.className = 'editor-segmented-control';
+
+        values.forEach(optionValue => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'editor-segmented-control__option';
+            button.textContent = optionValue;
+            if ((value || values[0]) === optionValue) {
+                button.classList.add('is-active');
+            }
+
+            button.addEventListener('click', () => {
+                hiddenInput.value = optionValue;
+                control.querySelectorAll('.editor-segmented-control__option').forEach(btn => btn.classList.remove('is-active'));
+                button.classList.add('is-active');
+                this.handleChange();
+            });
+
+            control.appendChild(button);
+        });
+
+        fieldContainer.appendChild(control);
+
+        return {
+            name: attrDef.name,
+            type: attrDef.type,
+            element: fieldContainer,
+            required: attrDef.required
+        };
+    }
+
+    /**
+     * Create Apple-style toggle for boolean attributes
+     */
+    private createBooleanField(attrDef: AttributeDefinition, value: string): EditorField {
+        const fieldContainer = document.createElement('div');
+        fieldContainer.className = 'editor-field editor-field--boolean';
+        fieldContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        `;
+
+        const label = document.createElement('label');
+        label.textContent = attrDef.name + (attrDef.required ? ' *' : '');
+        label.style.cssText = `
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        `;
+        if (attrDef.description) {
+            label.title = attrDef.description;
+            label.style.cursor = 'help';
+        }
+        fieldContainer.appendChild(label);
+
+        if (attrDef.description) {
+            const description = document.createElement('div');
+            description.textContent = attrDef.description;
+            description.style.cssText = `
+                font-size: 11px;
+                color: var(--gray-600);
+                margin-top: -4px;
+            `;
+            description.title = attrDef.description;
+            fieldContainer.appendChild(description);
+        }
+
+        const toggle = document.createElement('label');
+        toggle.className = 'editor-toggle';
+        toggle.setAttribute('role', 'switch');
+
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.checked = value === 'true';
         input.required = attrDef.required;
-        input.style.cssText = `
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        `;
+        input.name = attrDef.name;
+        input.className = 'editor-toggle__input';
 
-        return input;
+        const track = document.createElement('span');
+        track.className = 'editor-toggle__track';
+
+        const knob = document.createElement('span');
+        knob.className = 'editor-toggle__knob';
+        track.appendChild(knob);
+
+        const stateLabel = document.createElement('span');
+        stateLabel.className = 'editor-toggle__state';
+        stateLabel.textContent = input.checked ? 'On' : 'Off';
+
+        toggle.appendChild(input);
+        toggle.appendChild(track);
+        toggle.appendChild(stateLabel);
+
+        input.addEventListener('change', () => {
+            toggle.setAttribute('aria-checked', input.checked ? 'true' : 'false');
+            stateLabel.textContent = input.checked ? 'On' : 'Off';
+            this.handleChange();
+        });
+
+        toggle.setAttribute('aria-checked', input.checked ? 'true' : 'false');
+
+        fieldContainer.appendChild(toggle);
+
+        return {
+            name: attrDef.name,
+            type: attrDef.type,
+            element: fieldContainer,
+            required: attrDef.required
+        };
     }
 
     /**
@@ -204,6 +358,7 @@ export class SchemaEditor {
     private createSelect(attrDef: AttributeDefinition, value: string): HTMLSelectElement {
         const select = document.createElement('select');
         select.required = attrDef.required;
+        select.name = attrDef.name;
 
         if (attrDef.allowedValues) {
             attrDef.allowedValues.forEach(optionValue => {

@@ -233,36 +233,6 @@
                 </div>
             </div>
 
-            <!-- Execution Controls (Run/Validate always visible in Visual mode, Pause/Resume/Stop during execution) -->
-            <div id="executionControls"
-                style="display: none; position: absolute; top: 8px; right: 8px; z-index: 101; background: white; border-radius: 8px; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; gap: 4px;">
-                <!-- Run and Validate buttons (always visible in Visual mode) -->
-                <button id="canvasRunBtn" class="btn btn-sm" onclick="window.app.runConfig()"
-                    title="Run Configuration (⌘R)" style="background: var(--lime, #A4C639); color: white;">
-                    <i class="fas fa-play"></i>
-                </button>
-                <button id="canvasValidateBtn" class="btn btn-sm" onclick="window.app.validateConfig()"
-                    title="Validate Configuration (⌘K)"
-                    style="background: var(--gray-100, #f3f4f6); color: var(--text-primary, #1F2937);">
-                    <i class="fas fa-check"></i>
-                </button>
-                <!-- Execution control buttons (only during execution) -->
-                <div id="executionActionButtons"
-                    style="display: none; gap: 4px; margin-left: 4px; padding-left: 4px; border-left: 1px solid var(--gray-300, #d1d5db);">
-                    <button id="pauseBtn" class="btn btn-sm btn-warning" onclick="window.app.pauseExecution()"
-                        title="Pause">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                    <button id="resumeBtn" class="btn btn-sm btn-success" onclick="window.app.resumeExecution()"
-                        title="Resume" style="display: none;">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button class="btn btn-sm btn-error" onclick="window.app.stopExecution()" title="Stop">
-                        <i class="fas fa-stop"></i>
-                    </button>
-                </div>
-            </div>
-
             <!-- Monaco Editor (XML mode) -->
             <div id="editor" class="monaco-editor-container" style="flex: 1; width: 100%; min-width: 0;"></div>
 
@@ -285,6 +255,12 @@
                     aria-label="Plugin Properties">
                     <i class="fas fa-cog"></i>
                     <span>Properties</span>
+                </button>
+                <!-- Run & Test Tab -->
+                <button class="sidebar-nav-btn" data-panel="run" id="runTabBtn"
+                    onclick="window.app.switchSidebarPanel('run')" aria-label="Run and Test Workflow">
+                    <i class="fas fa-bolt"></i>
+                    <span>Run &amp; Test</span>
                 </button>
                 <!-- Logs Tab -->
                 <button class="sidebar-nav-btn" data-panel="logs" onclick="window.app.switchSidebarPanel('logs')"
@@ -331,8 +307,28 @@
                     </div>
                 </div>
 
+                <!-- Run & Test Panel -->
+                <div id="runPanel" class="sidebar-panel">
+                    <div class="panel-header panel-header--run">
+                        <h3>Run &amp; Test</h3>
+                        <div class="panel-actions run-panel-header__actions">
+                            <button class="btn-icon run-panel-header__action" onclick="window.app.runConfig()"
+                                title="Run Workflow (⌘R)">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="btn-icon run-panel-header__action" onclick="window.app.validateConfig()"
+                                title="Validate Configuration (⌘K)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="panel-body panel-body--run" id="runPanelBody">
+                        <div id="executionControls"></div>
+                    </div>
+                </div>
+
                 <!-- Logs Panel -->
-                <div id="logsPanel" class="sidebar-panel active">
+                <div id="logsPanel" class="sidebar-panel">
                     <div class="panel-header">
                         <h3>Execution Logs</h3>
                         <button class="btn-icon" onclick="window.app.clearLogs()" title="Clear Logs">

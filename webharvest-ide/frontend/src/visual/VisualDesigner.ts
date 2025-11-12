@@ -26,7 +26,7 @@ import { ConnectionManager, type Connection as ManualConnection, type Connection
 import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
 import { NodeResizeHandler } from './NodeResizeHandler';
-import { BreadcrumbNav, type BreadcrumbItem } from './BreadcrumbNav';
+import { BreadcrumbNav, type BreadcrumbItem, type BreadcrumbMetric } from './BreadcrumbNav';
 import { DrillDownManager } from './DrillDownManager';
 import type { PluginManager } from '../core/PluginManager';
 import {
@@ -37,7 +37,7 @@ import {
 } from './control/ControlNodeUtils';
 import { planConnections } from './connections/ConnectionPlanner';
 import { MasterDetailRegistry, type DetailSectionDefinition } from './detail/MasterDetailRegistry';
-import { analyzeHierarchy, analyzeContainer } from './HierarchyInspector';
+import { analyzeHierarchy, analyzeContainer, type ContainerSummary } from './HierarchyInspector';
 type DesignerSnapshot = {
     nodes: VisualNode[];
     connections: ManualConnection[];
@@ -64,18 +64,41 @@ type EventListener = (data: any) => void;
 
 type WorkflowStatus = 'idle' | 'running' | 'paused';
 
+type AnchorSide = 'left' | 'right' | 'top' | 'bottom';
+
+type AnchorBounds = {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    width: number;
+    height: number;
+    centerX: number;
+    centerY: number;
+};
+
+type AnchorInfo = {
+    id: string;
+    type: 'node' | 'marker';
+    bounds: AnchorBounds;
+    element: HTMLElement | null;
+};
+
+type Point = { x: number; y: number };
+
 export class VisualDesigner {
     private nodes: VisualNode[] = [];
     private connections: Connection[] = [];
     private container: HTMLElement;
     private canvasElement: HTMLElement;
+    private canvasScrollContainer!: HTMLElement;
     private svgElement: SVGSVGElement | null = null;
     private processMarkersLayer: HTMLElement | null = null;
     private selectedNodeId: string | null = null;
     private selectedNodeIds: string[] = [];
     private selectedConnectionId: string | null = null;
     private eventListeners: Map<string, EventListener[]> = new Map();
-    private connectionLineElements: Map<string, SVGLineElement> = new Map(); // Store connection line references
+    private connectionLineElements: Map<string, SVGPathElement> = new Map(); // Store connection path references
 
     // Execution state visualization
     private stateRenderer: NodeStateRenderer = new NodeStateRenderer();
@@ -91,6 +114,7 @@ export class VisualDesigner {
     private breadcrumbNav: BreadcrumbNav = new BreadcrumbNav();
     private breadcrumbContainer: HTMLElement | null = null;
     private focusSummaryContainer: HTMLElement | null = null;
+    private focusFlowOverlay: HTMLElement | null = null;
     private drillDownManager: DrillDownManager = new DrillDownManager();
     private visibleNodes: VisualNode[] = [];
 
@@ -214,8 +238,7 @@ export class VisualDesigner {
 
         // Initialize semantic validator if plugin manager provided
         if (pluginManager) {
-            this.semanticValidator = new SemanticValidator(pluginManager);
-            this.detailRegistry = new MasterDetailRegistry(pluginManager);
+            this.setPluginManager(pluginManager);
         }
 
         // Initialize resize handler
@@ -328,14 +351,24 @@ export class VisualDesigner {
         contentWrapper.style.width = '100%';
         contentWrapper.style.minHeight = '100%';
         contentWrapper.style.flex = '1';
+        contentWrapper.style.overflow = 'auto';
 
+        const stage = document.createElement('div');
+        stage.className = 'canvas-stage';
+        stage.style.position = 'relative';
+        stage.style.minWidth = '100%';
+        stage.style.minHeight = '100%';
+        stage.style.transformOrigin = '0 0';
+
+        contentWrapper.appendChild(stage);
         shell.appendChild(contentWrapper);
         this.container.appendChild(shell);
 
+        this.canvasScrollContainer = contentWrapper;
         this.updateBreadcrumbTrail();
         this.updateFocusSummary();
 
-        return contentWrapper;
+        return stage;
     }
 
     /**
@@ -553,6 +586,10 @@ export class VisualDesigner {
         nodes.forEach((node) => {
             const { width } = this.getNodeDimensions(node);
 
+            if (node.position && node.isManualPositioned === undefined) {
+                node.isManualPositioned = true;
+            }
+
             if (node.isManualPositioned && node.position) {
                 // Honour manual placement but ensure subsequent auto nodes start after it
                 cursorX = Math.max(cursorX, node.position.x + width + gap);
@@ -561,13 +598,12 @@ export class VisualDesigner {
 
             if (!node.position) {
                 node.position = { x: cursorX, y: baselineY };
-            } else {
-                node.position.x = cursorX;
-                node.position.y = baselineY;
+                node.isManualPositioned = false;
+                cursorX += width + gap;
+                return;
             }
 
-            node.isManualPositioned = false;
-            cursorX += width + gap;
+            cursorX = Math.max(cursorX, node.position.x + width + gap);
         });
     }
 
@@ -631,11 +667,41 @@ export class VisualDesigner {
         }
         const existingOverlay = this.canvasElement.querySelector('.grid-overlay');
         if (!this.gridInitialized || !existingOverlay) {
-            this.gridSystem.render(this.canvasElement);
+            this.gridSystem.render(this.canvasElement, this.canvasScrollContainer);
             this.gridInitialized = true;
         } else {
             this.gridSystem.updateDimensions();
         }
+    }
+
+    private updateCanvasStageBounds(isRootView: boolean): void {
+        if (!this.canvasScrollContainer) {
+            return;
+        }
+
+        if (!isRootView || !this.visibleNodes || this.visibleNodes.length === 0) {
+            this.canvasElement.style.width = '100%';
+            this.canvasElement.style.height = '100%';
+            return;
+        }
+
+        let maxRight = 0;
+        let maxBottom = 0;
+
+        this.visibleNodes.forEach(node => {
+            const position = node.position ?? { x: this.START_X, y: this.START_Y };
+            const size = this.getNodeDimensions(node);
+
+            maxRight = Math.max(maxRight, position.x + size.width);
+            maxBottom = Math.max(maxBottom, position.y + size.height);
+        });
+
+        const padding = this.PADDING * 2;
+        const minWidth = this.canvasScrollContainer.clientWidth;
+        const minHeight = this.canvasScrollContainer.clientHeight;
+
+        this.canvasElement.style.width = `${Math.max(maxRight + padding, minWidth)}px`;
+        this.canvasElement.style.height = `${Math.max(maxBottom + padding, minHeight)}px`;
     }
 
     private rebuildConnections(reapplyLayout: boolean = true, sourceNodes?: VisualNode[]): VisualNode[] {
@@ -662,7 +728,7 @@ export class VisualDesigner {
         const planned = (!inFocus && connectionCandidates.length > 0)
             ? planConnections(connectionCandidates, 'workflow-start', 'workflow-end')
             : [];
-        const manualConnections = connectionCandidates.length > 0
+        const manualConnections = (!inFocus && connectionCandidates.length > 0)
             ? generateConnections(connectionCandidates)
             : [];
         this.connections = [...planned, ...manualConnections];
@@ -720,15 +786,13 @@ export class VisualDesigner {
             return;
         }
 
-        const rootNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
-            .filter((element): element is HTMLElement => element instanceof HTMLElement)
-            .filter(element => element.dataset.nodeId && !element.dataset.parentId);
+        const markerNodes = this.collectMarkerCandidateNodes();
 
-        if (rootNodeElements.length === 0) {
+        if (markerNodes.length === 0 || this.startMarkerElement?.dataset.nodeId !== 'workflow-start') {
             return;
         }
 
-        const positions = this.calculateProcessMarkerPositions(rootNodeElements);
+        const positions = this.calculateProcessMarkerPositions(markerNodes);
 
         if (!this.startMarkerManual) {
             this.startMarkerPosition = { x: positions.startX, y: positions.startY };
@@ -755,9 +819,9 @@ export class VisualDesigner {
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '1';
-        // SVG should match container size (canvas-area), not transformed wrapper
-        // Size will be updated in applyTransform()
-        const containerRect = this.container.getBoundingClientRect();
+        // SVG should match visible scroll container size
+        const scrollContainer = this.canvasScrollContainer ?? this.container;
+        const containerRect = scrollContainer.getBoundingClientRect();
         if (containerRect.width > 0 && containerRect.height > 0) {
             svg.setAttribute('width', containerRect.width.toString());
             svg.setAttribute('height', containerRect.height.toString());
@@ -770,6 +834,7 @@ export class VisualDesigner {
      */
     private render(): void {
         const focusedContainer = this.getFocusedContainer();
+        const isRootView = !focusedContainer;
         this.updateBreadcrumbTrail();
         const nodesToRender = focusedContainer ? (focusedContainer.children || []) : this.nodes;
         this.visibleNodes = nodesToRender;
@@ -778,31 +843,63 @@ export class VisualDesigner {
         this.currentRenderMeasurements = new Map();
 
         // Create SVG overlay for connections
-        this.svgElement = this.createSVGOverlay();
-        this.canvasElement.appendChild(this.svgElement);
+        if (isRootView) {
+            this.svgElement = this.createSVGOverlay();
+            this.canvasElement.appendChild(this.svgElement);
+        } else {
+            this.svgElement = null;
+            this.connectionLineElements.clear();
+        }
 
-        const shouldAutoLayout = !focusedContainer;
+        const shouldAutoLayout = isRootView;
         this.rebuildConnections(shouldAutoLayout, nodesToRender);
 
         // Render nodes
         nodesToRender.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
 
-        const rootNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
+        const renderedNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
             .filter((element): element is HTMLElement => element instanceof HTMLElement)
-            .filter(element => element.dataset.nodeId && !element.dataset.parentId);
+            .filter(element => Boolean(element.dataset.nodeId));
 
-        if (!focusedContainer) {
-            this.renderProcessMarkers(rootNodeElements);
-            this.updateProcessMarkersPosition();
+        let rootNodeElements: HTMLElement[];
+        if (focusedContainer) {
+            rootNodeElements = renderedNodeElements.filter(element => element.dataset.parentId === focusedContainer.id);
+        } else {
+            rootNodeElements = renderedNodeElements.filter(element => !element.dataset.parentId);
+        }
+
+        const markerContextLabel = isRootView || !focusedContainer
+            ? undefined
+            : this.getNodeDisplayLabel(focusedContainer);
+
+        if (isRootView || focusedContainer) {
+            this.renderProcessMarkers(rootNodeElements, {
+                contextLabel: markerContextLabel,
+                interactive: isRootView,
+                allowDrag: isRootView
+            });
+            if (isRootView) {
+                this.updateProcessMarkersPosition();
+            }
         } else {
             this.clearProcessMarkers();
         }
 
+        if (focusedContainer) {
+            this.renderFocusFlowOverlay(focusedContainer);
+        } else {
+            this.clearFocusFlowOverlay();
+        }
+
         // Render connections
-        this.renderConnections();
+        if (isRootView) {
+            this.renderConnections();
+        } else {
+            this.clearRenderedConnections();
+        }
 
         // Render minimap if enabled
-        if (this.minimapVisible && !focusedContainer) {
+        if (this.minimapVisible && isRootView) {
             this.minimap.render(this.canvasElement, nodesToRender);
 
             // Setup navigation callback
@@ -816,6 +913,7 @@ export class VisualDesigner {
             }
         }
 
+        this.updateCanvasStageBounds(isRootView);
         this.ensureGridOverlay();
         this.finalizeRenderMeasurements();
         this.highlightSelectedNodes();
@@ -900,6 +998,11 @@ export class VisualDesigner {
      * Render node with strategy selection
      */
     private renderNodeWithStrategy(node: VisualNode, parentContainer: HTMLElement = this.canvasElement): HTMLElement {
+        const isRootLevel = parentContainer === this.canvasElement;
+        if (isRootLevel && isContainerNode(node.type) && this.drillDownManager.getCurrentId() === null) {
+            return this.renderContainerSummaryNode(node, parentContainer);
+        }
+
         const strategy = getRenderingStrategy(node);
 
         if (strategy === 'nested') {
@@ -1076,6 +1179,24 @@ export class VisualDesigner {
         return nodeElement;
     }
 
+    private renderContainerSummaryNode(node: VisualNode, parentContainer: HTMLElement): HTMLElement {
+        const nodeElement = this.createBasicNodeElement(node);
+        nodeElement.classList.add('container-summary-node');
+
+        const nodeX = node.position?.x ?? this.START_X;
+        const nodeY = node.position?.y ?? this.START_Y;
+
+        nodeElement.style.position = 'absolute';
+        nodeElement.style.left = `${nodeX}px`;
+        nodeElement.style.top = `${nodeY}px`;
+        nodeElement.style.zIndex = '2';
+
+        parentContainer.appendChild(nodeElement);
+        this.recordMeasuredNodeSize(node.id, nodeElement);
+
+        return nodeElement;
+    }
+
     /**
      * Get node dimensions from VisualPluginMetadata, node.dimensions, or use defaults
      */
@@ -1128,7 +1249,19 @@ export class VisualDesigner {
         nodeElement.style.cursor = 'pointer';
         nodeElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
-        // Apply role-based styling
+        const iconConfig = this.iconLibrary.getIcon(node.type);
+        const isContainer = isContainerNode(node.type);
+
+        if (isContainer) {
+            nodeElement.classList.add('visual-node--container-summary');
+            nodeElement.style.padding = '0';
+            nodeElement.style.background = 'transparent';
+            nodeElement.style.border = 'none';
+            nodeElement.style.boxShadow = 'none';
+            nodeElement.style.width = `${Math.max(dimensions.width, 280)}px`;
+            nodeElement.style.minHeight = 'auto';
+        }
+
         if (this.semanticValidator) {
             const roles = this.semanticValidator.getRoles(node.type);
             nodeElement.dataset.roles = roles.join(',');
@@ -1138,60 +1271,50 @@ export class VisualDesigner {
             }
         }
 
-        // Apply validation error styling if node has errors
         const validationError = this.validationErrors.get(node.id);
         if (validationError) {
             this.applyValidationErrorStyling(nodeElement, validationError);
         }
 
-        // Header with icon
-        const header = document.createElement('div');
-        header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
+        if (isContainer) {
+            nodeElement.appendChild(this.createContainerSummaryCard(node, iconConfig.color));
+        } else {
+            const header = document.createElement('div');
+            header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
 
-        // Icon from IconLibrary
-        const iconConfig = this.iconLibrary.getIcon(node.type);
-        const icon = this.iconLibrary.getIconElement(node.type, 16);
-        header.appendChild(icon);
+            const icon = this.iconLibrary.getIconElement(node.type, 16);
+            header.appendChild(icon);
 
-        // Type name
-        const typeText = document.createElement('span');
-        typeText.textContent = node.type;
-        typeText.style.color = iconConfig.color;
-        header.appendChild(typeText);
+            const typeText = document.createElement('span');
+            typeText.textContent = node.type;
+            typeText.style.color = iconConfig.color;
+            header.appendChild(typeText);
 
-        nodeElement.appendChild(header);
+            nodeElement.appendChild(header);
+            nodeElement.style.borderColor = iconConfig.color;
 
-        // Update border color based on category
-        nodeElement.style.borderColor = iconConfig.color;
+            const attrEntries = Object.entries(node.attributes).slice(0, 3);
+            if (attrEntries.length > 0) {
+                const attrs = document.createElement('div');
+                attrs.style.fontSize = '12px';
+                attrs.style.color = '#666';
 
-        // Attributes (max 3)
-        const attrEntries = Object.entries(node.attributes).slice(0, 3);
-        if (attrEntries.length > 0) {
-            const attrs = document.createElement('div');
-            attrs.style.fontSize = '12px';
-            attrs.style.color = '#666';
+                attrEntries.forEach(([key, value]) => {
+                    const attr = document.createElement('div');
+                    const displayValue = value.length > 30 ? value.substring(0, 30) + '...' : value;
+                    attr.textContent = `${key}: ${displayValue}`;
+                    attrs.appendChild(attr);
+                });
 
-            attrEntries.forEach(([key, value]) => {
-                const attr = document.createElement('div');
-                const displayValue = value.length > 30 ? value.substring(0, 30) + '...' : value;
-                attr.textContent = `${key}: ${displayValue}`;
-                attrs.appendChild(attr);
-            });
+                nodeElement.appendChild(attrs);
+            }
 
-            nodeElement.appendChild(attrs);
+            this.portSystem.addPorts(nodeElement, node);
+            this.setupPortHandlers(nodeElement, node);
         }
 
-        // Add ports to node
-        this.portSystem.addPorts(nodeElement, node);
-        // Setup port event handlers for connections
-        this.setupPortHandlers(nodeElement, node);
-
-        // Setup drag handlers for moving node
         this.setupNodeDragHandlers(nodeElement, node);
 
-        // Role-based styling already applied above, skip duplicate
-
-        // Apply accessibility metadata (Apple HIG compliance)
         if (this.pluginManager) {
             const plugin = this.pluginManager.findPlugin(node.type);
             if (plugin && plugin.accessibility) {
@@ -1199,22 +1322,18 @@ export class VisualDesigner {
                 nodeElement.setAttribute('aria-label', plugin.accessibility.ariaLabel || node.type);
                 if (plugin.accessibility.ariaDescription) {
                     nodeElement.setAttribute('aria-description', plugin.accessibility.ariaDescription);
-                    nodeElement.title = plugin.accessibility.ariaDescription; // Fallback
+                    nodeElement.title = plugin.accessibility.ariaDescription;
                 }
-                // Keyboard navigation hints are handled by keyboard event handlers
             } else {
-                // Fallback accessibility
                 nodeElement.setAttribute('role', 'button');
                 nodeElement.setAttribute('aria-label', node.type);
             }
         } else {
-            // Fallback accessibility
             nodeElement.setAttribute('role', 'button');
             nodeElement.setAttribute('aria-label', node.type);
         }
 
         nodeElement.onclick = (e) => {
-            // Don't select if clicking on port
             if ((e.target as HTMLElement).closest('.port')) {
                 return;
             }
@@ -1225,7 +1344,242 @@ export class VisualDesigner {
         return nodeElement;
     }
 
-    private renderProcessMarkers(rootNodeElements: HTMLElement[]): void {
+    private createContainerSummaryCard(node: VisualNode, accentColor: string): HTMLElement {
+        const card = document.createElement('div');
+        card.className = 'container-summary';
+
+        const header = document.createElement('div');
+        header.className = 'container-summary__header';
+
+        const titleGroup = document.createElement('div');
+        titleGroup.className = 'container-summary__title-group';
+
+        const icon = this.iconLibrary.getIconElement(node.type, 18);
+        icon.style.color = accentColor;
+        titleGroup.appendChild(icon);
+
+        const title = document.createElement('span');
+        title.className = 'container-summary__title';
+        title.textContent = this.getNodeDisplayLabel(node);
+        titleGroup.appendChild(title);
+
+        const subtitle = document.createElement('span');
+        subtitle.className = 'container-summary__subtitle';
+        subtitle.textContent = node.type.toUpperCase();
+        titleGroup.appendChild(subtitle);
+
+        header.appendChild(titleGroup);
+
+        const actions = document.createElement('div');
+        actions.className = 'container-summary__actions';
+
+        const detailsButton = document.createElement('button');
+        detailsButton.type = 'button';
+        detailsButton.className = 'container-summary__action-btn';
+        detailsButton.textContent = 'Szczegóły';
+        detailsButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.selectNode(node.id);
+        });
+        actions.appendChild(detailsButton);
+
+        const focusButton = document.createElement('button');
+        focusButton.type = 'button';
+        focusButton.className = 'container-summary__action-btn container-summary__action-btn--primary';
+        focusButton.textContent = 'Otwórz';
+        focusButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.enterContainer(node.id);
+        });
+        actions.appendChild(focusButton);
+
+        header.appendChild(actions);
+        card.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'container-summary__body';
+
+        const metrics = document.createElement('div');
+        metrics.className = 'container-summary__metrics';
+
+        const childCount = node.children?.length ?? 0;
+        const containerChildren = node.children?.filter(child => isContainerNode(child.type)).length ?? 0;
+        const leafChildren = Math.max(childCount - containerChildren, 0);
+
+        metrics.appendChild(
+            this.createSummaryChip(
+                this.createFontAwesomeIcon('fa-layer-group', '#636366', 11),
+                'Dzieci',
+                childCount.toString(),
+                true
+            )
+        );
+
+        metrics.appendChild(
+            this.createSummaryChip(
+                this.createFontAwesomeIcon('fa-boxes', '#636366', 11),
+                'Kontenery',
+                containerChildren.toString(),
+                true
+            )
+        );
+
+        metrics.appendChild(
+            this.createSummaryChip(
+                this.createFontAwesomeIcon('fa-seedling', '#636366', 11),
+                'Liście',
+                leafChildren.toString(),
+                true
+            )
+        );
+
+        body.appendChild(metrics);
+
+        const attributeHighlights = this.extractAttributeHighlights(node).slice(0, 2);
+        if (attributeHighlights.length > 0) {
+            const highlightRow = document.createElement('div');
+            highlightRow.className = 'container-summary__highlights';
+
+            attributeHighlights.forEach(({ label, value }) => {
+                highlightRow.appendChild(
+                    this.createSummaryChip(
+                        this.createFontAwesomeIcon('fa-sliders-h', '#636366', 11),
+                        label,
+                        value,
+                        true
+                    )
+                );
+            });
+
+            body.appendChild(highlightRow);
+        }
+
+        const childChips = this.buildChildTypeChips(node);
+        if (childChips.length > 0) {
+            const childrenRow = document.createElement('div');
+            childrenRow.className = 'container-summary__children';
+
+            const sectionLabel = document.createElement('span');
+            sectionLabel.className = 'container-summary__section-label';
+            sectionLabel.textContent = 'Komponenty';
+            childrenRow.appendChild(sectionLabel);
+
+            const chipList = document.createElement('div');
+            chipList.className = 'container-summary__child-list';
+            childChips.forEach(chip => chipList.appendChild(chip));
+            childrenRow.appendChild(chipList);
+
+            body.appendChild(childrenRow);
+        }
+
+        card.appendChild(body);
+        return card;
+    }
+
+    private buildChildTypeChips(node: VisualNode): HTMLElement[] {
+        const chips: HTMLElement[] = [];
+        const children = node.children ?? [];
+
+        const detailTypes = new Set<string>();
+        if (this.detailRegistry && this.detailRegistry.isMasterDetailPlugin(node.type)) {
+            this.detailRegistry.getSections(node.type).forEach(section => detailTypes.add(section.detailType));
+
+            const partition = this.detailRegistry.partitionChildren(node);
+            this.detailRegistry.getSections(node.type).forEach(section => {
+                const details = partition.sections[section.detailType] ?? [];
+                if (details.length === 0) {
+                    return;
+                }
+
+                const summary = this.detailRegistry!.summarizeDetail(details[0]);
+                const icon = this.iconLibrary.getIconElement(section.detailType, 11);
+                const chip = this.createSummaryChip(icon, section.sectionTitle, `×${details.length}`, true);
+                chip.classList.add('container-summary__child-chip');
+                chip.title = summary.secondaryText
+                    ? `${summary.primaryText} — ${summary.secondaryText}`
+                    : summary.primaryText;
+                chip.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    this.selectNode(details[0].id);
+                });
+                chips.push(chip);
+            });
+        }
+
+        const groupedChildren = new Map<string, { count: number; sample: VisualNode }>();
+        children
+            .filter(child => !detailTypes.has(child.type))
+            .forEach(child => {
+                const existing = groupedChildren.get(child.type);
+                if (existing) {
+                    existing.count += 1;
+                } else {
+                    groupedChildren.set(child.type, { count: 1, sample: child });
+                }
+            });
+
+        const remainingSlots = Math.max(0, 4 - chips.length);
+        if (remainingSlots > 0) {
+            Array.from(groupedChildren.entries())
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, remainingSlots)
+                .forEach(([type, info]) => {
+                    const icon = this.iconLibrary.getIconElement(type, 11);
+                    const chip = this.createSummaryChip(icon, type, `×${info.count}`, true);
+                    chip.classList.add('container-summary__child-chip');
+                    chip.title = this.getNodeDisplayLabel(info.sample);
+                    chip.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        this.selectNode(info.sample.id);
+                    });
+                    chips.push(chip);
+                });
+        }
+
+        return chips.slice(0, 4);
+    }
+
+    private extractAttributeHighlights(node: VisualNode): Array<{ label: string; value: string }> {
+        if (!this.pluginManager) {
+            return [];
+        }
+
+        const plugin = this.pluginManager.findPlugin(node.type);
+        const schemaAttributes = plugin?.schema?.attributes ?? [];
+        if (schemaAttributes.length === 0) {
+            return [];
+        }
+
+        const preferenceOrder = ['name', 'url', 'method', 'select', 'expression', 'path', 'id'];
+        const highlights = schemaAttributes
+            .map(attribute => {
+                const rawValue = (node.attributes?.[attribute.name] ?? '').trim();
+                if (!rawValue) {
+                    return null;
+                }
+
+                const value = rawValue.length > 28 ? `${rawValue.slice(0, 25)}…` : rawValue;
+                const priority = preferenceOrder.indexOf(attribute.name);
+                const score = priority >= 0 ? priority : (attribute.required ? preferenceOrder.length + 1 : preferenceOrder.length + 5);
+
+                return {
+                    label: attribute.description ?? attribute.name,
+                    value,
+                    score
+                };
+            })
+            .filter((entry): entry is { label: string; value: string; score: number } => entry !== null)
+            .sort((a, b) => a.score - b.score)
+            .slice(0, 3)
+            .map(({ label, value }) => ({ label, value }));
+
+        return highlights;
+    }
+
+    private renderProcessMarkers(
+        rootNodeElements: HTMLElement[],
+        options?: { contextLabel?: string; interactive?: boolean; allowDrag?: boolean }
+    ): void {
         if (this.processMarkersLayer) {
             this.processMarkersLayer.remove();
             this.processMarkersLayer = null;
@@ -1236,22 +1590,34 @@ export class VisualDesigner {
 
         const positions = this.calculateProcessMarkerPositions(rootNodeElements);
 
-        const startPosition = this.startMarkerManual && this.startMarkerPosition
+        const allowDrag = options?.allowDrag ?? true;
+        const interactive = options?.interactive ?? true;
+
+        const startPosition = allowDrag && this.startMarkerManual && this.startMarkerPosition
             ? this.startMarkerPosition
             : { x: positions.startX, y: positions.startY };
-        if (!this.startMarkerManual) {
+        if (allowDrag && !this.startMarkerManual) {
             this.startMarkerPosition = startPosition;
         }
 
-        const endPosition = this.endMarkerManual && this.endMarkerPosition
+        const endPosition = allowDrag && this.endMarkerManual && this.endMarkerPosition
             ? this.endMarkerPosition
             : { x: positions.endX, y: positions.endY };
-        if (!this.endMarkerManual) {
+        if (allowDrag && !this.endMarkerManual) {
             this.endMarkerPosition = endPosition;
         }
 
-        const startMarker = this.createProcessMarker('start', startPosition.x, startPosition.y, 'Start');
-        const endMarker = this.createProcessMarker('end', endPosition.x, endPosition.y, 'End');
+        const startLabel = options?.contextLabel ? `Start: ${options.contextLabel}` : 'Start';
+        const endLabel = options?.contextLabel ? `End: ${options.contextLabel}` : 'End';
+
+        const startMarker = this.createProcessMarker('start', startPosition.x, startPosition.y, startLabel, {
+            interactive,
+            allowDrag
+        });
+        const endMarker = this.createProcessMarker('end', endPosition.x, endPosition.y, endLabel, {
+            interactive,
+            allowDrag
+        });
 
         layer.appendChild(startMarker);
         layer.appendChild(endMarker);
@@ -1259,14 +1625,23 @@ export class VisualDesigner {
         this.canvasElement.appendChild(layer);
         this.processMarkersLayer = layer;
 
-        startMarker.dataset.nodeId = 'workflow-start';
-        endMarker.dataset.nodeId = 'workflow-end';
+        if (interactive) {
+            startMarker.dataset.nodeId = 'workflow-start';
+            endMarker.dataset.nodeId = 'workflow-end';
+        } else {
+            startMarker.dataset.nodeId = 'subprocess-start';
+            endMarker.dataset.nodeId = 'subprocess-end';
+            startMarker.classList.add('process-marker--contextual');
+            endMarker.classList.add('process-marker--contextual');
+        }
 
         this.startMarkerElement = startMarker;
         this.endMarkerElement = endMarker;
 
-        this.setupMarkerDrag(startMarker, 'start');
-        this.setupMarkerDrag(endMarker, 'end');
+        if (allowDrag) {
+            this.setupMarkerDrag(startMarker, 'start');
+            this.setupMarkerDrag(endMarker, 'end');
+        }
     }
 
     private clearProcessMarkers(): void {
@@ -1276,6 +1651,19 @@ export class VisualDesigner {
         }
         this.startMarkerElement = null;
         this.endMarkerElement = null;
+    }
+
+    private collectMarkerCandidateNodes(): HTMLElement[] {
+        const focusedContainer = this.getFocusedContainer();
+        const renderedNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
+            .filter((element): element is HTMLElement => element instanceof HTMLElement)
+            .filter(element => Boolean(element.dataset.nodeId));
+
+        if (focusedContainer) {
+            return renderedNodeElements.filter(element => element.dataset.parentId === focusedContainer.id);
+        }
+
+        return renderedNodeElements.filter(element => !element.dataset.parentId);
     }
 
     private calculateProcessMarkerPositions(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
@@ -1316,11 +1704,20 @@ export class VisualDesigner {
         };
     }
 
-    private createProcessMarker(type: 'start' | 'end', x: number, y: number, label: string): HTMLElement {
+    private createProcessMarker(
+        type: 'start' | 'end',
+        x: number,
+        y: number,
+        label: string,
+        options?: { interactive?: boolean; allowDrag?: boolean }
+    ): HTMLElement {
         const marker = document.createElement('div');
         marker.className = `process-marker process-marker-${type}`;
         marker.style.left = `${x}px`;
         marker.style.top = `${y}px`;
+
+        const interactive = options?.interactive ?? true;
+        const allowDrag = options?.allowDrag ?? true;
 
         if (type === 'start') {
             const icon = document.createElement('i');
@@ -1328,35 +1725,41 @@ export class VisualDesigner {
             icon.setAttribute('aria-hidden', 'true');
 
             const text = document.createElement('span');
-            text.textContent = this.workflowStatus === 'running' ? 'Stop' : label;
+            text.textContent = interactive && this.workflowStatus === 'running' ? 'Stop' : label;
             text.style.fontSize = '10px';
             text.style.fontWeight = '700';
 
             marker.appendChild(icon);
             marker.appendChild(text);
 
-            marker.style.pointerEvents = 'auto';
-            marker.style.cursor = 'pointer';
-            marker.title = this.workflowStatus === 'running'
-                ? 'Stop workflow execution'
-                : 'Start workflow execution';
+            if (interactive) {
+                marker.style.pointerEvents = 'auto';
+                marker.style.cursor = allowDrag ? 'pointer' : 'default';
+                marker.title = this.workflowStatus === 'running'
+                    ? 'Stop workflow execution'
+                    : 'Start workflow execution';
 
-            if (this.workflowStatus === 'running') {
-                marker.classList.add('process-marker-start--running');
-            }
-
-            marker.addEventListener('click', (event) => {
-                if (this.isMarkerDragging) {
-                    this.isMarkerDragging = false;
-                    return;
-                }
-                event.stopPropagation();
                 if (this.workflowStatus === 'running') {
-                    this.emit('workflowStopRequested', {});
-                } else {
-                    this.emit('workflowStartRequested', {});
+                    marker.classList.add('process-marker-start--running');
                 }
-            });
+
+                marker.addEventListener('click', (event) => {
+                    if (this.isMarkerDragging) {
+                        this.isMarkerDragging = false;
+                        return;
+                    }
+                    event.stopPropagation();
+                    if (this.workflowStatus === 'running') {
+                        this.emit('workflowStopRequested', {});
+                    } else {
+                        this.emit('workflowStartRequested', {});
+                    }
+                });
+            } else {
+                marker.style.pointerEvents = 'none';
+                marker.style.cursor = 'default';
+                marker.title = 'Container start marker';
+            }
         } else {
             const icon = document.createElement('i');
             icon.className = 'fas fa-flag-checkered';
@@ -1369,9 +1772,9 @@ export class VisualDesigner {
 
             marker.appendChild(icon);
             marker.appendChild(text);
-            marker.title = 'Workflow end marker';
-            marker.style.pointerEvents = 'auto';
-            marker.style.cursor = 'grab';
+            marker.title = interactive ? 'Workflow end marker' : 'Container end marker';
+            marker.style.pointerEvents = interactive ? 'auto' : 'none';
+            marker.style.cursor = interactive && allowDrag ? 'grab' : 'default';
         }
 
         return marker;
@@ -1454,7 +1857,7 @@ export class VisualDesigner {
         // Remove all existing event listeners before clearing
         this.connectionLineElements.forEach((line, connectionId) => {
             // Clone to remove all event listeners
-            const newLine = line.cloneNode(false) as SVGLineElement;
+            const newLine = line.cloneNode(false) as SVGPathElement;
             line.parentNode?.replaceChild(newLine, line);
         });
         this.connectionLineElements.clear();
@@ -1464,6 +1867,8 @@ export class VisualDesigner {
         const existingArrows = this.svgElement.querySelectorAll('.connection-arrow');
         existingLines.forEach(line => line.remove());
         existingArrows.forEach(arrow => arrow.remove());
+
+        const inFocus = this.drillDownManager.getCurrentId() !== null;
 
         // Get all connections: automatic + manual
         const manualConnections = this.connectionManager.getConnections();
@@ -1481,6 +1886,11 @@ export class VisualDesigner {
             ...manualConnections // Manual connections (user-created) have id
         ];
 
+        if (inFocus) {
+            this.clearRenderedConnections();
+            return;
+        }
+
         if (allConnections.length === 0) return;
 
         allConnections.forEach(connection => {
@@ -1493,69 +1903,167 @@ export class VisualDesigner {
                     return;
                 }
 
-                let x1 = fromAnchor.centerX;
-                let y1 = fromAnchor.centerY;
-                let x2 = toAnchor.centerX;
-                let y2 = toAnchor.centerY;
-
-                const verticalExitOffset = 14;
-                const verticalEntryOffset = 14;
-
-                const setDownstreamAnchor = () => {
-                    x1 = fromAnchor.centerX;
-                    y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
-                    if (fromAnchor.type === 'marker' && connection.from === 'workflow-end') {
-                        y1 = fromAnchor.centerY - fromAnchor.height / 2 - verticalExitOffset;
-                    }
-                };
-
-                const setUpstreamAnchor = () => {
-                    x2 = toAnchor.centerX;
-                    y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
-                    if (toAnchor.type === 'marker' && connection.to === 'workflow-start') {
-                        y2 = toAnchor.centerY + toAnchor.height / 2 + verticalEntryOffset;
-                    }
-                };
-
-                if (connection.type === 'sequential') {
-                    setDownstreamAnchor();
-                    setUpstreamAnchor();
-                } else {
-                    if (fromAnchor.type === 'node') {
-                        x1 = fromAnchor.centerX;
-                        y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
-                    } else {
-                        x1 = fromAnchor.centerX;
-                        y1 = fromAnchor.centerY + fromAnchor.height / 2 + verticalExitOffset;
-                        if (connection.from === 'workflow-end') {
-                            y1 = fromAnchor.centerY - fromAnchor.height / 2 - verticalExitOffset;
-                        }
-                    }
-
-                    if (toAnchor.type === 'node') {
-                        x2 = toAnchor.centerX;
-                        y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
-                    } else {
-                        x2 = toAnchor.centerX;
-                        y2 = toAnchor.centerY - toAnchor.height / 2 - verticalEntryOffset;
-                        if (connection.to === 'workflow-start') {
-                            y2 = toAnchor.centerY + toAnchor.height / 2 + verticalEntryOffset;
-                        }
-                    }
-                }
-
-
                 const connectionId = (connection.id && typeof connection.id === 'string')
                     ? connection.id
                     : `auto-${connection.from}-${connection.to}`;
                 const isSelected = this.selectedConnectionId === connectionId;
                 const isManual = connectionId.startsWith('conn-');
 
-                this.createArrow(x1, y1, x2, y2, connection.type, connectionId, isSelected, isManual);
+                if (fromAnchor.id === toAnchor.id) {
+                    return;
+                }
+
+                const geometry = this.computeConnectionGeometry(fromAnchor, toAnchor, connection.type);
+                this.drawConnectionPath(geometry.points, connection.type, connectionId, isSelected, isManual);
             } catch (error) {
                 console.error('[VisualDesigner] Error rendering connection:', error, connection);
             }
         });
+    }
+
+    private computeConnectionGeometry(
+        from: AnchorInfo,
+        to: AnchorInfo,
+        type: 'sequential' | 'conditional' | 'error'
+    ): { points: Point[]; exitSide: AnchorSide; entrySide: AnchorSide } {
+        const [exitSide, entrySide] = this.chooseAnchorSides(from, to, type);
+        const startPoint = this.computeAnchorPoint(from, exitSide);
+        const endPoint = this.computeAnchorPoint(to, entrySide);
+        const points = this.buildOrthogonalPath(startPoint, endPoint, exitSide, entrySide);
+        return { points, exitSide, entrySide };
+    }
+
+    private chooseAnchorSides(
+        from: AnchorInfo,
+        to: AnchorInfo,
+        type: 'sequential' | 'conditional' | 'error'
+    ): [AnchorSide, AnchorSide] {
+        const deltaX = to.bounds.centerX - from.bounds.centerX;
+        const deltaY = to.bounds.centerY - from.bounds.centerY;
+        const preferVertical = type === 'sequential' || Math.abs(deltaY) >= Math.abs(deltaX) * 0.8;
+
+        let fromSide: AnchorSide;
+        let toSide: AnchorSide;
+
+        if (preferVertical) {
+            if (deltaY >= 0) {
+                fromSide = 'bottom';
+                toSide = 'top';
+            } else {
+                fromSide = 'top';
+                toSide = 'bottom';
+            }
+        } else {
+            if (deltaX >= 0) {
+                fromSide = 'right';
+                toSide = 'left';
+            } else {
+                fromSide = 'left';
+                toSide = 'right';
+            }
+        }
+
+        return [fromSide, toSide];
+    }
+
+    private computeAnchorPoint(anchor: AnchorInfo, side: AnchorSide): Point {
+        const { bounds } = anchor;
+        switch (side) {
+            case 'top':
+                return { x: bounds.centerX, y: bounds.top };
+            case 'bottom':
+                return { x: bounds.centerX, y: bounds.bottom };
+            case 'left':
+                return { x: bounds.left, y: bounds.centerY };
+            case 'right':
+            default:
+                return { x: bounds.right, y: bounds.centerY };
+        }
+    }
+
+    private offsetAnchorPoint(point: Point, side: AnchorSide, distance: number): Point {
+        switch (side) {
+            case 'top':
+                return { x: point.x, y: point.y - distance };
+            case 'bottom':
+                return { x: point.x, y: point.y + distance };
+            case 'left':
+                return { x: point.x - distance, y: point.y };
+            case 'right':
+            default:
+                return { x: point.x + distance, y: point.y };
+        }
+    }
+
+    private buildOrthogonalPath(
+        start: Point,
+        end: Point,
+        exitSide: AnchorSide,
+        entrySide: AnchorSide
+    ): Point[] {
+        const points: Point[] = [];
+        const pushPoint = (point: Point) => {
+            if (!this.pointsEqual(points[points.length - 1], point)) {
+                points.push(point);
+            }
+        };
+
+        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
+        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
+        const horizontalGap = Math.abs(end.x - start.x);
+        const verticalGap = Math.abs(end.y - start.y);
+
+        const horizontalOffset = Math.max(12, Math.min(32, horizontalGap / 3));
+        const verticalOffset = Math.max(12, Math.min(32, verticalGap / 3));
+
+        const startOffset = this.offsetAnchorPoint(
+            start,
+            exitSide,
+            exitVertical ? verticalOffset : horizontalOffset
+        );
+        const endOffset = this.offsetAnchorPoint(
+            end,
+            entrySide,
+            entryVertical ? verticalOffset : horizontalOffset
+        );
+
+        pushPoint(start);
+        pushPoint(startOffset);
+
+        if (exitVertical && entryVertical) {
+            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
+            pushPoint({ x: startOffset.x, y: midY });
+            pushPoint({ x: endOffset.x, y: midY });
+        } else if (!exitVertical && !entryVertical) {
+            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
+            pushPoint({ x: midX, y: startOffset.y });
+            pushPoint({ x: midX, y: endOffset.y });
+        } else if (exitVertical && !entryVertical) {
+            pushPoint({ x: startOffset.x, y: endOffset.y });
+        } else {
+            pushPoint({ x: endOffset.x, y: startOffset.y });
+        }
+
+        pushPoint(endOffset);
+        pushPoint(end);
+
+        return points;
+    }
+
+    private pointsEqual(a?: Point, b?: Point): boolean {
+        if (!a || !b) {
+            return false;
+        }
+        return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+    }
+
+    private clearRenderedConnections(): void {
+        const scope = this.svgElement ?? this.container;
+        const existingLines = scope.querySelectorAll('.connection-line');
+        const existingArrows = scope.querySelectorAll('.connection-arrow');
+        existingLines.forEach(line => line.remove());
+        existingArrows.forEach(arrow => arrow.remove());
+        this.connectionLineElements.clear();
     }
 
     /**
@@ -1577,17 +2085,18 @@ export class VisualDesigner {
     /**
      * Create SVG arrow
      */
-    private createArrow(
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number,
+    private drawConnectionPath(
+        points: Point[],
         type: 'sequential' | 'conditional' | 'error',
         connectionId?: string,
         isSelected?: boolean,
         isManual: boolean = false
     ): void {
         if (!this.svgElement) return;
+
+        if (points.length < 2) {
+            return;
+        }
 
         // Determine style
         let stroke = '#333';
@@ -1607,37 +2116,40 @@ export class VisualDesigner {
             strokeWidth = '3';
         }
 
-        // Create line
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('class', 'connection-line');
+        // Create path
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'connection-line');
         if (connectionId) {
-            line.setAttribute('data-connection-id', connectionId);
+            path.setAttribute('data-connection-id', connectionId);
         }
-        line.setAttribute('x1', x1.toString());
-        line.setAttribute('y1', y1.toString());
-        line.setAttribute('x2', x2.toString());
-        line.setAttribute('y2', y2.toString());
-        line.setAttribute('stroke', stroke);
-        line.setAttribute('stroke-width', strokeWidth);
-        line.setAttribute('stroke-dasharray', strokeDasharray);
+        const pathData = points
+            .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+            .join(' ');
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', stroke);
+        path.setAttribute('stroke-width', strokeWidth);
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-dasharray', strokeDasharray);
 
-        // Make line clickable and hoverable (only for manual connections)
+        // Make path interactive only for manual connections
         if (connectionId && isManual) {
-            line.style.cursor = 'pointer';
-            line.style.opacity = isSelected ? '1' : '0.7';
-            line.style.pointerEvents = 'all';
+            path.style.cursor = 'pointer';
+            path.style.opacity = isSelected ? '1' : '0.75';
+            path.style.pointerEvents = 'all';
 
             const handleMouseEnter = () => {
                 if (!isSelected) {
-                    line.style.opacity = '1';
-                    line.setAttribute('stroke-width', (parseInt(strokeWidth) + 1).toString());
+                    path.style.opacity = '1';
+                    path.setAttribute('stroke-width', (parseInt(strokeWidth) + 1).toString());
                 }
             };
 
             const handleMouseLeave = () => {
                 if (!isSelected) {
-                    line.style.opacity = '0.7';
-                    line.setAttribute('stroke-width', strokeWidth);
+                    path.style.opacity = '0.75';
+                    path.setAttribute('stroke-width', strokeWidth);
                 }
             };
 
@@ -1652,32 +2164,33 @@ export class VisualDesigner {
                 this.showConnectionContextMenu(connectionId, { x: e.clientX, y: e.clientY });
             };
 
-            line.addEventListener('mouseenter', handleMouseEnter);
-            line.addEventListener('mouseleave', handleMouseLeave);
-            line.addEventListener('click', handleClick);
-            line.addEventListener('contextmenu', handleContextMenu);
+            path.addEventListener('mouseenter', handleMouseEnter);
+            path.addEventListener('mouseleave', handleMouseLeave);
+            path.addEventListener('click', handleClick);
+            path.addEventListener('contextmenu', handleContextMenu);
 
-            // Store reference for cleanup
-            this.connectionLineElements.set(connectionId, line);
+            this.connectionLineElements.set(connectionId, path);
         } else {
-            line.style.pointerEvents = 'none';
+            path.style.pointerEvents = 'none';
         }
 
-        this.svgElement.appendChild(line);
+        this.svgElement.appendChild(path);
 
         // Create arrowhead
         const arrowSize = 10;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        const arrowX = x2 - Math.cos(angle) * 10;
-        const arrowY = y2 - Math.sin(angle) * 10;
+        const penultimate = points[points.length - 2];
+        const lastPoint = points[points.length - 1];
+        const angle = Math.atan2(lastPoint.y - penultimate.y, lastPoint.x - penultimate.x);
+        const arrowX = lastPoint.x - Math.cos(angle) * 10;
+        const arrowY = lastPoint.y - Math.sin(angle) * 10;
 
         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        const points = [
-            [x2, y2],
+        const arrowPoints = [
+            [lastPoint.x, lastPoint.y],
             [arrowX - Math.cos(angle + Math.PI / 6) * arrowSize, arrowY - Math.sin(angle + Math.PI / 6) * arrowSize],
             [arrowX - Math.cos(angle - Math.PI / 6) * arrowSize, arrowY - Math.sin(angle - Math.PI / 6) * arrowSize]
         ];
-        arrow.setAttribute('points', points.map(p => p.join(',')).join(' '));
+        arrow.setAttribute('points', arrowPoints.map(p => p.join(',')).join(' '));
         arrow.setAttribute('fill', stroke);
 
         // Add class for cleanup
@@ -1992,7 +2505,7 @@ export class VisualDesigner {
             const target = e.target as HTMLElement | SVGSVGElement;
             if (target === this.canvasElement ||
                 (this.svgElement && target === this.svgElement) ||
-                (target.tagName === 'div' && target.classList.contains('canvas-content-wrapper')) ||
+                (target instanceof HTMLElement && (target.classList.contains('canvas-content-wrapper') || target.classList.contains('canvas-stage'))) ||
                 (target.tagName === 'svg' && target === this.svgElement)) {
                 this.selectedConnectionId = null;
                 this.selectedNodeId = null;
@@ -2012,6 +2525,7 @@ export class VisualDesigner {
         let offsetY = 0;
 
         nodeElement.style.cursor = 'grab';
+        nodeElement.style.touchAction = 'manipulation';
 
         nodeElement.addEventListener('mousedown', (e) => {
             // Don't start drag if clicking on port
@@ -2035,6 +2549,7 @@ export class VisualDesigner {
             offsetY = canvasPos.y - (node.position?.y || 0);
 
             nodeElement.style.cursor = 'grabbing';
+            nodeElement.style.userSelect = 'none';
             document.body.style.userSelect = 'none';
             e.preventDefault();
         });
@@ -2058,6 +2573,8 @@ export class VisualDesigner {
                 isDragging = false;
                 this.isNodeDragging = false;
                 nodeElement.style.cursor = 'grab';
+                nodeElement.style.touchAction = 'manipulation';
+                nodeElement.style.userSelect = '';
                 document.body.style.userSelect = '';
                 this.render();
             }
@@ -2642,7 +3159,7 @@ export class VisualDesigner {
 
         // Add reordering options for root nodes
         if (isRootNode) {
-            items.push(
+            const rootActions: ContextMenuItem[] = [
                 {
                     label: 'Move Up',
                     icon: 'fas fa-arrow-up',
@@ -2663,8 +3180,22 @@ export class VisualDesigner {
                         }
                     }
                 }
-            );
-            if (items.length > 0 && !this.isDividerItem(items[items.length - 1])) {
+            ];
+
+            const canResetLayout = Boolean(node?.isManualPositioned);
+            rootActions.push({
+                label: 'Reset Auto Layout',
+                icon: 'fas fa-undo-alt',
+                disabled: !canResetLayout,
+                action: () => {
+                    if (canResetLayout) {
+                        this.resetNodePosition(nodeId);
+                    }
+                }
+            });
+
+            items.push(...rootActions);
+            if (rootActions.length > 0) {
                 items.push({ type: 'divider' });
             }
         }
@@ -3173,6 +3704,33 @@ export class VisualDesigner {
     }
 
     /**
+     * Reset node position so it participates in auto layout again.
+     */
+    resetNodePosition(nodeId: string): boolean {
+        const rootIndex = this.nodes.findIndex(n => n.id === nodeId);
+        if (rootIndex === -1) {
+            return false;
+        }
+
+        const node = this.nodes[rootIndex];
+        if (!node.position && !node.isManualPositioned) {
+            return false;
+        }
+
+        this.pushHistorySnapshot();
+
+        node.isManualPositioned = false;
+        node.position = undefined;
+
+        this.markDirty();
+        this.render();
+        this.emit('nodeUpdated', this.cloneNode(node));
+
+        console.log(`✅ Reset auto layout for node ${node.type}`);
+        return true;
+    }
+
+    /**
      * Add reorder buttons to child node element
      */
     private addReorderButtons(element: HTMLElement, containerId: string, childId: string, index: number, totalChildren: number): void {
@@ -3440,7 +3998,7 @@ export class VisualDesigner {
 
         // Show/hide grid overlay
         if (enabled) {
-            this.gridSystem.render(this.canvasElement);
+            this.gridSystem.render(this.canvasElement, this.canvasScrollContainer);
         } else {
             const existing = this.canvasElement.querySelector('.grid-overlay');
             if (existing) {
@@ -3599,13 +4157,13 @@ export class VisualDesigner {
      * Convert viewport coordinates to canvas coordinates (accounting for transform)
      */
     private viewportToCanvas(x: number, y: number): { x: number; y: number } {
-        // Get the scrollable container (canvas-area), not the transformed wrapper
-        const container = this.container; // This is #canvas-area
-        const containerRect = container.getBoundingClientRect();
+        // Get the scrollable container (wrapper around canvas stage)
+        const scrollContainer = this.canvasScrollContainer ?? this.container;
+        const containerRect = scrollContainer.getBoundingClientRect();
 
         // Calculate position relative to container (accounting for scroll)
-        const relativeX = x - containerRect.left + container.scrollLeft;
-        const relativeY = y - containerRect.top + container.scrollTop;
+        const relativeX = x - containerRect.left + scrollContainer.scrollLeft;
+        const relativeY = y - containerRect.top + scrollContainer.scrollTop;
 
         // Account for transform (inverse transform)
         const canvasX = (relativeX - this.panOffset.x) / this.zoom;
@@ -3624,8 +4182,9 @@ export class VisualDesigner {
         this.canvasElement.style.transformOrigin = '0 0';
 
         // Update SVG overlay size if it exists to match zoom level
-        if (this.svgElement && this.container) {
-            const containerRect = this.container.getBoundingClientRect();
+        if (this.svgElement) {
+            const scrollContainer = this.canvasScrollContainer ?? this.container;
+            const containerRect = scrollContainer.getBoundingClientRect();
             if (containerRect.width > 0 && containerRect.height > 0) {
                 // SVG should cover the container size (before zoom)
                 this.svgElement.setAttribute('width', containerRect.width.toString());
@@ -3643,9 +4202,6 @@ export class VisualDesigner {
             event.preventDefault();
             const delta = event.deltaY > 0 ? 0.9 : 1.1;
             this.zoomAt({ x: event.clientX, y: event.clientY }, this.zoom * delta);
-        } else {
-            // Pan with wheel
-            this.panBy({ x: -event.deltaX * 0.5, y: -event.deltaY * 0.5 });
         }
     }
 
@@ -4072,6 +4628,7 @@ export class VisualDesigner {
                 x: this.START_X + col * spacing,
                 y: this.START_Y + row * spacing
             };
+            node.isManualPositioned = false;
         });
     }
 
@@ -4083,6 +4640,7 @@ export class VisualDesigner {
                 x: this.START_X + 100,
                 y: this.START_Y + index * spacing
             };
+            node.isManualPositioned = false;
         });
     }
 
@@ -4094,6 +4652,7 @@ export class VisualDesigner {
                 x: this.START_X + index * spacing,
                 y: this.START_Y + 100
             };
+            node.isManualPositioned = false;
         });
     }
 
@@ -4614,6 +5173,28 @@ export class VisualDesigner {
         return lines.join('\n');
     }
 
+    generateXMLForNode(nodeId: string): string | null {
+        const node = this.findNode(nodeId);
+        if (!node) {
+            return null;
+        }
+
+        const generator = new XMLGenerator();
+        const clone = this.cloneNode(node);
+        const body = generator.generate([clone], 1);
+        const hasContent = body.trim().length > 0;
+
+        const lines: string[] = [];
+        lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+        lines.push('<config xmlns="http://org.webharvest/schema/2.1/core">');
+        if (hasContent) {
+            lines.push(body);
+        }
+        lines.push('</config>');
+
+        return lines.join('\n');
+    }
+
     /**
      * Prepare nodes for export with connection-based ordering
      * 
@@ -4897,28 +5478,21 @@ export class VisualDesigner {
      * Add role indicator icon/badge to element
      */
     private addRoleIndicator(element: HTMLElement, role: string, node?: VisualNode): void {
-        // Check if indicator already exists
-        if (element.querySelector('.role-indicator')) {
+        if (!node) {
             return;
         }
 
-        const indicator = document.createElement('div');
-        indicator.className = 'role-indicator';
-        indicator.style.cssText = `
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-            z-index: 10;
-        `;
+        const legacyIndicator = element.querySelector(':scope > .role-indicator');
+        if (legacyIndicator && !legacyIndicator.parentElement?.classList.contains('role-control-badge')) {
+            legacyIndicator.remove();
+        }
+
+        let controls = element.querySelector('.role-control-badge') as HTMLElement | null;
+        if (!controls) {
+            controls = document.createElement('div');
+            controls.className = 'role-control-badge';
+            element.appendChild(controls);
+        }
 
         const roleColors: Record<string, string> = {
             'ROOT_CONTAINER': '#9C27B0',
@@ -4936,16 +5510,38 @@ export class VisualDesigner {
             'LEAF': '●'
         };
 
-        indicator.style.background = roleColors[role] || '#999';
+        let indicator = controls.querySelector('.role-indicator') as HTMLElement | null;
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.className = 'role-indicator';
+            controls.prepend(indicator);
+        }
+        indicator.dataset.role = role;
         indicator.textContent = roleIcons[role] || '●';
         indicator.title = `Semantic role: ${role}`;
+        indicator.style.background = roleColors[role] || '#999';
 
-        // Ensure element has relative positioning
+        let removeButton = controls.querySelector('.role-remove-button') as HTMLButtonElement | null;
+        if (!removeButton) {
+            removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'role-remove-button';
+            removeButton.setAttribute('aria-label', 'Remove component');
+            removeButton.innerHTML = '<i class="fas fa-trash"></i>';
+            controls.appendChild(removeButton);
+        }
+
+        removeButton.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.handleNodeRemoveRequest(node);
+        };
+
+        controls.dataset.nodeId = node.id;
+
         if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
             element.style.position = 'relative';
         }
-
-        element.appendChild(indicator);
     }
 
     /**
@@ -5017,6 +5613,17 @@ export class VisualDesigner {
         }
 
         element.appendChild(indicator);
+    }
+
+    private handleNodeRemoveRequest(node: VisualNode): void {
+        if (!node?.id) {
+            return;
+        }
+
+        const removed = this.removeNode(node.id);
+        if (!removed) {
+            console.warn(`[VisualDesigner] Unable to remove node: ${node.id}`);
+        }
     }
 
     /**
@@ -5405,38 +6012,132 @@ export class VisualDesigner {
         return this.workflowStatus;
     }
 
-    private getConnectionAnchor(targetId: string): ({ centerX: number; centerY: number; width: number; height: number; type: 'node' | 'marker' }) | null {
-        const computeMarkerAnchor = (element: HTMLElement): { centerX: number; centerY: number; width: number; height: number; type: 'marker' } => {
-            const canvasRect = this.canvasElement.getBoundingClientRect();
-            const markerRect = element.getBoundingClientRect();
-            const width = markerRect.width || element.offsetWidth || 56;
-            const height = markerRect.height || element.offsetHeight || 56;
-            const centerX = markerRect.left - canvasRect.left + width / 2;
-            const centerY = markerRect.top - canvasRect.top + height / 2;
-            return { centerX, centerY, width, height, type: 'marker' };
-        };
-
-        if (targetId === 'workflow-start' && this.startMarkerElement) {
-            return computeMarkerAnchor(this.startMarkerElement);
+    private getConnectionAnchor(targetId: string): AnchorInfo | null {
+        if (targetId === 'workflow-start' && this.startMarkerPosition) {
+            const element = this.startMarkerElement;
+            const width = element?.offsetWidth ?? 52;
+            const height = element?.offsetHeight ?? 52;
+            const centerX = this.startMarkerPosition.x;
+            const centerY = this.startMarkerPosition.y;
+            const bounds: AnchorBounds = {
+                left: centerX - width / 2,
+                right: centerX + width / 2,
+                top: centerY - height / 2,
+                bottom: centerY + height / 2,
+                width,
+                height,
+                centerX,
+                centerY
+            };
+            return { id: targetId, type: 'marker', bounds, element };
         }
 
-        if (targetId === 'workflow-end' && this.endMarkerElement) {
-            return computeMarkerAnchor(this.endMarkerElement);
+        if (targetId === 'workflow-end' && this.endMarkerPosition) {
+            const element = this.endMarkerElement;
+            const width = element?.offsetWidth ?? 52;
+            const height = element?.offsetHeight ?? 52;
+            const centerX = this.endMarkerPosition.x;
+            const centerY = this.endMarkerPosition.y;
+            const bounds: AnchorBounds = {
+                left: centerX - width / 2,
+                right: centerX + width / 2,
+                top: centerY - height / 2,
+                bottom: centerY + height / 2,
+                width,
+                height,
+                centerX,
+                centerY
+            };
+            return { id: targetId, type: 'marker', bounds, element };
         }
 
         const node = this.findNodeRecursive(targetId, this.nodes);
         if (!node || !node.position) {
             return null;
         }
-
         const dimensions = this.getNodeDimensions(node);
-        return {
-            centerX: node.position.x + dimensions.width / 2,
-            centerY: node.position.y + dimensions.height / 2,
+        const left = node.position.x;
+        const top = node.position.y;
+        const bounds: AnchorBounds = {
+            left,
+            top,
+            right: left + dimensions.width,
+            bottom: top + dimensions.height,
             width: dimensions.width,
             height: dimensions.height,
-            type: 'node'
+            centerX: left + dimensions.width / 2,
+            centerY: top + dimensions.height / 2
         };
+
+        const element = this.canvasElement.querySelector(`[data-node-id="${targetId}"]`) as HTMLElement | null;
+
+        return {
+            id: targetId,
+            type: 'node',
+            bounds,
+            element
+        };
+    }
+
+    private renderFocusFlowOverlay(focusedContainer: VisualNode): void {
+        if (this.focusFlowOverlay) {
+            this.focusFlowOverlay.remove();
+            this.focusFlowOverlay = null;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'focus-flow-overlay';
+        overlay.dataset.containerId = focusedContainer.id;
+
+        const header = document.createElement('div');
+        header.className = 'focus-flow-overlay__header';
+        header.textContent = this.getNodeDisplayLabel(focusedContainer);
+        overlay.appendChild(header);
+
+        const childNodes = focusedContainer.children ?? [];
+
+        if (childNodes.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'focus-flow-overlay__empty';
+            empty.innerHTML = '<i class="fas fa-arrow-right"></i><span>Drop steps here to define this subprocess.</span>';
+            overlay.appendChild(empty);
+            this.canvasElement.appendChild(overlay);
+            this.focusFlowOverlay = overlay;
+            return;
+        }
+
+        const rail = document.createElement('div');
+        rail.className = 'focus-flow-overlay__rail';
+
+        const startNode = childNodes[0];
+        const endNode = childNodes[childNodes.length - 1];
+
+        const startPin = document.createElement('div');
+        startPin.className = 'focus-flow-pin focus-flow-pin--start';
+        startPin.innerHTML = `<i class="fas fa-dot-circle"></i><span>${this.getNodeDisplayLabel(startNode)}</span>`;
+
+        const countChip = document.createElement('span');
+        countChip.className = 'focus-flow-overlay__count';
+        countChip.textContent = `${childNodes.length} step${childNodes.length > 1 ? 's' : ''}`;
+
+        const endPin = document.createElement('div');
+        endPin.className = 'focus-flow-pin focus-flow-pin--end';
+        endPin.innerHTML = `<i class="fas fa-flag-checkered"></i><span>${this.getNodeDisplayLabel(endNode)}</span>`;
+
+        rail.appendChild(startPin);
+        rail.appendChild(countChip);
+        rail.appendChild(endPin);
+
+        overlay.appendChild(rail);
+        this.canvasElement.appendChild(overlay);
+        this.focusFlowOverlay = overlay;
+    }
+
+    private clearFocusFlowOverlay(): void {
+        if (this.focusFlowOverlay) {
+            this.focusFlowOverlay.remove();
+            this.focusFlowOverlay = null;
+        }
     }
 
     getDetailRegistry(): MasterDetailRegistry | null {
@@ -5523,13 +6224,39 @@ export class VisualDesigner {
 
         const summary = this.detailRegistry!.summarizeDetail(detail);
 
-        const nameEl = document.createElement('span');
-        nameEl.className = summary.isEmpty ? 'http-detail-row__label http-detail-row__label--empty' : 'http-detail-row__label';
-        nameEl.textContent = summary.primaryText;
+        const primaryCell = document.createElement('div');
+        primaryCell.className = 'http-detail-cell';
 
-        const valueEl = document.createElement('span');
-        valueEl.className = summary.secondaryText ? 'http-detail-row__value' : 'http-detail-row__value http-detail-row__value--empty';
-        valueEl.textContent = summary.secondaryText ?? '—';
+        if (section.primaryAttribute) {
+            const primaryValue = detail.attributes?.[section.primaryAttribute] ?? '';
+            primaryCell.appendChild(this.createDetailSummary(
+                section.primaryAttributeLabel ?? section.primaryAttribute,
+                primaryValue
+            ));
+        } else {
+            const nameEl = document.createElement('span');
+            nameEl.className = summary.isEmpty ? 'http-detail-row__label http-detail-row__label--empty' : 'http-detail-row__label';
+            nameEl.textContent = summary.primaryText;
+            primaryCell.appendChild(nameEl);
+        }
+
+        const secondaryCell = document.createElement('div');
+        secondaryCell.className = 'http-detail-cell';
+
+        if (section.usesBody) {
+            secondaryCell.appendChild(this.createDetailSummary('Body', detail.body ?? '', true));
+        } else if (section.secondaryAttribute) {
+            const secondaryValue = detail.attributes?.[section.secondaryAttribute] ?? '';
+            secondaryCell.appendChild(this.createDetailSummary(
+                section.secondaryAttributeLabel ?? section.secondaryAttribute,
+                secondaryValue
+            ));
+        } else {
+            const valueEl = document.createElement('span');
+            valueEl.className = summary.secondaryText ? 'http-detail-row__value' : 'http-detail-row__value http-detail-row__value--empty';
+            valueEl.textContent = summary.secondaryText ?? '—';
+            secondaryCell.appendChild(valueEl);
+        }
 
         const actions = document.createElement('div');
         actions.className = 'http-detail-row__actions';
@@ -5560,11 +6287,28 @@ export class VisualDesigner {
         deleteButton.classList.add('danger');
         actions.appendChild(deleteButton);
 
-        row.appendChild(nameEl);
-        row.appendChild(valueEl);
+        row.appendChild(primaryCell);
+        row.appendChild(secondaryCell);
         row.appendChild(actions);
 
         return row;
+    }
+
+    private createDetailSummary(label: string, value: string, multiline: boolean = false): HTMLElement {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'http-detail-summary';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'http-detail-summary__label';
+        labelEl.textContent = label;
+
+        const valueEl = document.createElement(multiline ? 'pre' : 'span');
+        valueEl.className = 'http-detail-summary__value';
+        valueEl.textContent = value && value.length > 0 ? value : '—';
+
+        wrapper.appendChild(labelEl);
+        wrapper.appendChild(valueEl);
+        return wrapper;
     }
 
     private createDetailActionButton(iconClass: string, title: string, action: () => void, disabled = false): HTMLButtonElement {
@@ -5664,11 +6408,17 @@ export class VisualDesigner {
         return node;
     }
 
-    private getNodeDisplayLabel(node: VisualNode): string {
+    getNodeDisplayLabel(node: VisualNode): string {
         const nameAttr = (node.attributes?.name || node.attributes?.id || '').toString().trim();
         const titleCaseType = node.type.charAt(0).toUpperCase() + node.type.slice(1);
         if (nameAttr.length > 0) {
             return `${titleCaseType}: ${nameAttr}`;
+        }
+        if (node.attributes?.var) {
+            return `${titleCaseType}: ${node.attributes.var}`;
+        }
+        if (node.type === 'http' && node.attributes?.url) {
+            return `Http: ${node.attributes.url}`;
         }
         return titleCaseType;
     }
@@ -5710,6 +6460,7 @@ export class VisualDesigner {
 
             container.appendChild(overview);
             container.appendChild(this.createSummaryHint('Execution metrics will appear while the workflow runs.'));
+            this.emit('focusSummaryUpdated', null);
             return;
         }
 
@@ -5745,7 +6496,93 @@ export class VisualDesigner {
             content.appendChild(attributeSection);
         }
 
+        content.appendChild(this.createMetricsSection(summary));
+
+        if (summary.detailBreakdown.length > 0) {
+            content.appendChild(this.createDetailPreviewGrid(summary.detailBreakdown));
+        }
+
         container.appendChild(content);
+        this.emit('focusSummaryUpdated', { nodeId: focusNode.id, summary });
+    }
+
+    private getBreadcrumbSummary(node: VisualNode): string {
+        const preferredKeys = ['name', 'var', 'method', 'url', 'expression', 'id'];
+        const attributes = node.attributes || {};
+        const pairs: string[] = [];
+
+        preferredKeys.forEach(key => {
+            const value = attributes[key];
+            if (value && value.trim().length > 0) {
+                pairs.push(`${key}=${value.trim()}`);
+            }
+        });
+
+        if (pairs.length === 0) {
+            const extra = Object.entries(attributes)
+                .filter(([key]) => !preferredKeys.includes(key))
+                .slice(0, 2)
+                .map(([key, value]) => `${key}=${value}`);
+            pairs.push(...extra);
+        }
+
+        return pairs.length > 0 ? `${node.type} • ${pairs.join(', ')}` : node.type;
+    }
+
+    private createMetricsSection(summary: ContainerSummary): HTMLElement {
+        const metrics = document.createElement('div');
+        metrics.className = 'focus-summary__metrics';
+
+        const statusChip = this.createSummaryChip(
+            this.createFontAwesomeIcon('fa-gauge-simple-high', '#636366', 11),
+            'Execution',
+            this.workflowStatus.toUpperCase(),
+            true
+        );
+
+        metrics.appendChild(statusChip);
+        metrics.appendChild(this.createSummaryHint('Detailed metrics appear after a run.'));
+        return metrics;
+    }
+
+    private createDetailPreviewGrid(
+        breakdown: Array<{ title: string; count: number; preview: string[] }>
+    ): HTMLElement {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'focus-summary__detail-grid';
+
+        breakdown.forEach(entry => {
+            const card = document.createElement('div');
+            card.className = 'focus-summary__detail-card';
+
+            const heading = document.createElement('div');
+            heading.className = 'focus-summary__detail-title';
+            heading.textContent = `${entry.title} (${entry.count})`;
+            card.appendChild(heading);
+
+            const list = document.createElement('ul');
+            list.className = 'focus-summary__detail-list';
+
+            entry.preview.forEach(text => {
+                const item = document.createElement('li');
+                item.className = 'focus-summary__detail-item';
+                item.textContent = text;
+                list.appendChild(item);
+            });
+
+            const remaining = entry.count - entry.preview.length;
+            if (remaining > 0) {
+                const more = document.createElement('li');
+                more.className = 'focus-summary__detail-item focus-summary__detail-item--muted';
+                more.textContent = `+${remaining} more…`;
+                list.appendChild(more);
+            }
+
+            card.appendChild(list);
+            wrapper.appendChild(card);
+        });
+
+        return wrapper;
     }
 
     private createSummaryTitle(label: string, icon: HTMLElement | null): HTMLElement {
@@ -5838,8 +6675,20 @@ export class VisualDesigner {
             return;
         }
 
+        const rootStats = analyzeHierarchy(this.nodes);
         const trail: BreadcrumbItem[] = [
-            { id: '__root__', label: 'Workflow', level: 0, nodeType: 'root' }
+            {
+                id: '__root__',
+                label: 'Workflow',
+                level: 0,
+                nodeType: 'root',
+                summary: `Workflow • ${rootStats.totalNodes} nodes`,
+                metrics: [
+                    { label: 'Nodes', value: rootStats.totalNodes.toString() },
+                    { label: 'Containers', value: rootStats.containerCount.toString() },
+                    { label: 'Leaves', value: rootStats.leafCount.toString() }
+                ]
+            }
         ];
 
         const stack = this.drillDownManager.getTrail();
@@ -5848,16 +6697,41 @@ export class VisualDesigner {
             if (!node) {
                 return;
             }
+            const containerSnapshot = analyzeContainer(node, this.detailRegistry);
             trail.push({
                 id,
                 label: this.getNodeDisplayLabel(node),
                 level: index + 1,
-                nodeType: node.type
+                nodeType: node.type,
+                summary: this.getBreadcrumbSummary(node),
+                metrics: this.buildBreadcrumbMetrics(containerSnapshot)
             });
         });
 
         this.breadcrumbNav.render(this.breadcrumbContainer, trail);
         this.updateFocusSummary();
+    }
+
+    private buildBreadcrumbMetrics(snapshot: ContainerSummary | null): BreadcrumbMetric[] {
+        if (!snapshot) {
+            return [];
+        }
+
+        const metrics: BreadcrumbMetric[] = [
+            { label: 'Children', value: snapshot.childCount.toString() }
+        ];
+
+        if (snapshot.containerCount > 0) {
+            metrics.push({ label: 'Containers', value: snapshot.containerCount.toString() });
+        }
+
+        if (snapshot.detailCount > 0) {
+            metrics.push({ label: 'Details', value: snapshot.detailCount.toString() });
+        } else if (snapshot.leafCount > 0) {
+            metrics.push({ label: 'Leaves', value: snapshot.leafCount.toString() });
+        }
+
+        return metrics;
     }
 
     private handleBreadcrumbNavigate(item: BreadcrumbItem): void {
@@ -5871,6 +6745,9 @@ export class VisualDesigner {
         }
         this.updateBreadcrumbTrail();
         this.render();
+        if (this.drillDownManager.getCurrentId() !== null) {
+            this.clearRenderedConnections();
+        }
     }
 
     private enterContainer(containerId: string): void {
@@ -5882,6 +6759,9 @@ export class VisualDesigner {
         this.container.focus();
         this.updateBreadcrumbTrail();
         this.render();
+        if (this.drillDownManager.getCurrentId() !== null) {
+            this.clearRenderedConnections();
+        }
     }
 
     private exitFocusLevel(): void {

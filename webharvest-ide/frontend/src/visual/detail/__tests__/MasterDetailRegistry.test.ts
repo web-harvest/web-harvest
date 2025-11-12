@@ -122,6 +122,9 @@ describe('MasterDetailRegistry', () => {
         expect(section.primaryAttribute).toBe('name');
         expect(section.secondaryAttribute).toBe('value');
         expect(section.summaryEmptyLabel).toBe('Unnamed header');
+        expect(section.primaryAttributeLabel).toBe('Name');
+        expect(section.secondaryAttributeLabel).toBe('Value');
+        expect(section.attributeDefinitions).toHaveLength(2);
     });
 
     it('creates detail nodes with default values and unique ids', () => {
@@ -151,6 +154,32 @@ describe('MasterDetailRegistry', () => {
         expect(summary.primaryText).toBe('Accept');
         expect(summary.secondaryText).toBe('application/json');
         expect(summary.isEmpty).toBe(false);
+    });
+
+    it('falls back to semantic allowed child types when explicit config missing', () => {
+        const httpWithoutAllowedPlugins = stubPlugin({
+            ...httpPlugin,
+            allowedChildPlugins: [],
+            schema: {
+                ...httpPlugin.schema,
+                allowedSubElements: []
+            }
+        });
+
+        const map: Record<string, Plugin> = {
+            http: httpWithoutAllowedPlugins,
+            'http-header': headerPlugin
+        };
+
+        const fallbackManager = {
+            findPlugin: (id: string) => map[id] ?? null
+        } as unknown as PluginManager;
+
+        const registry = new MasterDetailRegistry(fallbackManager);
+        const sections = registry.getSections('http');
+
+        expect(sections).toHaveLength(1);
+        expect(sections[0].detailType).toBe('http-header');
     });
 });
 

@@ -38,7 +38,22 @@ global.fetch = jest.fn((url: string) => {
             json: () => Promise.resolve({ valid: true }),
         } as any);
     }
-    return Promise.reject(new Error('Unknown URL'));
+    if (url.includes('/api/execute')) {
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ executionId: 'test-exec' }),
+        } as any);
+    }
+    if (url.includes('/api/session/history')) {
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ history: [] }),
+        } as any);
+    }
+    return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+    } as any);
 });
 
 describe('App - Compilation & Type Safety', () => {
@@ -50,8 +65,31 @@ describe('App - Compilation & Type Safety', () => {
             <div id="variables"></div>
             <div id="session"></div>
             <div id="canvas-area"></div>
-            <div id="propertyPanel"></div>
+            <div id="plugin-sidebar"></div>
             <div id="plugin-palette"></div>
+            <div class="sidebar-section">
+                <div class="sidebar-nav">
+                    <button class="sidebar-nav-btn" data-panel="properties" id="propertiesTabBtn"></button>
+                    <button class="sidebar-nav-btn" data-panel="run" id="runTabBtn"></button>
+                    <button class="sidebar-nav-btn" data-panel="logs"></button>
+                    <button class="sidebar-nav-btn" data-panel="results"></button>
+                    <button class="sidebar-nav-btn" data-panel="variables"></button>
+                    <button class="sidebar-nav-btn" data-panel="session"></button>
+                </div>
+                <div class="sidebar-content">
+                    <div id="propertyPanel" class="sidebar-panel"></div>
+                    <div id="runPanel" class="sidebar-panel">
+                        <div class="panel-header panel-header--run"><h3>Run & Test</h3></div>
+                        <div class="panel-body panel-body--run" id="runPanelBody">
+                            <div id="executionControls" class="run-panel-host"></div>
+                        </div>
+                    </div>
+                    <div id="logsPanel" class="sidebar-panel"></div>
+                    <div id="resultsPanel" class="sidebar-panel"></div>
+                    <div id="variablesPanel" class="sidebar-panel"></div>
+                    <div id="sessionPanel" class="sidebar-panel"></div>
+                </div>
+            </div>
             <div id="tabs-container"></div>
             <span id="logsBadge">0</span>
             <span id="varsBadge">0</span>

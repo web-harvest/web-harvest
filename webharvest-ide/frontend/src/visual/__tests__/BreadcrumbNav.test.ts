@@ -19,16 +19,26 @@ describe('BreadcrumbNav', () => {
 
         nav.render(container, [
             { id: '__root__', label: 'Workflow', level: 0 },
-            { id: 'node-1', label: 'Function', level: 1, nodeType: 'function' }
+            {
+                id: 'node-1',
+                label: 'Function',
+                level: 1,
+                nodeType: 'function',
+                metrics: [{ label: 'Children', value: '3' }]
+            }
         ]);
 
         const items = container.querySelectorAll('.breadcrumb-item');
         expect(items).toHaveLength(2);
         expect(items[0].classList.contains('breadcrumb-item--current')).toBe(false);
         expect(items[1].classList.contains('breadcrumb-item--current')).toBe(true);
+        expect((items[1] as HTMLElement).title).toBe('Function');
 
         const icon = container.querySelector('.test-icon-__root__');
         expect(icon).not.toBeNull();
+
+        const metric = items[1].querySelector('.breadcrumb-item__metric');
+        expect(metric?.textContent).toBe('Children: 3');
 
         (items[0] as HTMLButtonElement).click();
         expect(visited).toContain('__root__');

@@ -21,6 +21,33 @@ import { PluginPalette } from '../visual/PluginPalette';
 import { XMLParser } from '../visual/XMLParser';
 import { XMLGenerator } from '../visual/XMLGenerator';
 import type { ViewMode } from '../types';
+import { RunWorkflowPanel } from '../visual/RunWorkflowPanel';
+import type { SelectedNodeContext } from '../visual/RunWorkflowPanel';
+import type { RunHistoryEntry, RunHistoryScope, RunHistoryStatus, RunPanelPayload, RunPanelState, Tab } from '../types';
+
+const RUN_PANEL_STORAGE_PREFIX = 'wh-run-panel-state:';
+const DEFAULT_RUN_PANEL_STATE: RunPanelState = {
+    inputJson: '',
+    correlationId: '',
+    idempotencyKey: '',
+    taskDomainJson: '',
+    history: [],
+};
+
+interface RunConfigOptions {
+    payload?: RunPanelPayload;
+    scope?: RunHistoryScope;
+    historyEntryId?: string;
+    selectedNode?: SelectedNodeContext | null;
+}
+
+interface RunExecutionOptions {
+    payload?: RunPanelPayload;
+    historyEntryId?: string | null;
+    scope?: RunHistoryScope;
+    selectedNode?: SelectedNodeContext | null;
+    configName?: string;
+}
 
 export class App {
     private tabManager: TabManager;
@@ -42,6 +69,10 @@ export class App {
     private keyboardShortcutManager: KeyboardShortcutManager;
     private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
     private gridEnabled: boolean = false;
+    private runPanel: RunWorkflowPanel;
+    private executionHistoryIndex: Map<string, string> = new Map();
+    private lastRunEntryId: string | null = null;
+    private runHistoryByEntry: Map<string, string> = new Map();
 
     constructor() {
         console.log('🚀 Initializing WebHarvest IDE (TypeScript + Apple HIG)...');
@@ -61,6 +92,18 @@ export class App {
         // Note: visualDesigner initialized after pluginManager loads in initialize()
         this.visualDesigner = new VisualDesigner('canvas-area');
         this.propertyPanel = new PropertyPanel('propertyPanel');
+        this.runPanel = new RunWorkflowPanel('executionControls', {
+            onRun: (payload, scope, node) => this.handleRunFromPanel(payload, scope, node),
+            onValidate: () => {
+                void this.validateConfig();
+            },
+            onStateChange: (state) => this.handleRunPanelStateChange(state),
+            onRestore: (entryId) => this.handleRunHistoryRestore(entryId),
+            onRerun: (entryId) => {
+                void this.handleRunHistoryRerun(entryId);
+            },
+            onClearHistory: () => this.handleRunHistoryClear(),
+        });
         this.pluginPalette = new PluginPalette('plugin-palette');
         this.xmlParser = new XMLParser();
         this.xmlGenerator = new XMLGenerator();
@@ -262,6 +305,33 @@ export class App {
     private setupEventHandlers(): void {
         // WebSocket updates (matches old app.js logic)
         this.wsManager.onUpdate((update) => {
+            const executionId = this.wsManager.getExecutionId();
+            const entryId = executionId ? this.executionHistoryIndex.get(executionId) ?? this.lastRunEntryId : this.lastRunEntryId;
+            if (entryId) {
+                switch (update.status) {
+                    case 'STARTED':
+                    case 'RUNNING':
+                    case 'RESUMED':
+                        this.updateRunHistoryStatus(entryId, 'RUNNING', executionId || undefined);
+                        break;
+                    case 'PAUSED':
+                        this.updateRunHistoryStatus(entryId, 'RUNNING', executionId || undefined);
+                        break;
+                    case 'COMPLETED':
+                        this.updateRunHistoryStatus(entryId, 'COMPLETED', executionId || undefined);
+                        break;
+                    case 'ERROR':
+                    case 'FAILED':
+                        this.updateRunHistoryStatus(entryId, 'FAILED', executionId || undefined);
+                        break;
+                    case 'STOPPED':
+                        this.updateRunHistoryStatus(entryId, 'STOPPED', executionId || undefined);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
             if (this.currentMode === 'visual' && this.visualDesigner && Array.isArray(update.nodeUpdates) && update.nodeUpdates.length > 0) {
                 update.nodeUpdates.forEach((nodeUpdate) => {
                     this.executionStateManager.updateNodeState(nodeUpdate);
@@ -302,6 +372,10 @@ export class App {
                     this.uiManager.showExecutionActionButtons(false);
                     this.uiManager.setExecutionState('idle');
                     this.visualDesigner.setWorkflowStatus('idle');
+                }
+                this.runPanel.setExecutionState('idle');
+                if (executionId) {
+                    this.executionHistoryIndex.delete(executionId);
                 }
             }
 
@@ -366,8 +440,13 @@ export class App {
                 this.propertyPanel.showNode(node).catch(err => {
                     console.error('❌ [App] Error showing node in PropertyPanel:', err);
                 });
+                this.runPanel.updateSelection({
+                    id: node.id,
+                    label: this.visualDesigner.getNodeDisplayLabel(node),
+                });
             } else {
                 console.warn(`⚠️ [App] Node not found: ${nodeId}`);
+                this.runPanel.updateSelection(null);
             }
         });
 
@@ -723,7 +802,7 @@ export class App {
     /**
      * Run execution (FULL IMPLEMENTATION - Correct JSON format)
      */
-    async runExecution(xml: string): Promise<void> {
+    async runExecution(xml: string, options?: RunExecutionOptions): Promise<void> {
         this.logsPanel.clear();
         this.resultsPanel.clear();
         this.variablesPanel.clear();
@@ -731,7 +810,7 @@ export class App {
 
         try {
             const tab = this.tabManager.getActiveTab();
-            const configName = tab?.name || 'config.xml';
+            const configName = options?.configName || tab?.name || 'config.xml';
 
             if (this.currentMode === 'visual' && this.visualDesigner) {
                 const nodesForTracking = this.visualDesigner.getAllNodes();
@@ -739,18 +818,52 @@ export class App {
                 this.visualDesigner.clearExecutionStates();
                 this.visualDesigner.setWorkflowStatus('running');
                 this.uiManager.setExecutionState('running');
+                this.runPanel.setExecutionState('running');
             } else {
                 this.executionStateManager.reset();
+                this.runPanel.setExecutionState('running');
             }
 
             // Call API with JSON payload (backend expects {"configXml": "...", "configName": "..."})
+            const body: Record<string, any> = {
+                configXml: xml,
+                configName: configName,
+            };
+
+            if (options?.payload) {
+                if (options.payload.inputJson && options.payload.inputJson.trim().length > 0) {
+                    try {
+                        body.inputParameters = JSON.parse(options.payload.inputJson);
+                    } catch (error) {
+                        console.warn('Invalid workflow input JSON, sending raw string');
+                        body.inputParameters = options.payload.inputJson;
+                    }
+                }
+                if (options.payload.correlationId) {
+                    body.correlationId = options.payload.correlationId;
+                }
+                if (options.payload.idempotencyKey) {
+                    body.idempotencyKey = options.payload.idempotencyKey;
+                }
+                if (options.payload.taskDomainJson && options.payload.taskDomainJson.trim().length > 0) {
+                    try {
+                        body.taskDomainMapping = JSON.parse(options.payload.taskDomainJson);
+                    } catch (error) {
+                        console.warn('Invalid task→domain JSON, sending raw string');
+                        body.taskDomainMapping = options.payload.taskDomainJson;
+                    }
+                }
+            }
+
+            if (options?.scope === 'task' && options.selectedNode?.id) {
+                body.scope = 'task';
+                body.nodeId = options.selectedNode.id;
+            }
+
             const response = await fetch('/api/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    configXml: xml,
-                    configName: configName,
-                }),
+                body: JSON.stringify(body),
             });
 
             if (!response.ok) {
@@ -765,6 +878,11 @@ export class App {
             }
 
             this.logsPanel.addLog('success', `✅ Execution started: ${data.executionId}`);
+
+            if (options?.historyEntryId) {
+                this.executionHistoryIndex.set(data.executionId, options.historyEntryId);
+                this.updateRunHistoryStatus(options.historyEntryId, 'RUNNING', data.executionId);
+            }
 
             // Show execution action buttons (Pause/Resume/Stop)
             if (this.currentMode === 'visual') {
@@ -783,6 +901,8 @@ export class App {
                 this.uiManager.showExecutionActionButtons(false);
                 this.visualDesigner.setWorkflowStatus('idle');
             }
+            this.runPanel.setExecutionState('idle');
+            this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
         }
     }
 
@@ -1130,43 +1250,64 @@ export class App {
     /**
      * Run configuration (with validation)
      */
-    async runConfig(): Promise<void> {
+    async runConfig(options?: RunConfigOptions): Promise<void> {
         console.log(`🎯 [App] runConfig() called in ${this.currentMode} mode`);
 
-        // Get XML content based on current mode
-        let xmlContent: string;
+        const scope: RunHistoryScope = options?.scope ?? 'workflow';
+
+        let xmlContent: string | null = null;
         let configName: string;
 
         if (this.currentMode === 'visual') {
-            // Generate XML from Visual Designer
-            const nodes = this.visualDesigner.getNodes();
-            if (nodes.length === 0) {
-                this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
-                return;
+            if (scope === 'task') {
+                const nodeId = options?.selectedNode?.id;
+                if (!nodeId) {
+                    this.logsPanel.addLog('error', '❌ Select a node on the canvas to run a single task.');
+                    this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
+                    return;
+                }
+
+                const taskXml = this.visualDesigner.generateXMLForNode(nodeId);
+                if (!taskXml) {
+                    this.logsPanel.addLog('error', '❌ Failed to generate XML for the selected task.');
+                    this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
+                    return;
+                }
+
+                xmlContent = taskXml;
+                configName = `${options.selectedNode?.label ?? nodeId}.xml`;
+                this.logsPanel.addLog('info', `🧪 Running selected task: ${options.selectedNode?.label ?? nodeId}`);
+            } else {
+                const nodes = this.visualDesigner.getNodes();
+                if (nodes.length === 0) {
+                    this.logsPanel.addLog('warning', '⚠️ No nodes in canvas. Add plugins first.');
+                    this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
+                    return;
+                }
+
+                console.log('🎨 [App] Generating XML from', nodes.length, 'visual nodes...');
+                xmlContent = this.visualDesigner.generateXML();
+                const config = this.visualDesigner.getCurrentConfiguration();
+                configName = config?.filename || 'visual-workflow.xml';
+                console.log('✅ [App] Generated XML from Visual mode:', xmlContent.length, 'chars');
             }
-
-            console.log('🎨 [App] Generating XML from', nodes.length, 'visual nodes...');
-
-            // Wrap in <config> if needed
-            xmlContent = this.visualDesigner.generateXML();
-
-            const config = this.visualDesigner.getCurrentConfiguration();
-            configName = config?.filename || 'visual-workflow.xml';
-
-            console.log('✅ [App] Generated XML from Visual mode:', xmlContent.length, 'chars');
         } else {
-            // XML mode: use tab content
             const tab = this.tabManager.getActiveTab();
             if (!tab) {
                 this.logsPanel.addLog('error', '❌ No active tab');
+                this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
                 return;
             }
-
             xmlContent = tab.content;
             configName = tab.name;
         }
 
-        // Validate first
+        if (!xmlContent) {
+            this.logsPanel.addLog('error', '❌ Unable to generate configuration XML.');
+            this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
+            return;
+        }
+
         this.logsPanel.addLog('info', '🔍 Validating configuration...');
 
         try {
@@ -1184,17 +1325,22 @@ export class App {
             if (!validationResult.valid) {
                 this.logsPanel.addLog('error', '❌ Validation failed: ' + (validationResult.message || 'Unknown error'));
                 this.logsPanel.addLog('error', '⚠️ Fix errors before running');
+                this.updateRunHistoryStatus(options?.historyEntryId, 'FAILED');
                 return;
             }
 
             this.logsPanel.addLog('success', '✓ Configuration valid');
         } catch (error) {
             console.warn('Validation skipped:', error);
-            // Continue anyway if validation service fails
         }
 
-        // Run with generated/retrieved XML content
-        await this.runExecution(xmlContent);
+        await this.runExecution(xmlContent, {
+            payload: options?.payload,
+            historyEntryId: options?.historyEntryId ?? null,
+            scope,
+            selectedNode: options?.selectedNode ?? null,
+            configName,
+        });
     }
 
     /**
@@ -1324,6 +1470,11 @@ export class App {
                         }
                     }
                 }
+
+                const runState = this.ensureRunPanelState(tab);
+                this.runPanel.syncState(runState);
+                this.runPanel.updateSelection(null);
+                this.runPanel.setExecutionState('idle');
             }
         }
     }
@@ -1340,6 +1491,8 @@ export class App {
 
         const tab = this.tabManager.addTab();
         this.tabManager.updateTabContent(tab.id, defaultXml);
+        this.ensureRunPanelState(tab);
+        this.persistRunPanelState(tab);
         this.renderTabs();
         this.switchToTab(tab.id);
         this.logsPanel.addLog('info', `New tab: ${tab.name}`);
@@ -1362,6 +1515,7 @@ export class App {
         }
 
         this.tabManager.removeTab(tabId);
+        this.removeRunPanelState(tabId);
         this.renderTabs();
 
         // Update editor with new active tab
@@ -1369,10 +1523,15 @@ export class App {
         if (activeTab) {
             this.editor.setValue(activeTab.content);
             this.uiManager.updateFilename(activeTab.name);
+            const runState = this.ensureRunPanelState(activeTab);
+            this.runPanel.syncState(runState);
         } else {
             this.editor.setValue('');
             this.uiManager.updateFilename('No tabs');
+            this.runPanel.syncState({ ...DEFAULT_RUN_PANEL_STATE });
         }
+        this.runPanel.updateSelection(null);
+        this.runPanel.setExecutionState('idle');
     }
 
     /**
@@ -1388,6 +1547,258 @@ export class App {
         document.querySelectorAll('.sidebar-panel').forEach(panel => {
             panel.classList.toggle('active', panel.id === panelName + 'Panel');
         });
+    }
+
+    private ensureRunPanelState(tab: Tab): RunPanelState {
+        if (!tab.runPanelState) {
+            const stored = this.loadRunPanelStateFromStorage(tab.id);
+            tab.runPanelState = stored
+                ? { ...stored, history: Array.isArray(stored.history) ? stored.history : [] }
+                : { ...DEFAULT_RUN_PANEL_STATE, history: [] };
+            tab.runPanelState.history.forEach(entry => {
+                this.runHistoryByEntry.set(entry.id, tab.id);
+            });
+        } else if (!Array.isArray(tab.runPanelState.history)) {
+            tab.runPanelState.history = [];
+        }
+        return tab.runPanelState;
+    }
+
+    private loadRunPanelStateFromStorage(tabId: string): RunPanelState | null {
+        if (typeof localStorage === 'undefined') {
+            return null;
+        }
+        try {
+            const raw = localStorage.getItem(RUN_PANEL_STORAGE_PREFIX + tabId);
+            if (!raw) {
+                return null;
+            }
+            const parsed = JSON.parse(raw) as Partial<RunPanelState>;
+            return {
+                inputJson: parsed.inputJson ?? '',
+                correlationId: parsed.correlationId ?? '',
+                idempotencyKey: parsed.idempotencyKey ?? '',
+                taskDomainJson: parsed.taskDomainJson ?? '',
+                history: Array.isArray(parsed.history) ? parsed.history : [],
+            };
+        } catch (error) {
+            console.warn('[RunPanel] Failed to load state for tab', tabId, error);
+            return null;
+        }
+    }
+
+    private persistRunPanelState(tab: Tab): void {
+        this.ensureRunPanelState(tab);
+        if (typeof localStorage !== 'undefined' && tab.runPanelState) {
+            try {
+                localStorage.setItem(RUN_PANEL_STORAGE_PREFIX + tab.id, JSON.stringify(tab.runPanelState));
+            } catch (error) {
+                console.warn('[RunPanel] Failed to persist state for tab', tab.id, error);
+            }
+        }
+    }
+
+    private removeRunPanelState(tabId: string): void {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(RUN_PANEL_STORAGE_PREFIX + tabId);
+        }
+        // Clean up history maps
+        Array.from(this.runHistoryByEntry.entries()).forEach(([entryId, ownerId]) => {
+            if (ownerId === tabId) {
+                this.runHistoryByEntry.delete(entryId);
+            }
+        });
+        Array.from(this.executionHistoryIndex.entries()).forEach(([execId, entryId]) => {
+            const ownerId = this.runHistoryByEntry.get(entryId);
+            if (!ownerId || ownerId === tabId) {
+                this.executionHistoryIndex.delete(execId);
+            }
+        });
+    }
+
+    private handleRunPanelStateChange(state: RunPanelState): void {
+        const tab = this.tabManager.getActiveTab();
+        if (!tab) {
+            return;
+        }
+
+        const runState = this.ensureRunPanelState(tab);
+        runState.inputJson = state.inputJson ?? '';
+        runState.correlationId = state.correlationId ?? '';
+        runState.idempotencyKey = state.idempotencyKey ?? '';
+        runState.taskDomainJson = state.taskDomainJson ?? '';
+        // Preserve history (state.history already synced inside panel)
+        if (Array.isArray(state.history)) {
+            runState.history = state.history;
+        }
+        this.persistRunPanelState(tab);
+    }
+
+    private buildHistoryNodeContext(entry: RunHistoryEntry): SelectedNodeContext | null {
+        if (entry.scope !== 'task' || !entry.nodeId) {
+            return null;
+        }
+        return {
+            id: entry.nodeId,
+            label: entry.nodeLabel ?? entry.nodeId
+        };
+    }
+
+    private handleRunHistoryRestore(entryId: string): void {
+        const tab = this.tabManager.getActiveTab();
+        if (!tab) {
+            return;
+        }
+
+        const runState = this.ensureRunPanelState(tab);
+        const entry = runState.history.find(item => item.id === entryId);
+        if (!entry) {
+            return;
+        }
+
+        runState.inputJson = entry.payload.inputJson ?? '';
+        runState.correlationId = entry.payload.correlationId ?? '';
+        runState.idempotencyKey = entry.payload.idempotencyKey ?? '';
+        runState.taskDomainJson = entry.payload.taskDomainJson ?? '';
+        this.persistRunPanelState(tab);
+        const nodeContext = this.buildHistoryNodeContext(entry);
+        this.runPanel.setScope(entry.scope, nodeContext ?? undefined);
+        this.runPanel.syncState(runState);
+    }
+
+    private async handleRunHistoryRerun(entryId: string): Promise<void> {
+        const tab = this.tabManager.getActiveTab();
+        if (!tab) {
+            return;
+        }
+
+        const runState = this.ensureRunPanelState(tab);
+        const entry = runState.history.find(item => item.id === entryId);
+        if (!entry) {
+            return;
+        }
+
+        const payload: RunPanelPayload = {
+            inputJson: entry.payload.inputJson ?? '',
+            correlationId: entry.payload.correlationId,
+            idempotencyKey: entry.payload.idempotencyKey,
+            taskDomainJson: entry.payload.taskDomainJson ?? '',
+        };
+
+        runState.inputJson = payload.inputJson;
+        runState.correlationId = payload.correlationId ?? '';
+        runState.idempotencyKey = payload.idempotencyKey ?? '';
+        runState.taskDomainJson = payload.taskDomainJson ?? '';
+        this.persistRunPanelState(tab);
+
+        const nodeContext = this.buildHistoryNodeContext(entry);
+        this.runPanel.setScope(entry.scope, nodeContext ?? undefined);
+        this.runPanel.syncState(runState);
+
+        await this.handleRunFromPanel(payload, entry.scope, nodeContext);
+    }
+
+    private handleRunHistoryClear(): void {
+        const tab = this.tabManager.getActiveTab();
+        if (!tab) {
+            return;
+        }
+
+        const runState = this.ensureRunPanelState(tab);
+        runState.history = [];
+        Array.from(this.runHistoryByEntry.entries()).forEach(([entryId, ownerId]) => {
+            if (ownerId === tab.id) {
+                this.runHistoryByEntry.delete(entryId);
+            }
+        });
+        this.persistRunPanelState(tab);
+        this.runPanel.syncState(runState);
+    }
+
+    private async handleRunFromPanel(
+        payload: RunPanelPayload,
+        scope: RunHistoryScope,
+        node?: SelectedNodeContext | null
+    ): Promise<void> {
+        const tab = this.tabManager.getActiveTab();
+        if (!tab) {
+            this.logsPanel.addLog('error', '❌ No active tab selected');
+            return;
+        }
+
+        const runState = this.ensureRunPanelState(tab);
+        runState.inputJson = payload.inputJson ?? '';
+        runState.correlationId = payload.correlationId ?? '';
+        runState.idempotencyKey = payload.idempotencyKey ?? '';
+        runState.taskDomainJson = payload.taskDomainJson ?? '';
+
+        const entry: RunHistoryEntry = {
+            id: `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            createdAt: Date.now(),
+            scope,
+            payload: { ...payload },
+            nodeId: node?.id,
+            nodeLabel: node?.label,
+            status: 'QUEUED',
+        };
+
+        runState.history = [entry, ...runState.history].slice(0, 20);
+        this.runHistoryByEntry.set(entry.id, tab.id);
+        const activeIds = new Set(runState.history.map(item => item.id));
+        Array.from(this.runHistoryByEntry.entries()).forEach(([entryId, ownerId]) => {
+            if (ownerId === tab.id && !activeIds.has(entryId)) {
+                this.runHistoryByEntry.delete(entryId);
+            }
+        });
+        this.persistRunPanelState(tab);
+        this.runPanel.syncState(runState);
+        this.lastRunEntryId = entry.id;
+
+        try {
+            await this.runConfig({
+                payload,
+                scope,
+                selectedNode: node ?? null,
+                historyEntryId: entry.id,
+            });
+        } catch (error) {
+            this.updateRunHistoryStatus(entry.id, 'FAILED');
+            throw error;
+        }
+    }
+
+    private updateRunHistoryStatus(entryId: string | null | undefined, status: RunHistoryStatus, executionId?: string): void {
+        if (!entryId) {
+            return;
+        }
+
+        const tabId = this.runHistoryByEntry.get(entryId);
+        if (!tabId) {
+            return;
+        }
+
+        const tab = this.tabManager.getAllTabs().find(t => t.id === tabId);
+        if (!tab || !tab.runPanelState) {
+            return;
+        }
+
+        const index = tab.runPanelState.history.findIndex(item => item.id === entryId);
+        if (index === -1) {
+            return;
+        }
+
+        const existing = tab.runPanelState.history[index];
+        const updated: RunHistoryEntry = {
+            ...existing,
+            status,
+            executionId: executionId ?? existing.executionId,
+        };
+        tab.runPanelState.history.splice(index, 1, updated);
+        this.persistRunPanelState(tab);
+
+        if (this.tabManager.getActiveTab()?.id === tabId) {
+            this.runPanel.syncState(tab.runPanelState);
+        }
     }
 
     /**
@@ -1517,6 +1928,7 @@ export class App {
             if (this.currentMode === 'visual') {
                 this.uiManager.setExecutionState('paused');
             }
+            this.runPanel.setExecutionState('paused');
         }
     }
 
@@ -1531,6 +1943,7 @@ export class App {
             if (this.currentMode === 'visual') {
                 this.uiManager.setExecutionState('running');
             }
+            this.runPanel.setExecutionState('running');
         }
     }
 
@@ -1549,6 +1962,7 @@ export class App {
             this.uiManager.setExecutionState('idle');
             this.visualDesigner.setWorkflowStatus('idle');
         }
+        this.runPanel.setExecutionState('idle');
     }
 
     /**

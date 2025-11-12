@@ -18,6 +18,7 @@ export class GridSystem {
     private gridSize: number;
     private enabled: boolean = true;
     private canvas: HTMLElement | null = null;
+    private scrollContainer: HTMLElement | null = null;
     private gridOverlay: SVGSVGElement | null = null;
     private gridBackground: SVGRectElement | null = null;
     private alignmentGuides: HTMLElement[] = [];
@@ -32,8 +33,9 @@ export class GridSystem {
     /**
      * Render grid overlay on canvas
      */
-    render(canvas: HTMLElement): void {
+    render(canvas: HTMLElement, scrollContainer?: HTMLElement): void {
         this.canvas = canvas;
+        this.scrollContainer = scrollContainer ?? canvas;
 
         this.detachListeners();
 
@@ -49,7 +51,7 @@ export class GridSystem {
         `;
 
         // Get canvas dimensions
-        const { width, height } = this.computeDimensions(canvas);
+        const { width, height } = this.computeDimensions();
         this.applyDimensions(svg, width, height);
 
         // Create grid pattern
@@ -93,7 +95,7 @@ export class GridSystem {
         }
 
         this.scrollListener = () => this.updateDimensions();
-        canvas.addEventListener('scroll', this.scrollListener, { passive: true });
+        (this.scrollContainer ?? canvas).addEventListener('scroll', this.scrollListener, { passive: true });
         window.addEventListener('resize', this.updateDimensions);
 
     }
@@ -106,19 +108,30 @@ export class GridSystem {
             this.resizeObserver.disconnect();
             this.resizeObserver = null;
         }
-        if (this.canvas && this.scrollListener) {
-            this.canvas.removeEventListener('scroll', this.scrollListener);
+        if (this.scrollListener) {
+            (this.scrollContainer ?? this.canvas)?.removeEventListener('scroll', this.scrollListener);
         }
         window.removeEventListener('resize', this.updateDimensions);
+        this.scrollContainer = null;
         this.scrollListener = null;
         this.gridOverlay = null;
         this.gridBackground = null;
     }
 
-    private computeDimensions(canvas: HTMLElement): { width: number; height: number } {
-        const rect = canvas.getBoundingClientRect();
-        const width = Math.max(canvas.scrollWidth, rect.width, 2000);
-        const height = Math.max(canvas.scrollHeight, rect.height, 2000);
+    private computeDimensions(): { width: number; height: number } {
+        if (!this.canvas) {
+            return { width: 0, height: 0 };
+        }
+
+        const scrollHost = this.scrollContainer ?? this.canvas;
+        const rect = scrollHost.getBoundingClientRect();
+        const contentWidth = this.canvas.scrollWidth || rect.width;
+        const contentHeight = this.canvas.scrollHeight || rect.height;
+        const viewportWidth = rect.width;
+        const viewportHeight = rect.height;
+
+        const width = Math.max(contentWidth, viewportWidth, 2000);
+        const height = Math.max(contentHeight, viewportHeight, 2000);
         return { width, height };
     }
 
@@ -135,7 +148,7 @@ export class GridSystem {
             return;
         }
 
-        const { width, height } = this.computeDimensions(this.canvas);
+        const { width, height } = this.computeDimensions();
         this.applyDimensions(this.gridOverlay, width, height);
         if (this.gridBackground) {
             this.gridBackground.setAttribute('width', width.toString());

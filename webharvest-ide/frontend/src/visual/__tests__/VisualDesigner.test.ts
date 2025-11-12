@@ -100,14 +100,14 @@ describe('VisualDesigner', () => {
             designer.loadNodes(nodes);
 
             const initialCrumbs = Array.from(
-                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item__label')
             ).map(el => el.textContent?.trim());
             expect(initialCrumbs).toEqual(['Workflow']);
 
             designerAny.enterContainer('loop-1');
 
             const drillDownCrumbs = Array.from(
-                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item__label')
             ).map(el => el.textContent?.trim());
             expect(drillDownCrumbs).toEqual(['Workflow', 'Loop: Items']);
 
@@ -116,7 +116,7 @@ describe('VisualDesigner', () => {
             rootCrumb?.dispatchEvent(new Event('click'));
 
             const afterNavigate = Array.from(
-                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item')
+                container.querySelectorAll('.breadcrumb-nav .breadcrumb-item__label')
             ).map(el => el.textContent?.trim());
             expect(afterNavigate).toEqual(['Workflow']);
         });

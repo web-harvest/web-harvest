@@ -14,14 +14,26 @@ describe('UIManager', () => {
       <div id="editor"></div>
       <div id="visual-canvas"></div>
       <div id="plugin-sidebar"></div>
-      <div class="sidebar-section"></div>
-      <div id="propertyPanel"></div>
-      <div id="executionControls" style="display:none;">
-        <button id="canvasRunBtn"></button>
-        <button id="canvasValidateBtn"></button>
-        <div id="executionActionButtons">
-          <button id="pauseBtn"></button>
-          <button id="resumeBtn" style="display:none;"></button>
+      <div class="sidebar-section">
+        <div class="sidebar-nav">
+          <button class="sidebar-nav-btn" data-panel="properties" id="propertiesTabBtn"></button>
+          <button class="sidebar-nav-btn" data-panel="run"></button>
+        </div>
+        <div class="sidebar-content">
+          <div id="propertyPanel" class="sidebar-panel"></div>
+          <div id="runPanel" class="sidebar-panel">
+            <div class="panel-header panel-header--run"><h3>Run & Test</h3></div>
+            <div class="panel-body panel-body--run" id="runPanelBody">
+              <div id="executionControls" class="run-panel-host">
+                <button id="canvasRunBtn"></button>
+                <button id="canvasValidateBtn"></button>
+                <div id="executionActionButtons">
+                  <button id="pauseBtn"></button>
+                  <button id="resumeBtn" style="display:none;"></button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;

@@ -1,4 +1,9 @@
-import type { VisualNode, Plugin, PluginDetailSectionHint } from '../../types';
+import type {
+    VisualNode,
+    Plugin,
+    PluginDetailSectionHint,
+    AttributeDefinition
+} from '../../types';
 import type { PluginManager } from '../../core/PluginManager';
 
 export interface DetailSectionDefinition {
@@ -11,6 +16,11 @@ export interface DetailSectionDefinition {
     readonly secondaryAttribute?: string;
     readonly usesBody: boolean;
     readonly summaryEmptyLabel: string;
+    readonly primaryAttributeLabel?: string;
+    readonly secondaryAttributeLabel?: string;
+    readonly primaryAttributeDescription?: string;
+    readonly secondaryAttributeDescription?: string;
+    readonly attributeDefinitions: AttributeDefinition[];
 }
 
 export interface DetailSummary {
@@ -33,17 +43,26 @@ const DETAIL_OVERRIDES: Record<string, DetailSectionOverride> = {
     'http-header': {
         sectionTitle: 'Headers',
         addLabel: 'Add Header',
-        emptyLabel: 'No headers defined yet.'
+        emptyLabel: 'No headers defined yet.',
+        primaryAttribute: 'name',
+        secondaryAttribute: 'value',
+        summaryEmptyLabel: 'Unnamed header'
     },
     'http-param': {
         sectionTitle: 'Query Parameters',
         addLabel: 'Add Parameter',
-        emptyLabel: 'No query parameters defined yet.'
+        emptyLabel: 'No query parameters defined yet.',
+        primaryAttribute: 'name',
+        secondaryAttribute: 'value',
+        summaryEmptyLabel: 'Unnamed parameter'
     },
     'call-param': {
         sectionTitle: 'Call Parameters',
         addLabel: 'Add Parameter',
-        emptyLabel: 'No call parameters defined yet.'
+        emptyLabel: 'No call parameters defined yet.',
+        primaryAttribute: 'name',
+        secondaryAttribute: 'value',
+        summaryEmptyLabel: 'Unnamed parameter'
     }
 };
 
@@ -56,6 +75,10 @@ export class MasterDetailRegistry {
 
     constructor(private readonly pluginManager: PluginManager) {}
 
+    getDetailDefinition(detailType: string): DetailSectionDefinition | null {
+        return this.definitionByType.get(detailType) ?? null;
+    }
+
     isMasterDetailPlugin(pluginType: string): boolean {
         return this.getSections(pluginType).length > 0;
     }
@@ -66,17 +89,22 @@ export class MasterDetailRegistry {
         }
 
         const plugin = this.pluginManager.findPlugin(pluginType);
-        if (!plugin || !Array.isArray(plugin.allowedChildPlugins) || plugin.allowedChildPlugins.length === 0) {
+        if (!plugin) {
             this.configCache.set(pluginType, []);
             return [];
         }
 
-        const sections: DetailSectionDefinition[] = [];
+        const candidateTypes = collectAllowedDetailTypes(plugin);
         const uiOverrides = buildUiOverrides(plugin.ui?.detailSections);
+        const sections: DetailSectionDefinition[] = [];
 
-        plugin.allowedChildPlugins.forEach(childType => {
+        candidateTypes.forEach(childType => {
             const childPlugin = this.pluginManager.findPlugin(childType);
             if (!childPlugin) {
+                return;
+            }
+
+            if (!isDetailPlugin(childPlugin, pluginType)) {
                 return;
             }
 
@@ -84,6 +112,8 @@ export class MasterDetailRegistry {
             sections.push(definition);
             this.definitionByType.set(definition.detailType, definition);
         });
+
+        sections.sort((a, b) => a.sectionTitle.localeCompare(b.sectionTitle));
 
         this.configCache.set(pluginType, sections);
         return sections;
@@ -96,6 +126,7 @@ export class MasterDetailRegistry {
         }
 
         const schema = definition.childPlugin.schema;
+        const supportsBody = definition.usesBody || Boolean(schema?.canHaveBody);
         const attributes: Record<string, string> = {};
 
         if (schema?.attributes) {
@@ -114,7 +145,7 @@ export class MasterDetailRegistry {
             });
         }
 
-        const body = schema?.canHaveBody ? '' : null;
+        const body = supportsBody ? '' : null;
 
         return {
             id: generateDetailId(detailType),
@@ -207,6 +238,13 @@ export class MasterDetailRegistry {
         const emptyLabel = override.emptyLabel ?? `No ${sectionTitle.toLowerCase()} defined yet.`;
         const summaryEmptyLabel = override.summaryEmptyLabel ?? 'Not configured';
 
+        const attributeDefinitions = Array.isArray(schema?.attributes)
+            ? schema!.attributes.map(attribute => ({ ...attribute }))
+            : [];
+
+        const primaryMeta = attributeDefinitions.find(attr => attr.name === primaryAttribute);
+        const secondaryMeta = attributeDefinitions.find(attr => attr.name === secondaryAttribute);
+
         return {
             detailType,
             childPlugin,
@@ -216,7 +254,12 @@ export class MasterDetailRegistry {
             primaryAttribute,
             secondaryAttribute,
             usesBody,
-            summaryEmptyLabel
+            summaryEmptyLabel,
+            primaryAttributeLabel: primaryMeta?.name ? formatAttributeLabel(primaryMeta.name) : undefined,
+            secondaryAttributeLabel: secondaryMeta?.name ? formatAttributeLabel(secondaryMeta.name) : undefined,
+            primaryAttributeDescription: primaryMeta?.description,
+            secondaryAttributeDescription: secondaryMeta?.description,
+            attributeDefinitions
         };
     }
 }
@@ -316,4 +359,45 @@ function buildUiOverrides(hints?: PluginDetailSectionHint[] | null): Map<string,
         });
     });
     return map;
+}
+
+function formatAttributeLabel(name: string): string {
+    if (!name) {
+        return '';
+    }
+
+    const cleaned = name
+        .replace(/[-_]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function collectAllowedDetailTypes(plugin: Plugin): Set<string> {
+    const set = new Set<string>();
+
+    if (Array.isArray(plugin.allowedChildPlugins)) {
+        plugin.allowedChildPlugins.forEach(type => type && set.add(type));
+    }
+
+    if (Array.isArray(plugin.semantics?.allowedChildTypes)) {
+        plugin.semantics!.allowedChildTypes.forEach(type => type && set.add(type));
+    }
+
+    if (Array.isArray(plugin.schema?.allowedSubElements)) {
+        plugin.schema!.allowedSubElements!.forEach(type => type && set.add(type));
+    }
+
+    return set;
+}
+
+function isDetailPlugin(plugin: Plugin, parentType: string): boolean {
+    const roles = Array.isArray(plugin.semantics?.roles) ? plugin.semantics!.roles : [];
+    const requiredParents = plugin.semantics?.requiredParentTypes || plugin.schema?.requiredParents || [];
+
+    const isDependentRole = roles.includes('DEPENDENT');
+    const explicitlyRequiresParent = requiredParents.includes(parentType);
+
+    return isDependentRole || explicitlyRequiresParent;
 }

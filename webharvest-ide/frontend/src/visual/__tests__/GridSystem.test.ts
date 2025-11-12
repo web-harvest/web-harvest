@@ -39,6 +39,32 @@ describe('GridSystem', () => {
             expect(svg).not.toBeNull();
         });
 
+        it('should expand overlay to cover scrollable content', () => {
+            const scrollContainer = document.createElement('div');
+            scrollContainer.style.width = '400px';
+            scrollContainer.style.height = '300px';
+            scrollContainer.style.overflow = 'auto';
+
+            const canvas = document.createElement('div');
+            canvas.style.position = 'relative';
+            canvas.style.width = '1200px';
+            canvas.style.height = '900px';
+
+            scrollContainer.appendChild(canvas);
+            document.body.appendChild(scrollContainer);
+
+            grid.render(canvas, scrollContainer);
+
+            const svg = canvas.querySelector('svg.grid-overlay') as SVGSVGElement;
+            expect(svg).not.toBeNull();
+            const svgWidth = Number(svg.getAttribute('width'));
+            const svgHeight = Number(svg.getAttribute('height'));
+            expect(svgWidth).toBeGreaterThanOrEqual(1200);
+            expect(svgHeight).toBeGreaterThanOrEqual(900);
+
+            document.body.removeChild(scrollContainer);
+        });
+
         it('should be toggleable', () => {
             grid.render(mockCanvas);
             grid.hide();

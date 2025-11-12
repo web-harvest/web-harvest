@@ -170,16 +170,16 @@ describe('VisualDesigner drill-down focus mode', () => {
 
         designer.loadNodes(nodes);
 
-        const header = container.querySelector('[data-node-id="loop-1"] .container-header') as HTMLElement | null;
-        expect(header).not.toBeNull();
+        const focusButton = container.querySelector('[data-node-id="loop-1"] .container-summary__action-btn--primary') as HTMLButtonElement | null;
+        expect(focusButton).not.toBeNull();
 
-        header!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        focusButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-        const breadcrumbCurrent = container.querySelector('.breadcrumb-current') as HTMLElement | null;
+        const breadcrumbCurrent = container.querySelector('.breadcrumb-current .breadcrumb-item__label') as HTMLElement | null;
         expect(breadcrumbCurrent?.textContent).toContain('Loop');
 
-        const processMarkers = container.querySelector('.process-markers-layer');
-        expect(processMarkers).toBeNull();
+        const processMarkers = container.querySelectorAll('.process-marker.process-marker--contextual');
+        expect(processMarkers.length).toBe(2);
     });
 
     it('does not attempt to render connections for detail rows inside focus mode', () => {
@@ -187,6 +187,8 @@ describe('VisualDesigner drill-down focus mode', () => {
         designer = new VisualDesigner('focus-canvas', pluginManager);
 
         const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const summarySpy = jest.fn();
+        designer.addEventListener('focusSummaryUpdated', summarySpy);
 
         const nodes: VisualNode[] = [
             {
@@ -225,7 +227,56 @@ describe('VisualDesigner drill-down focus mode', () => {
         const connectionLines = container.querySelectorAll('.connection-line');
         expect(connectionLines.length).toBe(0);
 
+        expect(summarySpy).toHaveBeenCalled();
+        const lastSummary = summarySpy.mock.calls[summarySpy.mock.calls.length - 1]?.[0] as any;
+        expect(lastSummary).toBeDefined();
+        expect(lastSummary?.summary?.detailBreakdown.length).toBeGreaterThan(0);
+
         warnSpy.mockRestore();
+    });
+
+    it('shows BPMN start/end overlay when focusing a container', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('focus-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://example.com' },
+                body: null,
+                children: [
+                    {
+                        id: 'step-1',
+                        type: 'http-header',
+                        attributes: { name: 'Accept', value: 'application/json' },
+                        body: null,
+                        children: []
+                    },
+                    {
+                        id: 'step-2',
+                        type: 'http-header',
+                        attributes: { name: 'User-Agent', value: 'WebHarvest' },
+                        body: null,
+                        children: []
+                    }
+                ]
+            }
+        ];
+
+        designer.loadNodes(nodes);
+        (designer as unknown as { enterContainer: (id: string) => void }).enterContainer('http-1');
+
+        const overlay = container.querySelector('.focus-flow-overlay');
+        expect(overlay).not.toBeNull();
+
+        const startPin = overlay!.querySelector('.focus-flow-pin--start span');
+        const endPin = overlay!.querySelector('.focus-flow-pin--end span');
+        const countChip = overlay!.querySelector('.focus-flow-overlay__count');
+
+        expect(startPin?.textContent).toContain('Accept');
+        expect(endPin?.textContent).toContain('User-Agent');
+        expect(countChip?.textContent).toContain('2 step');
     });
 });
 

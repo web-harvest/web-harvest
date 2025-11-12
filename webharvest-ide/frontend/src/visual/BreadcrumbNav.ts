@@ -3,11 +3,18 @@
  * Breadcrumb navigation for drilling into nested containers
  */
 
+export interface BreadcrumbMetric {
+    label: string;
+    value: string;
+}
+
 export interface BreadcrumbItem {
     id: string;
     label: string;
     level: number;
     nodeType?: string;
+    summary?: string;
+    metrics?: BreadcrumbMetric[];
 }
 
 export class BreadcrumbNav {
@@ -35,6 +42,7 @@ export class BreadcrumbNav {
             const element = isCurrent ? document.createElement('span') : document.createElement('button');
             element.className = 'breadcrumb-item';
             element.dataset.itemId = item.id;
+            element.title = item.summary ?? item.label;
 
             if (isCurrent) {
                 element.classList.add('breadcrumb-item--current');
@@ -59,6 +67,19 @@ export class BreadcrumbNav {
             label.className = 'breadcrumb-item__label';
             label.textContent = item.label;
             element.appendChild(label);
+
+            if (item.metrics && item.metrics.length > 0) {
+                const metrics = document.createElement('div');
+                metrics.className = 'breadcrumb-item__metrics';
+                item.metrics.slice(0, 3).forEach(metric => {
+                    const badge = document.createElement('span');
+                    badge.className = 'breadcrumb-item__metric';
+                    badge.dataset.metricLabel = metric.label;
+                    badge.textContent = `${metric.label}: ${metric.value}`;
+                    metrics.appendChild(badge);
+                });
+                element.appendChild(metrics);
+            }
 
             trailWrapper.appendChild(element);
 

@@ -146,6 +146,37 @@ Results Display  ←WS→       ExecutionManager  ─┘
 - `ide.css` - IDE-specific styles
 - `prism.css` - Code highlighting
 
+#### Run & Test Sidebar Panel (Visual Mode)
+
+- **Placement & Purpose**
+  - Lives in the right-hand sidebar as the `Run & Test` tab, sharing layout and navigation with `Properties`, `Logs`, `Results`, `Variables`, and `Session`.
+  - Removes the floating overlay that previously occluded the canvas, giving novice users a clear two-column flow: palette → canvas → execution panel.
+
+- **Primary Controls**
+  - Header exposes quick actions (`Run Workflow`, `Validate`) plus segmented scope toggles (`workflow` / `task`, task option auto-disabled when no node is selected).
+  - Inline hint text describes the default workflow execution path; executes are disabled while an execution is in-flight to prevent duplicate runs.
+
+- **Form Layout**
+  - Top-level form shows the JSON payload textarea with “Format” and “Clear” quick actions.
+  - Advanced attributes (`correlationId`, `idempotencyKey`, task → domain map) are grouped in a `<details>` drawer, keeping the novice path uncluttered while providing a discoverable home for experienced operators.
+
+- **History**
+  - History list appears beneath the form and mirrors Orkes’ run telemetry: timestamp, scope, status badge, and restore button.
+  - `Restore` hydrates the form without executing; `Run` replays the stored payload immediately.
+  - State is persisted per visual-mode tab via `localStorage` (`RUN_PANEL_STORAGE_PREFIX + tabId`) and cleared on tab close.
+
+- **Accessibility & Keyboard**
+  - Buttons follow the Apple HIG styling applied across the IDE (hover/focus states, segmented controls).
+  - Summary drawer toggles expose an arrow indicator to communicate open/closed state and support keyboard interaction (Space/Enter).
+  - History entries are plain buttons wrapped in list items, enabling Arrow Up/Down navigation.
+
+- **Error Surface**
+  - Validation errors (JSON parse, backend failures) surface via the inline error banner under the header, maintaining consistent messaging whether triggered from quick runs or restored payloads.
+
+- **Novice vs Experienced Workflow**
+  - Novices: land on the Run tab, paste JSON, press Run/Validate, consult history without needing to understand correlation or idempotency keys.
+  - Experienced users: expand “Advanced options” to fine-tune execution metadata, leverage history to replay scoped task runs, and use idempotency keys for idempotent pipelines.
+
 ### Development Workflow
 
 #### Adding New Backend Feature
@@ -546,12 +577,13 @@ XSDMetadataParser.java        # XSD metadata extraction
 
 ### Canvas Layout & Coordinate System
 
-**Fixed Canvas Integration (v2.3.1):**
+**Fixed Canvas Integration (v2.3.1+):**
 - Canvas properly embedded in flexbox layout (no longer "floating")
 - Three-layer structure:
-  - `.canvas-area` - Scrollable container (flex: 1 1 0%)
-  - `.canvas-content-wrapper` - Transform wrapper (receives pan/zoom)
-  - Nodes & SVG overlay - Absolute positioned content
+  - `.canvas-area` – Root container injected by `App`
+  - `.canvas-content-wrapper` – Scroll container (native wheel/trackpad scrolling)
+  - `.canvas-stage` – Transform target; hosts grid overlay, nodes, connections, minimap
+- `VisualDesigner.updateCanvasStageBounds()` resizes the stage so distant nodes extend the scrollable surface (important for large flows and future VS Code integration).
 
 ### Focus Mode & Detail Connections
 
@@ -559,6 +591,15 @@ XSDMetadataParser.java        # XSD metadata extraction
 - `VisualDesigner.filterNodesForConnections()` now removes any child whose type appears in the `MasterDetailRegistry`, preventing connection planning from targeting detail cards that never expose anchors.
 - This eliminates the `"[VisualDesigner] Cannot render connection: anchor not found"` warning spam reported when expanding HTTP cards and keeps the zoomed-in canvas clean.
 - Regression coverage: `visual/__tests__/VisualDesigner.drilldown.test.ts` verifies that HTTP headers remain connection-free during focus mode while broader breadcrumb behaviour still works.
+- Focus mode surfaces BPMN-style start/end pins via `renderFocusFlowOverlay()`, labelling the first and last visible steps and displaying a step count; the overlay is non-interactive so it remains VS Code webview friendly.
+
+### Run/Test Workflow Panel
+
+- `RunWorkflowPanel` wraps the Conductor-style run UI inside `#executionControls`, giving quick access to workflow + single-task runs.
+- History entries persist per tab (also mirrored to `localStorage`) and now expose **Restore**, **Run**, and **Details** actions.
+- The details drawer surfaces correlation/idempotency IDs, execution IDs, task scope metadata, and pretty-printed payload/Task→Domain maps.
+- Selecting **Run** replays the stored payload immediately (`handleRunHistoryRerun`), while **Restore** hydrates the form fields without kicking off a run.
+- Task reruns no longer require a live selection; the panel injects the node context into `runConfig` so drill-down testing works even after navigating away.
 
 ### HTTP Detail Editing & Summaries
 
@@ -576,7 +617,7 @@ XSDMetadataParser.java        # XSD metadata extraction
 - All drop/drag calculations use canvas coordinates for consistency
 
 **Transform Handling:**
-- Transform applied to `.canvas-content-wrapper` (not scrollable container)
+- Transform applied to `.canvas-stage` (scroll container stays put)
 - `transform-origin: 0 0` for top-left origin
 - SVG overlay matches container size (before zoom)
 - All node positions stored in canvas coordinates
@@ -585,6 +626,14 @@ XSDMetadataParser.java        # XSD metadata extraction
 - Run/Validate buttons moved to canvas area (top-right)
 - Removed duplicate buttons from header toolbar
 - Execution controls (Pause/Resume/Stop) appear during execution only
+- Container cards now advertise grab/grabbing cursors and suppress native text-selection/touch gestures, making drag + resize gestures more forgiving on large flows.
+
+### VS Code Webview Alignment
+
+- The canvas shell (`.canvas-content-wrapper` + `.canvas-stage`) matches VS Code webview constraints: one scroll container, one transform target. The DOM can be embedded inside an extension panel without altering coordinate maths.
+- Container summary tiles stay metadata-driven: highlights come from `MasterDetailRegistry`/`SchemaEditor`, and they re-render after property panel updates, keeping the canvas in “read-only summary” mode.
+- Breadcrumb chips expose children/containers/detail counts so users can evaluate nested complexity before entering a level—reuse the same data in a VS Code sidebar.
+- Action buttons (`Szczegóły`, `Otwórz`) are semantic `<button>` elements, making it easy to remap them to VS Code commands or command palette entries.
 
 ### Visual Designer Features
 
@@ -610,6 +659,7 @@ XSDMetadataParser.java        # XSD metadata extraction
 - ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style) aligned exactly on card geometry, with grab/grabbing cursors during drag
 - ✅ Always-on grid overlay that stretches with the canvas; start/end markers can be repositioned manually with persisted locations
 - ✅ Connection lines redraw instantly while dragging nodes, keeping sequenced flows visually accurate
+- ✅ Run/Test workflow panel with JSON inputs, idempotency metadata, execution history, and single-task test mode mirroring Conductor UX
 
 **Planned:**
 - Manual connections (ports)
