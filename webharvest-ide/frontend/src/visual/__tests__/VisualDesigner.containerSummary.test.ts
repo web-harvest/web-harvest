@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { VisualDesigner } from '../VisualDesigner';
 import type { VisualNode, Plugin } from '../types';
 import type { PluginManager } from '../../core/PluginManager';
@@ -186,13 +186,125 @@ describe('VisualDesigner container summary', () => {
 
         designer.loadNodes(nodes);
 
-        const removeButton = container.querySelector('.role-control-badge .role-remove-button') as HTMLButtonElement | null;
+        const removeButton = container.querySelector('.node-actions__btn[data-action="delete"]') as HTMLButtonElement | null;
         expect(removeButton).not.toBeNull();
 
         removeButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         const remainingNode = container.querySelector('[data-node-id="http-1"]');
         expect(remainingNode).toBeNull();
+    });
+
+    it('Details button selects node and opens properties panel', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('summary-canvas', pluginManager);
+
+        const sidebarRequest = jest.fn();
+        designer.addEventListener('sidebarPanelRequested', sidebarRequest);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://api.example.com/orders', method: 'GET' },
+                body: null,
+                children: []
+            }
+        ];
+
+        designer.loadNodes(nodes);
+
+        const detailsButton = container.querySelector('.node-actions__btn[data-action="details"]') as HTMLButtonElement | null;
+        expect(detailsButton).not.toBeNull();
+
+        detailsButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        expect(designer.getSelectedNodeId()).toBe('http-1');
+        expect(sidebarRequest).toHaveBeenCalledWith('properties');
+    });
+
+    it('Focus button drills into container node and keeps selection', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('summary-canvas', pluginManager);
+
+        const sidebarRequest = jest.fn();
+        designer.addEventListener('sidebarPanelRequested', sidebarRequest);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://api.example.com/orders', method: 'GET' },
+                body: null,
+                children: [
+                    {
+                        id: 'header-1',
+                        type: 'http-header',
+                        attributes: { name: 'Accept', value: 'application/json' },
+                        body: null,
+                        children: []
+                    }
+                ]
+            }
+        ];
+
+        designer.loadNodes(nodes);
+
+        const focusButton = container.querySelector('.node-actions__btn[data-action="focus"]') as HTMLButtonElement | null;
+        expect(focusButton).not.toBeNull();
+
+        focusButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const drillManager = (designer as unknown as { drillDownManager: { getCurrentId: () => string | null } }).drillDownManager;
+        expect(drillManager.getCurrentId()).toBe('http-1');
+        expect(designer.getSelectedNodeId()).toBe('http-1');
+        expect(sidebarRequest).toHaveBeenCalledWith('properties');
+    });
+
+    it('does not start drag when clicking node action controls', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('summary-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://api.example.com/orders', method: 'GET' },
+                body: null,
+                children: []
+            }
+        ];
+
+        designer.loadNodes(nodes);
+
+        const deleteButton = container.querySelector('.node-actions__btn[data-action="delete"]') as HTMLButtonElement | null;
+        expect(deleteButton).not.toBeNull();
+        const deleteMouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        deleteButton!.dispatchEvent(deleteMouseDown);
+        expect(deleteMouseDown.defaultPrevented).toBe(false);
+        expect(document.body.style.userSelect).toBe('');
+
+    });
+
+    it('disables focus action for leaf nodes', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('summary-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'log-1',
+                type: 'http-header',
+                attributes: { name: 'Accept', value: 'application/json' },
+                body: null,
+                children: []
+            }
+        ];
+
+        designer.loadNodes(nodes);
+
+        const focusButton = document.querySelector('.node-actions__btn[data-action="focus"]') as HTMLButtonElement | null;
+        expect(focusButton).not.toBeNull();
+        expect(focusButton!.disabled).toBe(true);
     });
 });
 

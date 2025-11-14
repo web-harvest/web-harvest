@@ -90,6 +90,7 @@ describe('App WebSocket Integration', () => {
             <div id="propertyPanel"></div>
             <div id="plugin-palette"></div>
             <div id="tabs-container"></div>
+            <div id="runPanel"><div id="executionControls"></div></div>
         `;
 
         // Capture WebSocket instance
@@ -120,7 +121,7 @@ describe('App WebSocket Integration', () => {
             };
 
             // Connect WebSocket
-            app['wsManager']['connect']('test-execution-id');
+            app['wsManager']['connect']('exec-complete');
 
             setTimeout(() => {
                 mockWebSocket.simulateMessage(update);
@@ -160,11 +161,29 @@ describe('App WebSocket Integration', () => {
             }, 100);
         });
 
-        it('should update Session panel when receiving sessionInfo', (done) => {
+
+        it('should surface session metadata in run history when receiving sessionInfo', (done) => {
+            const tab = (app as any).tabManager.getActiveTab();
+            const state = (app as any).ensureRunPanelState(tab);
+            const entryId = 'run-session';
+            const entry = {
+                id: entryId,
+                createdAt: Date.now(),
+                scope: 'workflow',
+                payload: { inputJson: '' },
+                status: 'RUNNING',
+            };
+            state.history = [entry];
+            (app as any).runHistoryByEntry.set(entryId, tab.id);
+            (app as any).executionHistoryIndex.set('exec-session', entryId);
+            (app as any).lastRunEntryId = entryId;
+            (app as any).runPanel.syncState(state);
+
             const update: ExecutionUpdate = {
                 status: 'COMPLETED',
                 message: 'Execution completed',
                 progress: 100,
+                executionId: 'exec-session',
                 results: {},
                 sessionInfo: {
                     sessionId: 'session-123',
@@ -176,43 +195,70 @@ describe('App WebSocket Integration', () => {
                 },
             };
 
-            app['wsManager']['connect']('test-execution-id');
+            app['wsManager']['connect']('exec-session');
 
             setTimeout(() => {
                 mockWebSocket.simulateMessage(update);
 
                 setTimeout(() => {
-                    const sessionPanel = document.getElementById('session');
-                    expect(sessionPanel).toBeTruthy();
-                    expect(sessionPanel!.textContent).toContain('session-123');
+                    const historyList = document.getElementById('runPanelHistoryList');
+                    const runStateAfter = (app as any).ensureRunPanelState(tab);
+                    const updatedEntry = runStateAfter.history[0];
+                    expect(updatedEntry.sessionInfo?.sessionId).toBe('session-123');
+                    const detailsBtn = historyList?.querySelector('[data-action="details"]') as HTMLButtonElement | null;
+                    detailsBtn?.click();
+                    expect(historyList?.textContent).toContain('session-123');
+                    expect(historyList?.textContent).toContain('Session');
                     done();
                 }, 100);
             }, 100);
         });
 
-        it('should update Session panel when receiving tokenUsage', (done) => {
+        it('should surface token usage in run history when receiving tokenUsage', (done) => {
+            const tab = (app as any).tabManager.getActiveTab();
+            const state = (app as any).ensureRunPanelState(tab);
+            const entryId = 'run-token';
+            const entry = {
+                id: entryId,
+                createdAt: Date.now(),
+                scope: 'workflow',
+                payload: { inputJson: '' },
+                status: 'RUNNING',
+            };
+            state.history = [entry];
+            (app as any).runHistoryByEntry.set(entryId, tab.id);
+            (app as any).executionHistoryIndex.set('exec-token', entryId);
+            (app as any).lastRunEntryId = entryId;
+            (app as any).runPanel.syncState(state);
+
             const update: ExecutionUpdate = {
                 status: 'COMPLETED',
                 message: 'Execution completed',
                 progress: 100,
+                executionId: 'exec-token',
                 results: {},
                 tokenUsage: {
                     httpRequests: 5,
-                    httpBytes: 1024,
+                    httpBytes: 10240,
                     cpuTimeMs: 200,
                     memoryPeakBytes: 524288,
                 },
             };
 
-            app['wsManager']['connect']('test-execution-id');
+            app['wsManager']['connect']('exec-token');
 
             setTimeout(() => {
                 mockWebSocket.simulateMessage(update);
 
                 setTimeout(() => {
-                    const sessionPanel = document.getElementById('session');
-                    expect(sessionPanel).toBeTruthy();
-                    expect(sessionPanel!.textContent).toContain('5');
+                    const historyList = document.getElementById('runPanelHistoryList');
+                    const runStateAfter = (app as any).ensureRunPanelState(tab);
+                    const updatedEntry = runStateAfter.history[0];
+                    expect(updatedEntry.tokenUsage?.httpRequests).toBe(5);
+                    const detailsBtn = historyList?.querySelector('[data-action="details"]') as HTMLButtonElement | null;
+                    detailsBtn?.click();
+                    expect(historyList?.textContent).toContain('HTTP requests');
+                    expect(historyList?.textContent).toContain('5');
                     done();
                 }, 100);
             }, 100);
@@ -238,10 +284,27 @@ describe('App WebSocket Integration', () => {
         });
 
         it('should handle complete execution update with all fields', (done) => {
+            const tab = (app as any).tabManager.getActiveTab();
+            const state = (app as any).ensureRunPanelState(tab);
+            const entryId = 'run-complete';
+            const entry = {
+                id: entryId,
+                createdAt: Date.now(),
+                scope: 'workflow',
+                payload: { inputJson: '' },
+                status: 'RUNNING',
+            };
+            state.history = [entry];
+            (app as any).runHistoryByEntry.set(entryId, tab.id);
+            (app as any).executionHistoryIndex.set('exec-complete', entryId);
+            (app as any).lastRunEntryId = entryId;
+            (app as any).runPanel.syncState(state);
+
             const update: ExecutionUpdate = {
                 status: 'COMPLETED',
                 message: 'Execution completed successfully',
                 progress: 100,
+                executionId: 'exec-complete',
                 results: {
                     configResult: 'final result',
                 },
@@ -281,12 +344,21 @@ describe('App WebSocket Integration', () => {
                     const logsPanel = document.getElementById('logs');
                     const resultsPanel = document.getElementById('results');
                     const variablesPanel = document.getElementById('variables');
-                    const sessionPanel = document.getElementById('session');
+                    const historyList = document.getElementById('runPanelHistoryList');
+                    const runStateAfter = (app as any).ensureRunPanelState(tab);
+                    const updatedEntry = runStateAfter.history[0];
 
                     expect(logsPanel!.textContent).toContain('completed successfully');
                     expect(resultsPanel!.textContent).toContain('configResult');
                     expect(variablesPanel!.textContent).toContain('configResult');
-                    expect(sessionPanel!.textContent).toContain('session-456');
+                    expect(updatedEntry.sessionInfo?.sessionId).toBe('session-456');
+                    expect(updatedEntry.tokenUsage?.httpRequests).toBe(3);
+
+                    const detailsBtn = historyList?.querySelector('[data-action="details"]') as HTMLButtonElement | null;
+                    detailsBtn?.click();
+
+                    expect(historyList!.textContent).toContain('session-456');
+                    expect(historyList!.textContent).toContain('HTTP requests');
                     done();
                 }, 100);
             }, 100);

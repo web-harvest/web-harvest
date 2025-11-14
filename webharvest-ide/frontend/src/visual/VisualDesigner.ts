@@ -25,7 +25,6 @@ import { PortSystem, type PortType } from './PortSystem';
 import { ConnectionManager, type Connection as ManualConnection, type ConnectionType } from './ConnectionManager';
 import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
-import { NodeResizeHandler } from './NodeResizeHandler';
 import { BreadcrumbNav, type BreadcrumbItem, type BreadcrumbMetric } from './BreadcrumbNav';
 import { DrillDownManager } from './DrillDownManager';
 import type { PluginManager } from '../core/PluginManager';
@@ -135,6 +134,8 @@ export class VisualDesigner {
     private readonly START_X = 50;
     private readonly START_Y = 50;
     private readonly PADDING = 20;
+    private readonly MIN_LEAF_WIDTH = 220;
+    private readonly PROCESS_MARKER_RADIUS = 30;
 
     // PluginManager reference for accessing VisualPluginMetadata
     private pluginManager: PluginManager | null = null;
@@ -201,9 +202,6 @@ export class VisualDesigner {
     private validationErrors: Map<string, string> = new Map(); // nodeId -> error message
     private invalidConnections: Set<string> = new Set(); // connection IDs with validation errors
 
-    // Node resize handler
-    private resizeHandler!: NodeResizeHandler; // Initialized in constructor
-
     // Workflow execution state for process markers
     private workflowStatus: WorkflowStatus = 'idle';
 
@@ -240,12 +238,6 @@ export class VisualDesigner {
         if (pluginManager) {
             this.setPluginManager(pluginManager);
         }
-
-        // Initialize resize handler
-        this.resizeHandler = new NodeResizeHandler();
-        this.resizeHandler.setOnResize((nodeId, dimensions) => {
-            this.handleNodeResize(nodeId, dimensions);
-        });
 
         // Setup drag & drop
         this.setupDragAndDrop();
@@ -682,6 +674,7 @@ export class VisualDesigner {
         if (!isRootView || !this.visibleNodes || this.visibleNodes.length === 0) {
             this.canvasElement.style.width = '100%';
             this.canvasElement.style.height = '100%';
+            this.updateSvgOverlayDimensions();
             return;
         }
 
@@ -696,12 +689,45 @@ export class VisualDesigner {
             maxBottom = Math.max(maxBottom, position.y + size.height);
         });
 
+        if (this.startMarkerPosition) {
+            maxRight = Math.max(maxRight, this.startMarkerPosition.x + this.PROCESS_MARKER_RADIUS);
+            maxBottom = Math.max(maxBottom, this.startMarkerPosition.y + this.PROCESS_MARKER_RADIUS);
+        }
+
+        if (this.endMarkerPosition) {
+            maxRight = Math.max(maxRight, this.endMarkerPosition.x + this.PROCESS_MARKER_RADIUS);
+            maxBottom = Math.max(maxBottom, this.endMarkerPosition.y + this.PROCESS_MARKER_RADIUS);
+        }
+
         const padding = this.PADDING * 2;
         const minWidth = this.canvasScrollContainer.clientWidth;
         const minHeight = this.canvasScrollContainer.clientHeight;
 
-        this.canvasElement.style.width = `${Math.max(maxRight + padding, minWidth)}px`;
-        this.canvasElement.style.height = `${Math.max(maxBottom + padding, minHeight)}px`;
+        const stageWidth = Math.max(maxRight + padding, minWidth);
+        const stageHeight = Math.max(maxBottom + padding, minHeight);
+
+        this.canvasElement.style.width = `${stageWidth}px`;
+        this.canvasElement.style.height = `${stageHeight}px`;
+        this.updateSvgOverlayDimensions();
+    }
+
+    private updateSvgOverlayDimensions(): void {
+        if (!this.svgElement) {
+            return;
+        }
+
+        const scrollContainer = this.canvasScrollContainer ?? this.container;
+        const styledWidth = parseFloat(this.canvasElement.style.width || '0') || 0;
+        const styledHeight = parseFloat(this.canvasElement.style.height || '0') || 0;
+        const stageWidth = Math.max(this.canvasElement.scrollWidth || 0, styledWidth, scrollContainer?.clientWidth ?? 0);
+        const stageHeight = Math.max(this.canvasElement.scrollHeight || 0, styledHeight, scrollContainer?.clientHeight ?? 0);
+
+        if (stageWidth > 0) {
+            this.svgElement.setAttribute('width', stageWidth.toString());
+        }
+        if (stageHeight > 0) {
+            this.svgElement.setAttribute('height', stageHeight.toString());
+        }
     }
 
     private rebuildConnections(reapplyLayout: boolean = true, sourceNodes?: VisualNode[]): VisualNode[] {
@@ -846,6 +872,7 @@ export class VisualDesigner {
         if (isRootView) {
             this.svgElement = this.createSVGOverlay();
             this.canvasElement.appendChild(this.svgElement);
+            this.updateSvgOverlayDimensions();
         } else {
             this.svgElement = null;
             this.connectionLineElements.clear();
@@ -1179,6 +1206,10 @@ export class VisualDesigner {
         return nodeElement;
     }
 
+    private resolveSurfaceElement(element: HTMLElement): HTMLElement {
+        return (element.querySelector('.visual-node__surface') as HTMLElement | null) || element;
+    }
+
     private renderContainerSummaryNode(node: VisualNode, parentContainer: HTMLElement): HTMLElement {
         const nodeElement = this.createBasicNodeElement(node);
         nodeElement.classList.add('container-summary-node');
@@ -1240,26 +1271,25 @@ export class VisualDesigner {
         const nodeElement = document.createElement('div');
         nodeElement.className = 'visual-node connected-node';
         nodeElement.dataset.nodeId = node.id;
-        nodeElement.style.width = `${dimensions.width}px`;
+
+        const surface = document.createElement('div');
+        surface.className = 'visual-node__surface';
+        surface.dataset.surface = 'true';
+        nodeElement.appendChild(surface);
+        const isContainer = isContainerNode(node.type);
+        const effectiveWidth = isContainer
+            ? Math.max(dimensions.width, 280)
+            : Math.max(dimensions.width, this.MIN_LEAF_WIDTH);
+        nodeElement.style.width = `${effectiveWidth}px`;
         nodeElement.style.minHeight = `${dimensions.height}px`;
-        nodeElement.style.padding = '12px';
-        nodeElement.style.background = 'white';
-        nodeElement.style.border = '2px solid #FFC107';
-        nodeElement.style.borderRadius = '6px';
         nodeElement.style.cursor = 'pointer';
-        nodeElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
 
         const iconConfig = this.iconLibrary.getIcon(node.type);
-        const isContainer = isContainerNode(node.type);
 
         if (isContainer) {
             nodeElement.classList.add('visual-node--container-summary');
-            nodeElement.style.padding = '0';
-            nodeElement.style.background = 'transparent';
-            nodeElement.style.border = 'none';
-            nodeElement.style.boxShadow = 'none';
-            nodeElement.style.width = `${Math.max(dimensions.width, 280)}px`;
-            nodeElement.style.minHeight = 'auto';
+            surface.classList.add('visual-node__surface--container');
+            surface.style.minHeight = 'auto';
         }
 
         if (this.semanticValidator) {
@@ -1267,17 +1297,28 @@ export class VisualDesigner {
             nodeElement.dataset.roles = roles.join(',');
             if (roles.length > 0) {
                 nodeElement.dataset.primaryRole = roles[0];
-                this.applyRoleBasedStyling(nodeElement, roles, node);
+                surface.dataset.primaryRole = roles[0];
+                surface.dataset.roles = roles.join(',');
+                this.applyRoleBasedStyling(surface, roles, node);
+            } else {
+                nodeElement.dataset.primaryRole = 'LEAF';
+                surface.dataset.primaryRole = 'LEAF';
+                surface.dataset.roles = roles.join(',');
             }
+        } else {
+            nodeElement.dataset.primaryRole = 'LEAF';
+            nodeElement.dataset.roles = 'LEAF';
+            surface.dataset.primaryRole = 'LEAF';
+            surface.dataset.roles = 'LEAF';
         }
 
         const validationError = this.validationErrors.get(node.id);
         if (validationError) {
-            this.applyValidationErrorStyling(nodeElement, validationError);
+            this.applyValidationErrorStyling(surface, validationError);
         }
 
         if (isContainer) {
-            nodeElement.appendChild(this.createContainerSummaryCard(node, iconConfig.color));
+            surface.appendChild(this.createContainerSummaryCard(node, iconConfig.color));
         } else {
             const header = document.createElement('div');
             header.style.cssText = 'display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; font-size: 14px;';
@@ -1290,10 +1331,17 @@ export class VisualDesigner {
             typeText.style.color = iconConfig.color;
             header.appendChild(typeText);
 
-            nodeElement.appendChild(header);
-            nodeElement.style.borderColor = iconConfig.color;
+            surface.appendChild(header);
+            surface.style.borderColor = iconConfig.color;
 
-            const attrEntries = Object.entries(node.attributes).slice(0, 3);
+            const attrEntries = Object.entries(node.attributes || {})
+                .filter(([key, value]) => {
+                    if (value === undefined || value === null || value === '') {
+                        return false;
+                    }
+                    return !['name', 'id'].includes(key);
+                })
+                .slice(0, 3);
             if (attrEntries.length > 0) {
                 const attrs = document.createElement('div');
                 attrs.style.fontSize = '12px';
@@ -1301,12 +1349,13 @@ export class VisualDesigner {
 
                 attrEntries.forEach(([key, value]) => {
                     const attr = document.createElement('div');
-                    const displayValue = value.length > 30 ? value.substring(0, 30) + '...' : value;
+                    const textValue = String(value);
+                    const displayValue = textValue.length > 30 ? `${textValue.substring(0, 30)}...` : textValue;
                     attr.textContent = `${key}: ${displayValue}`;
                     attrs.appendChild(attr);
                 });
 
-                nodeElement.appendChild(attrs);
+                surface.appendChild(attrs);
             }
 
             this.portSystem.addPorts(nodeElement, node);
@@ -1314,6 +1363,7 @@ export class VisualDesigner {
         }
 
         this.setupNodeDragHandlers(nodeElement, node);
+        this.attachNodeActions(nodeElement, node, isContainer);
 
         if (this.pluginManager) {
             const plugin = this.pluginManager.findPlugin(node.type);
@@ -1344,6 +1394,65 @@ export class VisualDesigner {
         return nodeElement;
     }
 
+    private attachNodeActions(element: HTMLElement, node: VisualNode, isContainer: boolean): void {
+        element.classList.add('visual-node--with-actions');
+        let actionBar = element.querySelector('.node-actions') as HTMLElement | null;
+        if (!actionBar) {
+            actionBar = document.createElement('div');
+            actionBar.className = 'node-actions';
+            element.appendChild(actionBar);
+        }
+        actionBar.innerHTML = '';
+
+        const detailsBtn = this.createNodeActionButton('fas fa-circle-info', 'Details', () => {
+            this.selectNode(node.id);
+            this.emit('sidebarPanelRequested', 'properties');
+        }, false, 'details');
+        actionBar.appendChild(detailsBtn);
+
+        const focusBtn = this.createNodeActionButton('fas fa-bullseye', 'Focus on container', () => {
+            this.selectNode(node.id);
+            this.emit('sidebarPanelRequested', 'properties');
+            this.enterContainer(node.id);
+        }, !isContainer, 'focus');
+        actionBar.appendChild(focusBtn);
+
+        const deleteBtn = this.createNodeActionButton('fas fa-trash', 'Delete component', () => {
+            this.handleNodeRemoveRequest(node.id);
+        }, false, 'delete');
+        deleteBtn.classList.add('node-actions__delete');
+        actionBar.appendChild(deleteBtn);
+    }
+
+    private createNodeActionButton(
+        iconClass: string,
+        title: string,
+        handler: () => void,
+        disabled = false,
+        actionId?: string
+    ): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'node-actions__btn';
+        if (actionId) {
+            btn.dataset.action = actionId;
+        }
+        btn.innerHTML = `<i class="${iconClass}"></i>`;
+        btn.title = title;
+        btn.setAttribute('aria-label', title);
+        btn.disabled = disabled;
+        if (disabled) {
+            btn.classList.add('node-actions__btn--disabled');
+        }
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (!btn.disabled) {
+                handler();
+            }
+        });
+        return btn;
+    }
+
     private createContainerSummaryCard(node: VisualNode, accentColor: string): HTMLElement {
         const card = document.createElement('div');
         card.className = 'container-summary';
@@ -1370,30 +1479,6 @@ export class VisualDesigner {
 
         header.appendChild(titleGroup);
 
-        const actions = document.createElement('div');
-        actions.className = 'container-summary__actions';
-
-        const detailsButton = document.createElement('button');
-        detailsButton.type = 'button';
-        detailsButton.className = 'container-summary__action-btn';
-        detailsButton.textContent = 'Szczegóły';
-        detailsButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.selectNode(node.id);
-        });
-        actions.appendChild(detailsButton);
-
-        const focusButton = document.createElement('button');
-        focusButton.type = 'button';
-        focusButton.className = 'container-summary__action-btn container-summary__action-btn--primary';
-        focusButton.textContent = 'Otwórz';
-        focusButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.enterContainer(node.id);
-        });
-        actions.appendChild(focusButton);
-
-        header.appendChild(actions);
         card.appendChild(header);
 
         const body = document.createElement('div');
@@ -1409,7 +1494,7 @@ export class VisualDesigner {
         metrics.appendChild(
             this.createSummaryChip(
                 this.createFontAwesomeIcon('fa-layer-group', '#636366', 11),
-                'Dzieci',
+                'Children',
                 childCount.toString(),
                 true
             )
@@ -1418,7 +1503,7 @@ export class VisualDesigner {
         metrics.appendChild(
             this.createSummaryChip(
                 this.createFontAwesomeIcon('fa-boxes', '#636366', 11),
-                'Kontenery',
+                'Nested containers',
                 containerChildren.toString(),
                 true
             )
@@ -1427,7 +1512,7 @@ export class VisualDesigner {
         metrics.appendChild(
             this.createSummaryChip(
                 this.createFontAwesomeIcon('fa-seedling', '#636366', 11),
-                'Liście',
+                'Leaf tasks',
                 leafChildren.toString(),
                 true
             )
@@ -1940,7 +2025,8 @@ export class VisualDesigner {
     ): [AnchorSide, AnchorSide] {
         const deltaX = to.bounds.centerX - from.bounds.centerX;
         const deltaY = to.bounds.centerY - from.bounds.centerY;
-        const preferVertical = type === 'sequential' || Math.abs(deltaY) >= Math.abs(deltaX) * 0.8;
+        const verticalBias = type === 'sequential' ? 0.75 : 1;
+        const preferVertical = Math.abs(deltaY) >= Math.abs(deltaX) * verticalBias;
 
         let fromSide: AnchorSide;
         let toSide: AnchorSide;
@@ -2529,12 +2615,19 @@ export class VisualDesigner {
 
         nodeElement.addEventListener('mousedown', (e) => {
             // Don't start drag if clicking on port
-            if ((e.target as HTMLElement).closest('.port')) {
+            const target = e.target as HTMLElement;
+
+            if (target.closest('.port')) {
+                return;
+            }
+
+            // Ignore clicks on inline action controls
+            if (target.closest('.node-actions') || target.closest('.container-summary__actions')) {
                 return;
             }
 
             // Don't start drag if clicking on container header
-            if ((e.target as HTMLElement).closest('.container-header')) {
+            if (target.closest('.container-header')) {
                 return;
             }
 
@@ -3984,6 +4077,8 @@ export class VisualDesigner {
         this.renderConnections();
         this.updateProcessMarkersPosition();
         this.ensureGridOverlay();
+        const isRootView = this.drillDownManager.getCurrentId() === null;
+        this.updateCanvasStageBounds(isRootView);
     }
 
     /**
@@ -4182,15 +4277,7 @@ export class VisualDesigner {
         this.canvasElement.style.transformOrigin = '0 0';
 
         // Update SVG overlay size if it exists to match zoom level
-        if (this.svgElement) {
-            const scrollContainer = this.canvasScrollContainer ?? this.container;
-            const containerRect = scrollContainer.getBoundingClientRect();
-            if (containerRect.width > 0 && containerRect.height > 0) {
-                // SVG should cover the container size (before zoom)
-                this.svgElement.setAttribute('width', containerRect.width.toString());
-                this.svgElement.setAttribute('height', containerRect.height.toString());
-            }
-        }
+        this.updateSvgOverlayDimensions();
     }
 
     /**
@@ -4384,43 +4471,13 @@ export class VisualDesigner {
             (nodeEl as HTMLElement).classList.remove('node-selected');
         });
 
-        // Hide all resize handles
-        this.resizeHandler.hideAllHandles();
-
-        // Highlight selected nodes and show resize handles
+        // Highlight selected nodes
         this.selectedNodeIds.forEach(nodeId => {
             const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
             if (nodeElement) {
                 nodeElement.classList.add('node-selected');
-
-                // Add resize handles for selected node
-                const node = this.findNode(nodeId);
-                if (node) {
-                    this.resizeHandler.addResizeHandles(nodeElement, node);
-
-                    // Set constraints based on metadata
-                    if (this.pluginManager) {
-                        const plugin = this.pluginManager.findPlugin(node.type);
-                        if (plugin) {
-                            const minWidth = Math.max(80, (plugin.defaultWidth || this.DEFAULT_NODE_WIDTH) * 0.5);
-                            const minHeight = Math.max(60, (plugin.defaultHeight || this.DEFAULT_NODE_HEIGHT) * 0.5);
-                            const maxWidth = (plugin.defaultWidth || this.DEFAULT_NODE_WIDTH) * 3;
-                            const maxHeight = (plugin.defaultHeight || this.DEFAULT_NODE_HEIGHT) * 3;
-
-                            this.resizeHandler.setConstraints(nodeId, {
-                                minWidth,
-                                minHeight,
-                                maxWidth,
-                                maxHeight
-                            });
-                        }
-                    }
-                }
             }
         });
-
-        // Show handles for selected nodes
-        this.resizeHandler.showHandlesForNodes(this.selectedNodeIds);
     }
 
     // ========================================================================
@@ -5388,67 +5445,21 @@ export class VisualDesigner {
      * Apply role-based styling to node element
      */
     private applyRoleBasedStyling(element: HTMLElement, roles: string[], node?: VisualNode): void {
+        element = this.resolveSurfaceElement(element);
         // Remove existing role classes
-        element.classList.remove('role-root-container', 'role-context-container', 'role-body-evaluator', 'role-dependent', 'role-leaf');
+        this.resetRoleStyling(element);
 
-        // Get plugin metadata for additional styling
+        // Get plugin metadata for tooltips
         let plugin: any = null;
         if (node && this.pluginManager) {
             plugin = this.pluginManager.findPlugin(node.type);
         }
 
         const primaryRole = roles[0] || 'LEAF';
-
-        switch (primaryRole) {
-            case 'ROOT_CONTAINER':
-                element.classList.add('role-root-container');
-                element.style.borderWidth = '3px';
-                element.style.borderStyle = 'dashed';
-                element.style.background = 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)';
-                element.style.borderColor = '#9C27B0';
-                // Add icon indicator
-                this.addRoleIndicator(element, 'ROOT_CONTAINER', node);
-                break;
-            case 'CONTEXT_CONTAINER':
-                element.classList.add('role-context-container');
-                element.style.borderWidth = '2px';
-                element.style.borderStyle = 'solid';
-                element.style.background = '#fafafa';
-                element.style.borderColor = '#2196F3';
-                // Add expand/collapse indicator with child count
-                this.addRoleIndicator(element, 'CONTEXT_CONTAINER', node);
-                if (node && node.children && node.children.length > 0) {
-                    this.addChildCountBadge(element, node.children.length);
-                }
-                break;
-            case 'BODY_EVALUATOR':
-                element.classList.add('role-body-evaluator');
-                element.style.borderWidth = '2px';
-                element.style.borderStyle = 'solid';
-                element.style.borderColor = '#4CAF50';
-                element.style.background = '#f1f8f4';
-                this.addRoleIndicator(element, 'BODY_EVALUATOR', node);
-                break;
-            case 'DEPENDENT':
-                element.classList.add('role-dependent');
-                element.style.borderWidth = '2px';
-                element.style.borderStyle = 'dotted';
-                element.style.opacity = '0.9';
-                element.style.background = '#fff9e6';
-                element.style.borderColor = '#FF9800';
-                // Add parent requirement indicator
-                this.addRoleIndicator(element, 'DEPENDENT', node);
-                if (plugin?.semantics?.requiredParentTypes && plugin.semantics.requiredParentTypes.length > 0) {
-                    this.addParentRequirementIndicator(element, plugin.semantics.requiredParentTypes);
-                }
-                break;
-            case 'LEAF':
-            default:
-                element.classList.add('role-leaf');
-                element.style.borderColor = '#757575';
-                // Default styling already applied
-                break;
-        }
+        const roleClass = primaryRole === 'ROOT_CONTAINER' || primaryRole === 'CONTEXT_CONTAINER'
+            ? 'role-container'
+            : 'role-leaf';
+        element.classList.add(roleClass);
 
         // Add semantic metadata tooltip
         if (plugin?.semantics) {
@@ -5474,155 +5485,34 @@ export class VisualDesigner {
         element.dataset.roles = roles.join(',');
     }
 
-    /**
-     * Add role indicator icon/badge to element
-     */
-    private addRoleIndicator(element: HTMLElement, role: string, node?: VisualNode): void {
-        if (!node) {
-            return;
-        }
-
-        const legacyIndicator = element.querySelector(':scope > .role-indicator');
-        if (legacyIndicator && !legacyIndicator.parentElement?.classList.contains('role-control-badge')) {
-            legacyIndicator.remove();
-        }
-
-        let controls = element.querySelector('.role-control-badge') as HTMLElement | null;
-        if (!controls) {
-            controls = document.createElement('div');
-            controls.className = 'role-control-badge';
-            element.appendChild(controls);
-        }
-
-        const roleColors: Record<string, string> = {
-            'ROOT_CONTAINER': '#9C27B0',
-            'CONTEXT_CONTAINER': '#2196F3',
-            'BODY_EVALUATOR': '#4CAF50',
-            'DEPENDENT': '#FF9800',
-            'LEAF': '#757575'
-        };
-
-        const roleIcons: Record<string, string> = {
-            'ROOT_CONTAINER': '🏠',
-            'CONTEXT_CONTAINER': '📦',
-            'BODY_EVALUATOR': '⚡',
-            'DEPENDENT': '🔗',
-            'LEAF': '●'
-        };
-
-        let indicator = controls.querySelector('.role-indicator') as HTMLElement | null;
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.className = 'role-indicator';
-            controls.prepend(indicator);
-        }
-        indicator.dataset.role = role;
-        indicator.textContent = roleIcons[role] || '●';
-        indicator.title = `Semantic role: ${role}`;
-        indicator.style.background = roleColors[role] || '#999';
-
-        let removeButton = controls.querySelector('.role-remove-button') as HTMLButtonElement | null;
-        if (!removeButton) {
-            removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.className = 'role-remove-button';
-            removeButton.setAttribute('aria-label', 'Remove component');
-            removeButton.innerHTML = '<i class="fas fa-trash"></i>';
-            controls.appendChild(removeButton);
-        }
-
-        removeButton.onclick = (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this.handleNodeRemoveRequest(node);
-        };
-
-        controls.dataset.nodeId = node.id;
-
-        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
-            element.style.position = 'relative';
-        }
+    private resetRoleStyling(element: HTMLElement): void {
+        element.classList.remove(
+            'role-root-container',
+            'role-context-container',
+            'role-body-evaluator',
+            'role-dependent',
+            'role-leaf',
+            'role-container'
+        );
+        element.style.borderWidth = '';
+        element.style.borderStyle = '';
+        element.style.borderColor = '';
+        element.style.background = '';
+        element.style.opacity = '';
     }
 
-    /**
-     * Add child count badge for containers
-     */
-    private addChildCountBadge(element: HTMLElement, childCount: number): void {
-        // Check if badge already exists
-        if (element.querySelector('.child-count-badge')) {
+    private handleNodeRemoveRequest(nodeOrId: VisualNode | string | null | undefined): void {
+        const nodeId = typeof nodeOrId === 'string'
+            ? nodeOrId
+            : nodeOrId?.id;
+
+        if (!nodeId) {
             return;
         }
 
-        const badge = document.createElement('div');
-        badge.className = 'child-count-badge';
-        badge.textContent = `${childCount}`;
-        badge.style.cssText = `
-            position: absolute;
-            bottom: 4px;
-            right: 4px;
-            background: rgba(33, 150, 243, 0.9);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
-            z-index: 10;
-        `;
-        badge.title = `${childCount} child plugin${childCount !== 1 ? 's' : ''}`;
-
-        // Ensure element has relative positioning
-        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
-            element.style.position = 'relative';
-        }
-
-        element.appendChild(badge);
-    }
-
-    /**
-     * Add parent requirement indicator for dependent plugins
-     */
-    private addParentRequirementIndicator(element: HTMLElement, requiredParents: string[]): void {
-        // Check if indicator already exists
-        if (element.querySelector('.parent-requirement-indicator')) {
-            return;
-        }
-
-        const indicator = document.createElement('div');
-        indicator.className = 'parent-requirement-indicator';
-        indicator.innerHTML = '<i class="fas fa-link"></i>';
-        indicator.style.cssText = `
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 152, 0, 0.2);
-            border-radius: 50%;
-            color: #FF9800;
-            font-size: 10px;
-            z-index: 10;
-        `;
-        indicator.title = `Requires parent: ${requiredParents.join(', ')}`;
-
-        // Ensure element has relative positioning
-        if (element.style.position !== 'absolute' && element.style.position !== 'relative') {
-            element.style.position = 'relative';
-        }
-
-        element.appendChild(indicator);
-    }
-
-    private handleNodeRemoveRequest(node: VisualNode): void {
-        if (!node?.id) {
-            return;
-        }
-
-        const removed = this.removeNode(node.id);
+        const removed = this.removeNode(nodeId);
         if (!removed) {
-            console.warn(`[VisualDesigner] Unable to remove node: ${node.id}`);
+            console.warn(`[VisualDesigner] Unable to remove node: ${nodeId}`);
         }
     }
 
@@ -5630,6 +5520,7 @@ export class VisualDesigner {
      * Apply validation error styling to node
      */
     private applyValidationErrorStyling(element: HTMLElement, errorMessage: string): void {
+        element = this.resolveSurfaceElement(element);
         element.classList.add('validation-error');
         element.style.borderColor = '#ef4444';
         element.style.borderWidth = '3px';
@@ -5711,42 +5602,6 @@ export class VisualDesigner {
         this.render();
     }
 
-    /**
-     * Handle node resize
-     */
-    private handleNodeResize(nodeId: string, dimensions: { width: number; height: number }): void {
-        const node = this.findNode(nodeId);
-        if (!node) return;
-
-        // Update node dimensions
-        node.dimensions = dimensions;
-
-        // Update node element
-        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement;
-        if (nodeElement) {
-            nodeElement.style.width = `${dimensions.width}px`;
-            nodeElement.style.height = `${dimensions.height}px`;
-        }
-
-        // Update port positions (ports are positioned relative to node)
-        // PortSystem will handle this on next render, but we can trigger update here
-        this.updatePortPositions(nodeId);
-
-        // Update connections (connection lines need to be redrawn)
-        this.renderConnections();
-
-        // Mark dirty
-        this.markDirty();
-    }
-
-    /**
-     * Update port positions after resize
-     */
-    private updatePortPositions(nodeId: string): void {
-        // Port positions are calculated relative to node center/edges
-        // They will be updated automatically on next render
-        // This is a placeholder for future optimization
-    }
 
     /**
      * Show error notification
@@ -5899,6 +5754,7 @@ export class VisualDesigner {
 
         const propertiesButton = this.createControlActionButton('fas fa-pen', 'Edit properties', () => {
             this.selectNode(detailNode.id);
+            this.emit('sidebarPanelRequested', 'properties');
         });
         actions.appendChild(propertiesButton);
 

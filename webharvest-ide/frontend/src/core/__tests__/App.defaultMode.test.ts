@@ -27,6 +27,7 @@ describe('App - Default Mode (TDD)', () => {
             <div id="results"></div>
             <div id="variables"></div>
             <div id="session"></div>
+            <div id="runPanel"><div id="executionControls"></div></div>
         `;
 
         // Mock Monaco

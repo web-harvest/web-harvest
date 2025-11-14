@@ -1,8 +1,8 @@
 ## Run & Test Workflow Panel — Final UX Specification
 
 ### Placement & Navigation
-- Appears as the **`Run & Test`** tab in the right-hand sidebar, adjacent to `Properties`, `Logs`, `Results`, `Variables`, and `Session`.
-- The sidebar nav shares a consistent Apple HIG segmented style; the Run tab can be activated through mouse or keyboard (Arrow keys + Enter).
+- Appears as the **`Run & Test`** tab in the right-hand sidebar, adjacent to `Properties`, `Logs`, `Results`, and `Variables` (the legacy `Session` tab has been folded into Run & Test history).
+- The sidebar nav shares a consistent Apple HIG pill style across every tab; Run & Test can be activated through mouse or keyboard (Arrow keys + Enter).
 - Canvas now spans the full width between palette and sidebar, removing the previous floating overlay.
 
 ### Panel Anatomy
@@ -29,7 +29,7 @@
 
 ### Behaviour Details
 - **Quick Actions**
-  - `Run Workflow` and `Validate` live next to each other in the header, adopting the Run panel styling used elsewhere in the IDE.
+  - `Run Workflow` and `Validate` live next to each other in the header, adopting the new sidebar styling shared across every panel.
   - Execution scope toggles (`Workflow` / `Selected Task`) sit beside the title; task scope is auto-disabled until a node is selected.
   - Pause/Resume/Stop buttons appear only when an execution is in progress (mirrors existing execution state transitions).
 
@@ -42,6 +42,7 @@
   - Per-tab history with newest-first order. Each entry shows timestamp, scope badge, terminal status, and two affordances:
     - `Restore` rehydrates form fields without running.
     - `Run` executes the stored payload immediately (reuses scope + selected node snapshot).
+  - Session telemetry (session ID, execution duration, token usage) now rides inside the history detail sheet; the standalone Session tab was removed.
   - History persists through IDE reloads via `localStorage` (keyed by `RUN_PANEL_STORAGE_PREFIX + tabId`); it is purged when a tab is closed or the user clicks `Clear`.
 
 - **Novice vs Expert Flow**

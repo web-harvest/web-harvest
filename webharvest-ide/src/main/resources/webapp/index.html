@@ -282,12 +282,6 @@
                     <span>Variables</span>
                     <span class="badge" id="varsBadge">0</span>
                 </button>
-                <!-- Session Tab -->
-                <button class="sidebar-nav-btn" data-panel="session" onclick="window.app.switchSidebarPanel('session')"
-                    aria-label="Session Information">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Session</span>
-                </button>
             </div>
 
             <!-- Sidebar Content Area -->
@@ -298,10 +292,8 @@
                         <h3>Plugin Properties</h3>
                     </div>
                     <div class="panel-body">
-                        <div id="property-panel-content"
-                            style="padding: 16px; color: var(--gray-600); text-align: center;">
-                            <i class="fas fa-mouse-pointer"
-                                style="font-size: 48px; color: var(--gray-300); margin-bottom: 16px;"></i>
+                        <div id="property-panel-content" class="property-panel__placeholder">
+                            <i class="fas fa-mouse-pointer"></i>
                             <p>Select a plugin on the canvas to view its properties</p>
                         </div>
                     </div>
@@ -371,22 +363,9 @@
                     </div>
                 </div>
 
-                <!-- Session Panel -->
-                <div id="sessionPanel" class="sidebar-panel">
-                    <div class="panel-header">
-                        <h3>Session</h3>
-                    </div>
-                    <div class="panel-body">
-                        <div id="session" class="session-info">
-                            <!-- Session rendered by SessionPanel.ts -->
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <!-- Resize Handle -->
-        <div class="resize-handle" id="resizeHandle"></div>
     </div>
 
     <!-- Status Bar -->

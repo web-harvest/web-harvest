@@ -305,7 +305,7 @@ Cmd+Enter   (Mac)
 
 5. Completion
    Status: "Completed!"
-   Results → Output/Variables/Session tabs
+   Results → Output/Variables tabs (execution telemetry moves to Run & Test → History)
 ```
 
 ### Progress Tracking
@@ -522,7 +522,7 @@ a7b3c4d5-1234-5678-90ab-cdef12345678
 
 **Wyświetlane:**
 - W logach: `a7b3c4d5...` (skrócone)
-- W Session tab: pełne UUID
+- W Run & Test → History: pełne UUID i metryki sesji
 - Backend: pełne UUID
 
 **Cel:**
@@ -666,6 +666,13 @@ W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
 2. **Kliknij i przeciągnij** plugin do obszaru Canvas
 3. **Puść** mysz - węzeł pojawi się w miejscu upuszczenia
 4. **Kliknij** węzeł, aby go wybrać
+
+#### Wygląd kafelków pluginów
+
+- Wszystkie pluginy (zarówno `def`, `empty`, `case`, `constant`, itp.) korzystają z **jednego spójnego wzorca kafelka** – bez dodatkowych ramek, etykiet roli czy kolorowych badge’y.
+- Nagłówek wyświetla **tylko nazwę typu** (np. `constant`), natomiast właściwości pojawiają się poniżej w formie skróconych par `klucz: wartość` (pomijamy `name`/`id`, aby nie dublować tytułu).
+- Kafelki zachowują jednolitą siatkę i marginesy, dzięki czemu pierwszy element między markerami Start/End nie ma już niebieskiej obwódki ani wyróżnień.
+- Dzięki ujednoliceniu łatwiej porównywać węzły wzrokowo – różnice wynikają wyłącznie z ikon i treści konfiguracji, a nie z niestandardowych styli.
 
 **Metoda 2: Wyszukiwanie**
 1. Wpisz nazwę plugin w **wyszukiwarce** (`[🔍]`)
@@ -1131,7 +1138,7 @@ Regularnie:
 3. Validate → Check syntax
 4. Run → Check results
 5. Iterate → Fix issues
-6. Session tab → Check performance
+6. Run & Test → History → Check performance
 7. Optimize → Reduce tokens
 8. Production → Deploy
 ```

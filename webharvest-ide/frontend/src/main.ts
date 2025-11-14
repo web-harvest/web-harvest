@@ -59,9 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
             clearLogs: () => app.clearLogs(),
             exportResults: () => app.exportResults(),
 
-            // Session
-            loadSessionHistory: () => app.loadSessionHistory(),
-
             // UI
             hideTooltip: () => app.hideTooltip(),
             hideExamplesModal: () => app.hideExamplesModal(),

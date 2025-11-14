@@ -4,6 +4,8 @@ import type {
     RunHistoryStatus,
     RunPanelPayload,
     RunPanelState,
+    SessionInfo,
+    TokenUsage,
 } from '../types';
 
 interface SelectedNodeContext {
@@ -454,6 +456,9 @@ export class RunWorkflowPanel {
                 </div>
             `;
 
+        const sessionSection = this.renderSessionInfo(entry.sessionInfo);
+        const tokenUsageSection = this.renderTokenUsage(entry.tokenUsage);
+
         return `
             <div class="run-panel__history-item" data-entry-id="${escapeHtml(entry.id)}">
                 <div class="run-panel__history-top">
@@ -502,6 +507,8 @@ export class RunWorkflowPanel {
                         <pre>${escapeHtml(inputJson)}</pre>
                     </div>
                     ${taskDomainSection}
+                    ${sessionSection}
+                    ${tokenUsageSection}
                 </div>
             </div>
         `;
@@ -552,6 +559,174 @@ export class RunWorkflowPanel {
             this.scopeWorkflowBtn.classList.add('active');
             this.runBtn.innerHTML = `<i class="fas fa-play"></i> Run Workflow`;
         }
+    }
+
+    private renderSessionInfo(session: SessionInfo | undefined): string {
+        if (!session) {
+            return '';
+        }
+
+        const rows: Array<[string, string]> = [
+            ['Session ID', session.sessionId],
+            ['Client', session.clientId ?? '—'],
+            ['Status', session.status ?? '—'],
+            ['Started', session.startTime ? new Date(session.startTime).toLocaleString() : '—'],
+            ['Duration', this.formatDuration(session.duration)],
+            ['Elements processed', session.elementsProcessed != null ? session.elementsProcessed.toString() : '0'],
+            [
+                'Processing rate',
+                session.processingRate != null ? `${session.processingRate.toFixed(2)} elem/s` : '—',
+            ],
+        ];
+
+        const infoRows = rows
+            .filter(([, value]) => value !== undefined && value !== null && value !== '')
+            .map(
+                ([label, value]) => `
+                <div class="run-panel__history-detail">
+                    <dt>${escapeHtml(label)}</dt>
+                    <dd>${escapeHtml(value)}</dd>
+                </div>
+            `
+            )
+            .join('');
+
+        const http = session.httpMetrics
+            ? `
+                <div class="run-panel__history-subsection">
+                    <h4>HTTP Metrics</h4>
+                    <dl class="run-panel__history-detail-grid">
+                        <div class="run-panel__history-detail">
+                            <dt>Requests</dt>
+                            <dd>${escapeHtml((session.httpMetrics?.requests ?? 0).toString())}</dd>
+                        </div>
+                        <div class="run-panel__history-detail">
+                            <dt>Downloaded</dt>
+                            <dd>${escapeHtml(this.formatBytes(session.httpMetrics?.bytesDownloaded))}</dd>
+                        </div>
+                        <div class="run-panel__history-detail">
+                            <dt>Uploaded</dt>
+                            <dd>${escapeHtml(this.formatBytes(session.httpMetrics?.bytesUploaded))}</dd>
+                        </div>
+                        <div class="run-panel__history-detail">
+                            <dt>Avg response</dt>
+                            <dd>${escapeHtml(
+                                session.httpMetrics?.avgResponseTime != null
+                                    ? `${session.httpMetrics.avgResponseTime} ms`
+                                    : '—'
+                            )}</dd>
+                        </div>
+                    </dl>
+                </div>
+            `
+            : '';
+
+        const breakdown =
+            session.pluginBreakdown && Object.keys(session.pluginBreakdown).length > 0
+                ? `
+                    <div class="run-panel__history-subsection">
+                        <h4>Plugin Breakdown</h4>
+                        <ul class="run-panel__history-list">
+                            ${Object.entries(session.pluginBreakdown)
+                                .map(
+                                    ([plugin, time]) => `
+                                        <li>
+                                            <span>${escapeHtml(plugin)}</span>
+                                            <span>${escapeHtml(this.formatDuration(time))}</span>
+                                        </li>
+                                    `
+                                )
+                                .join('')}
+                        </ul>
+                    </div>
+                `
+                : '';
+
+        return `
+            <div class="run-panel__history-section">
+                <h3>Session</h3>
+                <dl class="run-panel__history-detail-grid">
+                    ${infoRows}
+                </dl>
+                ${http}
+                ${breakdown}
+            </div>
+        `;
+    }
+
+    private renderTokenUsage(token: TokenUsage | undefined): string {
+        if (!token) {
+            return '';
+        }
+
+        const rows: Array<[string, string]> = [
+            ['HTTP requests', token.httpRequests != null ? token.httpRequests.toString() : '0'],
+            ['HTTP bytes', this.formatBytes(token.httpBytes)],
+            ['CPU time', token.cpuTimeMs != null ? `${token.cpuTimeMs} ms` : '—'],
+            ['Memory peak', token.memoryPeakBytes != null ? this.formatBytes(token.memoryPeakBytes) : '—'],
+        ];
+
+        const infoRows = rows
+            .map(
+                ([label, value]) => `
+                <div class="run-panel__history-detail">
+                    <dt>${escapeHtml(label)}</dt>
+                    <dd>${escapeHtml(value)}</dd>
+                </div>
+            `
+            )
+            .join('');
+
+        return `
+            <div class="run-panel__history-section">
+                <h3>Usage</h3>
+                <dl class="run-panel__history-detail-grid">
+                    ${infoRows}
+                </dl>
+            </div>
+        `;
+    }
+
+    private formatDuration(duration: number | undefined | null): string {
+        if (!duration || duration <= 0) {
+            return '—';
+        }
+
+        if (duration < 1000) {
+            return `${duration} ms`;
+        }
+
+        const seconds = Math.floor(duration / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+
+        const parts: string[] = [];
+        if (hours > 0) {
+            parts.push(`${hours}h`);
+        }
+        if (minutes % 60 > 0 || hours > 0) {
+            parts.push(`${minutes % 60}m`);
+        }
+        parts.push(`${seconds % 60}s`);
+        return parts.join(' ');
+    }
+
+    private formatBytes(bytes: number | undefined | null): string {
+        if (!bytes || bytes <= 0) {
+            return '0 B';
+        }
+
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let value = bytes;
+        let unitIndex = 0;
+
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            unitIndex++;
+        }
+
+        const fixed = unitIndex === 0 ? value.toFixed(0) : value.toFixed(2);
+        return `${fixed} ${units[unitIndex]}`;
     }
 }
 

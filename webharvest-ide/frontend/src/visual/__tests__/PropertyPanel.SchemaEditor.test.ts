@@ -206,6 +206,8 @@ describe('PropertyPanel - SchemaEditor Integration', () => {
 
             const form = container.querySelector('.schema-editor-form');
             expect(form).toBeTruthy();
+            const layoutForm = container.querySelector('.property-panel__form');
+            expect(layoutForm).toBeTruthy();
 
             const urlInput = container.querySelector('input[type="url"]');
             expect(urlInput).toBeTruthy();

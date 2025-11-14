@@ -23,6 +23,8 @@ const mockMonaco = {
 
 (global as any).monaco = mockMonaco;
 
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
+
 // Mock fetch
 global.fetch = jest.fn((url: string) => {
     if (url.includes('/api/plugins')) {
@@ -39,17 +41,117 @@ describe('App - Panel Initialization (TDD)', () => {
         // Setup DOM with CORRECT IDs (matching index.html)
         document.body.innerHTML = `
             <div id="editor"></div>
-            <div id="logs"></div>
-            <div id="results"></div>
-            <div id="variables"></div>
-            <div id="session"></div>
+            <div id="visual-canvas"></div>
+            <div id="plugin-sidebar"></div>
             <div id="canvas-area"></div>
-            <div id="propertyPanel"></div>
             <div id="plugin-palette"></div>
+            <div id="tabs"></div>
             <div id="tabs-container"></div>
-            <span id="logsBadge">0</span>
-            <span id="varsBadge">0</span>
+            <div class="sidebar-section">
+                <div class="sidebar-nav">
+                    <button class="sidebar-nav-btn" data-panel="properties" id="propertiesTabBtn" style="display: flex;">
+                        <span>Properties</span>
+                    </button>
+                    <button class="sidebar-nav-btn" data-panel="run" id="runTabBtn">
+                        <span>Run &amp; Test</span>
+                    </button>
+                    <button class="sidebar-nav-btn" data-panel="logs">
+                        <span>Logs</span>
+                        <span class="badge" id="logsBadge">0</span>
+                    </button>
+                    <button class="sidebar-nav-btn" data-panel="results">
+                        <span>Results</span>
+                    </button>
+                    <button class="sidebar-nav-btn" data-panel="variables">
+                        <span>Variables</span>
+                        <span class="badge" id="varsBadge">0</span>
+                    </button>
+                </div>
+                <div class="sidebar-content">
+                    <div id="propertyPanel" class="sidebar-panel"></div>
+                    <div id="runPanel" class="sidebar-panel">
+                        <div class="panel-body panel-body--run" id="runPanelBody">
+                            <div id="executionControls"></div>
+                        </div>
+                    </div>
+                    <div id="logsPanel" class="sidebar-panel">
+                        <div class="panel-body">
+                            <div id="logs"></div>
+                        </div>
+                    </div>
+                    <div id="resultsPanel" class="sidebar-panel">
+                        <div class="panel-body">
+                            <div id="results"></div>
+                        </div>
+                    </div>
+                    <div id="variablesPanel" class="sidebar-panel">
+                        <div class="panel-body">
+                            <div id="variables"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
+
+        (global as any).ResizeObserver = class {
+            observe() { /* noop */ }
+            unobserve() { /* noop */ }
+            disconnect() { /* noop */ }
+        };
+    });
+
+    describe('Sidebar visibility controls', () => {
+        it('activates Properties panel by default in visual mode', async () => {
+            const app = new App();
+            await flushPromises();
+            await flushPromises();
+
+            const propertyPanel = document.getElementById('propertyPanel') as HTMLElement;
+            const runPanel = document.getElementById('runPanel') as HTMLElement;
+            const logsPanel = document.getElementById('logsPanel') as HTMLElement;
+
+            expect(propertyPanel.style.display).toBe('flex');
+            expect(propertyPanel.classList.contains('active')).toBe(true);
+            expect(runPanel.style.display).toBe('none');
+            expect(logsPanel.style.display).toBe('none');
+        });
+
+        it('switchSidebarPanel("logs") shows Logs panel and hides others', async () => {
+            const app = new App();
+            await flushPromises();
+            await flushPromises();
+
+            app.switchSidebarPanel('logs');
+
+            const propertyPanel = document.getElementById('propertyPanel') as HTMLElement;
+            const runPanel = document.getElementById('runPanel') as HTMLElement;
+            const logsPanel = document.getElementById('logsPanel') as HTMLElement;
+
+            expect(logsPanel.style.display).toBe('flex');
+            expect(propertyPanel.style.display).toBe('none');
+            expect(runPanel.style.display).toBe('none');
+        });
+
+        it('switching to XML mode hides Properties tab and focuses Run & Test', async () => {
+            const app = new App();
+            await flushPromises();
+            await flushPromises();
+
+            const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+            await app.switchMode('xml');
+            await flushPromises();
+
+            const propertiesTab = document.getElementById('propertiesTabBtn') as HTMLElement;
+            const propertyPanel = document.getElementById('propertyPanel') as HTMLElement;
+            const runPanel = document.getElementById('runPanel') as HTMLElement;
+
+            expect(propertiesTab.style.display).toBe('none');
+            expect(propertyPanel.style.display).toBe('none');
+            expect(runPanel.style.display).toBe('flex');
+            expect(runPanel.classList.contains('active')).toBe(true);
+
+            confirmSpy.mockRestore();
+        });
     });
 
     afterEach(() => {
@@ -82,13 +184,6 @@ describe('App - Panel Initialization (TDD)', () => {
             expect(app).toBeDefined();
         });
 
-        it('should find session panel with id="session"', () => {
-            const sessionContainer = document.getElementById('session');
-            expect(sessionContainer).toBeTruthy();
-            
-            const app = new App();
-            expect(app).toBeDefined();
-        });
     });
 
     describe('Badge elements', () => {
@@ -155,21 +250,6 @@ describe('App - Panel Initialization (TDD)', () => {
             
             // Should render in #variables, not #variablesContent
             expect(variablesContainer?.textContent).toContain('testVar');
-        });
-
-        it('should render session in correct container', () => {
-            const app = new App();
-            const sessionContainer = document.getElementById('session');
-            
-            // Set session info
-            (app as any).sessionPanel.setSessionInfo({
-                sessionId: 'test-123',
-                status: 'COMPLETED',
-                duration: 1000,
-            });
-            
-            // Should render in #session, not #sessionContent
-            expect(sessionContainer?.textContent).toContain('test-123');
         });
 
         it('should render logs in correct container', () => {

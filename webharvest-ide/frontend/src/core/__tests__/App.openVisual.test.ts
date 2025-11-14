@@ -73,6 +73,7 @@ describe('App - open visual configuration', () => {
             <div id="plugin-palette"></div>
             <div id="tabs"></div>
             <div id="tabs-container"></div>
+            <div id="runPanel"><div id="executionControls"></div></div>
             <span id="logsBadge">0</span>
             <span id="varsBadge">0</span>
             <span id="current-filename"></span>

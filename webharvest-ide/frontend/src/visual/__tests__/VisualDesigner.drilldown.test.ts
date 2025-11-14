@@ -170,7 +170,7 @@ describe('VisualDesigner drill-down focus mode', () => {
 
         designer.loadNodes(nodes);
 
-        const focusButton = container.querySelector('[data-node-id="loop-1"] .container-summary__action-btn--primary') as HTMLButtonElement | null;
+        const focusButton = container.querySelector('[data-node-id="loop-1"] .node-actions__btn[data-action="focus"]') as HTMLButtonElement | null;
         expect(focusButton).not.toBeNull();
 
         focusButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));

@@ -17,8 +17,6 @@ export interface Tab {
     executionId?: string;
     // v2.2: Per-tab execution data (like old app.js)
     results?: Record<string, any>;
-    sessionInfo?: SessionInfo;
-    tokenUsage?: TokenUsage;
     visualNodes?: VisualNode[];
     activeSidebarPanel?: string;
     runPanelState?: RunPanelState;
@@ -347,6 +345,8 @@ export interface RunHistoryEntry {
     nodeId?: string;
     nodeLabel?: string;
     status?: RunHistoryStatus;
+    sessionInfo?: SessionInfo;
+    tokenUsage?: TokenUsage;
 }
 
 export interface RunPanelState extends RunPanelPayload {

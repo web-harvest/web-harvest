@@ -62,13 +62,13 @@ export class UIManager {
 
                 // Auto-activate Properties tab when entering Visual mode
                 this.activateSidebarTabElement(tab, panel);
-                panel.style.display = 'block';
             } else {
                 // Hide Properties tab in XML mode
                 tab.setAttribute('aria-hidden', 'true');
                 tab.classList.remove('active');
                 panel.classList.remove('active');
                 panel.style.display = 'none';
+                panel.setAttribute('aria-hidden', 'true');
 
                 // Prefer Run & Test tab when Properties are hidden; fallback to Logs
                 const runTab = document.querySelector('[data-panel="run"]') as HTMLElement | null;
@@ -91,10 +91,45 @@ export class UIManager {
      * Helper to set specific sidebar panel active given the elements
      */
     private activateSidebarTabElement(tabEl: HTMLElement, panelEl: HTMLElement): void {
-        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.sidebar-panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+            (btn as HTMLElement).setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.sidebar-panel').forEach(panel => {
+            panel.classList.remove('active');
+            const element = panel as HTMLElement;
+            element.style.display = 'none';
+            element.setAttribute('aria-hidden', 'true');
+        });
         tabEl.classList.add('active');
+        tabEl.setAttribute('aria-selected', 'true');
         panelEl.classList.add('active');
+        panelEl.style.display = 'flex';
+        panelEl.setAttribute('aria-hidden', 'false');
+    }
+
+    /**
+     * Public helper to activate a sidebar panel by name (properties/run/logs/results/variables)
+     */
+    activateSidebarPanel(panelName: string): void {
+        const panelIdMap: Record<string, string> = {
+            properties: 'propertyPanel',
+            run: 'runPanel',
+            logs: 'logsPanel',
+            results: 'resultsPanel',
+            variables: 'variablesPanel'
+        };
+
+        const tab = document.querySelector(`.sidebar-nav-btn[data-panel="${panelName}"]`) as HTMLElement | null;
+        const panelId = panelIdMap[panelName] ?? `${panelName}Panel`;
+        const panel = document.getElementById(panelId);
+
+        if (!tab || !panel) {
+            console.warn(`[UIManager] Sidebar panel "${panelName}" not found`);
+            return;
+        }
+
+        this.activateSidebarTabElement(tab, panel);
     }
 
     /**

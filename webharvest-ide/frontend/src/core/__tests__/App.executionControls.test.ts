@@ -53,7 +53,6 @@ describe('App execution control integration', () => {
           <div id="logsPanel" class="sidebar-panel"><div id="logs"></div></div>
           <div id="resultsPanel" class="sidebar-panel"><div id="results"></div></div>
           <div id="variablesPanel" class="sidebar-panel"><div id="variables"></div></div>
-          <div id="sessionPanel" class="sidebar-panel"><div id="session"></div></div>
         </div>
       </div>
       <span id="logsBadge">0</span>

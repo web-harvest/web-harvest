@@ -284,8 +284,8 @@ export class PropertyPanel {
         this.container.innerHTML = '';
 
         const form = document.createElement('div');
-        form.style.padding = '16px';
-        form.style.maxHeight = 'calc(100vh - 200px)';
+        form.className = 'property-panel__form';
+        form.style.maxHeight = 'calc(100vh - 220px)';
         form.style.overflowY = 'auto';
         this.currentForm = form;
         this.focusSummaryElement = null;

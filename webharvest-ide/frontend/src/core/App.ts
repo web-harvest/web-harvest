@@ -14,7 +14,6 @@ import { KeyboardShortcutManager } from './KeyboardShortcutManager';
 import { LogsPanel } from '../panels/LogsPanel';
 import { ResultsPanel } from '../panels/ResultsPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
-import { SessionPanel } from '../panels/SessionPanel';
 import { VisualDesigner } from '../visual/VisualDesigner';
 import { PropertyPanel } from '../visual/PropertyPanel';
 import { PluginPalette } from '../visual/PluginPalette';
@@ -60,7 +59,6 @@ export class App {
     private logsPanel: LogsPanel;
     private resultsPanel: ResultsPanel;
     private variablesPanel: VariablesPanel;
-    private sessionPanel: SessionPanel;
     private visualDesigner: VisualDesigner;
     private propertyPanel: PropertyPanel;
     private pluginPalette: PluginPalette;
@@ -88,7 +86,6 @@ export class App {
         this.logsPanel = new LogsPanel('logs');
         this.resultsPanel = new ResultsPanel('results');
         this.variablesPanel = new VariablesPanel('variables');
-        this.sessionPanel = new SessionPanel('session');
         // Note: visualDesigner initialized after pluginManager loads in initialize()
         this.visualDesigner = new VisualDesigner('canvas-area');
         this.propertyPanel = new PropertyPanel('propertyPanel');
@@ -318,14 +315,23 @@ export class App {
                         this.updateRunHistoryStatus(entryId, 'RUNNING', executionId || undefined);
                         break;
                     case 'COMPLETED':
-                        this.updateRunHistoryStatus(entryId, 'COMPLETED', executionId || undefined);
+                        this.updateRunHistoryStatus(entryId, 'COMPLETED', executionId || undefined, {
+                            sessionInfo: update.sessionInfo ?? undefined,
+                            tokenUsage: update.tokenUsage ?? undefined,
+                        });
                         break;
                     case 'ERROR':
                     case 'FAILED':
-                        this.updateRunHistoryStatus(entryId, 'FAILED', executionId || undefined);
+                        this.updateRunHistoryStatus(entryId, 'FAILED', executionId || undefined, {
+                            sessionInfo: update.sessionInfo ?? undefined,
+                            tokenUsage: update.tokenUsage ?? undefined,
+                        });
                         break;
                     case 'STOPPED':
-                        this.updateRunHistoryStatus(entryId, 'STOPPED', executionId || undefined);
+                        this.updateRunHistoryStatus(entryId, 'STOPPED', executionId || undefined, {
+                            sessionInfo: update.sessionInfo ?? undefined,
+                            tokenUsage: update.tokenUsage ?? undefined,
+                        });
                         break;
                     default:
                         break;
@@ -409,20 +415,6 @@ export class App {
                 }
 
                 // Session info and token usage - STORE IN TAB (like old app.js)
-                if (tab) {
-                    if (update.sessionInfo) {
-                        console.log('Storing session info in tab:', update.sessionInfo);
-                        tab.sessionInfo = update.sessionInfo;
-                    }
-                    if (update.tokenUsage) {
-                        console.log('Storing token usage in tab:', update.tokenUsage);
-                        tab.tokenUsage = update.tokenUsage;
-                    }
-
-                    // Render session panel with tab data
-                    this.sessionPanel.setSessionInfo(update.sessionInfo || null);
-                    this.sessionPanel.setTokenUsage(update.tokenUsage || null);
-                }
             }
 
             // Legacy: handle separate variables field
@@ -448,6 +440,16 @@ export class App {
                 console.warn(`⚠️ [App] Node not found: ${nodeId}`);
                 this.runPanel.updateSelection(null);
             }
+        });
+
+        this.visualDesigner.addEventListener('sidebarPanelRequested', (panelName: string) => {
+            if (this.currentMode !== 'visual') {
+                return;
+            }
+            if (panelName === 'properties') {
+                this.uiManager.showPropertyPanel(true);
+            }
+            this.switchSidebarPanel(panelName);
         });
 
         this.visualDesigner.addEventListener('workflowStartRequested', () => {
@@ -1451,10 +1453,6 @@ export class App {
                     this.variablesPanel.clear();
                 }
 
-                // Update session panel with tab's session data
-                this.sessionPanel.setSessionInfo(tab.sessionInfo || null);
-                this.sessionPanel.setTokenUsage(tab.tokenUsage || null);
-
                 // If in visual mode, refresh visual designer with new tab's content
                 if (this.currentMode === 'visual') {
                     console.log('[App] Tab switched in visual mode, refreshing canvas...');
@@ -1538,15 +1536,7 @@ export class App {
      * Switch sidebar panel (Logs/Results/Variables/Session)
      */
     switchSidebarPanel(panelName: string): void {
-        // Update nav buttons
-        document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-            btn.classList.toggle('active', (btn as HTMLElement).dataset.panel === panelName);
-        });
-
-        // Update panels
-        document.querySelectorAll('.sidebar-panel').forEach(panel => {
-            panel.classList.toggle('active', panel.id === panelName + 'Panel');
-        });
+        this.uiManager.activateSidebarPanel(panelName);
     }
 
     private ensureRunPanelState(tab: Tab): RunPanelState {
@@ -1767,7 +1757,12 @@ export class App {
         }
     }
 
-    private updateRunHistoryStatus(entryId: string | null | undefined, status: RunHistoryStatus, executionId?: string): void {
+    private updateRunHistoryStatus(
+        entryId: string | null | undefined,
+        status: RunHistoryStatus,
+        executionId?: string,
+        extra?: Partial<RunHistoryEntry>
+    ): void {
         if (!entryId) {
             return;
         }
@@ -1790,6 +1785,7 @@ export class App {
         const existing = tab.runPanelState.history[index];
         const updated: RunHistoryEntry = {
             ...existing,
+            ...extra,
             status,
             executionId: executionId ?? existing.executionId,
         };
@@ -1975,13 +1971,6 @@ export class App {
         }
     }
 
-    /**
-     * Load session history (calls SessionPanel method)
-     */
-    loadSessionHistory(): void {
-        console.log('[App] Loading session history...');
-        this.sessionPanel.loadSessionHistory();
-    }
 }
 
 

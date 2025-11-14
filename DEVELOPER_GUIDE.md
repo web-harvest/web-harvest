@@ -149,8 +149,9 @@ Results Display  ←WS→       ExecutionManager  ─┘
 #### Run & Test Sidebar Panel (Visual Mode)
 
 - **Placement & Purpose**
-  - Lives in the right-hand sidebar as the `Run & Test` tab, sharing layout and navigation with `Properties`, `Logs`, `Results`, `Variables`, and `Session`.
+  - Lives in the right-hand sidebar as the `Run & Test` tab, sharing navigation with `Properties`, `Logs`, `Results`, and `Variables`. The legacy `Session` tab was removed—its telemetry now surfaces inside the Run history stream.
   - Removes the floating overlay that previously occluded the canvas, giving novice users a clear two-column flow: palette → canvas → execution panel.
+  - All sidebar tabs now adopt the same Apple HIG shell (pill navigation, glassy header, padded body) introduced for Run & Test to keep novice and expert workflows visually consistent.
 
 - **Primary Controls**
   - Header exposes quick actions (`Run Workflow`, `Validate`) plus segmented scope toggles (`workflow` / `task`, task option auto-disabled when no node is selected).
@@ -162,6 +163,7 @@ Results Display  ←WS→       ExecutionManager  ─┘
 
 - **History**
   - History list appears beneath the form and mirrors Orkes’ run telemetry: timestamp, scope, status badge, and restore button.
+  - Session telemetry (session ID, token usage, duration) is coalesced into the Run history entries instead of a separate tab, so operators inspect and rerun flows from a single surface.
   - `Restore` hydrates the form without executing; `Run` replays the stored payload immediately.
   - State is persisted per visual-mode tab via `localStorage` (`RUN_PANEL_STORAGE_PREFIX + tabId`) and cleared on tab close.
 
@@ -619,21 +621,22 @@ XSDMetadataParser.java        # XSD metadata extraction
 **Transform Handling:**
 - Transform applied to `.canvas-stage` (scroll container stays put)
 - `transform-origin: 0 0` for top-left origin
-- SVG overlay matches container size (before zoom)
+- SVG overlay tracks the stage bounds (after each drag/zoom) so connectors remain visible even when nodes move outside the initial viewport
 - All node positions stored in canvas coordinates
 
 **UI Improvements:**
 - Run/Validate buttons moved to canvas area (top-right)
 - Removed duplicate buttons from header toolbar
 - Execution controls (Pause/Resume/Stop) appear during execution only
-- Container cards now advertise grab/grabbing cursors and suppress native text-selection/touch gestures, making drag + resize gestures more forgiving on large flows.
+- Container cards now advertise grab/grabbing cursors and suppress native text-selection/touch gestures, making drag gestures more forgiving on large flows.
+- Plugin tiles on the canvas now reuse a **single card component**—role-based borders/badges were removed, attribute lists skip duplicate `name/id` fields, and the first node between Start/End no longer receives special styling. This keeps the DOM simple and makes future restyling (e.g., VS Code webview) predictable.
 
 ### VS Code Webview Alignment
 
 - The canvas shell (`.canvas-content-wrapper` + `.canvas-stage`) matches VS Code webview constraints: one scroll container, one transform target. The DOM can be embedded inside an extension panel without altering coordinate maths.
 - Container summary tiles stay metadata-driven: highlights come from `MasterDetailRegistry`/`SchemaEditor`, and they re-render after property panel updates, keeping the canvas in “read-only summary” mode.
 - Breadcrumb chips expose children/containers/detail counts so users can evaluate nested complexity before entering a level—reuse the same data in a VS Code sidebar.
-- Action buttons (`Szczegóły`, `Otwórz`) are semantic `<button>` elements, making it easy to remap them to VS Code commands or command palette entries.
+- Action buttons (`Details`, `Focus`) are semantic `<button>` elements; the Details action also requests the Properties tab so VS Code can mirror the same behaviour with command palette entries.
 
 ### Visual Designer Features
 
@@ -656,7 +659,7 @@ XSDMetadataParser.java        # XSD metadata extraction
 - ✅ Palette tooltips on dedicated help icon (`?`)
 - ✅ Dependent detail plugins (HTTP headers, query params, else/catch, zip-entry, etc.) are now managed from their parent cards/property panel and removed from the draggable palette to reduce invalid drops
 - ✅ Schema-driven property panel controls (boolean toggles, segmented enums, styled number/url inputs) reuse the shared `SchemaEditor` across HTTP and non-HTTP plugins
-- ✅ Corner and edge resize handles (NiFi/Azure Logic Apps style) aligned exactly on card geometry, with grab/grabbing cursors during drag
+- ✅ Grab/grabbing cursor states with selection locking prevent accidental text selection while moving cards
 - ✅ Always-on grid overlay that stretches with the canvas; start/end markers can be repositioned manually with persisted locations
 - ✅ Connection lines redraw instantly while dragging nodes, keeping sequenced flows visually accurate
 - ✅ Run/Test workflow panel with JSON inputs, idempotency metadata, execution history, and single-task test mode mirroring Conductor UX

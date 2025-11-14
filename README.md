@@ -575,7 +575,7 @@ WebHarvest IDE is a modern, web-based development environment for creating and t
 - **Session Management** - Track metrics, tokens, and performance
 - **Multi-Tab Interface** - Work with multiple configurations simultaneously
 - **Example Configurations** - 5 pre-loaded examples to get started
-- **BPMN Cues** - Start/End markers, NiFi-style resize handles, and palette help tooltips
+- **BPMN Cues** - Start/End markers and palette help tooltips keep complex flows legible
 - **Recursive Containers** - Containers can nest arbitrarily; root-level containers now participate in sequential auto-connections
 - **HTTP Task UX:** Headers and query parameters are managed inside the HTTP node via toolbar/context menu shortcuts and a dedicated editor, aligning with [Orkes Conductor’s HTTP task](https://orkes.io/content/reference-docs/system-tasks/http)
 - **Conditional UX:** `if`/`else` and `try`/`catch` blocks expose in-card controls for adding, reordering, and editing branches without hunting for detail tiles
@@ -600,7 +600,7 @@ java -jar target/webharvest-ide-2.3.1.jar
 - **Real-time Execution:** Live logs and results via WebSocket
 - **Session Management:** Track metrics, tokens, and performance
 - **Multi-tab Support:** Work with multiple configurations
-- **BPMN-style UX:** Start/end markers, contextual `?` help, and corner/edge resize handles
+- **BPMN-style UX:** Start/end markers plus contextual `?` help for dependent components
 - **Nested Containers:** Recursive container rendering with preserved drag/drop + auto-connections between top-level containers
 
 ### IDE Architecture

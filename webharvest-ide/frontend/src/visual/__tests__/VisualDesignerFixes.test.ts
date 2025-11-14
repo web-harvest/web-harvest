@@ -94,6 +94,79 @@ describe('Visual Designer Fixes - Integration Tests', () => {
         });
     });
 
+    describe('Connection Routing', () => {
+        it('reorients sequential connections when nodes shift horizontally', () => {
+            const upperNode: VisualNode = {
+                id: 'n1',
+                type: 'def',
+                attributes: {},
+                body: null,
+                children: [],
+                position: { x: 120, y: 80 }
+            };
+            const lowerNode: VisualNode = {
+                id: 'n2',
+                type: 'def',
+                attributes: {},
+                body: null,
+                children: [],
+                position: { x: 120, y: 320 }
+            };
+
+            designer.loadNodes([upperNode, lowerNode]);
+            designer.render();
+
+            const getAnchor = (id: string) =>
+                (designer as unknown as { getConnectionAnchor: (nodeId: string) => any }).getConnectionAnchor(id);
+            const computeGeometry = (from: any, to: any) =>
+                (designer as unknown as {
+                    computeConnectionGeometry: (
+                        fromAnchor: any,
+                        toAnchor: any,
+                        type: 'sequential' | 'conditional' | 'error'
+                    ) => { exitSide: string; entrySide: string };
+                }).computeConnectionGeometry(from, to, 'sequential');
+
+            const beforeGeometry = computeGeometry(getAnchor('n1'), getAnchor('n2'));
+            expect(beforeGeometry.exitSide).toBe('bottom');
+            expect(beforeGeometry.entrySide).toBe('top');
+
+            designer.moveNode('n2', { x: 520, y: 320 });
+
+            const afterGeometry = computeGeometry(getAnchor('n1'), getAnchor('n2'));
+            expect(afterGeometry.exitSide).toBe('right');
+            expect(afterGeometry.entrySide).toBe('left');
+        });
+    });
+
+    describe('Canvas stage sizing', () => {
+        it('extends stage height to keep end marker connections visible', () => {
+            const node: VisualNode = {
+                id: 'solo',
+                type: 'def',
+                attributes: {},
+                body: null,
+                children: [],
+                position: { x: 120, y: 120 }
+            };
+
+            designer.loadNodes([node]);
+            designer.render();
+
+            designer.moveNode('solo', { x: 120, y: 950 });
+
+            const stage = container.querySelector('.canvas-stage') as HTMLElement | null;
+            const endMarker = container.querySelector('.process-marker-end') as HTMLElement | null;
+            expect(stage).not.toBeNull();
+            expect(endMarker).not.toBeNull();
+
+            const stageHeight = parseFloat(stage!.style.height || '0');
+            const markerCenterY = parseFloat(endMarker!.style.top || '0');
+
+            expect(stageHeight).toBeGreaterThan(markerCenterY + 20);
+        });
+    });
+
     describe('Context Menu Positioning', () => {
         it('should position context menu correctly relative to viewport', () => {
             const node: VisualNode = {

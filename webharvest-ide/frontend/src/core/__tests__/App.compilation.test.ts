@@ -44,12 +44,6 @@ global.fetch = jest.fn((url: string) => {
             json: () => Promise.resolve({ executionId: 'test-exec' }),
         } as any);
     }
-    if (url.includes('/api/session/history')) {
-        return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ history: [] }),
-        } as any);
-    }
     return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({}),
@@ -63,7 +57,6 @@ describe('App - Compilation & Type Safety', () => {
             <div id="logs"></div>
             <div id="results"></div>
             <div id="variables"></div>
-            <div id="session"></div>
             <div id="canvas-area"></div>
             <div id="plugin-sidebar"></div>
             <div id="plugin-palette"></div>
@@ -74,7 +67,6 @@ describe('App - Compilation & Type Safety', () => {
                     <button class="sidebar-nav-btn" data-panel="logs"></button>
                     <button class="sidebar-nav-btn" data-panel="results"></button>
                     <button class="sidebar-nav-btn" data-panel="variables"></button>
-                    <button class="sidebar-nav-btn" data-panel="session"></button>
                 </div>
                 <div class="sidebar-content">
                     <div id="propertyPanel" class="sidebar-panel"></div>
@@ -87,7 +79,6 @@ describe('App - Compilation & Type Safety', () => {
                     <div id="logsPanel" class="sidebar-panel"></div>
                     <div id="resultsPanel" class="sidebar-panel"></div>
                     <div id="variablesPanel" class="sidebar-panel"></div>
-                    <div id="sessionPanel" class="sidebar-panel"></div>
                 </div>
             </div>
             <div id="tabs-container"></div>
@@ -126,13 +117,6 @@ describe('App - Compilation & Type Safety', () => {
             expect(typeof app.validateConfig).toBe('function');
 
             await expect(app.validateConfig()).resolves.not.toThrow();
-        });
-
-        it('should have loadSessionHistory method', () => {
-            const app = new App();
-            expect(typeof app.loadSessionHistory).toBe('function');
-
-            expect(() => app.loadSessionHistory()).not.toThrow();
         });
 
         it('should have openFile method', () => {
@@ -186,7 +170,6 @@ describe('App - Compilation & Type Safety', () => {
                 toggleVisualMode: () => app.toggleVisualMode(),
                 runConfig: () => app.runConfig(),
                 validateConfig: () => app.validateConfig(),
-                loadSessionHistory: () => app.loadSessionHistory(),
                 openFile: () => app.openFile(),
                 saveFile: () => app.saveFile(),
                 showExamplesModal: () => app.showExamplesModal(),
@@ -206,7 +189,6 @@ describe('App - Compilation & Type Safety', () => {
             // All should be functions
             expect(typeof (window as any).app.toggleVisualMode).toBe('function');
             expect(typeof (window as any).app.runConfig).toBe('function');
-            expect(typeof (window as any).app.loadSessionHistory).toBe('function');
             expect(typeof (window as any).app.closeTab).toBe('function');
         });
     });
