@@ -289,5 +289,54 @@ describe('VisualDesigner drill-down focus mode', () => {
         expect(endPin?.textContent).toContain('User-Agent');
         expect(countChip?.textContent).toContain('2 step');
     });
+
+    it('keeps focused container cards aligned with root styling', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('focus-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'loop-1',
+                type: 'loop',
+                attributes: { name: 'outer' },
+                body: null,
+                children: [
+                    {
+                        id: 'http-1',
+                        type: 'http',
+                        attributes: { url: 'https://example.com' },
+                        body: null,
+                        children: [
+                            {
+                                id: 'header-1',
+                                type: 'http-header',
+                                attributes: { name: 'Accept', value: 'application/json' },
+                                body: null,
+                                children: []
+                            }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        designer.loadNodes(nodes);
+        (designer as unknown as { enterContainer: (id: string) => void }).enterContainer('loop-1');
+
+        let childCard = container.querySelector('[data-node-id="http-1"]') as HTMLElement | null;
+        expect(childCard).not.toBeNull();
+        expect(childCard!.querySelector('.visual-node__surface')).not.toBeNull();
+        expect(childCard!.querySelector('.visual-node__meta')).not.toBeNull();
+
+        const collapseButton = childCard!.querySelector('.visual-node__collapse-btn') as HTMLButtonElement | null;
+        expect(collapseButton).not.toBeNull();
+        expect(childCard!.querySelector('.visual-node__child-stack')).not.toBeNull();
+        collapseButton!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        childCard = container.querySelector('[data-node-id="http-1"]') as HTMLElement | null;
+        expect(childCard).not.toBeNull();
+        expect(childCard!.querySelector('.visual-node__child-stack')).toBeNull();
+        expect(childCard!.querySelector('.visual-node__collapsed-hint')).not.toBeNull();
+    });
 });
 

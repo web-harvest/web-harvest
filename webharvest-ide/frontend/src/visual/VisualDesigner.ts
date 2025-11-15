@@ -20,7 +20,6 @@ import { NodeMetricsOverlay, type NodeMetrics } from './NodeMetricsOverlay';
 import { GridSystem } from './GridSystem';
 import { Minimap } from './Minimap';
 import { IconLibrary } from './IconLibrary';
-import { ContainerRenderer } from './ContainerRenderer';
 import { PortSystem, type PortType } from './PortSystem';
 import { ConnectionManager, type Connection as ManualConnection, type ConnectionType } from './ConnectionManager';
 import { XMLGenerator } from './XMLGenerator';
@@ -115,7 +114,6 @@ export class VisualDesigner {
     private gridVisible: boolean = true;
     private minimap: Minimap = new Minimap();
     private iconLibrary: IconLibrary = new IconLibrary();
-    private containerRenderer: ContainerRenderer = new ContainerRenderer();
     private portSystem: PortSystem = new PortSystem();
     private connectionManager: ConnectionManager = new ConnectionManager();
     private breadcrumbNav: BreadcrumbNav = new BreadcrumbNav();
@@ -258,17 +256,6 @@ export class VisualDesigner {
 
         // Setup drag & drop
         this.setupDragAndDrop();
-
-        // Setup container renderer callbacks
-        this.containerRenderer.onToggle((containerId: string, expanded: boolean) => {
-            this.containerRenderer.setExpanded(containerId, expanded);
-            if (expanded) {
-                this.collapsedContainers.delete(containerId);
-            } else {
-                this.collapsedContainers.add(containerId);
-            }
-            this.render(); // Re-render to update container state
-        });
 
         this.breadcrumbNav.onNavigate((item) => {
             this.handleBreadcrumbNavigate(item);
@@ -989,7 +976,7 @@ export class VisualDesigner {
     }
 
     /**
-     * Render nested container node using ContainerRenderer (FULL SCALE!)
+     * Render nested container node (full fidelity card inside parent containers)
      */
     private renderNestedNode(node: VisualNode, parentContainer: HTMLElement): HTMLElement {
         const isRootLevel = parentContainer === this.canvasElement;
@@ -1001,16 +988,60 @@ export class VisualDesigner {
             containerY = node.position.y;
         }
 
-        // Render container using ContainerRenderer
-        const container = document.createElement('div');
-        container.className = 'visual-node nested-container';
+        const container = this.createBasicNodeElement(node);
+        container.classList.add('visual-node--container-card');
         container.dataset.nodeId = node.id;
-        const containerDimensions = this.getNodeDimensions(node);
-        container.style.minWidth = `${containerDimensions.width}px`;
-        container.style.minHeight = `${containerDimensions.height}px`;
 
         if (!isRootLevel && parentContainer.dataset.nodeId) {
             container.dataset.parentId = parentContainer.dataset.nodeId;
+        }
+
+        const surface = container.querySelector('.visual-node__surface') as HTMLElement | null;
+        const headerElement = container.querySelector('.visual-node__header');
+        const existingBody = surface?.querySelector('.visual-node__container-body') as HTMLElement | null;
+        const contentHost = existingBody ?? document.createElement('div');
+        contentHost.classList.add('visual-node__container-content');
+        if (!existingBody && surface) {
+            surface.appendChild(contentHost);
+        } else if (!existingBody) {
+            container.appendChild(contentHost);
+        } else {
+            existingBody.innerHTML = '';
+        }
+
+        const isCollapsed = this.collapsedContainers.has(node.id);
+        container.dataset.collapsed = String(isCollapsed);
+
+        if (headerElement) {
+            headerElement.classList.add('visual-node__header--container');
+            const toggleButton = document.createElement('button');
+            toggleButton.type = 'button';
+            toggleButton.className = 'visual-node__collapse-btn';
+            toggleButton.setAttribute('aria-label', isCollapsed ? 'Expand container' : 'Collapse container');
+            toggleButton.innerHTML = isCollapsed ? '<i class="fas fa-chevron-down"></i>' : '<i class="fas fa-chevron-up"></i>';
+            toggleButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (this.collapsedContainers.has(node.id)) {
+                    this.collapsedContainers.delete(node.id);
+                } else {
+                    this.collapsedContainers.add(node.id);
+                }
+                this.render();
+            });
+            headerElement.appendChild(toggleButton);
+            headerElement.addEventListener('dblclick', (event) => {
+                event.stopPropagation();
+                this.enterContainer(node.id);
+            });
+        }
+
+        if (isCollapsed) {
+            const collapsedHint = document.createElement('div');
+            collapsedHint.className = 'visual-node__collapsed-hint';
+            collapsedHint.textContent = 'Collapsed';
+            contentHost.appendChild(collapsedHint);
+        } else {
+            this.renderContainerChildStack(contentHost, node);
         }
 
         if (!isRootLevel) {
@@ -1024,91 +1055,37 @@ export class VisualDesigner {
             container.style.left = `${containerX}px`;
             container.style.top = `${containerY}px`;
             container.style.zIndex = '2';
-            container.classList.add('nested-root');
         }
 
-        // Apply role-based styling for containers
-        if (this.semanticValidator) {
-            const roles = this.semanticValidator.getRoles(node.type);
-            container.dataset.roles = roles.join(',');
-            if (roles.length > 0) {
-                container.dataset.primaryRole = roles[0];
-                this.applyRoleBasedStyling(container, roles, node);
-            }
-        }
-
-        // Check expansion state using ContainerRenderer
-        const isExpanded = this.containerRenderer.isExpanded(node.id);
-        if (!isExpanded && !this.collapsedContainers.has(node.id)) {
-            // First time - default to expanded
-            this.containerRenderer.setExpanded(node.id, true);
-        }
-        const isCollapsed = !this.containerRenderer.isExpanded(node.id);
-
-        // Get container state from ContainerRenderer
-        const containerState = this.containerRenderer.getContainerState(node.id);
-
-        if (isCollapsed) {
-            // Render collapsed state using ContainerRenderer
-            this.containerRenderer.renderCollapsed(container, node, containerState);
-        } else {
-            // Render expanded state using ContainerRenderer
-            // ContainerRenderer.renderExpanded() already renders children, but we need to use our own rendering
-            // So we'll render children ourselves after ContainerRenderer creates the structure
-            this.containerRenderer.renderExpanded(container, node);
-
-            // Clear default children rendered by ContainerRenderer and use our own rendering
-            const childrenArea = container.querySelector('.container-children') as HTMLElement | null;
-            if (childrenArea) {
-                // Clear default simple children
-                childrenArea.innerHTML = '';
-
-                const detailSections = this.detailRegistry ? this.detailRegistry.getSections(node.type) : [];
-
-                if (this.isIfNode(node)) {
-                    const { elseNode, primaryChildren } = partitionIfChildren(node);
-                    this.renderIfDetail(childrenArea, node, elseNode);
-                    this.renderStandardChildren(primaryChildren, node, childrenArea);
-                } else if (this.isTryNode(node)) {
-                    const { catchNodes, primaryChildren } = partitionTryChildren(node);
-                    this.renderTryDetail(childrenArea, node, catchNodes);
-                    this.renderStandardChildren(primaryChildren, node, childrenArea);
-                } else if (detailSections.length > 0 && this.detailRegistry) {
-                    this.renderMasterDetailContainer(childrenArea, node, detailSections);
-                } else {
-                    this.renderStandardChildren(node.children || [], node, childrenArea);
-                }
-            } else {
-                console.warn(`[VisualDesigner] Container children area not found for node ${node.id}`);
-            }
-
-            const headerElement = container.querySelector('.container-header');
-            if (headerElement) {
-                headerElement.addEventListener('dblclick', (event) => {
-                    event.stopPropagation();
-                    this.enterContainer(node.id);
-                });
-            }
-        }
-
-        // Click handler for selection (header handles expand/collapse via ContainerRenderer)
-        container.addEventListener('click', (e) => {
-            // Don't select if clicking on header (ContainerRenderer handles toggle)
-            if (!(e.target as HTMLElement).closest('.container-header')) {
-                e.stopPropagation();
-                this.selectNode(node.id);
-            }
-        });
-
-        // Setup drag handlers for container movement
         this.setupNodeDragHandlers(container, node);
-
         parentContainer.appendChild(container);
         if (isRootLevel) {
             this.recordMeasuredNodeSize(node.id, container);
         }
 
         return container;
+    }
+
+    private renderContainerChildStack(host: HTMLElement, node: VisualNode): void {
+        const childrenArea = document.createElement('div');
+        childrenArea.className = 'visual-node__child-stack';
+        host.appendChild(childrenArea);
+
+        const detailSections = this.detailRegistry ? this.detailRegistry.getSections(node.type) : [];
+
+        if (this.isIfNode(node)) {
+            const { elseNode, primaryChildren } = partitionIfChildren(node);
+            this.renderIfDetail(childrenArea, node, elseNode);
+            this.renderStandardChildren(primaryChildren, node, childrenArea);
+        } else if (this.isTryNode(node)) {
+            const { catchNodes, primaryChildren } = partitionTryChildren(node);
+            this.renderTryDetail(childrenArea, node, catchNodes);
+            this.renderStandardChildren(primaryChildren, node, childrenArea);
+        } else if (detailSections.length > 0 && this.detailRegistry) {
+            this.renderMasterDetailContainer(childrenArea, node, detailSections);
+        } else {
+            this.renderStandardChildren(node.children || [], node, childrenArea);
+        }
     }
 
     private renderStandardChildren(children: VisualNode[], parentNode: VisualNode, container: HTMLElement): void {
@@ -1259,10 +1236,18 @@ export class VisualDesigner {
         const effectiveHeight = Math.max(dimensions.height, this.MIN_CARD_HEIGHT);
         nodeElement.style.width = `${effectiveWidth}px`;
         nodeElement.style.minWidth = `${this.MIN_CARD_WIDTH}px`;
-        nodeElement.style.height = `${effectiveHeight}px`;
-        nodeElement.style.minHeight = `${this.MIN_CARD_HEIGHT}px`;
         nodeElement.style.cursor = 'pointer';
-        surface.style.minHeight = '100%';
+
+        if (isContainer) {
+            nodeElement.style.height = 'auto';
+            nodeElement.style.minHeight = `${this.MIN_CARD_HEIGHT}px`;
+            surface.style.minHeight = `${this.MIN_CARD_HEIGHT}px`;
+        } else {
+            nodeElement.style.height = `${effectiveHeight}px`;
+            nodeElement.style.minHeight = `${this.MIN_CARD_HEIGHT}px`;
+            surface.style.minHeight = '100%';
+        }
+
         surface.style.height = '100%';
         surface.style.width = '100%';
 
@@ -1310,6 +1295,12 @@ export class VisualDesigner {
         surface.style.borderColor = 'var(--gray-300, #e2e8f0)';
 
         this.appendNodeMeta(surface, node);
+
+        if (isContainer) {
+            const containerBody = document.createElement('div');
+            containerBody.className = 'visual-node__container-body';
+            surface.appendChild(containerBody);
+        }
 
         this.portSystem.addPorts(nodeElement, node);
         this.setupPortHandlers(nodeElement, node);
@@ -2464,6 +2455,10 @@ export class VisualDesigner {
 
             // Ignore clicks on inline action controls
             if (target.closest('.node-actions')) {
+                return;
+            }
+
+            if (target.closest('.visual-node__collapse-btn')) {
                 return;
             }
 
