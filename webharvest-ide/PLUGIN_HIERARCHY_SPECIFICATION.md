@@ -433,3 +433,4 @@ Czy mam kontynuować z tą szczegółową implementacją? To zajmie 10-15 godzin
 
 
 
+

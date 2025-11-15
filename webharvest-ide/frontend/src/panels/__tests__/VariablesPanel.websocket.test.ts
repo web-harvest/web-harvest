@@ -99,3 +99,4 @@ describe('VariablesPanel - WebSocket Integration', () => {
 
 
 
+
