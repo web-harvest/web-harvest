@@ -178,11 +178,15 @@ describe('VisualDesigner drill-down focus mode', () => {
         const breadcrumbCurrent = container.querySelector('.breadcrumb-current .breadcrumb-item__label') as HTMLElement | null;
         expect(breadcrumbCurrent?.textContent).toContain('Loop');
 
-        const processMarkers = container.querySelectorAll('.process-marker.process-marker--contextual');
+        const processMarkers = container.querySelectorAll('.process-marker');
         expect(processMarkers.length).toBe(2);
+        processMarkers.forEach(marker => {
+            expect(marker.classList.contains('process-marker--contextual')).toBe(false);
+            expect(['workflow-start', 'workflow-end']).toContain(marker.getAttribute('data-node-id'));
+        });
     });
 
-    it('does not attempt to render connections for detail rows inside focus mode', () => {
+    it('renders scoped connections and start/end anchors when focusing a container', () => {
         const pluginManager = createStubPluginManager();
         designer = new VisualDesigner('focus-canvas', pluginManager);
 
@@ -225,7 +229,14 @@ describe('VisualDesigner drill-down focus mode', () => {
         expect(warningTriggered).toBe(false);
 
         const connectionLines = container.querySelectorAll('.connection-line');
-        expect(connectionLines.length).toBe(0);
+        expect(connectionLines.length).toBeGreaterThan(0);
+
+        const focusStartMarker = container.querySelector('.process-marker[data-node-id="workflow-start"]');
+        const focusEndMarker = container.querySelector('.process-marker[data-node-id="workflow-end"]');
+        expect(focusStartMarker).not.toBeNull();
+        expect(focusEndMarker).not.toBeNull();
+        expect(focusStartMarker!.classList.contains('process-marker--contextual')).toBe(false);
+        expect(focusEndMarker!.classList.contains('process-marker--contextual')).toBe(false);
 
         expect(summarySpy).toHaveBeenCalled();
         const lastSummary = summarySpy.mock.calls[summarySpy.mock.calls.length - 1]?.[0] as any;

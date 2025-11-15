@@ -132,7 +132,7 @@ describe('VisualDesigner container summary', () => {
         document.body.innerHTML = '';
     });
 
-    it('shows attribute highlights and detail preview sourced from metadata', () => {
+    it('renders unified card with attributes and container metrics', () => {
         const pluginManager = createStubPluginManager();
         designer = new VisualDesigner('summary-canvas', pluginManager);
 
@@ -158,16 +158,16 @@ describe('VisualDesigner container summary', () => {
 
         const summaryNode = container.querySelector('[data-node-id="http-1"]') as HTMLElement | null;
         expect(summaryNode).not.toBeNull();
-        const highlightRow = summaryNode!.querySelector('.container-summary__highlights');
-        expect(highlightRow).not.toBeNull();
-        expect(highlightRow!.textContent).toContain('https://api.example.com');
 
-        const childList = summaryNode!.querySelector('.container-summary__child-list');
-        expect(childList).not.toBeNull();
-        const chipLabels = Array.from(childList!.querySelectorAll('.focus-summary__chip-label')).map(node => node.textContent);
-        expect(chipLabels).toContain('Headers');
-        const chipValues = Array.from(childList!.querySelectorAll('.focus-summary__chip-value')).map(node => node.textContent);
-        expect(chipValues).toContain('×1');
+        const attributesBlock = summaryNode!.querySelector('.visual-node__attributes');
+        expect(attributesBlock).toBeNull();
+
+        const metaRow = summaryNode!.querySelector('.visual-node__meta');
+        expect(metaRow).not.toBeNull();
+        const metaText = metaRow!.textContent || '';
+        expect(metaText).toContain('1 children');
+        expect(metaText).toContain('0 containers');
+        expect(metaText).toContain('1 leaves');
     });
 
     it('allows removing nodes via role control button', () => {

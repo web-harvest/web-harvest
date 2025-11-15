@@ -672,6 +672,8 @@ W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
 - Wszystkie pluginy (zarówno `def`, `empty`, `case`, `constant`, itp.) korzystają z **jednego spójnego wzorca kafelka** – bez dodatkowych ramek, etykiet roli czy kolorowych badge’y.
 - Nagłówek wyświetla **tylko nazwę typu** (np. `constant`), natomiast właściwości pojawiają się poniżej w formie skróconych par `klucz: wartość` (pomijamy `name`/`id`, aby nie dublować tytułu).
 - Kafelki zachowują jednolitą siatkę i marginesy, dzięki czemu pierwszy element między markerami Start/End nie ma już niebieskiej obwódki ani wyróżnień.
+- Domyślna szerokość/wysokość kafelka wynosi teraz **320×160 px**, więc pasek metadanych `Children / Containers / Leaves` mieści się w jednej linii bez zawijania.
+- **Ramka zaznaczenia = kafelek** – obszar podświetlenia z przycisku **Details** ma dokładnie takie same wymiary jak karta; podczas zmiany rozmiaru kafelka jednocześnie rośnie zarówno widoczna karta, jak i ramka zaznaczenia oraz punkty portów.
 - Dzięki ujednoliceniu łatwiej porównywać węzły wzrokowo – różnice wynikają wyłącznie z ikon i treści konfiguracji, a nie z niestandardowych styli.
 
 **Metoda 2: Wyszukiwanie**
