@@ -43,14 +43,44 @@ Tests for rendering VisualNodes on canvas:
 - 🔜 Render nested nodes (TODO)
 - 🔜 Render with drag & drop (TODO)
 
+#### 5. VisualDesigner.containerSummary (Jest, TypeScript)
+Location: `frontend/src/visual/__tests__/VisualDesigner.containerSummary.test.ts`
+
+- ✅ Verifies that container summary tiles render the metadata pills (Children / Containers / Leaves) and **do not** leak plugin-specific attributes onto the card.
+- ✅ Asserts that clicking **Details** applies the same selection class used by the canvas (the test inspects `.visual-node__meta` and `node-actions` wiring).
+- 🧪 Acts as the regression guard for the 320 × 160 px minimum footprint introduced in November 2025.
+
+Run it with:
+
+```bash
+cd webharvest-ide/frontend
+npm run test -- VisualDesigner.containerSummary
+```
+
+#### 6. VisualDesigner.drilldown (Jest, TypeScript)
+Location: `frontend/src/visual/__tests__/VisualDesigner.drilldown.test.ts`
+
+- ✅ Ensures scoped connections render when focusing a container and that start/end markers inside drill-down mode carry the same styling + dataset attributes as root markers (no more “contextual” blue border mismatch).
+- ✅ Confirms the focus overlay chips reflect the child count, and warns if connection rendering would throw anchor errors.
+- 🔄 Serves as the contract for card/selection parity when drilling into subprocesses—if the highlight ever desyncs, this suite fails first.
+
+Run it with:
+
+```bash
+cd webharvest-ide/frontend
+npm run test -- VisualDesigner.drilldown
+```
+
 ### Running Tests
 
 ```bash
-# Start IDE
-cd webharvest-ide
-java -jar target/webharvest-ide-2.2.0.jar
+# Jest (modern suites)
+cd webharvest-ide/frontend
+npm run test -- VisualDesigner.containerSummary VisualDesigner.drilldown
 
-# Open test runner in browser
+# Legacy browser runner (still available for parser/generator specs)
+cd webharvest-ide
+java -jar target/webharvest-ide-2.3.1.jar
 open http://localhost:8080/static/tests/test-runner.html
 ```
 
@@ -125,6 +155,7 @@ node run-tests-headless.js
 ---
 
 **Note:** All tests use vanilla JavaScript (no TypeScript) to match the current implementation approach for simpler integration with the existing IDE.
+
 
 
 

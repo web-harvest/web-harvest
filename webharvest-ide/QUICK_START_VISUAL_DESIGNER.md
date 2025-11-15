@@ -1,6 +1,6 @@
 # WebHarvest Visual Designer - Quick Start Guide
 
-**Version:** 1.0  
+**Version:** 2.3.1  
 **Status:** ✅ Working  
 **URL:** `http://localhost:8080/visual-designer/`
 
@@ -54,12 +54,30 @@ Nodes can be placed anywhere on canvas
 
 **Step 4: Select Node**
 ```
-Click any node
+Click any node once
   ↓
-Node gets purple border (selected)
+Card gets a blue glow + thicker border (selected)
   ↓
-Property panel (right) shows node info
+Property panel (right) shows node info + action buttons
 ```
+
+### 2. Tile Anatomy & Resizing (2025 refresh)
+
+| Element | Purpose | Notes |
+| --- | --- | --- |
+| Header row | Icon + plugin type | Shows only the canonical name (no duplicate `name`/`id` attributes). |
+| Metadata pills | `Children / Containers / Leaves` | Always rendered in a single row thanks to the default **320 × 160 px** footprint. |
+| Ports & anchors | Connection points | Ports hug the edge of the white tile; arrows always enter/exit from the card perimeter. |
+| Selection frame | Blue glow | The highlight frame and the card share the exact same width/height, so pressing **Details** or clicking elsewhere never leaves ghost borders. |
+
+**Resizing workflow**
+
+1. Select a node so that resize handles (8 dots) appear.
+2. Drag any handle—both the grey shell *and* the white interior resize together, keeping ports aligned.
+3. Release to snap to a minimum of **320 × 160 px**; larger sizes persist and are serialized into the configuration.
+4. Click empty canvas to clear focus; the blue glow disappears immediately.
+
+Because the highlight, ports, and resize maths all share the same bounds, you no longer see the “floating label” effect that previously happened on the first node between Start/Stop markers.
 
 ---
 
@@ -240,6 +258,7 @@ Ready for Phase 2? Check:
 
 **Version:** 1.0  
 **Last Updated:** October 24, 2025
+
 
 
 

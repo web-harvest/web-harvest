@@ -676,6 +676,18 @@ W górnym pasku narzędzi znajdziesz przyciski **"XML"** i **"Visual"**.
 - **Ramka zaznaczenia = kafelek** – obszar podświetlenia z przycisku **Details** ma dokładnie takie same wymiary jak karta; podczas zmiany rozmiaru kafelka jednocześnie rośnie zarówno widoczna karta, jak i ramka zaznaczenia oraz punkty portów.
 - Dzięki ujednoliceniu łatwiej porównywać węzły wzrokowo – różnice wynikają wyłącznie z ikon i treści konfiguracji, a nie z niestandardowych styli.
 
+#### 🔧 Zmiana rozmiaru i wyróżnienia
+
+1. **Zaznacz kartę** – kliknięcie powoduje, że cały kafelek rozświetla się na niebiesko (ten sam efekt pojawia się po wybraniu **Details** w panelu po prawej).
+2. **Uchwyt = rzeczywisty obrys** – osiem kropek pojawia się dokładnie na krawędzi widocznej karty. Przeciągnięcie któregokolwiek uchwytu jednocześnie:
+   - aktualizuje zewnętrzny kontener `.visual-node`,
+   - dopasowuje wewnętrzną powierzchnię `.visual-node__surface` (czyli to, co widać jako biały kafelek),
+   - przelicza porty i punkty zaczepienia połączeń.
+3. **Minimalne wymiary** – po puszczeniu myszy karta nigdy nie będzie mniejsza niż **320 × 160 px**. Większe wartości są zapisywane w konfiguracji i odtwarzane przy każdej sesji.
+4. **Czyszczenie zaznaczenia** – kliknięcie pustego miejsca na canvasie natychmiast usuwa niebieskie podświetlenie, dzięki czemu łatwo zobaczyć, które elementy biorą udział w wielokrotnym zaznaczeniu.
+
+> Dzięki wspólnym wymiarom dla karty, obszaru zaznaczenia i portów skończyły się problemy z “unsyncowanym” highlightem (np. pierwsza karta między Start/Stop miała kiedyś dodatkową niebieską ramkę – teraz już nie).
+
 **Metoda 2: Wyszukiwanie**
 1. Wpisz nazwę plugin w **wyszukiwarce** (`[🔍]`)
 2. Paleta się filtruje

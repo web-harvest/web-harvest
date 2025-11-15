@@ -580,6 +580,14 @@ WebHarvest IDE is a modern, web-based development environment for creating and t
 - **HTTP Task UX:** Headers and query parameters are managed inside the HTTP node via toolbar/context menu shortcuts and a dedicated editor, aligning with [Orkes Conductor’s HTTP task](https://orkes.io/content/reference-docs/system-tasks/http)
 - **Conditional UX:** `if`/`else` and `try`/`catch` blocks expose in-card controls for adding, reordering, and editing branches without hunting for detail tiles
 
+#### Visual Designer Tile Anatomy (v2.3.1)
+
+- **Uniform footprint.** Every plugin card (container or leaf) starts at **320 × 160 px** so the metadata pills `Children / Containers / Leaves` always fit on a single row. Manual resizing keeps that footprint as the shared minimum.
+- **Shared highlight frame.** The `.visual-node` shell and the `.visual-node__surface` share the same bounds, so the blue selection glow you see when clicking a node or opening **Details** wraps *exactly* the visible card—no offset borders even for the first block between Start/Stop markers.
+- **Resize parity.** Dragging any resize handle updates the outer card, the inner “surface” (the white Apple-style tile), and the hit area that hosts ports. That means connection anchor points, focus outlines, and property-panel selection hints never drift apart.
+- **Metadata-first labels.** Plugin-specific attributes are no longer duplicated on the card; the only runtime summary rendered inline is the semantic metadata row. Detailed settings live in the Properties panel where they belong.
+- **Anchor accuracy.** Connection lines now originate from the midpoints of each card edge so arrows always terminate on a physical point on the tile—not in the middle of a highlight halo.
+
 ### Running the IDE
 
 ```bash

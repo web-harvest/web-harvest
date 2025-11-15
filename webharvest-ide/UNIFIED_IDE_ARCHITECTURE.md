@@ -59,6 +59,21 @@
 └──────┴────────────────────┴────────────────┘
 ```
 
+### Visual Tile Layout Contract (v2.3.1)
+
+To keep palette, canvas, and property panel perfectly aligned we enforce a shared sizing contract:
+
+1. **Default footprint:** Each `.visual-node` initializes at **320 × 160 px**. That guarantees the semantic metadata row `Children / Containers / Leaves` stays on a single line regardless of locale.
+2. **Shared bounds:** The blue selection glow, the `.visual-node` wrapper, and the `.visual-node__surface` inner tile all share the same width/height. That means the highlight you see when clicking **Details** or multi-selecting is *exactly* the card outline—no floating borders.
+3. **Resize parity:** Dragging any resize handle updates:
+   - the outer shell (hit target, focus halo),
+   - the internal white tile (where headers + metadata live),
+   - and the port anchor calculations (connection lines exit from the resized perimeter).
+4. **Minimum enforcement:** Even if plugins ship smaller metadata defaults, runtime rendering clamps to 320 × 160 px so the metadata pills never wrap mid-word.
+5. **Anchor math:** `computeAnchorPoint()` treats the card edges as the source of truth, so start/end markers and manual connections always terminate on real geometry (no more arrows ending inside highlight paddings).
+
+Documenting this contract keeps the CSS, TypeScript renderer, and property-panel selection logic in sync whenever we revisit layout decisions.
+
 ---
 
 ## 🔧 Implementation Strategy
@@ -177,6 +192,7 @@ switchViewMode(mode) {
 ---
 
 **Zaczynam implementację!** 🎯
+
 
 
 
