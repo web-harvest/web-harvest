@@ -13,7 +13,9 @@ const httpHeaderPlugin: Plugin = {
     schema: {
         attributes: [
             { name: 'name', type: 'string', required: true, description: 'Header key' },
-            { name: 'value', type: 'string', required: true, description: 'Header value' }
+            { name: 'value', type: 'string', required: true, description: 'Header value' },
+            { name: 'strategy', type: 'enum', required: false, allowedValues: ['append', 'replace'], description: 'Merge strategy' },
+            { name: 'enabled', type: 'boolean', required: false, description: 'Toggle header' }
         ],
         canHaveBody: false,
         canHaveChildren: false,
@@ -100,7 +102,7 @@ describe('MasterDetailEditor', () => {
                 {
                     id: 'header-1',
                     type: 'http-header',
-                    attributes: { name: 'Accept' },
+                    attributes: { name: 'Accept', strategy: 'append', enabled: 'false' },
                     body: 'application/json',
                     children: []
                 }
@@ -118,14 +120,20 @@ describe('MasterDetailEditor', () => {
         const element = editor.render();
         const nameInput = element.querySelector('input.detail-input[id*="-primary"]') as HTMLInputElement | null;
         const valueInput = element.querySelector('input.detail-input[id*="-secondary"]') as HTMLInputElement | null;
+        const strategySelect = element.querySelector('.detail-field-grid select.detail-input') as HTMLSelectElement | null;
+        const enabledCheckbox = element.querySelector('.detail-field-grid input[type="checkbox"]') as HTMLInputElement | null;
 
         expect(nameInput).not.toBeNull();
         expect(valueInput).not.toBeNull();
+        expect(strategySelect).not.toBeNull();
+        expect(enabledCheckbox).not.toBeNull();
 
         expect(nameInput!.value).toBe('Accept');
         expect(nameInput!.placeholder.toLowerCase()).toContain('header key');
         expect(valueInput!.value).toBe('application/json');
         expect(valueInput!.placeholder.toLowerCase()).toContain('value');
+        expect(strategySelect!.value).toBe('append');
+        expect(enabledCheckbox!.checked).toBe(false);
 
         nameInput!.value = 'Authorization';
         nameInput!.dispatchEvent(new Event('input'));
@@ -136,6 +144,19 @@ describe('MasterDetailEditor', () => {
         const updatedNode = lastCall![0] as VisualNode;
         const updatedHeader = updatedNode.children?.find(child => child.id === 'header-1');
         expect(updatedHeader?.attributes?.name).toBe('Authorization');
+
+        strategySelect!.value = 'replace';
+        strategySelect!.dispatchEvent(new Event('change'));
+
+        enabledCheckbox!.checked = true;
+        enabledCheckbox!.dispatchEvent(new Event('change'));
+
+        const subsequentCall = handleChange.mock.calls.at(-1);
+        expect(subsequentCall).toBeDefined();
+        const finalNode = subsequentCall![0] as VisualNode;
+        const finalHeader = finalNode.children?.find(child => child.id === 'header-1');
+        expect(finalHeader?.attributes?.strategy).toBe('replace');
+        expect(finalHeader?.attributes?.enabled).toBe('true');
     });
 });
 

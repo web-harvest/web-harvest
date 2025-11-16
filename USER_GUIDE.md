@@ -775,6 +775,55 @@ Visual Designer obsługuje **wielopoziomowe zagnieżdżenie**:
 3. Plugin jest dodawany do właściwego kontenera
 4. **Zielone podświetlenie** wskazuje prawidłowy target
 
+#### Focus Mode (Drill-down)
+
+**"Focus on this container"** pozwala wejść w kontener i pracować z jego zawartością na pełnym ekranie:
+
+**Zachowanie w Focus Mode:**
+- ✅ **Markery Start/Stop** – wyświetlają się jako "Start" i "Stop" (nie "workflow-start"/"workflow-end"), są interaktywne i można je przeciągać
+- ✅ **Dodawanie pluginów** – możesz dodawać normalne pluginy (nie detail) do kontenera przez drag & drop z palety
+- ✅ **Master/Detail** – jeśli kontener jest master/detail (np. `http`), detail nodes (`http-header`, `http-param`) **nie są widoczne w przepływie**. Zamiast tego pojawia się overlay `focused-detail-summary` z listą wszystkich detail items
+- ✅ **Wygląd** – wszystkie pluginy wyglądają i zachowują się tak samo jak na poziomie głównym (unified styling)
+- ✅ **Połączenia** – linie łączą tylko "prawdziwe" kroki workflow, nie detail nodes
+- ✅ **Breadcrumbs** – na górze widoczna ścieżka nawigacji z przyciskiem "Back" do powrotu na poziom główny
+
+**Przykład:**
+```
+Główny poziom:
+┌─────────────────┐
+│ 🌐 http         │ ← Kliknij "Focus on this container"
+│   Headers: 2    │
+│   Params: 1     │
+└─────────────────┘
+
+Focus mode (wewnątrz http):
+┌─────────────────────────────────────┐
+│ ← Back to root                      │
+│                                     │
+│ [Start]                             │
+│                                     │
+│ ┌──────────┐                        │
+│ │ 📝 def   │                        │
+│ └──────────┘                        │
+│                                     │
+│ ┌─────────────────────────────────┐ │
+│ │ Detail items                    │ │ ← Overlay zamiast detail nodes
+│ │ Headers: Authorization, Content │ │
+│ │ Params: page                    │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ [Stop]                              │
+└─────────────────────────────────────┘
+```
+
+### Master/detail pluginy
+
+- **Paleta:** Pokazuje jedynie pluginy nadrzędne (`http`, `call`, `zip`, `ftp`, `xquery`, ...). Elementy zależne (`http-header`, `call-param`, `zip-entry`) są ukryte w palecie i tworzymy je z menu akcji na karcie nadrzędnej lub z panelu właściwości. Dzięki temu każdy poziom płótna (również wewnątrz *Focus mode*) wygląda identycznie i łatwo go będzie odwzorować np. w rozszerzeniu VS Code.
+- **Inline summary:** Każda karta zarejestrowana w `MasterDetailRegistry` renderuje wewnątrz **Detail items** – listę detali z krótkim opisem (`children`, `containers`, `leaves` + nazwy szczegółów). Kliknięcie pozycji otwiera jej właściwości, a przycisk „Add …” dodaje nowy element dokładnie w tym kontenerze.
+- **Edycja:** Edycja, duplikowanie, przenoszenie oraz kasowanie detali odbywa się w panelu **Properties** poprzez edytor schematowy (`MasterDetailEditor`). Obsługuje on wszystkie typy pól (tekst, number, URL, enum, checkbox, body), więc nie trzeba już szukać specjalnych formularzy w innych zakładkach.
+- **Połączenia:** Linie i punkty połączeń nigdy nie zaczepiają się o karty detali – wszystkie anchor points znajdują się na pluginach nadrzędnych, co eliminuje „pływające” niebieskie obramowania i utrzymuje porządek wizualny.
+- **Focus mode:** Gdy wchodzisz w kontener master/detail przez "Focus on this container", detail nodes **nie są widoczne w przepływie** – zamiast tego pojawia się overlay `focused-detail-summary` z listą wszystkich detail items. Możesz nadal dodawać normalne pluginy (nie detail) do kontenera, ale detail items zarządzasz wyłącznie przez panel właściwości lub inline summary.
+
 ### Semantic Validation
 
 **Walidacja semantyczna** zapewnia, że pluginy są używane zgodnie ze swoim przeznaczeniem.

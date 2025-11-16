@@ -1,4 +1,4 @@
-import type { VisualNode } from '../../types';
+import type { AttributeDefinition, VisualNode } from '../../types';
 import type { DetailSectionDefinition } from './MasterDetailRegistry';
 import { MasterDetailRegistry } from './MasterDetailRegistry';
 
@@ -107,15 +107,18 @@ export class MasterDetailEditor {
         primaryCell.className = 'http-detail-cell';
 
         if (section.primaryAttribute) {
+            const primaryMeta = this.findAttributeDefinition(section, section.primaryAttribute);
             const primaryField = this.createDetailField(
                 `${section.detailType}-${detail.id}-primary`,
                 section.primaryAttributeLabel ?? section.primaryAttribute,
                 detail.attributes?.[section.primaryAttribute] ?? '',
-                section.primaryAttributeDescription
+                {
+                    description: section.primaryAttributeDescription ?? primaryMeta?.description,
+                    type: primaryMeta?.type,
+                    allowedValues: primaryMeta?.allowedValues
+                }
             );
-            primaryField.input.addEventListener('input', () => {
-                this.updateDetailAttribute(detail.id, section.primaryAttribute!, primaryField.input.value);
-            });
+            this.bindAttributeInput(primaryField.input, detail.id, section.primaryAttribute);
             primaryCell.appendChild(primaryField.wrapper);
         } else {
             const summary = this.registry.summarizeDetail(detail);
@@ -135,8 +138,9 @@ export class MasterDetailEditor {
                 `${section.detailType}-${detail.id}-body`,
                 'Value',
                 detail.body ?? '',
-                undefined,
-                true
+                {
+                    multiline: true
+                }
             );
             bodyField.input.addEventListener('input', () => {
                 this.updateDetailBody(detail.id, bodyField.input.value);
@@ -147,19 +151,27 @@ export class MasterDetailEditor {
                 detail.attributes?.[section.secondaryAttribute] ??
                 (typeof detail.body === 'string' ? detail.body : '');
 
+            const secondaryMeta = this.findAttributeDefinition(section, section.secondaryAttribute);
             const secondaryField = this.createDetailField(
                 `${section.detailType}-${detail.id}-secondary`,
                 section.secondaryAttributeLabel ?? section.secondaryAttribute,
                 secondaryInitialValue,
-                section.secondaryAttributeDescription
-            );
-            secondaryField.input.addEventListener('input', () => {
-                const nextValue = secondaryField.input.value;
-                this.updateDetailAttribute(detail.id, section.secondaryAttribute!, nextValue);
-                if (typeof detail.body === 'string') {
-                    this.updateDetailBody(detail.id, nextValue);
+                {
+                    description: section.secondaryAttributeDescription ?? secondaryMeta?.description,
+                    type: secondaryMeta?.type,
+                    allowedValues: secondaryMeta?.allowedValues
                 }
-            });
+            );
+            this.bindAttributeInput(
+                secondaryField.input,
+                detail.id,
+                section.secondaryAttribute,
+                (nextValue) => {
+                    if (typeof detail.body === 'string') {
+                        this.updateDetailBody(detail.id, nextValue);
+                    }
+                }
+            );
             secondaryCell.appendChild(secondaryField.wrapper);
         } else {
             const summary = this.registry.summarizeDetail(detail);
@@ -170,6 +182,11 @@ export class MasterDetailEditor {
         }
 
         row.appendChild(secondaryCell);
+
+        const additionalCell = this.renderAdditionalAttributes(section, detail);
+        if (additionalCell) {
+            row.appendChild(additionalCell);
+        }
 
         const actions = document.createElement('div');
         actions.className = 'http-detail-row__actions';
@@ -193,6 +210,83 @@ export class MasterDetailEditor {
         row.appendChild(actions);
 
         return row;
+    }
+
+    private renderAdditionalAttributes(section: DetailSectionDefinition, detail: VisualNode): HTMLElement | null {
+        const attributes = section.attributeDefinitions?.filter(attr => {
+            if (!attr?.name) {
+                return false;
+            }
+            return attr.name !== section.primaryAttribute && attr.name !== section.secondaryAttribute;
+        }) ?? [];
+
+        if (attributes.length === 0) {
+            return null;
+        }
+
+        const cell = document.createElement('div');
+        cell.className = 'http-detail-cell';
+
+        const grid = document.createElement('div');
+        grid.className = 'detail-field-grid';
+
+        attributes.forEach(attr => {
+            const attrId = `${section.detailType}-${detail.id}-${attr.name}`;
+            const currentValue = detail.attributes?.[attr.name] ?? attr.defaultValue ?? '';
+            const field = this.createDetailField(
+                attrId,
+                this.formatAttributeLabel(attr.name),
+                currentValue,
+                {
+                    description: attr.description,
+                    type: attr.type,
+                    allowedValues: attr.allowedValues
+                }
+            );
+
+            this.bindAttributeInput(field.input, detail.id, attr.name);
+            grid.appendChild(field.wrapper);
+        });
+
+        cell.appendChild(grid);
+        return cell;
+    }
+
+    private bindAttributeInput(
+        input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+        detailId: string,
+        attributeName: string,
+        afterUpdate?: (value: string) => void
+    ): void {
+        const isCheckbox = input instanceof HTMLInputElement && input.type === 'checkbox';
+        const isSelect = input instanceof HTMLSelectElement;
+        const eventName = isCheckbox || isSelect ? 'change' : 'input';
+
+        input.addEventListener(eventName, () => {
+            const nextValue = isCheckbox
+                ? ((input as HTMLInputElement).checked ? 'true' : 'false')
+                : input.value;
+            this.updateDetailAttribute(detailId, attributeName, nextValue);
+            afterUpdate?.(nextValue);
+        });
+    }
+
+    private findAttributeDefinition(
+        section: DetailSectionDefinition,
+        attributeName?: string
+    ): AttributeDefinition | undefined {
+        if (!attributeName) {
+            return undefined;
+        }
+        return section.attributeDefinitions.find(attr => attr.name === attributeName);
+    }
+
+    private formatAttributeLabel(name: string): string {
+        return name
+            .replace(/[-_]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/^\w/, char => char.toUpperCase());
     }
 
     private createActionButton(icon: string, title: string, handler: () => void): HTMLButtonElement {
@@ -231,9 +325,13 @@ export class MasterDetailEditor {
         id: string,
         labelText: string,
         value: string,
-        description?: string,
-        multiline: boolean = false
-    ): { wrapper: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement } {
+        options: {
+            description?: string;
+            multiline?: boolean;
+            type?: AttributeDefinition['type'];
+            allowedValues?: string[];
+        } = {}
+    ): { wrapper: HTMLElement; input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement } {
         const wrapper = document.createElement('label');
         wrapper.className = 'detail-field';
         wrapper.setAttribute('for', id);
@@ -243,22 +341,62 @@ export class MasterDetailEditor {
         label.textContent = labelText;
         wrapper.appendChild(label);
 
-        if (description) {
-            wrapper.title = description;
+        if (options.description) {
+            wrapper.title = options.description;
         }
 
-        const input = multiline ? document.createElement('textarea') : document.createElement('input');
-        input.id = id;
-        input.className = multiline ? 'detail-input detail-input--textarea' : 'detail-input';
-        if (!multiline) {
-            const textInput = input as HTMLInputElement;
-            textInput.type = 'text';
-            textInput.placeholder = description || labelText;
+        const { multiline = false, type, allowedValues } = options;
+        let input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+        if (type === 'boolean') {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = id;
+            checkbox.className = 'detail-input detail-input--checkbox';
+            checkbox.checked = value === 'true' || value === '1';
+            input = checkbox;
+        } else if (type === 'enum' && Array.isArray(allowedValues) && allowedValues.length > 0) {
+            const select = document.createElement('select');
+            select.id = id;
+            select.className = 'detail-input detail-input--select';
+            allowedValues.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                select.appendChild(option);
+            });
+            if (value && allowedValues.includes(value)) {
+                select.value = value;
+            }
+            input = select;
+        } else if (multiline || type === 'xpath') {
+            const textArea = document.createElement('textarea');
+            textArea.id = id;
+            textArea.className = 'detail-input detail-input--textarea';
+            textArea.placeholder = options.description || '';
+            textArea.value = value ?? '';
+            input = textArea;
         } else {
-            const textArea = input as HTMLTextAreaElement;
-            textArea.placeholder = description || '';
+            const textInput = document.createElement('input');
+            textInput.id = id;
+            textInput.className = 'detail-input';
+            if (type === 'number') {
+                textInput.type = 'number';
+            } else if (type === 'url') {
+                textInput.type = 'url';
+            } else {
+                textInput.type = 'text';
+            }
+            textInput.placeholder = options.description || labelText;
+            textInput.value = value ?? '';
+            input = textInput;
         }
-        input.value = value.toString();
+
+        if (input instanceof HTMLSelectElement && (!value || !input.value)) {
+            if (allowedValues && allowedValues.length > 0) {
+                input.value = allowedValues[0];
+            }
+        }
 
         wrapper.appendChild(input);
 

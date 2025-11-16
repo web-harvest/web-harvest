@@ -101,6 +101,15 @@ These plugins can appear directly under `<config>`:
   - **MUST be child of:** `function`
   - **CANNOT appear:** anywhere else
 
+### UI Treatment for Master/Detail Pairs *(Nov 2025 update)*
+
+- **Palette scope:** Only the master plugin appears in the palette. Dependent types (headers, params, zip entries, etc.) are instantiated from the master card or property editor so every canvas level (root, nested, future VS Code panel) exposes the same drag surface.
+- **Canvas contract:** Dependent plugins never render as standalone cards. Masters show an inline `detail-collection` summary with counts, quick "Add" CTAs, and metadata pills for each detail entry; this summary is present both on the root canvas and when focusing into a container.
+- **Editing surface:** CRUD is handled via the property panel's `MasterDetailEditor` (schema-driven inputs) while the inline list is read-only apart from shortcuts that jump to Properties. This keeps advanced attributes (e.g., `file action`, `type`) in the editor and prevents duplicated labels on the card.
+- **Connections & validation:** `MasterDetailRegistry` advertises every dependent type so the drag validator blocks root-level drops and the connection planner ignores those nodes. `filterNodesForConnections()` filters out detail types both at root level and in focus mode, ensuring they never appear in the connection flow.
+- **Focus mode behavior:** When entering a master/detail container via "Focus on this container", detail nodes are not rendered as cards. Instead, a `focused-detail-summary` overlay displays all detail items. Normal plugins (non-detail) can still be added via drag & drop. Process markers (Start/Stop) are rendered with interactive labels and can be dragged, maintaining visual parity with root level.
+- **When adding new master/detail pairs:** Update the registry (or plugin metadata) instead of bypassing this mechanism. Ensure `MasterDetailRegistry.getSections()` correctly identifies the detail types, and that `filterNodesForConnections()` filters them from connection planning.
+
 ---
 
 ### Category 3: Universal Plugins (Can appear anywhere)

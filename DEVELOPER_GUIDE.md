@@ -589,11 +589,13 @@ XSDMetadataParser.java        # XSD metadata extraction
 
 ### Focus Mode & Detail Connections
 
-- Drill-down focus relies on `DrillDownManager` to scope `VisualDesigner.render()` to a single container; when that focus is active we must suppress sequential auto-wiring for master/detail plugins (headers, params, etc.).
-- `VisualDesigner.filterNodesForConnections()` now removes any child whose type appears in the `MasterDetailRegistry`, preventing connection planning from targeting detail cards that never expose anchors.
-- This eliminates the `"[VisualDesigner] Cannot render connection: anchor not found"` warning spam reported when expanding HTTP cards and keeps the zoomed-in canvas clean.
-- Regression coverage: `visual/__tests__/VisualDesigner.drilldown.test.ts` verifies that HTTP headers remain connection-free during focus mode while broader breadcrumb behaviour still works.
-- Focus mode surfaces BPMN-style start/end pins via `renderFocusFlowOverlay()`, labelling the first and last visible steps and displaying a step count; the overlay is non-interactive so it remains VS Code webview friendly.
+- **Drill-down focus:** `DrillDownManager` scopes `VisualDesigner.render()` to a single container. When focus is active, the canvas shows only the children of that container, with breadcrumbs for navigation.
+- **Detail node filtering:** `VisualDesigner.filterNodesForConnections()` removes any child whose type appears in the `MasterDetailRegistry`, preventing connection planning from targeting detail cards that never expose anchors. This filtering applies both at root level and in focus mode.
+- **Focus mode detail overlay:** When a master/detail container is focused, `renderFocusDetailSummary()` creates a `focused-detail-summary` overlay that displays all detail items (headers, params, etc.) instead of rendering them as individual cards. This keeps the workflow clean and prevents detail nodes from appearing in the connection flow.
+- **Adding plugins in focus mode:** Normal plugins (non-detail) can be added via drag & drop from the palette. Detail plugins are managed exclusively through the property panel or inline summary actions.
+- **Process markers:** In focus mode, start/stop markers are rendered with labels "Start" and "Stop" (not "workflow-start"/"workflow-end"), are interactive, and can be dragged. They use `data-node-id` as `workflow-start`/`workflow-end` for connection planning.
+- **Unified appearance:** All plugins at all levels (root, nested, focus mode) use the same unified styling and behavior, ensuring visual consistency.
+- **Regression coverage:** `visual/__tests__/VisualDesigner.drilldown.test.ts` verifies that HTTP headers remain connection-free during focus mode, that the detail summary overlay is displayed, and that breadcrumb behavior works correctly.
 
 ### Run/Test Workflow Panel
 
@@ -609,6 +611,19 @@ XSDMetadataParser.java        # XSD metadata extraction
 - `MasterDetailEditor` renders metadata-aware inputs (name/value/body) with accessible labels, while the canvas mirrors those values through `.http-detail-summary` elements for quick inspection during drill-down.
 - The NYTimes sample remains horizontally aligned via the existing auto-layout, and HTTP cards keep their inline summaries in sync with the property panel.
 - Regression coverage: `visual/detail/__tests__/MasterDetailEditor.test.ts` checks the inline editors + change propagation, and `visual/__tests__/NYTimesLayout.test.ts` guards root positioning alongside the rendered HTTP summaries.
+
+### Unified Master/Detail Interaction Model *(November 2025 refresh)*
+
+- **Palette contract:** Only master plugins (http, call, zip, ftp, xquery, etc.) remain visible in the palette. Their dependent detail types (`http-header`, `call-param`, `zip-entry`, …) are hidden so the drag surface stays identical at every canvas depth and can be mirrored inside a VS Code webview palette without special-casing.
+- **Inline summaries on every level:** Containers that register detail sections through `MasterDetailRegistry` now render a `.visual-node__detail-collection` stack inside the card body at every zoom/focus level. Detail nodes never spawn standalone cards or connection anchors, so nested canvases retain the same look/feel as the root grid.
+- **Creation & editing workflow:** The inline lists expose "Add" buttons that call `MasterDetailRegistry.createDetailNode()` and immediately focus the Properties panel. CRUD, reordering, and duplication continue to flow through the property editor (`MasterDetailEditor`) which enforces schema-aware inputs; the canvas acts as a read-only summary.
+- **Connection & routing rules:** `filterNodesForConnections()` blacklists every detail type, guaranteeing that connectors only originate from masters or leaf actions. This filtering applies both at root level and in focus mode. This keeps BPMN start/stop markers, pan/zoom calculations, and VS Code alignment identical regardless of whether detail entries exist.
+- **Focus mode behavior:**
+  - When drilling into a master/detail container via "Focus on this container", detail nodes are **not rendered as cards** on the canvas. Instead, `renderFocusDetailSummary()` creates a `focused-detail-summary` overlay that displays all detail items in a list format.
+  - Normal plugins (non-detail) can still be added via drag & drop from the palette.
+  - The overlay provides quick access to detail items and their properties, maintaining the same editing workflow as the inline summary.
+  - Process markers (Start/Stop) are rendered with interactive labels and can be dragged, just like at root level.
+- **Extensibility guidance:** Any new master/detail pair must declare `ui.detailSections` (or allowed child metadata) so the registry can auto-generate section labels, add/remove CTA text, and summary formatting. Avoid one-off DOM fragments; the `.visual-node__detail-*` component is the single source of truth for both browser IDE and the future VS Code extension.
 
 **Coordinate System:**
 - **Viewport coordinates** → **Canvas coordinates** conversion

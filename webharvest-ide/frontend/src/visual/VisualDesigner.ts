@@ -7,7 +7,7 @@
  * - CONNECTED: Action nodes render as flowchart with arrows
  */
 
-import type { VisualNode } from '../types';
+import type { AttributeDefinition, Plugin, VisualNode } from '../types';
 import {
     isContainerNode,
     getRenderingStrategy,
@@ -220,6 +220,7 @@ export class VisualDesigner {
     private endMarkerElement: HTMLElement | null = null;
     private lastClickTime: number = 0;
     private detailRegistry: MasterDetailRegistry | null = null;
+    private fallbackDetailSections: Map<string, DetailSectionDefinition[]> = new Map();
 
     constructor(containerId: string, pluginManager?: PluginManager | null) {
         const container = document.getElementById(containerId);
@@ -792,7 +793,7 @@ export class VisualDesigner {
     private collectDetailTypesForConnections(): Set<string> {
         const types = new Set<string>();
 
-        if (!this.detailRegistry) {
+        if (!this.detailRegistry && !this.pluginManager) {
             return types;
         }
 
@@ -806,7 +807,7 @@ export class VisualDesigner {
             }
             visited.add(current.id);
 
-            const sections = this.detailRegistry.getSections(current.type);
+            const sections = this.getDetailSectionsForNode(current.type);
             sections.forEach(section => types.add(section.detailType));
 
             if (current.children && current.children.length > 0) {
@@ -872,7 +873,22 @@ export class VisualDesigner {
         const focusedContainer = this.getFocusedContainer();
         const isRootView = !focusedContainer;
         this.updateBreadcrumbTrail();
-        const nodesToRender = focusedContainer ? (focusedContainer.children || []) : this.nodes;
+
+        let nodesToRender: VisualNode[];
+        let focusDetailSections: DetailSectionDefinition[] = [];
+
+        if (focusedContainer) {
+            nodesToRender = [...(focusedContainer.children || [])];
+            const sections = this.getDetailSectionsForNode(focusedContainer.type);
+            if (sections.length > 0) {
+                const detailTypes = new Set(sections.map(section => section.detailType));
+                nodesToRender = nodesToRender.filter(child => !detailTypes.has(child.type));
+                focusDetailSections = sections;
+            }
+        } else {
+            nodesToRender = this.nodes;
+        }
+
         this.visibleNodes = nodesToRender;
 
         this.canvasElement.innerHTML = '';
@@ -888,6 +904,10 @@ export class VisualDesigner {
 
         // Render nodes
         nodesToRender.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
+
+        if (focusDetailSections.length > 0 && focusedContainer) {
+            this.renderFocusDetailSummary(focusedContainer, focusDetailSections);
+        }
 
         const renderedNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
             .filter((element): element is HTMLElement => element instanceof HTMLElement)
@@ -1071,21 +1091,28 @@ export class VisualDesigner {
         childrenArea.className = 'visual-node__child-stack';
         host.appendChild(childrenArea);
 
-        const detailSections = this.detailRegistry ? this.detailRegistry.getSections(node.type) : [];
+        const detailSections = this.getDetailSectionsForNode(node.type);
 
         if (this.isIfNode(node)) {
             const { elseNode, primaryChildren } = partitionIfChildren(node);
             this.renderIfDetail(childrenArea, node, elseNode);
             this.renderStandardChildren(primaryChildren, node, childrenArea);
-        } else if (this.isTryNode(node)) {
+            return;
+        }
+
+        if (this.isTryNode(node)) {
             const { catchNodes, primaryChildren } = partitionTryChildren(node);
             this.renderTryDetail(childrenArea, node, catchNodes);
             this.renderStandardChildren(primaryChildren, node, childrenArea);
-        } else if (detailSections.length > 0 && this.detailRegistry) {
-            this.renderMasterDetailContainer(childrenArea, node, detailSections);
-        } else {
-            this.renderStandardChildren(node.children || [], node, childrenArea);
+            return;
         }
+
+        if (detailSections.length > 0 && this.detailRegistry) {
+            this.renderMasterDetailSummary(childrenArea, node, detailSections);
+            return;
+        }
+
+        this.renderStandardChildren(node.children || [], node, childrenArea);
     }
 
     private renderStandardChildren(children: VisualNode[], parentNode: VisualNode, container: HTMLElement): void {
@@ -1096,6 +1123,321 @@ export class VisualDesigner {
 
             this.addReorderButtons(childElement, parentNode.id, child.id, index, children.length);
         });
+    }
+
+    private renderMasterDetailSummary(host: HTMLElement, node: VisualNode, sections: DetailSectionDefinition[]): void {
+        const stack = document.createElement('div');
+        stack.className = 'visual-node__detail-collection';
+
+        sections.forEach(section => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'visual-node__detail-section';
+
+            const header = document.createElement('div');
+            header.className = 'visual-node__detail-header';
+            const iconName = section.childPlugin?.icon ?? node.type;
+            const icon = this.iconLibrary.getIconElement(iconName, 14);
+            icon.classList.add('visual-node__detail-icon');
+            const title = document.createElement('span');
+            title.textContent = section.sectionTitle;
+            header.appendChild(icon);
+            header.appendChild(title);
+            header.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.selectNode(node.id);
+                this.emit('sidebarPanelRequested', 'properties');
+            });
+
+            const list = document.createElement('ul');
+            list.className = 'visual-node__detail-list';
+
+            const detailNodes = (node.children || []).filter(child => child.type === section.detailType);
+            if (detailNodes.length === 0) {
+                const empty = document.createElement('li');
+                empty.className = 'visual-node__detail-empty';
+                empty.textContent = section.emptyLabel || 'No entries';
+                list.appendChild(empty);
+            } else {
+                detailNodes.forEach(detailNode => {
+                    const item = document.createElement('li');
+                    item.className = 'visual-node__detail-item';
+                    item.textContent = this.getDetailDisplayLabel(detailNode, section);
+                    item.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        this.selectNode(detailNode.id);
+                        this.emit('sidebarPanelRequested', 'properties');
+                    });
+                    list.appendChild(item);
+                });
+            }
+
+            const actionBar = document.createElement('div');
+            actionBar.className = 'visual-node__detail-actions';
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'visual-node__detail-add';
+            addButton.textContent = section.addLabel || 'Add';
+            addButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.selectNode(node.id);
+                if (this.detailRegistry) {
+                    const created = this.detailRegistry.createDetailNode(section.detailType);
+                    if (created) {
+                        this.handleNewDetailAttachment(node.id, created);
+                        this.render();
+                        this.emit('sidebarPanelRequested', 'properties');
+                    }
+                }
+            });
+            actionBar.appendChild(addButton);
+
+            sectionEl.appendChild(header);
+            sectionEl.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.selectNode(node.id);
+                this.emit('sidebarPanelRequested', 'properties');
+            });
+            sectionEl.appendChild(list);
+            sectionEl.appendChild(actionBar);
+
+            stack.appendChild(sectionEl);
+        });
+
+        host.appendChild(stack);
+    }
+
+    private getDetailSectionsForNode(nodeType: string): DetailSectionDefinition[] {
+        if (this.detailRegistry) {
+            const sections = this.detailRegistry.getSections(nodeType);
+            if (sections.length > 0) {
+                return sections;
+            }
+        }
+
+        if (!this.pluginManager) {
+            return [];
+        }
+
+        if (this.fallbackDetailSections.has(nodeType)) {
+            return this.fallbackDetailSections.get(nodeType)!;
+        }
+
+        const fallback = this.buildFallbackDetailSections(nodeType);
+        this.fallbackDetailSections.set(nodeType, fallback);
+        return fallback;
+    }
+
+    private buildFallbackDetailSections(nodeType: string): DetailSectionDefinition[] {
+        if (!this.pluginManager) {
+            return [];
+        }
+
+        const detailTypes = this.collectDetailTypesFromMetadata(nodeType);
+        if (detailTypes.size === 0) {
+            return [];
+        }
+
+        const sections: DetailSectionDefinition[] = [];
+        detailTypes.forEach(detailType => {
+            const childPlugin = this.pluginManager!.findPlugin(detailType);
+            if (!childPlugin) {
+                return;
+            }
+
+            const attributeDefinitions = Array.isArray(childPlugin.schema?.attributes)
+                ? childPlugin.schema!.attributes.map(attribute => ({ ...attribute }))
+                : [];
+
+            const primaryAttribute = this.inferPrimaryAttribute(attributeDefinitions);
+            const secondaryAttribute = this.inferSecondaryAttribute(attributeDefinitions, primaryAttribute);
+
+            sections.push({
+                detailType,
+                childPlugin,
+                sectionTitle: this.buildDetailSectionTitle(childPlugin),
+                addLabel: `Add ${childPlugin.name ?? detailType}`,
+                emptyLabel: `No ${(childPlugin.name ?? detailType).toLowerCase()} entries`,
+                primaryAttribute,
+                secondaryAttribute,
+                usesBody: Boolean(childPlugin.schema?.canHaveBody),
+                summaryEmptyLabel: childPlugin.name ?? detailType,
+                primaryAttributeLabel: primaryAttribute ? this.formatAttributeLabel(primaryAttribute) : undefined,
+                secondaryAttributeLabel: secondaryAttribute ? this.formatAttributeLabel(secondaryAttribute) : undefined,
+                primaryAttributeDescription: this.getAttributeDescription(attributeDefinitions, primaryAttribute),
+                secondaryAttributeDescription: this.getAttributeDescription(attributeDefinitions, secondaryAttribute),
+                attributeDefinitions
+            });
+        });
+
+        return sections;
+    }
+
+    private collectDetailTypesFromMetadata(nodeType: string): Set<string> {
+        const types = new Set<string>();
+        if (!this.pluginManager) {
+            return types;
+        }
+
+        this.pluginManager.getPlugins().forEach(plugin => {
+            if (this.isDetailPluginForContainer(plugin, nodeType)) {
+                types.add(plugin.id);
+            }
+        });
+
+        return types;
+    }
+
+    private isDetailPluginForContainer(plugin: Plugin | null, parentType: string): boolean {
+        if (!plugin) {
+            return false;
+        }
+
+        const requiredParents = new Set<string>([
+            ...(plugin.semantics?.requiredParentTypes ?? []),
+            ...(plugin.schema?.requiredParents ?? [])
+        ]);
+
+        if (requiredParents.has(parentType)) {
+            return true;
+        }
+
+        const isDependent = (plugin.semantics?.roles ?? []).includes('DEPENDENT');
+        if (!isDependent) {
+            return false;
+        }
+
+        const allowsChildren = Boolean(
+            plugin.semantics?.allowsChildren ||
+            plugin.schema?.canHaveChildren ||
+            (plugin.schema?.allowedSubElements?.length ?? 0) > 0
+        );
+
+        if (allowsChildren) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private inferPrimaryAttribute(attributes: AttributeDefinition[]): string | undefined {
+        if (!attributes || attributes.length === 0) {
+            return undefined;
+        }
+
+        const preferred = ['name', 'header', 'key', 'field', 'param', 'path', 'id'];
+        const lookup = new Map<string, string>();
+        attributes.forEach(attr => {
+            if (attr.name) {
+                lookup.set(attr.name.toLowerCase(), attr.name);
+            }
+        });
+
+        for (const key of preferred) {
+            const match = lookup.get(key);
+            if (match) {
+                return match;
+            }
+        }
+
+        return attributes[0]?.name;
+    }
+
+    private inferSecondaryAttribute(attributes: AttributeDefinition[], primary?: string): string | undefined {
+        if (!attributes || attributes.length === 0) {
+            return undefined;
+        }
+
+        const preferred = ['value', 'expression', 'select', 'type', 'path'];
+        const lookup = new Map<string, string>();
+        attributes.forEach(attr => {
+            if (attr.name && attr.name !== primary) {
+                lookup.set(attr.name.toLowerCase(), attr.name);
+            }
+        });
+
+        for (const key of preferred) {
+            const match = lookup.get(key);
+            if (match) {
+                return match;
+            }
+        }
+
+        return undefined;
+    }
+
+    private getAttributeDescription(attributes: AttributeDefinition[], name?: string): string | undefined {
+        if (!name) {
+            return undefined;
+        }
+        return attributes.find(attr => attr.name === name)?.description;
+    }
+
+    private buildDetailSectionTitle(plugin: Plugin): string {
+        const label = plugin.name?.trim() || plugin.id;
+        if (!label) {
+            return 'Details';
+        }
+        if (label.endsWith('y') && !/[aeiou]y$/i.test(label)) {
+            return `${label.slice(0, -1)}ies`;
+        }
+        if (label.endsWith('s')) {
+            return label;
+        }
+        return `${label}s`;
+    }
+
+    private formatAttributeLabel(name: string): string {
+        if (!name) {
+            return '';
+        }
+        return name
+            .replace(/[-_]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/^\w/, char => char.toUpperCase());
+    }
+
+    private renderFocusDetailSummary(containerNode: VisualNode, sections: DetailSectionDefinition[]): void {
+        if (sections.length === 0) {
+            return;
+        }
+
+        const overlay = document.createElement('section');
+        overlay.className = 'focused-detail-summary';
+
+        const heading = document.createElement('div');
+        heading.className = 'focused-detail-summary__title';
+        heading.textContent = `${this.getNodeDisplayLabel(containerNode)} • Detail items`;
+        overlay.appendChild(heading);
+
+        const body = document.createElement('div');
+        body.className = 'focused-detail-summary__body';
+        overlay.appendChild(body);
+
+        this.renderMasterDetailSummary(body, containerNode, sections);
+
+        this.canvasElement.appendChild(overlay);
+    }
+
+    private getDetailDisplayLabel(detail: VisualNode, section: DetailSectionDefinition): string {
+        const primaryKey = section.primaryAttribute;
+        const secondaryKey = section.secondaryAttribute;
+        const primaryValue = primaryKey ? (detail.attributes?.[primaryKey] ?? '') : detail.type;
+        const secondaryValue = secondaryKey ? (detail.attributes?.[secondaryKey] ?? '') : '';
+
+        if (primaryValue && secondaryValue) {
+            return `${primaryValue} — ${secondaryValue}`;
+        }
+
+        if (primaryValue) {
+            return primaryValue;
+        }
+
+        if (secondaryValue) {
+            return secondaryValue;
+        }
+
+        return section.detailType;
     }
 
     /**
@@ -1150,7 +1492,19 @@ export class VisualDesigner {
         parentContainer.appendChild(nodeElement);
         this.recordMeasuredNodeSize(node.id, nodeElement);
 
+        const summarySections = this.getDetailSectionsForNode(node.type);
+        if (summarySections.length > 0) {
+            const surface = nodeElement.querySelector('.visual-node__container-body') as HTMLElement | null
+                ?? nodeElement.querySelector('.visual-node__surface') as HTMLElement | null
+                ?? nodeElement;
+            this.renderMasterDetailSummary(surface, node, summarySections);
+        }
+
         return nodeElement;
+    }
+
+    private shouldTreatAsVirtualRoot(containerNode: VisualNode): boolean {
+        return this.getDetailSectionsForNode(containerNode.type).length > 0;
     }
 
     /**
@@ -1489,8 +1843,8 @@ export class VisualDesigner {
             this.endMarkerPosition = endPosition;
         }
 
-        const startLabel = options?.contextLabel ? `Start: ${options.contextLabel}` : 'Start';
-        const endLabel = options?.contextLabel ? `End: ${options.contextLabel}` : 'End';
+        const startLabel = 'Start';
+        const endLabel = 'Stop';
 
         const startMarker = this.createProcessMarker('start', startPosition.x, startPosition.y, startLabel, {
             interactive,
@@ -2138,8 +2492,11 @@ export class VisualDesigner {
             }
 
             if (!nestedContainerElement && !containerElement && focusedContainer) {
+                const parentTypeForValidation = this.shouldTreatAsVirtualRoot(focusedContainer)
+                    ? null
+                    : focusedContainer.type;
                 const validationResult = draggedPluginType && this.semanticValidator
-                    ? this.semanticValidator.validateDrop(draggedPluginType, focusedContainer.type)
+                    ? this.semanticValidator.validateDrop(draggedPluginType, parentTypeForValidation)
                     : { valid: true };
                 if (validationResult.valid) {
                     e.dataTransfer!.dropEffect = 'copy';
@@ -2267,8 +2624,11 @@ export class VisualDesigner {
                 }
 
                 if (focusedContainer && !nestedContainerElement && !dropTarget?.closest('.container-node')) {
+                    const parentTypeForValidation = this.shouldTreatAsVirtualRoot(focusedContainer)
+                        ? null
+                        : focusedContainer.type;
                     if (this.semanticValidator) {
-                        const validation = this.semanticValidator.validateDrop(newNode.type, focusedContainer.type);
+                        const validation = this.semanticValidator.validateDrop(newNode.type, parentTypeForValidation);
                         if (!validation.valid) {
                             this.showError(validation.message);
                             console.warn(`❌ Validation failed: ${validation.message}`);
@@ -5287,6 +5647,7 @@ export class VisualDesigner {
         this.pluginManager = pluginManager;
         this.semanticValidator = new SemanticValidator(pluginManager);
         this.detailRegistry = new MasterDetailRegistry(pluginManager);
+        this.fallbackDetailSections.clear();
         console.log('✅ [VisualDesigner] Semantic validator initialized');
 
         setContainerResolver((type: string) => {
@@ -5911,188 +6272,9 @@ export class VisualDesigner {
         return this.detailRegistry;
     }
 
-    private renderMasterDetailContainer(childrenArea: HTMLElement, containerNode: VisualNode, sections: DetailSectionDefinition[]): void {
-        if (!this.detailRegistry) {
-            this.renderStandardChildren(containerNode.children || [], containerNode, childrenArea);
-            return;
-        }
 
-        childrenArea.classList.add('http-container');
 
-        const partition = this.detailRegistry.partitionChildren(containerNode);
 
-        sections.forEach(section => {
-            const detailNodes = partition.sections[section.detailType] || [];
-            const sectionElement = this.createDetailSectionElement(containerNode, section, detailNodes);
-            childrenArea.appendChild(sectionElement);
-        });
-
-        if (partition.unmatched.length > 0) {
-            this.renderStandardChildren(partition.unmatched, containerNode, childrenArea);
-        }
-    }
-
-    private createDetailSectionElement(
-        containerNode: VisualNode,
-        section: DetailSectionDefinition,
-        details: VisualNode[]
-    ): HTMLElement {
-        const sectionEl = document.createElement('div');
-        sectionEl.className = 'http-detail-section';
-
-        const header = document.createElement('div');
-        header.className = 'http-detail-section__header';
-
-        const titleEl = document.createElement('span');
-        titleEl.className = 'http-detail-section__title';
-        titleEl.textContent = `${section.sectionTitle} (${details.length})`;
-
-        const actions = document.createElement('div');
-        actions.className = 'http-detail-section__actions';
-
-        const addButton = this.createDetailActionButton('fas fa-plus', section.addLabel, () => {
-            this.addDetailNode(containerNode.id, section.detailType);
-        });
-        actions.appendChild(addButton);
-
-        header.appendChild(titleEl);
-        header.appendChild(actions);
-        sectionEl.appendChild(header);
-
-        const list = document.createElement('div');
-        list.className = 'http-detail-list';
-
-        if (details.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'http-detail-empty';
-            empty.textContent = section.emptyLabel;
-            list.appendChild(empty);
-        } else {
-            details.forEach((detail, index) => {
-                const row = this.createDetailRow(containerNode, section, detail, index, details.length);
-                list.appendChild(row);
-            });
-        }
-
-        sectionEl.appendChild(list);
-        return sectionEl;
-    }
-
-    private createDetailRow(
-        containerNode: VisualNode,
-        section: DetailSectionDefinition,
-        detail: VisualNode,
-        index: number,
-        total: number
-    ): HTMLElement {
-        const row = document.createElement('div');
-        row.className = 'http-detail-row';
-        row.dataset.detailId = detail.id;
-
-        const summary = this.detailRegistry!.summarizeDetail(detail);
-
-        const primaryCell = document.createElement('div');
-        primaryCell.className = 'http-detail-cell';
-
-        if (section.primaryAttribute) {
-            const primaryValue = detail.attributes?.[section.primaryAttribute] ?? '';
-            primaryCell.appendChild(this.createDetailSummary(
-                section.primaryAttributeLabel ?? section.primaryAttribute,
-                primaryValue
-            ));
-        } else {
-            const nameEl = document.createElement('span');
-            nameEl.className = summary.isEmpty ? 'http-detail-row__label http-detail-row__label--empty' : 'http-detail-row__label';
-            nameEl.textContent = summary.primaryText;
-            primaryCell.appendChild(nameEl);
-        }
-
-        const secondaryCell = document.createElement('div');
-        secondaryCell.className = 'http-detail-cell';
-
-        if (section.usesBody) {
-            secondaryCell.appendChild(this.createDetailSummary('Body', detail.body ?? '', true));
-        } else if (section.secondaryAttribute) {
-            const secondaryValue = detail.attributes?.[section.secondaryAttribute] ?? '';
-            secondaryCell.appendChild(this.createDetailSummary(
-                section.secondaryAttributeLabel ?? section.secondaryAttribute,
-                secondaryValue
-            ));
-        } else {
-            const valueEl = document.createElement('span');
-            valueEl.className = summary.secondaryText ? 'http-detail-row__value' : 'http-detail-row__value http-detail-row__value--empty';
-            valueEl.textContent = summary.secondaryText ?? '—';
-            secondaryCell.appendChild(valueEl);
-        }
-
-        const actions = document.createElement('div');
-        actions.className = 'http-detail-row__actions';
-
-        const editButton = this.createDetailActionButton('fas fa-pen', 'Edit in properties', () => {
-            this.selectNode(detail.id);
-        });
-        actions.appendChild(editButton);
-
-        const moveUpButton = this.createDetailActionButton('fas fa-arrow-up', 'Move up', () => {
-            this.moveDetailNode(containerNode.id, detail.id, 'up');
-        }, index === 0);
-        actions.appendChild(moveUpButton);
-
-        const moveDownButton = this.createDetailActionButton('fas fa-arrow-down', 'Move down', () => {
-            this.moveDetailNode(containerNode.id, detail.id, 'down');
-        }, index === total - 1);
-        actions.appendChild(moveDownButton);
-
-        const duplicateButton = this.createDetailActionButton('fas fa-clone', 'Duplicate', () => {
-            this.duplicateDetailNode(containerNode.id, detail.id);
-        });
-        actions.appendChild(duplicateButton);
-
-        const deleteButton = this.createDetailActionButton('fas fa-trash', 'Remove', () => {
-            this.removeDetailNode(containerNode.id, detail.id);
-        });
-        deleteButton.classList.add('danger');
-        actions.appendChild(deleteButton);
-
-        row.appendChild(primaryCell);
-        row.appendChild(secondaryCell);
-        row.appendChild(actions);
-
-        return row;
-    }
-
-    private createDetailSummary(label: string, value: string, multiline: boolean = false): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'http-detail-summary';
-
-        const labelEl = document.createElement('span');
-        labelEl.className = 'http-detail-summary__label';
-        labelEl.textContent = label;
-
-        const valueEl = document.createElement(multiline ? 'pre' : 'span');
-        valueEl.className = 'http-detail-summary__value';
-        valueEl.textContent = value && value.length > 0 ? value : '—';
-
-        wrapper.appendChild(labelEl);
-        wrapper.appendChild(valueEl);
-        return wrapper;
-    }
-
-    private createDetailActionButton(iconClass: string, title: string, action: () => void, disabled = false): HTMLButtonElement {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'http-detail-row__action';
-        button.innerHTML = `<i class="${iconClass}"></i>`;
-        button.title = title;
-        button.disabled = disabled;
-        button.addEventListener('click', (event) => {
-            event.stopPropagation();
-            if (!button.disabled) {
-                action();
-            }
-        });
-        return button;
-    }
 
     private addDetailNode(containerId: string, detailType: string): void {
         if (!this.detailRegistry) {
@@ -6103,64 +6285,19 @@ export class VisualDesigner {
             this.showError(`Cannot create detail of type ${detailType}`);
             return;
         }
+        this.handleNewDetailAttachment(containerId, detailNode);
+    }
+
+    private handleNewDetailAttachment(containerId: string, detailNode: VisualNode): void {
         const added = this.addChildToContainer(containerId, detailNode);
-        if (added) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private removeDetailNode(containerId: string, detailId: string): void {
-        const removed = this.removeNode(detailId);
-        if (removed) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private moveDetailNode(containerId: string, detailId: string, direction: 'up' | 'down'): void {
-        const moved = direction === 'up'
-            ? this.moveChildUp(containerId, detailId)
-            : this.moveChildDown(containerId, detailId);
-
-        if (moved) {
-            this.selectNode(containerId);
-        }
-    }
-
-    private duplicateDetailNode(containerId: string, detailId: string): void {
-        if (!this.detailRegistry) {
+        if (!added) {
+            this.showError(`Unable to attach ${detailNode.type} to ${containerId}`);
             return;
         }
-
-        const container = this.findNode(containerId);
-        const original = this.findNode(detailId);
-
-        if (!container || !original) {
-            return;
-        }
-
-        const duplicate = this.detailRegistry.createDetailNode(original.type);
-        if (!duplicate) {
-            this.showError(`Cannot duplicate detail of type ${original.type}`);
-            return;
-        }
-
-        duplicate.attributes = {
-            ...original.attributes
-        };
-        duplicate.body = original.body;
-        duplicate.children = original.children ? this.cloneNodes(original.children) : [];
-
-        const updatedContainer = this.cloneNode(container);
-        updatedContainer.children = [
-            ...(updatedContainer.children || []),
-            duplicate
-        ];
-
-        const updated = this.updateNode(containerId, updatedContainer);
-        if (updated) {
-            this.selectNode(duplicate.id);
-        }
+        this.selectNode(detailNode.id);
+        this.emit('sidebarPanelRequested', 'properties');
     }
+
 
     private getFocusedContainer(): VisualNode | null {
         const focusId = this.drillDownManager.getCurrentId();

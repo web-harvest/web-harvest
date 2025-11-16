@@ -54,7 +54,17 @@ function createStubPluginManager(): PluginManager {
         allowedChildPlugins: ['http-header'],
         ui: {
             paletteGroup: 'Network',
-            tags: ['http']
+            tags: ['http'],
+            detailSections: [
+                {
+                    type: 'http-header',
+                    title: 'Headers',
+                    addLabel: 'Add Header',
+                    emptyLabel: 'No headers',
+                    primaryAttribute: 'name',
+                    secondaryAttribute: 'value'
+                }
+            ]
         }
     };
 
@@ -229,7 +239,7 @@ describe('VisualDesigner drill-down focus mode', () => {
         expect(warningTriggered).toBe(false);
 
         const connectionLines = container.querySelectorAll('.connection-line');
-        expect(connectionLines.length).toBeGreaterThan(0);
+        expect(connectionLines.length).toBe(0);
 
         const focusStartMarker = container.querySelector('.process-marker[data-node-id="workflow-start"]');
         const focusEndMarker = container.querySelector('.process-marker[data-node-id="workflow-end"]');
@@ -337,6 +347,43 @@ describe('VisualDesigner drill-down focus mode', () => {
         expect(childCard).not.toBeNull();
         expect(childCard!.querySelector('.visual-node__child-stack')).toBeNull();
         expect(childCard!.querySelector('.visual-node__collapsed-hint')).not.toBeNull();
+    });
+
+    it('hides dependent detail nodes inside focus mode and shows summary overlay', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('focus-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://example.com' },
+                body: null,
+                children: [
+                    {
+                        id: 'header-1',
+                        type: 'http-header',
+                        attributes: { name: 'Accept', value: 'application/json' },
+                        body: null,
+                        children: []
+                    }
+                ]
+            }
+        ];
+
+        designer.loadNodes(nodes);
+        (designer as unknown as { enterContainer: (id: string) => void }).enterContainer('http-1');
+
+        const hiddenDetailNode = container.querySelector('[data-node-id="header-1"]');
+        expect(hiddenDetailNode).toBeNull();
+
+        const summaryOverlay = container.querySelector('.focused-detail-summary');
+        expect(summaryOverlay).not.toBeNull();
+        expect(summaryOverlay?.textContent).toContain('Headers');
+        expect(summaryOverlay?.querySelector('.visual-node__detail-item')?.textContent).toContain('Accept');
+        const addButton = summaryOverlay?.querySelector('.visual-node__detail-add') as HTMLButtonElement | null;
+        expect(addButton).not.toBeNull();
+        expect(addButton?.textContent?.toLowerCase()).toContain('add header');
     });
 });
 

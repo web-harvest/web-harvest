@@ -170,6 +170,47 @@ describe('VisualDesigner container summary', () => {
         expect(metaText).toContain('1 leaves');
     });
 
+    it('renders detail summary inline and hides dependent nodes', () => {
+        const pluginManager = createStubPluginManager();
+        designer = new VisualDesigner('summary-canvas', pluginManager);
+
+        const nodes: VisualNode[] = [
+            {
+                id: 'http-1',
+                type: 'http',
+                attributes: { url: 'https://api.example.com/orders', method: 'GET' },
+                body: null,
+                children: [
+                    {
+                        id: 'header-1',
+                        type: 'http-header',
+                        attributes: { name: 'Accept', value: 'application/json' },
+                        body: null,
+                        children: []
+                    }
+                ]
+            }
+        ];
+
+        designer.loadNodes(nodes);
+
+        const sections = designer.getDetailRegistry()?.getSections('http') ?? [];
+        expect(sections.length).toBeGreaterThan(0);
+
+        const inlineDetails = container.querySelector('.visual-node__detail-collection');
+        expect(inlineDetails).not.toBeNull();
+        const items = inlineDetails!.querySelectorAll('.visual-node__detail-item');
+        expect(items).toHaveLength(1);
+        expect(items[0]?.textContent).toContain('Accept');
+
+        const addButton = inlineDetails!.querySelector<HTMLButtonElement>('.visual-node__detail-add');
+        expect(addButton).not.toBeNull();
+        expect(addButton!.textContent?.toLowerCase()).toContain('add header');
+
+        const nestedHeaderCard = container.querySelector('[data-node-id="header-1"]');
+        expect(nestedHeaderCard).toBeNull();
+    });
+
     it('allows removing nodes via role control button', () => {
         const pluginManager = createStubPluginManager();
         designer = new VisualDesigner('summary-canvas', pluginManager);
