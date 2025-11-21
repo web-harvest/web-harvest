@@ -3,6 +3,7 @@
  */
 
 import type { Plugin, PluginDocumentationSummary, PluginSemanticsModel } from '../types';
+import { normalizePlugin } from '../shared/metadata/PluginNormalizer';
 
 export class PluginManager {
     private plugins: Plugin[] = [];
@@ -23,56 +24,8 @@ export class PluginManager {
             const data = await response.json();
             this.schemaVersion = data.schemaVersion || data.version || null;
             this.catalogSchema = data.schema || null;
-            this.plugins = (data.plugins || []).map((plugin: any) => {
-                const semanticsPayload: any = plugin.semantics ? { ...plugin.semantics } : undefined;
-                if (semanticsPayload) {
-                    if (!Array.isArray(semanticsPayload.roles)) {
-                        const legacyRole = semanticsPayload.role;
-                        semanticsPayload.roles = legacyRole ? [legacyRole] : [];
-                    }
-                }
-
-                return {
-                    id: plugin.id,
-                    name: plugin.name,
-                    description: plugin.description || '',
-                    category: plugin.category || 'General',
-                    icon: plugin.icon || plugin.ui?.icon || 'fa-puzzle-piece',
-                    paletteGroup: plugin.paletteGroup || plugin.ui?.paletteGroup || plugin.category || 'General',
-                    tags: plugin.tags || plugin.ui?.tags || [],
-                    schema: plugin.schema,
-                    semantics: semanticsPayload,
-                    helpUrl: plugin.helpUrl || plugin.documentation?.url,
-                    // Full PluginDocumentation mapping
-                    documentation: plugin.documentation ? {
-                        summary: plugin.documentation.summary || plugin.description || '',
-                        url: plugin.documentation.url || plugin.helpUrl,
-                        examples: plugin.documentation.examples || []
-                    } : {
-                        summary: plugin.description || '',
-                        url: plugin.helpUrl,
-                        examples: []
-                    },
-                    dependencies: plugin.dependencies || [],
-                    // VisualPluginMetadata fields
-                    color: plugin.color,
-                    group: plugin.group || plugin.paletteGroup || plugin.category || 'General',
-                    defaultWidth: plugin.defaultWidth,
-                    defaultHeight: plugin.defaultHeight,
-                    inputPorts: plugin.inputPorts,
-                    outputPorts: plugin.outputPorts,
-                    portType: plugin.portType,
-                    tooltip: plugin.tooltip,
-                    keyboardShortcuts: plugin.keyboardShortcuts,
-                    accessibility: plugin.accessibility,
-                    linkedServices: plugin.linkedServices,
-                    parentRelationship: plugin.parentRelationship,
-                    allowedChildPlugins: plugin.allowedChildPlugins,
-                    ui: plugin.ui
-                };
-            });
+            this.plugins = (data.plugins || []).map((plugin: any) => normalizePlugin(plugin));
             
-            this.loaded = true;
             this.loaded = true;
 
             console.log(`✅ Loaded ${this.plugins.length} plugins (schema v${this.schemaVersion || 'unknown'})`);
@@ -222,8 +175,3 @@ export class PluginManager {
         });
     }
 }
-
-
-
-
-

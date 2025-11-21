@@ -1,0 +1,18 @@
+{
+  "apiVersion": "2.0",
+  "plugins": [
+    {
+      "id": "http",
+      "name": "HTTP Request",
+      "category": "HTTP & Web",
+      "schema": {
+        "attributes": [
+          { "name": "url", "type": "string", "required": true },
+          { "name": "method", "type": "enum", "allowedValues": ["GET", "POST"] }
+        ]
+      }
+    }
+  ]
+}
+
+

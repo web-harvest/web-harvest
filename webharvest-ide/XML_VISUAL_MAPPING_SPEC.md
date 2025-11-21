@@ -500,6 +500,9 @@ function autoLayout(nodes: VisualNode[]): void {
 3. Test with real XML examples from docs/web/examples/
 4. Validate roundtrip conversion
 
+> **2025-11-21 update:** Parser + generator are now TypeScript-first (metadata-driven options, layout toggle), covered by `XMLGenerator.test.ts` and the new `XMLRoundtrip.test.ts`.  
+> All bundled examples are exercised by `npm run sweep:examples`, which round-trips configs and reports legacy auto-fixes before CI.
+
 ### Phase 2: Monaco Integration (1-2 hours)
 1. Add Monaco Editor for XML view
 2. Implement XML/Visual/Split view switching
@@ -516,6 +519,8 @@ function autoLayout(nodes: VisualNode[]): void {
 **STOPPING all UI development until XML conversion is proven working!**
 
 **Next:** Implement XMLParser and XMLGenerator with full testing. 🛑➡️🔄
+
+
 
 
 

@@ -81,9 +81,13 @@
 
 ## 📝 Notatki
 
-- **DOCUMENTATION_CONSOLIDATION_SUMMARY.md** wskazuje, że konsolidacja była wykonana w październiku 2025, ale od tego czasu pojawiło się więcej plików SUMMARY/COMPLETE/PLAN
-- Większość plików do archiwizacji to podsumowania sesji i statusy implementacji - wartościowe historycznie, ale nie powinny być na głównym poziomie
-- Pliki w `webharvest-ide/` też wymagają przeglądu i archiwizacji
+- **DOCUMENTATION_CONSOLIDATION_SUMMARY.md** wskazuje, że konsolidacja była wykonana w październiku 2025, ale od tego czasu pojawiło się więcej plików SUMMARY/COMPLETE/PLAN.
+- Większość plików do archiwizacji to podsumowania sesji i statusy implementacji - wartościowe historycznie, ale nie powinny być na głównym poziomie.
+- Pliki w `webharvest-ide/` też wymagają przeglądu i archiwizacji.
+- **2025-11-21:** kompletny przegląd i modernizacja przykładów IDE (`webharvest-ide/src/main/resources/webapp/examples`). Usunięto pseudo-pluginy (`body`, placeholderowe wyniki), legacy moduły (ftp/mail/database) zastąpiono symulacjami bazującymi na core pluginach, a wszystkie pliki przechodzą walidację /api/config/validate.
+- **2025-11-21:** Property Panel korzysta z nowego `PropertyPanelShell` + `SchemaDrivenEditor`, więc dokumentacja powinna odsyłać do metadanych (`AttributeUiMetadata`, `ui.tools`) zamiast opisywać stare ręczne formularze.
+- **2025-11-21:** dodano skrypt `webharvest-ide/scripts/sweep_examples.ts`, który weryfikuje round-trip XML i raportuje auto-konwersje legacy – wyniki trafiają do logów i powinny być wspomniane w przewodnikach QA/Release.
+- **2025-11-21:** Startuje wydzielanie pakietów współdzielonych (`packages/visual-shared/*`) + VS Code harness. Dokumentacja powinna odsyłać do `VSCODE_EXTENSION_COMPATIBILITY_PLAN.md` i `docs/VSCODE_WEBVIEW_HARNESS.md` dla najświeższych wytycznych.
 
 ---
 

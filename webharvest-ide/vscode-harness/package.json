@@ -1,0 +1,21 @@
+{
+  "name": "@webharvest/vscode-harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "npm run build:webview || true",
+    "build:webview": "echo \"TODO: add Vite build\"",
+    "dev:webview": "echo \"Run Vite dev server once shared packages are extracted\"",
+    "test:webview": "echo \"TODO: hook into @vscode/test-web\""
+  },
+  "dependencies": {
+    "@webharvest/metadata-client": "file:../../packages/visual-shared/metadata-client",
+    "@webharvest/xml-roundtrip": "file:../../packages/visual-shared/xml-roundtrip"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  }
+}
+
+

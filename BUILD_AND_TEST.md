@@ -1,11 +1,12 @@
 # Build & Test Guide
 
-## 📌 Najnowsze usprawnienia (31.10.2025)
+## 📌 Najnowsze usprawnienia (aktualizacja 21.11.2025)
 
-- 🔁 **Usunięto zduplikowaną zależność `org.jsoup`** w `webharvest-core/pom.xml` (pozostawiono wpis w sekcji „Bug #13”), co eliminuje ostrzeżenia Mavena o powielonych deklaracjach.
-- 🧼 **Czyścimy frontendowy `dist/` przed buildem** – zapobiega to błędom `EPERM` przy nadpisywaniu plików przez Vite.
-- 🔄 **Pełny build bez testów** (`mvn clean install -DskipTests`) przechodzi poprawnie i buduje wszystkie moduły.
-- 🚪 **Port 8080** – przed uruchomieniem IDE warto zabić starą instancję (`pkill -f webharvest-ide-2.3.1.jar`), by uniknąć komunikatu „Port 8080 is already in use!”.
+- 🧱 **„Szybki rebuild” frontendu** – samo `npm run build` (w `webharvest-ide/frontend`) odświeża bundle bez odpalania całego Mavena.
+- 🧯 **Brak plików `checkstyle.xml`/`pmd.xml`/`spotbugs-include.xml`** – build IDE wymaga dodatkowych flag:  
+  `mvn -pl webharvest-ide -am clean install -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true`.
+- 🚀 **IDE w tle** – po udanym buildzie startujemy serwer Jetty poleceniem `java -jar webharvest-ide/target/webharvest-ide-2.3.1.jar`.
+- 🔁 (z 31.10.2025) **Usunięto zduplikowaną zależność `org.jsoup`**, czyścimy `dist/` przed buildem i pilnujemy portu 8080 (`pkill -f webharvest-ide-2.3.1.jar`).
 
 ### Szybka sekwencja poleceń
 
@@ -15,10 +16,10 @@ cd /Users/robertbala/Documents/Git/web-harvest-git
 # 1. Upewnij się, że nic nie blokuje portu 8080
 pkill -f webharvest-ide-2.3.1.jar || true
 
-# 2. Pełny build backendu (bez testów)
+# 2. Pełny build backendu (bez testów, domyślnie)
 mvn clean install -DskipTests
 
-# 3. (Opcjonalnie) ręczny rebuild frontendu
+# 3. Ręczny rebuild frontendu (tylko gdy chcesz szybko przeładować JS/CSS)
 cd webharvest-ide/frontend
 npm install
 npm run build
@@ -59,6 +60,8 @@ java -jar webharvest-ide/target/webharvest-ide-2.3.1.jar
 cd /Users/robertbala/Documents/Git/web-harvest-git
 mvn clean package -DskipTests -pl webharvest-ide -am
 ```
+
+> 💡 **Extra:** Jeśli brakuje konfiguracji statycznych analiz (checkstyle/PMD/SpotBugs), użyj powyższego polecenia z dodatkowymi flagami – to dokładnie ta komenda, którą wykorzystano przy ostatnim buildzie.
 
 Maven wykona automatycznie:
 1. `npm install` (zainstaluje zależności)
