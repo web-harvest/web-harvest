@@ -49,18 +49,6 @@ describe('App - Zoom Controls', () => {
         });
     });
 
-    describe('toggleGrid()', () => {
-        it('should toggle grid snap on/off', () => {
-            // TODO: Implement after fixing build
-            expect(true).toBe(true);
-        });
-
-        it('should call visualDesigner.setGridSnap() with correct parameters', () => {
-            // TODO: Implement after fixing build
-            expect(true).toBe(true);
-        });
-    });
-
     describe('autoLayout()', () => {
         it('should call visualDesigner.autoLayout() with vertical type', () => {
             // TODO: Implement after fixing build

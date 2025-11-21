@@ -68,7 +68,6 @@ export class App {
     private xmlGenerator: XMLGenerator;
     private keyboardShortcutManager: KeyboardShortcutManager;
     private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
-    private gridEnabled: boolean = false;
     private runPanel: RunWorkflowPanel;
     private executionHistoryIndex: Map<string, string> = new Map();
     private lastRunEntryId: string | null = null;
@@ -696,17 +695,6 @@ export class App {
         } else {
             console.warn(`⚠️ [App] autoLayout failed - mode: ${this.currentMode}, visualDesigner: ${!!this.visualDesigner}`);
         }
-    }
-
-    toggleGrid(): void {
-        console.log(`🔧 [App] toggleGrid() called, currentMode: ${this.currentMode}`);
-        if (this.currentMode !== 'visual' || !this.visualDesigner) {
-            console.warn(`⚠️ [App] toggleGrid failed - mode: ${this.currentMode}, visualDesigner: ${!!this.visualDesigner}`);
-            return;
-        }
-        this.gridEnabled = !this.gridEnabled;
-        this.visualDesigner.setGridSnap(this.gridEnabled, 20);
-        console.log(`📐 Grid snap ${this.gridEnabled ? 'ENABLED' : 'DISABLED'}`);
     }
 
     toggleMinimap(): void {

@@ -189,7 +189,7 @@ export class VisualDesigner {
     private readonly MAX_ZOOM = 3.0;
 
     // Grid snap
-    private gridSnapEnabled: boolean = false;
+    private gridSnapEnabled: boolean = true;
     private gridSize: number = 20;
 
     // Marquee selection
@@ -244,6 +244,7 @@ export class VisualDesigner {
             return null;
         });
         this.canvasElement = this.createCanvasElement();
+        this.setGridSnap(true, this.gridSize);
         this.resizeHandler = new NodeResizeHandler();
         this.resizeHandler.setOnResize((nodeId, dimensions) => {
             this.handleNodeResize(nodeId, dimensions);
@@ -574,37 +575,175 @@ export class VisualDesigner {
     /**
      * Apply horizontal auto-layout to root-level nodes, respecting manual overrides.
      */
-    private applyAutoLayoutToRootNodes(nodes: VisualNode[]): void {
+    private applyAutoLayoutToRootNodes(
+        nodes: VisualNode[],
+        layoutConnections?: Array<{ from: string; to: string }>
+    ): void {
         if (!nodes || nodes.length === 0) {
             return;
         }
 
-        let cursorX = this.START_X;
-        const baselineY = this.START_Y;
-        const gap = this.HORIZONTAL_GAP;
+        const connectionsForLayout = layoutConnections ?? this.buildLayoutConnections(nodes);
+        const layerAssignments = this.computeLayerAssignments(nodes, connectionsForLayout);
+        const columnWidth = this.MIN_CARD_WIDTH + this.HORIZONTAL_GAP;
+        const rowGap = Math.max(this.PADDING * 3, Math.round(this.MIN_CARD_HEIGHT * 0.6));
+        const baseY = this.START_Y;
+        const fallbackOrder = new Map(nodes.map((node, index) => [node.id, index]));
 
-        nodes.forEach((node) => {
-            const { width } = this.getNodeDimensions(node);
+        const groupedByLayer = new Map<number, VisualNode[]>();
 
+        nodes.forEach(node => {
             if (node.position && node.isManualPositioned === undefined) {
                 node.isManualPositioned = true;
             }
 
             if (node.isManualPositioned && node.position) {
-                // Honour manual placement but ensure subsequent auto nodes start after it
-                cursorX = Math.max(cursorX, node.position.x + width + gap);
+                node.position = this.snapPosition(node.position);
                 return;
             }
 
-            if (!node.position) {
-                node.position = { x: cursorX, y: baselineY };
-                node.isManualPositioned = false;
-                cursorX += width + gap;
-                return;
+            const layerIndex = layerAssignments.get(node.id) ?? 0;
+            if (!groupedByLayer.has(layerIndex)) {
+                groupedByLayer.set(layerIndex, []);
             }
-
-            cursorX = Math.max(cursorX, node.position.x + width + gap);
+            groupedByLayer.get(layerIndex)!.push(node);
         });
+
+        const sortedLayers = Array.from(groupedByLayer.keys()).sort((a, b) => a - b);
+
+        sortedLayers.forEach(layerIndex => {
+            const columnNodes = groupedByLayer.get(layerIndex)!;
+            columnNodes.sort((a, b) => {
+                const fallbackComparison = (fallbackOrder.get(a.id) ?? 0) - (fallbackOrder.get(b.id) ?? 0);
+                if (fallbackComparison !== 0) {
+                    return fallbackComparison;
+                }
+                const ay = a.position?.y ?? 0;
+                const by = b.position?.y ?? 0;
+                return ay - by;
+            });
+
+            let cursorY = baseY;
+            columnNodes.forEach(node => {
+                const dimensions = this.getNodeDimensions(node);
+                const x = this.snapValue(this.START_X + layerIndex * columnWidth);
+                const y = this.snapValue(cursorY);
+                node.position = { x, y };
+                node.isManualPositioned = false;
+                cursorY += Math.max(dimensions.height, this.MIN_CARD_HEIGHT) + rowGap;
+            });
+        });
+    }
+
+    private buildLayoutConnections(nodes: VisualNode[]): Array<{ from: string; to: string }> {
+        const nodeIds = new Set(nodes.map(node => node.id));
+        const connections: Array<{ from: string; to: string }> = [];
+
+        const manualConnections = this.connectionManager.getConnections();
+        manualConnections.forEach(connection => {
+            if (nodeIds.has(connection.from) && nodeIds.has(connection.to)) {
+                connections.push({ from: connection.from, to: connection.to });
+            }
+        });
+
+        const sequentialConnections = generateConnections(nodes);
+        sequentialConnections.forEach(connection => {
+            if (nodeIds.has(connection.from) && nodeIds.has(connection.to)) {
+                connections.push({ from: connection.from, to: connection.to });
+            }
+        });
+
+        return connections;
+    }
+
+    private computeLayerAssignments(
+        nodes: VisualNode[],
+        connections: Array<{ from: string; to: string }>
+    ): Map<string, number> {
+        const fallbackOrder = new Map(nodes.map((node, index) => [node.id, index]));
+        const adjacency = new Map<string, Set<string>>();
+        const indegree = new Map<string, number>();
+
+        nodes.forEach(node => {
+            adjacency.set(node.id, new Set());
+            indegree.set(node.id, 0);
+        });
+
+        connections.forEach(connection => {
+            if (!adjacency.has(connection.from) || !adjacency.has(connection.to) || connection.from === connection.to) {
+                return;
+            }
+            const targets = adjacency.get(connection.from)!;
+            if (!targets.has(connection.to)) {
+                targets.add(connection.to);
+                indegree.set(connection.to, (indegree.get(connection.to) ?? 0) + 1);
+            }
+        });
+
+        const layers = new Map<string, number>();
+        const queue: string[] = [];
+
+        indegree.forEach((value, nodeId) => {
+            if (value === 0) {
+                queue.push(nodeId);
+            }
+        });
+
+        const sortQueue = () => queue.sort((a, b) => (fallbackOrder.get(a)! - fallbackOrder.get(b)!));
+        sortQueue();
+
+        const visited = new Set<string>();
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            visited.add(currentId);
+            const currentLayer = layers.get(currentId) ?? 0;
+            const neighbors = adjacency.get(currentId);
+            if (!neighbors) {
+                continue;
+            }
+
+            neighbors.forEach(targetId => {
+                const proposedLayer = Math.max(layers.get(targetId) ?? 0, currentLayer + 1);
+                layers.set(targetId, proposedLayer);
+                const nextValue = (indegree.get(targetId) ?? 0) - 1;
+                indegree.set(targetId, nextValue);
+                if (nextValue === 0) {
+                    queue.push(targetId);
+                    sortQueue();
+                }
+            });
+        }
+
+        if (visited.size !== nodes.length) {
+            const base = Math.max(0, ...Array.from(layers.values()));
+            let fallbackLayer = base;
+            nodes.forEach(node => {
+                if (!layers.has(node.id)) {
+                    layers.set(node.id, fallbackLayer);
+                    fallbackLayer++;
+                }
+            });
+        } else {
+            nodes.forEach(node => {
+                if (!layers.has(node.id)) {
+                    layers.set(node.id, 0);
+                }
+            });
+        }
+
+        return layers;
+    }
+
+    private snapValue(value: number): number {
+        return Math.round(value / this.gridSize) * this.gridSize;
+    }
+
+    private snapPosition(position: { x: number; y: number }): { x: number; y: number } {
+        return {
+            x: this.snapValue(position.x),
+            y: this.snapValue(position.y)
+        };
     }
 
     private recordMeasuredNodeSize(nodeId: string, element: HTMLElement): void {
@@ -743,7 +882,8 @@ export class VisualDesigner {
         const linearNodes = [...originNodes];
 
         if (reapplyLayout) {
-            this.applyAutoLayoutToRootNodes(linearNodes);
+            const layoutConnections = this.buildLayoutConnections(linearNodes);
+            this.applyAutoLayoutToRootNodes(linearNodes, layoutConnections);
         }
 
         linearNodes.sort((a, b) => {

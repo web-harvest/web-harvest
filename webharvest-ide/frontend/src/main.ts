@@ -97,10 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`[main.ts] autoLayout(${type}) called`);
                 appInstance.autoLayout(type);
             },
-            toggleGrid: () => {
-                console.log('[main.ts] toggleGrid called');
-                appInstance.toggleGrid();
-            },
             toggleMinimap: () => {
                 console.log('[main.ts] toggleMinimap called');
                 appInstance.toggleMinimap();
