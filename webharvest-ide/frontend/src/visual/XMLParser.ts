@@ -5,6 +5,7 @@
 
 import type { VisualNode } from '../types';
 import type { PluginManager } from '../core/PluginManager';
+import { resolveLegacyMapping, type LegacyNotice } from './legacyMappings';
 
 export class XMLParser {
     private pluginManager: PluginManager | null = null;
@@ -12,6 +13,7 @@ export class XMLParser {
     private readonly DEFAULT_Y = 50;
     private readonly DEFAULT_SPACING = 150;
     private readonly NESTED_SPACING = 30;
+    private legacyNotices: LegacyNotice[] = [];
 
     constructor(pluginManager?: PluginManager | null) {
         this.pluginManager = pluginManager || null;
@@ -31,6 +33,8 @@ export class XMLParser {
         if (!xml || xml.trim() === '') {
             throw new Error('XML string cannot be empty');
         }
+
+        this.legacyNotices = [];
 
         // Parse XML using DOM Parser
         const parser = new DOMParser();
@@ -71,7 +75,7 @@ export class XMLParser {
         if (!element.tagName) {
             return null;
         }
-
+        let tagName = element.tagName.toLowerCase();
         // Extract attributes
         const attributes: Record<string, string> = {};
         let dimensions: { width: number; height: number } | undefined = undefined;
@@ -93,6 +97,17 @@ export class XMLParser {
                 // Regular attributes
                 attributes[attr.name] = attr.value;
             }
+        }
+
+        const legacyRule = resolveLegacyMapping(tagName);
+        if (legacyRule) {
+            legacyRule.transform?.({ attributes, element });
+            this.legacyNotices.push({
+                legacyTag: tagName,
+                replacement: legacyRule.replacement,
+                message: legacyRule.note
+            });
+            tagName = legacyRule.replacement;
         }
 
         // Extract body (text content or CDATA)
@@ -136,7 +151,7 @@ export class XMLParser {
 
         const node: VisualNode = {
             id: this.generateId(),
-            type: element.tagName.toLowerCase(),
+            type: tagName,
             attributes,
             body,
             children,
@@ -236,6 +251,10 @@ export class XMLParser {
             }
         }
         return { width: 250, height: 100 };
+    }
+
+    getLegacyNotices(): LegacyNotice[] {
+        return [...this.legacyNotices];
     }
 }
 

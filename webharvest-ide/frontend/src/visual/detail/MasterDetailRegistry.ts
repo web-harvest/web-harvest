@@ -2,7 +2,8 @@ import type {
     VisualNode,
     Plugin,
     PluginDetailSectionHint,
-    AttributeDefinition
+    AttributeDefinition,
+    MasterDetailConstraint
 } from '../../types';
 import type { PluginManager } from '../../core/PluginManager';
 
@@ -21,6 +22,8 @@ export interface DetailSectionDefinition {
     readonly primaryAttributeDescription?: string;
     readonly secondaryAttributeDescription?: string;
     readonly attributeDefinitions: AttributeDefinition[];
+    readonly maxOccurs: number; // -1 = unlimited
+    readonly minOccurs: number;
 }
 
 export interface DetailSummary {
@@ -94,6 +97,13 @@ export class MasterDetailRegistry {
             return [];
         }
 
+        // Get constraints from metadata annotations
+        const constraints = this.getConstraintsForMaster(pluginType);
+        const constraintsMap = new Map<string, MasterDetailConstraint>();
+        constraints.forEach(constraint => {
+            constraintsMap.set(constraint.detailType, constraint);
+        });
+
         const candidateTypes = collectAllowedDetailTypes(plugin);
         const uiOverrides = buildUiOverrides(plugin.ui?.detailSections);
         const sections: DetailSectionDefinition[] = [];
@@ -108,7 +118,8 @@ export class MasterDetailRegistry {
                 return;
             }
 
-            const definition = this.buildSectionDefinition(childPlugin, uiOverrides.get(childType));
+            const constraint = constraintsMap.get(childType);
+            const definition = this.buildSectionDefinition(childPlugin, uiOverrides.get(childType), constraint);
             sections.push(definition);
             this.definitionByType.set(definition.detailType, definition);
         });
@@ -117,6 +128,18 @@ export class MasterDetailRegistry {
 
         this.configCache.set(pluginType, sections);
         return sections;
+    }
+
+    /**
+     * Get master/detail constraints for a master plugin type.
+     * Returns constraints defined via @MasterDetailConstraint annotations.
+     */
+    getConstraintsForMaster(masterType: string): MasterDetailConstraint[] {
+        const plugin = this.pluginManager.findPlugin(masterType);
+        if (!plugin || !plugin.masterDetailConstraints) {
+            return [];
+        }
+        return plugin.masterDetailConstraints;
     }
 
     createDetailNode(detailType: string): VisualNode | null {
@@ -221,7 +244,11 @@ export class MasterDetailRegistry {
         return definition;
     }
 
-    private buildSectionDefinition(childPlugin: Plugin, uiOverride?: DetailSectionOverride): DetailSectionDefinition {
+    private buildSectionDefinition(
+        childPlugin: Plugin,
+        uiOverride?: DetailSectionOverride,
+        constraint?: MasterDetailConstraint
+    ): DetailSectionDefinition {
         const detailType = childPlugin.id;
         const override = {
             ...DETAIL_OVERRIDES[detailType],
@@ -245,11 +272,19 @@ export class MasterDetailRegistry {
         const primaryMeta = attributeDefinitions.find(attr => attr.name === primaryAttribute);
         const secondaryMeta = attributeDefinitions.find(attr => attr.name === secondaryAttribute);
 
+        // Use constraint values if available, otherwise defaults
+        const maxOccurs = constraint?.maxOccurs ?? -1; // -1 = unlimited
+        const minOccurs = constraint?.minOccurs ?? 0;
+        
+        // Override section title and add label from constraint if provided
+        const finalSectionTitle = constraint?.sectionTitle ?? sectionTitle;
+        const finalAddLabel = constraint?.addLabel ?? addLabel;
+
         return {
             detailType,
             childPlugin,
-            sectionTitle,
-            addLabel,
+            sectionTitle: finalSectionTitle,
+            addLabel: finalAddLabel,
             emptyLabel,
             primaryAttribute,
             secondaryAttribute,
@@ -259,7 +294,9 @@ export class MasterDetailRegistry {
             secondaryAttributeLabel: secondaryMeta?.name ? formatAttributeLabel(secondaryMeta.name) : undefined,
             primaryAttributeDescription: primaryMeta?.description,
             secondaryAttributeDescription: secondaryMeta?.description,
-            attributeDefinitions
+            attributeDefinitions,
+            maxOccurs,
+            minOccurs
         };
     }
 }

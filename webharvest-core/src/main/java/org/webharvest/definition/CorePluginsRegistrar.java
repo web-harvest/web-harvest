@@ -38,8 +38,8 @@ public class CorePluginsRegistrar {
         
         // Manual registration of all core plugins
         // v2.2.x: registerMapping no longer requires Processor class
-        // registry.registerMapping(null, CallPlugin.class, "call"); // TODO: Create CallPlugin
-        // registry.registerMapping(null, CallParamPlugin.class, "call-param"); // TODO: Create CallParamPlugin
+        registry.registerMapping(null, CallPlugin.class, "call");
+        registry.registerMapping(null, CallParamPlugin.class, "call-param");
         registry.registerMapping(null, CasePlugin.class, "case");
         registry.registerMapping(null, CatchPlugin.class, "catch");
         registry.registerMapping(null, ConstantPlugin.class, "constant");
@@ -48,6 +48,7 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, EmptyPlugin.class, "empty");
         registry.registerMapping(null, ExitPlugin.class, "exit");
         registry.registerMapping(null, FilePlugin.class, "file");
+        registry.registerMapping(null, FunctionPlugin.class, "function");
         registry.registerMapping(null, GetVarPlugin.class, "get");
         registry.registerMapping(null, HtmlToXmlPlugin.class, "html-to-xml");
         registry.registerMapping(null, HttpPlugin.class, "http");
@@ -63,6 +64,10 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, RegexpSourcePlugin.class, "regexp-source");
         registry.registerMapping(null, ReturnPlugin.class, "return");
         registry.registerMapping(null, ScriptPlugin.class, "script");
+        registry.registerMapping(null, ListPlugin.class, "list");
+        registry.registerMapping(null, LogPlugin.class, "log");
+        registry.registerMapping(null, ValueOfPlugin.class, "value-of");
+        registry.registerMapping(null, XMLPlugin.class, "xml");
         // SetVarPlugin removed - use DefPlugin instead
         registry.registerMapping(null, SleepPlugin.class, "sleep");
         registry.registerMapping(null, StylesheetPlugin.class, "stylesheet");
@@ -79,7 +84,7 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, XQParamPlugin.class, "xq-param");
         registry.registerMapping(null, XsltPlugin.class, "xslt");
         
-        LOG.info("Registered 36 core plugins (legacy var/set-var removed - use def instead)");
+        LOG.info("Registered 43 core plugins (legacy var/set-var removed - use def instead)");
         initialized = true;
     }
     

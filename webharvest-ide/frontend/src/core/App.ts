@@ -18,6 +18,7 @@ import { VisualDesigner } from '../visual/VisualDesigner';
 import { PropertyPanel } from '../visual/PropertyPanel';
 import { PluginPalette } from '../visual/PluginPalette';
 import { XMLParser } from '../visual/XMLParser';
+import type { LegacyNotice } from '../visual/legacyMappings';
 import { XMLGenerator } from '../visual/XMLGenerator';
 import type { ViewMode } from '../types';
 import { RunWorkflowPanel } from '../visual/RunWorkflowPanel';
@@ -735,6 +736,20 @@ export class App {
         URL.revokeObjectURL(url);
     }
 
+    private reportLegacyNotices(notices: LegacyNotice[]): void {
+        if (!notices || notices.length === 0) {
+            return;
+        }
+
+        notices.forEach((notice) => {
+            const suffix = notice.message ? ` ${notice.message}` : '';
+            this.logsPanel.addLog(
+                'warning',
+                `Converted legacy <${notice.legacyTag}> → <${notice.replacement}>.${suffix}`
+            );
+        });
+    }
+
     /**
      * Sync visual nodes to XML (real-time)
      */
@@ -776,6 +791,7 @@ export class App {
 
             try {
                 const nodes = this.xmlParser.parse(tab.content);
+                this.reportLegacyNotices(this.xmlParser.getLegacyNotices());
                 this.visualDesigner.loadNodes(nodes);
                 console.log('✅ Switched to Visual mode');
             } catch (error) {
@@ -1183,6 +1199,7 @@ export class App {
 
                 try {
                     const nodes = this.xmlParser.parse(content);
+                    this.reportLegacyNotices(this.xmlParser.getLegacyNotices());
                     const loaded = await this.visualDesigner.loadNodesWithPrompt(nodes);
 
                     if (!loaded) {
@@ -1473,6 +1490,7 @@ export class App {
                     if (xml) {
                         try {
                             const nodes = this.xmlParser.parse(xml);
+                            this.reportLegacyNotices(this.xmlParser.getLegacyNotices());
                             this.visualDesigner.loadNodes(nodes);
                             console.log('[App] Visual canvas updated with new tab content');
                         } catch (error) {

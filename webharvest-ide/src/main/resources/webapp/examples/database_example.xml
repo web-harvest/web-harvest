@@ -1,112 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    Web-Harvest Database Module - Named Connections Example
-    
-    This example demonstrates the new ConnectionPlugin feature that allows
-    defining multiple named database connections with connection pooling.
-    
-    Benefits:
-    - Define connection once, use many times
-    - Automatic connection pooling
-    - Support for multiple databases simultaneously
-    - Clean and maintainable configuration
+    Modernized "database" example that simulates queries using core plugins only.
+    We mock connection metadata and result-sets using JSON + json-to-xml so
+    the configuration remains portable without legacy db plugins.
 -->
-<config xmlns="http://org.webharvest/schema/2.1/core"
-        xmlns:db="http://org.webharvest/schema/2.1/database">
+<config xmlns="http://org.webharvest/schema/2.1/core">
     
-    <!-- ============================================ -->
-    <!-- PART 1: Define Named Connections             -->
-    <!-- ============================================ -->
-    
-    <!-- Main production database -->
-    <db:connection id="mainDB" 
-                   driver="org.postgresql.Driver"
-                   url="jdbc:postgresql://localhost:5432/production"
-                   username="prod_user"
-                   password="prod_password"
-                   poolSize="20"/>
-    
-    <!-- Analytics/Reporting database -->
-    <db:connection id="analyticsDB"
-                   driver="com.mysql.jdbc.Driver"
-                   url="jdbc:mysql://analytics-server:3306/analytics"
-                   username="analytics_user"
-                   password="analytics_pass"
-                   poolSize="10"/>
-    
-    <!-- Temporary/Scratch database -->
-    <db:connection id="scratchDB"
-                   driver="org.h2.Driver"
-                   url="jdbc:h2:mem:scratch"
-                   username="sa"
-                   password=""
-                   poolSize="5"/>
-    
-    
-    <!-- ============================================ -->
-    <!-- PART 2: Use Named Connections                -->
-    <!-- ============================================ -->
-    
-    <!-- Query from main database -->
-    <def var="users">
-        <db:database connection="mainDB" 
-                     sql="SELECT id, name, email FROM users WHERE active = true"/>
+    <!-- Simulated connection catalog -->
+    <def var="connectionCatalog">
+        <template><![CDATA[
+        {
+          "connections": [
+            {"id":"mainDB","driver":"org.postgresql.Driver","url":"jdbc:postgresql://localhost:5432/production"},
+            {"id":"analyticsDB","driver":"com.mysql.cj.jdbc.Driver","url":"jdbc:mysql://analytics:3306/analytics"},
+            {"id":"scratchDB","driver":"org.h2.Driver","url":"jdbc:h2:mem:scratch"}
+          ]
+        }
+        ]]></template>
     </def>
     
-    <!-- Insert into analytics -->
-    <db:database connection="analyticsDB" 
-                 sql="INSERT INTO daily_stats (date, user_count, value) 
-                      VALUES (CURRENT_DATE, 1000, 5000)"/>
-    
-    <!-- Use scratch database for temporary calculations -->
-    <db:database connection="scratchDB" 
-                 sql="CREATE TABLE temp_data (id INT, value VARCHAR(100))"/>
-    
-    <db:database connection="scratchDB">
-        INSERT INTO temp_data (id, value)
-        VALUES (1, 'test'), (2, 'data'), (3, 'example')
-    </db:database>
-    
-    <def var="temp_results">
-        <db:database connection="scratchDB" 
-                     sql="SELECT * FROM temp_data ORDER BY id"/>
+    <def var="connectionsXml">
+        <json-to-xml tag="database_connections">
+            <get var="connectionCatalog"/>
+        </json-to-xml>
     </def>
     
-    <!-- ============================================ -->
-    <!-- PART 3: Backward Compatibility              -->
-    <!-- ============================================ -->
+    <file path="database/connections.xml" action="write">
+        <get var="connectionsXml"/>
+    </file>
     
-    <!-- Old style - inline connection (still works!) -->
-    <def var="simple_query">
-        <db:database driver="org.h2.Driver"
-                     url="jdbc:h2:mem:legacy"
-                     username="sa"
-                     password=""
-                     sql="SELECT 1 AS result"/>
+    <!-- Simulated query payload -->
+    <def var="queryResultJson">
+        <template><![CDATA[
+        {
+          "rows": [
+            {"id":1,"name":"Alice","email":"alice@example.com","active":true},
+            {"id":2,"name":"Bob","email":"bob@example.com","active":true},
+            {"id":3,"name":"Charlie","email":"charlie@example.com","active":false}
+          ]
+        }
+        ]]></template>
     </def>
     
+    <def var="queryResults">
+        <json-to-xml tag="database_results">
+            <get var="queryResultJson"/>
+        </json-to-xml>
+    </def>
     
-    <!-- ============================================ -->
-    <!-- PART 4: Complex Example with Variables      -->
-    <!-- ============================================ -->
+    <!-- Basic analytics over the mocked result-set -->
+    <def var="analyticsSummary">
+        <xquery>
+            <xq-param name="rows">
+                <get var="queryResults"/>
+            </xq-param>
+            <xq-expression><![CDATA[
+                declare variable $rows as node() external;
+                let $total := count($rows//rows)
+                let $active := count($rows//rows[active = "true"])
+                return
+                    <summary>
+                        <total_users>{$total}</total_users>
+                        <active_users>{$active}</active_users>
+                        <inactive_users>{$total - $active}</inactive_users>
+                    </summary>
+            ]]></xq-expression>
+        </xquery>
+    </def>
     
-    <!-- Loop through users and query details from different databases -->
-    <loop items="${users}" item="user">
-        <!-- Get user details from main DB -->
-        <def var="user_details">
-            <db:database connection="mainDB" 
-                         sql="SELECT * FROM user_profile WHERE user_id = ${user.id}"/>
-        </def>
-        
-        <!-- Record analytics -->
-        <db:database connection="analyticsDB" 
-                     sql="INSERT INTO user_access_log (user_id, timestamp) 
-                          VALUES (${user.id}, NOW())"/>
-    </loop>
-    
-    <!-- Output results -->
-    <var-debug name="users"/>
-    <var-debug name="temp_results"/>
-    
+    <file path="database/query_results.xml" action="write">
+        <template><![CDATA[
+        <database_report generated="${sys.datetime("yyyy-MM-dd'T'HH:mm:ss")}">
+            <connections>
+                <get var="connectionsXml"/>
+            </connections>
+            <result_set>
+                <get var="queryResults"/>
+            </result_set>
+            <analytics>
+                <get var="analyticsSummary"/>
+            </analytics>
+        </database_report>
+        ]]></template>
+    </file>
 </config>
 

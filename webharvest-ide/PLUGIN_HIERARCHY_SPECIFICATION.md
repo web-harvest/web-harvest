@@ -110,6 +110,53 @@ These plugins can appear directly under `<config>`:
 - **Focus mode behavior:** When entering a master/detail container via "Focus on this container", detail nodes are not rendered as cards. Instead, a `focused-detail-summary` overlay displays all detail items. Normal plugins (non-detail) can still be added via drag & drop. Process markers (Start/Stop) are rendered with interactive labels and can be dragged, maintaining visual parity with root level.
 - **When adding new master/detail pairs:** Update the registry (or plugin metadata) instead of bypassing this mechanism. Ensure `MasterDetailRegistry.getSections()` correctly identifies the detail types, and that `filterNodesForConnections()` filters them from connection planning.
 
+### Master/Detail Constraints with @MasterDetailConstraint *(v2.3.1)*
+
+For plugins with special semantic relationships (e.g., `if/else`, `try/catch`, `case/else`), cardinality constraints can be defined using the `@MasterDetailConstraint` annotation on the master plugin class.
+
+**Annotation Usage:**
+
+```java
+@CorePlugin(elementName = "if", category = "Control")
+@MasterDetailConstraint(
+    detailType = "else",
+    maxOccurs = 1,      // Maximum 1 else allowed
+    minOccurs = 0,      // Optional (0 = optional, 1+ = required)
+    sectionTitle = "Else Branch",
+    addLabel = "Add Else"
+)
+public class IfPlugin extends AbstractPlugin {
+    // ...
+}
+```
+
+**Constraint Parameters:**
+
+- `detailType`: Element name of the detail plugin (e.g., "else", "catch")
+- `maxOccurs`: Maximum occurrences (-1 = unlimited, 0 = not allowed, 1+ = specific limit)
+- `minOccurs`: Minimum occurrences (0 = optional, 1+ = required)
+- `sectionTitle`: UI section title (optional, auto-generated if not provided)
+- `addLabel`: "Add" button label (optional, auto-generated if not provided)
+
+**Current Implementations:**
+
+- `IfPlugin` → `else` (maxOccurs=1, minOccurs=0)
+- `TryPlugin` → `catch` (maxOccurs=1, minOccurs=0)
+- `CasePlugin` → `else` (maxOccurs=1, minOccurs=0)
+
+**UI Behavior:**
+
+- **maxOccurs validation:** The "Add" button is automatically disabled when `currentCount >= maxOccurs`
+- **minOccurs validation:** A warning message is displayed when `currentCount < minOccurs`
+- **Automatic rendering:** `PropertyPanel` automatically detects constraints and renders `MasterDetailEditor` without plugin-specific code
+
+**Benefits:**
+
+- **Declarative:** Constraints defined at plugin class level, not in UI code
+- **Automatic:** Property panel respects constraints without plugin-specific logic
+- **Extensible:** Easy to add constraints for new master/detail pairs
+- **Type-safe:** Compile-time checking of annotation parameters
+
 ---
 
 ### Category 3: Universal Plugins (Can appear anywhere)

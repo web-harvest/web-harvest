@@ -1265,7 +1265,9 @@ export class VisualDesigner {
                 secondaryAttributeLabel: secondaryAttribute ? this.formatAttributeLabel(secondaryAttribute) : undefined,
                 primaryAttributeDescription: this.getAttributeDescription(attributeDefinitions, primaryAttribute),
                 secondaryAttributeDescription: this.getAttributeDescription(attributeDefinitions, secondaryAttribute),
-                attributeDefinitions
+                attributeDefinitions,
+                maxOccurs: -1, // unlimited by default for fallback
+                minOccurs: 0  // optional by default
             });
         });
 
@@ -2183,8 +2185,15 @@ export class VisualDesigner {
     ): [AnchorSide, AnchorSide] {
         const deltaX = to.bounds.centerX - from.bounds.centerX;
         const deltaY = to.bounds.centerY - from.bounds.centerY;
-        const verticalBias = type === 'sequential' ? 0.75 : 1;
-        const preferVertical = Math.abs(deltaY) >= Math.abs(deltaX) * verticalBias;
+        // For sequential connections, choose horizontal when horizontal delta is at least as large as vertical.
+        // For other types keep the original tie-breaker that slightly favors vertical.
+        // If centers are aligned horizontally, force vertical routing
+        const alignedHorizontally = Math.abs(deltaX) <= 1;
+        const preferVertical = alignedHorizontally
+            ? true
+            : (type === 'sequential'
+                ? Math.abs(deltaY) > Math.abs(deltaX)
+                : Math.abs(deltaY) >= Math.abs(deltaX));
 
         let fromSide: AnchorSide;
         let toSide: AnchorSide;
@@ -6083,6 +6092,10 @@ export class VisualDesigner {
         const added = this.addChildToContainer(parentId, detailNode);
         if (added) {
             this.selectNode(detailNode.id);
+            // Re-render to immediately reflect the new branch/card in the UI
+            this.render();
+            // Open properties panel for quick configuration
+            this.emit('sidebarPanelRequested', 'properties');
         }
     }
 
@@ -6090,6 +6103,8 @@ export class VisualDesigner {
         const removed = this.removeNode(detailId);
         if (removed) {
             this.selectNode(parentId);
+            // Re-render to update the summary and children lists
+            this.render();
         }
     }
 
@@ -6100,6 +6115,8 @@ export class VisualDesigner {
 
         if (moved) {
             this.selectNode(parentId);
+            // Re-render to reflect new ordering immediately
+            this.render();
         }
     }
 
@@ -6157,28 +6174,52 @@ export class VisualDesigner {
         const element = this.canvasElement.querySelector(`[data-node-id="${targetId}"]`) as HTMLElement | null;
 
         if (element) {
-            const rect = element.getBoundingClientRect();
-            const topLeft = this.viewportToCanvas(rect.left, rect.top);
-            const bottomRight = this.viewportToCanvas(rect.right, rect.bottom);
-            const width = bottomRight.x - topLeft.x;
-            const height = bottomRight.y - topLeft.y;
-            const bounds: AnchorBounds = {
-                left: topLeft.x,
-                top: topLeft.y,
-                right: bottomRight.x,
-                bottom: bottomRight.y,
-                width,
-                height,
-                centerX: topLeft.x + width / 2,
-                centerY: topLeft.y + height / 2
-            };
+            // Prefer up-to-date model coordinates if available (DOM may be stale between renders)
+            const modelNode = this.findNodeRecursive(targetId, this.nodes);
+            if (modelNode?.position) {
+                const dims = this.getNodeDimensions(modelNode);
+                const left = modelNode.position.x;
+                const top = modelNode.position.y;
+                const bounds: AnchorBounds = {
+                    left,
+                    top,
+                    right: left + dims.width,
+                    bottom: top + dims.height,
+                    width: dims.width,
+                    height: dims.height,
+                    centerX: left + dims.width / 2,
+                    centerY: top + dims.height / 2
+                };
+                return {
+                    id: targetId,
+                    type: 'node',
+                    bounds,
+                    element
+                };
+            } else {
+                const rect = element.getBoundingClientRect();
+                const topLeft = this.viewportToCanvas(rect.left, rect.top);
+                const bottomRight = this.viewportToCanvas(rect.right, rect.bottom);
+                const width = bottomRight.x - topLeft.x;
+                const height = bottomRight.y - topLeft.y;
+                const bounds: AnchorBounds = {
+                    left: topLeft.x,
+                    top: topLeft.y,
+                    right: bottomRight.x,
+                    bottom: bottomRight.y,
+                    width,
+                    height,
+                    centerX: topLeft.x + width / 2,
+                    centerY: topLeft.y + height / 2
+                };
 
-            return {
-                id: targetId,
-                type: 'node',
-                bounds,
-                element
-            };
+                return {
+                    id: targetId,
+                    type: 'node',
+                    bounds,
+                    element
+                };
+            }
         }
 
         const node = this.findNodeRecursive(targetId, this.nodes);

@@ -64,6 +64,13 @@ public class PluginMetadataServlet extends HttpServlet {
     private static final Gson GSON = new GsonBuilder()
         .setPrettyPrinting()
         .create();
+    private static final String VISUAL_API_VERSION = "2.0";
+    private static final List<String> VISUAL_CAPABILITIES = List.of(
+        "schema-driven-fields",
+        "ui-tools",
+        "master-detail-constraints",
+        "legacy-compatibility"
+    );
     
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
@@ -218,33 +225,38 @@ public class PluginMetadataServlet extends HttpServlet {
      * Build metadata map from PluginDescriptor
      */
     private Map<String, Object> buildMetadataFromDescriptor(PluginDescriptor desc) {
-        Map<String, Object> visual = new HashMap<>();
+        Map<String, Object> plugin = new HashMap<>();
         
         // Basic fields
-        visual.put("id", desc.getId());
-        visual.put("name", desc.getDisplayName());
-        visual.put("elementName", desc.getElementName());
-        visual.put("description", desc.getDescription());
-        visual.put("category", desc.getCategory());
+        plugin.put("id", desc.getId());
+        plugin.put("name", desc.getDisplayName());
+        plugin.put("elementName", desc.getElementName());
+        plugin.put("description", desc.getDescription());
+        plugin.put("category", desc.getCategory());
         
         // Documentation
         PluginDocumentation doc = desc.getDocumentation();
-        if (doc != null) {
-            visual.put("helpUrl", doc.getUrl());
-        } else {
-            visual.put("helpUrl", getHelpUrl(desc.getId()));
-        }
+        String helpUrl = doc != null && doc.getUrl() != null ? doc.getUrl() : getHelpUrl(desc.getId());
+        plugin.put("helpUrl", helpUrl);
         
         // UI Hints
+        String icon;
+        List<String> tags;
+        String paletteGroup = null;
         PluginUIHints ui = desc.getUiHints();
         if (ui != null) {
-            visual.put("icon", ui.getIcon());
-            visual.put("tags", ui.getTags());
-            visual.put("paletteGroup", ui.getPaletteGroup());
+            icon = ui.getIcon() != null ? ui.getIcon() : getPluginIcon(desc.getCategory(), desc.getId());
+            tags = ui.getTags() != null && !ui.getTags().isEmpty()
+                    ? new ArrayList<>(ui.getTags())
+                    : Arrays.asList(desc.getId(), safeCategorySlug(desc.getCategory()));
+            paletteGroup = ui.getPaletteGroup();
+            plugin.put("paletteGroup", paletteGroup);
         } else {
-            visual.put("icon", getPluginIcon(desc.getCategory(), desc.getId()));
-            visual.put("tags", Arrays.asList(desc.getId(), desc.getCategory().toLowerCase()));
+            icon = getPluginIcon(desc.getCategory(), desc.getId());
+            tags = Arrays.asList(desc.getId(), safeCategorySlug(desc.getCategory()));
         }
+        plugin.put("icon", icon);
+        plugin.put("tags", tags);
         
         // Semantics
         PluginSemantics semantics = desc.getSemantics();
@@ -258,22 +270,39 @@ public class PluginMetadataServlet extends HttpServlet {
             semanticsMap.put("canAppearAtRoot", semantics.canAppearAtRoot());
             semanticsMap.put("allowedChildTypes", semantics.getAllowedChildTypes());
             semanticsMap.put("requiredParentTypes", semantics.getRequiredParentTypes());
-            visual.put("semantics", semanticsMap);
+            plugin.put("semantics", semanticsMap);
         }
         
         // Dependencies
         if (desc.getDependencies() != null && !desc.getDependencies().isEmpty()) {
-            visual.put("dependencies", desc.getDependencies());
+            plugin.put("dependencies", desc.getDependencies());
         }
         
         // Extensions
+        Map<String, Object> uiExtensions = null;
+        List<Map<String, Object>> masterDetailConstraints = null;
         if (desc.getExtensions() != null && !desc.getExtensions().isEmpty()) {
-            visual.put("extensions", desc.getExtensions());
+            plugin.put("extensions", desc.getExtensions());
+            
+            Object uiBlock = desc.getExtensions().get("ui");
+            if (uiBlock instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> uiMap = (Map<String, Object>) uiBlock;
+                uiExtensions = uiMap;
+            }
+            
+            // Extract master/detail constraints from extensions for direct access
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> constraints = (List<Map<String, Object>>) desc.getExtensions().get("masterDetailConstraints");
+            if (constraints != null && !constraints.isEmpty()) {
+                plugin.put("masterDetailConstraints", constraints);
+                masterDetailConstraints = constraints;
+            }
         }
         
         // Runtime schema (for backward compatibility)
         Map<String, Object> schema = extractSchemaFromDescriptor(desc);
-        visual.put("schema", schema);
+        plugin.put("schema", schema);
         
         // Try to get VisualPluginMetadata from runtime plugin class
         try {
@@ -284,12 +313,67 @@ public class PluginMetadataServlet extends HttpServlet {
             
             if (metadata instanceof VisualPluginMetadata) {
                 VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
-                addVisualMetadataFields(visual, visualMetadata);
+                addVisualMetadataFields(plugin, visualMetadata);
             }
         } catch (Exception e) {
             LOG.debug("Failed to load VisualPluginMetadata for {}: {}", desc.getId(), e.getMessage());
         }
         
+        plugin.put("visual", buildVisualEnvelope(
+                desc.getId(),
+                desc.getElementName(),
+                desc.getDisplayName(),
+                desc.getCategory(),
+                desc.getClassName(),
+                icon,
+                paletteGroup,
+                tags,
+                helpUrl,
+                uiExtensions,
+                masterDetailConstraints));
+        
+        return plugin;
+    }
+
+    private Map<String, Object> buildVisualEnvelope(
+            String id,
+            String elementName,
+            String displayName,
+            String category,
+            String className,
+            String icon,
+            String paletteGroup,
+            List<String> tags,
+            String helpUrl,
+            Map<String, Object> uiExtensions,
+            List<Map<String, Object>> masterDetailConstraints) {
+        Map<String, Object> visual = new LinkedHashMap<>();
+        visual.put("apiVersion", VISUAL_API_VERSION);
+        visual.put("capabilities", VISUAL_CAPABILITIES);
+        visual.put("id", id);
+        visual.put("elementName", elementName);
+        visual.put("displayName", displayName);
+        visual.put("category", category);
+        visual.put("className", className);
+        visual.put("schemaVersion", PluginMetadataCatalog.getSchemaVersion());
+        if (helpUrl != null) {
+            visual.put("helpUrl", helpUrl);
+        }
+        if (icon != null) {
+            visual.put("icon", icon);
+        }
+        if (paletteGroup != null) {
+            visual.put("paletteGroup", paletteGroup);
+        }
+        if (tags != null && !tags.isEmpty()) {
+            visual.put("tags", tags);
+        }
+        if (uiExtensions != null && !uiExtensions.isEmpty()) {
+            visual.put("ui", uiExtensions);
+        }
+        if (masterDetailConstraints != null && !masterDetailConstraints.isEmpty()) {
+            visual.put("masterDetailConstraints", masterDetailConstraints);
+        }
         return visual;
     }
     
@@ -371,7 +455,7 @@ public class PluginMetadataServlet extends HttpServlet {
     private Map<String, Object> createMetadataFromPluginClass(
             String elementName, Class<? extends org.webharvest.plugin.Plugin> pluginClass) {
         
-        Map<String, Object> visual = new HashMap<>();
+        Map<String, Object> plugin = new HashMap<>();
         
         // Get category from plugin metadata (not inferred!)
         String category = "Core";
@@ -414,29 +498,45 @@ public class PluginMetadataServlet extends HttpServlet {
                 // 3. Add VisualPluginMetadata fields if available
                 if (metadata instanceof VisualPluginMetadata) {
                     VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
-                    addVisualMetadataFields(visual, visualMetadata);
+                    addVisualMetadataFields(plugin, visualMetadata);
                 }
             }
         } catch (Exception e) {
             LOG.warn("Failed to read plugin metadata for {}: {}", elementName, e.getMessage());
         }
         
-        visual.put("id", elementName);
-        visual.put("name", formatPluginName(elementName));
-        visual.put("elementName", elementName);
-        visual.put("description", description);
-        visual.put("category", category); // ← From metadata!
-        visual.put("icon", getPluginIcon("", elementName));
-        visual.put("version", version);
-        visual.put("author", author);
-        visual.put("tags", Arrays.asList(elementName, category.toLowerCase()));
-        visual.put("helpUrl", getHelpUrl(elementName));
+        String helpUrl = getHelpUrl(elementName);
+        String icon = getPluginIcon("", elementName);
+        List<String> tags = Arrays.asList(elementName, safeCategorySlug(category));
+        
+        plugin.put("id", elementName);
+        plugin.put("name", formatPluginName(elementName));
+        plugin.put("elementName", elementName);
+        plugin.put("description", description);
+        plugin.put("category", category); // ← From metadata!
+        plugin.put("icon", icon);
+        plugin.put("version", version);
+        plugin.put("author", author);
+        plugin.put("tags", tags);
+        plugin.put("helpUrl", helpUrl);
         
         // Extract REAL schema from plugin instance
         Map<String, Object> schema = extractRealPluginSchema(pluginClass);
-        visual.put("schema", schema);
+        plugin.put("schema", schema);
+        plugin.put("visual", buildVisualEnvelope(
+                elementName,
+                elementName,
+                formatPluginName(elementName),
+                category,
+                pluginClass.getName(),
+                icon,
+                null,
+                tags,
+                helpUrl,
+                null,
+                null));
         
-        return visual;
+        return plugin;
     }
     
     /**
@@ -540,6 +640,13 @@ public class PluginMetadataServlet extends HttpServlet {
         return schema;
     }
     
+    private String safeCategorySlug(String category) {
+        if (category == null || category.isBlank()) {
+            return "general";
+        }
+        return category.trim().toLowerCase(Locale.ROOT);
+    }
+
     /**
      * Format element name to readable name
      */

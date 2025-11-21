@@ -25,59 +25,55 @@
             <list>
                 <get var="unvisited"/>
             </list>
-            <body>
-                <empty>
-                    <def var="content">
-                        <html-to-xml>
-                            <http url="${currUrl}"/>
-                        </html-to-xml>
-                    </def>
+            <empty>
+                <def var="content">
+                    <html-to-xml>
+                        <http url="${currUrl}"/>
+                    </html-to-xml>
+                </def>
 
-                    <def var="currentFullUrl">
-                        <template>${sys.fullUrl(home, currUrl)}</template>
-                    </def>
+                <def var="currentFullUrl">
+                    <template>${sys.fullUrl(home, currUrl)}</template>
+                </def>
 
-                    <!--  saves downloaded page -->
-                    <file action="write" path='spider/${currentFullUrl.replaceAll("http://|https://|file://", "")}.html'>
-                        <get var="content"/>
-                    </file>
+                <!--  saves downloaded page -->
+                <file action="write" path='spider/${currentFullUrl.replaceAll("http://|https://|file://", "")}.html'>
+                    <get var="content"/>
+                </file>
 
-                    <!-- adds current URL to the list of visited -->
-                    <def var="visitedUpdate">
+                <!-- adds current URL to the list of visited -->
+                <def var="visitedUpdate">
+                    <script><![CDATA[
+                        print("Visiting: " + currUrl);
+                    ]]></script>
+                </def>
+                
+                <def var="newLinks">
+                    <list></list>
+                </def>
+
+                <!-- loop through all collected links on the downloaded page -->
+                <loop item="currLink">
+                    <list>
+                        <xpath expression="//a/@href">
+                            <get var="content"/>
+                        </xpath>
+                    </list>
+                    <def var="linkCheck">
                         <script><![CDATA[
-                            print("Visiting: " + currUrl);
+                            /* checks if specified URL is valid for download */
+                            boolean isValidUrl(String url) {
+                                String urlSmall = url.toLowerCase();
+                                return urlSmall.startsWith("http://web-harvest.sourceforge.net/") && urlSmall.endsWith(".php");
+                            }
+                            String fullLink = sys.fullUrl(home, currLink);
+                            if ( isValidUrl(fullLink.toString()) ) {
+                                print("Found valid link: " + fullLink);
+                            }
                         ]]></script>
                     </def>
-                    
-                    <def var="newLinks">
-                        <list></list>
-                    </def>
-
-                    <!-- loop through all collected links on the downloaded page -->
-                    <loop item="currLink">
-                        <list>
-                            <xpath expression="//a/@href">
-                                <get var="content"/>
-                            </xpath>
-                        </list>
-                        <body>
-                            <def var="linkCheck">
-                                <script><![CDATA[
-                                    /* checks if specified URL is valid for download */
-                                    boolean isValidUrl(String url) {
-                                        String urlSmall = url.toLowerCase();
-                                        return urlSmall.startsWith("http://web-harvest.sourceforge.net/") && urlSmall.endsWith(".php");
-                                    }
-                                    String fullLink = sys.fullUrl(home, currLink);
-                                    if ( isValidUrl(fullLink.toString()) ) {
-                                        print("Found valid link: " + fullLink);
-                                    }
-                                ]]></script>
-                            </def>
-                        </body>
-                    </loop>
-                </empty>
-            </body>
+                </loop>
+            </empty>
         </loop>
 
         <!-- unvisited link are now all the collected new links from downloaded pages  -->

@@ -99,14 +99,12 @@
     
     <!-- Generate error handling example -->
     <try>
-        <body>
-            <!-- Simulate API call that might fail -->
-            <def var="riskyApiCall">
-                <http url="${baseUrl}/status/500">
-                    <http-header name="Authorization">Bearer ${apiKey}</http-header>
-                </http>
-            </def>
-        </body>
+        <!-- Simulate API call that might fail -->
+        <def var="riskyApiCall">
+            <http url="${baseUrl}/status/500">
+                <http-header name="Authorization">Bearer ${apiKey}</http-header>
+            </http>
+        </def>
         <catch>
             <file path="api_error_log.txt" action="write">
                 <template>

@@ -46,6 +46,7 @@ import org.webharvest.plugin.AccessibilityMetadata;
 import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
+import org.webharvest.plugin.annotations.MasterDetailConstraint;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -218,6 +219,13 @@ import org.slf4j.LoggerFactory;
     description = "If plugin that provides conditional processing",
     version = "2.1.0",
     category = "Control"
+)
+@MasterDetailConstraint(
+    detailType = "else",
+    maxOccurs = 1,
+    minOccurs = 0,
+    sectionTitle = "Else Branch",
+    addLabel = "Add Else"
 )
 public class IfPlugin extends AbstractPlugin {
     

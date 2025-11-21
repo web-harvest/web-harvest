@@ -20,12 +20,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.webharvest.plugin.semantic.PluginNodeRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.PluginConfigurationSchema;
+import org.webharvest.plugin.annotations.ExpressionCapable;
+import org.webharvest.plugin.annotations.MasterDetailConstraint;
+import org.webharvest.plugin.annotations.MasterDetailConstraints;
+import org.webharvest.plugin.annotations.UiField;
+import org.webharvest.plugin.annotations.UiTool;
+import org.webharvest.plugin.semantic.PluginNodeRole;
 import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 
 /**
@@ -257,7 +262,7 @@ public final class PluginMetadataCatalog {
         List<String> dependencies = collectDependencies(metadata, semantics);
 
         // Extract complete schema information for extensions
-        Map<String, Object> extensions = extractSchemaExtensions(metadata);
+        Map<String, Object> extensions = extractSchemaExtensions(metadata, pluginClass);
 
         return new PluginDescriptor(id, elementName, displayName, origin, pluginClass.getName(), category, description,
                 documentation, semantics, uiHints, dependencies, extensions);
@@ -267,13 +272,17 @@ public final class PluginMetadataCatalog {
      * Extracts complete schema information as extensions map.
      * Includes attribute definitions, namespace, and other schema details.
      */
-    private static Map<String, Object> extractSchemaExtensions(PluginMetadata metadata) {
+    private static Map<String, Object> extractSchemaExtensions(PluginMetadata metadata, Class<? extends Plugin> pluginClass) {
         Map<String, Object> extensions = new LinkedHashMap<>();
         
         // Extract namespace
         if (metadata.getNamespace() != null) {
             extensions.put("namespace", metadata.getNamespace());
         }
+        
+        Map<String, Map<String, Object>> attributeUiMetadata = extractAttributeUiMetadata(pluginClass);
+        mergeExpressionCapabilities(attributeUiMetadata, pluginClass);
+        List<Map<String, Object>> uiTools = extractUiTools(pluginClass);
         
         // Extract complete schema information
         PluginConfigurationSchema schema = metadata.getConfigurationSchema();
@@ -306,6 +315,12 @@ public final class PluginMetadataCatalog {
                     if (attr.getPattern() != null && !attr.getPattern().isEmpty()) {
                         attrDef.put("pattern", attr.getPattern());
                     }
+                    
+                    Map<String, Object> uiMeta = attributeUiMetadata.get(attr.getName());
+                    if (uiMeta != null && !uiMeta.isEmpty()) {
+                        attrDef.put("ui", new LinkedHashMap<>(uiMeta));
+                    }
+                    
                     attributeDefinitions.add(attrDef);
                 }
             }
@@ -346,7 +361,180 @@ public final class PluginMetadataCatalog {
             extensions.put("schema", schemaInfo);
         }
         
+        // Extract master/detail constraints from annotations
+        List<Map<String, Object>> masterDetailConstraints = extractMasterDetailConstraints(pluginClass);
+        if (!masterDetailConstraints.isEmpty()) {
+            extensions.put("masterDetailConstraints", masterDetailConstraints);
+        }
+        
+        Map<String, Object> uiMetadata = new LinkedHashMap<>();
+        if (!attributeUiMetadata.isEmpty()) {
+            Map<String, Map<String, Object>> exportedFields = attributeUiMetadata.entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            entry -> Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())),
+                            (a, b) -> a,
+                            LinkedHashMap::new));
+            uiMetadata.put("fields", Collections.unmodifiableMap(exportedFields));
+        }
+        if (!uiTools.isEmpty()) {
+            uiMetadata.put("tools", uiTools);
+        }
+        if (!uiMetadata.isEmpty()) {
+            uiMetadata.put("version", "1.0");
+            extensions.put("ui", Collections.unmodifiableMap(uiMetadata));
+        }
+        
         return Collections.unmodifiableMap(extensions);
+    }
+    
+    /**
+     * Extracts master/detail constraints from @MasterDetailConstraint annotations.
+     */
+    private static List<Map<String, Object>> extractMasterDetailConstraints(Class<? extends Plugin> pluginClass) {
+        List<Map<String, Object>> constraints = new ArrayList<>();
+        
+        // Check for single annotation
+        MasterDetailConstraint single = pluginClass.getAnnotation(MasterDetailConstraint.class);
+        if (single != null) {
+            constraints.add(buildConstraintMap(single));
+        }
+        
+        // Check for repeatable annotations container
+        MasterDetailConstraints container = pluginClass.getAnnotation(MasterDetailConstraints.class);
+        if (container != null) {
+            for (MasterDetailConstraint constraint : container.value()) {
+                constraints.add(buildConstraintMap(constraint));
+            }
+        }
+        
+        return constraints;
+    }
+    
+    /**
+     * Builds a map representation of a master/detail constraint.
+     */
+    private static Map<String, Object> buildConstraintMap(MasterDetailConstraint constraint) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("detailType", constraint.detailType());
+        map.put("maxOccurs", constraint.maxOccurs());
+        map.put("minOccurs", constraint.minOccurs());
+        
+        if (constraint.sectionTitle() != null && !constraint.sectionTitle().isEmpty()) {
+            map.put("sectionTitle", constraint.sectionTitle());
+        }
+        
+        if (constraint.addLabel() != null && !constraint.addLabel().isEmpty()) {
+            map.put("addLabel", constraint.addLabel());
+        }
+        
+        if (constraint.emptyLabel() != null && !constraint.emptyLabel().isEmpty()) {
+            map.put("emptyLabel", constraint.emptyLabel());
+        }
+        
+        if (constraint.primaryAttribute() != null && !constraint.primaryAttribute().isEmpty()) {
+            map.put("primaryAttribute", constraint.primaryAttribute());
+        }
+        
+        if (constraint.secondaryAttribute() != null && !constraint.secondaryAttribute().isEmpty()) {
+            map.put("secondaryAttribute", constraint.secondaryAttribute());
+        }
+        
+        if (constraint.usesBody()) {
+            map.put("usesBody", true);
+        }
+        
+        return map;
+    }
+
+    private static Map<String, Map<String, Object>> extractAttributeUiMetadata(Class<? extends Plugin> pluginClass) {
+        Map<String, Map<String, Object>> fields = new LinkedHashMap<>();
+        for (UiField uiField : pluginClass.getAnnotationsByType(UiField.class)) {
+            if (!hasText(uiField.attribute())) {
+                continue;
+            }
+            fields.put(uiField.attribute(), buildUiFieldMetadata(uiField));
+        }
+        return fields;
+    }
+
+    private static Map<String, Object> buildUiFieldMetadata(UiField uiField) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("fieldKind", uiField.kind().name());
+        map.put("order", uiField.order());
+        if (hasText(uiField.group())) {
+            map.put("group", uiField.group());
+        }
+        if (hasText(uiField.helperText())) {
+            map.put("helperText", uiField.helperText());
+        }
+        if (hasText(uiField.placeholder())) {
+            map.put("placeholder", uiField.placeholder());
+        }
+        if (hasText(uiField.localizationKey())) {
+            map.put("localizationKey", uiField.localizationKey());
+        }
+        if (hasText(uiField.helperTextKey())) {
+            map.put("helperTextKey", uiField.helperTextKey());
+        }
+        if (hasText(uiField.placeholderKey())) {
+            map.put("placeholderKey", uiField.placeholderKey());
+        }
+        if (hasText(uiField.format())) {
+            map.put("format", uiField.format());
+        }
+        if (uiField.minLength() >= 0) {
+            map.put("minLength", uiField.minLength());
+        }
+        if (uiField.maxLength() >= 0) {
+            map.put("maxLength", uiField.maxLength());
+        }
+        if (uiField.expressionCapable()) {
+            map.put("expressionCapable", true);
+        }
+        if (uiField.advanced()) {
+            map.put("advanced", true);
+        }
+        return map;
+    }
+
+    private static void mergeExpressionCapabilities(Map<String, Map<String, Object>> attributeUiMetadata,
+            Class<? extends Plugin> pluginClass) {
+        for (ExpressionCapable capability : pluginClass.getAnnotationsByType(ExpressionCapable.class)) {
+            if (!hasText(capability.attribute())) {
+                continue;
+            }
+            Map<String, Object> metadata = attributeUiMetadata.computeIfAbsent(capability.attribute(),
+                    key -> new LinkedHashMap<>());
+            metadata.put("expressionCapable", true);
+            if (hasText(capability.context())) {
+                metadata.put("expressionContext", capability.context());
+            }
+        }
+    }
+
+    private static List<Map<String, Object>> extractUiTools(Class<? extends Plugin> pluginClass) {
+        List<Map<String, Object>> tools = new ArrayList<>();
+        for (UiTool tool : pluginClass.getAnnotationsByType(UiTool.class)) {
+            Map<String, Object> toolMap = new LinkedHashMap<>();
+            String id = hasText(tool.id()) ? tool.id() : tool.value().getSimpleName();
+            toolMap.put("id", id);
+            toolMap.put("className", tool.value().getName());
+            toolMap.put("placement", tool.placement());
+            if (hasText(tool.label())) {
+                toolMap.put("label", tool.label());
+            } else {
+                toolMap.put("label", humanize(id));
+            }
+            if (hasText(tool.description())) {
+                toolMap.put("description", tool.description());
+            }
+            if (hasText(tool.icon())) {
+                toolMap.put("icon", tool.icon());
+            }
+            tools.add(Collections.unmodifiableMap(toolMap));
+        }
+        return tools.isEmpty() ? List.of() : List.copyOf(tools);
     }
 
     private static PluginSemantics toDescriptorSemantics(org.webharvest.plugin.semantic.PluginSemantics semantics) {
@@ -756,6 +944,10 @@ public final class PluginMetadataCatalog {
             return primary;
         }
         return secondary;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private static String humanize(String elementName) {

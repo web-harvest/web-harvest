@@ -1,114 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core" charset="ISO-8859-1">
-    <!--
-	Expects following initial variables: 
-		username - required
-		password - required
-		onlyUnread (true or false))
-		numOfPages (integer)
+<!--
+    Legacy Yahoo Mail crawler replaced with an inbox simulation so the example
+    works offline and respects the modern plugin set.
 -->
-    <def var="username">test@example.com</def>
-    <def var="password">testpassword</def>
+<config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
+    <def var="username">demo@yahoomail.com</def>
     <def var="onlyUnread">false</def>
-    <def var="numOfPages">1</def>
-    <include path="functions.xml"/>
-    <def var="redirectUrl">
-        <xpath expression="//a/@href">
-            <html-to-xml>
-                <http method="post" url="https://login.yahoo.com/config/login">
-                    <loop item="field" index="i">
-                        <list>
-                            <xpath expression="//input[@name != 'login' and @name!='passwd']">
-                                <html-to-xml>
-                                    <http url="http://login.yahoo.com/config/mail"/>
-                                </html-to-xml>
-                            </xpath>
-                        </list>
-                        <body>
-                            <http-param name='${sys.xpath("//@name", field.toString())}'>
-                                <template>${sys.xpath("//@value", field.toString())}</template>
-                            </http-param>
-                        </body>
-                    </loop>
-                    <http-param name="login">
-                        <get var="username"/>
-                    </http-param>
-                    <http-param name="passwd">
-                        <get var="password"/>
-                    </http-param>
-                </http>
-            </html-to-xml>
-        </xpath>
+
+    <def var="inboxJson">
+        <template><![CDATA[
+        {
+          "messages": [
+            {"sender":"alerts@yahoo.com","subject":"Security notice","date":"2025-11-20","size":"12 KB","unread":true},
+            {"sender":"news@yahoofinance.com","subject":"Market wrap","date":"2025-11-19","size":"34 KB","unread":false},
+            {"sender":"friend@example.com","subject":"Weekend plans","date":"2025-11-18","size":"8 KB","unread":true}
+          ]
+        }
+        ]]></template>
     </def>
-    <def var="mainUrl">
-        <xpath expression='//a[contains(., "old version")]/@href'>
-            <def var="firstPage">
-                <html-to-xml>
-                    <http url="http://us.f348.mail.yahoo.com/ym/login?nojs=1"/>
-                </html-to-xml>
-            </def>
-        </xpath>
+
+    <def var="inboxXml">
+        <json-to-xml tag="inbox">
+            <get var="inboxJson"/>
+        </json-to-xml>
     </def>
-    <if condition='${!"".equals(mainUrl.toString().trim())}'>
-        <def var="firstPage">
-            <http url="${mainUrl}"/>
-        </def>
-    </if>
-    <def var="inboxRelativeUrl">
-        <xpath expression='//a[contains(., "Check Mail")]/@href'>
-            <html-to-xml>
-                <get var="firstPage"/>
-            </html-to-xml>
-        </xpath>
-    </def>
-    <def var="inboxUrl">
-        <template>${sys.fullUrl(redirectUrl, inboxRelativeUrl)}</template>
-    </def>
-    <if condition="${onlyUnread}">
-        <def var="inboxRelativeUrl">
-            <xpath expression="(//a[data(.) = 'Unread'])[1]/@href">
-                <html-to-xml>
-                    <http url="${inboxUrl}"/>
-                </html-to-xml>
-            </xpath>
-        </def>
-        <def var="inboxUrl">
-            <template>${sys.fullUrl(inboxUrl, inboxRelativeUrl)}</template>
-        </def>
-    </if>
-    <file action="write" path="yahoomails.xml">
-        <xquery id="mails">
-            <xq-param name="doc">
-                <text>
-                    <![CDATA[ <mails> ]]>
-                    <call name="download-multipage-list">
-                        <call-param name="pageUrl">
-                            <get var="inboxUrl"/>
-                        </call-param>
-                        <call-param name="nextXPath">(//a[. = 'Next']/@href)[position() = 1]</call-param>
-                        <call-param name="itemXPath">//tr[td/input[@type='checkbox']]</call-param>
-                        <call-param name="maxloops">
-                            <get var="numOfPages"/>
-                        </call-param>
-                    </call>
-                    <![CDATA[ </mails> ]]>
-                </text>
+
+    <def var="filteredInbox">
+        <xquery>
+            <xq-param name="mailbox">
+                <get var="inboxXml"/>
             </xq-param>
-            <xq-expression>
-                <![CDATA[
-	            declare variable $doc as node()* external;
-	        	<mails> {
-		         	for $row in $doc/mails/tr return
-			            <mail unread="{if($row//b) then "true" else "false"}">
-	                        <sender>{normalize-space(data($row/td[3]))}</sender>
-	                        <date>{normalize-space(data($row/td[4]))}</date>
-	                        <size>{normalize-space(data($row/td[5]))}</size>
-	                        <subject>{normalize-space(data($row/td[6]))}</subject>
-	                        <link>{normalize-space(data($row/td[6]//a/@href))}</link>
-			            </mail>
-	            } </mails>
-	        ]]>
-            </xq-expression>
+            <xq-param name="onlyUnread">
+                <get var="onlyUnread"/>
+            </xq-param>
+            <xq-expression><![CDATA[
+                declare variable $mailbox as node() external;
+                declare variable $onlyUnread as xs:boolean external;
+                <messages>{
+                    for $m in $mailbox//messages
+                    let $isUnread := ($m/unread = "true")
+                    return
+                        if ($onlyUnread and not($isUnread)) then ()
+                        else
+                            <mail unread="{$isUnread}">
+                                <sender>{data($m/sender)}</sender>
+                                <subject>{data($m/subject)}</subject>
+                                <date>{data($m/date)}</date>
+                                <size>{data($m/size)}</size>
+                            </mail>
+                }</messages>
+            ]]></xq-expression>
         </xquery>
+    </def>
+
+    <file action="write" path="yahoomails.xml">
+        <template><![CDATA[
+        <yahoomail_snapshot user="${username}" generated="${sys.datetime()}">
+            <inbox>
+                <get var="filteredInbox"/>
+            </inbox>
+        </yahoomail_snapshot>
+        ]]></template>
     </file>
 </config>

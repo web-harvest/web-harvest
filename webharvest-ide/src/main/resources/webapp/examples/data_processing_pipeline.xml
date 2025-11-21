@@ -124,22 +124,20 @@
             <text>Marketing</text>
             <text>Sales</text>
         </list>
-        <body>
-            <def var="departmentReport">
-                <template>
-                    <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+        <def var="departmentReport">
+            <template>
+                <![CDATA[<?xml version="1.0" encoding="UTF-8"?>
 <department_report>
     <department_name>${department}</department_name>
     <employees>
         <!-- Employees for ${department} department -->
     </employees>
 </department_report>]]>
-                </template>
-            </def>
-            <file path="report_${department}.xml" action="write">
-                <get var="departmentReport"/>
-            </file>
-        </body>
+            </template>
+        </def>
+        <file path="report_${department}.xml" action="write">
+            <get var="departmentReport"/>
+        </file>
     </loop>
     <!-- Generate executive summary -->
     <file path="executive_summary.xml" action="write">

@@ -3,6 +3,7 @@ package org.webharvest.server.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 /**
  * REST API for configuration operations
@@ -45,6 +47,18 @@ public class ConfigServlet extends HttpServlet {
         this.configFactory = injector.getInstance(ConfigFactory.class);
         this.schemaValidator = new SchemaValidator();
         LOG.info("ConfigServlet initialized successfully");
+    }
+
+    private String sanitizeXml(String xmlContent) {
+        if (xmlContent == null) {
+            return "";
+        }
+        String sanitized = xmlContent;
+        if (!sanitized.isEmpty() && sanitized.charAt(0) == '\uFEFF') {
+            sanitized = sanitized.substring(1);
+        }
+        sanitized = sanitized.replaceFirst("^[\\u0000-\\u001F\\s]+(?=<\\?xml)", "");
+        return sanitized.trim().isEmpty() ? "" : sanitized;
     }
     
     @Override
@@ -79,11 +93,24 @@ public class ConfigServlet extends HttpServlet {
             throws IOException {
         
         try {
-            // Read XML config from request
-            String xmlContent = req.getReader().lines()
-                    .reduce("", (acc, line) -> acc + line + "\n");
-            
-            LOG.info("🔍 Validating configuration: {} bytes", xmlContent.length());
+            String requestBody = req.getReader().lines().collect(Collectors.joining("\n"));
+            String xmlContent;
+            String configName = "config.xml";
+
+            String trimmedBody = requestBody == null ? "" : requestBody.trim();
+            if (!trimmedBody.isEmpty() && trimmedBody.startsWith("{")) {
+                JsonObject jsonBody = JsonParser.parseString(trimmedBody).getAsJsonObject();
+                xmlContent = jsonBody.has("configXml") ? jsonBody.get("configXml").getAsString() : "";
+                if (jsonBody.has("configName")) {
+                    configName = jsonBody.get("configName").getAsString();
+                }
+            } else {
+                xmlContent = requestBody;
+            }
+
+            xmlContent = sanitizeXml(xmlContent);
+
+            LOG.info("🔍 Validating configuration '{}' ({} bytes)", configName, xmlContent.length());
             
             if (xmlContent == null || xmlContent.trim().isEmpty()) {
                 JsonObject response = new JsonObject();

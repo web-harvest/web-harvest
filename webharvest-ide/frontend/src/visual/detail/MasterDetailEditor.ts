@@ -64,12 +64,33 @@ export class MasterDetailEditor {
         addButton.type = 'button';
         addButton.className = 'http-detail-action';
         addButton.innerHTML = '<i class="fas fa-plus"></i> ' + section.addLabel;
+        
+        // Disable "Add" button if maxOccurs constraint is reached
+        const currentCount = details.length;
+        const maxOccurs = section.maxOccurs;
+        if (maxOccurs >= 0 && currentCount >= maxOccurs) {
+            addButton.disabled = true;
+            addButton.title = `Maximum of ${maxOccurs} ${section.sectionTitle.toLowerCase()} allowed`;
+        }
+        
         addButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            this.addDetail(section.detailType);
+            if (!addButton.disabled) {
+                this.addDetail(section.detailType);
+            }
         });
 
         actions.appendChild(addButton);
+        
+        // Show warning if minOccurs constraint is not met
+        const minOccurs = section.minOccurs;
+        if (minOccurs > 0 && currentCount < minOccurs) {
+            const warning = document.createElement('div');
+            warning.className = 'http-detail-warning';
+            warning.style.cssText = 'color: var(--warning-color, #F59E0B); font-size: 12px; margin-top: 8px; padding: 8px; background: var(--warning-bg, #FEF3C7); border-radius: 4px;';
+            warning.textContent = `Warning: At least ${minOccurs} ${section.sectionTitle.toLowerCase()} required`;
+            sectionEl.appendChild(warning);
+        }
         header.appendChild(title);
         header.appendChild(actions);
         sectionEl.appendChild(header);

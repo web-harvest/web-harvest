@@ -6,7 +6,7 @@
 <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
     <include path="functions.xml"/>
     <!-- defines search keyword and start URL -->
-    <def var="search" overwrite="false">platon</def>
+    <def var="search">platon</def>
     <def var="url">
         <xpath expression="//noscript//a/@href[1]">
             <html-to-xml advancedxmlescape="true" specialentities="true">
@@ -30,10 +30,8 @@
         <list>
             <get var="imgLinks"/>
         </list>
-        <body>
-            <file action="write" type="binary" path="google_images/${search}_${i}.gif">
-                <http url="${sys.fullUrl(url, link)}"/>
-            </file>
-        </body>
+        <file action="write" type="binary" path="google_images/${search}_${i}.gif">
+            <http url="${sys.fullUrl(url, link)}"/>
+        </file>
     </loop>
 </config>

@@ -29,30 +29,28 @@
                 </xpath>
             </list>
             <!-- downloads each article and extract data from it -->
-            <body>
-                <xquery>
-                    <xq-param name="doc">
-                        <html-to-xml advancedxmlescape="true" specialentities="true" unicodechars="true" omitunknowntags="true" treatunknowntagsascontent="true" omitdeprtags="true" treatdeprtagsascontent="true" omitcomments="true" omittermlenvelope="true">
-                            <http url="${sys.fullUrl(startUrl, articleUrl)}?&amp;pagewanted=print"/>
-                        </html-to-xml>
-                    </xq-param>
-                    <xq-expression>
-                        <![CDATA[
-                        declare variable $doc as node() external;
-                        
-                        let $author := data($doc//div[@class="byline"])
-                        let $title := data($doc//h1)
-                        let $text := data($doc//div[@id="articleBody"])
-                            return
-                                <article>
-                                    <title>{data($title)}</title>
-                                    <author>{data($author)}</author>
-                                    <text>{data($text)}</text>
-                                </article>
-                    ]]>
-                    </xq-expression>
-                </xquery>
-            </body>
+            <xquery>
+                <xq-param name="doc">
+                    <html-to-xml advancedxmlescape="true" specialentities="true" unicodechars="true" omitunknowntags="true" treatunknowntagsascontent="true" omitdeprtags="true" treatdeprtagsascontent="true" omitcomments="true" omittermlenvelope="true">
+                        <http url="${sys.fullUrl(startUrl, articleUrl)}?&amp;pagewanted=print"/>
+                    </html-to-xml>
+                </xq-param>
+                <xq-expression>
+                    <![CDATA[
+                    declare variable $doc as node() external;
+                    
+                    let $author := data($doc//div[@class="byline"])
+                    let $title := data($doc//h1)
+                    let $text := data($doc//div[@id="articleBody"])
+                        return
+                            <article>
+                                <title>{data($title)}</title>
+                                <author>{data($author)}</author>
+                                <text>{data($text)}</text>
+                            </article>
+                ]]>
+                </xq-expression>
+            </xquery>
         </loop>
         <![CDATA[ </newyourk_times> ]]>
     </file>

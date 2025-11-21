@@ -5,12 +5,14 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { ExamplesManager, DEFAULT_EXAMPLES } from '../ExamplesManager';
 
+const RAW_XML = '\uFEFF  \n<?xml version="1.0"?><config><var name="test">value</var></config>';
+
 // Mock fetch
 global.fetch = jest.fn((url) => {
     if (url === '/examples/test.xml') {
         return Promise.resolve({
             ok: true,
-            text: () => Promise.resolve('<config><var name="test">value</var></config>'),
+            text: () => Promise.resolve(RAW_XML),
         });
     }
     return Promise.reject(new Error('Not found'));
@@ -46,7 +48,7 @@ describe('ExamplesManager', () => {
         it('should load example XML content', async () => {
             const content = await manager.loadExampleContent('test.xml');
 
-            expect(content).toContain('<config>');
+            expect(content.startsWith('<?xml')).toBe(true);
             expect(content).toContain('<var');
             expect(fetch).toHaveBeenCalledWith('/examples/test.xml');
         });

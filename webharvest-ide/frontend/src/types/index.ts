@@ -37,6 +37,67 @@ export interface VisualNode {
     isManualPositioned?: boolean; // True when user has manually repositioned the node
 }
 
+export type AttributeFieldKind =
+    | 'TEXT'
+    | 'TEXTAREA'
+    | 'SELECT'
+    | 'BOOLEAN'
+    | 'EXPRESSION'
+    | 'CODE'
+    | 'NUMBER'
+    | 'SLIDER'
+    | 'URL'
+    | 'JSON';
+
+export interface AttributeUiMetadata {
+    fieldKind?: AttributeFieldKind;
+    order?: number;
+    group?: string;
+    helperText?: string;
+    helperTextKey?: string;
+    placeholder?: string;
+    placeholderKey?: string;
+    localizationKey?: string;
+    format?: string;
+    minLength?: number;
+    maxLength?: number;
+    expressionCapable?: boolean;
+    expressionContext?: string;
+    advanced?: boolean;
+}
+
+export interface UiToolDefinition {
+    id: string;
+    className?: string;
+    label?: string;
+    description?: string;
+    icon?: string;
+    placement?: string;
+}
+
+export interface PluginVisualUiBlock {
+    version?: string;
+    fields?: Record<string, AttributeUiMetadata>;
+    tools?: UiToolDefinition[];
+}
+
+export interface PluginVisualEnvelope {
+    apiVersion: string;
+    capabilities: string[];
+    id: string;
+    elementName: string;
+    displayName: string;
+    category: string;
+    className: string;
+    schemaVersion: string;
+    helpUrl?: string;
+    icon?: string;
+    paletteGroup?: string;
+    tags?: string[];
+    ui?: PluginVisualUiBlock;
+    masterDetailConstraints?: MasterDetailConstraint[];
+}
+
 export interface PluginDocumentationSummary {
     summary: string;
     url?: string;
@@ -53,6 +114,18 @@ export interface PluginSemanticsModel {
     allowTextContent: boolean;
     allowedChildTypes: string[];
     requiredParentTypes: string[];
+}
+
+export interface MasterDetailConstraint {
+    detailType: string;
+    maxOccurs: number; // -1 = unlimited
+    minOccurs: number;
+    sectionTitle?: string;
+    addLabel?: string;
+    emptyLabel?: string;
+    primaryAttribute?: string;
+    secondaryAttribute?: string;
+    usesBody?: boolean;
 }
 
 export interface Plugin {
@@ -84,6 +157,12 @@ export interface Plugin {
     parentRelationship?: ParentChildRelationship; // For detail plugins
     allowedChildPlugins?: string[]; // For master plugins
     ui?: PluginUIHints;
+    masterDetailConstraints?: MasterDetailConstraint[]; // Master/detail relationship constraints
+    visual?: PluginVisualEnvelope;
+    visualApiVersion?: string;
+    visualCapabilities?: string[];
+    attributeUi?: Record<string, AttributeUiMetadata>;
+    uiTools?: UiToolDefinition[];
 }
 
 export interface InputPort {
@@ -133,6 +212,8 @@ export interface PluginUIHints {
     paletteGroup?: string;
     tags?: string[];
     detailSections?: PluginDetailSectionHint[];
+    fields?: Record<string, AttributeUiMetadata>;
+    tools?: UiToolDefinition[];
 }
 
 export interface ParentChildRelationship {
@@ -143,6 +224,7 @@ export interface ParentChildRelationship {
 
 export interface PluginSchema {
     attributes: AttributeDefinition[];
+    attributeDefinitions?: AttributeDefinition[];
     canHaveBody: boolean;
     canHaveChildren: boolean;
     canAppearAtRoot: boolean;
@@ -160,6 +242,10 @@ export interface AttributeDefinition {
     defaultValue?: string;
     allowedValues?: string[];
     description?: string;
+    minValue?: number;
+    maxValue?: number;
+    pattern?: string;
+    ui?: AttributeUiMetadata;
 }
 
 // ============================================================================

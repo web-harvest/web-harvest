@@ -17,47 +17,39 @@
                 It is needed to resolve odds, date and header rows. Distinction is 
                 made based on "class" attribute.
             -->
-            <body>
-                <empty>
-                    <def var="clazz">
-                        <xpath expression="/tr/@class">
-                            <get var="row"/>
-                        </xpath>
-                    </def>
-                    <case>
-                        <if condition='${ "t".equals(clazz.toString()) }'>
-                            <def var="currDate">
-                                <get var="row"/>
-                            </def>
-                        </if>
-                    </case>
-                </empty>
-                <case>
-                    <if condition='${ "oddsRow1".equals(clazz.toString()) || "oddsRow2".equals(clazz.toString()) }'>
-                        <xquery>
-                            <xq-param name="doc">
-                                <get var="row"/>
-                            </xq-param>
-                            <xq-param name="currDate">
-                                <get var="currDate"/>
-                            </xq-param>
-                            <xq-expression>
-                                <![CDATA[
-                                declare variable $doc as node() external;
-                                declare variable $currDate as node() external;
+            <def var="clazz">
+                <xpath expression="/tr/@class">
+                    <get var="row"/>
+                </xpath>
+            </def>
+            <if condition='${ "t".equals(clazz.toString()) }'>
+                <def var="currDate">
+                    <get var="row"/>
+                </def>
+            </if>
+            <if condition='${ "oddsRow1".equals(clazz.toString()) || "oddsRow2".equals(clazz.toString()) }'>
+                <xquery>
+                    <xq-param name="doc">
+                        <get var="row"/>
+                    </xq-param>
+                    <xq-param name="currDate">
+                        <get var="currDate"/>
+                    </xq-param>
+                    <xq-expression>
+                        <![CDATA[
+                        declare variable $doc as node() external;
+                        declare variable $currDate as node() external;
 
-                                for $row in $doc//tr return
-                                    <odd date="{normalize-space(data($currDate))}" time="{normalize-space(data($row/td[1]))}" event="{normalize-space(data($row/td[2]))}" comp="{normalize-space(data($row/td[3]))}">
-                                        <odd_1>{normalize-space(data($row/td[4]))}</odd_1>
-                                        <odd_x>{normalize-space(data($row/td[5]))}</odd_x>
-                                        <odd_2>{normalize-space(data($row/td[6]))}</odd_2>
-                                    </odd>
-                            ]]>
-                            </xq-expression>
-                        </xquery>
-                    </if>
-                </case>
-            </body>
+                        for $row in $doc//tr return
+                            <odd date="{normalize-space(data($currDate))}" time="{normalize-space(data($row/td[1]))}" event="{normalize-space(data($row/td[2]))}" comp="{normalize-space(data($row/td[3]))}">
+                                <odd_1>{normalize-space(data($row/td[4]))}</odd_1>
+                                <odd_x>{normalize-space(data($row/td[5]))}</odd_x>
+                                <odd_2>{normalize-space(data($row/td[6]))}</odd_2>
+                            </odd>
+                    ]]>
+                    </xq-expression>
+                </xquery>
+            </if>
         </loop>
         <![CDATA[ </odds> ]]>
     </file>

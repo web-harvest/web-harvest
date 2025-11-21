@@ -48,6 +48,7 @@ import org.webharvest.plugin.AccessibilityMetadata;
 import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
+import org.webharvest.plugin.annotations.MasterDetailConstraint;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -222,6 +223,13 @@ import org.webharvest.utils.CommonUtil;
     description = "Case plugin that provides conditional execution with multiple if-else branches",
     version = "2.1.0",
     category = "Control"
+)
+@MasterDetailConstraint(
+    detailType = "else",
+    maxOccurs = 1,
+    minOccurs = 0,
+    sectionTitle = "Else Branch",
+    addLabel = "Add Else"
 )
 public class CasePlugin extends AbstractPlugin {
 

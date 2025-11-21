@@ -5,7 +5,20 @@
 import { App } from '@core/App';
 import '@/styles/main.css';
 
-console.log('🚀 WebHarvest IDE v2.2.0 - TypeScript Edition');
+// Display runtime version from backend (pom) if available
+fetch('/static/version.json')
+    .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+    .then(info => {
+        if (info && info.version) {
+            const build = info.buildDate ? ` (build: ${info.buildDate})` : '';
+            console.log(`🚀 WebHarvest IDE v${info.version} - TypeScript Edition${build}`);
+        } else {
+            console.log('🚀 WebHarvest IDE - TypeScript Edition');
+        }
+    })
+    .catch(() => {
+        console.log('🚀 WebHarvest IDE - TypeScript Edition');
+    });
 
 // Initialize application
 let app: App;

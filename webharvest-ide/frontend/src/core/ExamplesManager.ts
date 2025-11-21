@@ -2,6 +2,8 @@
  * ExamplesManager - Manages example configurations
  */
 
+import { sanitizeXmlProlog } from '@utils/xmlSanitizer';
+
 export interface Example {
     file: string;
     name: string;
@@ -128,7 +130,8 @@ export class ExamplesManager {
             if (!response.ok) {
                 throw new Error(`Failed to load example: ${filename}`);
             }
-            const content = await response.text();
+            const rawContent = await response.text();
+            const content = sanitizeXmlProlog(rawContent);
             console.log(`✅ Loaded example: ${filename}`);
             return content;
         } catch (error) {

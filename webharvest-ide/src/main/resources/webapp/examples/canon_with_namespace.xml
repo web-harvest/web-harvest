@@ -19,24 +19,22 @@
         <![CDATA[ <catalog> ]]>
         <loop item="item" index="i">
             <list><get var="products"/></list>
-            <body>
-                <xquery>
-                    <xq-param name="item" type="node()"><get var="item"/></xq-param>
-                    <xq-expression><![CDATA[
-                            declare variable $item as node() external;
+            <xquery>
+                <xq-param name="item" type="node()"><get var="item"/></xq-param>
+                <xq-expression><![CDATA[
+                        declare variable $item as node() external;
 
-                            let $name := data($item//td[3]/h2[1])
-                            let $desc := data($item//td[3]/div[@class='desc'])
-                            let $price := data($item//div[@class='price']/a[1])
-                                return
-                                    <product>
-                                        <name>{normalize-space($name)}</name>
-                                        <desc>{normalize-space($desc)}</desc>
-                                        <price>{normalize-space($price)}</price>
-                                    </product>
-                    ]]></xq-expression>
-                </xquery>
-            </body>
+                        let $name := data($item//td[3]/h2[1])
+                        let $desc := data($item//td[3]/div[@class='desc'])
+                        let $price := data($item//div[@class='price']/a[1])
+                            return
+                                <product>
+                                    <name>{normalize-space($name)}</name>
+                                    <desc>{normalize-space($desc)}</desc>
+                                    <price>{normalize-space($price)}</price>
+                                </product>
+                ]]></xq-expression>
+            </xquery>
         </loop>
         <![CDATA[ </catalog> ]]>
     </file>

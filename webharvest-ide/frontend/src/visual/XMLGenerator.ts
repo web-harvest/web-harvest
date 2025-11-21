@@ -5,25 +5,69 @@
 
 import type { VisualNode } from '../types';
 
+export interface XMLGeneratorOptions {
+    indentLevel?: number;
+    includeLayoutMetadata?: boolean;
+    metadataComment?: string;
+}
+
+interface ResolvedOptions {
+    indentLevel: number;
+    includeLayoutMetadata: boolean;
+    metadataComment?: string;
+}
+
 export class XMLGenerator {
     /**
      * Generate XML from VisualNode array
      */
-    generate(nodes: VisualNode[], indentLevel: number = 0): string {
+    generate(
+        nodes: VisualNode[],
+        optionsOrIndent?: number | XMLGeneratorOptions
+    ): string {
         if (nodes.length === 0) {
             return '';
         }
 
-        return nodes.map(node => this.generateNode(node, indentLevel)).join('\n');
+        const options = this.resolveOptions(optionsOrIndent);
+        return this.generateInternal(nodes, options.indentLevel, options, true);
+    }
+
+    private generateInternal(
+        nodes: VisualNode[],
+        indentLevel: number,
+        options: ResolvedOptions,
+        includeComment: boolean
+    ): string {
+        if (nodes.length === 0) {
+            return '';
+        }
+
+        const lines: string[] = [];
+
+        if (includeComment && options.metadataComment) {
+            const indent = '    '.repeat(indentLevel);
+            lines.push(`${indent}<!-- ${options.metadataComment} -->`);
+        }
+
+        nodes.forEach(node => {
+            lines.push(this.generateNode(node, indentLevel, options));
+        });
+
+        return lines.join('\n');
     }
 
     /**
      * Generate XML for single node
      */
-    private generateNode(node: VisualNode, indentLevel: number): string {
+    private generateNode(
+        node: VisualNode,
+        indentLevel: number,
+        options: ResolvedOptions
+    ): string {
         const indent = '    '.repeat(indentLevel);
         const attributes = this.generateAttributes(node.attributes);
-        const dimensionsAttrs = this.generateDimensionsAttributes(node);
+        const dimensionsAttrs = this.generateDimensionsAttributes(node, options);
         const tag = node.type;
 
         // Self-closing tag (no body, no children)
@@ -46,10 +90,8 @@ export class XMLGenerator {
         // Children
         if (node.children.length > 0) {
             xml += '\n';
-            xml += this.generate(node.children, indentLevel + 1);
+            xml += this.generateInternal(node.children, indentLevel + 1, options, false);
             xml += '\n' + indent;
-        } else if (node.body === null || node.body === '') {
-            // Empty element with no children
         }
 
         // Closing tag
@@ -59,10 +101,12 @@ export class XMLGenerator {
     }
 
     /**
-     * Generate attributes string
+     * Generate attributes string (sorted alphabetically, skipping empty values)
      */
     private generateAttributes(attributes: Record<string, string>): string {
-        const keys = Object.keys(attributes);
+        const keys = Object.keys(attributes)
+            .filter(key => this.isAttributeValueValid(attributes[key]))
+            .sort((a, b) => a.localeCompare(b));
 
         if (keys.length === 0) {
             return '';
@@ -76,8 +120,11 @@ export class XMLGenerator {
     /**
      * Generate dimensions attributes (if custom dimensions are set)
      */
-    private generateDimensionsAttributes(node: VisualNode): string {
-        if (!node.dimensions) {
+    private generateDimensionsAttributes(
+        node: VisualNode,
+        options: ResolvedOptions
+    ): string {
+        if (!options.includeLayoutMetadata || !node.dimensions) {
             return '';
         }
 
@@ -121,6 +168,31 @@ export class XMLGenerator {
         return /<[^>]+>/.test(content) ||
             content.includes('&') ||
             content.includes('<');
+    }
+
+    private resolveOptions(
+        optionsOrIndent?: number | XMLGeneratorOptions
+    ): ResolvedOptions {
+        if (typeof optionsOrIndent === 'number') {
+            return {
+                indentLevel: optionsOrIndent,
+                includeLayoutMetadata: false
+            };
+        }
+
+        const options = optionsOrIndent || {};
+        return {
+            indentLevel: options.indentLevel ?? 0,
+            includeLayoutMetadata: options.includeLayoutMetadata ?? false,
+            metadataComment: options.metadataComment
+        };
+    }
+
+    private isAttributeValueValid(value: string | undefined): value is string {
+        if (value === undefined || value === null) {
+            return false;
+        }
+        return value.trim().length > 0;
     }
 }
 

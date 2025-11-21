@@ -72,8 +72,11 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.StringWriter;
 import java.util.regex.Pattern;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 // Additional HTML parsing libraries
 // import net.htmlparser.jericho.Source; // Will use full class name to avoid conflict
@@ -553,14 +556,91 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
      * Configuration schema for HtmlToXmlPlugin.
      */
     public static class HtmlToXmlPluginConfigurationSchema implements PluginConfigurationSchema {
+        private static final Map<String, PluginConfigurationSchema.AttributeDefinition> ATTRIBUTE_DEFINITIONS =
+                buildAttributeDefinitions();
+
+        private static Map<String, PluginConfigurationSchema.AttributeDefinition> buildAttributeDefinitions() {
+            Map<String, PluginConfigurationSchema.AttributeDefinition> definitions = new LinkedHashMap<>();
+            registerBooleanAttribute(definitions, "advancedxmlescape", "Enable advanced XML character escaping logic");
+            registerBooleanAttribute(definitions, "specialentities", "Support for special HTML entities during conversion");
+            registerBooleanAttribute(definitions, "unicodechars", "Preserve Unicode characters instead of converting to entities");
+            registerBooleanAttribute(definitions, "allowmultiwordattributes", "Allow HTML attributes that contain multiple words");
+            registerBooleanAttribute(definitions, "omitunknowntags", "Remove unknown HTML tags from the output");
+            registerBooleanAttribute(definitions, "treatunknowntagsascontent", "Treat unknown tags as raw content instead of markup");
+            registerBooleanAttribute(definitions, "omitdeprtags", "Strip deprecated HTML tags");
+            registerBooleanAttribute(definitions, "treatdeprtagsascontent", "Treat deprecated tags as plain text content");
+            registerBooleanAttribute(definitions, "omitcomments", "Remove HTML comments");
+            registerBooleanAttribute(definitions, "omittermlenvelope", "Strip the XML envelope generated during conversion");
+            registerBooleanAttribute(definitions, "omitdoctypedeclaration", "Remove DOCTYPE declarations from the output");
+            registerBooleanAttribute(definitions, "omitxmlns", "Remove xmlns declarations from the generated XML");
+            registerBooleanAttribute(definitions, "omitxmlprocessinginstruction", "Remove XML processing instructions from the output");
+            return Collections.unmodifiableMap(definitions);
+        }
+
+        private static void registerBooleanAttribute(
+                Map<String, PluginConfigurationSchema.AttributeDefinition> definitions,
+                String name,
+                String description
+        ) {
+            definitions.put(name, new PluginConfigurationSchema.AttributeDefinition() {
+                @Override
+                public String getName() {
+                    return name;
+                }
+
+                @Override
+                public PluginConfigurationSchema.AttributeType getType() {
+                    return PluginConfigurationSchema.AttributeType.BOOLEAN;
+                }
+
+                @Override
+                public boolean isRequired() {
+                    return false;
+                }
+
+                @Override
+                public String getDefaultValue() {
+                    return "false";
+                }
+
+                @Override
+                public String getDescription() {
+                    return description;
+                }
+
+                @Override
+                public String[] getAllowedValues() {
+                    return new String[]{"true", "false"};
+                }
+
+                @Override
+                public Number getMinValue() {
+                    return null;
+                }
+
+                @Override
+                public Number getMaxValue() {
+                    return null;
+                }
+
+                @Override
+                public String getPattern() {
+                    return null;
+                }
+            });
+        }
+
         @Override
         public PluginConfigurationSchema.AttributeDefinition[] getAttributeDefinitions() {
-            return new PluginConfigurationSchema.AttributeDefinition[0];
+            return ATTRIBUTE_DEFINITIONS.values().toArray(new PluginConfigurationSchema.AttributeDefinition[0]);
         }
 
         @Override
         public PluginConfigurationSchema.AttributeDefinition getAttribute(String name) {
-            return null;
+            if (name == null) {
+                return null;
+            }
+            return ATTRIBUTE_DEFINITIONS.get(name.toLowerCase());
         }
 
         @Override
@@ -570,7 +650,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String[] getOptionalAttributes() {
-            return new String[0];
+            return ATTRIBUTE_DEFINITIONS.keySet().toArray(new String[0]);
         }
 
         @Override

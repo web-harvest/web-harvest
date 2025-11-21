@@ -3,7 +3,7 @@
  * Displays and edits properties of selected node using advanced editors
  */
 
-import type { VisualNode, Plugin, AttributeDefinition, PluginSemanticsModel } from '../types';
+import type { VisualNode, Plugin, AttributeDefinition, PluginSemanticsModel, UiToolDefinition } from '../types';
 import type { ContainerSummary } from './HierarchyInspector';
 import type { PluginManager } from '../core/PluginManager';
 import { MasterDetailRegistry } from './detail/MasterDetailRegistry';
@@ -19,11 +19,13 @@ interface PropertyPanelOptions {
 import { ExpressionBuilder } from './ExpressionBuilder';
 import { XPathTester } from './XPathTester';
 import { RegexValidator } from './RegexValidator';
-import { SchemaEditor } from './SchemaEditor';
+import { SchemaDrivenEditor, type FieldDecoratorContext, type ValidationError } from './editors/SchemaDrivenEditor';
+import { PropertyPanelShell } from './PropertyPanelShell';
 
 export class PropertyPanel {
     private container: HTMLElement;
     private currentNode: VisualNode | null = null;
+    private originalNode: VisualNode | null = null;
     private onChangeCallback: ((node: VisualNode) => void) | null = null;
     private detailRegistry: MasterDetailRegistry | null = null;
 
@@ -33,7 +35,9 @@ export class PropertyPanel {
     private expressionBuilder: ExpressionBuilder | null = null;
     private xpathTester: XPathTester | null = null;
     private regexValidator: RegexValidator | null = null;
-    private schemaEditor: SchemaEditor | null = null;
+    private schemaEditor: SchemaDrivenEditor | null = null;
+    private schemaEditorActive = false;
+    private shell: PropertyPanelShell;
 
     // Plugin metadata cache
     private pluginMetadata: Plugin[] = [];
@@ -53,7 +57,8 @@ export class PropertyPanel {
         }
 
         this.container = container;
-        this.schemaEditor = new SchemaEditor();
+        this.shell = new PropertyPanelShell(this.container);
+        this.schemaEditor = new SchemaDrivenEditor();
 
         let autoLoad = true;
         if (typeof options === 'function') {
@@ -240,6 +245,7 @@ export class PropertyPanel {
     async showNode(node: VisualNode): Promise<void> {
         console.log('🔧 [PropertyPanel] showNode() called for:', node.type, node);
         this.currentNode = this.deepCloneNode(node);
+        this.originalNode = this.deepCloneNode(node);
         this.currentNode.attributes = this.currentNode.attributes || {};
         await this.render();
         console.log('🔧 [PropertyPanel] showNode() complete');
@@ -281,7 +287,8 @@ export class PropertyPanel {
         // Ensure metadata is loaded
         await this.loadPluginMetadata();
 
-        this.container.innerHTML = '';
+        this.shell.reset();
+        this.schemaEditorActive = false;
 
         const form = document.createElement('div');
         form.className = 'property-panel__form';
@@ -301,6 +308,12 @@ export class PropertyPanel {
 
         // Try to use SchemaEditor if plugin schema is available
         const plugin = this.getPluginSchema(this.currentNode.type);
+
+        this.shell.setHeader({
+            title: plugin?.name || this.currentNode.type,
+            subtitle: plugin?.description || undefined,
+            icon: plugin?.icon
+        });
 
         if (plugin) {
             const metaContainer = document.createElement('div');
@@ -436,6 +449,10 @@ export class PropertyPanel {
             }
         }
 
+        if (plugin) {
+            this.renderUiToolsSection(form, plugin);
+        }
+
         const detailSections = this.detailRegistry ? this.detailRegistry.getSections(this.currentNode.type) : [];
         const isHttp = this.currentNode.type && this.currentNode.type.toLowerCase() === 'http';
         let handledAttributes = false;
@@ -452,19 +469,20 @@ export class PropertyPanel {
             schemaContainer.className = 'schema-editor-wrapper';
             form.appendChild(schemaContainer);
 
+            this.schemaEditor.setFieldDecorator((context) => this.decorateSchemaField(context));
             this.schemaEditor.generateEditor(schemaContainer, plugin, this.currentNode.attributes);
+            this.schemaEditorActive = true;
             this.schemaEditor.onChange((attributes) => {
                 if (this.currentNode) {
-                    const errors = this.schemaEditor?.validate() || [];
                     const updatedNode = this.deepCloneNode(this.currentNode);
                     updatedNode.attributes = { ...attributes };
                     this.currentNode = updatedNode;
 
+                    const errors = this.schemaEditor?.validate() || [];
+                    this.shell.showValidationSummary(errors);
+                    this.shell.setApplyDisabled(errors.length > 0);
                     if (errors.length === 0) {
-                        this.onChangeCallback?.(this.deepCloneNode(updatedNode));
-                    } else {
-                        console.warn('⚠️ [PropertyPanel] Validation errors:', errors);
-                        this.onChangeCallback?.(this.deepCloneNode(updatedNode));
+                        this.emitChange();
                     }
                 }
             });
@@ -472,13 +490,14 @@ export class PropertyPanel {
             const inputs = schemaContainer.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
                 input.addEventListener('input', () => {
-                    this.schemaEditor?.validate();
+                    this.updateValidationState();
                 });
                 input.addEventListener('blur', () => {
-                    this.schemaEditor?.validate();
+                    this.updateValidationState();
                 });
             });
 
+            this.updateValidationState();
             handledAttributes = true;
         }
 
@@ -595,8 +614,139 @@ export class PropertyPanel {
             form.appendChild(detailEditor.render());
         }
 
-        this.container.appendChild(form);
+        this.shell.setBody(form);
+        this.shell.setFooterActions({
+            onApply: () => this.handleApply(),
+            onCancel: () => this.handleCancel(),
+            disableApply: false
+        });
+        this.updateValidationState();
+        this.shell.focusFirstField();
         console.log('✅ [PropertyPanel] render() complete');
+    }
+
+    private renderUiToolsSection(form: HTMLElement, plugin: Plugin): void {
+        const tools = plugin.uiTools || plugin.visual?.ui?.tools;
+        if (!tools || tools.length === 0) {
+            return;
+        }
+
+        const section = document.createElement('section');
+        section.className = 'property-panel__tools';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'Tools';
+        heading.className = 'property-panel__tools-title';
+        section.appendChild(heading);
+
+        const list = document.createElement('div');
+        list.className = 'property-panel__tools-list';
+
+        tools.forEach(tool => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'property-panel__tool-button';
+            button.textContent = tool.label || tool.id || 'Tool';
+            if (tool.description) {
+                button.title = tool.description;
+            }
+            button.addEventListener('click', () => this.invokeUiTool(tool));
+            list.appendChild(button);
+        });
+
+        section.appendChild(list);
+        form.appendChild(section);
+    }
+
+    private decorateSchemaField(context: FieldDecoratorContext): void {
+        const container = context.field.element;
+        const attrName = context.name.toLowerCase();
+        const metadata = context.metadata;
+
+        const needExpression =
+            metadata?.expressionCapable ||
+            metadata?.fieldKind === 'EXPRESSION' ||
+            attrName.includes('expression');
+
+        if (needExpression) {
+            this.addAdvancedEditorButton(container, context.name, 'Expression Builder', 'expression');
+        }
+
+        if (attrName.includes('xpath')) {
+            this.addAdvancedEditorButton(container, context.name, 'XPath Tester', 'xpath');
+        }
+
+        const needRegex =
+            metadata?.format === 'regex' ||
+            attrName.includes('regex') ||
+            attrName.includes('pattern');
+
+        if (needRegex) {
+            this.addAdvancedEditorButton(container, context.name, 'Regex Validator', 'regex');
+        }
+    }
+
+    private invokeUiTool(tool: UiToolDefinition): void {
+        const toolId = (tool.id || tool.className || '').toLowerCase();
+
+        if (toolId.includes('expression')) {
+            this.openAdvancedEditor('body', 'expression');
+            return;
+        }
+
+        if (toolId.includes('xpath')) {
+            this.openAdvancedEditor('expression', 'xpath');
+            return;
+        }
+
+        if (toolId.includes('regex')) {
+            this.openAdvancedEditor('pattern', 'regex');
+            return;
+        }
+
+        if (toolId.includes('http') && this.currentForm) {
+            this.currentForm.querySelector('.http-request-section')?.scrollIntoView({ behavior: 'smooth' });
+            return;
+        }
+
+        console.info('[PropertyPanel] No handler for tool', tool);
+    }
+
+    private updateValidationState(): void {
+        if (!this.schemaEditor || !this.schemaEditorActive) {
+            this.shell.showValidationSummary([]);
+            this.shell.setApplyDisabled(false);
+            return;
+        }
+        const errors = this.schemaEditor.validate();
+        this.shell.showValidationSummary(errors);
+        this.shell.setApplyDisabled(errors.length > 0);
+    }
+
+    private handleApply(): void {
+        this.updateValidationState();
+        if (this.schemaEditor && this.schemaEditor.validate().length > 0) {
+            return;
+        }
+        this.emitChange();
+        if (this.currentNode) {
+            this.originalNode = this.deepCloneNode(this.currentNode);
+        }
+    }
+
+    private handleCancel(): void {
+        if (!this.originalNode) {
+            return;
+        }
+        this.currentNode = this.deepCloneNode(this.originalNode);
+        void this.render();
+    }
+
+    private emitChange(): void {
+        if (!this.currentNode) {
+            return;
+        }
+        this.onChangeCallback?.(this.deepCloneNode(this.currentNode));
     }
 
     updateFocusSummary(payload: { nodeId: string; summary: ContainerSummary } | null): void {
