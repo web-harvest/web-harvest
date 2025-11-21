@@ -947,6 +947,23 @@ Aby uzyskać więcej informacji o Visual Designerze, zobacz:
 
 ## Przykłady Użycia
 
+### Biblioteka przykładów (v2.3.1)
+
+Wszystkie przykładowe konfiguracje IDE znajdują się w `webharvest-ide/src/main/resources/webapp/examples/` _i_ są dostępne bezpośrednio z panelu **Examples** w Visual Designerze / edytorze XML.
+
+- 📂 **Kategorie**  
+  - _Core HTTP/XPath_ (`simple_test.xml`, `amazon_test.xml`, `functions.xml`)  
+  - _Pipelines_ (`data_processing_pipeline.xml`, `social_media_analytics.xml`)  
+  - _Symulacje usług zewnętrznych_ – FTP/Mail/Database zostały zmodernizowane tak, aby działały offline (np. `ftp_plugin_demo.xml`, `mail_plugin_demo.xml`, `database_example.xml`). Zamiast legacy pluginów używają JSON/XML i core'owych węzłów.
+- ▶️ **Jak używać:**  
+  1. Otwórz panel **Examples** → kliknij wybrany plik, aby załadować go do nowej zakładki.  
+  2. Naciśnij **Validate** (lub `Ctrl/Cmd + Shift + V`), aby sprawdzić schemat. Wszystkie przykłady przechodzą `/api/config/validate`.  
+  3. Naciśnij **Run** (`Ctrl/Cmd + Enter`), żeby uruchomić konfigurację – UI podświetli logi, a wyniki trafią do paneli Output/Variables.  
+  4. Zapisz własną kopię (Save / Save As), jeśli chcesz zmodyfikować przykład.
+- 📝 **Wskazówki:**  
+  - Przykłady z prefiksem „simulated” (FTP/Mail/DB) generują realistyczne dane bez wykonywania połączeń sieciowych.  
+  - Przed uruchomieniem kilku scenariuszy z rzędu skorzystaj z per-tab logów/history, aby porównać wyniki.
+
 ### Przykład 1: Simple HTTP + XPath
 
 **Cel:** Pobrać tytuł strony

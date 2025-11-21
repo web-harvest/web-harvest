@@ -135,6 +135,52 @@ describe('App execution control integration', () => {
         expect((document.getElementById('canvasRunBtn') as HTMLButtonElement).disabled).toBe(true);
     });
 
+    it('sends sanitized JSON payload to validator before execution', async () => {
+        const fetchMock = (global as any).fetch as jest.Mock;
+        fetchMock.mockClear();
+
+        await app.runConfig();
+
+        const validateCall = fetchMock.mock.calls.find(([url]: any[]) => url.includes('/api/config/validate'));
+        expect(validateCall).toBeDefined();
+        const options = validateCall?.[1] as RequestInit;
+        expect(options?.headers && (options.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+        const payload = options?.body ? JSON.parse(options.body as string) : null;
+        expect(payload).toEqual({
+            configXml: '<config></config>',
+            configName: 'visual-workflow.xml',
+        });
+    });
+
+    it('strips visual metadata attributes before validation', async () => {
+        const fetchMock = (global as any).fetch as jest.Mock;
+        fetchMock.mockClear();
+
+        jest.spyOn((app as any).visualDesigner, 'generateXML').mockReturnValue('<log dest="out" data-width="320" data-height="120"/>');
+
+        await app.runConfig();
+
+        const validateCall = fetchMock.mock.calls.find(([url]: any[]) => url.includes('/api/config/validate'));
+        const options = validateCall?.[1] as RequestInit;
+        const payload = options?.body ? JSON.parse(options.body as string) : null;
+        expect(payload?.configXml).toBe('<log dest="out"/>');
+    });
+
+    it('removes BOM/whitespace before validating XML payload', async () => {
+        const fetchMock = (global as any).fetch as jest.Mock;
+        fetchMock.mockClear();
+
+        jest.spyOn((app as any).visualDesigner, 'generateXML').mockReturnValue('\uFEFF  \n<?xml version="1.0"?><config></config>');
+
+        await app.runConfig();
+
+        const validateCall = fetchMock.mock.calls.find(([url]: any[]) => url.includes('/api/config/validate'));
+        expect(validateCall).toBeDefined();
+        const options = validateCall?.[1] as RequestInit;
+        const payload = options?.body ? JSON.parse(options.body as string) : null;
+        expect(payload?.configXml.startsWith('<?xml')).toBe(true);
+    });
+
     it('mounts run panel into the sidebar column', () => {
         const host = document.getElementById('executionControls');
         expect(host?.classList.contains('run-panel-host')).toBe(true);

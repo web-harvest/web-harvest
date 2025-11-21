@@ -387,6 +387,35 @@ java -jar target/webharvest-ide-2.3.1.jar &
 - ❌ Forgetting to hard refresh browser
 - ❌ This leads to: "I don't see my changes!" 💔
 
+### Maintaining Example Configurations
+
+The IDE ships 27 curated examples stored in `webharvest-ide/src/main/resources/webapp/examples/`. They are consumed directly by the frontend (Examples panel) and exposed over `/api/examples`. To keep them reliable:
+
+1. **Edit the XML under `webapp/examples/`** (avoid pseudo-plugins such as `<body>`—only core processors are supported).
+2. **Validate the entire set before committing:**
+   ```bash
+   python3 scripts/validate_examples.py        # or use the inline snippet below
+   # ad‑hoc:
+   python3 - <<'PY'
+   import json, urllib.request as r, pathlib as p
+   base = p.Path('webharvest-ide/src/main/resources/webapp/examples')
+   for example in base.glob('*.xml'):
+       body = json.dumps({'configXml': example.read_text(), 'configName': example.name}).encode()
+       resp = r.urlopen(r.Request('http://localhost:8080/api/config/validate',
+                                   body, {'Content-Type': 'application/json'}))
+       print(example.name, json.loads(resp.read())['valid'])
+   PY
+   ```
+3. **Execute through the IDE** (Visual Designer → Examples → Run) to ensure WebSocket streaming behaves correctly. Backend execution depends on the WebSocket handshake, więc testy HTTP `POST /api/execute` bez UI zwrócą 400 – korzystaj z interaktywnego IDE.
+4. **Rebuild frontend + JAR after any example change** so the packaged static assets pick up the new XML:
+   ```bash
+   cd webharvest-ide/frontend && npm run build
+   cd .. && mvn clean install -pl webharvest-ide -am -DskipTests
+   ```
+5. **Restart the IDE** (or the Jetty dev server) and hard-refresh the browser to serve the updated files.
+
+> **Note:** Legacy demos (FTP, Mail, Database) were rewritten to use JSON/XML simulations instead of deprecated plugins. Keep future examples offline-friendly unless a test fixture explicitly requires network access.
+
 ---
 
 ## Visual Designer Architecture
@@ -624,6 +653,65 @@ XSDMetadataParser.java        # XSD metadata extraction
   - The overlay provides quick access to detail items and their properties, maintaining the same editing workflow as the inline summary.
   - Process markers (Start/Stop) are rendered with interactive labels and can be dragged, just like at root level.
 - **Extensibility guidance:** Any new master/detail pair must declare `ui.detailSections` (or allowed child metadata) so the registry can auto-generate section labels, add/remove CTA text, and summary formatting. Avoid one-off DOM fragments; the `.visual-node__detail-*` component is the single source of truth for both browser IDE and the future VS Code extension.
+
+### Master/Detail Constraints with @MasterDetailConstraint Annotation *(v2.3.1)*
+
+For plugins with special semantic relationships (e.g., `if/else`, `try/catch`, `case/else`), you can define cardinality constraints using the `@MasterDetailConstraint` annotation. This enables automatic validation and UI behavior in the property editor.
+
+**Annotation Definition:**
+
+```java
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Repeatable(MasterDetailConstraints.class)
+public @interface MasterDetailConstraint {
+    String detailType();        // Element name of detail plugin (e.g., "else", "catch")
+    int maxOccurs() default -1; // Maximum occurrences (-1 = unlimited, 0 = not allowed, 1+ = specific limit)
+    int minOccurs() default 0;  // Minimum occurrences (0 = optional, 1+ = required)
+    String sectionTitle() default ""; // UI section title (optional)
+    String addLabel() default "";     // "Add" button label (optional)
+}
+```
+
+**Usage Example:**
+
+```java
+@CorePlugin(elementName = "if", category = "Control")
+@MasterDetailConstraint(
+    detailType = "else",
+    maxOccurs = 1,
+    minOccurs = 0,
+    sectionTitle = "Else Branch",
+    addLabel = "Add Else"
+)
+public class IfPlugin extends AbstractPlugin {
+    // ...
+}
+```
+
+**How It Works:**
+
+1. **Annotation Processing:** The `PluginMetadataCatalog` extracts constraints from annotations at runtime and includes them in plugin metadata extensions.
+2. **API Exposure:** Constraints are exposed in the `/api/plugins/metadata` JSON response under `masterDetailConstraints` field.
+3. **Frontend Integration:** `MasterDetailRegistry.getConstraintsForMaster()` retrieves constraints from plugin metadata and applies them to `DetailSectionDefinition` objects.
+4. **UI Behavior:**
+   - **maxOccurs validation:** The "Add" button is disabled when `currentCount >= maxOccurs`
+   - **minOccurs validation:** A warning is displayed when `currentCount < minOccurs`
+   - **Automatic rendering:** `PropertyPanel` automatically detects master/detail constraints and renders `MasterDetailEditor` without plugin-specific code
+
+**Current Implementations:**
+
+- `IfPlugin` → `else` (maxOccurs=1, minOccurs=0)
+- `TryPlugin` → `catch` (maxOccurs=1, minOccurs=0)
+- `CasePlugin` → `else` (maxOccurs=1, minOccurs=0)
+
+**Benefits:**
+
+- **Declarative:** Constraints are defined at the plugin class level, not scattered in UI code
+- **Automatic:** Property panel automatically respects constraints without plugin-specific logic
+- **Extensible:** Easy to add constraints for new master/detail pairs
+- **Type-safe:** Compile-time checking of annotation parameters
 
 **Coordinate System:**
 - **Viewport coordinates** → **Canvas coordinates** conversion

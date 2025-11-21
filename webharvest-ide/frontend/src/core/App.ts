@@ -23,6 +23,7 @@ import type { ViewMode } from '../types';
 import { RunWorkflowPanel } from '../visual/RunWorkflowPanel';
 import type { SelectedNodeContext } from '../visual/RunWorkflowPanel';
 import type { RunHistoryEntry, RunHistoryScope, RunHistoryStatus, RunPanelPayload, RunPanelState, Tab } from '../types';
+import { prepareXmlForBackend } from '@utils/xmlSanitizer';
 
 const RUN_PANEL_STORAGE_PREFIX = 'wh-run-panel-state:';
 const DEFAULT_RUN_PANEL_STATE: RunPanelState = {
@@ -1310,6 +1311,8 @@ export class App {
             return;
         }
 
+        const sanitizedXml = prepareXmlForBackend(xmlContent);
+
         this.logsPanel.addLog('info', '🔍 Validating configuration...');
 
         try {
@@ -1317,8 +1320,8 @@ export class App {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    configXml: xmlContent,
-                    configName: configName,
+                    configXml: sanitizedXml,
+                    configName,
                 }),
             });
 
@@ -1336,7 +1339,7 @@ export class App {
             console.warn('Validation skipped:', error);
         }
 
-        await this.runExecution(xmlContent, {
+        await this.runExecution(sanitizedXml, {
             payload: options?.payload,
             historyEntryId: options?.historyEntryId ?? null,
             scope,
@@ -1354,6 +1357,8 @@ export class App {
         // Get XML content based on current mode
         let xmlContent: string;
 
+        let configName: string;
+
         if (this.currentMode === 'visual') {
             // Generate XML from Visual Designer
             const nodes = this.visualDesigner.getNodes();
@@ -1363,6 +1368,8 @@ export class App {
             }
 
             xmlContent = this.visualDesigner.generateXML();
+            const config = this.visualDesigner.getCurrentConfiguration();
+            configName = config?.filename || 'visual-workflow.xml';
         } else {
             // XML mode: use tab content
             const tab = this.tabManager.getActiveTab();
@@ -1372,15 +1379,21 @@ export class App {
             }
 
             xmlContent = tab.content;
+            configName = tab.name;
         }
+
+        const sanitizedXml = prepareXmlForBackend(xmlContent);
 
         this.logsPanel.addLog('info', '🔍 Validating configuration...');
 
         try {
             const response = await fetch('/api/config/validate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/xml' },
-                body: xmlContent,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    configXml: sanitizedXml,
+                    configName,
+                }),
             });
 
             const data = await response.json();
