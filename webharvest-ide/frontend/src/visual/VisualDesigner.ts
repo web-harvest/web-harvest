@@ -5803,6 +5803,7 @@ export class VisualDesigner {
      */
     setPluginManager(pluginManager: PluginManager): void {
         this.pluginManager = pluginManager;
+        this.iconLibrary.setPluginManager(pluginManager); // Enable metadata-driven icons
         this.semanticValidator = new SemanticValidator(pluginManager);
         this.detailRegistry = new MasterDetailRegistry(pluginManager);
         this.fallbackDetailSections.clear();

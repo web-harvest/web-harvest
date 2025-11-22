@@ -1,9 +1,11 @@
 /**
  * IconLibrary - Implementation
  * Font Awesome icon mapping with category-specific colors
+ * Supports metadata-driven icons from PluginManager when available
  */
 
 import type { NodeExecutionState } from './NodeStateRenderer';
+import type { PluginManager } from '../core/PluginManager';
 
 export interface IconConfig {
     faClass: string;
@@ -13,6 +15,8 @@ export interface IconConfig {
 }
 
 export class IconLibrary {
+    private pluginManager: PluginManager | null = null;
+
     private readonly ICON_MAP: Record<string, { faClass: string; category: string }> = {
         // Network plugins
         'http': { faClass: 'fa-globe', category: 'network' },
@@ -71,9 +75,35 @@ export class IconLibrary {
     };
 
     /**
+     * Set plugin manager for metadata-driven icons
+     */
+    setPluginManager(manager: PluginManager | null): void {
+        this.pluginManager = manager;
+    }
+
+    /**
      * Get icon configuration for plugin type
+     * Uses metadata from PluginManager if available, falls back to hardcoded map
      */
     getIcon(pluginType: string): IconConfig {
+        // Try to get icon from metadata first
+        if (this.pluginManager) {
+            const plugin = this.pluginManager.findPlugin(pluginType);
+            if (plugin) {
+                const iconClass = plugin.icon || 'fa-puzzle-piece';
+                const category = plugin.paletteGroup || plugin.group || plugin.category || 'General';
+                const color = plugin.color || this.CATEGORY_COLORS[category.toLowerCase()] || '#607D8B';
+                
+                return {
+                    faClass: iconClass.startsWith('fa-') ? iconClass : `fa-${iconClass}`,
+                    color: color,
+                    category: category.toLowerCase(),
+                    type: pluginType
+                };
+            }
+        }
+
+        // Fallback to hardcoded map
         const type = pluginType.toLowerCase();
         const iconData = this.ICON_MAP[type];
 

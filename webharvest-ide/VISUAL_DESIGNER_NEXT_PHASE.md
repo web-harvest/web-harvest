@@ -19,9 +19,10 @@ This document consolidates the current findings from the metadata/IDE audit and 
 3. Update `frontend/src/types/index.ts` + `PluginManager.normalisePluginMetadata()` to preserve new metadata (avoid silently coercing unknown fields to `string`).
 4. Add tests: backend round-trip (new `PluginMetadataCatalogTest`), servlet JSON snapshot (`PluginMetadataServletTest`), frontend unit verifying normalization of `AttributeUiMetadata`.
 
-**Status · 2025‑11‑21**
+**Status · 2025‑11‑22**
 - `webharvest-core` exposes the new annotations (`@UiField`, `@UiTool`, `@ExpressionCapable`, enriched `@MasterDetailConstraint`), and `PluginMetadataCatalog` now emits ui blocks + validation metadata consumed by the IDE/VS Code pipeline.
 - `/api/plugins/metadata` ships a versioned `visual` envelope with capability flags; `PluginManager` and `SchemaDrivenEditor` persist the metadata without lossy coercion.
+- `IconLibrary` now uses metadata from `PluginManager` when available, ensuring icons/groups remain in sync between palette and diagram.
 - Follow-up: backend snapshot tests still to be written before opening up the contract to external consumers.
 
 ---
