@@ -1034,12 +1034,16 @@ export class VisualDesigner {
         this.canvasElement.innerHTML = '';
         this.currentRenderMeasurements = new Map();
 
+        // Render grid first (with negative z-index to stay behind nodes)
+        this.ensureGridOverlay();
+
         // Create SVG overlay for connections
         this.svgElement = this.createSVGOverlay();
         this.canvasElement.appendChild(this.svgElement);
         this.updateSvgOverlayDimensions();
 
-        const shouldAutoLayout = isRootView;
+        // Auto-layout should work on all levels (root and nested containers)
+        const shouldAutoLayout = true;
         this.rebuildConnections(shouldAutoLayout, nodesToRender);
 
         // Render nodes
@@ -1100,7 +1104,10 @@ export class VisualDesigner {
         }
 
         this.updateCanvasStageBounds(isRootView);
-        this.ensureGridOverlay();
+        // Grid overlay already rendered at the start, just update dimensions if needed
+        if (this.gridVisible) {
+            this.gridSystem.updateDimensions();
+        }
         this.finalizeRenderMeasurements();
         this.highlightSelectedNodes();
         this.updateFocusSummary();
@@ -2406,8 +2413,10 @@ export class VisualDesigner {
         const horizontalGap = Math.abs(end.x - start.x);
         const verticalGap = Math.abs(end.y - start.y);
 
-        const horizontalOffset = Math.max(12, Math.min(32, horizontalGap / 3));
-        const verticalOffset = Math.max(12, Math.min(32, verticalGap / 3));
+        // Increased offsets to avoid overlapping with node labels
+        // Labels are typically 40-60px from node edges, so we use larger offsets
+        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
+        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
 
         const startOffset = this.offsetAnchorPoint(
             start,

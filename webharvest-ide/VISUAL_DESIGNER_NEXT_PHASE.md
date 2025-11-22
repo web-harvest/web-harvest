@@ -65,9 +65,10 @@ This document consolidates the current findings from the metadata/IDE audit and 
 - Introduce `SchemaDrivenEditor` to `frontend/src/visual/PropertyPanel.ts` and migrate `HttpEditor`, `XPathTester`, etc. into opt-in tools invoked when metadata contains `ui.tools`.
 - Update tests (`frontend/src/visual/__tests__/PropertyPanel.*`) to assert dynamic rendering, constraint enforcement, disabled states when `maxOccurs` reached.
 
-**Status · 2025‑11‑21**
+**Status · 2025‑11‑22**
 - `PropertyPanelShell.ts` now wraps every edit session with keyboard traps, ESC/Cmd+Enter handling, and Apply/Cancel buttons, while `SchemaDrivenEditor` + the new field factory render metadata-driven controls (expression/XPath/regex tools, validation summaries, grouped sections).
 - Legacy hard-coded editors (HTTP, XPath, Regex) are invoked via metadata decorators only when needed; remaining bespoke panels can be migrated incrementally.
+- **Right column redesign completed**: New `RightSidebar` component with 4 sections (Properties, Execution, Data Flow, Monitoring) replaces old stacked panels. `DataVisualization` component provides masterful results visualization with table/tree/chart views, filtering, and export capabilities.
 - Next: add focused Jest coverage plus shared export so the VS Code WebView can reuse the same shell/field registry.
 
 ---

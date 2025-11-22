@@ -246,9 +246,10 @@
         </div>
 
         <!-- Right: Sidebar Section (Always Visible, 360px) -->
-        <div class="sidebar-section">
-            <!-- Sidebar Tab Navigation -->
-            <div class="sidebar-nav">
+        <div class="sidebar-section" id="rightSidebar">
+            <!-- New RightSidebar component will render here -->
+            <!-- Legacy structure kept for backward compatibility during migration -->
+            <div class="sidebar-nav" style="display: none;">
                 <!-- Properties Tab (Visual Mode Only - FIRST!) -->
                 <button class="sidebar-nav-btn active" data-panel="properties" id="propertiesTabBtn"
                     onclick="window.app.switchSidebarPanel('properties')" style="display: none;"

@@ -500,8 +500,9 @@ function autoLayout(nodes: VisualNode[]): void {
 3. Test with real XML examples from docs/web/examples/
 4. Validate roundtrip conversion
 
-> **2025-11-21 update:** Parser + generator are now TypeScript-first (metadata-driven options, layout toggle), covered by `XMLGenerator.test.ts` and the new `XMLRoundtrip.test.ts`.  
+> **2025-11-22 update:** Parser + generator are now TypeScript-first (metadata-driven options, layout toggle), covered by `XMLGenerator.test.ts` and the new `XMLRoundtrip.test.ts`.  
 > All bundled examples are exercised by `npm run sweep:examples`, which round-trips configs and reports legacy auto-fixes before CI.
+> **Diagram layout improvements:** Grid is always enabled and locked (no toggle), auto-layout works consistently on all nesting levels (root and containers), grid z-index fixed to prevent overlapping nodes, connection routing improved with smart offsets and edge bundling to avoid label overlaps.
 
 ### Phase 2: Monaco Integration (1-2 hours)
 1. Add Monaco Editor for XML view

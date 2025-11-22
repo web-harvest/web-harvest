@@ -14,6 +14,8 @@ import { KeyboardShortcutManager } from './KeyboardShortcutManager';
 import { LogsPanel } from '../panels/LogsPanel';
 import { ResultsPanel } from '../panels/ResultsPanel';
 import { VariablesPanel } from '../panels/VariablesPanel';
+import { RightSidebar, type SidebarSection } from '../panels/RightSidebar';
+import { DataVisualization } from '../panels/DataVisualization';
 import { VisualDesigner } from '../visual/VisualDesigner';
 import { PropertyPanel } from '../visual/PropertyPanel';
 import { PluginPalette } from '../visual/PluginPalette';
@@ -72,6 +74,8 @@ export class App {
     private executionHistoryIndex: Map<string, string> = new Map();
     private lastRunEntryId: string | null = null;
     private runHistoryByEntry: Map<string, string> = new Map();
+    private rightSidebar: RightSidebar | null = null;
+    private dataVisualization: DataVisualization | null = null;
 
     constructor() {
         console.log('🚀 Initializing WebHarvest IDE (TypeScript + Apple HIG)...');
@@ -106,6 +110,41 @@ export class App {
         this.xmlParser = new XMLParser();
         this.xmlGenerator = new XMLGenerator();
         this.keyboardShortcutManager = new KeyboardShortcutManager();
+
+        // Initialize new RightSidebar (replaces old sidebar structure)
+        try {
+            this.rightSidebar = new RightSidebar('rightSidebar', {
+                onSectionChange: (section) => this.handleSidebarSectionChange(section),
+            });
+            
+            // Initialize DataVisualization component after RightSidebar is created
+            // Wait for DOM to be ready and RightSidebar to render
+            setTimeout(() => {
+                if (this.rightSidebar) {
+                    const dataSection = this.rightSidebar.getDataSection();
+                    if (dataSection) {
+                        const resultsContainer = dataSection.querySelector('#results');
+                        if (resultsContainer) {
+                            try {
+                                // DataVisualization will use the #results container
+                                this.dataVisualization = new DataVisualization('results', {
+                                    onExport: (format) => this.handleDataExport(format),
+                                    onFilter: () => {
+                                        // Filter is handled internally by DataVisualization
+                                    },
+                                });
+                                console.log('✅ DataVisualization initialized in RightSidebar');
+                            } catch (error) {
+                                console.warn('[App] DataVisualization initialization failed:', error);
+                            }
+                        }
+                    }
+                }
+            }, 300);
+        } catch (error) {
+            console.warn('[App] RightSidebar initialization failed, using legacy sidebar:', error);
+            this.rightSidebar = null;
+        }
 
         // Initialize
         this.initialize();
@@ -200,6 +239,25 @@ export class App {
 
             // Share plugin metadata with property panel for schema-driven editors
             this.propertyPanel.setPluginManager(this.pluginManager);
+
+            // If using new RightSidebar, inject PropertyPanel into it
+            if (this.rightSidebar) {
+                const propertiesContainer = this.rightSidebar.getPropertiesContainer();
+                const propertyPanelElement = document.getElementById('propertyPanel');
+                if (propertyPanelElement && propertiesContainer) {
+                    // Move PropertyPanel content to new RightSidebar
+                    const propertyPanelContent = propertyPanelElement.querySelector('.panel-body') || propertyPanelElement;
+                    if (propertyPanelContent) {
+                        propertiesContainer.innerHTML = '';
+                        propertiesContainer.appendChild(propertyPanelContent.cloneNode(true));
+                        // Update PropertyPanel container reference
+                        const newContainer = propertiesContainer.querySelector('#property-panel-content') || propertiesContainer;
+                        if (newContainer && newContainer.id !== 'property-panel-content') {
+                            newContainer.id = 'property-panel-content';
+                        }
+                    }
+                }
+            }
 
             // Initialize keyboard shortcut manager with plugin manager
             this.keyboardShortcutManager.setPluginManager(this.pluginManager);
@@ -404,6 +462,9 @@ export class App {
 
                         // Update both Results and Variables panels (they're the same data)
                         this.resultsPanel.setResults(update.results);
+                        if (this.dataVisualization) {
+                            this.dataVisualization.setResults(update.results);
+                        }
                         this.variablesPanel.setVariables(update.results);
 
                         // Switch to Results panel to show results (like old app.js)
@@ -1465,6 +1526,9 @@ export class App {
                 // Update panels with tab's data (like old app.js)
                 if (tab.results) {
                     this.resultsPanel.setResults(tab.results);
+                    if (this.dataVisualization) {
+                        this.dataVisualization.setResults(tab.results);
+                    }
                     this.variablesPanel.setVariables(tab.results);
                 } else {
                     this.resultsPanel.clear();
@@ -1555,7 +1619,42 @@ export class App {
      * Switch sidebar panel (Logs/Results/Variables/Session)
      */
     switchSidebarPanel(panelName: string): void {
-        this.uiManager.activateSidebarPanel(panelName);
+        if (this.rightSidebar) {
+            // Map legacy panel names to new sections
+            const sectionMap: Record<string, SidebarSection> = {
+                properties: 'properties',
+                run: 'execution',
+                logs: 'monitoring',
+                results: 'data',
+                variables: 'data',
+            };
+            const section = sectionMap[panelName] || 'execution';
+            this.rightSidebar.showSection(section);
+        } else {
+            // Fallback to legacy system
+            this.uiManager.activateSidebarPanel(panelName);
+        }
+    }
+
+    /**
+     * Handle sidebar section change (from new RightSidebar)
+     */
+    private handleSidebarSectionChange(section: SidebarSection): void {
+        console.log('[App] Sidebar section changed to:', section);
+        // Additional logic if needed when section changes
+    }
+
+
+    /**
+     * Escape XML special characters
+     */
+    private escapeXml(str: string): string {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
     }
 
     private ensureRunPanelState(tab: Tab): RunPanelState {
@@ -1826,15 +1925,68 @@ export class App {
     /**
      * Export results
      */
-    exportResults(): void {
-        const json = this.resultsPanel.exportAsJSON();
-        const blob = new Blob([json], { type: 'application/json' });
+    exportResults(format?: 'json' | 'csv' | 'xml'): void {
+        const exportFormat = format || 'json';
+        let content: string;
+        let filename: string;
+        let mimeType: string;
+
+        if (exportFormat === 'csv') {
+            content = this.resultsPanel.exportAsCSV();
+            filename = 'results.csv';
+            mimeType = 'text/csv';
+        } else if (exportFormat === 'xml') {
+            // Convert results to XML format
+            const results = this.resultsPanel.getResults();
+            content = this.convertResultsToXML(results);
+            filename = 'results.xml';
+            mimeType = 'application/xml';
+        } else {
+            content = this.resultsPanel.exportAsJSON();
+            filename = 'results.json';
+            mimeType = 'application/json';
+        }
+
+        const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'results.json';
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Handle data export from DataVisualization
+     */
+    private handleDataExport(format: 'json' | 'csv' | 'xml'): void {
+        this.exportResults(format);
+    }
+
+    /**
+     * Convert results to XML format
+     */
+    private convertResultsToXML(results: any[]): string {
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<results>\n';
+        results.forEach(result => {
+            xml += `  <result name="${this.escapeXML(result.name)}" type="${this.escapeXML(result.type)}">\n`;
+            xml += `    <value>${this.escapeXML(String(result.value))}</value>\n`;
+            xml += `  </result>\n`;
+        });
+        xml += '</results>';
+        return xml;
+    }
+
+    /**
+     * Escape XML special characters
+     */
+    private escapeXML(str: string): string {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
     }
 
     /**
