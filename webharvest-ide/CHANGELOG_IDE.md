@@ -1,5 +1,33 @@
 # Web-Harvest IDE - Change Log
 
+## Version 2.3.1 - November 23, 2025
+
+### 🎨 UI Improvements
+
+#### Visual Designer
+- ✅ **Removed unnecessary 'Grid snap locked' indicator** - Cleaner toolbar without redundant status indicator
+  - Grid snap functionality remains active (always enabled)
+  - Removed static span element from toolbar for better UI clarity
+
+#### Connection Rendering Fixes
+- ✅ **Fixed connection rendering to STOP marker** - Connections now properly render to workflow-end marker when nodes are moved
+  - Manual marker positions are always respected
+  - Automatic marker positions recalculated from model during drag operations
+
+- ✅ **Fixed SVG overlay sizing** - SVG now covers full canvas, not just viewport
+  - Connections visible even when canvas is scrolled beyond viewport
+  - Proper viewBox attribute for correct scaling
+
+#### Property Editor Enhancements
+- ✅ **Improved ergonomics** - Added proper padding and margins to right sidebar sections
+- ✅ **Enhanced value formatting** - Better validation and formatting for various data types
+- ✅ **Syntax highlighting** - Added Prism.js for JSON, CODE, and EXPRESSION fields
+- ✅ **Enhanced tooltips** - Better visual feedback and information display
+
+#### Session Information
+- ✅ **Restored session info display** - Session information and token usage now displayed in Execution section
+- ✅ **Per-tab session data** - Session data stored per-tab and displayed in run history
+
 ## Version 2.2.1 - October 11, 2025
 
 ### 📚 Documentation Update - XPath Examples Fixed
