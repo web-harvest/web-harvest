@@ -42,7 +42,9 @@ export class SchemaDrivenEditor {
         container.className = 'schema-driven-editor';
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
-        container.style.gap = '12px';
+        container.style.gap = '0';
+        container.style.padding = '0';
+        container.style.maxWidth = '100%';
 
         const attributes = plugin.schema?.attributes || [];
         if (attributes.length === 0) {
@@ -53,21 +55,16 @@ export class SchemaDrivenEditor {
         const attributeUi = plugin.attributeUi || plugin.ui?.fields || {};
         const grouped = this.groupAttributes(attributes, attributeUi);
 
-        grouped.forEach(group => {
+        grouped.forEach((group, groupIndex) => {
             const section = document.createElement('section');
-            section.style.border = '1px solid var(--gray-150)';
-            section.style.borderRadius = 'var(--radius-md)';
-            section.style.padding = '12px 16px';
-            section.style.background = 'var(--gray-0)';
+            section.className = 'schema-driven-group';
+            // Styles are now handled by CSS
+            section.style.marginBottom = groupIndex < grouped.length - 1 ? '16px' : '0';
 
             if (group.label !== DEFAULT_GROUP_LABEL || grouped.length > 1) {
                 const heading = document.createElement('h3');
                 heading.textContent = group.label;
-                heading.style.fontSize = '13px';
-                heading.style.fontWeight = '600';
-                heading.style.margin = '0 0 8px';
-                heading.style.textTransform = 'uppercase';
-                heading.style.color = 'var(--gray-600)';
+                // Styles are now handled by CSS
                 section.appendChild(heading);
             }
 

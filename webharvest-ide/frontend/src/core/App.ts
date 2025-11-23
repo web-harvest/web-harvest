@@ -64,13 +64,13 @@ export class App {
     private resultsPanel: ResultsPanel;
     private variablesPanel: VariablesPanel;
     private visualDesigner: VisualDesigner;
-    private propertyPanel: PropertyPanel;
+    private propertyPanel: PropertyPanel | null = null;
     private pluginPalette: PluginPalette;
     private xmlParser: XMLParser;
     private xmlGenerator: XMLGenerator;
     private keyboardShortcutManager: KeyboardShortcutManager;
     private currentMode: ViewMode = 'visual'; // Start in Visual mode (Conductor-style)
-    private runPanel: RunWorkflowPanel;
+    private runPanel!: RunWorkflowPanel; // Initialized after RightSidebar creates container
     private executionHistoryIndex: Map<string, string> = new Map();
     private lastRunEntryId: string | null = null;
     private runHistoryByEntry: Map<string, string> = new Map();
@@ -93,49 +93,123 @@ export class App {
         this.variablesPanel = new VariablesPanel('variables');
         // Note: visualDesigner initialized after pluginManager loads in initialize()
         this.visualDesigner = new VisualDesigner('canvas-area');
-        this.propertyPanel = new PropertyPanel('propertyPanel');
-        this.runPanel = new RunWorkflowPanel('executionControls', {
-            onRun: (payload, scope, node) => this.handleRunFromPanel(payload, scope, node),
-            onValidate: () => {
-                void this.validateConfig();
-            },
-            onStateChange: (state) => this.handleRunPanelStateChange(state),
-            onRestore: (entryId) => this.handleRunHistoryRestore(entryId),
-            onRerun: (entryId) => {
-                void this.handleRunHistoryRerun(entryId);
-            },
-            onClearHistory: () => this.handleRunHistoryClear(),
-        });
         this.pluginPalette = new PluginPalette('plugin-palette');
         this.xmlParser = new XMLParser();
         this.xmlGenerator = new XMLGenerator();
         this.keyboardShortcutManager = new KeyboardShortcutManager();
 
         // Initialize new RightSidebar (replaces old sidebar structure)
+        // Must be initialized before PropertyPanel and RunWorkflowPanel so containers exist
         try {
             this.rightSidebar = new RightSidebar('rightSidebar', {
                 onSectionChange: (section) => this.handleSidebarSectionChange(section),
             });
-            
-            // Initialize DataVisualization component after RightSidebar is created
+
+            // Initialize PropertyPanel after RightSidebar creates #propertyPanel container
+            const propertiesContainer = this.rightSidebar.getPropertiesContainer();
+            if (propertiesContainer) {
+                this.propertyPanel = new PropertyPanel('propertyPanel');
+                console.log('✅ PropertyPanel initialized in RightSidebar');
+            } else {
+                // Fallback: try with delay
+                setTimeout(() => {
+                    const container = this.rightSidebar?.getPropertiesContainer();
+                    if (container) {
+                        this.propertyPanel = new PropertyPanel('propertyPanel');
+                        console.log('✅ PropertyPanel initialized in RightSidebar (delayed)');
+                    } else {
+                        console.error('❌ [App] #propertyPanel container not found, PropertyPanel not initialized');
+                    }
+                }, 50);
+            }
+
+            // Initialize RunWorkflowPanel after RightSidebar creates #executionControls
+            // RightSidebar.render() is called in constructor, so container should exist
+            const executionContainer = document.getElementById('executionControls');
+            if (executionContainer) {
+                this.runPanel = new RunWorkflowPanel('executionControls', {
+                    onRun: (payload, scope, node) => this.handleRunFromPanel(payload, scope, node),
+                    onValidate: () => {
+                        void this.validateConfig();
+                    },
+                    onStateChange: (state) => this.handleRunPanelStateChange(state),
+                    onRestore: (entryId) => this.handleRunHistoryRestore(entryId),
+                    onRerun: (entryId) => {
+                        void this.handleRunHistoryRerun(entryId);
+                    },
+                    onClearHistory: () => this.handleRunHistoryClear(),
+                });
+                console.log('✅ RunWorkflowPanel initialized in RightSidebar');
+            } else {
+                // Fallback: try again after a short delay
+                setTimeout(() => {
+                    const container = document.getElementById('executionControls');
+                    if (container) {
+                        this.runPanel = new RunWorkflowPanel('executionControls', {
+                            onRun: (payload, scope, node) => this.handleRunFromPanel(payload, scope, node),
+                            onValidate: () => {
+                                void this.validateConfig();
+                            },
+                            onStateChange: (state) => this.handleRunPanelStateChange(state),
+                            onRestore: (entryId) => this.handleRunHistoryRestore(entryId),
+                            onRerun: (entryId) => {
+                                void this.handleRunHistoryRerun(entryId);
+                            },
+                            onClearHistory: () => this.handleRunHistoryClear(),
+                        });
+                        console.log('✅ RunWorkflowPanel initialized in RightSidebar (delayed)');
+                    } else {
+                        console.error('❌ [App] #executionControls container not found, RunWorkflowPanel not initialized');
+                    }
+                }, 50);
+            }
+
+            // Initialize DataVisualization and LogsPanel after RightSidebar is created
             // Wait for DOM to be ready and RightSidebar to render
             setTimeout(() => {
                 if (this.rightSidebar) {
+                    // Initialize DataVisualization
                     const dataSection = this.rightSidebar.getDataSection();
                     if (dataSection) {
                         const resultsContainer = dataSection.querySelector('#results');
                         if (resultsContainer) {
                             try {
-                                // DataVisualization will use the #results container
                                 this.dataVisualization = new DataVisualization('results', {
                                     onExport: (format) => this.handleDataExport(format),
                                     onFilter: () => {
                                         // Filter is handled internally by DataVisualization
                                     },
                                 });
-                                console.log('✅ DataVisualization initialized in RightSidebar');
+                                console.log('✅ [App] DataVisualization initialized in RightSidebar');
                             } catch (error) {
-                                console.warn('[App] DataVisualization initialization failed:', error);
+                                console.error('[App] DataVisualization initialization failed:', error);
+                            }
+                        }
+                    }
+
+                    // Initialize LogsPanel in Monitoring section
+                    const monitoringSection = this.rightSidebar.getMonitoringSection();
+                    if (monitoringSection) {
+                        const logsContainer = monitoringSection.querySelector('#logs') as HTMLElement;
+                        if (logsContainer) {
+                            try {
+                                this.logsPanel.renderInto(logsContainer);
+                                console.log('✅ [App] LogsPanel initialized in RightSidebar Monitoring section');
+                            } catch (error) {
+                                console.error('[App] LogsPanel initialization failed:', error);
+                            }
+                        }
+                    }
+
+                    // Initialize VariablesPanel in Data section
+                    if (dataSection) {
+                        const variablesContainer = dataSection.querySelector('#variables') as HTMLElement;
+                        if (variablesContainer) {
+                            try {
+                                this.variablesPanel.renderInto(variablesContainer);
+                                console.log('✅ [App] VariablesPanel initialized in RightSidebar Data section');
+                            } catch (error) {
+                                console.error('[App] VariablesPanel initialization failed:', error);
                             }
                         }
                     }
@@ -230,7 +304,7 @@ export class App {
         try {
             const plugins = await this.pluginManager.loadPlugins();
             this.uiManager.renderPluginPalette(plugins);
-            
+
             // Update XMLParser with plugin manager for VisualPluginMetadata support
             this.xmlParser = new XMLParser(this.pluginManager);
 
@@ -238,24 +312,17 @@ export class App {
             this.visualDesigner.setPluginManager(this.pluginManager);
 
             // Share plugin metadata with property panel for schema-driven editors
-            this.propertyPanel.setPluginManager(this.pluginManager);
+            if (this.propertyPanel) {
+                this.propertyPanel.setPluginManager(this.pluginManager);
+            }
 
-            // If using new RightSidebar, inject PropertyPanel into it
+            // If using new RightSidebar, ensure PropertyPanel container exists
             if (this.rightSidebar) {
                 const propertiesContainer = this.rightSidebar.getPropertiesContainer();
-                const propertyPanelElement = document.getElementById('propertyPanel');
-                if (propertyPanelElement && propertiesContainer) {
-                    // Move PropertyPanel content to new RightSidebar
-                    const propertyPanelContent = propertyPanelElement.querySelector('.panel-body') || propertyPanelElement;
-                    if (propertyPanelContent) {
-                        propertiesContainer.innerHTML = '';
-                        propertiesContainer.appendChild(propertyPanelContent.cloneNode(true));
-                        // Update PropertyPanel container reference
-                        const newContainer = propertiesContainer.querySelector('#property-panel-content') || propertiesContainer;
-                        if (newContainer && newContainer.id !== 'property-panel-content') {
-                            newContainer.id = 'property-panel-content';
-                        }
-                    }
+                if (propertiesContainer && propertiesContainer.id === 'propertyPanel') {
+                    // PropertyPanel is already initialized with 'propertyPanel' ID
+                    // The container in RightSidebar now has the same ID, so PropertyPanel will render there
+                    console.log('✅ [App] PropertyPanel container ready in RightSidebar');
                 }
             }
 
@@ -461,14 +528,23 @@ export class App {
                         }
 
                         // Update both Results and Variables panels (they're the same data)
+                        console.log('[App] Setting results to panels:', Object.keys(update.results).length, 'variables');
                         this.resultsPanel.setResults(update.results);
                         if (this.dataVisualization) {
                             this.dataVisualization.setResults(update.results);
+                            console.log('[App] Results set to DataVisualization');
                         }
                         this.variablesPanel.setVariables(update.results);
+                        console.log('[App] Variables set to VariablesPanel');
 
-                        // Switch to Results panel to show results (like old app.js)
-                        this.switchSidebarPanel('results');
+                        // Switch to Data section to show results (using RightSidebar)
+                        if (this.rightSidebar) {
+                            this.rightSidebar.showSection('data');
+                            console.log('[App] Switched to Data section to show results');
+                        } else {
+                            // Fallback to legacy system
+                            this.switchSidebarPanel('results');
+                        }
                     } catch (error) {
                         console.error('Failed to set results:', error);
                     }
@@ -477,6 +553,19 @@ export class App {
                 }
 
                 // Session info and token usage - STORE IN TAB (like old app.js)
+                if (tab) {
+                    if (update.sessionInfo) {
+                        tab.sessionInfo = update.sessionInfo;
+                    }
+                    if (update.tokenUsage) {
+                        tab.tokenUsage = update.tokenUsage;
+                    }
+                }
+
+                // Display session info in RunWorkflowPanel
+                if (this.runPanel && (update.sessionInfo || update.tokenUsage)) {
+                    this.runPanel.displaySessionInfo(update.sessionInfo, update.tokenUsage);
+                }
             }
 
             // Legacy: handle separate variables field
@@ -491,16 +580,46 @@ export class App {
             const node = this.visualDesigner.findNode(nodeId);
             if (node) {
                 console.log(`✅ [App] Found node, calling propertyPanel.showNode():`, node);
-                this.propertyPanel.showNode(node).catch(err => {
-                    console.error('❌ [App] Error showing node in PropertyPanel:', err);
-                });
-                this.runPanel.updateSelection({
-                    id: node.id,
-                    label: this.visualDesigner.getNodeDisplayLabel(node),
-                });
+
+                // Activate Properties section in RightSidebar
+                if (this.rightSidebar) {
+                    this.rightSidebar.showSection('properties');
+                }
+
+                if (this.propertyPanel) {
+                    this.propertyPanel.showNode(node).catch(err => {
+                        console.error('❌ [App] Error showing node in PropertyPanel:', err);
+                    });
+                }
+
+                // Update run panel selection if available
+                if (this.runPanel) {
+                    this.runPanel.updateSelection({
+                        id: node.id,
+                        label: this.visualDesigner.getNodeDisplayLabel(node),
+                    });
+                }
             } else {
                 console.warn(`⚠️ [App] Node not found: ${nodeId}`);
-                this.runPanel.updateSelection(null);
+                if (this.runPanel) {
+                    this.runPanel.updateSelection(null);
+                }
+            }
+        });
+
+        this.visualDesigner.addEventListener('nodeDoubleClicked', (nodeId: string) => {
+            console.log(`📡 [App] Received 'nodeDoubleClicked' event for: ${nodeId}`);
+            const node = this.visualDesigner.findNode(nodeId);
+            if (node) {
+                // Activate Properties section in RightSidebar
+                if (this.rightSidebar) {
+                    this.rightSidebar.showSection('properties');
+                }
+                if (this.propertyPanel) {
+                    this.propertyPanel.showNode(node).catch(err => {
+                        console.error('❌ [App] Error showing node in PropertyPanel:', err);
+                    });
+                }
             }
         });
 
@@ -525,7 +644,9 @@ export class App {
         });
 
         this.visualDesigner.addEventListener('focusSummaryUpdated', (payload) => {
-            this.propertyPanel.updateFocusSummary(payload);
+            if (this.propertyPanel) {
+                this.propertyPanel.updateFocusSummary(payload);
+            }
         });
 
         // Visual Designer → XML (when node added)
@@ -551,14 +672,23 @@ export class App {
         });
 
         // Property Panel → Visual Designer
-        this.propertyPanel.onChange((updatedNode) => {
-            this.visualDesigner.updateNode(updatedNode.id, updatedNode);
+        if (this.propertyPanel) {
+            this.propertyPanel.onChange((updatedNode) => {
+                console.log('[App] PropertyPanel onChange callback received for node:', updatedNode.id, updatedNode.type);
+                const success = this.visualDesigner.updateNode(updatedNode.id, updatedNode);
+                if (success) {
+                    console.log('[App] Node updated successfully in VisualDesigner');
+                } else {
+                    console.error('[App] Failed to update node in VisualDesigner');
+                }
 
-            // Sync to XML immediately
-            if (this.currentMode === 'visual') {
-                this.syncVisualToXML();
-            }
-        });
+                // Sync to XML immediately
+                if (this.currentMode === 'visual') {
+                    this.syncVisualToXML();
+                    console.log('[App] Visual to XML sync completed');
+                }
+            });
+        }
 
         // Plugin Palette → Visual Designer
         this.pluginPalette.onAddNode((newNode) => {
@@ -682,7 +812,7 @@ export class App {
 
             // Handle standard shortcuts first (for backwards compatibility)
             const meta = e.metaKey || e.ctrlKey;
-            
+
             // Delete selected
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 if (this.currentMode === 'visual') {
@@ -690,6 +820,57 @@ export class App {
                     e.preventDefault();
                     return;
                 }
+            }
+
+            // Enter - Open properties for selected node
+            if (e.key === 'Enter' && !meta) {
+                if (this.currentMode === 'visual') {
+                    const selectedNodeId = this.visualDesigner.getSelectedNodeId();
+                    if (selectedNodeId) {
+                        const node = this.visualDesigner.findNode(selectedNodeId);
+                        if (node) {
+                            if (this.rightSidebar) {
+                                this.rightSidebar.showSection('properties');
+                            }
+                            if (this.propertyPanel) {
+                                this.propertyPanel.showNode(node).catch(err => {
+                                    console.error('❌ [App] Error showing node in PropertyPanel:', err);
+                                });
+                            }
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Escape - Close property panel or exit focus level
+            if (e.key === 'Escape') {
+                if (this.currentMode === 'visual') {
+                    // If property panel is visible, close it
+                    if (this.rightSidebar && this.rightSidebar.isSectionActive('properties')) {
+                        this.rightSidebar.showSection('execution');
+                        e.preventDefault();
+                        return;
+                    }
+                    // Otherwise, let VisualDesigner handle it (exit focus level)
+                }
+            }
+
+            // Cmd+S - Save
+            if (meta && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                if (this.currentMode === 'visual') {
+                    this.syncVisualToXML();
+                } else if (this.currentMode === 'xml') {
+                    const tab = this.tabManager.getActiveTab();
+                    if (tab) {
+                        const content = this.editor.getValue();
+                        this.tabManager.updateTabContent(tab.id, content);
+                        this.downloadXml(content, tab.name);
+                    }
+                }
+                return;
             }
 
             // Try KeyboardShortcutManager (handles plugin shortcuts and registered globals)
@@ -767,6 +948,16 @@ export class App {
         const currentlyVisible = this.visualDesigner.isMinimapVisible();
         this.visualDesigner.showMinimap(!currentlyVisible);
         console.log(`🗺️ Minimap ${!currentlyVisible ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    togglePalette(): void {
+        console.log('🔧 [App] togglePalette() called');
+        this.uiManager.togglePluginSidebar();
+    }
+
+    toggleSidebar(): void {
+        console.log('🔧 [App] toggleSidebar() called');
+        this.uiManager.toggleRightSidebar();
     }
 
     private downloadXml(xml: string, filename: string): void {
@@ -1553,9 +1744,11 @@ export class App {
                 }
 
                 const runState = this.ensureRunPanelState(tab);
-                this.runPanel.syncState(runState);
-                this.runPanel.updateSelection(null);
-                this.runPanel.setExecutionState('idle');
+                if (this.runPanel) {
+                    this.runPanel.syncState(runState);
+                    this.runPanel.updateSelection(null);
+                    this.runPanel.setExecutionState('idle');
+                }
             }
         }
     }
@@ -1609,7 +1802,9 @@ export class App {
         } else {
             this.editor.setValue('');
             this.uiManager.updateFilename('No tabs');
-            this.runPanel.syncState({ ...DEFAULT_RUN_PANEL_STATE });
+            if (this.runPanel) {
+                this.runPanel.syncState({ ...DEFAULT_RUN_PANEL_STATE });
+            }
         }
         this.runPanel.updateSelection(null);
         this.runPanel.setExecutionState('idle');
@@ -1619,6 +1814,7 @@ export class App {
      * Switch sidebar panel (Logs/Results/Variables/Session)
      */
     switchSidebarPanel(panelName: string): void {
+        console.log(`[App] switchSidebarPanel('${panelName}') called`);
         if (this.rightSidebar) {
             // Map legacy panel names to new sections
             const sectionMap: Record<string, SidebarSection> = {
@@ -1629,9 +1825,21 @@ export class App {
                 variables: 'data',
             };
             const section = sectionMap[panelName] || 'execution';
+            console.log(`[App] Mapping '${panelName}' to section '${section}'`);
             this.rightSidebar.showSection(section);
+
+            // If switching to variables, scroll to variables section in Data view
+            if (panelName === 'variables' && section === 'data') {
+                setTimeout(() => {
+                    const variablesContainer = document.getElementById('variables');
+                    if (variablesContainer) {
+                        variablesContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
         } else {
-            // Fallback to legacy system
+            console.warn('[App] RightSidebar not initialized, using legacy system');
+            // Fallback to legacy system (should not happen in normal operation)
             this.uiManager.activateSidebarPanel(panelName);
         }
     }
@@ -1927,6 +2135,7 @@ export class App {
      */
     exportResults(format?: 'json' | 'csv' | 'xml'): void {
         const exportFormat = format || 'json';
+        console.log(`[App] exportResults('${exportFormat}') called`);
         let content: string;
         let filename: string;
         let mimeType: string;
@@ -1935,16 +2144,19 @@ export class App {
             content = this.resultsPanel.exportAsCSV();
             filename = 'results.csv';
             mimeType = 'text/csv';
+            console.log('[App] Exported as CSV, length:', content.length);
         } else if (exportFormat === 'xml') {
             // Convert results to XML format
             const results = this.resultsPanel.getResults();
             content = this.convertResultsToXML(results);
             filename = 'results.xml';
             mimeType = 'application/xml';
+            console.log('[App] Exported as XML, length:', content.length);
         } else {
             content = this.resultsPanel.exportAsJSON();
             filename = 'results.json';
             mimeType = 'application/json';
+            console.log('[App] Exported as JSON, length:', content.length);
         }
 
         const blob = new Blob([content], { type: mimeType });
@@ -1954,12 +2166,14 @@ export class App {
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
+        console.log(`[App] Export completed: ${filename}`);
     }
 
     /**
      * Handle data export from DataVisualization
      */
     private handleDataExport(format: 'json' | 'csv' | 'xml'): void {
+        console.log(`[App] handleDataExport('${format}') called`);
         this.exportResults(format);
     }
 

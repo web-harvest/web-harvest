@@ -101,6 +101,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[main.ts] toggleMinimap called');
                 appInstance.toggleMinimap();
             },
+            togglePalette: () => {
+                console.log('[main.ts] togglePalette called');
+                appInstance.togglePalette();
+            },
+            toggleSidebar: () => {
+                console.log('[main.ts] toggleSidebar called');
+                appInstance.toggleSidebar();
+            },
 
             // For debugging
             _instance: appInstance

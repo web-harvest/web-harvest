@@ -21,6 +21,9 @@ export class RightSidebar {
     private options: RightSidebarOptions;
     private sections: Map<SidebarSection, HTMLElement> = new Map();
     private resizeHandles: HTMLElement[] = [];
+    private isResizing: boolean = false;
+    private resizeStartX: number = 0;
+    private resizeStartWidth: number = 0;
 
     constructor(containerId: string, options: RightSidebarOptions = {}) {
         const container = document.getElementById(containerId);
@@ -31,6 +34,7 @@ export class RightSidebar {
         this.container = container;
         this.options = options;
         this.render();
+        this.setupResizeHandle();
     }
 
     /**
@@ -179,8 +183,21 @@ export class RightSidebar {
             overflow: hidden;
         `;
 
+        // Create container for PropertyPanel (use propertyPanel ID for compatibility)
+        const propertyContainer = document.createElement('div');
+        propertyContainer.id = 'propertyPanel';
+        propertyContainer.style.cssText = `
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        `;
+
+        // Add placeholder initially
         const placeholder = document.createElement('div');
         placeholder.className = 'right-sidebar__placeholder';
+        placeholder.id = 'property-panel-placeholder';
         placeholder.style.cssText = `
             flex: 1;
             display: flex;
@@ -196,7 +213,8 @@ export class RightSidebar {
             <p style="margin: 0; font-size: 14px;">Select a plugin on the canvas to view its properties</p>
         `;
 
-        section.appendChild(placeholder);
+        propertyContainer.appendChild(placeholder);
+        section.appendChild(propertyContainer);
         return section;
     }
 
@@ -220,6 +238,8 @@ export class RightSidebar {
         controlsContainer.style.cssText = `
             flex: 1;
             overflow-y: auto;
+            padding: 20px 24px;
+            box-sizing: border-box;
         `;
 
         section.appendChild(controlsContainer);
@@ -281,10 +301,12 @@ export class RightSidebar {
         resultsContainer.className = 'results-tree';
         resultsContainer.style.cssText = `
             flex: 1;
-            overflow: hidden;
+            overflow-y: auto;
             min-height: 0;
             display: flex;
             flex-direction: column;
+            padding: 16px 24px;
+            box-sizing: border-box;
         `;
 
         const resultsSection = document.createElement('div');
@@ -327,6 +349,8 @@ export class RightSidebar {
             flex: 1;
             overflow-y: auto;
             min-height: 0;
+            padding: 16px 24px;
+            box-sizing: border-box;
         `;
 
         const variablesSection = document.createElement('div');
@@ -422,6 +446,8 @@ export class RightSidebar {
             flex: 1;
             overflow-y: auto;
             min-height: 0;
+            padding: 16px 24px;
+            box-sizing: border-box;
         `;
 
         section.appendChild(logsHeader);
@@ -431,9 +457,31 @@ export class RightSidebar {
     }
 
     /**
+     * Activate a section (show it, hide others) - alias for showSection for compatibility
+     */
+    activateSection(sectionId: SidebarSection): void {
+        this.showSection(sectionId);
+    }
+
+    /**
+     * Get the currently active section
+     */
+    getActiveSection(): SidebarSection {
+        return this.activeSection;
+    }
+
+    /**
+     * Check if a section is currently active
+     */
+    isSectionActive(sectionId: SidebarSection): boolean {
+        return this.activeSection === sectionId;
+    }
+
+    /**
      * Show specific section
      */
     showSection(sectionId: SidebarSection): void {
+        console.log(`[RightSidebar] showSection('${sectionId}') called`);
         // Update active tab
         const tabs = this.container.querySelectorAll('.right-sidebar__tab');
         tabs.forEach(tabEl => {
@@ -452,6 +500,7 @@ export class RightSidebar {
         this.sections.forEach((section, id) => {
             if (id === sectionId) {
                 section.style.display = 'flex';
+                console.log(`[RightSidebar] Showing section '${id}'`);
             } else {
                 section.style.display = 'none';
             }
@@ -459,6 +508,7 @@ export class RightSidebar {
 
         this.activeSection = sectionId;
         this.options.onSectionChange?.(sectionId);
+        console.log(`[RightSidebar] Section '${sectionId}' activated`);
     }
 
     /**
@@ -469,7 +519,9 @@ export class RightSidebar {
         if (!section) {
             throw new Error('Properties section not found');
         }
-        return section.querySelector('.right-sidebar__placeholder') || section;
+        // Return the propertyPanel container (ID for compatibility with PropertyPanel)
+        const container = section.querySelector('#propertyPanel') as HTMLElement;
+        return container || section;
     }
 
     /**
@@ -480,10 +532,89 @@ export class RightSidebar {
     }
 
     /**
-     * Get active section
+     * Get monitoring section (for LogsPanel injection)
      */
-    getActiveSection(): SidebarSection {
-        return this.activeSection;
+    getMonitoringSection(): HTMLElement | null {
+        return this.sections.get('monitoring') || null;
+    }
+
+    /**
+     * Show/hide the sidebar
+     */
+    show(visible: boolean): void {
+        this.container.style.display = visible ? 'flex' : 'none';
+    }
+
+    /**
+     * Check if sidebar is visible
+     */
+    isVisible(): boolean {
+        return this.container.style.display !== 'none';
+    }
+
+    /**
+     * Setup resize handle for sidebar
+     */
+    private setupResizeHandle(): void {
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'sidebar-resize-handle';
+        resizeHandle.style.cssText = `
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            cursor: ew-resize;
+            z-index: 1000;
+            background: transparent;
+            transition: background 0.2s;
+        `;
+
+        resizeHandle.addEventListener('mouseenter', () => {
+            resizeHandle.style.background = 'rgba(59, 130, 246, 0.5)';
+        });
+
+        resizeHandle.addEventListener('mouseleave', () => {
+            if (!this.isResizing) {
+                resizeHandle.style.background = 'transparent';
+            }
+        });
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.isResizing = true;
+            this.resizeStartX = e.clientX;
+            this.resizeStartWidth = this.container.offsetWidth;
+            resizeHandle.style.background = 'rgba(59, 130, 246, 0.8)';
+
+            const onMouseMove = (e: MouseEvent) => {
+                if (!this.isResizing) return;
+                const deltaX = this.resizeStartX - e.clientX; // Inverted because we're resizing from left
+                const newWidth = Math.max(280, Math.min(window.innerWidth * 0.5, this.resizeStartWidth + deltaX));
+                this.container.style.width = `${newWidth}px`;
+                this.container.style.flex = `0 0 ${newWidth}px`;
+                
+                // Update parent sidebar-section if it exists
+                const sidebarSection = this.container.closest('.sidebar-section') as HTMLElement;
+                if (sidebarSection) {
+                    sidebarSection.style.width = `${newWidth}px`;
+                    sidebarSection.style.flex = `0 0 ${newWidth}px`;
+                }
+            };
+
+            const onMouseUp = () => {
+                this.isResizing = false;
+                resizeHandle.style.background = 'transparent';
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        this.container.style.position = 'relative';
+        this.container.appendChild(resizeHandle);
     }
 }
 

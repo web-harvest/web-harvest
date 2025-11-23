@@ -38,19 +38,24 @@ export class DataVisualization {
      * Set results data
      */
     setResults(results: ExecutionResult[] | Record<string, any>): void {
+        console.log('[DataVisualization] setResults() called');
         if (Array.isArray(results)) {
             this.results = [...results];
-            } else {
+            console.log('[DataVisualization] Set', this.results.length, 'results from array');
+        } else {
             // Convert object to array format
-                this.results = Object.entries(results).map(([name, value]) => ({
-                    id: `result-${Date.now()}-${Math.random()}`,
+            const entries = Object.entries(results);
+            this.results = entries.map(([name, value]) => ({
+                id: `result-${Date.now()}-${Math.random()}`,
                 name,
                 value,
-                    type: typeof value,
-                    timestamp: Date.now(),
-                }));
-            }
+                type: typeof value,
+                timestamp: Date.now(),
+            }));
+            console.log('[DataVisualization] Converted', entries.length, 'object entries to results array');
+        }
         this.render();
+        console.log('[DataVisualization] Results rendered');
     }
 
     /**
@@ -524,7 +529,16 @@ export class DataVisualization {
      * Show export menu
      */
     private showExportMenu(button: HTMLElement): void {
+        console.log('[DataVisualization] showExportMenu() called');
         // Simple implementation - just trigger export
         this.options.onExport?.('json');
+    }
+
+    /**
+     * Export data in specified format
+     */
+    exportData(format: 'json' | 'csv' | 'xml'): void {
+        console.log(`[DataVisualization] exportData('${format}') called with`, this.results.length, 'results');
+        this.options.onExport?.(format);
     }
 }

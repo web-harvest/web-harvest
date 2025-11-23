@@ -1,3 +1,7 @@
+/* Import Property Panel Styles */
+@import './property-panel.css';
+@import './right-sidebar.css';
+
 .visual-node {
     position: relative;
     display: flex;
@@ -28,6 +32,111 @@
 .visual-node .visual-node__surface.node-selected {
     border-color: var(--blue-500, #3b82f6);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* Syntax Highlighting Styles */
+.syntax-highlight-wrapper {
+    position: relative;
+}
+
+.syntax-highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    z-index: 1;
+}
+
+/* JSON Syntax Colors */
+.syntax-highlight-overlay .json-key {
+    color: #0ea5e9; /* blue-500 */
+    font-weight: 600;
+}
+
+.syntax-highlight-overlay .json-string {
+    color: #10b981; /* green-500 */
+}
+
+.syntax-highlight-overlay .json-number {
+    color: #8b5cf6; /* purple-500 */
+}
+
+.syntax-highlight-overlay .json-boolean {
+    color: #f59e0b; /* amber-500 */
+}
+
+.syntax-highlight-overlay .json-punctuation {
+    color: #6b7280; /* gray-500 */
+}
+
+/* JavaScript/Expression Syntax Colors */
+.syntax-highlight-overlay .js-keyword {
+    color: #3b82f6; /* blue-500 */
+    font-weight: 600;
+}
+
+.syntax-highlight-overlay .js-literal {
+    color: #f59e0b; /* amber-500 */
+}
+
+.syntax-highlight-overlay .js-number {
+    color: #8b5cf6; /* purple-500 */
+}
+
+.syntax-highlight-overlay .js-string {
+    color: #10b981; /* green-500 */
+}
+
+.syntax-highlight-overlay .js-expression {
+    color: #d81b60; /* magenta */
+    font-weight: 600;
+}
+
+/* XML Syntax Colors */
+.syntax-highlight-overlay .xml-tag-open,
+.syntax-highlight-overlay .xml-tag-close {
+    color: #ef4444; /* red-500 */
+    font-weight: 600;
+}
+
+.syntax-highlight-overlay .xml-attr-name {
+    color: #10b981; /* green-500 */
+}
+
+.syntax-highlight-overlay .xml-attr-value {
+    color: #f59e0b; /* amber-500 */
+}
+
+.syntax-highlight-overlay .xml-comment {
+    color: #6b7280; /* gray-500 */
+    font-style: italic;
+}
+
+/* XPath Syntax Colors */
+.syntax-highlight-overlay .xpath-separator {
+    color: #6b7280; /* gray-500 */
+}
+
+.syntax-highlight-overlay .xpath-element {
+    color: #3b82f6; /* blue-500 */
+    font-weight: 600;
+}
+
+.syntax-highlight-overlay .xpath-attribute {
+    color: #10b981; /* green-500 */
+}
+
+.syntax-highlight-overlay .xpath-predicate {
+    color: #8b5cf6; /* purple-500 */
+}
+
+.syntax-highlight-overlay .xpath-number {
+    color: #f59e0b; /* amber-500 */
 }
 
 .visual-node--container-card .visual-node__header {

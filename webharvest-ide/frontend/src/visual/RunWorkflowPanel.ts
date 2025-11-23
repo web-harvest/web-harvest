@@ -59,6 +59,8 @@ export class RunWorkflowPanel {
     private currentScope: RunHistoryScope = 'workflow';
     private suppressStateEvents = false;
     private executionState: 'idle' | 'running' | 'paused' = 'idle';
+    private currentSessionInfo: SessionInfo | undefined = undefined;
+    private currentTokenUsage: TokenUsage | undefined = undefined;
 
     private inputJsonEl!: HTMLTextAreaElement;
     private correlationEl!: HTMLInputElement;
@@ -145,6 +147,35 @@ export class RunWorkflowPanel {
         this.currentScope = scope;
         this.historySelectionContext = scope === 'task' ? context ?? null : null;
         this.applyScopeToUI();
+    }
+
+    displaySessionInfo(sessionInfo: SessionInfo | undefined, tokenUsage: TokenUsage | undefined): void {
+        this.currentSessionInfo = sessionInfo;
+        this.currentTokenUsage = tokenUsage;
+        this.renderSessionInfoSection();
+    }
+
+    private renderSessionInfoSection(): void {
+        const sectionContainer = this.container.querySelector('#runPanelSessionInfo') as HTMLElement | null;
+        if (!sectionContainer) {
+            return;
+        }
+
+        if (!this.currentSessionInfo && !this.currentTokenUsage) {
+            sectionContainer.innerHTML = '';
+            sectionContainer.hidden = true;
+            return;
+        }
+
+        sectionContainer.hidden = false;
+        const sessionSection = this.renderSessionInfo(this.currentSessionInfo);
+        const tokenUsageSection = this.renderTokenUsage(this.currentTokenUsage);
+        sectionContainer.innerHTML = `
+            <div class="run-panel__session-info">
+                ${sessionSection}
+                ${tokenUsageSection}
+            </div>
+        `;
     }
 
     updateHistoryEntry(entry: RunHistoryEntry): void {
@@ -240,6 +271,7 @@ export class RunWorkflowPanel {
                         </div>
                     </div>
                 </div>
+                <div id="runPanelSessionInfo" class="run-panel__session-info" hidden></div>
                 <div class="run-panel__history">
                     <div class="run-panel__history-header">
                         <span>History</span>

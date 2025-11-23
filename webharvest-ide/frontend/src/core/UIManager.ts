@@ -11,8 +11,24 @@ export class UIManager {
      */
     showEditor(show: boolean): void {
         const editor = document.getElementById('editor');
+        const canvas = document.getElementById('visual-canvas');
+        
         if (editor) {
-            editor.style.display = show ? 'block' : 'none';
+            if (show) {
+                editor.style.display = 'flex';
+                editor.style.flex = '1';
+                editor.style.minWidth = '0';
+                editor.style.minHeight = '0';
+                editor.style.width = '100%';
+                editor.style.height = '100%';
+            } else {
+                editor.style.display = 'none';
+            }
+        }
+        
+        // Ensure canvas is hidden when editor is shown
+        if (show && canvas) {
+            canvas.style.display = 'none';
         }
     }
 
@@ -21,8 +37,65 @@ export class UIManager {
      */
     showVisualCanvas(show: boolean): void {
         const canvas = document.getElementById('visual-canvas');
+        const editor = document.getElementById('editor');
+        const editorSection = document.querySelector('.editor-section') as HTMLElement;
+        
+        console.log(`[UIManager] showVisualCanvas(${show}) called`);
+        console.log(`[UIManager] Canvas element found:`, !!canvas);
+        console.log(`[UIManager] Editor element found:`, !!editor);
+        console.log(`[UIManager] Editor section found:`, !!editorSection);
+        
         if (canvas) {
-            canvas.style.display = show ? 'flex' : 'none';
+            if (show) {
+                // Remove any conflicting inline styles first
+                canvas.removeAttribute('style');
+                
+                // Set all required styles
+                canvas.style.cssText = `
+                    display: flex !important;
+                    flex: 1 !important;
+                    flex-direction: column !important;
+                    min-width: 0 !important;
+                    min-height: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    overflow: hidden !important;
+                    position: relative !important;
+                `;
+                
+                console.log(`[UIManager] Canvas styles applied. Display:`, canvas.style.display);
+                console.log(`[UIManager] Canvas computed display:`, window.getComputedStyle(canvas).display);
+                
+                // Force reflow to ensure canvas is visible
+                void canvas.offsetHeight;
+                
+                // Double-check visibility
+                const computedDisplay = window.getComputedStyle(canvas).display;
+                if (computedDisplay === 'none') {
+                    console.error('[UIManager] WARNING: Canvas display is still "none" after setting to flex!');
+                }
+            } else {
+                canvas.style.display = 'none';
+            }
+        } else {
+            console.error('[UIManager] ERROR: Canvas element not found!');
+        }
+        
+        // Ensure editor is hidden when canvas is shown
+        if (show && editor) {
+            editor.style.display = 'none';
+            console.log(`[UIManager] Editor hidden`);
+        }
+        
+        // Ensure editor-section has proper height
+        if (show && editorSection) {
+            const sectionHeight = window.getComputedStyle(editorSection).height;
+            console.log(`[UIManager] Editor section height:`, sectionHeight);
+            if (sectionHeight === '0px' || sectionHeight === 'auto') {
+                editorSection.style.height = '100%';
+                editorSection.style.minHeight = '100%';
+                console.log(`[UIManager] Fixed editor section height`);
+            }
         }
     }
 
@@ -33,6 +106,23 @@ export class UIManager {
         const sidebar = document.getElementById('plugin-sidebar');
         if (sidebar) {
             sidebar.style.display = show ? 'flex' : 'none';
+            // Update toggle button state
+            const toggleBtn = document.getElementById('togglePaletteBtn');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active', show);
+                toggleBtn.setAttribute('aria-pressed', show.toString());
+            }
+        }
+    }
+
+    /**
+     * Toggle Plugin sidebar visibility
+     */
+    togglePluginSidebar(): void {
+        const sidebar = document.getElementById('plugin-sidebar');
+        if (sidebar) {
+            const isVisible = sidebar.style.display !== 'none' && sidebar.style.display !== '';
+            this.showPluginSidebar(!isVisible);
         }
     }
 
@@ -40,9 +130,30 @@ export class UIManager {
      * Show/hide Right sidebar
      */
     showRightSidebar(show: boolean): void {
-        const sidebar = document.querySelector('.sidebar-section') as HTMLElement;
+        // Try new RightSidebar first (#rightSidebar), fallback to old (.sidebar-section)
+        const sidebar = document.getElementById('rightSidebar') as HTMLElement || 
+                       document.querySelector('.sidebar-section') as HTMLElement;
         if (sidebar) {
             sidebar.style.display = show ? 'flex' : 'none';
+            // Update toggle button state
+            const toggleBtn = document.getElementById('toggleSidebarBtn');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active', show);
+                toggleBtn.setAttribute('aria-pressed', show.toString());
+            }
+        }
+    }
+
+    /**
+     * Toggle Right sidebar visibility
+     */
+    toggleRightSidebar(): void {
+        // Try new RightSidebar first (#rightSidebar), fallback to old (.sidebar-section)
+        const sidebar = document.getElementById('rightSidebar') as HTMLElement || 
+                       document.querySelector('.sidebar-section') as HTMLElement;
+        if (sidebar) {
+            const isVisible = sidebar.style.display !== 'none' && sidebar.style.display !== '';
+            this.showRightSidebar(!isVisible);
         }
     }
 
@@ -216,14 +327,74 @@ export class UIManager {
      */
     switchToVisualMode(): void {
         console.log('🔄 [UIManager] Switching to Visual mode (Conductor-style)...');
+        
+        // First ensure ide-main has proper flex layout
+        const ideMain = document.querySelector('.ide-main') as HTMLElement;
+        if (ideMain) {
+            ideMain.style.display = 'flex';
+            ideMain.style.flexDirection = 'row';
+            ideMain.style.width = '100%';
+            ideMain.style.height = 'calc(100vh - 120px)';
+            ideMain.style.overflow = 'hidden';
+            console.log(`[UIManager] ide-main layout fixed`);
+        }
+        
+        // Ensure editor-section has proper flex properties
+        const editorSection = document.querySelector('.editor-section') as HTMLElement;
+        if (editorSection) {
+            editorSection.style.flex = '1 1 auto';
+            editorSection.style.minWidth = '0';
+            editorSection.style.minHeight = '0';
+            editorSection.style.width = 'auto';
+            editorSection.style.display = 'flex';
+            editorSection.style.flexDirection = 'column';
+            editorSection.style.overflow = 'hidden';
+            
+            const rect = editorSection.getBoundingClientRect();
+            console.log(`[UIManager] Editor section dimensions after fix:`, rect.width, 'x', rect.height);
+            
+            if (rect.width < 100) {
+                console.error(`[UIManager] WARNING: Editor section width is still too small: ${rect.width}px`);
+                // Force recalculation
+                editorSection.style.flex = '1';
+                editorSection.style.minWidth = '200px';
+            }
+        }
+        
+        // Ensure sidebar has fixed width
+        const sidebar = document.querySelector('.sidebar-section') as HTMLElement;
+        if (sidebar) {
+            sidebar.style.flex = '0 0 360px';
+            sidebar.style.minWidth = '360px';
+            sidebar.style.maxWidth = '360px';
+            console.log(`[UIManager] Sidebar width fixed to 360px`);
+        }
+        
         this.showEditor(false);
-        this.showVisualCanvas(true);
+        
+        // Small delay to ensure editor is hidden before showing canvas
+        setTimeout(() => {
+            this.showVisualCanvas(true);
+        }, 10);
+        
         this.showPluginSidebar(true);
         this.showRightSidebar(true);    // ← ALWAYS visible
         this.showPropertyPanel(true);   // ← SHOW Properties tab as FIRST + make active
         this.showExecutionControls(true); // Show canvas controls (Run/Validate) in Visual mode
         this.showExecutionActionButtons(false); // Hide execution action buttons initially
         this.setExecutionState('idle');
+
+        // Ensure toggle buttons reflect correct state
+        const paletteBtn = document.getElementById('togglePaletteBtn');
+        const sidebarBtn = document.getElementById('toggleSidebarBtn');
+        if (paletteBtn) {
+            paletteBtn.classList.add('active');
+            paletteBtn.setAttribute('aria-pressed', 'true');
+        }
+        if (sidebarBtn) {
+            sidebarBtn.classList.add('active');
+            sidebarBtn.setAttribute('aria-pressed', 'true');
+        }
 
         console.log('✅ [UIManager] Visual mode: Plugins + Canvas + Right Sidebar (Properties FIRST, then Logs/Results/Variables/Sessions)');
     }

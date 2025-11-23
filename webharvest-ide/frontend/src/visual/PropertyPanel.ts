@@ -260,6 +260,23 @@ export class PropertyPanel {
     }
 
     /**
+     * Show validation errors from validateConfig()
+     */
+    showValidationErrors(errors: Array<{ field: string; message: string }>): void {
+        console.log('[PropertyPanel] showValidationErrors() called with', errors.length, 'errors');
+        if (errors.length === 0) {
+            this.shell.showValidationSummary([]);
+            return;
+        }
+        // Convert to ValidationError format expected by PropertyPanelShell
+        const validationErrors = errors.map(err => ({
+            field: err.field,
+            message: err.message,
+        }));
+        this.shell.showValidationSummary(validationErrors);
+    }
+
+    /**
      * Register change callback
      */
     onChange(callback: (node: VisualNode) => void): void {
@@ -292,8 +309,7 @@ export class PropertyPanel {
 
         const form = document.createElement('div');
         form.className = 'property-panel__form';
-        form.style.maxHeight = 'calc(100vh - 220px)';
-        form.style.overflowY = 'auto';
+        // Styles are now handled by CSS
         this.currentForm = form;
         this.focusSummaryElement = null;
 
@@ -633,23 +649,82 @@ export class PropertyPanel {
 
         const section = document.createElement('section');
         section.className = 'property-panel__tools';
+        section.style.cssText = `
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--gray-50, #f9fafb);
+            border: 1px solid var(--gray-200, #e5e7eb);
+            border-radius: var(--radius-md, 6px);
+        `;
 
         const heading = document.createElement('h3');
-        heading.textContent = 'Tools';
-        heading.className = 'property-panel__tools-title';
+        heading.textContent = 'Quick Tools';
+        heading.style.cssText = `
+            font-size: 12px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-700, #374151);
+        `;
         section.appendChild(heading);
 
         const list = document.createElement('div');
-        list.className = 'property-panel__tools-list';
+        list.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        `;
 
         tools.forEach(tool => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'property-panel__tool-button';
-            button.textContent = tool.label || tool.id || 'Tool';
+            button.style.cssText = `
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                background: white;
+                border: 1px solid var(--gray-300, #d1d5db);
+                border-radius: var(--radius-sm, 4px);
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--gray-700, #374151);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            `;
+            
+            if (tool.icon) {
+                const icon = document.createElement('i');
+                icon.className = tool.icon;
+                button.appendChild(icon);
+            }
+            
+            const label = document.createElement('span');
+            label.textContent = tool.label || tool.id || 'Tool';
+            button.appendChild(label);
+            
             if (tool.description) {
                 button.title = tool.description;
             }
+            
+            button.addEventListener('mouseenter', () => {
+                button.style.background = 'var(--magenta, #8b5cf6)';
+                button.style.color = 'white';
+                button.style.borderColor = 'var(--magenta, #8b5cf6)';
+                button.style.transform = 'translateY(-1px)';
+                button.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                button.style.background = 'white';
+                button.style.color = 'var(--gray-700, #374151)';
+                button.style.borderColor = 'var(--gray-300, #d1d5db)';
+                button.style.transform = 'translateY(0)';
+                button.style.boxShadow = 'none';
+            });
+            
             button.addEventListener('click', () => this.invokeUiTool(tool));
             list.appendChild(button);
         });
@@ -662,27 +737,65 @@ export class PropertyPanel {
         const container = context.field.element;
         const attrName = context.name.toLowerCase();
         const metadata = context.metadata;
+        const attribute = this.getPluginSchema(this.currentNode?.type || '')?.schema?.attributes?.find(a => a.name === context.name);
 
+        // Expression Builder - check multiple sources
         const needExpression =
             metadata?.expressionCapable ||
             metadata?.fieldKind === 'EXPRESSION' ||
-            attrName.includes('expression');
+            attribute?.type === 'xpath' ||
+            attrName.includes('expression') ||
+            attrName.includes('xpath');
 
         if (needExpression) {
-            this.addAdvancedEditorButton(container, context.name, 'Expression Builder', 'expression');
+            const label = metadata?.expressionContext 
+                ? `Expression Builder (${metadata.expressionContext})`
+                : 'Expression Builder';
+            this.addAdvancedEditorButton(container, context.name, label, 'expression');
         }
 
-        if (attrName.includes('xpath')) {
+        // XPath Tester - check multiple sources
+        const needXPath =
+            attrName.includes('xpath') ||
+            attribute?.type === 'xpath' ||
+            metadata?.format === 'xpath';
+
+        if (needXPath && !needExpression) {
             this.addAdvancedEditorButton(container, context.name, 'XPath Tester', 'xpath');
         }
 
+        // Regex Validator - check multiple sources
         const needRegex =
             metadata?.format === 'regex' ||
+            attribute?.type === 'regex' ||
             attrName.includes('regex') ||
             attrName.includes('pattern');
 
         if (needRegex) {
             this.addAdvancedEditorButton(container, context.name, 'Regex Validator', 'regex');
+        }
+
+        // Format indicator badge for special formats
+        if (metadata?.format && !['text', 'string'].includes(metadata.format.toLowerCase())) {
+            const formatBadge = document.createElement('span');
+            formatBadge.style.cssText = `
+                display: inline-block;
+                margin-left: 8px;
+                padding: 2px 6px;
+                background: var(--gray-200, #e5e7eb);
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: 600;
+                text-transform: uppercase;
+                color: var(--gray-600, #4b5563);
+            `;
+            formatBadge.textContent = metadata.format;
+            formatBadge.title = `Format: ${metadata.format}`;
+            
+            const label = container.querySelector('label');
+            if (label) {
+                label.appendChild(formatBadge);
+            }
         }
     }
 
@@ -724,29 +837,39 @@ export class PropertyPanel {
     }
 
     private handleApply(): void {
+        console.log('[PropertyPanel] handleApply() called');
         this.updateValidationState();
         if (this.schemaEditor && this.schemaEditor.validate().length > 0) {
+            console.warn('[PropertyPanel] Validation errors present, not applying changes');
             return;
         }
+        console.log('[PropertyPanel] Emitting change for node:', this.currentNode?.id, this.currentNode?.type);
         this.emitChange();
         if (this.currentNode) {
             this.originalNode = this.deepCloneNode(this.currentNode);
+            console.log('[PropertyPanel] Changes applied, original node updated');
         }
     }
 
     private handleCancel(): void {
+        console.log('[PropertyPanel] handleCancel() called');
         if (!this.originalNode) {
+            console.log('[PropertyPanel] No original node to restore');
             return;
         }
         this.currentNode = this.deepCloneNode(this.originalNode);
+        console.log('[PropertyPanel] Restored original node, re-rendering');
         void this.render();
     }
 
     private emitChange(): void {
         if (!this.currentNode) {
+            console.warn('[PropertyPanel] emitChange() called but no currentNode');
             return;
         }
-        this.onChangeCallback?.(this.deepCloneNode(this.currentNode));
+        const clonedNode = this.deepCloneNode(this.currentNode);
+        console.log('[PropertyPanel] emitChange() calling onChangeCallback with node:', clonedNode.id, clonedNode.type);
+        this.onChangeCallback?.(clonedNode);
     }
 
     updateFocusSummary(payload: { nodeId: string; summary: ContainerSummary } | null): void {

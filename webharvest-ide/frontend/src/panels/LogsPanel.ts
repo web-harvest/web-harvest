@@ -58,6 +58,13 @@ export class LogsPanel {
     }
 
     /**
+     * Auto-scroll to bottom
+     */
+    private autoScroll(): void {
+        this.listElement.scrollTop = this.listElement.scrollHeight;
+    }
+
+    /**
      * Update logs badge counter
      */
     private updateBadge(): void {
@@ -95,13 +102,6 @@ export class LogsPanel {
     }
 
     /**
-     * Auto-scroll to bottom
-     */
-    private autoScroll(): void {
-        this.listElement.scrollTop = this.listElement.scrollHeight;
-    }
-
-    /**
      * Clear all logs
      */
     clear(): void {
@@ -111,11 +111,24 @@ export class LogsPanel {
     }
 
     /**
+     * Render into a different container (for RightSidebar integration)
+     */
+    renderInto(container: HTMLElement): void {
+        // Move list element to new container
+        if (this.listElement.parentNode) {
+            this.listElement.parentNode.removeChild(this.listElement);
+        }
+        container.appendChild(this.listElement);
+        this.container = container;
+    }
+
+    /**
      * Get all logs
      */
     getLogs(): LogEntry[] {
-        return [...this.logs]; // Return copy
+        return [...this.logs];
     }
+
 
     /**
      * Filter logs by type

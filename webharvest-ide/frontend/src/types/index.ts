@@ -20,6 +20,8 @@ export interface Tab {
     visualNodes?: VisualNode[];
     activeSidebarPanel?: string;
     runPanelState?: RunPanelState;
+    sessionInfo?: SessionInfo;
+    tokenUsage?: TokenUsage;
 }
 
 // ============================================================================
@@ -237,7 +239,7 @@ export interface PluginSchema {
 
 export interface AttributeDefinition {
     name: string;
-    type: 'string' | 'number' | 'boolean' | 'url' | 'xpath' | 'enum';
+    type: 'string' | 'number' | 'boolean' | 'url' | 'xpath' | 'enum' | 'integer' | 'long' | 'double' | 'file_path' | 'regex';
     required: boolean;
     defaultValue?: string;
     allowedValues?: string[];

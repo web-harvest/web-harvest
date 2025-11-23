@@ -23,16 +23,21 @@
     background: white;
     border-right: 1px solid #e0e0e0;
     min-width: 0;
+    min-height: 0;
+    height: 100%;
     overflow: hidden;
     /* Prevent flex overflow and ensure content stays within bounds */
+    /* Ensure proper height constraints for flex children */
 }
 
 .visual-canvas {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     /* Critical: min-height: 0 allows flex child to shrink below content size */
     padding: 0;
     background: var(--gray-50);
@@ -40,6 +45,28 @@
     overflow: hidden;
     /* Prevent canvas from escaping editor-section */
     /* Height will be determined by parent .editor-section flex */
+}
+
+.canvas-shell {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* CSS fallback: Ensure canvas is visible when display: flex is set via inline style */
+.visual-canvas[style*="display: flex"],
+.visual-canvas[style*="display:flex"] {
+    flex: 1 !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
 }
 
 .canvas-area {
@@ -72,11 +99,33 @@
 
 .sidebar-section {
     flex: 0 0 360px;
-    /* Fixed width dla Logs/Results/Variables/Sessions */
+    min-width: 280px;
+    max-width: 50%;
+    /* Resizable width dla Logs/Results/Variables/Sessions */
     display: flex;
     flex-direction: column;
     background: var(--gray-50);
     border-left: 1px solid #e0e0e0;
+    position: relative;
+    resize: horizontal;
+    overflow: hidden;
+}
+
+/* Resize handle for sidebar */
+.sidebar-section::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: ew-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+.sidebar-section:hover::before {
+    background: rgba(59, 130, 246, 0.3);
 }
 
 /* ============================================

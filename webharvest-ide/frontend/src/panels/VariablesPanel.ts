@@ -35,21 +35,27 @@ export class VariablesPanel {
      * Set all variables (replaces existing)
      */
     setVariables(variables: Record<string, any>): void {
-        console.log('[VariablesPanel] setVariables called, keys:', Object.keys(variables).length);
+        const keyCount = Object.keys(variables).length;
+        console.log('[VariablesPanel] setVariables() called with', keyCount, 'variables');
         this.variables = { ...variables };
         this.render();
         this.updateBadge();
+        console.log('[VariablesPanel] Variables updated and rendered');
     }
 
     /**
      * Update variables badge counter
      */
     private updateBadge(): void {
-        const badge = document.getElementById('varsBadge');
+        // Try to find badge in current container or document
+        const badge = this.container.querySelector('#varsBadge') as HTMLElement || 
+                      document.getElementById('varsBadge');
         if (badge) {
             const count = Object.keys(this.variables).length;
             badge.textContent = count.toString();
             console.log('[VariablesPanel] Updated badge:', count);
+        } else {
+            console.warn('[VariablesPanel] Badge element #varsBadge not found');
         }
     }
 
@@ -240,6 +246,18 @@ export class VariablesPanel {
      */
     hasVariable(name: string): boolean {
         return name in this.variables;
+    }
+
+    /**
+     * Render into a different container (for RightSidebar integration)
+     */
+    renderInto(container: HTMLElement): void {
+        // Move list element to new container
+        if (this.listElement.parentNode) {
+            this.listElement.parentNode.removeChild(this.listElement);
+        }
+        container.appendChild(this.listElement);
+        this.container = container;
     }
 }
 

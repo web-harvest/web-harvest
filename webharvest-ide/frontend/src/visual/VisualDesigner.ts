@@ -26,6 +26,7 @@ import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
 import { BreadcrumbNav, type BreadcrumbItem, type BreadcrumbMetric } from './BreadcrumbNav';
 import { DrillDownManager } from './DrillDownManager';
+import { ContextMenu, type ContextMenuAction } from './ContextMenu';
 import type { PluginManager } from '../core/PluginManager';
 import {
     ControlDetailType,
@@ -221,6 +222,8 @@ export class VisualDesigner {
     private lastClickTime: number = 0;
     private detailRegistry: MasterDetailRegistry | null = null;
     private fallbackDetailSections: Map<string, DetailSectionDefinition[]> = new Map();
+    private resizeObserver: ResizeObserver | null = null;
+    private contextMenu: ContextMenu = new ContextMenu();
 
     constructor(containerId: string, pluginManager?: PluginManager | null) {
         const container = document.getElementById(containerId);
@@ -268,6 +271,69 @@ export class VisualDesigner {
                 this.exitFocusLevel();
             }
         });
+
+        // Setup resize observer for canvas sizing
+        this.setupResizeObserver();
+    }
+
+    /**
+     * Setup ResizeObserver to handle canvas container size changes
+     */
+    private setupResizeObserver(): void {
+        // Find the editor-section parent to observe
+        const editorSection = this.container.closest('.editor-section') as HTMLElement;
+        if (!editorSection) {
+            console.warn('[VisualDesigner] Could not find .editor-section parent for resize observer');
+            return;
+        }
+
+        this.resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                this.handleContainerResize(width, height);
+            }
+        });
+
+        this.resizeObserver.observe(editorSection);
+        console.log('[VisualDesigner] ResizeObserver setup complete');
+    }
+
+    /**
+     * Handle container resize - ensure canvas takes full available space
+     */
+    private handleContainerResize(width: number, height: number): void {
+        // Ensure canvas shell takes full space
+        const canvasShell = this.container.querySelector('.canvas-shell') as HTMLElement;
+        if (canvasShell) {
+            canvasShell.style.width = '100%';
+            canvasShell.style.height = '100%';
+            canvasShell.style.minWidth = '0';
+            canvasShell.style.minHeight = '0';
+        }
+
+        // Ensure content wrapper takes full space
+        const contentWrapper = this.container.querySelector('.canvas-content-wrapper') as HTMLElement;
+        if (contentWrapper) {
+            contentWrapper.style.width = '100%';
+            contentWrapper.style.height = '100%';
+            contentWrapper.style.minWidth = '0';
+            contentWrapper.style.minHeight = '0';
+        }
+
+        // Trigger re-render if needed
+        if (this.nodes.length > 0) {
+            this.render();
+        }
+    }
+
+    /**
+     * Cleanup resize observer
+     */
+    private cleanupResizeObserver(): void {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
     }
 
     private removeNodeInternal(nodeId: string, nodes: VisualNode[]): boolean {
@@ -347,8 +413,10 @@ export class VisualDesigner {
         contentWrapper.className = 'canvas-content-wrapper';
         contentWrapper.style.position = 'relative';
         contentWrapper.style.width = '100%';
-        contentWrapper.style.minHeight = '100%';
-        contentWrapper.style.flex = '1';
+        contentWrapper.style.height = '100%';
+        contentWrapper.style.minWidth = '0';
+        contentWrapper.style.minHeight = '0';
+        contentWrapper.style.flex = '1 1 auto';
         contentWrapper.style.overflow = 'auto';
 
         const stage = document.createElement('div');
@@ -863,17 +931,27 @@ export class VisualDesigner {
             return;
         }
 
-        const scrollContainer = this.canvasScrollContainer ?? this.container;
+        // CRITICAL: SVG must match full canvas size, not just viewport
+        // This ensures connections are visible even when canvas is scrolled
         const styledWidth = parseFloat(this.canvasElement.style.width || '0') || 0;
         const styledHeight = parseFloat(this.canvasElement.style.height || '0') || 0;
-        const stageWidth = Math.max(this.canvasElement.scrollWidth || 0, styledWidth, scrollContainer?.clientWidth ?? 0);
-        const stageHeight = Math.max(this.canvasElement.scrollHeight || 0, styledHeight, scrollContainer?.clientHeight ?? 0);
+        const scrollWidth = this.canvasElement.scrollWidth || 0;
+        const scrollHeight = this.canvasElement.scrollHeight || 0;
+        const scrollContainer = this.canvasScrollContainer ?? this.container;
+        const viewportWidth = scrollContainer?.clientWidth ?? 0;
+        const viewportHeight = scrollContainer?.clientHeight ?? 0;
 
-        if (stageWidth > 0) {
+        // Use the maximum of styled size, scroll size, and viewport size
+        const stageWidth = Math.max(scrollWidth, styledWidth, viewportWidth, 2000);
+        const stageHeight = Math.max(scrollHeight, styledHeight, viewportHeight, 2000);
+
+        if (stageWidth > 0 && stageHeight > 0) {
             this.svgElement.setAttribute('width', stageWidth.toString());
-        }
-        if (stageHeight > 0) {
             this.svgElement.setAttribute('height', stageHeight.toString());
+            this.svgElement.setAttribute('viewBox', `0 0 ${stageWidth} ${stageHeight}`);
+            // Also set explicit pixel size to ensure SVG covers full canvas
+            this.svgElement.style.width = `${stageWidth}px`;
+            this.svgElement.style.height = `${stageHeight}px`;
         }
     }
 
@@ -969,15 +1047,24 @@ export class VisualDesigner {
             return;
         }
 
-        const positions = this.calculateProcessMarkerPositions(markerNodes);
+        // Use model-based calculation for accuracy during drag operations
+        const positions = this.calculateProcessMarkerPositionsFromModel(markerNodes);
 
-        if (!this.startMarkerManual) {
+        // Always update START marker position if not being manually dragged
+        if (!this.startMarkerManual && !this.isMarkerDragging) {
             this.startMarkerPosition = { x: positions.startX, y: positions.startY };
             this.startMarkerElement.style.left = `${positions.startX}px`;
             this.startMarkerElement.style.top = `${positions.startY}px`;
         }
 
-        if (!this.endMarkerManual) {
+        // Always update END marker position if not being manually dragged
+        // This ensures connections to STOP are always visible when nodes move
+        if (!this.endMarkerManual && !this.isMarkerDragging) {
+            this.endMarkerPosition = { x: positions.endX, y: positions.endY };
+            this.endMarkerElement.style.left = `${positions.endX}px`;
+            this.endMarkerElement.style.top = `${positions.endY}px`;
+        } else if (this.endMarkerManual && !this.endMarkerPosition) {
+            // Fallback: if marker was manually positioned but position is lost, recalculate
             this.endMarkerPosition = { x: positions.endX, y: positions.endY };
             this.endMarkerElement.style.left = `${positions.endX}px`;
             this.endMarkerElement.style.top = `${positions.endY}px`;
@@ -992,17 +1079,19 @@ export class VisualDesigner {
         svg.style.position = 'absolute';
         svg.style.top = '0';
         svg.style.left = '0';
-        svg.style.width = '100%';
-        svg.style.height = '100%';
+        // CRITICAL: Don't use 100% - SVG must match full canvas size, not just viewport
+        // Size will be set by updateSvgOverlayDimensions() to match canvasElement dimensions
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '1';
-        // SVG should match visible scroll container size
+        // Initial size - use viewport size initially, will be updated by updateSvgOverlayDimensions()
         const scrollContainer = this.canvasScrollContainer ?? this.container;
-        const containerRect = scrollContainer.getBoundingClientRect();
-        if (containerRect.width > 0 && containerRect.height > 0) {
-            svg.setAttribute('width', containerRect.width.toString());
-            svg.setAttribute('height', containerRect.height.toString());
-        }
+        const containerRect = scrollContainer?.getBoundingClientRect() || { width: 0, height: 0 };
+        const initialWidth = Math.max(containerRect.width || 0, 2000);
+        const initialHeight = Math.max(containerRect.height || 0, 2000);
+        svg.setAttribute('width', initialWidth.toString());
+        svg.setAttribute('height', initialHeight.toString());
+        svg.setAttribute('viewBox', `0 0 ${initialWidth} ${initialHeight}`);
+        // Don't set explicit pixel size initially - let updateSvgOverlayDimensions() handle it
         return svg;
     }
 
@@ -1740,6 +1829,21 @@ export class VisualDesigner {
         nodeElement.style.width = `${effectiveWidth}px`;
         nodeElement.style.minWidth = `${this.MIN_CARD_WIDTH}px`;
         nodeElement.style.cursor = 'pointer';
+        nodeElement.style.transition = 'all 0.2s ease';
+
+        // Add hover effects
+        nodeElement.addEventListener('mouseenter', () => {
+            if (!this.selectedNodeIds.includes(node.id)) {
+                nodeElement.style.transform = 'translateY(-2px)';
+                nodeElement.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            }
+        });
+        nodeElement.addEventListener('mouseleave', () => {
+            if (!this.selectedNodeIds.includes(node.id)) {
+                nodeElement.style.transform = 'translateY(0)';
+                nodeElement.style.boxShadow = '';
+            }
+        });
 
         if (isContainer) {
             nodeElement.style.height = 'auto';
@@ -1792,6 +1896,32 @@ export class VisualDesigner {
         const titleText = document.createElement('span');
         titleText.className = 'visual-node__header-title';
         titleText.textContent = this.getNodeDisplayLabel(node);
+        titleText.style.cursor = 'pointer';
+        titleText.style.transition = 'color 0.2s ease';
+        
+        // Enhanced tooltip with node type and key attributes
+        const tooltipText = this.buildNodeTooltip(node);
+        titleText.title = tooltipText;
+        
+        // Add hover effect for label
+        titleText.addEventListener('mouseenter', () => {
+            titleText.style.color = '#007bff';
+        });
+        titleText.addEventListener('mouseleave', () => {
+            titleText.style.color = '';
+        });
+        
+        // Explicit click handler for label to ensure property panel opens
+        titleText.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.selectNode(node.id);
+        });
+        // Double-click handler for label
+        titleText.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            this.selectNode(node.id);
+            this.emit('nodeDoubleClicked', node.id);
+        });
         header.appendChild(titleText);
 
         surface.appendChild(header);
@@ -1811,6 +1941,10 @@ export class VisualDesigner {
         this.setupNodeDragHandlers(nodeElement, node);
         this.attachNodeActions(nodeElement, node, isContainer);
 
+        // Enhanced tooltip for entire node element
+        const nodeTooltip = this.buildNodeTooltip(node);
+        nodeElement.title = nodeTooltip;
+        
         if (this.pluginManager) {
             const plugin = this.pluginManager.findPlugin(node.type);
             if (plugin && plugin.accessibility) {
@@ -1818,7 +1952,6 @@ export class VisualDesigner {
                 nodeElement.setAttribute('aria-label', plugin.accessibility.ariaLabel || node.type);
                 if (plugin.accessibility.ariaDescription) {
                     nodeElement.setAttribute('aria-description', plugin.accessibility.ariaDescription);
-                    nodeElement.title = plugin.accessibility.ariaDescription;
                 }
             } else {
                 nodeElement.setAttribute('role', 'button');
@@ -1835,6 +1968,23 @@ export class VisualDesigner {
             }
             e.stopPropagation();
             this.selectNode(node.id);
+        };
+
+        // Double-click to open properties
+        nodeElement.ondblclick = (e) => {
+            if ((e.target as HTMLElement).closest('.port')) {
+                return;
+            }
+            e.stopPropagation();
+            this.selectNode(node.id);
+            this.emit('nodeDoubleClicked', node.id);
+        };
+
+        // Right-click context menu
+        nodeElement.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.showNodeContextMenu(node, e.clientX, e.clientY);
         };
 
         return nodeElement;
@@ -1863,6 +2013,58 @@ export class VisualDesigner {
         const containerCount = children.filter(child => isContainerNode(child.type)).length;
         const leafCount = Math.max(childCount - containerCount, 0);
         return { childCount, containerCount, leafCount };
+    }
+
+    /**
+     * Build enhanced tooltip showing node type and key attributes
+     */
+    private buildNodeTooltip(node: VisualNode): string {
+        const parts: string[] = [];
+        
+        // Node type
+        if (this.pluginManager) {
+            const plugin = this.pluginManager.findPlugin(node.type);
+            const typeLabel = plugin?.name || node.type;
+            parts.push(`Type: ${typeLabel}`);
+        } else {
+            parts.push(`Type: ${node.type}`);
+        }
+        
+        // Key attributes (up to 3 most important)
+        const highlights = this.extractAttributeHighlights(node);
+        if (highlights.length > 0) {
+            highlights.forEach(({ label, value }) => {
+                parts.push(`${label}: ${value}`);
+            });
+        }
+        
+        // Execution status if available (from stateRenderer)
+        // Note: We'll check the DOM element for execution status classes
+        const nodeElement = this.canvasElement.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement | null;
+        if (nodeElement) {
+            const hasRunning = nodeElement.classList.contains('node-state--running');
+            const hasCompleted = nodeElement.classList.contains('node-state--completed');
+            const hasFailed = nodeElement.classList.contains('node-state--failed');
+            if (hasRunning) {
+                parts.push('Status: Running');
+            } else if (hasCompleted) {
+                parts.push('Status: Completed');
+            } else if (hasFailed) {
+                parts.push('Status: Failed');
+            }
+        }
+        
+        // Validation errors if any
+        const validationError = this.validationErrors.get(node.id);
+        if (validationError) {
+            parts.push(`⚠️ Error: ${validationError}`);
+        }
+        
+        // Instructions
+        parts.push('---');
+        parts.push('Click: Select | Double-click: Edit properties');
+        
+        return parts.join('\n');
     }
 
     private attachNodeActions(element: HTMLElement, node: VisualNode, isContainer: boolean): void {
@@ -2072,6 +2274,58 @@ export class VisualDesigner {
             const top = Number.parseFloat(element.style.top || '') || element.offsetTop || this.START_Y;
             const width = element.offsetWidth || this.DEFAULT_NODE_WIDTH;
             const height = element.offsetHeight || this.DEFAULT_NODE_HEIGHT;
+
+            minLeft = Math.min(minLeft, left);
+            maxRight = Math.max(maxRight, left + width);
+            minTop = Math.min(minTop, top);
+            maxBottom = Math.max(maxBottom, top + height);
+        });
+
+        const centerX = minLeft + (maxRight - minLeft) / 2;
+
+        return {
+            startX: centerX,
+            startY: Math.max(minTop - 100, 30),
+            endX: centerX,
+            endY: maxBottom + 120
+        };
+    }
+
+    /**
+     * Calculate marker positions from model (node.position) instead of DOM
+     * This is more accurate during drag operations when DOM may be stale
+     */
+    private calculateProcessMarkerPositionsFromModel(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
+        // Get root nodes directly from model (most accurate during drag)
+        const focusedContainer = this.getFocusedContainer();
+        const rootNodes = focusedContainer 
+            ? (focusedContainer.children || [])
+            : this.nodes;
+
+        if (rootNodes.length === 0) {
+            const defaultCenterX = this.START_X + this.DEFAULT_NODE_WIDTH / 2;
+            return {
+                startX: defaultCenterX,
+                startY: Math.max(this.START_Y - 100, 30),
+                endX: defaultCenterX,
+                endY: this.START_Y + this.DEFAULT_NODE_HEIGHT + 120
+            };
+        }
+
+        let minLeft = Number.POSITIVE_INFINITY;
+        let maxRight = Number.NEGATIVE_INFINITY;
+        let minTop = Number.POSITIVE_INFINITY;
+        let maxBottom = Number.NEGATIVE_INFINITY;
+
+        // Use model positions directly (always accurate, even during drag)
+        rootNodes.forEach(node => {
+            if (!node.position) return;
+
+            const dims = this.getNodeDimensions(node);
+            const left = node.position.x;
+            const top = node.position.y;
+            const width = dims.width;
+            const height = dims.height;
 
             minLeft = Math.min(minLeft, left);
             maxRight = Math.max(maxRight, left + width);
@@ -3010,8 +3264,10 @@ export class VisualDesigner {
 
             this.moveNode(node.id, { x: newX, y: newY }, { skipRender: true });
             this.rebuildConnections(false);
-            this.renderConnections();
+            // CRITICAL: Update marker positions BEFORE rendering connections
+            // This ensures connections use the correct end marker position
             this.updateProcessMarkersPosition();
+            this.renderConnections();
             this.ensureGridOverlay();
         });
 
@@ -6302,12 +6558,44 @@ export class VisualDesigner {
             return { id: targetId, type: 'marker', bounds, element };
         }
 
-        if (targetId === 'workflow-end' && this.endMarkerPosition) {
+        if (targetId === 'workflow-end') {
+            // CRITICAL: Respect manual marker position, but update automatic position during node drag
+            let endPosition: { x: number; y: number };
+            
+            if (this.endMarkerManual) {
+                // Marker was manually positioned by user - ALWAYS use manual position
+                endPosition = this.endMarkerPosition || { x: 0, y: 0 };
+            } else {
+                // Marker is automatic - calculate from model positions (most accurate during drag)
+                const focusedContainer = this.getFocusedContainer();
+                const rootNodes = focusedContainer 
+                    ? (focusedContainer.children || [])
+                    : this.nodes;
+                
+                if (rootNodes.length > 0) {
+                    // We have nodes - calculate from model positions
+                    const positions = this.calculateProcessMarkerPositionsFromModel([]);
+                    endPosition = { x: positions.endX, y: positions.endY };
+                    // Update stored position for consistency
+                    this.endMarkerPosition = endPosition;
+                } else if (this.endMarkerElement) {
+                    // No nodes in model - fallback to DOM element position
+                    const rect = this.endMarkerElement.getBoundingClientRect();
+                    const canvasPos = this.viewportToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                    endPosition = { x: canvasPos.x, y: canvasPos.y };
+                    this.endMarkerPosition = endPosition;
+                } else {
+                    // Last resort: use default position
+                    endPosition = { x: this.START_X + this.DEFAULT_NODE_WIDTH / 2, y: this.START_Y + this.DEFAULT_NODE_HEIGHT + 120 };
+                    this.endMarkerPosition = endPosition;
+                }
+            }
+            
             const element = this.endMarkerElement;
             const width = element?.offsetWidth ?? 52;
             const height = element?.offsetHeight ?? 52;
-            const centerX = this.endMarkerPosition.x;
-            const centerY = this.endMarkerPosition.y;
+            const centerX = endPosition.x;
+            const centerY = endPosition.y;
             const bounds: AnchorBounds = {
                 left: centerX - width / 2,
                 right: centerX + width / 2,
@@ -6872,6 +7160,58 @@ export class VisualDesigner {
         this.container.focus();
         this.updateBreadcrumbTrail();
         this.render();
+    }
+
+    /**
+     * Show context menu for a node using new ContextMenu component
+     */
+    private showNodeContextMenu(node: VisualNode, x: number, y: number): void {
+        const actions: ContextMenuAction[] = [
+            {
+                id: 'edit-properties',
+                label: 'Edit Properties',
+                icon: 'fa-cog',
+                onClick: () => {
+                    this.selectNode(node.id);
+                    this.emit('sidebarPanelRequested', 'properties');
+                }
+            },
+            {
+                id: 'duplicate',
+                label: 'Duplicate',
+                icon: 'fa-copy',
+                onClick: () => {
+                    // Clone node and add it
+                    const cloned = this.cloneNode(node);
+                    cloned.id = `${node.id}-copy-${Date.now()}`;
+                    // Offset position slightly
+                    if (cloned.position) {
+                        cloned.position.x += 50;
+                        cloned.position.y += 50;
+                    }
+                    this.addNode(cloned);
+                }
+            },
+            {
+                id: 'delete',
+                label: 'Delete',
+                icon: 'fa-trash',
+                onClick: () => {
+                    if (confirm(`Delete ${node.type} node?`)) {
+                        this.removeNode(node.id);
+                    }
+                }
+            }
+        ];
+
+        this.contextMenu.show({
+            actions,
+            x,
+            y,
+            onClose: () => {
+                // Menu closed
+            }
+        });
     }
 }
 
