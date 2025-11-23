@@ -57,7 +57,7 @@ function createFieldContainer(attribute: AttributeDefinition, metadata?: Attribu
     label.style.display = 'flex';
     label.style.alignItems = 'center';
     label.style.gap = '8px';
-    
+
     // Add tooltip with full description if different from label
     if (attribute.description && attribute.description !== labelText) {
         label.title = attribute.description;
@@ -120,7 +120,7 @@ function createTextField(
     const { container, helper, error } = createFieldContainer(attribute, metadata);
     const input = document.createElement('input');
     input.type = getInputType(attribute.type, metadata);
-    
+
     // Format value for display
     const formatOptions: FormatOptions = {
         type: attribute.type,
@@ -129,7 +129,7 @@ function createTextField(
         maxValue: attribute.maxValue,
         allowedValues: attribute.allowedValues
     };
-    
+
     const displayValue = formatValueForDisplay(value, formatOptions);
     input.value = displayValue;
     input.placeholder = metadata?.placeholder ?? '';
@@ -144,7 +144,7 @@ function createTextField(
         if (formatted !== input.value) {
             input.value = formatted;
         }
-        
+
         // Debounce validation
         if (validationTimeout !== null) {
             clearTimeout(validationTimeout);
@@ -161,7 +161,7 @@ function createTextField(
                 error.textContent = validation.message || '';
             }
         }, 300);
-        
+
         onChange(rawValue);
     });
 
@@ -216,17 +216,17 @@ function createTextareaField(
     onChange: (value: string) => void
 ): PropertyField {
     const { container, helper, error } = createFieldContainer(attribute, metadata);
-    
+
     // Create wrapper for syntax highlighting
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
-    
+
     const textarea = document.createElement('textarea');
-    
+
     const isJson = metadata?.fieldKind === 'JSON' || metadata?.format === 'json';
     const isCode = metadata?.fieldKind === 'CODE' || metadata?.format === 'code';
     const isExpression = metadata?.fieldKind === 'EXPRESSION' || attribute.type === 'xpath';
-    
+
     // Determine syntax language
     let syntaxLanguage: SyntaxLanguage | null = null;
     if (isJson) {
@@ -236,7 +236,7 @@ function createTextareaField(
     } else if (isExpression || attribute.type === 'xpath') {
         syntaxLanguage = attribute.type === 'xpath' ? 'xpath' : 'expression';
     }
-    
+
     // Format JSON for display
     if (isJson && value) {
         try {
@@ -248,7 +248,7 @@ function createTextareaField(
     } else {
         textarea.value = value ?? '';
     }
-    
+
     textarea.placeholder = metadata?.placeholder ?? '';
     textarea.rows = isJson || isCode ? 8 : 4;
     textarea.className = 'schema-driven-input';
@@ -264,17 +264,17 @@ function createTextareaField(
             highlightSyntax(textarea, syntaxLanguage!);
         }, 0);
     }
-    
+
     // Real-time validation for JSON
     let validationTimeout: number | null = null;
     textarea.addEventListener('input', () => {
         const rawValue = textarea.value;
-        
+
         // Update syntax highlighting
         if (syntaxLanguage) {
             // Re-highlight will be triggered by the highlightSyntax function's input listener
         }
-        
+
         // Debounce validation
         if (validationTimeout !== null) {
             clearTimeout(validationTimeout);
@@ -297,7 +297,7 @@ function createTextareaField(
                 error.textContent = '';
             }
         }, 500);
-        
+
         onChange(rawValue);
     });
 
@@ -352,7 +352,7 @@ function createTextareaField(
     wrapper.appendChild(textarea);
     container.appendChild(wrapper);
     container.appendChild(error);
-    
+
     return {
         ...buildFieldAPI(container, textarea, attribute, metadata, helper, error),
         element: container,
@@ -378,7 +378,7 @@ function createNumberField(
     const input = document.createElement('input');
     input.type = 'number';
     input.step = attribute.type === 'double' ? 'any' : '1';
-    
+
     // Format value for display
     const formatOptions: FormatOptions = {
         type: attribute.type,
@@ -386,7 +386,7 @@ function createNumberField(
         minValue: attribute.minValue,
         maxValue: attribute.maxValue
     };
-    
+
     const displayValue = formatValueForDisplay(value, formatOptions);
     input.value = parseFormattedValue(displayValue, formatOptions);
     input.placeholder = metadata?.placeholder ?? '';
@@ -404,7 +404,7 @@ function createNumberField(
     let validationTimeout: number | null = null;
     input.addEventListener('input', () => {
         const rawValue = input.value;
-        
+
         // Debounce validation
         if (validationTimeout !== null) {
             clearTimeout(validationTimeout);
@@ -421,7 +421,7 @@ function createNumberField(
                 error.textContent = validation.message || '';
             }
         }, 300);
-        
+
         onChange(rawValue);
     });
 
@@ -553,7 +553,7 @@ function createUrlField(
     let validationTimeout: number | null = null;
     input.addEventListener('input', () => {
         updateOpenButton();
-        
+
         // Debounce validation
         if (validationTimeout !== null) {
             clearTimeout(validationTimeout);
@@ -573,7 +573,7 @@ function createUrlField(
                 error.textContent = validation.message || '';
             }
         }, 300);
-        
+
         onChange(input.value);
     });
 
@@ -615,12 +615,12 @@ function createSliderField(
     onChange: (value: string) => void
 ): PropertyField {
     const { container, helper, error } = createFieldContainer(attribute, metadata);
-    
+
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
     wrapper.style.alignItems = 'center';
     wrapper.style.gap = '12px';
-    
+
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.style.flex = '1';
@@ -629,16 +629,16 @@ function createSliderField(
     slider.style.background = 'var(--gray-200, #e5e7eb)';
     slider.style.outline = 'none';
     slider.style.transition = 'background 0.2s ease';
-    
+
     const min = attribute.minValue ?? 0;
     const max = attribute.maxValue ?? 100;
     const step = attribute.type === 'double' ? 0.1 : 1;
-    
+
     slider.min = String(min);
     slider.max = String(max);
     slider.step = String(step);
     slider.value = value || String(min);
-    
+
     const valueDisplay = document.createElement('span');
     valueDisplay.style.cssText = `
         min-width: 60px;
@@ -648,12 +648,12 @@ function createSliderField(
         color: var(--gray-700, #374151);
     `;
     valueDisplay.textContent = slider.value;
-    
+
     slider.addEventListener('input', () => {
         valueDisplay.textContent = slider.value;
         onChange(slider.value);
     });
-    
+
     slider.addEventListener('mousemove', () => {
         const currentValue = parseFloat(slider.value);
         const percentage = ((currentValue - min) / (max - min)) * 100;
@@ -661,15 +661,15 @@ function createSliderField(
         const gray = 'var(--gray-200, #e5e7eb)';
         slider.style.background = `linear-gradient(to right, ${magenta} 0%, ${magenta} ${percentage}%, ${gray} ${percentage}%, ${gray} 100%)`;
     });
-    
+
     // Initialize background
     slider.dispatchEvent(new Event('mousemove'));
-    
+
     wrapper.appendChild(slider);
     wrapper.appendChild(valueDisplay);
     container.appendChild(wrapper);
     container.appendChild(error);
-    
+
     return {
         element: container,
         focus: () => slider.focus(),
@@ -782,7 +782,7 @@ function validateAttributeValue(
         maxValue: attribute.maxValue,
         allowedValues: attribute.allowedValues
     };
-    
+
     const formatValidation = validateFormat(trimmed, formatOptions);
     if (!formatValidation.valid && formatValidation.message) {
         return formatValidation.message;
