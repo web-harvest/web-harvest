@@ -792,6 +792,126 @@ class PluginComponent extends Rete.Component {
 
 ## 📝 Property Panel Generation
 
+### Apply/Cancel Pattern (v2.3.1)
+
+The Property Panel uses a **deferred changes pattern** where all edits are stored locally until the user explicitly clicks "Apply". This prevents accidental changes and provides better control over when modifications are persisted.
+
+**Key Features:**
+- Changes are stored in `currentNode` but not persisted until Apply
+- Cancel button restores `originalNode` snapshot
+- Visual indicators show unsaved state (red dot, highlighted Apply button)
+- Confirmation dialogs prevent data loss when switching nodes/panels
+- Apply button is disabled by default, enabled when changes exist (without validation errors)
+
+**Implementation:**
+
+```typescript
+// PropertyPanel.ts
+
+export class PropertyPanel {
+  private currentNode: VisualNode | null = null;
+  private originalNode: VisualNode | null = null;
+  private isDirty: boolean = false;
+  private onChangeCallback: ((node: VisualNode) => void) | null = null;
+
+  // Show properties for node
+  async showNode(node: VisualNode): Promise<void> {
+    this.currentNode = this.deepCloneNode(node);
+    this.originalNode = this.deepCloneNode(node);
+    this.isDirty = false; // Reset dirty state
+    await this.render();
+  }
+
+  // All onChange handlers update currentNode only, mark as dirty
+  private setupChangeHandlers() {
+    this.schemaEditor.onChange((attributes) => {
+      if (this.currentNode) {
+        this.currentNode.attributes = { ...attributes };
+        this.isDirty = true; // Mark as dirty
+        this.updateDirtyState(); // Update UI indicators
+        // NOTE: onChangeCallback is NOT called here
+      }
+    });
+  }
+
+  // Apply changes - persist to model
+  private handleApply(): void {
+    if (this.schemaEditor?.validate().length > 0) {
+      return; // Don't apply if validation errors
+    }
+    
+    // NOW call onChangeCallback to persist changes
+    this.emitChange();
+    
+    // Update snapshot and clear dirty state
+    this.originalNode = this.deepCloneNode(this.currentNode);
+    this.isDirty = false;
+    this.updateDirtyState();
+  }
+
+  // Cancel changes - restore original
+  private handleCancel(): void {
+    if (!this.originalNode) return;
+    
+    // Restore original node
+    this.currentNode = this.deepCloneNode(this.originalNode);
+    this.isDirty = false;
+    this.updateDirtyState();
+    
+    // Re-render to show original values
+    void this.render();
+  }
+
+  // Check for unsaved changes before switching
+  async checkUnsavedChanges(): Promise<boolean> {
+    if (!this.isDirty) return true;
+    
+    const result = await this.showConfirmationDialog(
+      'You have unsaved changes. What would you like to do?',
+      ['Save changes', 'Discard changes', 'Cancel']
+    );
+    
+    if (result === 'Save changes') {
+      this.handleApply();
+      return true;
+    } else if (result === 'Discard changes') {
+      this.handleCancel();
+      return true;
+    }
+    return false; // User cancelled
+  }
+}
+```
+
+**Visual Indicators:**
+
+- **Dirty Indicator**: Red pulsing dot next to panel title when `isDirty === true`
+- **Apply Button**: Highlighted/glowing when changes exist, disabled by default
+- **CSS Classes**: 
+  - `.property-panel-shell__dirty-indicator` - red dot animation
+  - `.property-panel-shell__button--has-changes` - Apply button highlight
+
+**Keyboard Shortcuts:**
+
+- `ESC` - Cancel changes (restores original)
+- `Cmd/Ctrl + Enter` - Apply changes
+
+**Confirmation Dialogs:**
+
+Custom modal dialogs appear when:
+- Switching to different node (with unsaved changes)
+- Closing properties panel (switching to other sidebar section)
+- Switching mode (visual ↔ XML)
+
+Dialog options:
+- **Save changes** - Calls `handleApply()` then proceeds
+- **Discard changes** - Calls `handleCancel()` then proceeds  
+- **Cancel** - Aborts the operation
+
+---
+
+### Legacy Property Panel Code (Reference)
+
 ```typescript
 // PropertyPanel.js
 

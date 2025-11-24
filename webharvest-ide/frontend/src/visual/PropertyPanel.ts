@@ -39,6 +39,9 @@ export class PropertyPanel {
     private schemaEditorActive = false;
     private shell: PropertyPanelShell;
 
+    // Dirty state tracking
+    private isDirty: boolean = false;
+
     // Plugin metadata cache
     private pluginMetadata: Plugin[] = [];
     private metadataLoaded: boolean = false;
@@ -247,6 +250,7 @@ export class PropertyPanel {
         this.currentNode = this.deepCloneNode(node);
         this.originalNode = this.deepCloneNode(node);
         this.currentNode.attributes = this.currentNode.attributes || {};
+        this.isDirty = false; // Reset dirty state when showing new node
         await this.render();
         console.log('🔧 [PropertyPanel] showNode() complete');
     }
@@ -256,7 +260,193 @@ export class PropertyPanel {
      */
     clear(): void {
         this.currentNode = null;
+        this.originalNode = null;
+        this.isDirty = false;
         this.container.innerHTML = '';
+    }
+
+    /**
+     * Check for unsaved changes and show confirmation dialog if needed
+     * Returns true if user confirmed discard, false if cancelled
+     */
+    async checkUnsavedChanges(): Promise<boolean> {
+        if (!this.isDirty) {
+            return true; // No unsaved changes, proceed
+        }
+
+        const result = await this.showConfirmationDialog(
+            'You have unsaved changes. What would you like to do?',
+            ['Save changes', 'Discard changes', 'Cancel']
+        );
+
+        if (result === 'Save changes') {
+            this.handleApply();
+            return true;
+        } else if (result === 'Discard changes') {
+            this.handleCancel();
+            return true;
+        } else {
+            // Cancel
+            return false;
+        }
+    }
+
+    /**
+     * Show confirmation dialog with custom modal
+     */
+    private async showConfirmationDialog(message: string, options: string[]): Promise<string> {
+        return new Promise((resolve) => {
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+
+            // Create modal dialog
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                min-width: 400px;
+                max-width: 500px;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            `;
+
+            // Message
+            const messageEl = document.createElement('p');
+            messageEl.textContent = message;
+            messageEl.style.cssText = `
+                margin: 0 0 24px 0;
+                font-size: 15px;
+                color: #374151;
+                line-height: 1.5;
+            `;
+            modal.appendChild(messageEl);
+
+            // Buttons container
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.style.cssText = `
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+            `;
+
+            // Create buttons for each option
+            options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.style.cssText = `
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    border: none;
+                    transition: all 0.2s;
+                `;
+
+                if (option === 'Cancel' || option === options[options.length - 1]) {
+                    // Cancel button (last or explicitly Cancel)
+                    button.style.background = 'transparent';
+                    button.style.color = '#374151';
+                    button.style.border = '1px solid #d1d5db';
+                    button.addEventListener('mouseenter', () => {
+                        button.style.background = '#f3f4f6';
+                    });
+                    button.addEventListener('mouseleave', () => {
+                        button.style.background = 'transparent';
+                    });
+                } else if (option === 'Save changes' || option === 'Discard changes') {
+                    // Action buttons
+                    if (option === 'Save changes') {
+                        button.style.background = '#3b82f6';
+                        button.style.color = 'white';
+                        button.addEventListener('mouseenter', () => {
+                            button.style.background = '#2563eb';
+                        });
+                        button.addEventListener('mouseleave', () => {
+                            button.style.background = '#3b82f6';
+                        });
+                    } else {
+                        button.style.background = '#ef4444';
+                        button.style.color = 'white';
+                        button.addEventListener('mouseenter', () => {
+                            button.style.background = '#dc2626';
+                        });
+                        button.addEventListener('mouseleave', () => {
+                            button.style.background = '#ef4444';
+                        });
+                    }
+                } else {
+                    // Default button styling
+                    button.style.background = '#6b7280';
+                    button.style.color = 'white';
+                }
+
+                button.addEventListener('click', () => {
+                    overlay.remove();
+                    resolve(option);
+                });
+
+                buttonsContainer.appendChild(button);
+            });
+
+            modal.appendChild(buttonsContainer);
+            overlay.appendChild(modal);
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.remove();
+                    resolve(options[options.length - 1]); // Default to Cancel
+                }
+            });
+
+            // Close on Escape key
+            const escapeHandler = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    overlay.remove();
+                    document.removeEventListener('keydown', escapeHandler);
+                    resolve(options[options.length - 1]); // Default to Cancel
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
+
+            document.body.appendChild(overlay);
+
+            // Focus first button
+            const firstButton = buttonsContainer.querySelector('button') as HTMLButtonElement;
+            if (firstButton) {
+                setTimeout(() => firstButton.focus(), 100);
+            }
+        });
+    }
+
+    /**
+     * Update dirty state and visual indicators
+     */
+    private updateDirtyState(): void {
+        this.shell.setDirtyIndicator(this.isDirty);
+        const errors = this.schemaEditor?.validate() || [];
+        const canApply = this.isDirty && errors.length === 0;
+        this.shell.setApplyDisabled(!canApply);
+        // Update footer actions to show hasChanges styling
+        this.shell.setFooterActions({
+            onApply: () => this.handleApply(),
+            onCancel: () => this.handleCancel(),
+            disableApply: !canApply,
+            hasChanges: this.isDirty
+        });
     }
 
     /**
@@ -288,6 +478,13 @@ export class PropertyPanel {
      */
     getCurrentNode(): VisualNode | null {
         return this.currentNode ? { ...this.currentNode } : null;
+    }
+
+    /**
+     * Check if there are unsaved changes
+     */
+    hasUnsavedChanges(): boolean {
+        return this.isDirty;
     }
 
     /**
@@ -496,10 +693,10 @@ export class PropertyPanel {
 
                     const errors = this.schemaEditor?.validate() || [];
                     this.shell.showValidationSummary(errors);
-                    this.shell.setApplyDisabled(errors.length > 0);
-                    if (errors.length === 0) {
-                        this.emitChange();
-                    }
+                    
+                    // Mark as dirty, but don't call onChangeCallback yet
+                    this.isDirty = true;
+                    this.updateDirtyState();
                 }
             });
 
@@ -548,9 +745,10 @@ export class PropertyPanel {
                     input.value = value;
                     input.className = 'detail-input';
                     input.onchange = () => {
-                        if (this.currentNode && this.onChangeCallback) {
+                        if (this.currentNode) {
                             this.currentNode.attributes[key] = input.value;
-                            this.onChangeCallback(this.deepCloneNode(this.currentNode));
+                            this.isDirty = true;
+                            this.updateDirtyState();
                         }
                     };
                     fieldContainer.appendChild(input);
@@ -584,9 +782,10 @@ export class PropertyPanel {
                 bodyInput.className = 'detail-input';
                 bodyInput.style.minHeight = '100px';
                 bodyInput.onchange = () => {
-                    if (this.currentNode && this.onChangeCallback) {
+                    if (this.currentNode) {
                         this.currentNode.body = bodyInput.value;
-                        this.onChangeCallback(this.deepCloneNode(this.currentNode));
+                        this.isDirty = true;
+                        this.updateDirtyState();
                     }
                 };
 
@@ -623,7 +822,8 @@ export class PropertyPanel {
                 registry: this.detailRegistry,
                 onChange: (updatedNode) => {
                     this.currentNode = this.deepCloneNode(updatedNode);
-                    this.onChangeCallback?.(this.deepCloneNode(updatedNode));
+                    this.isDirty = true;
+                    this.updateDirtyState();
                 }
             });
 
@@ -631,11 +831,18 @@ export class PropertyPanel {
         }
 
         this.shell.setBody(form);
+        
+        // Update dirty state indicators
+        const errors = this.schemaEditor?.validate() || [];
+        const canApply = this.isDirty && errors.length === 0;
+        
         this.shell.setFooterActions({
             onApply: () => this.handleApply(),
             onCancel: () => this.handleCancel(),
-            disableApply: false
+            disableApply: !canApply,
+            hasChanges: this.isDirty
         });
+        this.shell.setDirtyIndicator(this.isDirty);
         this.updateValidationState();
         this.shell.focusFirstField();
         console.log('✅ [PropertyPanel] render() complete');
@@ -828,12 +1035,14 @@ export class PropertyPanel {
     private updateValidationState(): void {
         if (!this.schemaEditor || !this.schemaEditorActive) {
             this.shell.showValidationSummary([]);
-            this.shell.setApplyDisabled(false);
+            // Apply button should be disabled if no changes, enabled if dirty and no errors
+            this.shell.setApplyDisabled(!this.isDirty);
             return;
         }
         const errors = this.schemaEditor.validate();
         this.shell.showValidationSummary(errors);
-        this.shell.setApplyDisabled(errors.length > 0);
+        // Apply button disabled if: no changes OR has validation errors
+        this.shell.setApplyDisabled(!this.isDirty || errors.length > 0);
     }
 
     private handleApply(): void {
@@ -844,10 +1053,16 @@ export class PropertyPanel {
             return;
         }
         console.log('[PropertyPanel] Emitting change for node:', this.currentNode?.id, this.currentNode?.type);
+        
+        // Call onChangeCallback to persist changes
         this.emitChange();
+        
+        // Update originalNode snapshot and clear dirty state
         if (this.currentNode) {
             this.originalNode = this.deepCloneNode(this.currentNode);
-            console.log('[PropertyPanel] Changes applied, original node updated');
+            this.isDirty = false;
+            this.updateDirtyState();
+            console.log('[PropertyPanel] Changes applied, original node updated, dirty state cleared');
         }
     }
 
@@ -857,7 +1072,12 @@ export class PropertyPanel {
             console.log('[PropertyPanel] No original node to restore');
             return;
         }
+        
+        // Restore original node and clear dirty state
         this.currentNode = this.deepCloneNode(this.originalNode);
+        this.isDirty = false;
+        this.updateDirtyState();
+        
         console.log('[PropertyPanel] Restored original node, re-rendering');
         void this.render();
     }
@@ -1066,7 +1286,8 @@ export class PropertyPanel {
         methodSelect.addEventListener('change', () => {
             const selected = methodSelect.value.toUpperCase();
             attrs.method = selected;
-            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+            this.isDirty = true;
+            this.updateDirtyState();
             const shouldShow = METHODS_WITH_BODY.has(selected);
             bodyField.container.style.display = shouldShow ? 'flex' : 'none';
         });
@@ -1083,7 +1304,8 @@ export class PropertyPanel {
         urlInput.value = attrs.url || '';
         urlInput.addEventListener('input', () => {
             attrs.url = urlInput.value;
-            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+            this.isDirty = true;
+            this.updateDirtyState();
         });
 
         urlField.control.appendChild(urlInput);
@@ -1096,7 +1318,8 @@ export class PropertyPanel {
         bodyInput.value = attrs.body || '';
         bodyInput.addEventListener('input', () => {
             attrs.body = bodyInput.value;
-            this.onChangeCallback?.(this.deepCloneNode(this.currentNode!));
+            this.isDirty = true;
+            this.updateDirtyState();
         });
 
         bodyField.control.appendChild(bodyInput);
@@ -1211,20 +1434,22 @@ export class PropertyPanel {
             this.xpathTester = new XPathTester();
             this.xpathTester.render(editorContainer, currentValue);
             this.xpathTester.onChange((newValue) => {
-                if (this.currentNode && this.onChangeCallback) {
+                if (this.currentNode) {
                     if (fieldName === 'body') {
                         this.currentNode.body = newValue;
                     } else {
                         this.currentNode.attributes[fieldName] = newValue;
                     }
-                    this.onChangeCallback(this.currentNode);
+                    // Mark as dirty when value changes in advanced editor
+                    this.isDirty = true;
+                    this.updateDirtyState();
                 }
             });
         } else if (editorType === 'regex') {
             this.regexValidator = new RegexValidator();
             this.regexValidator.render(editorContainer, currentValue);
             this.regexValidator.onChange((pattern: string, flags: string) => {
-                if (this.currentNode && this.onChangeCallback) {
+                if (this.currentNode) {
                     // Regex returns pattern + flags, use pattern only for now
                     const newValue = pattern;
                     if (fieldName === 'body') {
@@ -1232,7 +1457,9 @@ export class PropertyPanel {
                     } else {
                         this.currentNode.attributes[fieldName] = newValue;
                     }
-                    this.onChangeCallback(this.currentNode);
+                    // Mark as dirty when value changes in advanced editor
+                    this.isDirty = true;
+                    this.updateDirtyState();
                 }
             });
         } else if (editorType === 'expression') {
@@ -1245,13 +1472,15 @@ export class PropertyPanel {
             });
             this.expressionBuilder.setAvailableVariables(varsRecord);
             this.expressionBuilder.onChange((newValue) => {
-                if (this.currentNode && this.onChangeCallback) {
+                if (this.currentNode) {
                     if (fieldName === 'body') {
                         this.currentNode.body = newValue;
                     } else {
                         this.currentNode.attributes[fieldName] = newValue;
                     }
-                    this.onChangeCallback(this.currentNode);
+                    // Mark as dirty when value changes in advanced editor
+                    this.isDirty = true;
+                    this.updateDirtyState();
                 }
             });
         }

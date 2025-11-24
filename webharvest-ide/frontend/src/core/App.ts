@@ -575,8 +575,18 @@ export class App {
         });
 
         // Visual Designer → Property Panel
-        this.visualDesigner.addEventListener('nodeSelected', (nodeId: string) => {
+        this.visualDesigner.addEventListener('nodeSelected', async (nodeId: string) => {
             console.log(`📡 [App] Received 'nodeSelected' event for: ${nodeId}`);
+            
+            // Check for unsaved changes before switching nodes
+            if (this.propertyPanel && this.propertyPanel.hasUnsavedChanges()) {
+                const proceed = await this.propertyPanel.checkUnsavedChanges();
+                if (!proceed) {
+                    console.log('ℹ️ [App] Node selection cancelled due to unsaved changes');
+                    return;
+                }
+            }
+            
             const node = this.visualDesigner.findNode(nodeId);
             if (node) {
                 console.log(`✅ [App] Found node, calling propertyPanel.showNode():`, node);
@@ -607,8 +617,18 @@ export class App {
             }
         });
 
-        this.visualDesigner.addEventListener('nodeDoubleClicked', (nodeId: string) => {
+        this.visualDesigner.addEventListener('nodeDoubleClicked', async (nodeId: string) => {
             console.log(`📡 [App] Received 'nodeDoubleClicked' event for: ${nodeId}`);
+            
+            // Check for unsaved changes before switching nodes
+            if (this.propertyPanel && this.propertyPanel.hasUnsavedChanges()) {
+                const proceed = await this.propertyPanel.checkUnsavedChanges();
+                if (!proceed) {
+                    console.log('ℹ️ [App] Node selection cancelled due to unsaved changes');
+                    return;
+                }
+            }
+            
             const node = this.visualDesigner.findNode(nodeId);
             if (node) {
                 // Activate Properties section in RightSidebar
@@ -827,6 +847,28 @@ export class App {
                 if (this.currentMode === 'visual') {
                     const selectedNodeId = this.visualDesigner.getSelectedNodeId();
                     if (selectedNodeId) {
+                        // Check for unsaved changes before switching
+                        if (this.propertyPanel && this.propertyPanel.hasUnsavedChanges()) {
+                            // Use async but don't await - let user handle it
+                            void this.propertyPanel.checkUnsavedChanges().then(proceed => {
+                                if (proceed) {
+                                    const node = this.visualDesigner.findNode(selectedNodeId);
+                                    if (node) {
+                                        if (this.rightSidebar) {
+                                            this.rightSidebar.showSection('properties');
+                                        }
+                                        if (this.propertyPanel) {
+                                            this.propertyPanel.showNode(node).catch(err => {
+                                                console.error('❌ [App] Error showing node in PropertyPanel:', err);
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                            e.preventDefault();
+                            return;
+                        }
+                        
                         const node = this.visualDesigner.findNode(selectedNodeId);
                         if (node) {
                             if (this.rightSidebar) {
@@ -1240,12 +1282,24 @@ export class App {
     async switchMode(mode: 'xml' | 'visual'): Promise<void> {
         console.log(`🔄 [App] Switching to ${mode} mode...`);
 
-        // If switching away from Visual and has unsaved changes
-        if (this.currentMode === 'visual' && mode === 'xml' && this.visualDesigner.isDirty()) {
-            const confirmed = confirm('You have unsaved changes. Discard and switch to XML mode?');
-            if (!confirmed) {
-                console.log('ℹ️ Mode switch cancelled');
-                return;
+        // If switching away from Visual, check for unsaved changes
+        if (this.currentMode === 'visual' && mode === 'xml') {
+            // Check property panel unsaved changes
+            if (this.propertyPanel && this.propertyPanel.hasUnsavedChanges()) {
+                const proceed = await this.propertyPanel.checkUnsavedChanges();
+                if (!proceed) {
+                    console.log('ℹ️ Mode switch cancelled due to unsaved property changes');
+                    return;
+                }
+            }
+            
+            // Check visual designer unsaved changes
+            if (this.visualDesigner.isDirty()) {
+                const confirmed = confirm('You have unsaved changes in the visual design. Discard and switch to XML mode?');
+                if (!confirmed) {
+                    console.log('ℹ️ Mode switch cancelled');
+                    return;
+                }
             }
         }
 
@@ -1847,9 +1901,21 @@ export class App {
     /**
      * Handle sidebar section change (from new RightSidebar)
      */
-    private handleSidebarSectionChange(section: SidebarSection): void {
+    private async handleSidebarSectionChange(section: SidebarSection): Promise<void> {
         console.log('[App] Sidebar section changed to:', section);
-        // Additional logic if needed when section changes
+        
+        // Check for unsaved changes when switching away from properties
+        if (this.rightSidebar && this.rightSidebar.isSectionActive('properties') && section !== 'properties') {
+            if (this.propertyPanel && this.propertyPanel.hasUnsavedChanges()) {
+                const proceed = await this.propertyPanel.checkUnsavedChanges();
+                if (!proceed) {
+                    console.log('ℹ️ [App] Section change cancelled due to unsaved changes');
+                    // Revert to properties section
+                    this.rightSidebar.showSection('properties');
+                    return;
+                }
+            }
+        }
     }
 
 

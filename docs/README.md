@@ -9,6 +9,7 @@ This directory contains the complete documentation for Web-Harvest 2.2.0, includ
 - **User Guide** - Step-by-step tutorials and guides
 - **Function Execution Guide** (`FUNCTION_EXECUTION.md`) - Comprehensive guide to function definition, calling, parameters, return values, and system variables
 - **Validation Rules** (`VALIDATION_RULES.md`) - Configuration validation rules, context-specific plugins, and special cases
+- **Property Editor Guide** (`PROPERTY_EDITOR_GUIDE.md`) - User guide for the Property Editor with Apply/Cancel pattern, visual indicators, and keyboard shortcuts
 
 ## Quick Start
 

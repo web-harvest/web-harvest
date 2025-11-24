@@ -12,6 +12,7 @@ export interface PropertyPanelFooterActions {
     disableApply?: boolean;
     applyLabel?: string;
     cancelLabel?: string;
+    hasChanges?: boolean;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -33,6 +34,8 @@ export class PropertyPanelShell {
     private applyButton?: HTMLButtonElement;
     private cancelButton?: HTMLButtonElement;
     private focusableElements: HTMLElement[] = [];
+    private titleElement?: HTMLElement;
+    private dirtyIndicator?: HTMLElement;
 
     constructor(private readonly root: HTMLElement) {
         this.root.classList.add('property-panel-shell');
@@ -70,6 +73,8 @@ export class PropertyPanelShell {
         this.focusableElements = [];
         this.applyButton = undefined;
         this.cancelButton = undefined;
+        this.titleElement = undefined;
+        this.dirtyIndicator = undefined;
     }
 
     setHeader(header: PropertyPanelHeader): void {
@@ -87,6 +92,7 @@ export class PropertyPanelShell {
         const title = document.createElement('h2');
         title.textContent = header.title;
         title.className = 'property-panel-shell__title';
+        this.titleElement = title;
         titleRow.appendChild(title);
 
         this.headerEl.appendChild(titleRow);
@@ -128,7 +134,11 @@ export class PropertyPanelShell {
         if (actions.onApply) {
             this.applyButton = document.createElement('button');
             this.applyButton.type = 'button';
-            this.applyButton.className = 'property-panel-shell__button property-panel-shell__button--primary';
+            let buttonClass = 'property-panel-shell__button property-panel-shell__button--primary';
+            if (actions.hasChanges) {
+                buttonClass += ' property-panel-shell__button--has-changes';
+            }
+            this.applyButton.className = buttonClass;
             this.applyButton.textContent = actions.applyLabel || 'Apply';
             this.applyButton.disabled = Boolean(actions.disableApply);
             this.applyButton.addEventListener('click', () => actions.onApply?.());
@@ -166,6 +176,28 @@ export class PropertyPanelShell {
     setApplyDisabled(disabled: boolean): void {
         if (this.applyButton) {
             this.applyButton.disabled = disabled;
+        }
+    }
+
+    /**
+     * Set dirty indicator visibility in header
+     */
+    setDirtyIndicator(dirty: boolean): void {
+        if (!this.titleElement) {
+            return;
+        }
+
+        if (dirty && !this.dirtyIndicator) {
+            // Create dirty indicator
+            this.dirtyIndicator = document.createElement('span');
+            this.dirtyIndicator.className = 'property-panel-shell__dirty-indicator';
+            this.dirtyIndicator.setAttribute('aria-label', 'Unsaved changes');
+            this.dirtyIndicator.setAttribute('title', 'You have unsaved changes');
+            this.titleElement.appendChild(this.dirtyIndicator);
+        } else if (!dirty && this.dirtyIndicator) {
+            // Remove dirty indicator
+            this.dirtyIndicator.remove();
+            this.dirtyIndicator = undefined;
         }
     }
 
