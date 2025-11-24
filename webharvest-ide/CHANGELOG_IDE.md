@@ -1,5 +1,61 @@
 # Web-Harvest IDE - Change Log
 
+## Version 2.3.2 - November 24, 2025
+
+### 🎯 Canvas Layout & Connection Routing Optimization
+
+#### Collision Detection & Prevention
+- ✅ **Node collision detection** - Prevents nodes from being placed on top of each other
+  - `checkNodeCollision()` - Detects full node bounding box collisions
+  - `checkLabelCollision()` - Detects label (top 40px) collisions
+  - Visual feedback with red outline when collision detected during drag
+
+- ✅ **Automatic node pushing** - Automatically moves conflicting nodes when dragging
+  - `pushNodesAway()` - Intelligently pushes nodes away from dragged node
+  - Recursive collision checking for pushed nodes
+  - Grid snapping for all moved nodes
+
+- ✅ **Nearest free position finder** - Finds closest available position when collision detected
+  - `findNearestFreePosition()` - Spiral search algorithm
+  - Respects grid snapping
+  - Maximum search radius of 500px
+
+#### Connection Routing Optimization
+- ✅ **Optimal routing direction selection** - Automatically chooses horizontal vs vertical routing
+  - Analyzes existing connections to minimize crossings
+  - Calculates path length for both options
+  - Selects option with minimum score: (crossings × 100) + (length × 1)
+  - `chooseAnchorSides()` now uses intelligent routing algorithm
+
+- ✅ **Crossing detection** - Counts intersections between connection paths
+  - `countPathCrossings()` - Analyzes all existing connections
+  - `countPathIntersections()` - Detects intersections between orthogonal segments
+  - `segmentsIntersect()` - Checks if two orthogonal segments intersect
+
+- ✅ **Obstacle avoidance** - Automatically reroutes connections around nodes
+  - `findObstaclesOnPath()` - Detects nodes blocking connection path
+  - `rerouteAroundObstacles()` - Creates alternative path avoiding obstacles
+  - Enhanced `buildOrthogonalPath()` with automatic obstacle detection
+
+#### Drag & Drop Improvements
+- ✅ **Enhanced drag validation** - Real-time collision checking during node dragging
+  - Collision detection before position update
+  - Automatic node pushing when conflicts detected
+  - Visual feedback with CSS class `node-collision-warning`
+  - Smooth snapping to grid
+
+#### Technical Implementation
+- ✅ **Connection routing algorithm** - Intelligent path selection
+  - Horizontal vs vertical routing based on minimal crossings and path length
+  - Weighted scoring: crossings (100×) vs length (1×)
+  - Simple routing for existing connections (to avoid recursion)
+  - Full routing with obstacle detection for new connections
+
+- ✅ **Performance optimizations**
+  - Caching of existing connection paths
+  - Efficient collision detection using bounding boxes
+  - Grid-based position snapping
+
 ## Version 2.3.1 - November 23, 2025
 
 ### 🎨 UI Improvements

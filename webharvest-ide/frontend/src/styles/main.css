@@ -11,6 +11,13 @@
     box-sizing: border-box;
 }
 
+/* Visual feedback for collision warning during drag */
+.visual-node.node-collision-warning {
+    outline: 2px solid #f44336;
+    outline-offset: 2px;
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+}
+
 .visual-node__surface {
     position: relative;
     display: flex;
@@ -1910,6 +1917,28 @@ body {
 
 .control-summary--try {
     border-left: 4px solid var(--amber-400, #fbbf24);
+}
+
+/* Container rendered as connected node in drill-down */
+.visual-node--container-in-drilldown {
+    border-left: 4px solid var(--blue-500, #3b82f6);
+}
+
+.visual-node__container-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--blue-600, #2563eb);
+    margin-left: 8px;
+    font-weight: 500;
+}
+
+.visual-node__container-badge i {
+    font-size: 10px;
 }
 
 /* Nested container styling */

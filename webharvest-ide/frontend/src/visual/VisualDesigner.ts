@@ -651,25 +651,36 @@ export class VisualDesigner {
             return;
         }
 
-        const connectionsForLayout = layoutConnections ?? this.buildLayoutConnections(nodes);
-        const layerAssignments = this.computeLayerAssignments(nodes, connectionsForLayout);
-        const columnWidth = this.MIN_CARD_WIDTH + this.HORIZONTAL_GAP;
-        const rowGap = Math.max(this.PADDING * 3, Math.round(this.MIN_CARD_HEIGHT * 0.6));
-        const baseY = this.START_Y;
-        const fallbackOrder = new Map(nodes.map((node, index) => [node.id, index]));
-
-        const groupedByLayer = new Map<number, VisualNode[]>();
-
-        nodes.forEach(node => {
-            if (node.position && node.isManualPositioned === undefined) {
-                node.isManualPositioned = true;
-            }
-
+        // Filtruj tylko węzły, które nie są ręcznie pozycjonowane
+        const nodesToLayout = nodes.filter(node => {
             if (node.isManualPositioned && node.position) {
                 node.position = this.snapPosition(node.position);
-                return;
+                return false;
             }
+            return true;
+        });
 
+        if (nodesToLayout.length === 0) {
+            return;
+        }
+
+        // Buduj graf połączeń
+        const connectionsForLayout = layoutConnections ?? this.buildLayoutConnections(nodesToLayout);
+        
+        // Topologiczne sortowanie - znajdź kolejność wykonania
+        const executionOrder = this.topologicalSort(nodesToLayout, connectionsForLayout);
+        
+        // Przypisz węzły do warstw (kolumn) na podstawie głębokości w grafie
+        const layerAssignments = this.computeOptimalLayers(nodesToLayout, connectionsForLayout, executionOrder);
+        
+        // Stałe layoutu
+        const columnWidth = this.MIN_CARD_WIDTH + this.HORIZONTAL_GAP;
+        const minRowGap = Math.max(this.PADDING * 4, Math.round(this.MIN_CARD_HEIGHT * 0.8));
+        const baseY = this.START_Y + 100;
+        
+        // Grupuj węzły według warstw
+        const groupedByLayer = new Map<number, VisualNode[]>();
+        executionOrder.forEach(node => {
             const layerIndex = layerAssignments.get(node.id) ?? 0;
             if (!groupedByLayer.has(layerIndex)) {
                 groupedByLayer.set(layerIndex, []);
@@ -677,30 +688,530 @@ export class VisualDesigner {
             groupedByLayer.get(layerIndex)!.push(node);
         });
 
+        // Sortuj warstwy
         const sortedLayers = Array.from(groupedByLayer.keys()).sort((a, b) => a - b);
 
+        // Rozmieszczaj węzły w każdej warstwie
         sortedLayers.forEach(layerIndex => {
             const columnNodes = groupedByLayer.get(layerIndex)!;
+            
+            // Sortuj węzły w warstwie według kolejności wykonania
             columnNodes.sort((a, b) => {
-                const fallbackComparison = (fallbackOrder.get(a.id) ?? 0) - (fallbackOrder.get(b.id) ?? 0);
-                if (fallbackComparison !== 0) {
-                    return fallbackComparison;
-                }
-                const ay = a.position?.y ?? 0;
-                const by = b.position?.y ?? 0;
-                return ay - by;
+                const orderA = executionOrder.findIndex(n => n.id === a.id);
+                const orderB = executionOrder.findIndex(n => n.id === b.id);
+                return orderA - orderB;
             });
 
             let cursorY = baseY;
-            columnNodes.forEach(node => {
+            const labelHeight = 40; // Wysokość etykiety (header)
+            const minLabelGap = 20; // Minimalny odstęp między etykietami
+            
+            columnNodes.forEach((node, index) => {
                 const dimensions = this.getNodeDimensions(node);
+                const nodeHeight = Math.max(dimensions.height, this.MIN_CARD_HEIGHT);
+                
                 const x = this.snapValue(this.START_X + layerIndex * columnWidth);
+                
+                // Sprawdź kolizję z poprzednim węzłem
+                if (index > 0) {
+                    const prevNode = columnNodes[index - 1];
+                    const prevDimensions = this.getNodeDimensions(prevNode);
+                    const prevHeight = Math.max(prevDimensions.height, this.MIN_CARD_HEIGHT);
+                    const prevY = prevNode.position?.y ?? baseY;
+                    
+                    // Oblicz minimalną pozycję Y, aby etykiety nie zachodziły
+                    const minY = prevY + prevHeight + minLabelGap;
+                    cursorY = Math.max(cursorY, minY);
+                }
+                
                 const y = this.snapValue(cursorY);
+                
                 node.position = { x, y };
                 node.isManualPositioned = false;
-                cursorY += Math.max(dimensions.height, this.MIN_CARD_HEIGHT) + rowGap;
+                
+                // Zwiększ cursorY o wysokość węzła + odstęp, uwzględniając etykietę
+                cursorY += nodeHeight + minRowGap;
             });
         });
+        
+        // Po rozmieszczeniu, sprawdź i popraw kolizje między wszystkimi węzłami
+        this.resolveLabelCollisions(nodesToLayout);
+    }
+
+    /**
+     * Rozwiąż kolizje etykiet między węzłami
+     */
+    private resolveLabelCollisions(nodes: VisualNode[]): void {
+        const LABEL_HEIGHT = 40;
+        const MIN_LABEL_GAP = 20;
+        const ITERATIONS = 3; // Liczba iteracji dla stabilizacji
+        
+        for (let iter = 0; iter < ITERATIONS; iter++) {
+            let hasCollisions = false;
+            
+            // Sortuj węzły według pozycji Y
+            const sortedNodes = [...nodes].sort((a, b) => {
+                const ay = a.position?.y ?? 0;
+                const by = b.position?.y ?? 0;
+                if (ay !== by) return ay - by;
+                const ax = a.position?.x ?? 0;
+                const bx = b.position?.x ?? 0;
+                return ax - bx;
+            });
+            
+            for (let i = 0; i < sortedNodes.length; i++) {
+                const node = sortedNodes[i];
+                if (!node.position) continue;
+                
+                const nodeDims = this.getNodeDimensions(node);
+                const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
+                const nodeTop = node.position.y;
+                const nodeBottom = nodeTop + nodeHeight;
+                const nodeLeft = node.position.x;
+                const nodeRight = nodeLeft + nodeDims.width;
+                
+                // Sprawdź kolizje z innymi węzłami
+                for (let j = i + 1; j < sortedNodes.length; j++) {
+                    const otherNode = sortedNodes[j];
+                    if (!otherNode.position) continue;
+                    
+                    const otherDims = this.getNodeDimensions(otherNode);
+                    const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
+                    const otherTop = otherNode.position.y;
+                    const otherBottom = otherTop + otherHeight;
+                    const otherLeft = otherNode.position.x;
+                    const otherRight = otherLeft + otherDims.width;
+                    
+                    // Sprawdź czy etykiety (górne części węzłów) zachodzą na siebie
+                    const labelTop = nodeTop;
+                    const labelBottom = nodeTop + LABEL_HEIGHT;
+                    const otherLabelTop = otherTop;
+                    const otherLabelBottom = otherTop + LABEL_HEIGHT;
+                    
+                    // Kolizja etykiet: zachodzą w pionie i poziomie
+                    const labelsOverlapY = !(labelBottom < otherLabelTop || labelTop > otherLabelBottom);
+                    const labelsOverlapX = !(nodeRight < otherLeft || nodeLeft > otherRight);
+                    
+                    if (labelsOverlapY && labelsOverlapX) {
+                        hasCollisions = true;
+                        
+                        // Przesuń drugi węzeł w dół
+                        const requiredGap = LABEL_HEIGHT + MIN_LABEL_GAP;
+                        const newY = nodeBottom + requiredGap - LABEL_HEIGHT;
+                        
+                        if (!otherNode.position) {
+                            otherNode.position = { x: otherLeft, y: newY };
+                        } else {
+                            otherNode.position.y = Math.max(otherNode.position.y, this.snapValue(newY));
+                        }
+                    }
+                }
+            }
+            
+            if (!hasCollisions) {
+                break; // Brak kolizji, można zakończyć
+            }
+        }
+    }
+
+    /**
+     * Sprawdź kolizję całego węzła (bounding box) z innymi węzłami
+     */
+    private checkNodeCollision(node: VisualNode, position: Point, excludeNodeId?: string): boolean {
+        if (!position) return false;
+
+        const nodeDims = this.getNodeDimensions(node);
+        const nodeWidth = nodeDims.width;
+        const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
+        
+        const nodeLeft = position.x;
+        const nodeRight = nodeLeft + nodeWidth;
+        const nodeTop = position.y;
+        const nodeBottom = nodeTop + nodeHeight;
+
+        // Sprawdź kolizje ze wszystkimi węzłami
+        const allNodes = this.getAllNodes();
+        for (const otherNode of allNodes) {
+            // Pomiń wykluczony węzeł (np. przeciągany węzeł)
+            if (excludeNodeId && otherNode.id === excludeNodeId) {
+                continue;
+            }
+
+            if (!otherNode.position) continue;
+
+            const otherDims = this.getNodeDimensions(otherNode);
+            const otherWidth = otherDims.width;
+            const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
+            
+            const otherLeft = otherNode.position.x;
+            const otherRight = otherLeft + otherWidth;
+            const otherTop = otherNode.position.y;
+            const otherBottom = otherTop + otherHeight;
+
+            // Sprawdź czy bounding boxy się przecinają
+            const overlapsX = !(nodeRight < otherLeft || nodeLeft > otherRight);
+            const overlapsY = !(nodeBottom < otherTop || nodeTop > otherBottom);
+
+            if (overlapsX && overlapsY) {
+                return true; // Kolizja wykryta
+            }
+        }
+
+        return false; // Brak kolizji
+    }
+
+    /**
+     * Sprawdź kolizję etykiety (górne 40px węzła) z innymi etykietami
+     */
+    private checkLabelCollision(node: VisualNode, position: Point, excludeNodeId?: string): boolean {
+        if (!position) return false;
+
+        const LABEL_HEIGHT = 40;
+        const nodeDims = this.getNodeDimensions(node);
+        const nodeWidth = nodeDims.width;
+        
+        const nodeLeft = position.x;
+        const nodeRight = nodeLeft + nodeWidth;
+        const labelTop = position.y;
+        const labelBottom = labelTop + LABEL_HEIGHT;
+
+        // Sprawdź kolizje etykiet ze wszystkimi węzłami
+        const allNodes = this.getAllNodes();
+        for (const otherNode of allNodes) {
+            // Pomiń wykluczony węzeł
+            if (excludeNodeId && otherNode.id === excludeNodeId) {
+                continue;
+            }
+
+            if (!otherNode.position) continue;
+
+            const otherDims = this.getNodeDimensions(otherNode);
+            const otherWidth = otherDims.width;
+            
+            const otherLeft = otherNode.position.x;
+            const otherRight = otherLeft + otherWidth;
+            const otherLabelTop = otherNode.position.y;
+            const otherLabelBottom = otherLabelTop + LABEL_HEIGHT;
+
+            // Sprawdź czy etykiety się przecinają
+            const labelsOverlapX = !(nodeRight < otherLeft || nodeLeft > otherRight);
+            const labelsOverlapY = !(labelBottom < otherLabelTop || labelTop > otherLabelBottom);
+
+            if (labelsOverlapX && labelsOverlapY) {
+                return true; // Kolizja etykiet wykryta
+            }
+        }
+
+        return false; // Brak kolizji etykiet
+    }
+
+    /**
+     * Znajdź najbliższą wolną pozycję dla węzła (bez kolizji)
+     */
+    private findNearestFreePosition(node: VisualNode, desiredPosition: Point, maxSearchRadius: number = 500): Point {
+        const nodeDims = this.getNodeDimensions(node);
+        const nodeWidth = nodeDims.width;
+        const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
+        
+        // Sprawdź czy pożądana pozycja jest wolna
+        if (!this.checkNodeCollision(node, desiredPosition, node.id) && 
+            !this.checkLabelCollision(node, desiredPosition, node.id)) {
+            return this.snapPosition(desiredPosition);
+        }
+
+        // Szukaj najbliższej wolnej pozycji w spirali
+        const step = this.gridSize || 20;
+        const maxSteps = Math.floor(maxSearchRadius / step);
+        
+        for (let radius = step; radius <= maxSearchRadius; radius += step) {
+            // Sprawdź pozycje w spirali (kwadrat)
+            for (let dx = -radius; dx <= radius; dx += step) {
+                for (let dy = -radius; dy <= radius; dy += step) {
+                    // Sprawdź tylko pozycje na obwodzie kwadratu (nie wszystkie wewnętrzne)
+                    if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
+                        continue;
+                    }
+                    
+                    const candidatePos: Point = {
+                        x: desiredPosition.x + dx,
+                        y: desiredPosition.y + dy
+                    };
+                    
+                    // Sprawdź czy pozycja jest wolna
+                    if (!this.checkNodeCollision(node, candidatePos, node.id) && 
+                        !this.checkLabelCollision(node, candidatePos, node.id)) {
+                        return this.snapPosition(candidatePos);
+                    }
+                }
+            }
+        }
+
+        // Jeśli nie znaleziono, zwróć pożądaną pozycję (zostanie zablokowana)
+        return this.snapPosition(desiredPosition);
+    }
+
+    /**
+     * Automatycznie przesuń węzły, które kolidują z przeciąganym węzłem
+     */
+    private pushNodesAway(draggedNode: VisualNode, newPosition: Point): void {
+        const nodeDims = this.getNodeDimensions(draggedNode);
+        const nodeWidth = nodeDims.width;
+        const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
+        
+        const draggedLeft = newPosition.x;
+        const draggedRight = draggedLeft + nodeWidth;
+        const draggedTop = newPosition.y;
+        const draggedBottom = draggedTop + nodeHeight;
+
+        // Znajdź węzły, które kolidują z nową pozycją
+        const allNodes = this.getAllNodes();
+        const nodesToPush: Array<{ node: VisualNode; direction: { x: number; y: number } }> = [];
+
+        for (const otherNode of allNodes) {
+            if (otherNode.id === draggedNode.id || !otherNode.position) continue;
+
+            const otherDims = this.getNodeDimensions(otherNode);
+            const otherWidth = otherDims.width;
+            const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
+            
+            const otherLeft = otherNode.position.x;
+            const otherRight = otherLeft + otherWidth;
+            const otherTop = otherNode.position.y;
+            const otherBottom = otherTop + otherHeight;
+
+            // Sprawdź kolizję
+            const overlapsX = !(draggedRight < otherLeft || draggedLeft > otherRight);
+            const overlapsY = !(draggedBottom < otherTop || draggedTop > otherBottom);
+
+            if (overlapsX && overlapsY) {
+                // Oblicz kierunek przesunięcia (od przeciąganego węzła)
+                const centerX = (draggedLeft + draggedRight) / 2;
+                const centerY = (draggedTop + draggedBottom) / 2;
+                const otherCenterX = (otherLeft + otherRight) / 2;
+                const otherCenterY = (otherTop + otherBottom) / 2;
+
+                const dx = otherCenterX - centerX;
+                const dy = otherCenterY - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 0) {
+                    // Normalizuj kierunek
+                    const directionX = dx / distance;
+                    const directionY = dy / distance;
+
+                    // Oblicz minimalne przesunięcie potrzebne do uniknięcia kolizji
+                    const minPushX = Math.abs(dx) > 0 ? (Math.abs(dx) + (nodeWidth + otherWidth) / 2) * Math.sign(dx) : 0;
+                    const minPushY = Math.abs(dy) > 0 ? (Math.abs(dy) + (nodeHeight + otherHeight) / 2) * Math.sign(dy) : 0;
+
+                    // Wybierz większe przesunięcie (X lub Y) aby uniknąć kolizji
+                    const pushDistance = Math.max(Math.abs(minPushX), Math.abs(minPushY));
+                    const pushX = directionX * pushDistance;
+                    const pushY = directionY * pushDistance;
+
+                    nodesToPush.push({
+                        node: otherNode,
+                        direction: { x: pushX, y: pushY }
+                    });
+                }
+            }
+        }
+
+        // Przesuń węzły (z rekurencyjnym sprawdzaniem kolizji)
+        const movedNodes = new Set<string>();
+        const pushNodeRecursive = (nodeToPush: VisualNode, pushDir: { x: number; y: number }) => {
+            if (movedNodes.has(nodeToPush.id)) return;
+
+            if (!nodeToPush.position) {
+                nodeToPush.position = { x: 0, y: 0 };
+            }
+
+            const newPos: Point = {
+                x: nodeToPush.position.x + pushDir.x,
+                y: nodeToPush.position.y + pushDir.y
+            };
+
+            // Snap do siatki
+            const snappedPos = this.snapPosition(newPos);
+
+            // Sprawdź czy nowa pozycja nie koliduje z innymi węzłami (oprócz przeciąganego)
+            if (!this.checkNodeCollision(nodeToPush, snappedPos, draggedNode.id) && 
+                !this.checkLabelCollision(nodeToPush, snappedPos, draggedNode.id)) {
+                nodeToPush.position = snappedPos;
+                nodeToPush.isManualPositioned = true;
+                movedNodes.add(nodeToPush.id);
+            } else {
+                // Jeśli nadal kolizja, spróbuj znaleźć wolną pozycję
+                const freePos = this.findNearestFreePosition(nodeToPush, snappedPos, 200);
+                nodeToPush.position = freePos;
+                nodeToPush.isManualPositioned = true;
+                movedNodes.add(nodeToPush.id);
+            }
+        };
+
+        // Przesuń wszystkie węzły
+        nodesToPush.forEach(({ node, direction }) => {
+            pushNodeRecursive(node, direction);
+        });
+    }
+
+    /**
+     * Topologiczne sortowanie węzłów według kolejności wykonania
+     */
+    private topologicalSort(
+        nodes: VisualNode[],
+        connections: Array<{ from: string; to: string }>
+    ): VisualNode[] {
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+        const adjacency = new Map<string, Set<string>>();
+        const indegree = new Map<string, number>();
+        const fallbackOrder = new Map(nodes.map((node, index) => [node.id, index]));
+
+        // Inicjalizuj graf
+        nodes.forEach(node => {
+            adjacency.set(node.id, new Set());
+            indegree.set(node.id, 0);
+        });
+
+        // Buduj graf skierowany
+        connections.forEach(conn => {
+            if (conn.from === conn.to || !adjacency.has(conn.from) || !adjacency.has(conn.to)) {
+                return;
+            }
+            const targets = adjacency.get(conn.from)!;
+            if (!targets.has(conn.to)) {
+                targets.add(conn.to);
+                indegree.set(conn.to, (indegree.get(conn.to) ?? 0) + 1);
+            }
+        });
+
+        // Kahn's algorithm
+        const queue: string[] = [];
+        const result: VisualNode[] = [];
+
+        // Znajdź węzły startowe (bez przychodzących połączeń)
+        indegree.forEach((value, nodeId) => {
+            if (value === 0) {
+                queue.push(nodeId);
+            }
+        });
+
+        // Sortuj kolejkę według kolejności w XML
+        queue.sort((a, b) => {
+            const orderA = fallbackOrder.get(a) ?? Number.MAX_SAFE_INTEGER;
+            const orderB = fallbackOrder.get(b) ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            const node = nodeMap.get(currentId);
+            if (node) {
+                result.push(node);
+            }
+
+            const neighbors = adjacency.get(currentId);
+            if (neighbors) {
+                const sortedNeighbors = Array.from(neighbors).sort((a, b) => {
+                    const orderA = fallbackOrder.get(a) ?? Number.MAX_SAFE_INTEGER;
+                    const orderB = fallbackOrder.get(b) ?? Number.MAX_SAFE_INTEGER;
+                    return orderA - orderB;
+                });
+
+                sortedNeighbors.forEach(targetId => {
+                    const newIndegree = (indegree.get(targetId) ?? 0) - 1;
+                    indegree.set(targetId, newIndegree);
+                    if (newIndegree === 0) {
+                        queue.push(targetId);
+                        queue.sort((a, b) => {
+                            const orderA = fallbackOrder.get(a) ?? Number.MAX_SAFE_INTEGER;
+                            const orderB = fallbackOrder.get(b) ?? Number.MAX_SAFE_INTEGER;
+                            return orderA - orderB;
+                        });
+                    }
+                });
+            }
+        }
+
+        // Dodaj węzły bez połączeń na końcu
+        nodes.forEach(node => {
+            if (!result.find(n => n.id === node.id)) {
+                result.push(node);
+            }
+        });
+
+        return result;
+    }
+
+    /**
+     * Oblicz optymalne warstwy (kolumny) dla węzłów, minimalizując krzyżowanie połączeń
+     */
+    private computeOptimalLayers(
+        nodes: VisualNode[],
+        connections: Array<{ from: string; to: string }>,
+        executionOrder: VisualNode[]
+    ): Map<string, number> {
+        const layers = new Map<string, number>();
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+        const adjacency = new Map<string, Set<string>>();
+        const reverseAdjacency = new Map<string, Set<string>>();
+
+        // Buduj graf
+        nodes.forEach(node => {
+            adjacency.set(node.id, new Set());
+            reverseAdjacency.set(node.id, new Set());
+        });
+
+        connections.forEach(conn => {
+            if (conn.from === conn.to || !adjacency.has(conn.from) || !adjacency.has(conn.to)) {
+                return;
+            }
+            adjacency.get(conn.from)!.add(conn.to);
+            reverseAdjacency.get(conn.to)!.add(conn.from);
+        });
+
+        // Longest Path Algorithm (Sugiyama framework)
+        const longestPath = new Map<string, number>();
+
+        // Oblicz najdłuższą ścieżkę od źródła do każdego węzła
+        const computeLongestPath = (nodeId: string): number => {
+            if (longestPath.has(nodeId)) {
+                return longestPath.get(nodeId)!;
+            }
+
+            const predecessors = reverseAdjacency.get(nodeId);
+            if (!predecessors || predecessors.size === 0) {
+                longestPath.set(nodeId, 0);
+                return 0;
+            }
+
+            let maxPath = 0;
+            predecessors.forEach(predId => {
+                const pathLength = computeLongestPath(predId) + 1;
+                maxPath = Math.max(maxPath, pathLength);
+            });
+
+            longestPath.set(nodeId, maxPath);
+            return maxPath;
+        };
+
+        // Oblicz dla wszystkich węzłów
+        executionOrder.forEach(node => {
+            computeLongestPath(node.id);
+        });
+
+        // Użyj najdłuższej ścieżki jako warstwy
+        longestPath.forEach((layer, nodeId) => {
+            layers.set(nodeId, layer);
+        });
+
+        // Upewnij się, że wszystkie węzły mają warstwę
+        nodes.forEach(node => {
+            if (!layers.has(node.id)) {
+                layers.set(node.id, 0);
+            }
+        });
+
+        return layers;
     }
 
     private buildLayoutConnections(nodes: VisualNode[]): Array<{ from: string; to: string }> {
@@ -724,84 +1235,6 @@ export class VisualDesigner {
         return connections;
     }
 
-    private computeLayerAssignments(
-        nodes: VisualNode[],
-        connections: Array<{ from: string; to: string }>
-    ): Map<string, number> {
-        const fallbackOrder = new Map(nodes.map((node, index) => [node.id, index]));
-        const adjacency = new Map<string, Set<string>>();
-        const indegree = new Map<string, number>();
-
-        nodes.forEach(node => {
-            adjacency.set(node.id, new Set());
-            indegree.set(node.id, 0);
-        });
-
-        connections.forEach(connection => {
-            if (!adjacency.has(connection.from) || !adjacency.has(connection.to) || connection.from === connection.to) {
-                return;
-            }
-            const targets = adjacency.get(connection.from)!;
-            if (!targets.has(connection.to)) {
-                targets.add(connection.to);
-                indegree.set(connection.to, (indegree.get(connection.to) ?? 0) + 1);
-            }
-        });
-
-        const layers = new Map<string, number>();
-        const queue: string[] = [];
-
-        indegree.forEach((value, nodeId) => {
-            if (value === 0) {
-                queue.push(nodeId);
-            }
-        });
-
-        const sortQueue = () => queue.sort((a, b) => (fallbackOrder.get(a)! - fallbackOrder.get(b)!));
-        sortQueue();
-
-        const visited = new Set<string>();
-
-        while (queue.length > 0) {
-            const currentId = queue.shift()!;
-            visited.add(currentId);
-            const currentLayer = layers.get(currentId) ?? 0;
-            const neighbors = adjacency.get(currentId);
-            if (!neighbors) {
-                continue;
-            }
-
-            neighbors.forEach(targetId => {
-                const proposedLayer = Math.max(layers.get(targetId) ?? 0, currentLayer + 1);
-                layers.set(targetId, proposedLayer);
-                const nextValue = (indegree.get(targetId) ?? 0) - 1;
-                indegree.set(targetId, nextValue);
-                if (nextValue === 0) {
-                    queue.push(targetId);
-                    sortQueue();
-                }
-            });
-        }
-
-        if (visited.size !== nodes.length) {
-            const base = Math.max(0, ...Array.from(layers.values()));
-            let fallbackLayer = base;
-            nodes.forEach(node => {
-                if (!layers.has(node.id)) {
-                    layers.set(node.id, fallbackLayer);
-                    fallbackLayer++;
-                }
-            });
-        } else {
-            nodes.forEach(node => {
-                if (!layers.has(node.id)) {
-                    layers.set(node.id, 0);
-                }
-            });
-        }
-
-        return layers;
-    }
 
     private snapValue(value: number): number {
         return Math.round(value / this.gridSize) * this.gridSize;
@@ -1099,24 +1532,8 @@ export class VisualDesigner {
      * Render all nodes with hybrid model (nested + connected)
      */
     private render(): void {
-        const focusedContainer = this.getFocusedContainer();
-        const isRootView = !focusedContainer;
-        this.updateBreadcrumbTrail();
-
-        let nodesToRender: VisualNode[];
-        let focusDetailSections: DetailSectionDefinition[] = [];
-
-        if (focusedContainer) {
-            nodesToRender = [...(focusedContainer.children || [])];
-            const sections = this.getDetailSectionsForNode(focusedContainer.type);
-            if (sections.length > 0) {
-                const detailTypes = new Set(sections.map(section => section.detailType));
-                nodesToRender = nodesToRender.filter(child => !detailTypes.has(child.type));
-                focusDetailSections = sections;
-            }
-        } else {
-            nodesToRender = this.nodes;
-        }
+        // UPROSZCZENIE: Zawsze renderuj wszystkie węzły z root, bez drill-down
+        const nodesToRender = this.getAllNodes();
 
         this.visibleNodes = nodesToRender;
 
@@ -1136,63 +1553,35 @@ export class VisualDesigner {
         this.rebuildConnections(shouldAutoLayout, nodesToRender);
 
         // Render nodes
-        nodesToRender.forEach(node => this.renderNodeWithStrategy(node, this.canvasElement));
-
-        if (focusDetailSections.length > 0 && focusedContainer) {
-            this.renderFocusDetailSummary(focusedContainer, focusDetailSections);
-        }
+        nodesToRender.forEach((node: VisualNode) => this.renderNodeWithStrategy(node, this.canvasElement));
 
         const renderedNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
             .filter((element): element is HTMLElement => element instanceof HTMLElement)
             .filter(element => Boolean(element.dataset.nodeId));
 
-        let rootNodeElements: HTMLElement[];
-        if (focusedContainer) {
-            rootNodeElements = renderedNodeElements.filter(element => element.dataset.parentId === focusedContainer.id);
-        } else {
-            rootNodeElements = renderedNodeElements.filter(element => !element.dataset.parentId);
-        }
+        // UPROSZCZENIE: Zawsze używaj root nodes (bez drill-down)
+        const rootNodeElements = renderedNodeElements.filter(element => !element.dataset.parentId);
 
-        const markerContextLabel = isRootView || !focusedContainer
-            ? undefined
-            : this.getNodeDisplayLabel(focusedContainer);
-
-        if (isRootView || focusedContainer) {
             this.renderProcessMarkers(rootNodeElements, {
-                contextLabel: markerContextLabel,
                 interactive: true,
                 allowDrag: true
             });
             this.updateProcessMarkersPosition();
-        } else {
-            this.clearProcessMarkers();
-        }
 
-        if (focusedContainer) {
-            this.renderFocusFlowOverlay(focusedContainer);
-        } else {
             this.clearFocusFlowOverlay();
-        }
 
         // Render connections
         this.renderConnections();
 
-        // Render minimap if enabled
-        if (this.minimapVisible && isRootView) {
+        // Render minimap if enabled (uproszczone - zawsze root view)
+        if (this.minimapVisible) {
             this.minimap.render(this.canvasElement, nodesToRender);
-
-            // Setup navigation callback
             this.minimap.onNavigate((position) => {
                 this.handleMinimapClick(position);
             });
-        } else if (this.minimapVisible && focusedContainer) {
-            const existingMinimap = this.canvasElement.querySelector('.minimap');
-            if (existingMinimap) {
-                existingMinimap.remove();
-            }
         }
 
-        this.updateCanvasStageBounds(isRootView);
+        this.updateCanvasStageBounds(true);
         // Grid overlay already rendered at the start, just update dimensions if needed
         if (this.gridVisible) {
             this.gridSystem.updateDimensions();
@@ -1217,17 +1606,8 @@ export class VisualDesigner {
      * Render node with strategy selection
      */
     private renderNodeWithStrategy(node: VisualNode, parentContainer: HTMLElement = this.canvasElement): HTMLElement {
-        const isRootLevel = parentContainer === this.canvasElement;
-        if (isRootLevel && isContainerNode(node.type) && this.drillDownManager.getCurrentId() === null) {
-            return this.renderContainerSummaryNode(node, parentContainer);
-        }
-
-        const strategy = getRenderingStrategy(node);
-
-        if (strategy === 'nested') {
-            return this.renderNestedNode(node, parentContainer);
-        }
-
+        // NAJPROSTSZE ROZWIĄZANIE: Zawsze renderuj wszystko płasko jako connected nodes
+        // Bez drill-down, bez zagnieżdżania wizualnego, bez breadcrumb
         return this.renderConnectedNode(node, parentContainer);
     }
 
@@ -1285,10 +1665,7 @@ export class VisualDesigner {
                 this.render();
             });
             headerElement.appendChild(toggleButton);
-            headerElement.addEventListener('dblclick', (event) => {
-                event.stopPropagation();
-                this.enterContainer(node.id);
-            });
+            // UPROSZCZENIE: Usunięto double-click do drill-down
         }
 
         if (isCollapsed) {
@@ -1689,6 +2066,8 @@ export class VisualDesigner {
             nodeElement.dataset.parentId = parentContainer.dataset.nodeId;
         }
 
+        // UPROSZCZENIE: Usunięto badge i specjalne style dla kontenerów
+
         if (!isRootLevel) {
             nodeElement.style.position = 'relative';
             nodeElement.style.left = '0';
@@ -1944,7 +2323,7 @@ export class VisualDesigner {
         // Enhanced tooltip for entire node element
         const nodeTooltip = this.buildNodeTooltip(node);
         nodeElement.title = nodeTooltip;
-        
+
         if (this.pluginManager) {
             const plugin = this.pluginManager.findPlugin(node.type);
             if (plugin && plugin.accessibility) {
@@ -1970,12 +2349,21 @@ export class VisualDesigner {
             this.selectNode(node.id);
         };
 
-        // Double-click to open properties
+        // Double-click to open properties or enter container (in drill-down mode)
         nodeElement.ondblclick = (e) => {
             if ((e.target as HTMLElement).closest('.port')) {
                 return;
             }
             e.stopPropagation();
+            
+            // W drill-down mode: double-click na kontenerze wchodzi głębiej
+            const isInDrillDown = this.drillDownManager.getCurrentId() !== null;
+            if (isInDrillDown && isContainerNode(node.type)) {
+                this.enterContainer(node.id);
+                return;
+            }
+            
+            // W przeciwnym razie: otwórz properties
             this.selectNode(node.id);
             this.emit('nodeDoubleClicked', node.id);
         };
@@ -2083,12 +2471,7 @@ export class VisualDesigner {
         }, false, 'details');
         actionBar.appendChild(detailsBtn);
 
-        const focusBtn = this.createNodeActionButton('fas fa-bullseye', 'Focus on container', () => {
-            this.selectNode(node.id);
-            this.emit('sidebarPanelRequested', 'properties');
-            this.enterContainer(node.id);
-        }, !isContainer, 'focus');
-        actionBar.appendChild(focusBtn);
+        // UPROSZCZENIE: Usunięto przycisk "Focus on container"
 
         const deleteBtn = this.createNodeActionButton('fas fa-trash', 'Delete component', () => {
             this.handleNodeRemoveRequest(node.id);
@@ -2296,11 +2679,10 @@ export class VisualDesigner {
      * This is more accurate during drag operations when DOM may be stale
      */
     private calculateProcessMarkerPositionsFromModel(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
-        // Get root nodes directly from model (most accurate during drag)
-        const focusedContainer = this.getFocusedContainer();
-        const rootNodes = focusedContainer 
-            ? (focusedContainer.children || [])
-            : this.nodes;
+        // UPROSZCZENIE: Zawsze używaj wszystkich węzłów (bez drill-down)
+        // Używamy wszystkich węzłów, które mają pozycję (nie tylko root)
+        const allNodes = this.getAllNodes();
+        const rootNodes = allNodes.filter(node => node.position);
 
         if (rootNodes.length === 0) {
             const defaultCenterX = this.START_X + this.DEFAULT_NODE_WIDTH / 2;
@@ -2335,11 +2717,13 @@ export class VisualDesigner {
 
         const centerX = minLeft + (maxRight - minLeft) / 2;
 
+        // START marker: nad pierwszym węzłem, wyśrodkowany, z większym odstępem
+        // END marker: pod ostatnim węzłem, wyśrodkowany, z większym odstępem
         return {
             startX: centerX,
-            startY: Math.max(minTop - 100, 30),
+            startY: Math.max(minTop - 80, 30), // Większy odstęp od pierwszego węzła
             endX: centerX,
-            endY: maxBottom + 120
+            endY: maxBottom + 100 // Większy odstęp od ostatniego węzła
         };
     }
 
@@ -2523,17 +2907,15 @@ export class VisualDesigner {
             ...manualConnections // Manual connections (user-created) have id
         ];
 
-        const inFocus = this.drillDownManager.getCurrentId() !== null;
-        const visibleNodeIds = new Set(this.visibleNodes.map(node => node.id));
+        // UPROSZCZENIE: Zawsze renderuj wszystkie połączenia (bez drill-down)
+        const visibleNodeIds = new Set(this.getAllNodes().map((node: VisualNode) => node.id));
         const isAnchorVisible = (anchorId: string): boolean => {
             if (anchorId === 'workflow-start' || anchorId === 'workflow-end') {
                 return true;
             }
             return visibleNodeIds.has(anchorId);
         };
-        const scopedConnections = inFocus
-            ? allConnections.filter(connection => isAnchorVisible(connection.from) && isAnchorVisible(connection.to))
-            : allConnections;
+        const scopedConnections = allConnections.filter(connection => isAnchorVisible(connection.from) && isAnchorVisible(connection.to));
 
         if (scopedConnections.length === 0) {
             return;
@@ -2586,9 +2968,133 @@ export class VisualDesigner {
     ): [AnchorSide, AnchorSide] {
         const deltaX = to.bounds.centerX - from.bounds.centerX;
         const deltaY = to.bounds.centerY - from.bounds.centerY;
-        // For sequential connections, choose horizontal when horizontal delta is at least as large as vertical.
-        // For other types keep the original tie-breaker that slightly favors vertical.
-        // If centers are aligned horizontally, force vertical routing
+        
+        // Jeśli węzły są wyrównane poziomo, wymuś routing wertykalny
+        const alignedHorizontally = Math.abs(deltaX) <= 1;
+        if (alignedHorizontally) {
+            if (deltaY >= 0) {
+                return ['bottom', 'top'];
+            } else {
+                return ['top', 'bottom'];
+            }
+        }
+
+        // Oblicz opcje routingu (horyzontalny i wertykalny)
+        const verticalOption: [AnchorSide, AnchorSide] = deltaY >= 0 
+            ? ['bottom', 'top'] 
+            : ['top', 'bottom'];
+        const horizontalOption: [AnchorSide, AnchorSide] = deltaX >= 0 
+            ? ['right', 'left'] 
+            : ['left', 'right'];
+
+        // Oblicz ścieżki dla obu opcji
+        const verticalStartPoint = this.computeAnchorPoint(from, verticalOption[0]);
+        const verticalEndPoint = this.computeAnchorPoint(to, verticalOption[1]);
+        const verticalPath = this.buildOrthogonalPath(verticalStartPoint, verticalEndPoint, verticalOption[0], verticalOption[1]);
+
+        const horizontalStartPoint = this.computeAnchorPoint(from, horizontalOption[0]);
+        const horizontalEndPoint = this.computeAnchorPoint(to, horizontalOption[1]);
+        const horizontalPath = this.buildOrthogonalPath(horizontalStartPoint, horizontalEndPoint, horizontalOption[0], horizontalOption[1]);
+
+        // Oblicz długości ścieżek
+        const verticalLength = this.calculatePathLength(verticalPath);
+        const horizontalLength = this.calculatePathLength(horizontalPath);
+
+        // Policz krzyżowania z istniejącymi połączeniami
+        const existingConnections = this.getAllExistingConnections();
+        const verticalCrossings = this.countPathCrossings(verticalPath, existingConnections);
+        const horizontalCrossings = this.countPathCrossings(horizontalPath, existingConnections);
+
+        // Oblicz score dla każdej opcji (mniejszy = lepszy)
+        // Weight: krzyżowania = 100, długość = 1
+        const CROSSING_WEIGHT = 100;
+        const LENGTH_WEIGHT = 1;
+        
+        const verticalScore = verticalCrossings * CROSSING_WEIGHT + verticalLength * LENGTH_WEIGHT;
+        const horizontalScore = horizontalCrossings * CROSSING_WEIGHT + horizontalLength * LENGTH_WEIGHT;
+
+        // Wybierz opcję z niższym score
+        if (verticalScore < horizontalScore) {
+            return verticalOption;
+        } else if (horizontalScore < verticalScore) {
+            return horizontalOption;
+        } else {
+            // Remis: preferuj wertykalny dla sequential, horyzontalny dla innych
+            return type === 'sequential' ? verticalOption : horizontalOption;
+        }
+    }
+
+    /**
+     * Oblicz długość ścieżki ortogonalnej
+     */
+    private calculatePathLength(path: Point[]): number {
+        if (path.length < 2) return 0;
+        
+        let length = 0;
+        for (let i = 1; i < path.length; i++) {
+            const dx = path[i].x - path[i - 1].x;
+            const dy = path[i].y - path[i - 1].y;
+            length += Math.abs(dx) + Math.abs(dy); // Manhattan distance dla ortogonalnych
+        }
+        return length;
+    }
+
+    /**
+     * Policz krzyżowania między nową ścieżką a istniejącymi połączeniami
+     * Używa prostego algorytmu bez rekurencji (nie wywołuje chooseAnchorSides ponownie)
+     */
+    private countPathCrossings(newPath: Point[], existingConnections: Array<{ from: string; to: string; type?: string }>): number {
+        let crossings = 0;
+
+        // Cache dla ścieżek istniejących połączeń (aby uniknąć rekurencji)
+        const existingPathsCache = new Map<string, Point[]>();
+
+        // Pobierz ścieżki istniejących połączeń (używając prostego algorytmu bez optymalizacji)
+        for (const conn of existingConnections) {
+            const cacheKey = `${conn.from}-${conn.to}`;
+            if (existingPathsCache.has(cacheKey)) {
+                continue; // Już obliczone
+            }
+
+            try {
+                const fromAnchor = this.getConnectionAnchor(conn.from);
+                const toAnchor = this.getConnectionAnchor(conn.to);
+                
+                if (!fromAnchor || !toAnchor || fromAnchor.id === toAnchor.id) {
+                    continue;
+                }
+
+                // Użyj prostego algorytmu wyboru stron (bez optymalizacji, aby uniknąć rekurencji)
+                const [exitSide, entrySide] = this.chooseAnchorSidesSimple(fromAnchor, toAnchor, (conn.type as 'sequential' | 'conditional' | 'error') || 'sequential');
+                const startPoint = this.computeAnchorPoint(fromAnchor, exitSide);
+                const endPoint = this.computeAnchorPoint(toAnchor, entrySide);
+                const existingPath = this.buildOrthogonalPathSimple(startPoint, endPoint, exitSide, entrySide);
+                existingPathsCache.set(cacheKey, existingPath);
+            } catch (error) {
+                // Ignoruj błędy przy pobieraniu anchorów
+                continue;
+            }
+        }
+
+        // Sprawdź przecięcia z każdą istniejącą ścieżką
+        for (const existingPath of existingPathsCache.values()) {
+            crossings += this.countPathIntersections(newPath, existingPath);
+        }
+
+        return crossings;
+    }
+
+    /**
+     * Prosty wybór stron anchorów (bez optymalizacji, aby uniknąć rekurencji)
+     */
+    private chooseAnchorSidesSimple(
+        from: AnchorInfo,
+        to: AnchorInfo,
+        type: 'sequential' | 'conditional' | 'error'
+    ): [AnchorSide, AnchorSide] {
+        const deltaX = to.bounds.centerX - from.bounds.centerX;
+        const deltaY = to.bounds.centerY - from.bounds.centerY;
+        
         const alignedHorizontally = Math.abs(deltaX) <= 1;
         const preferVertical = alignedHorizontally
             ? true
@@ -2596,28 +3102,176 @@ export class VisualDesigner {
                 ? Math.abs(deltaY) > Math.abs(deltaX)
                 : Math.abs(deltaY) >= Math.abs(deltaX));
 
-        let fromSide: AnchorSide;
-        let toSide: AnchorSide;
-
         if (preferVertical) {
             if (deltaY >= 0) {
-                fromSide = 'bottom';
-                toSide = 'top';
+                return ['bottom', 'top'];
             } else {
-                fromSide = 'top';
-                toSide = 'bottom';
+                return ['top', 'bottom'];
             }
         } else {
             if (deltaX >= 0) {
-                fromSide = 'right';
-                toSide = 'left';
+                return ['right', 'left'];
             } else {
-                fromSide = 'left';
-                toSide = 'right';
+                return ['left', 'right'];
+            }
+        }
+    }
+
+    /**
+     * Prosta budowa ortogonalnej ścieżki (bez wykrywania przeszkód, aby uniknąć rekurencji)
+     */
+    private buildOrthogonalPathSimple(
+        start: Point,
+        end: Point,
+        exitSide: AnchorSide,
+        entrySide: AnchorSide
+    ): Point[] {
+        const points: Point[] = [];
+        const pushPoint = (point: Point) => {
+            if (!this.pointsEqual(points[points.length - 1], point)) {
+                points.push(point);
+            }
+        };
+
+        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
+        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
+        const horizontalGap = Math.abs(end.x - start.x);
+        const verticalGap = Math.abs(end.y - start.y);
+
+        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
+        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
+
+        const startOffset = this.offsetAnchorPoint(
+            start,
+            exitSide,
+            exitVertical ? verticalOffset : horizontalOffset
+        );
+        const endOffset = this.offsetAnchorPoint(
+            end,
+            entrySide,
+            entryVertical ? verticalOffset : horizontalOffset
+        );
+
+        pushPoint(start);
+        pushPoint(startOffset);
+
+        if (exitVertical && entryVertical) {
+            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
+            pushPoint({ x: startOffset.x, y: midY });
+            pushPoint({ x: endOffset.x, y: midY });
+        } else if (!exitVertical && !entryVertical) {
+            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
+            pushPoint({ x: midX, y: startOffset.y });
+            pushPoint({ x: midX, y: endOffset.y });
+        } else if (exitVertical && !entryVertical) {
+            pushPoint({ x: startOffset.x, y: endOffset.y });
+        } else {
+            pushPoint({ x: endOffset.x, y: startOffset.y });
+        }
+
+        pushPoint(endOffset);
+        pushPoint(end);
+
+        return points;
+    }
+
+    /**
+     * Policz przecięcia między dwoma ortogonalnymi ścieżkami
+     */
+    private countPathIntersections(path1: Point[], path2: Point[]): number {
+        let intersections = 0;
+
+        // Sprawdź przecięcia między segmentami
+        for (let i = 0; i < path1.length - 1; i++) {
+            const seg1Start = path1[i];
+            const seg1End = path1[i + 1];
+
+            for (let j = 0; j < path2.length - 1; j++) {
+                const seg2Start = path2[j];
+                const seg2End = path2[j + 1];
+
+                if (this.segmentsIntersect(seg1Start, seg1End, seg2Start, seg2End)) {
+                    intersections++;
+                }
             }
         }
 
-        return [fromSide, toSide];
+        return intersections;
+    }
+
+    /**
+     * Sprawdź czy dwa ortogonalne segmenty się przecinają
+     */
+    private segmentsIntersect(seg1Start: Point, seg1End: Point, seg2Start: Point, seg2End: Point): boolean {
+        // Dla ortogonalnych ścieżek: segmenty są poziome lub pionowe
+        const seg1Horizontal = seg1Start.y === seg1End.y;
+        const seg2Horizontal = seg2Start.y === seg2End.y;
+
+        // Jeśli oba są poziome lub oba pionowe, sprawdź nakładanie
+        if (seg1Horizontal === seg2Horizontal) {
+            if (seg1Horizontal) {
+                // Oba poziome: sprawdź czy Y są równe i X się nakładają
+                if (seg1Start.y !== seg2Start.y) return false;
+                const seg1MinX = Math.min(seg1Start.x, seg1End.x);
+                const seg1MaxX = Math.max(seg1Start.x, seg1End.x);
+                const seg2MinX = Math.min(seg2Start.x, seg2End.x);
+                const seg2MaxX = Math.max(seg2Start.x, seg2End.x);
+                return !(seg1MaxX < seg2MinX || seg2MaxX < seg1MinX);
+            } else {
+                // Oba pionowe: sprawdź czy X są równe i Y się nakładają
+                if (seg1Start.x !== seg2Start.x) return false;
+                const seg1MinY = Math.min(seg1Start.y, seg1End.y);
+                const seg1MaxY = Math.max(seg1Start.y, seg1End.y);
+                const seg2MinY = Math.min(seg2Start.y, seg2End.y);
+                const seg2MaxY = Math.max(seg2Start.y, seg2End.y);
+                return !(seg1MaxY < seg2MinY || seg2MaxY < seg1MinY);
+            }
+        } else {
+            // Jeden poziomy, jeden pionowy: sprawdź punkt przecięcia
+            if (seg1Horizontal) {
+                // seg1 poziomy, seg2 pionowy
+                const crossX = seg2Start.x;
+                const crossY = seg1Start.y;
+                const seg1MinX = Math.min(seg1Start.x, seg1End.x);
+                const seg1MaxX = Math.max(seg1Start.x, seg1End.x);
+                const seg2MinY = Math.min(seg2Start.y, seg2End.y);
+                const seg2MaxY = Math.max(seg2Start.y, seg2End.y);
+                return crossX >= seg1MinX && crossX <= seg1MaxX && crossY >= seg2MinY && crossY <= seg2MaxY;
+            } else {
+                // seg1 pionowy, seg2 poziomy
+                const crossX = seg1Start.x;
+                const crossY = seg2Start.y;
+                const seg1MinY = Math.min(seg1Start.y, seg1End.y);
+                const seg1MaxY = Math.max(seg1Start.y, seg1End.y);
+                const seg2MinX = Math.min(seg2Start.x, seg2End.x);
+                const seg2MaxX = Math.max(seg2Start.x, seg2End.x);
+                return crossX >= seg2MinX && crossX <= seg2MaxX && crossY >= seg1MinY && crossY <= seg1MaxY;
+            }
+        }
+    }
+
+    /**
+     * Pobierz wszystkie istniejące połączenia (auto + manual)
+     */
+    private getAllExistingConnections(): Array<{ from: string; to: string; type?: string }> {
+        const allNodes = this.getAllNodes();
+        const autoConnections = generateConnections(allNodes).map(conn => ({
+            from: conn.from,
+            to: conn.to,
+            type: conn.type
+        }));
+        const manualConnections = this.connectionManager.getConnections().map(conn => ({
+            from: conn.from,
+            to: conn.to,
+            type: conn.type
+        }));
+        const plannedConnections = planConnections(allNodes, 'workflow-start', 'workflow-end').map(conn => ({
+            from: conn.from,
+            to: conn.to,
+            type: conn.type
+        }));
+
+        return [...autoConnections, ...manualConnections, ...plannedConnections];
     }
 
     private computeAnchorPoint(anchor: AnchorInfo, side: AnchorSide): Point {
@@ -2698,6 +3352,149 @@ export class VisualDesigner {
             pushPoint({ x: startOffset.x, y: endOffset.y });
         } else {
             pushPoint({ x: endOffset.x, y: startOffset.y });
+        }
+
+        pushPoint(endOffset);
+        pushPoint(end);
+
+        // Sprawdź przeszkody i reroute jeśli potrzeba
+        const obstacles = this.findObstaclesOnPath(points);
+        if (obstacles.length > 0) {
+            return this.rerouteAroundObstacles(start, end, exitSide, entrySide, obstacles);
+        }
+
+        return points;
+    }
+
+    /**
+     * Znajdź węzły, które są przeszkodami na ścieżce połączenia
+     */
+    private findObstaclesOnPath(path: Point[]): VisualNode[] {
+        const obstacles: VisualNode[] = [];
+        const allNodes = this.getAllNodes();
+
+        // Sprawdź każdy segment ścieżki
+        for (let i = 0; i < path.length - 1; i++) {
+            const segStart = path[i];
+            const segEnd = path[i + 1];
+            const segHorizontal = segStart.y === segEnd.y;
+
+            // Sprawdź każdy węzeł
+            for (const node of allNodes) {
+                if (!node.position) continue;
+
+                const nodeDims = this.getNodeDimensions(node);
+                const nodeLeft = node.position.x;
+                const nodeRight = nodeLeft + nodeDims.width;
+                const nodeTop = node.position.y;
+                const nodeBottom = nodeTop + Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
+
+                // Sprawdź czy segment przecina bounding box węzła
+                let intersects = false;
+                if (segHorizontal) {
+                    // Segment poziomy: sprawdź czy przecina węzeł w poziomie
+                    const segMinX = Math.min(segStart.x, segEnd.x);
+                    const segMaxX = Math.max(segStart.x, segEnd.x);
+                    const segY = segStart.y;
+                    intersects = segY >= nodeTop && segY <= nodeBottom && 
+                                 segMaxX >= nodeLeft && segMinX <= nodeRight;
+                } else {
+                    // Segment pionowy: sprawdź czy przecina węzeł w pionie
+                    const segMinY = Math.min(segStart.y, segEnd.y);
+                    const segMaxY = Math.max(segStart.y, segEnd.y);
+                    const segX = segStart.x;
+                    intersects = segX >= nodeLeft && segX <= nodeRight && 
+                                 segMaxY >= nodeTop && segMinY <= nodeBottom;
+                }
+
+                if (intersects && !obstacles.find(o => o.id === node.id)) {
+                    obstacles.push(node);
+                }
+            }
+        }
+
+        return obstacles;
+    }
+
+    /**
+     * Reroute ścieżkę wokół przeszkód
+     */
+    private rerouteAroundObstacles(
+        start: Point,
+        end: Point,
+        exitSide: AnchorSide,
+        entrySide: AnchorSide,
+        obstacles: VisualNode[]
+    ): Point[] {
+        // Prosty algorytm: przesuń segmenty wokół przeszkód
+        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
+        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
+        const horizontalGap = Math.abs(end.x - start.x);
+        const verticalGap = Math.abs(end.y - start.y);
+
+        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
+        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
+
+        const startOffset = this.offsetAnchorPoint(
+            start,
+            exitSide,
+            exitVertical ? verticalOffset : horizontalOffset
+        );
+        const endOffset = this.offsetAnchorPoint(
+            end,
+            entrySide,
+            entryVertical ? verticalOffset : horizontalOffset
+        );
+
+        const points: Point[] = [];
+        const pushPoint = (point: Point) => {
+            if (!this.pointsEqual(points[points.length - 1], point)) {
+                points.push(point);
+            }
+        };
+
+        pushPoint(start);
+        pushPoint(startOffset);
+
+        // Oblicz maksymalne wymiary przeszkód w obszarze między start a end
+        let maxObstacleWidth = 0;
+        let maxObstacleHeight = 0;
+        obstacles.forEach(obstacle => {
+            if (!obstacle.position) return;
+            const dims = this.getNodeDimensions(obstacle);
+            maxObstacleWidth = Math.max(maxObstacleWidth, dims.width);
+            maxObstacleHeight = Math.max(maxObstacleHeight, Math.max(dims.height, this.MIN_CARD_HEIGHT));
+        });
+
+        // Dodatkowy offset aby ominąć przeszkody
+        const obstacleOffset = Math.max(maxObstacleWidth, maxObstacleHeight) / 2 + 40;
+
+        if (exitVertical && entryVertical) {
+            // Oba wertykalne: użyj większego offsetu poziomego
+            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
+            const offsetX = startOffset.x < endOffset.x ? obstacleOffset : -obstacleOffset;
+            pushPoint({ x: startOffset.x, y: midY });
+            pushPoint({ x: startOffset.x + offsetX, y: midY });
+            pushPoint({ x: endOffset.x + offsetX, y: midY });
+            pushPoint({ x: endOffset.x, y: midY });
+        } else if (!exitVertical && !entryVertical) {
+            // Oba horyzontalne: użyj większego offsetu wertykalnego
+            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
+            const offsetY = startOffset.y < endOffset.y ? obstacleOffset : -obstacleOffset;
+            pushPoint({ x: midX, y: startOffset.y });
+            pushPoint({ x: midX, y: startOffset.y + offsetY });
+            pushPoint({ x: midX, y: endOffset.y + offsetY });
+            pushPoint({ x: midX, y: endOffset.y });
+        } else if (exitVertical && !entryVertical) {
+            // Start wertykalny, end horyzontalny
+            const offsetY = startOffset.y < endOffset.y ? obstacleOffset : -obstacleOffset;
+            pushPoint({ x: startOffset.x, y: endOffset.y + offsetY });
+            pushPoint({ x: endOffset.x, y: endOffset.y + offsetY });
+        } else {
+            // Start horyzontalny, end wertykalny
+            const offsetX = startOffset.x < endOffset.x ? obstacleOffset : -obstacleOffset;
+            pushPoint({ x: startOffset.x + offsetX, y: startOffset.y });
+            pushPoint({ x: startOffset.x + offsetX, y: endOffset.y });
         }
 
         pushPoint(endOffset);
@@ -3262,7 +4059,39 @@ export class VisualDesigner {
             const newX = canvasPos.x - offsetX;
             const newY = canvasPos.y - offsetY;
 
-            this.moveNode(node.id, { x: newX, y: newY }, { skipRender: true });
+            // Przed przesunięciem: sprawdź kolizje i automatycznie przesuń inne węzły
+            const newPosition: Point = { x: newX, y: newY };
+            
+            // Automatycznie przesuń węzły, które kolidują
+            this.pushNodesAway(node, newPosition);
+            
+            // Sprawdź czy pozycja jest wolna (po przesunięciu innych)
+            let finalPosition = newPosition;
+            if (this.checkNodeCollision(node, newPosition, node.id) || 
+                this.checkLabelCollision(node, newPosition, node.id)) {
+                // Znajdź najbliższą wolną pozycję
+                finalPosition = this.findNearestFreePosition(node, newPosition);
+                
+                // Wizualna informacja zwrotna: dodaj klasę CSS dla kolizji
+                nodeElement.classList.add('node-collision-warning');
+            } else {
+                nodeElement.classList.remove('node-collision-warning');
+            }
+
+            // Przesuń węzeł (pomiń sprawdzanie kolizji, bo już to zrobiliśmy)
+            // Użyj bezpośredniej aktualizacji pozycji, aby uniknąć ponownego sprawdzania kolizji
+            if (!node.position) {
+                node.position = { x: 0, y: 0 };
+            }
+            node.position = finalPosition;
+            node.isManualPositioned = true;
+            
+            // Zaktualizuj DOM bezpośrednio
+            const element = this.canvasElement.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement | null;
+            if (element && element.style.position === 'absolute') {
+                element.style.left = `${finalPosition.x}px`;
+                element.style.top = `${finalPosition.y}px`;
+            }
             this.rebuildConnections(false);
             // CRITICAL: Update marker positions BEFORE rendering connections
             // This ensures connections use the correct end marker position
@@ -3279,6 +4108,8 @@ export class VisualDesigner {
                 nodeElement.style.touchAction = 'manipulation';
                 nodeElement.style.userSelect = '';
                 document.body.style.userSelect = '';
+                // Usuń wizualną informację zwrotną o kolizji
+                nodeElement.classList.remove('node-collision-warning');
                 this.render();
             }
         });
@@ -7054,44 +7885,10 @@ export class VisualDesigner {
     }
 
     private updateBreadcrumbTrail(): void {
-        if (!this.breadcrumbContainer) {
-            return;
+        // UPROSZCZENIE: Ukryj breadcrumb - wszystko jest płaskie, niepotrzebne
+        if (this.breadcrumbContainer) {
+            this.breadcrumbContainer.style.display = 'none';
         }
-
-        const rootStats = analyzeHierarchy(this.nodes);
-        const trail: BreadcrumbItem[] = [
-            {
-                id: '__root__',
-                label: 'Workflow',
-                level: 0,
-                nodeType: 'root',
-                summary: `Workflow • ${rootStats.totalNodes} nodes`,
-                metrics: [
-                    { label: 'Nodes', value: rootStats.totalNodes.toString() },
-                    { label: 'Containers', value: rootStats.containerCount.toString() },
-                    { label: 'Leaves', value: rootStats.leafCount.toString() }
-                ]
-            }
-        ];
-
-        const stack = this.drillDownManager.getTrail();
-        stack.forEach((id, index) => {
-            const node = this.findNode(id);
-            if (!node) {
-                return;
-            }
-            const containerSnapshot = analyzeContainer(node, this.detailRegistry);
-            trail.push({
-                id,
-                label: this.getNodeDisplayLabel(node),
-                level: index + 1,
-                nodeType: node.type,
-                summary: this.getBreadcrumbSummary(node),
-                metrics: this.buildBreadcrumbMetrics(containerSnapshot)
-            });
-        });
-
-        this.breadcrumbNav.render(this.breadcrumbContainer, trail);
         this.updateFocusSummary();
     }
 

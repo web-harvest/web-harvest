@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Canvas Layout & Connection Routing Optimization** (v2.3.2)
+  - Node collision detection and prevention during drag operations
+  - Automatic node pushing to avoid overlaps
+  - Optimal connection routing with crossing minimization
+  - Obstacle detection and automatic rerouting for connections
+  - Visual feedback for collision warnings (red outline)
+  - Intelligent horizontal vs vertical routing selection based on minimal crossings and path length
+
 ### Changed
 - **Visual Designer Polish**: Container summary cards now surface `Details` / `Focus` actions in English, the Details shortcut auto-activates the Properties tab, semantic role badges render friendly labels, and the connection overlay grows with the canvas so links stay visible when nodes move off the initial viewport.
 - **Plugin Card Consistency**: All tiles on the canvas now share the same neutral Apple HIG card shell—no role-based borders, duplicate titles, or dependent badges—so Constant, Empty, Case, and every other plugin look and behave identically.
