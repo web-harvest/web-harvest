@@ -54,9 +54,15 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.definition.PluginConfigurationTree;
+import org.webharvest.plugin.DefaultPluginBodyExecutor;
+import org.webharvest.plugin.PluginBodyExecutor;
+import org.webharvest.plugin.core.CallParamPlugin;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -502,13 +508,172 @@ public class CallPlugin extends AbstractPlugin {
         }
     }
 
+    /**
+     * Normalizes a return value to handle NodeVariable wrapping List and ListVariable.
+     * Converts List representations like [item1, item2] to space-separated strings.
+     */
+    private Variable normalizeReturnValue(Variable value) {
+        if (value == null || value instanceof EmptyVariable) {
+            LOGGER.debug("normalizeReturnValue: value is null or EmptyVariable");
+            return value;
+        }
+        
+        // Handle ListVariable - extract last non-empty item
+        if (value instanceof ListVariable) {
+            ListVariable listResult = (ListVariable) value;
+            List<Variable> items = listResult.toList();
+            LOGGER.debug("normalizeReturnValue: ListVariable with {} items", items.size());
+            // Find the last non-empty item
+            for (int i = items.size() - 1; i >= 0; i--) {
+                Variable item = items.get(i);
+                if (item != null && !(item instanceof EmptyVariable) && !item.isEmpty()) {
+                    LOGGER.debug("normalizeReturnValue: Found non-empty item at index {}: '{}'", i, item.toString());
+                    return normalizeReturnValue(item); // Recursively normalize
+                }
+            }
+            LOGGER.debug("normalizeReturnValue: No non-empty items in ListVariable");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        // Handle NodeVariable wrapping List
+        if (value instanceof NodeVariable) {
+            NodeVariable nodeVar = (NodeVariable) value;
+            Object wrapped = nodeVar.getWrappedObject();
+            if (wrapped instanceof java.util.List) {
+                java.util.List<?> list = (java.util.List<?>) wrapped;
+                if (list.isEmpty()) {
+                    return EmptyVariable.INSTANCE;
+                } else if (list.size() == 1) {
+                    Object singleItem = list.get(0);
+                    // If single item is also a List, normalize it recursively
+                    if (singleItem instanceof java.util.List) {
+                        return normalizeReturnValue(new NodeVariable(singleItem));
+                    }
+                    return new NodeVariable(singleItem);
+                } else {
+                    // Join list items with space (remove brackets)
+                    StringBuilder sb = new StringBuilder();
+                    for (Object obj : list) {
+                        if (sb.length() > 0) {
+                            sb.append(' ');
+                        }
+                        // Remove brackets from string representation if present
+                        // Handle nested brackets like [[item]] -> item
+                        String str = obj != null ? obj.toString() : "";
+                        // Remove all leading and trailing brackets
+                        while (str.startsWith("[") && str.endsWith("]")) {
+                            str = str.substring(1, str.length() - 1);
+                        }
+                        sb.append(str);
+                    }
+                    return new NodeVariable(sb.toString());
+                }
+            }
+            // Also check if toString() contains brackets that need to be removed
+            // This handles cases where BaseTemplater returns "Hello [Alice]" as a string
+            // or "[Hello][World]" -> "Hello World"
+            String strValue = nodeVar.toString();
+            if (strValue != null && strValue.contains("[") && strValue.contains("]")) {
+                // Try to clean up bracket patterns:
+                // - "Hello [Alice]" -> "Hello Alice" (single bracket pair with space before)
+                // - "[Hello][World]" -> "Hello World" (multiple bracket pairs)
+                // - "Hello[World]" -> "Hello World" (bracket pair without space, add space)
+                // Use regex to replace bracket patterns, preserving spaces
+                String cleaned = strValue.replaceAll("\\s*\\[([^\\]]+)\\]\\s*", " $1 ");
+                // Clean up multiple spaces
+                cleaned = cleaned.replaceAll("\\s+", " ").trim();
+                // If the entire string is wrapped in brackets, remove them
+                if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+                    cleaned = cleaned.substring(1, cleaned.length() - 1);
+                }
+                if (!cleaned.equals(strValue)) {
+                    return new NodeVariable(cleaned);
+                }
+            }
+        }
+        
+        // For other types, return as-is
+        return value;
+    }
+    
+    /**
+     * Capitalize first letter of a string.
+     */
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1).toUpperCase() + (str.length() > 1 ? str.substring(1) : "");
+    }
+    
+    /**
+     * Find function configuration in the configuration tree.
+     */
+    private PluginConfiguration findFunctionConfiguration(PluginConfigurationTree tree, String functionName) {
+        if (tree == null) {
+            return null;
+        }
+        
+        PluginConfiguration config = tree.getConfiguration();
+        if (config != null && "function".equals(config.getElementName())) {
+            String name = config.getProperty("name");
+            if (functionName.equals(name)) {
+                return config;
+            }
+        }
+        
+        // Search in children
+        for (PluginConfigurationTree child : tree.getChildren()) {
+            PluginConfiguration found = findFunctionConfiguration(child, functionName);
+            if (found != null) {
+                return found;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Execute call-param elements and collect parameter values.
+     */
+    private Map<String, Variable> collectCallParams(PluginConfiguration callConfig, DynamicScopeContext context) 
+            throws InterruptedException {
+        Map<String, Variable> params = new HashMap<>();
+        
+        if (callConfig == null || !callConfig.hasChildren()) {
+            return params;
+        }
+        
+        for (PluginConfiguration child : callConfig.getChildren()) {
+            if ("call-param".equals(child.getElementName())) {
+                String paramName = child.getProperty("name");
+                if (paramName != null && !paramName.isEmpty()) {
+                    try {
+                        // Create and execute CallParamPlugin to get parameter value
+                        CallParamPlugin paramPlugin = new CallParamPlugin();
+                        paramPlugin.initialize(child);
+                        Variable paramValue = paramPlugin.execute(context);
+                        params.put(paramName, paramValue);
+                        LOGGER.debug("CallPlugin: Collected parameter '{}' = {} chars", 
+                            paramName, paramValue != null ? paramValue.toString().length() : 0);
+                    } catch (Exception e) {
+                        LOGGER.warn("CallPlugin: Failed to execute call-param '{}': {}", paramName, e.getMessage());
+                        params.put(paramName, EmptyVariable.INSTANCE);
+                    }
+                }
+            }
+        }
+        
+        return params;
+    }
+
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.info("CallPlugin.doExecute: START");
         
         PluginConfiguration config = getConfiguration();
         
-        // Get function name - using the same logic as original CallProcessor
+        // Get function name
         String functionName = BaseTemplater.evaluateToString(config.getProperty("name", ""), null, context);
         LOGGER.info("CallPlugin.doExecute: Function name: {}", functionName);
         
@@ -517,22 +682,122 @@ public class CallPlugin extends AbstractPlugin {
             return EmptyVariable.INSTANCE;
         }
 
-        // TODO: Implement function definition lookup
-        // In the original CallProcessor, this would look up FunctionDef from context
-        // For now, we'll execute the body and return the result
-        
         try {
-            // TODO: Implement proper body execution
-            Variable bodyContent = EmptyVariable.INSTANCE;
+            // Step 1: Find function configuration in the configuration tree
+            PluginConfigurationTree configTree = context.getConfig() != null ? 
+                context.getConfig().getConfigurationTree() : null;
             
-            // Set function result
-            functionResult = bodyContent != null ? bodyContent : new NodeVariable("");
-            LOGGER.info("CallPlugin.doExecute: Function result: {}", functionResult);
+            if (configTree == null) {
+                LOGGER.error("CallPlugin: Configuration tree is null, cannot find function '{}'", functionName);
+                return EmptyVariable.INSTANCE;
+            }
             
-            return functionResult;
+            PluginConfiguration functionConfig = findFunctionConfiguration(configTree, functionName);
+            if (functionConfig == null) {
+                LOGGER.error("CallPlugin: Function '{}' not found in configuration tree", functionName);
+                return EmptyVariable.INSTANCE;
+            }
+            
+            LOGGER.debug("CallPlugin: Found function configuration for '{}'", functionName);
+            
+            // Step 2: Collect call-param values
+            Map<String, Variable> callParams = collectCallParams(config, context);
+            LOGGER.debug("CallPlugin: Collected {} parameters", callParams.size());
+            
+            // Step 3: Execute function body in a new scope with parameters
+            // Clear functionResult before execution (in outer scope)
+            context.setLocalVar("functionResult", EmptyVariable.INSTANCE);
+            
+            // Execute function body in new scope with parameters available
+            Variable functionResult = context.executeWithinNewContext(() -> {
+                // Set call-param values in the new scope
+                // These will be accessible via CallParamPlugin inside the function
+                // Use a valid variable name pattern: callParamName (starts with letter)
+                LOGGER.info("CallPlugin: Setting {} parameters in function scope", callParams.size());
+                for (Map.Entry<String, Variable> param : callParams.entrySet()) {
+                    // Store parameters with a special prefix so CallParamPlugin can find them
+                    // Variable name must start with letter, so we use "callParam" prefix
+                    String paramVarName = "callParam" + capitalize(param.getKey());
+                    context.setLocalVar(paramVarName, param.getValue());
+                    int paramLength = param.getValue() != null ? param.getValue().toString().length() : 0;
+                    LOGGER.info("CallPlugin: Set parameter '{}' = {} chars in function scope (as '{}')", 
+                        new Object[]{param.getKey(), paramLength, paramVarName});
+                }
+                
+                // Clear functionResult in the new scope
+                // Use a flag to detect if ReturnPlugin was called
+                // Variable name must start with letter (VariableName validation)
+                String returnFlagName = "returnCalled" + capitalize(functionName);
+                context.setLocalVar(returnFlagName, new NodeVariable("false"));
+                context.setLocalVar("functionResult", EmptyVariable.INSTANCE);
+                
+                // Execute function body using PluginBodyExecutor
+                PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
+                Variable bodyResult = executor.executeBody(functionConfig, context);
+                LOGGER.info("CallPlugin: Function '{}' body executed, bodyResult type: {}, isEmpty: {}, toString: '{}'", 
+                    new Object[]{
+                        functionName, 
+                        bodyResult != null ? bodyResult.getClass().getSimpleName() : "null",
+                        bodyResult != null ? bodyResult.isEmpty() : "null",
+                        bodyResult != null ? bodyResult.toString() : "null"
+                    });
+                
+                // Check if ReturnPlugin was called (it sets the flag)
+                Variable returnFlag = context.getVar(returnFlagName);
+                Variable genericFlag = context.getVar("returnPluginCalled");
+                Variable explicitReturn = context.getVar("functionResult");
+                
+                LOGGER.info("CallPlugin: Function '{}' - returnFlag: {}, genericFlag: {}, explicitReturn: {} (type: {})", 
+                    new Object[]{
+                        functionName,
+                        returnFlag != null ? returnFlag.toString() : "null",
+                        genericFlag != null ? genericFlag.toString() : "null",
+                        explicitReturn != null ? explicitReturn.toString() : "null",
+                        explicitReturn != null ? explicitReturn.getClass().getSimpleName() : "null"
+                    });
+                
+                boolean returnWasCalled = (returnFlag != null && returnFlag.toString().equals("true")) ||
+                                        (genericFlag != null && genericFlag.toString().equals("true"));
+                
+                if (returnWasCalled) {
+                    // ReturnPlugin was called, use its value (even if EmptyVariable)
+                    // Normalize the return value to handle NodeVariable wrapping List
+                    Variable normalizedReturn = normalizeReturnValue(explicitReturn);
+                    String returnValue = normalizedReturn != null ? normalizedReturn.toString() : "null";
+                    LOGGER.info("CallPlugin: Function '{}' returned explicit value via <return> (may be empty): '{}'", 
+                        functionName, returnValue);
+                    return normalizedReturn != null ? normalizedReturn : EmptyVariable.INSTANCE;
+                } else if (explicitReturn != null && !(explicitReturn instanceof EmptyVariable)) {
+                    // Fallback: explicitReturn has value but flag wasn't set (shouldn't happen)
+                    Variable normalizedReturn = normalizeReturnValue(explicitReturn);
+                    LOGGER.info("CallPlugin: Function '{}' returned value (flag not set): '{}'", 
+                        functionName, normalizedReturn != null ? normalizedReturn.toString() : "null");
+                    return normalizedReturn != null ? normalizedReturn : explicitReturn;
+                }
+                
+                // Otherwise, return the last expression result
+                // Normalize bodyResult to handle ListVariable and NodeVariable wrapping List
+                Variable normalizedBodyResult = normalizeReturnValue(bodyResult);
+                LOGGER.info("CallPlugin: Function '{}' returned last expression result: '{}' (normalized from '{}')", 
+                    new Object[]{
+                        functionName,
+                        normalizedBodyResult != null ? normalizedBodyResult.toString() : "null",
+                        bodyResult != null ? bodyResult.toString() : "null"
+                    });
+                return normalizedBodyResult != null ? normalizedBodyResult : EmptyVariable.INSTANCE;
+            });
+            
+            LOGGER.info("CallPlugin.doExecute: Function '{}' executed, result: {} chars", 
+                functionName, functionResult != null ? functionResult.toString().length() : 0);
+            
+            // Normalize final result
+            Variable normalizedResult = normalizeReturnValue(functionResult);
+            return normalizedResult != null ? normalizedResult : EmptyVariable.INSTANCE;
             
         } catch (Exception e) {
-            LOGGER.error("CallPlugin.doExecute: Error executing function call: " + e.getMessage(), e);
+            LOGGER.error("CallPlugin.doExecute: Error executing function call '{}': {}", 
+                functionName, e.getMessage());
+            LOGGER.error("CallPlugin.doExecute: Exception details", e);
             return EmptyVariable.INSTANCE;
         }
     }

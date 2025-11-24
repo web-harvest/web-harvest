@@ -7,6 +7,8 @@ This directory contains the complete documentation for Web-Harvest 2.2.0, includ
 - **Plugin Reference** - Complete reference for all 54 plugins (46 core + 8 external)
 - **Examples** - Real-world configuration examples
 - **User Guide** - Step-by-step tutorials and guides
+- **Function Execution Guide** (`FUNCTION_EXECUTION.md`) - Comprehensive guide to function definition, calling, parameters, return values, and system variables
+- **Validation Rules** (`VALIDATION_RULES.md`) - Configuration validation rules, context-specific plugins, and special cases
 
 ## Quick Start
 
@@ -49,6 +51,7 @@ docs/
 │   │       └── external/        # 8 external plugin pages
 │   ├── examples/                # Example configurations
 │   └── api/                     # API documentation (placeholder)
+├── FUNCTION_EXECUTION.md        # Function execution and system variables guide
 ├── scripts/                      # Documentation generation scripts
 │   ├── generate_all_plugin_docs.py       # Master script (runs all)
 │   ├── generate_core_plugin_docs.py      # Core plugins (46 files)

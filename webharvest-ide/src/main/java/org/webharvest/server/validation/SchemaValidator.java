@@ -142,6 +142,14 @@ public class SchemaValidator {
                                 break;
                             }
                         }
+                        
+                        // Special case: call-param in def is allowed only if def is within function
+                        if (!foundParent && "call-param".equals(pluginName) && "def".equals(parentPluginName)) {
+                            if (isWithinFunction(element)) {
+                                foundParent = true;
+                            }
+                        }
+                        
                         if (!foundParent) {
                             errors.add(new ValidationError(
                                 "Plugin '" + pluginName + "' cannot appear in '" + parentPluginName + "'. Required parent: " + Arrays.toString(requiredParentsArray),
@@ -273,6 +281,27 @@ public class SchemaValidator {
             e.printStackTrace();
         }
         return null;
+    }
+    
+    /**
+     * Check if an element is within a function context (ancestor is function).
+     * Used for special validation rules like call-param in def.
+     */
+    private boolean isWithinFunction(Element element) {
+        Node parent = element.getParentNode();
+        while (parent != null && parent.getNodeType() == Node.ELEMENT_NODE) {
+            Element parentElement = (Element) parent;
+            String parentName = parentElement.getLocalName();
+            if ("function".equals(parentName)) {
+                return true;
+            }
+            if ("config".equals(parentName)) {
+                // Reached root, no function found
+                return false;
+            }
+            parent = parent.getParentNode();
+        }
+        return false;
     }
     
     private int getLineNumber(Node node) {

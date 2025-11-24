@@ -392,6 +392,12 @@ public class ExecutionManager {
         
         LOG.info("=== Extracting variables from context ===");
         
+        // Get configuration tree to check for function definitions
+        org.webharvest.definition.PluginConfigurationTree configTree = null;
+        if (context.getConfig() != null) {
+            configTree = context.getConfig().getConfigurationTree();
+        }
+        
         // Method 1: Try iterator first
         int iteratorCount = 0;
         for (KeyValuePair<Variable> pair : context) {
@@ -406,6 +412,15 @@ public class ExecutionManager {
             }
             
             Variable value = pair.getValue();
+            
+            // Skip function definitions: if value is EmptyVariable and a function with this name exists in config
+            if (value != null && value instanceof org.webharvest.runtime.variables.EmptyVariable) {
+                if (isFunctionDefinition(configTree, key)) {
+                    LOG.debug("    → Skipping function definition: {}", key);
+                    continue;
+                }
+            }
+            
             String valueStr = value != null ? value.toString() : "null";
             
             // Limit size
@@ -735,6 +750,46 @@ public class ExecutionManager {
                   .replace("\n", "\\n")
                   .replace("\r", "\\r")
                   .replace("\t", "\\t");
+    }
+    
+    /**
+     * Check if a variable name corresponds to a function definition in the configuration tree.
+     * This filters out function definitions that are stored as EmptyVariable in the context.
+     */
+    private boolean isFunctionDefinition(org.webharvest.definition.PluginConfigurationTree configTree, String name) {
+        if (configTree == null || name == null || name.isEmpty()) {
+            return false;
+        }
+        
+        return findFunctionInTree(configTree, name) != null;
+    }
+    
+    /**
+     * Recursively search for a function with the given name in the configuration tree.
+     */
+    private org.webharvest.plugin.PluginConfiguration findFunctionInTree(
+            org.webharvest.definition.PluginConfigurationTree tree, String functionName) {
+        if (tree == null) {
+            return null;
+        }
+        
+        org.webharvest.plugin.PluginConfiguration config = tree.getConfiguration();
+        if (config != null && "function".equals(config.getElementName())) {
+            String name = config.getProperty("name");
+            if (functionName.equals(name)) {
+                return config;
+            }
+        }
+        
+        // Search in children
+        for (org.webharvest.definition.PluginConfigurationTree child : tree.getChildren()) {
+            org.webharvest.plugin.PluginConfiguration found = findFunctionInTree(child, functionName);
+            if (found != null) {
+                return found;
+            }
+        }
+        
+        return null;
     }
     
     public void shutdown() {

@@ -518,12 +518,13 @@ public class FunctionPlugin extends AbstractPlugin {
         LOGGER.debug("Defining function: {}", functionName);
         
         try {
-            // Store function definition in context using new architecture
-            // The function body will be stored for later execution by CallPlugin
-            Variable functionBody = super.executeBody(context);
-            context.setLocalVar(functionName, functionBody);
+            // Store function configuration reference for CallPlugin
+            // We mark that the function exists by storing a placeholder variable
+            // CallPlugin will look up the function configuration from the configuration tree
+            context.setLocalVar(functionName, EmptyVariable.INSTANCE);
             
             LOGGER.debug("Function definition completed: {}", functionName);
+            LOGGER.debug("Function '{}' is now available for calling", functionName);
             
             return EmptyVariable.INSTANCE;
             

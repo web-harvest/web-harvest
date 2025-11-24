@@ -51,6 +51,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Function call parameter - used within {@code <call>} to pass arguments to functions.
@@ -181,6 +183,8 @@ import org.webharvest.runtime.variables.Variable;
     version = "2.1.0"
 )
 public class CallParamPlugin extends AbstractPlugin {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CallParamPlugin.class);
 
     /**
      * Metadata for CallParamPlugin.
@@ -469,7 +473,12 @@ public class CallParamPlugin extends AbstractPlugin {
 
         @Override
         public String[] getRequiredParents() {
-            return new String[]{"call"};
+            // call-param can appear in two contexts:
+            // 1. Directly in <call> - defining parameter value
+            // 2. In <function> (inside <def>) - retrieving parameter value
+            // We allow both "call" and "def" as parents, but validation will check
+            // if "def" is within "function" context
+            return new String[]{"call", "def"};
         }
 
         @Override
@@ -525,10 +534,44 @@ public class CallParamPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // This is a simplified implementation for the plugin architecture
-        // The actual parameter processing would need to be implemented based on the specific requirements
-        // For now, return empty variable as a placeholder
-        return EmptyVariable.INSTANCE;
+        PluginConfiguration config = getConfiguration();
+        String paramName = config.getProperty("name", "");
+        
+        if (paramName.isEmpty()) {
+            LOGGER.warn("CallParamPlugin: No parameter name specified");
+            return EmptyVariable.INSTANCE;
+        }
+        
+        // Check if we're inside a function (retrieving parameter value)
+        // Look for parameter in context with special prefix
+        // Variable name must start with letter, so we use "callParam" + capitalized name
+        String capitalizedName = paramName.substring(0, 1).toUpperCase() + 
+            (paramName.length() > 1 ? paramName.substring(1) : "");
+        String paramVarName = "callParam" + capitalizedName;
+        Variable paramValue = context.getVar(paramVarName);
+        
+        if (paramValue != null) {
+            // We're inside a function, retrieving a parameter value
+            int paramLength = paramValue.toString().length();
+            LOGGER.info("CallParamPlugin: Retrieved parameter '{}' from function call ({} chars, var: '{}')", 
+                new Object[]{paramName, paramLength, paramVarName});
+            return paramValue;
+        }
+        
+        LOGGER.info("CallParamPlugin: Parameter '{}' not found in context (looking for '{}'), executing body", 
+            new Object[]{paramName, paramVarName});
+        
+        // We're in a <call> element, executing body to get parameter value
+        // Use getBodyTextContent() to handle both text content and child plugins
+        paramValue = super.getBodyTextContent(context);
+        
+        if (paramValue == null || paramValue instanceof EmptyVariable) {
+            LOGGER.debug("CallParamPlugin: Parameter '{}' has empty value", paramName);
+            return EmptyVariable.INSTANCE;
+        }
+        
+        LOGGER.info("CallParamPlugin: Parameter '{}' = {} chars (from body)", paramName, paramValue.toString().length());
+        return paramValue;
     }
 }
 

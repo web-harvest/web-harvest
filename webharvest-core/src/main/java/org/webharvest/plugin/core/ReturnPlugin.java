@@ -53,6 +53,8 @@ import org.webharvest.runtime.variables.Variable;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 
@@ -140,6 +142,8 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
     category = "Utilities"
 )
 public class ReturnPlugin extends AbstractPlugin {
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReturnPlugin.class);
 
     /**
      * Metadata for ReturnPlugin.
@@ -424,9 +428,36 @@ public class ReturnPlugin extends AbstractPlugin {
         // Execute child elements to get return value
         Variable returnValue = executeChildElementsDirectly(context);
         
+        LOGGER.info("ReturnPlugin.doExecute: returnValue type: {}, value: '{}'", 
+            returnValue != null ? returnValue.getClass().getSimpleName() : "null",
+            returnValue != null ? returnValue.toString() : "null");
+        
         // Set the return value in context for CallPlugin to pick up
         context.setLocalVar("functionResult", returnValue);
         
+        // Set flag to indicate that ReturnPlugin was called
+        // This allows CallPlugin to distinguish between "no return" and "return with empty value"
+        // Variable name must start with letter (VariableName validation)
+        context.setLocalVar("returnPluginCalled", new org.webharvest.runtime.variables.NodeVariable("true"));
+        LOGGER.info("ReturnPlugin: Set generic flag 'returnPluginCalled'");
+        
+        // Also try to find and set function-specific flag if it exists
+        // This is a best-effort approach - if we can't find it, the generic flag will work
+        try {
+            for (org.webharvest.utils.KeyValuePair<org.webharvest.runtime.variables.Variable> pair : context) {
+                String key = pair.getKey();
+                if (key != null && key.startsWith("__returnCalled_")) {
+                    context.setLocalVar(key, new org.webharvest.runtime.variables.NodeVariable("true"));
+                    LOGGER.info("ReturnPlugin: Set function-specific flag: {}", key);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            // If iteration fails, generic flag is still set
+            LOGGER.warn("ReturnPlugin: Failed to find function-specific flag: {}", e.getMessage());
+        }
+        
+        LOGGER.info("ReturnPlugin: Set functionResult and flags");
         return EmptyVariable.INSTANCE;
     }
 
