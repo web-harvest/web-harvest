@@ -33,8 +33,37 @@ export class RightSidebar {
 
         this.container = container;
         this.options = options;
+        
+        // Ensure sidebar-section is hidden before rendering
+        // Container itself may have sidebar-section class
+        let sidebarSection: HTMLElement | null = null;
+        if (container.classList.contains('sidebar-section')) {
+            sidebarSection = container;
+        } else {
+            sidebarSection = container.closest('.sidebar-section') as HTMLElement;
+        }
+        
+        if (sidebarSection) {
+            sidebarSection.classList.remove('sidebar-section--visible');
+            sidebarSection.style.setProperty('display', 'none', 'important');
+            sidebarSection.style.setProperty('width', '0', 'important');
+            sidebarSection.style.setProperty('min-width', '0', 'important');
+            sidebarSection.style.setProperty('max-width', '0', 'important');
+            sidebarSection.style.setProperty('flex', '0 0 0', 'important');
+        }
+        
         this.render();
         this.setupResizeHandle();
+        
+        // Ensure sidebar is still hidden after rendering
+        if (sidebarSection) {
+            sidebarSection.classList.remove('sidebar-section--visible');
+            sidebarSection.style.setProperty('display', 'none', 'important');
+            sidebarSection.style.setProperty('width', '0', 'important');
+            sidebarSection.style.setProperty('min-width', '0', 'important');
+            sidebarSection.style.setProperty('max-width', '0', 'important');
+            sidebarSection.style.setProperty('flex', '0 0 0', 'important');
+        }
     }
 
     /**
@@ -523,6 +552,99 @@ export class RightSidebar {
         const container = section.querySelector('#propertyPanel') as HTMLElement;
         return container || section;
     }
+    
+    /**
+     * Show the sidebar
+     */
+    show(): void {
+        // Try both: container itself (if it has sidebar-section class) and closest parent
+        let sidebar = this.container.classList.contains('sidebar-section') 
+            ? this.container as HTMLElement 
+            : this.container.closest('.sidebar-section') as HTMLElement;
+        
+        if (!sidebar) {
+            // Fallback: use container directly
+            sidebar = this.container;
+        }
+        
+        if (sidebar) {
+            console.log('[RightSidebar] show() called - showing sidebar');
+            sidebar.classList.add('sidebar-section--visible');
+            sidebar.style.setProperty('display', 'flex', 'important');
+            sidebar.style.setProperty('width', '320px', 'important');
+            sidebar.style.setProperty('min-width', '280px', 'important');
+            sidebar.style.setProperty('max-width', '400px', 'important');
+            sidebar.style.setProperty('flex', '0 0 320px', 'important');
+            // Force grid update
+            const ideMain = sidebar.closest('.ide-main') as HTMLElement;
+            if (ideMain) {
+                ideMain.style.setProperty('grid-template-columns', 'auto 1fr 320px', 'important');
+            }
+            console.log('[RightSidebar] Sidebar shown, classes:', sidebar.classList.toString());
+        } else {
+            console.error('[RightSidebar] show() - sidebar element not found!');
+        }
+    }
+    
+    /**
+     * Hide the sidebar
+     */
+    hide(): void {
+        // Try both: container itself (if it has sidebar-section class) and closest parent
+        let sidebar = this.container.classList.contains('sidebar-section') 
+            ? this.container as HTMLElement 
+            : this.container.closest('.sidebar-section') as HTMLElement;
+        
+        if (!sidebar) {
+            // Fallback: use container directly
+            sidebar = this.container;
+        }
+        
+        if (sidebar) {
+            console.log('[RightSidebar] hide() called - hiding sidebar');
+            sidebar.classList.remove('sidebar-section--visible');
+            // Use !important to override CSS
+            sidebar.style.setProperty('display', 'none', 'important');
+            sidebar.style.setProperty('width', '0', 'important');
+            sidebar.style.setProperty('min-width', '0', 'important');
+            sidebar.style.setProperty('max-width', '0', 'important');
+            sidebar.style.setProperty('flex', '0 0 0', 'important');
+            // Force grid update
+            const ideMain = sidebar.closest('.ide-main') as HTMLElement;
+            if (ideMain) {
+                ideMain.style.setProperty('grid-template-columns', 'auto 1fr 0', 'important');
+            }
+            console.log('[RightSidebar] Sidebar hidden, computed display:', window.getComputedStyle(sidebar).display);
+        } else {
+            console.error('[RightSidebar] hide() - sidebar element not found!');
+        }
+    }
+    
+    /**
+     * Check if sidebar is visible
+     */
+    isVisible(): boolean {
+        // Check both: container itself (if it has sidebar-section class) and closest parent
+        let sidebar = this.container.classList.contains('sidebar-section') 
+            ? this.container as HTMLElement 
+            : this.container.closest('.sidebar-section') as HTMLElement;
+        
+        if (!sidebar) {
+            // Fallback: use container directly
+            sidebar = this.container;
+        }
+        
+        if (sidebar) {
+            const hasVisible = sidebar.classList.contains('sidebar-section--visible');
+            const computedDisplay = window.getComputedStyle(sidebar).display;
+            const computedWidth = window.getComputedStyle(sidebar).width;
+            const widthNum = parseInt(computedWidth.replace('px', '')) || 0;
+            
+            // Panel is visible if it has --visible class OR display is flex AND width > 0
+            return hasVisible || (computedDisplay === 'flex' && widthNum > 10);
+        }
+        return false;
+    }
 
     /**
      * Get data section (for DataVisualization injection)
@@ -536,20 +658,6 @@ export class RightSidebar {
      */
     getMonitoringSection(): HTMLElement | null {
         return this.sections.get('monitoring') || null;
-    }
-
-    /**
-     * Show/hide the sidebar
-     */
-    show(visible: boolean): void {
-        this.container.style.display = visible ? 'flex' : 'none';
-    }
-
-    /**
-     * Check if sidebar is visible
-     */
-    isVisible(): boolean {
-        return this.container.style.display !== 'none';
     }
 
     /**
@@ -590,7 +698,7 @@ export class RightSidebar {
             const onMouseMove = (e: MouseEvent) => {
                 if (!this.isResizing) return;
                 const deltaX = this.resizeStartX - e.clientX; // Inverted because we're resizing from left
-                const newWidth = Math.max(280, Math.min(window.innerWidth * 0.5, this.resizeStartWidth + deltaX));
+                const newWidth = Math.max(280, Math.min(window.innerWidth * 0.20, this.resizeStartWidth + deltaX));
                 this.container.style.width = `${newWidth}px`;
                 this.container.style.flex = `0 0 ${newWidth}px`;
                 

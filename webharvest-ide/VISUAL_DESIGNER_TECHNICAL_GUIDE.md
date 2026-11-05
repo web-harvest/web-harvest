@@ -15,7 +15,8 @@
 5. [Property Panel Generation](#property-panel-generation)
 6. [XML-Visual Synchronization](#xml-visual-synchronization)
 7. [Backend Integration](#backend-integration)
-8. [Testing Strategy](#testing-strategy)
+8. [Visual Semantic Model & AI Integration](#visual-semantic-model--ai-integration)
+9. [Testing Strategy](#testing-strategy)
 
 ---
 
@@ -1282,6 +1283,360 @@ class ConfigSynchronizer {
 
 ---
 
+## 🤖 Visual Semantic Model & AI Integration
+
+### Overview
+
+The Visual Semantic Model is a real-time, LLM-friendly representation of the visual designer's state, enabling AI agents (like Cursor AI) to read and modify workflows dynamically. It consists of two semantic models:
+
+1. **Backend Semantic Model** (existing): Plugin metadata, schemas, and semantic roles from `/api/plugins/metadata`
+2. **Visual Semantic Model** (new): Real-time visual state including node positions, connections, UI state, and layout metadata
+
+### Architecture
+
+```
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────┐
+│  VisualDesigner │ ◄─────► │ VisualSemantic  │ ◄─────► │ Agent (AI)  │
+│      (UI)       │  sync   │      Model      │  API    │  (Cursor)   │
+└─────────────────┘         └──────────────────┘         └─────────────┘
+      ▲                              │
+      │                              │
+      └─────────── Events ───────────┘
+```
+
+### Frontend Components
+
+#### VisualSemanticModel.ts
+Defines TypeScript interfaces for the model:
+- `VisualSemanticModel`: Main model structure
+- `VisualNodeState`: Node position, dimensions, connection points, variables
+- `VisualConnectionState`: Connection paths with routing information
+- `ViewportState`: Pan and zoom state
+- `UIState`: Selected nodes, hovered nodes, expanded containers
+
+#### VisualSemanticModelManager.ts
+Manages real-time model construction:
+- `buildModel()`: Builds model from VisualDesigner state
+- `analyzeVariableDependencies()`: Analyzes variable definitions and usages
+- `calculateConnectionPoints()`: Calculates anchor points for nodes
+- `calculateConnectionPath()`: Routes connection paths
+- `subscribe()`: Subscribes to model updates
+- `notifyUpdate()`: Triggers model rebuild and notifies subscribers
+
+#### VisualModelWebSocketManager.ts
+Manages WebSocket connection for real-time synchronization:
+- `connect()`: Connects to backend as `clientType=frontend`
+- `sendModelUpdate()`: Sends model updates to backend
+- `onAgentAction()`: Handles actions from AI agent
+- Auto-reconnect logic with exponential backoff
+
+#### AgentActionsHandler.ts
+Executes actions from AI agent:
+- `executeAction()`: Dispatches actions (addNode, updateNode, removeNode, connectNodes, etc.)
+- Validates actions against PluginManager
+- Returns success/error results
+
+#### VisualSemanticModelExporter.ts
+Exports model to LLM-friendly JSON format:
+- Converts `Map` → `Object` and `Set` → `Array`
+- Adds `availableActions` schema for LLM
+- Includes documentation in JSON structure
+
+### Backend Components
+
+#### VisualSemanticModelServlet.java
+REST API endpoint:
+- `GET /api/visual/model`: Returns cached model (LLM-friendly JSON)
+- `GET /api/visual/model/actions`: Returns action schema
+- `POST /api/visual/model/actions`: **Not allowed** - actions must use WebSocket
+
+#### VisualSemanticModelWebSocketHandler.java
+WebSocket handler for real-time communication:
+- Distinguishes between `clientType=agent` and `clientType=frontend`
+- Caches model updates from frontend
+- Broadcasts model updates to all connected agents
+- Processes actions from agents and forwards to frontend
+
+#### VisualSemanticModelWebSocketServlet.java
+WebSocket servlet registered at `/ws/visual/model/*`
+
+### Integration Flow
+
+1. **Initialization**:
+   - VisualDesigner initializes `VisualSemanticModelManager` and `VisualModelWebSocketManager`
+   - WebSocket connects as `clientType=frontend`
+   - Model is built and sent to backend on first load
+
+2. **Model Updates**:
+   - Any change in VisualDesigner (addNode, removeNode, moveNode, etc.) triggers `notifyModelUpdate()`
+   - Model is rebuilt and sent via WebSocket to backend
+   - Backend caches model and broadcasts to all connected agents
+
+3. **Agent Actions**:
+   - Agent connects via WebSocket as `clientType=agent`
+   - Agent receives model snapshot
+   - Agent sends action (e.g., `addNode`)
+   - Backend forwards action to frontend
+   - Frontend executes action via `AgentActionsHandler`
+   - UI updates automatically
+   - Model is rebuilt and sent back to backend
+
+### Key Methods in VisualDesigner
+
+```typescript
+// Initialize model manager and WebSocket
+private initializeModelManager(pluginManager: PluginManager): void {
+    this.modelManager = new VisualSemanticModelManager(this, pluginManager);
+    this.wsManager = new VisualModelWebSocketManager();
+    this.wsManager.connect();
+    
+    // Subscribe to model changes
+    this.modelManager.subscribe((model) => {
+        if (this.wsManager?.isConnected()) {
+            this.wsManager.sendModelUpdate(model);
+        }
+    });
+    
+    // Handle agent actions
+    this.wsManager.onAgentAction((action) => {
+        this.agentActionsHandler.executeAction(action).then(() => {
+            this.render();
+            this.notifyModelUpdate();
+        });
+    });
+}
+
+// Notify model update (called after any workflow modification)
+private notifyModelUpdate(): void {
+    if (this.modelManager) {
+        this.modelManager.notifyUpdate(); // Debounced (100ms)
+    }
+}
+
+// Public API for agent access
+getVisualSemanticModel(): VisualSemanticModel
+exportModelForLLM(): VisualSemanticModelForLLM
+```
+
+### Model Update Triggers
+
+The following operations trigger model updates:
+- `loadNodes()`: After loading nodes and applying auto-layout
+- `addNode()`: After adding a node
+- `removeNode()`: After removing a node
+- `updateNode()`: After updating node attributes
+- `moveNodeToPosition()`: After moving a node
+- `applyLayout()`: After applying layout
+- `connectNodes()`: After connecting nodes
+- `disconnectNodes()`: After disconnecting nodes
+- `clear()`: After clearing canvas
+
+### Testing
+
+To test the Visual Semantic Model:
+
+1. **Start IDE**: `mvn clean install && java -jar target/webharvest-ide-2.3.1.jar`
+2. **Open Visual Designer**: Navigate to `http://localhost:8080` and switch to Visual mode
+3. **Wait for connection**: Frontend connects via WebSocket and sends initial model
+4. **Test via REST API**: `curl http://localhost:8080/api/visual/model`
+5. **Test via WebSocket**: Use Python script to connect as agent and send actions
+
+Example Python test script:
+```python
+import websocket
+import json
+
+ws = websocket.WebSocket()
+ws.connect("ws://localhost:8080/ws/visual/model?clientType=agent")
+
+# Wait for model
+message = ws.recv()
+model = json.loads(message)
+
+# Send action
+action = {
+    "type": "action",
+    "action": {
+        "type": "addNode",
+        "parameters": {
+            "pluginType": "http",
+            "position": {"x": 300, "y": 200},
+            "attributes": {"url": "https://example.com"}
+        }
+    }
+}
+ws.send(json.dumps(action))
+
+# Receive result
+result = json.loads(ws.recv())
+print(result)
+```
+
+### Files
+
+**Frontend:**
+- `frontend/src/visual/VisualSemanticModel.ts`
+- `frontend/src/visual/VisualSemanticModelManager.ts`
+- `frontend/src/visual/VariableDependencyAnalyzer.ts`
+- `frontend/src/visual/ConnectionPointsCalculator.ts`
+- `frontend/src/visual/ConnectionPathRouter.ts`
+- `frontend/src/visual/VisualSemanticModelExporter.ts`
+- `frontend/src/visual/AgentActionsHandler.ts`
+- `frontend/src/core/VisualModelWebSocketManager.ts`
+
+**Backend:**
+- `src/main/java/org/webharvest/server/api/VisualSemanticModelServlet.java`
+- `src/main/java/org/webharvest/server/websocket/VisualSemanticModelWebSocketHandler.java`
+- `src/main/java/org/webharvest/server/websocket/VisualSemanticModelWebSocketServlet.java`
+
+**Integration:**
+- `frontend/src/visual/VisualDesigner.ts` (lines 11397-11465)
+- `src/main/java/org/webharvest/server/WebHarvestServer.java` (servlet registration)
+
+---
+
+## 🧬 Ontology Model (Palantir-Inspired)
+
+### Overview
+
+The Visual Semantic Model now includes a formal ontology system inspired by Palantir Foundry's approach. The ontology provides:
+
+- **Formal modeling** of relationships between concepts (nodes, variables, connections, executions)
+- **Inference engine** for deducing relationships and validating constraints
+- **Query interface** for complex queries about the workflow structure
+- **Validation** at the ontology level, beyond simple type checking
+
+### Benefits
+
+**Backend:**
+- Better validation of plugin hierarchies and relationships
+- Inference of implicit relationships (e.g., if A is parent of B, then B is child of A)
+- Querying capabilities for complex workflow analysis
+
+**Frontend:**
+- Better rendering suggestions based on ontology constraints
+- Real-time validation feedback
+- Smart connection suggestions based on compatible entity types
+
+**LLM:**
+- Better understanding of workflow context through ontology queries
+- Ability to query "what nodes can be children of X?" or "what variables are available at node Y?"
+- Inference of missing relationships
+
+### Architecture
+
+#### Core Components
+
+1. **OntologyModel.ts** - Type definitions for ontology entities, relationships, schemas, and queries
+2. **OntologyRepositoryImpl.ts** - Implementation of entity storage and querying
+3. **OntologyInferenceEngineImpl.ts** - Implementation of relationship inference and validation
+4. **OntologyBuilder.ts** - **Dynamic builder** that constructs ontology schemas from runtime plugin metadata
+
+#### Dynamic Schema Building
+
+**CRITICAL:** The ontology model is **dynamically built** from runtime plugin metadata. No static information about plugins is stored in the ontology.
+
+- **Entity schemas** are built from `Plugin.semantics` and `Plugin.schema` at runtime
+- **Relationship constraints** are inferred from `PluginSemanticsModel` (e.g., `allowsChildren`, `requiredParentTypes`, `allowedChildTypes`)
+- **Property schemas** are built from `Plugin.schema.attributes` or `Plugin.schema.attributeDefinitions`
+- **Connection points** are built from `Plugin.inputPorts` and `Plugin.outputPorts` (if available)
+- **Visual schemas** are built from `Plugin.defaultWidth`, `Plugin.defaultHeight`, and visual metadata
+- **Runtime schemas** are inferred from plugin type and execution semantics
+
+When plugin metadata changes (e.g., new plugins loaded, metadata updated), the ontology schemas are automatically refreshed via `OntologyBuilder.refreshSchemas()`.
+
+#### Entity Types
+
+- `Plugin` - Plugin type definitions
+- `Node` - Visual nodes in the workflow
+- `Variable` - Variables defined/used in the workflow
+- `Connection` - Visual connections between nodes
+- `Execution` - Execution instances
+- `Log` - Execution logs
+- `Result` - Execution results
+- `Container` - Container nodes
+- `Leaf` - Leaf nodes
+
+#### Relationship Types
+
+- `PARENT_OF` / `CHILD_OF` - Hierarchy relationships
+- `SEQUENTIAL_TO` / `CONDITIONAL_TO` / `ERROR_TO` - Execution flow
+- `DEFINES_VARIABLE` / `USES_VARIABLE` - Variable dependencies
+- `CONNECTED_TO` - Visual connections
+- `REQUIRES_PARENT` / `ALLOWS_CHILD` - Plugin constraints
+- `DEPENDS_ON` / `VALIDATES` / `TRANSFORMS` / `FILTERS` / `AGGREGATES` - Data flow semantics
+
+#### Query Language
+
+The ontology supports a query language for complex queries:
+
+```typescript
+const query: OntologyQuery = {
+    select: { properties: ['id', 'type', 'position'] },
+    from: 'Node',
+    where: [
+        { property: 'type', operator: '=', value: 'http' },
+        { property: 'position.x', operator: '>', value: 100 }
+    ],
+    relationships: [
+        { type: 'PARENT_OF', direction: 'from', recursive: true }
+    ],
+    orderBy: [{ property: 'position.y', direction: 'ASC' }],
+    limit: 10
+};
+
+const results = ontologyRepository.query(query);
+```
+
+#### Integration with VisualSemanticModelManager
+
+The ontology is integrated into `VisualSemanticModelManager`:
+
+```typescript
+private pluginRepository: OntologyRepository;
+private nodeRepository: OntologyRepository;
+private inferenceEngine: OntologyInferenceEngine;
+```
+
+Entities are automatically added to the ontology when the model is built, and relationships are inferred based on the workflow structure.
+
+### Files
+
+**Frontend:**
+- `frontend/src/visual/OntologyModel.ts` - Type definitions
+- `frontend/src/visual/OntologyRepositoryImpl.ts` - Repository implementation
+- `frontend/src/visual/OntologyInferenceEngineImpl.ts` - Inference engine implementation
+- `frontend/src/visual/OntologyBuilder.ts` - **Dynamic builder from runtime metadata**
+- `frontend/src/visual/VisualSemanticModelManager.ts` - Integration with ontology
+
+### Dynamic Schema Building Example
+
+```typescript
+// OntologyBuilder dynamically builds schemas from PluginManager
+const builder = new OntologyBuilder(pluginManager);
+
+// Build all schemas from runtime plugin metadata
+const schemas = builder.buildAllSchemas();
+// Returns:
+// - pluginSchemas: Map<pluginId, EntitySchema>
+// - pluginOntologySchemas: Map<pluginId, PluginOntologySchema>
+// - visualOntologySchemas: Map<pluginId, VisualOntologySchema>
+// - runtimeOntologySchemas: Map<pluginId, RuntimeOntologySchema>
+
+// Entity schemas are built from Plugin.semantics:
+// - PARENT_OF relationships from semantics.allowsChildren
+// - CHILD_OF relationships from semantics.requiredParentTypes
+// - Property schemas from Plugin.schema.attributes
+// - Constraints from attribute requirements and allowedValues
+
+// When metadata changes, refresh:
+builder.refreshSchemas();
+```
+
+**Future Backend:**
+- `src/main/java/org/webharvest/server/api/OntologyServlet.java` - REST API for ontology queries
+- `src/main/java/org/webharvest/server/websocket/OntologyWebSocketHandler.java` - WebSocket for real-time ontology updates
+
 ## 🧪 Testing Strategy
 
 ### Unit Tests
@@ -1409,7 +1764,8 @@ This technical guide provides:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** October 24, 2025
+**Document Version:** 1.1  
+**Last Updated:** November 26, 2025  
+**Changes:** Added Visual Semantic Model & AI Integration section
 
 

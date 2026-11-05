@@ -82,7 +82,9 @@
     position: relative;
     /* Position relative - scrollable container */
     overflow: auto;
-    /* Internal scrolling for canvas content */
+    /* Internal scrolling for canvas content - both horizontal and vertical */
+    overflow-x: auto;
+    overflow-y: auto;
     /* DO NOT use display: flex - nodes are position: absolute */
     /* Height determined by parent .visual-canvas flex */
 }
@@ -98,17 +100,25 @@
 }
 
 .sidebar-section {
-    flex: 0 0 360px;
-    min-width: 280px;
-    max-width: 50%;
+    flex: 0 0 0; /* Zero width when hidden */
+    min-width: 0;
+    max-width: 0;
     /* Resizable width dla Logs/Results/Variables/Sessions */
-    display: flex;
+    display: none; /* Hidden by default */
     flex-direction: column;
     background: var(--gray-50);
     border-left: 1px solid #e0e0e0;
     position: relative;
     resize: horizontal;
     overflow: hidden;
+    transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-section--visible {
+    display: flex;
+    flex: 0 0 320px; /* Fixed width when visible - narrower */
+    min-width: 280px;
+    max-width: 400px;
 }
 
 /* Resize handle for sidebar */
@@ -126,6 +136,26 @@
 
 .sidebar-section:hover::before {
     background: rgba(59, 130, 246, 0.3);
+}
+
+/* Toggle Properties Button Styles */
+#btn-toggle-properties {
+    transition: all 0.2s ease;
+}
+
+#btn-toggle-properties:hover {
+    background: rgba(255, 255, 255, 0.8) !important;
+    color: var(--magenta) !important;
+}
+
+#btn-toggle-properties.active {
+    background: var(--magenta) !important;
+    color: white !important;
+}
+
+#btn-toggle-properties.active:hover {
+    background: var(--magenta) !important;
+    opacity: 0.9;
 }
 
 /* ============================================

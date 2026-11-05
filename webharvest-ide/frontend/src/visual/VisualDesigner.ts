@@ -26,6 +26,7 @@ import { XMLGenerator } from './XMLGenerator';
 import { SemanticValidator } from './SemanticValidator';
 import { BreadcrumbNav, type BreadcrumbItem, type BreadcrumbMetric } from './BreadcrumbNav';
 import { DrillDownManager } from './DrillDownManager';
+import { VisualSemanticModelManager } from './VisualSemanticModelManager';
 import { ContextMenu, type ContextMenuAction } from './ContextMenu';
 import type { PluginManager } from '../core/PluginManager';
 import {
@@ -38,6 +39,11 @@ import { planConnections } from './connections/ConnectionPlanner';
 import { MasterDetailRegistry, type DetailSectionDefinition } from './detail/MasterDetailRegistry';
 import { analyzeHierarchy, analyzeContainer, type ContainerSummary } from './HierarchyInspector';
 import { NodeResizeHandler } from './NodeResizeHandler';
+import { ConnectionRenderer } from './ConnectionRenderer';
+import { D3ConnectionRenderer } from './D3ConnectionRenderer';
+import type { IConnectionRenderer } from './IConnectionRenderer';
+import { ConnectionDragHandler } from './ConnectionDragHandler';
+import { ConnectionPointsRenderer } from './ConnectionPointsRenderer';
 type DesignerSnapshot = {
     nodes: VisualNode[];
     connections: ManualConnection[];
@@ -64,26 +70,6 @@ type EventListener = (data: any) => void;
 
 type WorkflowStatus = 'idle' | 'running' | 'paused';
 
-type AnchorSide = 'left' | 'right' | 'top' | 'bottom';
-
-type AnchorBounds = {
-    left: number;
-    right: number;
-    top: number;
-    bottom: number;
-    width: number;
-    height: number;
-    centerX: number;
-    centerY: number;
-};
-
-type AnchorInfo = {
-    id: string;
-    type: 'node' | 'marker';
-    bounds: AnchorBounds;
-    element: HTMLElement | null;
-};
-
 type Point = { x: number; y: number };
 
 type MarkerState = {
@@ -105,7 +91,6 @@ export class VisualDesigner {
     private selectedNodeIds: string[] = [];
     private selectedConnectionId: string | null = null;
     private eventListeners: Map<string, EventListener[]> = new Map();
-    private connectionLineElements: Map<string, SVGPathElement> = new Map(); // Store connection path references
 
     // Execution state visualization
     private stateRenderer: NodeStateRenderer = new NodeStateRenderer();
@@ -172,16 +157,7 @@ export class VisualDesigner {
         initialY: number;
     } | null = null;
 
-    // Connection drag state
-    private connectionDragState: {
-        fromNodeId: string;
-        fromPortElement: HTMLElement;
-        fromPortType: string;
-        temporaryLine: SVGLineElement | null;
-        isReconnect: boolean; // True if reconnecting existing connection
-        existingConnectionId: string | null; // ID of connection being reconnected
-        reconnectEnd: 'source' | 'target' | null; // Which end is being reconnected
-    } | null = null;
+    // Connection drag state - now handled by ConnectionDragHandler
 
     // Zoom & pan state
     private zoom: number = 1.0;
@@ -224,6 +200,11 @@ export class VisualDesigner {
     private fallbackDetailSections: Map<string, DetailSectionDefinition[]> = new Map();
     private resizeObserver: ResizeObserver | null = null;
     private contextMenu: ContextMenu = new ContextMenu();
+
+    // New connection rendering system
+    private connectionRenderer: IConnectionRenderer | null = null;
+    private connectionDragHandler: ConnectionDragHandler | null = null;
+    private connectionPointsRenderer: ConnectionPointsRenderer | null = null;
 
     constructor(containerId: string, pluginManager?: PluginManager | null) {
         const container = document.getElementById(containerId);
@@ -459,6 +440,10 @@ export class VisualDesigner {
         this.zoom = 1.0;
         this.render();
         this.applyTransform();
+        // Notify model manager to build model with new nodes
+        if ((this as any).modelManager) {
+            (this as any).modelManager.notifyUpdate();
+        }
     }
 
     /**
@@ -593,6 +578,19 @@ export class VisualDesigner {
         this.selectedNodeId = nodeId;
         this.highlightSelectedNodes();
 
+        // Show connection points for selected node(s)
+        if (this.connectionPointsRenderer) {
+            if (options?.addToSelection) {
+                this.connectionPointsRenderer.showForNode(nodeId);
+            } else {
+                // Hide all, then show only selected
+                this.connectionPointsRenderer.hideAll();
+                this.selectedNodeIds.forEach(id => {
+                    this.connectionPointsRenderer!.showForNode(id);
+                });
+            }
+        }
+
         // Emit event
         this.emit('nodeSelected', nodeId);
     }
@@ -604,6 +602,11 @@ export class VisualDesigner {
         this.selectedNodeIds = [];
         this.selectedNodeId = null;
         this.highlightSelectedNodes();
+
+        // Hide connection points when selection is cleared
+        if (this.connectionPointsRenderer) {
+            this.connectionPointsRenderer.hideAll();
+        }
     }
 
     /**
@@ -666,74 +669,127 @@ export class VisualDesigner {
 
         // Buduj graf połączeń
         const connectionsForLayout = layoutConnections ?? this.buildLayoutConnections(nodesToLayout);
-        
+
         // Topologiczne sortowanie - znajdź kolejność wykonania
         const executionOrder = this.topologicalSort(nodesToLayout, connectionsForLayout);
-        
+
         // Przypisz węzły do warstw (kolumn) na podstawie głębokości w grafie
         const layerAssignments = this.computeOptimalLayers(nodesToLayout, connectionsForLayout, executionOrder);
-        
+
         // Stałe layoutu
         const columnWidth = this.MIN_CARD_WIDTH + this.HORIZONTAL_GAP;
         const minRowGap = Math.max(this.PADDING * 4, Math.round(this.MIN_CARD_HEIGHT * 0.8));
         const baseY = this.START_Y + 100;
-        
-        // Grupuj węzły według warstw
-        const groupedByLayer = new Map<number, VisualNode[]>();
-        executionOrder.forEach(node => {
-            const layerIndex = layerAssignments.get(node.id) ?? 0;
-            if (!groupedByLayer.has(layerIndex)) {
-                groupedByLayer.set(layerIndex, []);
-            }
-            groupedByLayer.get(layerIndex)!.push(node);
+
+        // Sprawdź czy workflow jest sekwencyjny (wszystkie węzły w jednej ścieżce)
+        // Sekwencyjny = każdy węzeł ma max 1 wejście i max 1 wyjście (oprócz start/end)
+        const maxLayer = Array.from(layerAssignments.values()).length > 0
+            ? Math.max(...Array.from(layerAssignments.values()))
+            : 0;
+
+        // Policz połączenia wejściowe i wyjściowe dla każdego węzła
+        const inDegree = new Map<string, number>();
+        const outDegree = new Map<string, number>();
+        nodesToLayout.forEach(node => {
+            inDegree.set(node.id, 0);
+            outDegree.set(node.id, 0);
+        });
+        connectionsForLayout.forEach(conn => {
+            inDegree.set(conn.to, (inDegree.get(conn.to) || 0) + 1);
+            outDegree.set(conn.from, (outDegree.get(conn.from) || 0) + 1);
         });
 
-        // Sortuj warstwy
-        const sortedLayers = Array.from(groupedByLayer.keys()).sort((a, b) => a - b);
+        // Sprawdź czy wszystkie węzły mają max 1 wejście i max 1 wyjście
+        let isSequential = true;
+        for (const node of nodesToLayout) {
+            const inCount = inDegree.get(node.id) || 0;
+            const outCount = outDegree.get(node.id) || 0;
+            // Węzły mogą mieć więcej wejść/wyjść tylko jeśli są start/end markerami
+            if (inCount > 1 || outCount > 1) {
+                isSequential = false;
+                break;
+            }
+        }
 
-        // Rozmieszczaj węzły w każdej warstwie
-        sortedLayers.forEach(layerIndex => {
-            const columnNodes = groupedByLayer.get(layerIndex)!;
-            
-            // Sortuj węzły w warstwie według kolejności wykonania
-            columnNodes.sort((a, b) => {
-                const orderA = executionOrder.findIndex(n => n.id === a.id);
-                const orderB = executionOrder.findIndex(n => n.id === b.id);
-                return orderA - orderB;
-            });
+        // Dodatkowo: jeśli maxLayer jest mały (0-1) i liczba połączeń = liczba węzłów - 1, to sekwencyjny
+        const isSimpleSequential = maxLayer <= 1 && connectionsForLayout.length === nodesToLayout.length - 1;
+        isSequential = isSequential || isSimpleSequential;
 
+        if (isSequential && nodesToLayout.length > 0) {
+            // SEKWENCYJNY LAYOUT: Wszystkie węzły w jednej kolumnie, ułożone pionowo
+            const verticalSpacing = Math.max(this.MIN_CARD_HEIGHT + minRowGap, 150);
             let cursorY = baseY;
-            const labelHeight = 40; // Wysokość etykiety (header)
-            const minLabelGap = 20; // Minimalny odstęp między etykietami
-            
-            columnNodes.forEach((node, index) => {
+
+            executionOrder.forEach((node, index) => {
                 const dimensions = this.getNodeDimensions(node);
                 const nodeHeight = Math.max(dimensions.height, this.MIN_CARD_HEIGHT);
-                
-                const x = this.snapValue(this.START_X + layerIndex * columnWidth);
-                
-                // Sprawdź kolizję z poprzednim węzłem
-                if (index > 0) {
-                    const prevNode = columnNodes[index - 1];
-                    const prevDimensions = this.getNodeDimensions(prevNode);
-                    const prevHeight = Math.max(prevDimensions.height, this.MIN_CARD_HEIGHT);
-                    const prevY = prevNode.position?.y ?? baseY;
-                    
-                    // Oblicz minimalną pozycję Y, aby etykiety nie zachodziły
-                    const minY = prevY + prevHeight + minLabelGap;
-                    cursorY = Math.max(cursorY, minY);
-                }
-                
+
+                const x = this.snapValue(this.START_X);
                 const y = this.snapValue(cursorY);
-                
+
                 node.position = { x, y };
                 node.isManualPositioned = false;
-                
-                // Zwiększ cursorY o wysokość węzła + odstęp, uwzględniając etykietę
-                cursorY += nodeHeight + minRowGap;
+
+                cursorY += nodeHeight + verticalSpacing;
             });
-        });
-        
+        } else {
+            // POZIOMY LAYOUT (swim lanes): Węzły w różnych kolumnach
+            const groupedByLayer = new Map<number, VisualNode[]>();
+            executionOrder.forEach(node => {
+                const layerIndex = layerAssignments.get(node.id) ?? 0;
+                if (!groupedByLayer.has(layerIndex)) {
+                    groupedByLayer.set(layerIndex, []);
+                }
+                groupedByLayer.get(layerIndex)!.push(node);
+            });
+
+            // Sortuj warstwy
+            const sortedLayers = Array.from(groupedByLayer.keys()).sort((a, b) => a - b);
+
+            // Rozmieszczaj węzły w każdej warstwie
+            sortedLayers.forEach(layerIndex => {
+                const columnNodes = groupedByLayer.get(layerIndex)!;
+
+                // Sortuj węzły w warstwie według kolejności wykonania
+                columnNodes.sort((a, b) => {
+                    const orderA = executionOrder.findIndex(n => n.id === a.id);
+                    const orderB = executionOrder.findIndex(n => n.id === b.id);
+                    return orderA - orderB;
+                });
+
+                let cursorY = baseY;
+                const labelHeight = 40; // Wysokość etykiety (header)
+                const minLabelGap = 20; // Minimalny odstęp między etykietami
+
+                columnNodes.forEach((node, index) => {
+                    const dimensions = this.getNodeDimensions(node);
+                    const nodeHeight = Math.max(dimensions.height, this.MIN_CARD_HEIGHT);
+
+                    const x = this.snapValue(this.START_X + layerIndex * columnWidth);
+
+                    // Sprawdź kolizję z poprzednim węzłem
+                    if (index > 0) {
+                        const prevNode = columnNodes[index - 1];
+                        const prevDimensions = this.getNodeDimensions(prevNode);
+                        const prevHeight = Math.max(prevDimensions.height, this.MIN_CARD_HEIGHT);
+                        const prevY = prevNode.position?.y ?? baseY;
+
+                        // Oblicz minimalną pozycję Y, aby etykiety nie zachodziły
+                        const minY = prevY + prevHeight + minLabelGap;
+                        cursorY = Math.max(cursorY, minY);
+                    }
+
+                    const y = this.snapValue(cursorY);
+
+                    node.position = { x, y };
+                    node.isManualPositioned = false;
+
+                    // Zwiększ cursorY o wysokość węzła + odstęp, uwzględniając etykietę
+                    cursorY += nodeHeight + minRowGap;
+                });
+            });
+        }
+
         // Po rozmieszczeniu, sprawdź i popraw kolizje między wszystkimi węzłami
         this.resolveLabelCollisions(nodesToLayout);
     }
@@ -745,10 +801,10 @@ export class VisualDesigner {
         const LABEL_HEIGHT = 40;
         const MIN_LABEL_GAP = 20;
         const ITERATIONS = 3; // Liczba iteracji dla stabilizacji
-        
+
         for (let iter = 0; iter < ITERATIONS; iter++) {
             let hasCollisions = false;
-            
+
             // Sortuj węzły według pozycji Y
             const sortedNodes = [...nodes].sort((a, b) => {
                 const ay = a.position?.y ?? 0;
@@ -758,47 +814,47 @@ export class VisualDesigner {
                 const bx = b.position?.x ?? 0;
                 return ax - bx;
             });
-            
+
             for (let i = 0; i < sortedNodes.length; i++) {
                 const node = sortedNodes[i];
                 if (!node.position) continue;
-                
+
                 const nodeDims = this.getNodeDimensions(node);
                 const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
                 const nodeTop = node.position.y;
                 const nodeBottom = nodeTop + nodeHeight;
                 const nodeLeft = node.position.x;
                 const nodeRight = nodeLeft + nodeDims.width;
-                
+
                 // Sprawdź kolizje z innymi węzłami
                 for (let j = i + 1; j < sortedNodes.length; j++) {
                     const otherNode = sortedNodes[j];
                     if (!otherNode.position) continue;
-                    
+
                     const otherDims = this.getNodeDimensions(otherNode);
                     const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
                     const otherTop = otherNode.position.y;
                     const otherBottom = otherTop + otherHeight;
                     const otherLeft = otherNode.position.x;
                     const otherRight = otherLeft + otherDims.width;
-                    
+
                     // Sprawdź czy etykiety (górne części węzłów) zachodzą na siebie
                     const labelTop = nodeTop;
                     const labelBottom = nodeTop + LABEL_HEIGHT;
                     const otherLabelTop = otherTop;
                     const otherLabelBottom = otherTop + LABEL_HEIGHT;
-                    
+
                     // Kolizja etykiet: zachodzą w pionie i poziomie
                     const labelsOverlapY = !(labelBottom < otherLabelTop || labelTop > otherLabelBottom);
                     const labelsOverlapX = !(nodeRight < otherLeft || nodeLeft > otherRight);
-                    
+
                     if (labelsOverlapY && labelsOverlapX) {
                         hasCollisions = true;
-                        
+
                         // Przesuń drugi węzeł w dół
                         const requiredGap = LABEL_HEIGHT + MIN_LABEL_GAP;
                         const newY = nodeBottom + requiredGap - LABEL_HEIGHT;
-                        
+
                         if (!otherNode.position) {
                             otherNode.position = { x: otherLeft, y: newY };
                         } else {
@@ -807,7 +863,7 @@ export class VisualDesigner {
                     }
                 }
             }
-            
+
             if (!hasCollisions) {
                 break; // Brak kolizji, można zakończyć
             }
@@ -823,7 +879,7 @@ export class VisualDesigner {
         const nodeDims = this.getNodeDimensions(node);
         const nodeWidth = nodeDims.width;
         const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
-        
+
         const nodeLeft = position.x;
         const nodeRight = nodeLeft + nodeWidth;
         const nodeTop = position.y;
@@ -842,7 +898,7 @@ export class VisualDesigner {
             const otherDims = this.getNodeDimensions(otherNode);
             const otherWidth = otherDims.width;
             const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
-            
+
             const otherLeft = otherNode.position.x;
             const otherRight = otherLeft + otherWidth;
             const otherTop = otherNode.position.y;
@@ -869,7 +925,7 @@ export class VisualDesigner {
         const LABEL_HEIGHT = 40;
         const nodeDims = this.getNodeDimensions(node);
         const nodeWidth = nodeDims.width;
-        
+
         const nodeLeft = position.x;
         const nodeRight = nodeLeft + nodeWidth;
         const labelTop = position.y;
@@ -887,7 +943,7 @@ export class VisualDesigner {
 
             const otherDims = this.getNodeDimensions(otherNode);
             const otherWidth = otherDims.width;
-            
+
             const otherLeft = otherNode.position.x;
             const otherRight = otherLeft + otherWidth;
             const otherLabelTop = otherNode.position.y;
@@ -912,9 +968,9 @@ export class VisualDesigner {
         const nodeDims = this.getNodeDimensions(node);
         const nodeWidth = nodeDims.width;
         const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
-        
+
         // Sprawdź czy pożądana pozycja jest wolna
-        if (!this.checkNodeCollision(node, desiredPosition, node.id) && 
+        if (!this.checkNodeCollision(node, desiredPosition, node.id) &&
             !this.checkLabelCollision(node, desiredPosition, node.id)) {
             return this.snapPosition(desiredPosition);
         }
@@ -922,7 +978,7 @@ export class VisualDesigner {
         // Szukaj najbliższej wolnej pozycji w spirali
         const step = this.gridSize || 20;
         const maxSteps = Math.floor(maxSearchRadius / step);
-        
+
         for (let radius = step; radius <= maxSearchRadius; radius += step) {
             // Sprawdź pozycje w spirali (kwadrat)
             for (let dx = -radius; dx <= radius; dx += step) {
@@ -931,14 +987,14 @@ export class VisualDesigner {
                     if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
                         continue;
                     }
-                    
+
                     const candidatePos: Point = {
                         x: desiredPosition.x + dx,
                         y: desiredPosition.y + dy
                     };
-                    
+
                     // Sprawdź czy pozycja jest wolna
-                    if (!this.checkNodeCollision(node, candidatePos, node.id) && 
+                    if (!this.checkNodeCollision(node, candidatePos, node.id) &&
                         !this.checkLabelCollision(node, candidatePos, node.id)) {
                         return this.snapPosition(candidatePos);
                     }
@@ -957,7 +1013,7 @@ export class VisualDesigner {
         const nodeDims = this.getNodeDimensions(draggedNode);
         const nodeWidth = nodeDims.width;
         const nodeHeight = Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
-        
+
         const draggedLeft = newPosition.x;
         const draggedRight = draggedLeft + nodeWidth;
         const draggedTop = newPosition.y;
@@ -973,7 +1029,7 @@ export class VisualDesigner {
             const otherDims = this.getNodeDimensions(otherNode);
             const otherWidth = otherDims.width;
             const otherHeight = Math.max(otherDims.height, this.MIN_CARD_HEIGHT);
-            
+
             const otherLeft = otherNode.position.x;
             const otherRight = otherLeft + otherWidth;
             const otherTop = otherNode.position.y;
@@ -1034,7 +1090,7 @@ export class VisualDesigner {
             const snappedPos = this.snapPosition(newPos);
 
             // Sprawdź czy nowa pozycja nie koliduje z innymi węzłami (oprócz przeciąganego)
-            if (!this.checkNodeCollision(nodeToPush, snappedPos, draggedNode.id) && 
+            if (!this.checkNodeCollision(nodeToPush, snappedPos, draggedNode.id) &&
                 !this.checkLabelCollision(nodeToPush, snappedPos, draggedNode.id)) {
                 nodeToPush.position = snappedPos;
                 nodeToPush.isManualPositioned = true;
@@ -1301,17 +1357,79 @@ export class VisualDesigner {
         }
     }
 
+    /**
+     * Ensure grid pattern exists in unified SVG
+     * CRITICAL: Grid is now part of the same SVG as connections
+     */
+    private ensureGridInSVG(): void {
+        if (!this.svgElement || !this.gridVisible) return;
+
+        // Check if grid pattern already exists
+        let defs = this.svgElement.querySelector('defs');
+        let existingPattern = defs ? defs.querySelector('pattern[id^="grid-pattern"]') : null;
+        let backgroundRect = this.svgElement.querySelector('rect.grid-background');
+
+        // Create or update grid pattern
+        if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            // Insert defs at the beginning of SVG
+            if (this.svgElement.firstChild) {
+                this.svgElement.insertBefore(defs, this.svgElement.firstChild);
+            } else {
+                this.svgElement.appendChild(defs);
+            }
+        }
+
+        if (!existingPattern) {
+            const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+            const patternId = `grid-pattern-${Date.now()}`;
+            pattern.id = patternId;
+            pattern.setAttribute('width', this.gridSize.toString());
+            pattern.setAttribute('height', this.gridSize.toString());
+            pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${this.gridSize} 0 L 0 0 0 ${this.gridSize}`);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'rgba(0, 0, 0, 0.05)');
+            path.setAttribute('stroke-width', '1');
+
+            pattern.appendChild(path);
+            defs.appendChild(pattern);
+            existingPattern = pattern;
+        }
+
+        const patternId = existingPattern.id;
+
+        // Create or update background rect with grid pattern
+        if (!backgroundRect) {
+            backgroundRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            backgroundRect.setAttribute('class', 'grid-background');
+            (backgroundRect as any).style.pointerEvents = 'none';
+
+            // Insert background rect after defs (before connections)
+            if (defs.nextSibling) {
+                this.svgElement.insertBefore(backgroundRect, defs.nextSibling);
+            } else {
+                this.svgElement.appendChild(backgroundRect);
+            }
+        }
+
+        // Update background rect attributes
+        backgroundRect.setAttribute('width', '100%');
+        backgroundRect.setAttribute('height', '100%');
+        backgroundRect.setAttribute('fill', `url(#${patternId})`);
+    }
+
+    /**
+     * @deprecated Grid is now rendered in unified SVG via ensureGridInSVG()
+     * CRITICAL: GridSystem no longer creates separate SVG - grid is in unified SVG
+     * This method is kept for backward compatibility but does nothing
+     */
     private ensureGridOverlay(): void {
-        if (!this.gridVisible) {
-            return;
-        }
-        const existingOverlay = this.canvasElement.querySelector('.grid-overlay');
-        if (!this.gridInitialized || !existingOverlay) {
-            this.gridSystem.render(this.canvasElement, this.canvasScrollContainer);
-            this.gridInitialized = true;
-        } else {
-            this.gridSystem.updateDimensions();
-        }
+        // Grid is now handled by ensureGridInSVG() in unified SVG
+        // GridSystem.render() is no longer called to avoid creating separate SVG
+        // This method is kept for compatibility but does nothing
     }
 
     private updateCanvasStageBounds(_isRootView: boolean): void {
@@ -1409,13 +1527,16 @@ export class VisualDesigner {
         });
 
         const connectionCandidates = this.filterNodesForConnections(linearNodes);
+
+        // Użyj planConnections dla sekwencyjnych połączeń (start -> nodes -> end)
+        // planConnections tworzy pełną sekwencję: start -> node1 -> node2 -> ... -> nodeN -> end
         const planned = connectionCandidates.length > 0
             ? planConnections(connectionCandidates, 'workflow-start', 'workflow-end')
             : [];
-        const manualConnections = connectionCandidates.length > 0
-            ? generateConnections(connectionCandidates)
-            : [];
-        this.connections = [...planned, ...manualConnections];
+
+        // generateConnections tworzy tylko połączenia między sąsiednimi węzłami (bez start/end)
+        // Używamy tylko planConnections, które już zawiera wszystkie potrzebne połączenia
+        this.connections = planned;
 
         return linearNodes;
     }
@@ -1507,15 +1628,22 @@ export class VisualDesigner {
     /**
      * Create SVG overlay for connections
      */
+    /**
+     * Utwórz SVG overlay dla grid i connections
+     * CRITICAL: SVG musi być na wierzchu węzłów (HTML), ale pod connection points (HTML)
+     */
     private createSVGOverlay(): SVGSVGElement {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.style.position = 'absolute';
         svg.style.top = '0';
         svg.style.left = '0';
+        // CRITICAL: SVG musi być widoczne i na wierzchu węzłów
+        svg.style.pointerEvents = 'none'; // Nie blokuj interakcji z węzłami
+        svg.style.zIndex = '1'; // Na wierzchu węzłów (HTML), ale pod connection points
         // CRITICAL: Don't use 100% - SVG must match full canvas size, not just viewport
         // Size will be set by updateSvgOverlayDimensions() to match canvasElement dimensions
         svg.style.pointerEvents = 'none';
-        svg.style.zIndex = '1';
+        svg.style.zIndex = '10'; // HIGHER than nodes (which are typically z-index: 1-5)
         // Initial size - use viewport size initially, will be updated by updateSvgOverlayDimensions()
         const scrollContainer = this.canvasScrollContainer ?? this.container;
         const containerRect = scrollContainer?.getBoundingClientRect() || { width: 0, height: 0 };
@@ -1537,16 +1665,146 @@ export class VisualDesigner {
 
         this.visibleNodes = nodesToRender;
 
-        this.canvasElement.innerHTML = '';
+        // CRITICAL: Save SVG element reference before clearing innerHTML
+        const existingSvg = this.svgElement;
+        // CRITICAL: Preserve SVG element - don't destroy it with innerHTML
+        // Remove all children except SVG
+        const svgToPreserve = this.svgElement;
+        const childrenToRemove: Node[] = [];
+        for (let i = 0; i < this.canvasElement.childNodes.length; i++) {
+            const child = this.canvasElement.childNodes[i];
+            if (child !== svgToPreserve) {
+                childrenToRemove.push(child);
+            }
+        }
+        childrenToRemove.forEach(child => this.canvasElement.removeChild(child));
+
         this.currentRenderMeasurements = new Map();
 
         // Render grid first (with negative z-index to stay behind nodes)
         this.ensureGridOverlay();
 
-        // Create SVG overlay for connections
-        this.svgElement = this.createSVGOverlay();
-        this.canvasElement.appendChild(this.svgElement);
+        // Create or reuse SVG overlay for connections
+        if (!this.svgElement) {
+            this.svgElement = this.createSVGOverlay();
+            this.canvasElement.appendChild(this.svgElement);
+
+            // CRITICAL: Register SVG element with model manager (explicit registration)
+            // This ensures model manager can convert HTML coords to SVG coords
+            if ((this as any).modelManager) {
+                (this as any).modelManager.registerSvgElement?.(this.svgElement);
+            }
+        } else {
+            // SVG already exists - clear only connection elements, preserve grid
+            // This preserves the SVG element reference for ConnectionRenderer
+            const childrenToRemove: Node[] = [];
+            for (let i = 0; i < this.svgElement.childNodes.length; i++) {
+                const child = this.svgElement.childNodes[i];
+                // Keep defs (grid pattern) and grid-background rect
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    const elem = child as Element;
+                    const isGrid = elem.tagName === 'defs' ||
+                        elem.classList.contains('grid-background') ||
+                        (elem.tagName === 'rect' && elem.getAttribute('class') === 'grid-background');
+                    const isConnection = elem.classList.contains('connection-line') ||
+                        elem.classList.contains('connection-arrow') ||
+                        (elem.tagName === 'path' && elem.getAttribute('data-connection-id')) ||
+                        (elem.tagName === 'polygon' && elem.getAttribute('data-connection-id'));
+                    // Remove only connections, keep grid
+                    if (isConnection && !isGrid) {
+                        childrenToRemove.push(child);
+                    }
+                }
+            }
+            childrenToRemove.forEach(child => this.svgElement!.removeChild(child));
+
+            // Ensure SVG is still in DOM
+            if (!this.svgElement.parentElement) {
+                this.canvasElement.appendChild(this.svgElement);
+            }
+        }
         this.updateSvgOverlayDimensions();
+
+        // Ensure grid is rendered in SVG (if grid is visible)
+        this.ensureGridInSVG();
+
+        // Initialize VisualSemanticModelManager if not already initialized
+        if (!(this as any).modelManager && this.pluginManager) {
+            try {
+                console.log('[VisualDesigner] render: Creating VisualSemanticModelManager...', {
+                    hasPluginManager: !!this.pluginManager,
+                    nodesCount: this.nodes?.length || 0
+                });
+                (this as any).modelManager = new VisualSemanticModelManager(this, this.pluginManager);
+                console.log('✅ [VisualDesigner] VisualSemanticModelManager initialized in render()', {
+                    modelManagerType: typeof (this as any).modelManager,
+                    hasModelManager: !!(this as any).modelManager
+                });
+                // Immediately build model if nodes exist
+                if (this.nodes && this.nodes.length > 0) {
+                    (this as any).modelManager.notifyUpdate();
+                }
+            } catch (error) {
+                console.error('❌ [VisualDesigner] render: Failed to initialize VisualSemanticModelManager:', error);
+            }
+        }
+
+        // Initialize connection rendering system
+        // CRITICAL: SVG is now preserved, so renderer always uses the same SVG
+        if (this.svgElement && (this as any).modelManager) {
+            if (!this.connectionRenderer) {
+                // First time initialization
+                console.log('[VisualDesigner] render: Initializing ConnectionRenderer', {
+                    svgElement: !!this.svgElement,
+                    svgInDom: !!this.svgElement.parentElement,
+                    svgId: this.svgElement.id || 'no-id'
+                });
+                this.connectionRenderer = new D3ConnectionRenderer(
+                    this.svgElement
+                );
+                this.connectionPointsRenderer = new ConnectionPointsRenderer(
+                    this.svgElement,
+                    (this as any).modelManager,
+                    this.canvasElement // Pass canvas element for HTML-based rendering
+                );
+                this.connectionDragHandler = new ConnectionDragHandler(
+                    this,
+                    (this as any).modelManager,
+                    this.connectionRenderer,
+                    this.connectionPointsRenderer
+                );
+
+                // CRITICAL: Subskrybuj zmiany modelu i automatycznie renderuj połączenia
+                if ((this as any).modelManager) {
+                    (this as any).modelManager.subscribe((model: any) => {
+                        // Automatycznie renderuj połączenia po aktualizacji modelu
+                        requestAnimationFrame(() => {
+                            this.renderConnections();
+                        });
+                    });
+                    console.log('[VisualDesigner] ✅ Subscribed to model updates for automatic connection rendering');
+                }
+                console.log('[VisualDesigner] render: ✅ ConnectionRenderer initialized', {
+                    svgInDom: !!this.svgElement.parentElement,
+                    rendererSvg: !!this.connectionRenderer.svgElement,
+                    sameSvg: this.connectionRenderer.svgElement === this.svgElement,
+                    rendererSvgId: this.connectionRenderer.svgElement.id || 'no-id',
+                    designerSvgId: this.svgElement.id || 'no-id'
+                });
+            } else {
+                // Renderer exists - verify SVG match
+                const svgMatch = this.connectionRenderer.svgElement === this.svgElement;
+                if (!svgMatch) {
+                    console.warn('[VisualDesigner] render: SVG reference mismatch!', {
+                        rendererSvg: !!this.connectionRenderer.svgElement,
+                        designerSvg: !!this.svgElement,
+                        rendererSvgId: this.connectionRenderer.svgElement?.id || 'no-id',
+                        designerSvgId: this.svgElement?.id || 'no-id'
+                    });
+                    this.connectionRenderer.updateSvgElement(this.svgElement);
+                }
+            }
+        }
 
         // Auto-layout should work on all levels (root and nested containers)
         const shouldAutoLayout = true;
@@ -1562,16 +1820,40 @@ export class VisualDesigner {
         // UPROSZCZENIE: Zawsze używaj root nodes (bez drill-down)
         const rootNodeElements = renderedNodeElements.filter(element => !element.dataset.parentId);
 
-            this.renderProcessMarkers(rootNodeElements, {
-                interactive: true,
-                allowDrag: true
-            });
-            this.updateProcessMarkersPosition();
+        // CRITICAL: Render process markers (START/STOP) - needed for workflow-start/end connections
+        // These markers are used by VisualSemanticModelManager to create connections
+        this.renderProcessMarkers(rootNodeElements, {
+            interactive: true,
+            allowDrag: true
+        });
+        this.updateProcessMarkersPosition();
 
-            this.clearFocusFlowOverlay();
+        this.clearFocusFlowOverlay();
+
+        // CRITICAL: Update marker positions before rendering connections
+        // This ensures workflow-start and workflow-end positions are available in semantic model
+        this.updateProcessMarkersPosition();
+
+        // CRITICAL: Pokaż center points dla wszystkich węzłów (zawsze widoczne)
+        if (this.connectionPointsRenderer) {
+            this.connectionPointsRenderer.showAllCenterPoints();
+        }
+
+        // CRITICAL: Pokaż center points dla wszystkich węzłów (zawsze widoczne)
+        if (this.connectionPointsRenderer) {
+            this.connectionPointsRenderer.showAllCenterPoints();
+        }
 
         // Render connections
+        console.log('[VisualDesigner] render: About to call renderConnections()', {
+            hasRenderer: !!this.connectionRenderer,
+            hasSvg: !!this.svgElement,
+            svgInDom: !!this.svgElement?.parentElement
+        });
         this.renderConnections();
+        console.log('[VisualDesigner] render: After renderConnections()', {
+            svgChildren: this.svgElement?.children.length || 0
+        });
 
         // Render minimap if enabled (uproszczone - zawsze root view)
         if (this.minimapVisible) {
@@ -2277,11 +2559,11 @@ export class VisualDesigner {
         titleText.textContent = this.getNodeDisplayLabel(node);
         titleText.style.cursor = 'pointer';
         titleText.style.transition = 'color 0.2s ease';
-        
+
         // Enhanced tooltip with node type and key attributes
         const tooltipText = this.buildNodeTooltip(node);
         titleText.title = tooltipText;
-        
+
         // Add hover effect for label
         titleText.addEventListener('mouseenter', () => {
             titleText.style.color = '#007bff';
@@ -2289,7 +2571,7 @@ export class VisualDesigner {
         titleText.addEventListener('mouseleave', () => {
             titleText.style.color = '';
         });
-        
+
         // Explicit click handler for label to ensure property panel opens
         titleText.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2314,6 +2596,9 @@ export class VisualDesigner {
             surface.appendChild(containerBody);
         }
 
+        // DEPRECATED: PortSystem is being replaced by ConnectionPointsRenderer
+        // ConnectionPointsRenderer shows connection points when node is selected or during drag
+        // PortSystem is kept for backward compatibility and click handling
         this.portSystem.addPorts(nodeElement, node);
         this.setupPortHandlers(nodeElement, node);
 
@@ -2355,14 +2640,14 @@ export class VisualDesigner {
                 return;
             }
             e.stopPropagation();
-            
+
             // W drill-down mode: double-click na kontenerze wchodzi głębiej
             const isInDrillDown = this.drillDownManager.getCurrentId() !== null;
             if (isInDrillDown && isContainerNode(node.type)) {
                 this.enterContainer(node.id);
                 return;
             }
-            
+
             // W przeciwnym razie: otwórz properties
             this.selectNode(node.id);
             this.emit('nodeDoubleClicked', node.id);
@@ -2408,7 +2693,7 @@ export class VisualDesigner {
      */
     private buildNodeTooltip(node: VisualNode): string {
         const parts: string[] = [];
-        
+
         // Node type
         if (this.pluginManager) {
             const plugin = this.pluginManager.findPlugin(node.type);
@@ -2417,7 +2702,7 @@ export class VisualDesigner {
         } else {
             parts.push(`Type: ${node.type}`);
         }
-        
+
         // Key attributes (up to 3 most important)
         const highlights = this.extractAttributeHighlights(node);
         if (highlights.length > 0) {
@@ -2425,7 +2710,7 @@ export class VisualDesigner {
                 parts.push(`${label}: ${value}`);
             });
         }
-        
+
         // Execution status if available (from stateRenderer)
         // Note: We'll check the DOM element for execution status classes
         const nodeElement = this.canvasElement.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement | null;
@@ -2441,17 +2726,17 @@ export class VisualDesigner {
                 parts.push('Status: Failed');
             }
         }
-        
+
         // Validation errors if any
         const validationError = this.validationErrors.get(node.id);
         if (validationError) {
             parts.push(`⚠️ Error: ${validationError}`);
         }
-        
+
         // Instructions
         parts.push('---');
         parts.push('Click: Select | Double-click: Edit properties');
-        
+
         return parts.join('\n');
     }
 
@@ -2625,15 +2910,15 @@ export class VisualDesigner {
 
     private collectMarkerCandidateNodes(): HTMLElement[] {
         const focusedContainer = this.getFocusedContainer();
-        const renderedNodeElements = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
+        const renderedNodeElementsForMarkers = Array.from(this.canvasElement.querySelectorAll('.visual-node'))
             .filter((element): element is HTMLElement => element instanceof HTMLElement)
             .filter(element => Boolean(element.dataset.nodeId));
 
         if (focusedContainer) {
-            return renderedNodeElements.filter(element => element.dataset.parentId === focusedContainer.id);
+            return renderedNodeElementsForMarkers.filter(element => element.dataset.parentId === focusedContainer.id);
         }
 
-        return renderedNodeElements.filter(element => !element.dataset.parentId);
+        return renderedNodeElementsForMarkers.filter(element => !element.dataset.parentId);
     }
 
     private calculateProcessMarkerPositions(rootNodeElements: HTMLElement[]): { startX: number; startY: number; endX: number; endY: number } {
@@ -2842,9 +3127,29 @@ export class VisualDesigner {
                 if (type === 'start') {
                     this.startMarkerPosition = newPosition;
                     this.startMarkerManual = true;
+
+                    // CRITICAL: Notify model manager that workflow-start node has moved
+                    // This triggers recalculation of connections and connection points
+                    if ((this as any).modelManager) {
+                        const MARKER_RADIUS = 30;
+                        (this as any).modelManager.nodeMoved('workflow-start', {
+                            x: newPosition.x - MARKER_RADIUS,
+                            y: newPosition.y - MARKER_RADIUS
+                        });
+                    }
                 } else {
                     this.endMarkerPosition = newPosition;
                     this.endMarkerManual = true;
+
+                    // CRITICAL: Notify model manager that workflow-end node has moved
+                    // This triggers recalculation of connections and connection points
+                    if ((this as any).modelManager) {
+                        const MARKER_RADIUS = 30;
+                        (this as any).modelManager.nodeMoved('workflow-end', {
+                            x: newPosition.x - MARKER_RADIUS,
+                            y: newPosition.y - MARKER_RADIUS
+                        });
+                    }
                 }
 
                 this.renderConnections();
@@ -2874,641 +3179,110 @@ export class VisualDesigner {
     /**
      * Render connections (arrows)
      */
-    private renderConnections(): void {
-        if (!this.svgElement) return;
-
-        // Remove all existing event listeners before clearing
-        this.connectionLineElements.forEach((line, connectionId) => {
-            // Clone to remove all event listeners
-            const newLine = line.cloneNode(false) as SVGPathElement;
-            line.parentNode?.replaceChild(newLine, line);
-        });
-        this.connectionLineElements.clear();
-
-        // Clear existing connections from SVG (both lines and arrowheads)
-        const existingLines = this.svgElement.querySelectorAll('.connection-line');
-        const existingArrows = this.svgElement.querySelectorAll('.connection-arrow');
-        existingLines.forEach(line => line.remove());
-        existingArrows.forEach(arrow => arrow.remove());
-
-        // Get all connections: automatic + manual
-        const manualConnections = this.connectionManager.getConnections();
-
-        // Convert automatic connections to compatible format
-        const autoConnections = this.connections.map(conn => ({
-            from: conn.from,
-            to: conn.to,
-            type: conn.type as 'sequential' | 'conditional' | 'error',
-            id: undefined // Automatic connections don't have id
-        }));
-
-        const allConnections = [
-            ...autoConnections,
-            ...manualConnections // Manual connections (user-created) have id
-        ];
-
-        // UPROSZCZENIE: Zawsze renderuj wszystkie połączenia (bez drill-down)
-        const visibleNodeIds = new Set(this.getAllNodes().map((node: VisualNode) => node.id));
-        const isAnchorVisible = (anchorId: string): boolean => {
-            if (anchorId === 'workflow-start' || anchorId === 'workflow-end') {
-                return true;
-            }
-            return visibleNodeIds.has(anchorId);
-        };
-        const scopedConnections = allConnections.filter(connection => isAnchorVisible(connection.from) && isAnchorVisible(connection.to));
-
-        if (scopedConnections.length === 0) {
-            return;
-        }
-
-        scopedConnections.forEach(connection => {
-            try {
-                const fromAnchor = this.getConnectionAnchor(connection.from);
-                const toAnchor = this.getConnectionAnchor(connection.to);
-
-                if (!fromAnchor || !toAnchor) {
-                    console.warn('[VisualDesigner] Cannot render connection: anchor not found', connection);
-                    return;
-                }
-
-                const connectionId = (connection.id && typeof connection.id === 'string')
-                    ? connection.id
-                    : `auto-${connection.from}-${connection.to}`;
-                const isSelected = this.selectedConnectionId === connectionId;
-                const isManual = connectionId.startsWith('conn-');
-
-                if (fromAnchor.id === toAnchor.id) {
-                    return;
-                }
-
-                const geometry = this.computeConnectionGeometry(fromAnchor, toAnchor, connection.type);
-                this.drawConnectionPath(geometry.points, connection.type, connectionId, isSelected, isManual);
-            } catch (error) {
-                console.error('[VisualDesigner] Error rendering connection:', error, connection);
-            }
-        });
-    }
-
-    private computeConnectionGeometry(
-        from: AnchorInfo,
-        to: AnchorInfo,
-        type: 'sequential' | 'conditional' | 'error'
-    ): { points: Point[]; exitSide: AnchorSide; entrySide: AnchorSide } {
-        const [exitSide, entrySide] = this.chooseAnchorSides(from, to, type);
-        const startPoint = this.computeAnchorPoint(from, exitSide);
-        const endPoint = this.computeAnchorPoint(to, entrySide);
-        const points = this.buildOrthogonalPath(startPoint, endPoint, exitSide, entrySide);
-        return { points, exitSide, entrySide };
-    }
-
-    private chooseAnchorSides(
-        from: AnchorInfo,
-        to: AnchorInfo,
-        type: 'sequential' | 'conditional' | 'error'
-    ): [AnchorSide, AnchorSide] {
-        const deltaX = to.bounds.centerX - from.bounds.centerX;
-        const deltaY = to.bounds.centerY - from.bounds.centerY;
-        
-        // Jeśli węzły są wyrównane poziomo, wymuś routing wertykalny
-        const alignedHorizontally = Math.abs(deltaX) <= 1;
-        if (alignedHorizontally) {
-            if (deltaY >= 0) {
-                return ['bottom', 'top'];
-            } else {
-                return ['top', 'bottom'];
-            }
-        }
-
-        // Oblicz opcje routingu (horyzontalny i wertykalny)
-        const verticalOption: [AnchorSide, AnchorSide] = deltaY >= 0 
-            ? ['bottom', 'top'] 
-            : ['top', 'bottom'];
-        const horizontalOption: [AnchorSide, AnchorSide] = deltaX >= 0 
-            ? ['right', 'left'] 
-            : ['left', 'right'];
-
-        // Oblicz ścieżki dla obu opcji
-        const verticalStartPoint = this.computeAnchorPoint(from, verticalOption[0]);
-        const verticalEndPoint = this.computeAnchorPoint(to, verticalOption[1]);
-        const verticalPath = this.buildOrthogonalPath(verticalStartPoint, verticalEndPoint, verticalOption[0], verticalOption[1]);
-
-        const horizontalStartPoint = this.computeAnchorPoint(from, horizontalOption[0]);
-        const horizontalEndPoint = this.computeAnchorPoint(to, horizontalOption[1]);
-        const horizontalPath = this.buildOrthogonalPath(horizontalStartPoint, horizontalEndPoint, horizontalOption[0], horizontalOption[1]);
-
-        // Oblicz długości ścieżek
-        const verticalLength = this.calculatePathLength(verticalPath);
-        const horizontalLength = this.calculatePathLength(horizontalPath);
-
-        // Policz krzyżowania z istniejącymi połączeniami
-        const existingConnections = this.getAllExistingConnections();
-        const verticalCrossings = this.countPathCrossings(verticalPath, existingConnections);
-        const horizontalCrossings = this.countPathCrossings(horizontalPath, existingConnections);
-
-        // Oblicz score dla każdej opcji (mniejszy = lepszy)
-        // Weight: krzyżowania = 100, długość = 1
-        const CROSSING_WEIGHT = 100;
-        const LENGTH_WEIGHT = 1;
-        
-        const verticalScore = verticalCrossings * CROSSING_WEIGHT + verticalLength * LENGTH_WEIGHT;
-        const horizontalScore = horizontalCrossings * CROSSING_WEIGHT + horizontalLength * LENGTH_WEIGHT;
-
-        // Wybierz opcję z niższym score
-        if (verticalScore < horizontalScore) {
-            return verticalOption;
-        } else if (horizontalScore < verticalScore) {
-            return horizontalOption;
-        } else {
-            // Remis: preferuj wertykalny dla sequential, horyzontalny dla innych
-            return type === 'sequential' ? verticalOption : horizontalOption;
-        }
-    }
-
     /**
-     * Oblicz długość ścieżki ortogonalnej
+     * Render connections (arrows) - NOWA IMPLEMENTACJA
+     * Używa ConnectionRenderer z modelem semantycznym jako JEDYNEGO źródła prawdy
      */
-    private calculatePathLength(path: Point[]): number {
-        if (path.length < 2) return 0;
-        
-        let length = 0;
-        for (let i = 1; i < path.length; i++) {
-            const dx = path[i].x - path[i - 1].x;
-            const dy = path[i].y - path[i - 1].y;
-            length += Math.abs(dx) + Math.abs(dy); // Manhattan distance dla ortogonalnych
-        }
-        return length;
-    }
-
-    /**
-     * Policz krzyżowania między nową ścieżką a istniejącymi połączeniami
-     * Używa prostego algorytmu bez rekurencji (nie wywołuje chooseAnchorSides ponownie)
-     */
-    private countPathCrossings(newPath: Point[], existingConnections: Array<{ from: string; to: string; type?: string }>): number {
-        let crossings = 0;
-
-        // Cache dla ścieżek istniejących połączeń (aby uniknąć rekurencji)
-        const existingPathsCache = new Map<string, Point[]>();
-
-        // Pobierz ścieżki istniejących połączeń (używając prostego algorytmu bez optymalizacji)
-        for (const conn of existingConnections) {
-            const cacheKey = `${conn.from}-${conn.to}`;
-            if (existingPathsCache.has(cacheKey)) {
-                continue; // Już obliczone
-            }
-
-            try {
-                const fromAnchor = this.getConnectionAnchor(conn.from);
-                const toAnchor = this.getConnectionAnchor(conn.to);
-                
-                if (!fromAnchor || !toAnchor || fromAnchor.id === toAnchor.id) {
-                    continue;
-                }
-
-                // Użyj prostego algorytmu wyboru stron (bez optymalizacji, aby uniknąć rekurencji)
-                const [exitSide, entrySide] = this.chooseAnchorSidesSimple(fromAnchor, toAnchor, (conn.type as 'sequential' | 'conditional' | 'error') || 'sequential');
-                const startPoint = this.computeAnchorPoint(fromAnchor, exitSide);
-                const endPoint = this.computeAnchorPoint(toAnchor, entrySide);
-                const existingPath = this.buildOrthogonalPathSimple(startPoint, endPoint, exitSide, entrySide);
-                existingPathsCache.set(cacheKey, existingPath);
-            } catch (error) {
-                // Ignoruj błędy przy pobieraniu anchorów
-                continue;
-            }
-        }
-
-        // Sprawdź przecięcia z każdą istniejącą ścieżką
-        for (const existingPath of existingPathsCache.values()) {
-            crossings += this.countPathIntersections(newPath, existingPath);
-        }
-
-        return crossings;
-    }
-
-    /**
-     * Prosty wybór stron anchorów (bez optymalizacji, aby uniknąć rekurencji)
-     */
-    private chooseAnchorSidesSimple(
-        from: AnchorInfo,
-        to: AnchorInfo,
-        type: 'sequential' | 'conditional' | 'error'
-    ): [AnchorSide, AnchorSide] {
-        const deltaX = to.bounds.centerX - from.bounds.centerX;
-        const deltaY = to.bounds.centerY - from.bounds.centerY;
-        
-        const alignedHorizontally = Math.abs(deltaX) <= 1;
-        const preferVertical = alignedHorizontally
-            ? true
-            : (type === 'sequential'
-                ? Math.abs(deltaY) > Math.abs(deltaX)
-                : Math.abs(deltaY) >= Math.abs(deltaX));
-
-        if (preferVertical) {
-            if (deltaY >= 0) {
-                return ['bottom', 'top'];
-            } else {
-                return ['top', 'bottom'];
-            }
-        } else {
-            if (deltaX >= 0) {
-                return ['right', 'left'];
-            } else {
-                return ['left', 'right'];
-            }
-        }
-    }
-
-    /**
-     * Prosta budowa ortogonalnej ścieżki (bez wykrywania przeszkód, aby uniknąć rekurencji)
-     */
-    private buildOrthogonalPathSimple(
-        start: Point,
-        end: Point,
-        exitSide: AnchorSide,
-        entrySide: AnchorSide
-    ): Point[] {
-        const points: Point[] = [];
-        const pushPoint = (point: Point) => {
-            if (!this.pointsEqual(points[points.length - 1], point)) {
-                points.push(point);
-            }
-        };
-
-        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
-        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
-        const horizontalGap = Math.abs(end.x - start.x);
-        const verticalGap = Math.abs(end.y - start.y);
-
-        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
-        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
-
-        const startOffset = this.offsetAnchorPoint(
-            start,
-            exitSide,
-            exitVertical ? verticalOffset : horizontalOffset
-        );
-        const endOffset = this.offsetAnchorPoint(
-            end,
-            entrySide,
-            entryVertical ? verticalOffset : horizontalOffset
-        );
-
-        pushPoint(start);
-        pushPoint(startOffset);
-
-        if (exitVertical && entryVertical) {
-            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
-            pushPoint({ x: startOffset.x, y: midY });
-            pushPoint({ x: endOffset.x, y: midY });
-        } else if (!exitVertical && !entryVertical) {
-            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
-            pushPoint({ x: midX, y: startOffset.y });
-            pushPoint({ x: midX, y: endOffset.y });
-        } else if (exitVertical && !entryVertical) {
-            pushPoint({ x: startOffset.x, y: endOffset.y });
-        } else {
-            pushPoint({ x: endOffset.x, y: startOffset.y });
-        }
-
-        pushPoint(endOffset);
-        pushPoint(end);
-
-        return points;
-    }
-
-    /**
-     * Policz przecięcia między dwoma ortogonalnymi ścieżkami
-     */
-    private countPathIntersections(path1: Point[], path2: Point[]): number {
-        let intersections = 0;
-
-        // Sprawdź przecięcia między segmentami
-        for (let i = 0; i < path1.length - 1; i++) {
-            const seg1Start = path1[i];
-            const seg1End = path1[i + 1];
-
-            for (let j = 0; j < path2.length - 1; j++) {
-                const seg2Start = path2[j];
-                const seg2End = path2[j + 1];
-
-                if (this.segmentsIntersect(seg1Start, seg1End, seg2Start, seg2End)) {
-                    intersections++;
-                }
-            }
-        }
-
-        return intersections;
-    }
-
-    /**
-     * Sprawdź czy dwa ortogonalne segmenty się przecinają
-     */
-    private segmentsIntersect(seg1Start: Point, seg1End: Point, seg2Start: Point, seg2End: Point): boolean {
-        // Dla ortogonalnych ścieżek: segmenty są poziome lub pionowe
-        const seg1Horizontal = seg1Start.y === seg1End.y;
-        const seg2Horizontal = seg2Start.y === seg2End.y;
-
-        // Jeśli oba są poziome lub oba pionowe, sprawdź nakładanie
-        if (seg1Horizontal === seg2Horizontal) {
-            if (seg1Horizontal) {
-                // Oba poziome: sprawdź czy Y są równe i X się nakładają
-                if (seg1Start.y !== seg2Start.y) return false;
-                const seg1MinX = Math.min(seg1Start.x, seg1End.x);
-                const seg1MaxX = Math.max(seg1Start.x, seg1End.x);
-                const seg2MinX = Math.min(seg2Start.x, seg2End.x);
-                const seg2MaxX = Math.max(seg2Start.x, seg2End.x);
-                return !(seg1MaxX < seg2MinX || seg2MaxX < seg1MinX);
-            } else {
-                // Oba pionowe: sprawdź czy X są równe i Y się nakładają
-                if (seg1Start.x !== seg2Start.x) return false;
-                const seg1MinY = Math.min(seg1Start.y, seg1End.y);
-                const seg1MaxY = Math.max(seg1Start.y, seg1End.y);
-                const seg2MinY = Math.min(seg2Start.y, seg2End.y);
-                const seg2MaxY = Math.max(seg2Start.y, seg2End.y);
-                return !(seg1MaxY < seg2MinY || seg2MaxY < seg1MinY);
-            }
-        } else {
-            // Jeden poziomy, jeden pionowy: sprawdź punkt przecięcia
-            if (seg1Horizontal) {
-                // seg1 poziomy, seg2 pionowy
-                const crossX = seg2Start.x;
-                const crossY = seg1Start.y;
-                const seg1MinX = Math.min(seg1Start.x, seg1End.x);
-                const seg1MaxX = Math.max(seg1Start.x, seg1End.x);
-                const seg2MinY = Math.min(seg2Start.y, seg2End.y);
-                const seg2MaxY = Math.max(seg2Start.y, seg2End.y);
-                return crossX >= seg1MinX && crossX <= seg1MaxX && crossY >= seg2MinY && crossY <= seg2MaxY;
-            } else {
-                // seg1 pionowy, seg2 poziomy
-                const crossX = seg1Start.x;
-                const crossY = seg2Start.y;
-                const seg1MinY = Math.min(seg1Start.y, seg1End.y);
-                const seg1MaxY = Math.max(seg1Start.y, seg1End.y);
-                const seg2MinX = Math.min(seg2Start.x, seg2End.x);
-                const seg2MaxX = Math.max(seg2Start.x, seg2End.x);
-                return crossX >= seg2MinX && crossX <= seg2MaxX && crossY >= seg1MinY && crossY <= seg1MaxY;
-            }
-        }
-    }
-
-    /**
-     * Pobierz wszystkie istniejące połączenia (auto + manual)
-     */
-    private getAllExistingConnections(): Array<{ from: string; to: string; type?: string }> {
-        const allNodes = this.getAllNodes();
-        const autoConnections = generateConnections(allNodes).map(conn => ({
-            from: conn.from,
-            to: conn.to,
-            type: conn.type
-        }));
-        const manualConnections = this.connectionManager.getConnections().map(conn => ({
-            from: conn.from,
-            to: conn.to,
-            type: conn.type
-        }));
-        const plannedConnections = planConnections(allNodes, 'workflow-start', 'workflow-end').map(conn => ({
-            from: conn.from,
-            to: conn.to,
-            type: conn.type
-        }));
-
-        return [...autoConnections, ...manualConnections, ...plannedConnections];
-    }
-
-    private computeAnchorPoint(anchor: AnchorInfo, side: AnchorSide): Point {
-        const { bounds } = anchor;
-        switch (side) {
-            case 'top':
-                return { x: bounds.centerX, y: bounds.top };
-            case 'bottom':
-                return { x: bounds.centerX, y: bounds.bottom };
-            case 'left':
-                return { x: bounds.left, y: bounds.centerY };
-            case 'right':
-            default:
-                return { x: bounds.right, y: bounds.centerY };
-        }
-    }
-
-    private offsetAnchorPoint(point: Point, side: AnchorSide, distance: number): Point {
-        switch (side) {
-            case 'top':
-                return { x: point.x, y: point.y - distance };
-            case 'bottom':
-                return { x: point.x, y: point.y + distance };
-            case 'left':
-                return { x: point.x - distance, y: point.y };
-            case 'right':
-            default:
-                return { x: point.x + distance, y: point.y };
-        }
-    }
-
-    private buildOrthogonalPath(
-        start: Point,
-        end: Point,
-        exitSide: AnchorSide,
-        entrySide: AnchorSide
-    ): Point[] {
-        const points: Point[] = [];
-        const pushPoint = (point: Point) => {
-            if (!this.pointsEqual(points[points.length - 1], point)) {
-                points.push(point);
-            }
-        };
-
-        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
-        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
-        const horizontalGap = Math.abs(end.x - start.x);
-        const verticalGap = Math.abs(end.y - start.y);
-
-        // Increased offsets to avoid overlapping with node labels
-        // Labels are typically 40-60px from node edges, so we use larger offsets
-        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
-        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
-
-        const startOffset = this.offsetAnchorPoint(
-            start,
-            exitSide,
-            exitVertical ? verticalOffset : horizontalOffset
-        );
-        const endOffset = this.offsetAnchorPoint(
-            end,
-            entrySide,
-            entryVertical ? verticalOffset : horizontalOffset
-        );
-
-        pushPoint(start);
-        pushPoint(startOffset);
-
-        if (exitVertical && entryVertical) {
-            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
-            pushPoint({ x: startOffset.x, y: midY });
-            pushPoint({ x: endOffset.x, y: midY });
-        } else if (!exitVertical && !entryVertical) {
-            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
-            pushPoint({ x: midX, y: startOffset.y });
-            pushPoint({ x: midX, y: endOffset.y });
-        } else if (exitVertical && !entryVertical) {
-            pushPoint({ x: startOffset.x, y: endOffset.y });
-        } else {
-            pushPoint({ x: endOffset.x, y: startOffset.y });
-        }
-
-        pushPoint(endOffset);
-        pushPoint(end);
-
-        // Sprawdź przeszkody i reroute jeśli potrzeba
-        const obstacles = this.findObstaclesOnPath(points);
-        if (obstacles.length > 0) {
-            return this.rerouteAroundObstacles(start, end, exitSide, entrySide, obstacles);
-        }
-
-        return points;
-    }
-
-    /**
-     * Znajdź węzły, które są przeszkodami na ścieżce połączenia
-     */
-    private findObstaclesOnPath(path: Point[]): VisualNode[] {
-        const obstacles: VisualNode[] = [];
-        const allNodes = this.getAllNodes();
-
-        // Sprawdź każdy segment ścieżki
-        for (let i = 0; i < path.length - 1; i++) {
-            const segStart = path[i];
-            const segEnd = path[i + 1];
-            const segHorizontal = segStart.y === segEnd.y;
-
-            // Sprawdź każdy węzeł
-            for (const node of allNodes) {
-                if (!node.position) continue;
-
-                const nodeDims = this.getNodeDimensions(node);
-                const nodeLeft = node.position.x;
-                const nodeRight = nodeLeft + nodeDims.width;
-                const nodeTop = node.position.y;
-                const nodeBottom = nodeTop + Math.max(nodeDims.height, this.MIN_CARD_HEIGHT);
-
-                // Sprawdź czy segment przecina bounding box węzła
-                let intersects = false;
-                if (segHorizontal) {
-                    // Segment poziomy: sprawdź czy przecina węzeł w poziomie
-                    const segMinX = Math.min(segStart.x, segEnd.x);
-                    const segMaxX = Math.max(segStart.x, segEnd.x);
-                    const segY = segStart.y;
-                    intersects = segY >= nodeTop && segY <= nodeBottom && 
-                                 segMaxX >= nodeLeft && segMinX <= nodeRight;
-                } else {
-                    // Segment pionowy: sprawdź czy przecina węzeł w pionie
-                    const segMinY = Math.min(segStart.y, segEnd.y);
-                    const segMaxY = Math.max(segStart.y, segEnd.y);
-                    const segX = segStart.x;
-                    intersects = segX >= nodeLeft && segX <= nodeRight && 
-                                 segMaxY >= nodeTop && segMinY <= nodeBottom;
-                }
-
-                if (intersects && !obstacles.find(o => o.id === node.id)) {
-                    obstacles.push(node);
-                }
-            }
-        }
-
-        return obstacles;
-    }
-
-    /**
-     * Reroute ścieżkę wokół przeszkód
-     */
-    private rerouteAroundObstacles(
-        start: Point,
-        end: Point,
-        exitSide: AnchorSide,
-        entrySide: AnchorSide,
-        obstacles: VisualNode[]
-    ): Point[] {
-        // Prosty algorytm: przesuń segmenty wokół przeszkód
-        const exitVertical = exitSide === 'top' || exitSide === 'bottom';
-        const entryVertical = entrySide === 'top' || entrySide === 'bottom';
-        const horizontalGap = Math.abs(end.x - start.x);
-        const verticalGap = Math.abs(end.y - start.y);
-
-        const horizontalOffset = Math.max(20, Math.min(50, horizontalGap / 3));
-        const verticalOffset = Math.max(20, Math.min(50, verticalGap / 3));
-
-        const startOffset = this.offsetAnchorPoint(
-            start,
-            exitSide,
-            exitVertical ? verticalOffset : horizontalOffset
-        );
-        const endOffset = this.offsetAnchorPoint(
-            end,
-            entrySide,
-            entryVertical ? verticalOffset : horizontalOffset
-        );
-
-        const points: Point[] = [];
-        const pushPoint = (point: Point) => {
-            if (!this.pointsEqual(points[points.length - 1], point)) {
-                points.push(point);
-            }
-        };
-
-        pushPoint(start);
-        pushPoint(startOffset);
-
-        // Oblicz maksymalne wymiary przeszkód w obszarze między start a end
-        let maxObstacleWidth = 0;
-        let maxObstacleHeight = 0;
-        obstacles.forEach(obstacle => {
-            if (!obstacle.position) return;
-            const dims = this.getNodeDimensions(obstacle);
-            maxObstacleWidth = Math.max(maxObstacleWidth, dims.width);
-            maxObstacleHeight = Math.max(maxObstacleHeight, Math.max(dims.height, this.MIN_CARD_HEIGHT));
+    renderConnections(): void {
+        console.log('[VisualDesigner] renderConnections: START', {
+            hasRenderer: !!this.connectionRenderer,
+            hasSvgElement: !!this.svgElement,
+            hasModelManager: !!(this as any).modelManager
         });
 
-        // Dodatkowy offset aby ominąć przeszkody
-        const obstacleOffset = Math.max(maxObstacleWidth, maxObstacleHeight) / 2 + 40;
-
-        if (exitVertical && entryVertical) {
-            // Oba wertykalne: użyj większego offsetu poziomego
-            const midY = startOffset.y + (endOffset.y - startOffset.y) / 2;
-            const offsetX = startOffset.x < endOffset.x ? obstacleOffset : -obstacleOffset;
-            pushPoint({ x: startOffset.x, y: midY });
-            pushPoint({ x: startOffset.x + offsetX, y: midY });
-            pushPoint({ x: endOffset.x + offsetX, y: midY });
-            pushPoint({ x: endOffset.x, y: midY });
-        } else if (!exitVertical && !entryVertical) {
-            // Oba horyzontalne: użyj większego offsetu wertykalnego
-            const midX = startOffset.x + (endOffset.x - startOffset.x) / 2;
-            const offsetY = startOffset.y < endOffset.y ? obstacleOffset : -obstacleOffset;
-            pushPoint({ x: midX, y: startOffset.y });
-            pushPoint({ x: midX, y: startOffset.y + offsetY });
-            pushPoint({ x: midX, y: endOffset.y + offsetY });
-            pushPoint({ x: midX, y: endOffset.y });
-        } else if (exitVertical && !entryVertical) {
-            // Start wertykalny, end horyzontalny
-            const offsetY = startOffset.y < endOffset.y ? obstacleOffset : -obstacleOffset;
-            pushPoint({ x: startOffset.x, y: endOffset.y + offsetY });
-            pushPoint({ x: endOffset.x, y: endOffset.y + offsetY });
-        } else {
-            // Start horyzontalny, end wertykalny
-            const offsetX = startOffset.x < endOffset.x ? obstacleOffset : -obstacleOffset;
-            pushPoint({ x: startOffset.x + offsetX, y: startOffset.y });
-            pushPoint({ x: startOffset.x + offsetX, y: endOffset.y });
+        if (!this.connectionRenderer) {
+            console.warn('[VisualDesigner] renderConnections: ConnectionRenderer not initialized yet');
+            // Try to initialize if we have SVG and modelManager
+            if (this.svgElement && (this as any).modelManager) {
+                this.connectionRenderer = new D3ConnectionRenderer(
+                    this.svgElement
+                );
+                console.log('[VisualDesigner] renderConnections: ConnectionRenderer initialized on-demand');
+            } else {
+                console.warn('[VisualDesigner] renderConnections: Cannot initialize - missing svgElement or modelManager');
+                return;
+            }
         }
 
-        pushPoint(endOffset);
-        pushPoint(end);
+        // Użyj ConnectionRenderer do renderowania wszystkich połączeń
+        try {
+            this.connectionRenderer.renderAll((this as any).modelManager);
 
-        return points;
-    }
+            // CRITICAL: Dodaj event listenery do linii, żeby można było je przeciągać
+            if (this.svgElement) {
+                const paths = this.svgElement.querySelectorAll('path.connection-line');
+                paths.forEach(path => {
+                    // Usuń stare listenery
+                    const newPath = path.cloneNode(true) as SVGPathElement;
+                    path.parentNode?.replaceChild(newPath, path);
 
-    private pointsEqual(a?: Point, b?: Point): boolean {
-        if (!a || !b) {
-            return false;
+                    // Dodaj listener do przeciągania linii
+                    newPath.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        const connectionId = newPath.getAttribute('data-connection-id');
+                        const fromNodeId = newPath.getAttribute('data-from-node');
+                        const toNodeId = newPath.getAttribute('data-to-node');
+
+                        if (connectionId && fromNodeId && toNodeId && this.connectionDragHandler) {
+                            console.log(`[VisualDesigner] Starting drag for connection ${connectionId}`);
+                            // Znajdź center point output z fromNode
+                            const model = (this as any).modelManager.getModel();
+                            if (model) {
+                                const fromNode = model.workflow.allNodes.get(fromNodeId);
+                                if (fromNode) {
+                                    // Znajdź center point output
+                                    const outputCenterPoint = fromNode.connectionPoints.outputs.find(
+                                        (p: any) => p.id.includes('-center')
+                                    );
+                                    if (outputCenterPoint) {
+                                        this.connectionDragHandler.startDrag(
+                                            fromNodeId,
+                                            outputCenterPoint.id,
+                                            'output'
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('[VisualDesigner] renderConnections: Error in renderAll():', error);
         }
-        return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+
+        // DIAGNOSTICS: Check if elements were actually added
+        if (this.svgElement) {
+            const paths = this.svgElement.querySelectorAll('path.connection-line');
+            const arrows = this.svgElement.querySelectorAll('polygon.connection-arrow');
+            console.log('[VisualDesigner] renderConnections: After renderAll()', {
+                svgChildren: this.svgElement.children.length,
+                paths: paths.length,
+                arrows: arrows.length,
+                svgViewBox: this.svgElement.getAttribute('viewBox'),
+                svgWidth: this.svgElement.getAttribute('width'),
+                svgHeight: this.svgElement.getAttribute('height')
+            });
+        }
+
+        console.log('[VisualDesigner] renderConnections: END');
     }
+
+    // ========================================================================
+    // OLD CONNECTION RENDERING CODE - REMOVED
+    // All connection rendering is now handled by ConnectionRenderer
+    // ========================================================================
+
+    // REMOVED: computeConnectionGeometry, chooseAnchorSides, calculatePathLength,
+    // countPathCrossings, chooseAnchorSidesSimple, buildOrthogonalPathSimple,
+    // countPathIntersections, segmentsIntersect, getAllExistingConnections,
+    // computeAnchorPoint, offsetAnchorPoint, buildOrthogonalPath,
+    // findObstaclesOnPath, rerouteAroundObstacles, pointsEqual, getConnectionAnchor
+    // 
+    // All of this is now handled by:
+    // - ConnectionPathRouter (routing logic)
+    // - ConnectionRenderer (rendering logic)
+    // - VisualSemanticModelManager (model building)
 
     /**
      * Find node recursively (including in nested children)
@@ -3524,126 +3298,6 @@ export class VisualDesigner {
             }
         }
         return null;
-    }
-
-    /**
-     * Create SVG arrow
-     */
-    private drawConnectionPath(
-        points: Point[],
-        type: 'sequential' | 'conditional' | 'error',
-        connectionId?: string,
-        isSelected?: boolean,
-        isManual: boolean = false
-    ): void {
-        if (!this.svgElement) return;
-
-        if (points.length < 2) {
-            return;
-        }
-
-        // Determine style
-        let stroke = '#333';
-        let strokeDasharray = 'none';
-        let strokeWidth = '2';
-
-        if (type === 'conditional') {
-            stroke = '#4CAF50';
-            strokeDasharray = '5,5';
-        } else if (type === 'error') {
-            stroke = '#F44336';
-        }
-
-        // Selected connection styling
-        if (isSelected) {
-            stroke = 'var(--primary-color, #3b82f6)';
-            strokeWidth = '3';
-        }
-
-        // Create path
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('class', 'connection-line');
-        if (connectionId) {
-            path.setAttribute('data-connection-id', connectionId);
-        }
-        const pathData = points
-            .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-            .join(' ');
-        path.setAttribute('d', pathData);
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', stroke);
-        path.setAttribute('stroke-width', strokeWidth);
-        path.setAttribute('stroke-linejoin', 'round');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-dasharray', strokeDasharray);
-
-        // Make path interactive only for manual connections
-        if (connectionId && isManual) {
-            path.style.cursor = 'pointer';
-            path.style.opacity = isSelected ? '1' : '0.75';
-            path.style.pointerEvents = 'all';
-
-            const handleMouseEnter = () => {
-                if (!isSelected) {
-                    path.style.opacity = '1';
-                    path.setAttribute('stroke-width', (parseInt(strokeWidth) + 1).toString());
-                }
-            };
-
-            const handleMouseLeave = () => {
-                if (!isSelected) {
-                    path.style.opacity = '0.75';
-                    path.setAttribute('stroke-width', strokeWidth);
-                }
-            };
-
-            const handleClick = (e: MouseEvent) => {
-                e.stopPropagation();
-                this.handleConnectionClick(connectionId);
-            };
-
-            const handleContextMenu = (e: MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.showConnectionContextMenu(connectionId, { x: e.clientX, y: e.clientY });
-            };
-
-            path.addEventListener('mouseenter', handleMouseEnter);
-            path.addEventListener('mouseleave', handleMouseLeave);
-            path.addEventListener('click', handleClick);
-            path.addEventListener('contextmenu', handleContextMenu);
-
-            this.connectionLineElements.set(connectionId, path);
-        } else {
-            path.style.pointerEvents = 'none';
-        }
-
-        this.svgElement.appendChild(path);
-
-        // Create arrowhead
-        const arrowSize = 10;
-        const penultimate = points[points.length - 2];
-        const lastPoint = points[points.length - 1];
-        const angle = Math.atan2(lastPoint.y - penultimate.y, lastPoint.x - penultimate.x);
-        const arrowX = lastPoint.x - Math.cos(angle) * 10;
-        const arrowY = lastPoint.y - Math.sin(angle) * 10;
-
-        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        const arrowPoints = [
-            [lastPoint.x, lastPoint.y],
-            [arrowX - Math.cos(angle + Math.PI / 6) * arrowSize, arrowY - Math.sin(angle + Math.PI / 6) * arrowSize],
-            [arrowX - Math.cos(angle - Math.PI / 6) * arrowSize, arrowY - Math.sin(angle - Math.PI / 6) * arrowSize]
-        ];
-        arrow.setAttribute('points', arrowPoints.map(p => p.join(',')).join(' '));
-        arrow.setAttribute('fill', stroke);
-
-        // Add class for cleanup
-        arrow.setAttribute('class', 'connection-arrow');
-        if (connectionId) {
-            arrow.setAttribute('data-connection-id', connectionId);
-        }
-
-        this.svgElement.appendChild(arrow);
     }
 
     // ========================================================================
@@ -3926,6 +3580,38 @@ export class VisualDesigner {
                 this.emit('nodeAdded', newNode);
 
                 console.log('✅ Added node from palette:', newNode.type);
+
+                // CRITICAL: Automatyczne tworzenie połączenia z poprzednim węzłem
+                // Jeśli jest poprzedni węzeł, utwórz połączenie automatycznie
+                const allNodes = this.getAllNodes();
+                if (allNodes.length > 1) {
+                    // Znajdź poprzedni węzeł (przedostatni w liście)
+                    const previousNode = allNodes[allNodes.length - 2];
+                    if (previousNode && previousNode.id !== newNode.id) {
+                        // Utwórz połączenie: previousNode -> newNode
+                        const connectionManager = (this as any).connectionManager as ConnectionManager;
+                        if (connectionManager) {
+                            // Waliduj połączenie przed utworzeniem
+                            const validation = connectionManager.validateConnection(previousNode.id, newNode.id, 'sequential');
+                            if (validation.valid) {
+                                // Użyj center points do łączenia (automatycznie wybrane przez model semantyczny)
+                                connectionManager.createConnection(previousNode.id, newNode.id, 'sequential');
+                                console.log(`✅ Auto-connected ${previousNode.id} -> ${newNode.id}`);
+
+                                // Odśwież model semantyczny i przerenderuj połączenia
+                                if ((this as any).modelManager) {
+                                    (this as any).modelManager.notifyUpdate();
+                                }
+                                requestAnimationFrame(() => {
+                                    this.renderConnections();
+                                });
+                            } else {
+                                console.warn(`⚠️ Auto-connection skipped: ${validation.error}`);
+                            }
+                        }
+                    }
+                }
+
                 this.clearDropHints();
             } catch (error) {
                 console.error('Failed to create node from drop:', error);
@@ -3951,32 +3637,8 @@ export class VisualDesigner {
         // Setup mouse wheel for zoom/pan
         this.canvasElement.addEventListener('wheel', (e) => this.handleMouseWheel(e), { passive: false });
 
-        // Setup canvas-wide mouse move/up for connection drag
-        this.canvasElement.addEventListener('mousemove', (e) => {
-            if (this.connectionDragState?.temporaryLine) {
-                // Convert viewport coordinates to canvas coordinates (SVG uses canvas coords)
-                const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
-
-                this.connectionDragState.temporaryLine.setAttribute('x2', canvasPos.x.toString());
-                this.connectionDragState.temporaryLine.setAttribute('y2', canvasPos.y.toString());
-
-                // Visual feedback for reconnect mode (orange line)
-                if (this.connectionDragState.isReconnect) {
-                    this.connectionDragState.temporaryLine.setAttribute('stroke', '#FF9800');
-                    this.connectionDragState.temporaryLine.setAttribute('stroke-width', '3');
-                } else {
-                    this.connectionDragState.temporaryLine.setAttribute('stroke', 'var(--magenta)');
-                    this.connectionDragState.temporaryLine.setAttribute('stroke-width', '2');
-                }
-            }
-        });
-
-        this.canvasElement.addEventListener('mouseup', () => {
-            // Cancel connection drag if mouse released outside a port
-            if (this.connectionDragState) {
-                this.cancelConnectionDrag();
-            }
-        });
+        // Connection drag is now handled by ConnectionDragHandler
+        // Mouse move/up events are handled internally by ConnectionDragHandler
 
         // Click on canvas to deselect connections
         this.canvasElement.addEventListener('click', (e) => {
@@ -4061,17 +3723,17 @@ export class VisualDesigner {
 
             // Przed przesunięciem: sprawdź kolizje i automatycznie przesuń inne węzły
             const newPosition: Point = { x: newX, y: newY };
-            
+
             // Automatycznie przesuń węzły, które kolidują
             this.pushNodesAway(node, newPosition);
-            
+
             // Sprawdź czy pozycja jest wolna (po przesunięciu innych)
             let finalPosition = newPosition;
-            if (this.checkNodeCollision(node, newPosition, node.id) || 
+            if (this.checkNodeCollision(node, newPosition, node.id) ||
                 this.checkLabelCollision(node, newPosition, node.id)) {
                 // Znajdź najbliższą wolną pozycję
                 finalPosition = this.findNearestFreePosition(node, newPosition);
-                
+
                 // Wizualna informacja zwrotna: dodaj klasę CSS dla kolizji
                 nodeElement.classList.add('node-collision-warning');
             } else {
@@ -4085,7 +3747,13 @@ export class VisualDesigner {
             }
             node.position = finalPosition;
             node.isManualPositioned = true;
-            
+
+            // CRITICAL: Notify model manager about node movement (incremental update)
+            // This triggers recalculation of dependent connections
+            if ((this as any).modelManager) {
+                (this as any).modelManager.nodeMoved?.(node.id, finalPosition);
+            }
+
             // Zaktualizuj DOM bezpośrednio
             const element = this.canvasElement.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement | null;
             if (element && element.style.position === 'absolute') {
@@ -4137,58 +3805,15 @@ export class VisualDesigner {
 
                 const port = portElement as HTMLElement;
                 const portType = port.dataset.portConnectionType || 'sequential';
+                // Get port ID from data attribute or generate from port type
+                const portId = port.dataset.portId || `output-${portType}`;
 
-                // Check if this port already has a connection (reconnect mode)
-                const existingConnections = this.connectionManager.getConnectionsForNode(node.id, 'output');
-                const existingConnection = existingConnections.find(conn => {
-                    // Match by port type if connection has type info
-                    return conn.type === portType || (portType === 'sequential' && !conn.type);
-                });
-
-                // Start connection drag (new or reconnect)
-                this.connectionDragState = {
-                    fromNodeId: node.id,
-                    fromPortElement: port,
-                    fromPortType: portType,
-                    temporaryLine: null,
-                    isReconnect: !!existingConnection,
-                    existingConnectionId: existingConnection?.id || null,
-                    reconnectEnd: existingConnection ? 'source' : null
-                };
-
-                // Visual feedback for reconnect mode
-                if (existingConnection) {
-                    port.style.background = '#FF9800'; // Orange for reconnect
-                    port.style.borderColor = '#FF9800';
+                // Use ConnectionDragHandler to start drag
+                if (this.connectionDragHandler) {
+                    this.connectionDragHandler.startDrag(node.id, portId, portType);
+                } else {
+                    console.warn('[VisualDesigner] ConnectionDragHandler not initialized');
                 }
-
-                // Create temporary SVG line
-                if (this.svgElement) {
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    // Calculate start position in canvas coordinates
-                    const nodeRect = nodeElement.getBoundingClientRect();
-                    const canvasPos = this.viewportToCanvas(nodeRect.left + nodeRect.width / 2, nodeRect.bottom);
-
-                    line.setAttribute('x1', canvasPos.x.toString());
-                    line.setAttribute('y1', canvasPos.y.toString());
-                    line.setAttribute('x2', canvasPos.x.toString());
-                    line.setAttribute('y2', canvasPos.y.toString());
-
-                    // Color based on reconnect mode
-                    if (this.connectionDragState.isReconnect) {
-                        line.setAttribute('stroke', '#FF9800'); // Orange for reconnect
-                        line.setAttribute('stroke-width', '3');
-                    } else {
-                        line.setAttribute('stroke', 'var(--magenta)');
-                        line.setAttribute('stroke-width', '2');
-                    }
-                    line.setAttribute('stroke-dasharray', '5,5');
-                    line.style.pointerEvents = 'none';
-
-                    this.svgElement.appendChild(line);
-                    this.connectionDragState.temporaryLine = line;
-                }
-
             });
         });
 
@@ -4203,291 +3828,34 @@ export class VisualDesigner {
         const freshInputPorts = nodeElement.querySelectorAll('.port-input');
 
         freshInputPorts.forEach(portElement => {
-            // Also handle mousedown for input ports (to reconnect source)
-            portElement.addEventListener('mousedown', (e) => {
+            // Input ports handle mouseup to complete connection drag
+            portElement.addEventListener('mouseup', (e: Event) => {
                 e.stopPropagation();
 
-                // Check if this input port already has a connection (reconnect source mode)
-                const existingConnections = this.connectionManager.getConnectionsForNode(node.id, 'input');
-                const existingConnection = existingConnections.find(conn => conn.to === node.id);
-
-                if (existingConnection) {
-                    // Start reconnect mode for source
-                    const fromNode = this.findNode(existingConnection.from);
-                    if (fromNode) {
-                        const fromNodeElement = this.canvasElement.querySelector(`[data-node-id="${existingConnection.from}"]`) as HTMLElement;
-                        const fromPortElement = fromNodeElement?.querySelector('.port-output') as HTMLElement;
-
-                        if (fromPortElement) {
-                            this.connectionDragState = {
-                                fromNodeId: existingConnection.from,
-                                fromPortElement: fromPortElement,
-                                fromPortType: existingConnection.type || 'sequential',
-                                temporaryLine: null,
-                                isReconnect: true,
-                                existingConnectionId: existingConnection.id,
-                                reconnectEnd: 'target' // Reconnecting target (this input port)
-                            };
-
-                            // Visual feedback
-                            const portEl = portElement as HTMLElement;
-                            portEl.style.background = '#FF9800';
-                            portEl.style.borderColor = '#FF9800';
-                        }
+                // ConnectionDragHandler handles the drag completion
+                // This is just a placeholder - the actual handling is in ConnectionDragHandler
+                if (this.connectionDragHandler && e instanceof MouseEvent) {
+                    const port = portElement as HTMLElement;
+                    const portId = port.dataset.portId || 'input-default-left';
+                    // ConnectionDragHandler will find the target port from mouse position
+                    const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
+                    const target = this.connectionDragHandler.findTargetPort(canvasPos);
+                    if (target && target.nodeId === node.id && target.portId === portId) {
+                        // End drag at this port
+                        this.connectionDragHandler.endDrag(node.id, portId);
                     }
                 }
-            });
-
-            portElement.addEventListener('mouseup', (e) => {
-                e.stopPropagation();
-
-                if (!this.connectionDragState) {
-                    return; // Not in connection drag mode
-                }
-
-                if (this.connectionDragState.fromNodeId === node.id) {
-                    // Cannot connect to same node
-                    this.cancelConnectionDrag();
-                    return;
-                }
-
-                const connectionType = (this.connectionDragState.fromPortType as ConnectionType) || 'sequential';
-
-                // Handle reconnect vs new connection
-                if (this.connectionDragState.isReconnect && this.connectionDragState.existingConnectionId) {
-                    // Reconnect existing connection - change target or source
-                    const existingConn = this.connectionManager.getConnection(this.connectionDragState.existingConnectionId);
-                    if (!existingConn) {
-                        this.cancelConnectionDrag();
-                        return;
-                    }
-
-                    const reconnectEnd = this.connectionDragState.reconnectEnd || 'target';
-
-                    if (reconnectEnd === 'target') {
-                        // Reconnect target: change toNodeId
-
-                        // Step 1: Validate port type compatibility
-                        const targetNodeElement = nodeElement;
-                        const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
-                        const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
-
-                        const sourcePortType = (this.connectionDragState.fromPortType as PortType) || 'sequential';
-
-                        const portValidation = this.portSystem.validatePortTypeCompatibility(
-                            sourcePortType,
-                            targetPortType
-                        );
-
-                        if (!portValidation.valid) {
-                            this.showError(`Port compatibility error: ${portValidation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 1.5: Validate semantic compatibility of ports
-                        const semanticValidation = this.connectionManager.validateReconnectSemantics(
-                            existingConn.from,
-                            node.id,
-                            sourcePortType,
-                            targetPortType,
-                            this.nodes,
-                            (nodeId: string) => {
-                                const foundNode = this.findNode(nodeId);
-                                return foundNode?.type || null;
-                            }
-                        );
-
-                        if (!semanticValidation.valid) {
-                            this.showError(`Semantic validation failed: ${semanticValidation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 1.6: Additional semantic checks using SemanticValidator
-                        if (this.semanticValidator) {
-                            const fromNode = this.findNode(existingConn.from);
-                            const toNode = this.findNode(node.id);
-
-                            if (fromNode && toNode) {
-                                // Check if nodes are in parent-child relationship (should use nesting, not connections)
-                                const areRelated = this.areNodesRelated(fromNode, toNode);
-                                if (areRelated) {
-                                    this.showError('Cannot connect nodes that are in a parent-child relationship. Use nesting instead.');
-                                    this.cancelConnectionDrag();
-                                    return;
-                                }
-                            }
-                        }
-
-                        // Step 2: Validate connection rules (no duplicates, no cycles)
-                        const validation = this.connectionManager.validateConnection(
-                            existingConn.from,
-                            node.id,
-                            connectionType,
-                            this.connectionDragState.existingConnectionId
-                        );
-                        if (!validation.valid) {
-                            this.showError(`Reconnection validation failed: ${validation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 3: Update connection
-                        this.pushHistorySnapshot();
-                        this.connectionManager.updateConnection(this.connectionDragState.existingConnectionId, {
-                            to: node.id,
-                            type: connectionType
-                        });
-                        this.markDirty();
-                    } else if (reconnectEnd === 'source') {
-                        // Reconnect source: change fromNodeId
-
-                        // Step 1: Validate port type compatibility
-                        const sourceNodeElement = this.canvasElement.querySelector(`[data-node-id="${this.connectionDragState.fromNodeId}"]`) as HTMLElement;
-                        const sourceOutputPort = sourceNodeElement ? this.portSystem.findPortElement(sourceNodeElement, 'output', connectionType as PortType) : null;
-                        const sourcePortType = sourceOutputPort ? this.portSystem.getPortTypeFromElement(sourceOutputPort) : (connectionType as PortType);
-
-                        const targetNodeElement = nodeElement;
-                        const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
-                        const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
-
-                        const portValidation = this.portSystem.validatePortTypeCompatibility(
-                            sourcePortType,
-                            targetPortType
-                        );
-
-                        if (!portValidation.valid) {
-                            this.showError(`Port compatibility error: ${portValidation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 1.5: Validate semantic compatibility of ports
-                        const semanticValidation = this.connectionManager.validateReconnectSemantics(
-                            this.connectionDragState.fromNodeId,
-                            existingConn.to,
-                            sourcePortType,
-                            targetPortType,
-                            this.nodes,
-                            (nodeId: string) => {
-                                const foundNode = this.findNode(nodeId);
-                                return foundNode?.type || null;
-                            }
-                        );
-
-                        if (!semanticValidation.valid) {
-                            this.showError(`Semantic validation failed: ${semanticValidation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 1.6: Additional semantic checks using SemanticValidator
-                        if (this.semanticValidator) {
-                            const fromNode = this.findNode(this.connectionDragState.fromNodeId);
-                            const toNode = this.findNode(existingConn.to);
-
-                            if (fromNode && toNode) {
-                                // Check if nodes are in parent-child relationship (should use nesting, not connections)
-                                const areRelated = this.areNodesRelated(fromNode, toNode);
-                                if (areRelated) {
-                                    this.showError('Cannot connect nodes that are in a parent-child relationship. Use nesting instead.');
-                                    this.cancelConnectionDrag();
-                                    return;
-                                }
-                            }
-                        }
-
-                        // Step 2: Validate connection rules
-                        const validation = this.connectionManager.validateConnection(
-                            this.connectionDragState.fromNodeId,
-                            existingConn.to,
-                            connectionType,
-                            this.connectionDragState.existingConnectionId
-                        );
-                        if (!validation.valid) {
-                            this.showError(`Reconnection validation failed: ${validation.error}`);
-                            this.cancelConnectionDrag();
-                            return;
-                        }
-
-                        // Step 3: Update connection
-                        this.pushHistorySnapshot();
-                        this.connectionManager.updateConnection(this.connectionDragState.existingConnectionId, {
-                            from: this.connectionDragState.fromNodeId,
-                            type: connectionType
-                        });
-                        this.markDirty();
-                    }
-
-                    // Re-render to show updated connection
-                    this.render();
-                } else {
-                    // Create new connection
-
-                    // Step 1: Validate port type compatibility
-                    const sourceNodeElement = this.canvasElement.querySelector(`[data-node-id="${this.connectionDragState.fromNodeId}"]`) as HTMLElement;
-                    const sourceOutputPort = sourceNodeElement ? this.portSystem.findPortElement(sourceNodeElement, 'output', connectionType as PortType) : null;
-                    const sourcePortType = sourceOutputPort ? this.portSystem.getPortTypeFromElement(sourceOutputPort) : (connectionType as PortType);
-
-                    const targetNodeElement = nodeElement;
-                    const targetInputPort = this.portSystem.findPortElement(targetNodeElement, 'input');
-                    const targetPortType = targetInputPort ? this.portSystem.getPortTypeFromElement(targetInputPort) : null;
-
-                    const portValidation = this.portSystem.validatePortTypeCompatibility(
-                        sourcePortType,
-                        targetPortType
-                    );
-
-                    if (!portValidation.valid) {
-                        this.showError(`Port compatibility error: ${portValidation.error}`);
-                        this.cancelConnectionDrag();
-                        return;
-                    }
-
-                    // Step 2: Validate connection rules
-                    const validation = this.connectionManager.validateConnection(
-                        this.connectionDragState.fromNodeId,
-                        node.id
-                    );
-
-                    if (!validation.valid) {
-                        this.showError(`Connection validation failed: ${validation.error}`);
-                        this.cancelConnectionDrag();
-                        return;
-                    }
-
-                    try {
-                        this.createManualConnection(
-                            this.connectionDragState.fromNodeId,
-                            node.id,
-                            connectionType
-                        );
-                    } catch (error) {
-                        this.showError(`Failed to create connection: ${error}`);
-                    }
-                }
-
-                this.cancelConnectionDrag();
             });
         });
     }
 
     /**
-     * Cancel connection drag
+     * Cancel connection drag - now delegated to ConnectionDragHandler
      */
     private cancelConnectionDrag(): void {
-        if (this.connectionDragState?.temporaryLine) {
-            this.connectionDragState.temporaryLine.remove();
+        if (this.connectionDragHandler) {
+            this.connectionDragHandler.cancelDrag();
         }
-
-        // Reset port visual feedback
-        if (this.connectionDragState?.fromPortElement) {
-            this.connectionDragState.fromPortElement.style.background = '';
-            this.connectionDragState.fromPortElement.style.borderColor = '';
-        }
-
-        this.connectionDragState = null;
     }
 
     /**
@@ -4865,16 +4233,8 @@ export class VisualDesigner {
         const connection = this.connectionManager.getConnection(connectionId);
         if (!connection) return;
 
-        // Start connection drag from current source to allow reconnecting
-        this.startConnectionDrag(connection.from, 'output');
-        this.connectionDragState = {
-            ...this.connectionDragState!,
-            isReconnect: true,
-            existingConnectionId: connectionId,
-            reconnectEnd: 'source'
-        };
-
-        // Show message to user
+        // Reconnect is now handled by ConnectionDragHandler
+        // User should drag from a different output port
         this.showError('Drag from a different output port to change source');
     }
 
@@ -4885,16 +4245,8 @@ export class VisualDesigner {
         const connection = this.connectionManager.getConnection(connectionId);
         if (!connection) return;
 
-        // Start connection drag from current source
-        this.startConnectionDrag(connection.from, 'output');
-        this.connectionDragState = {
-            ...this.connectionDragState!,
-            isReconnect: true,
-            existingConnectionId: connectionId,
-            reconnectEnd: 'target'
-        };
-
-        // Show message to user
+        // Reconnect is now handled by ConnectionDragHandler
+        // User should drop on a different input port
         this.showError('Drop on a different input port to change target');
     }
 
@@ -5520,6 +4872,130 @@ export class VisualDesigner {
         this.ensureGridOverlay();
         const isRootView = this.drillDownManager.getCurrentId() === null;
         this.updateCanvasStageBounds(isRootView);
+    }
+
+    /**
+     * Handle node drag end - resolve collisions automatically
+     */
+    /**
+     * Resolve collisions for a node by auto-layouting affected nodes
+     */
+    private resolveCollisionsForNode(nodeId: string): void {
+        const node = this.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+
+        // Get model to check path collisions
+        const model = (this as any).modelManager?.getModel();
+        if (!model) return;
+
+        // Find all connections that pass through this node
+        const affectedConnections = Array.from(model.workflow.connections.values())
+            .filter((conn: any) => {
+                const passesThrough = conn.path?.spatialMetadata?.passesThroughNodes || [];
+                return passesThrough.includes(nodeId);
+            });
+
+        if (affectedConnections.length === 0) return;
+
+        // Find affected nodes (nodes connected by affected connections)
+        const affectedNodeIds = new Set<string>();
+        affectedConnections.forEach((conn: any) => {
+            affectedNodeIds.add(conn.fromNodeId);
+            affectedNodeIds.add(conn.toNodeId);
+        });
+        affectedNodeIds.delete(nodeId); // Don't move the dragged node
+
+        // Auto-layout affected nodes
+        const affectedNodes = Array.from(affectedNodeIds)
+            .map(id => this.nodes.find(n => n.id === id))
+            .filter((n): n is VisualNode => n !== undefined);
+
+        if (affectedNodes.length > 0) {
+            console.log(`[VisualDesigner] Auto-layouting ${affectedNodes.length} nodes to resolve collisions...`);
+            this.applyAutoLayoutToRootNodes(affectedNodes);
+        }
+    }
+
+    handleNodeDragEnd(nodeId: string, finalPosition: { x: number; y: number }): void {
+        // CRITICAL: Check for collisions and auto-layout if needed
+        const draggedNode = this.nodes.find(n => n.id === nodeId);
+        if (!draggedNode) return;
+
+        // Check for node collisions
+        const hasNodeCollision = this.checkNodeCollision(draggedNode, finalPosition, nodeId);
+        const hasLabelCollision = this.checkLabelCollision(draggedNode, finalPosition, nodeId);
+
+        if (hasNodeCollision || hasLabelCollision) {
+            console.log(`[VisualDesigner] Collision detected for node ${nodeId}, finding free position...`);
+            // Find nearest free position
+            const freePosition = this.findNearestFreePosition(draggedNode, finalPosition);
+            draggedNode.position = freePosition;
+            draggedNode.isManualPositioned = true;
+
+            // Rebuild model to update connections and detect path collisions
+            if ((this as any).modelManager) {
+                (this as any).modelManager.buildModel();
+            }
+
+            // Check for path collisions (lines passing through nodes)
+            const model = (this as any).modelManager?.getModel();
+            if (model) {
+                const nodeState = model.workflow.allNodes.get(nodeId);
+                if (nodeState) {
+                    // Check all connections that pass through this node
+                    const connectionsThroughNode = Array.from(model.workflow.connections.values())
+                        .filter((conn: any) => conn.path?.spatialMetadata?.passesThroughNodes?.includes(nodeId));
+
+                    if (connectionsThroughNode.length > 0) {
+                        console.log(`[VisualDesigner] Found ${connectionsThroughNode.length} connections passing through node ${nodeId}, triggering auto-layout...`);
+                        // Trigger auto-layout for affected nodes
+                        this.resolveCollisionsForNode(nodeId);
+                    }
+                }
+            }
+
+            // Re-render
+            this.render();
+            return;
+        }
+
+        // No collision - update position normally
+        const targetNode = this.findNode(nodeId);
+        if (!targetNode) {
+            return;
+        }
+
+        // Check for collisions
+        const hasCollision = this.checkNodeCollision(targetNode, finalPosition, nodeId) ||
+            this.checkLabelCollision(targetNode, finalPosition, nodeId);
+
+        if (hasCollision) {
+            // Try to push other nodes away first
+            this.pushNodesAway(targetNode, finalPosition);
+
+            // If still collision, find nearest free position
+            if (this.checkNodeCollision(targetNode, finalPosition, nodeId) ||
+                this.checkLabelCollision(targetNode, finalPosition, nodeId)) {
+                const freePosition = this.findNearestFreePosition(targetNode, finalPosition, 500);
+                this.moveNode(nodeId, freePosition, { skipRender: false });
+            } else {
+                // Collision resolved by pushing, just update position
+                this.moveNode(nodeId, finalPosition, { skipRender: false });
+            }
+        } else {
+            // No collision, just move
+            this.moveNode(nodeId, finalPosition, { skipRender: false });
+        }
+
+        // Rebuild connections and render
+        this.rebuildConnections(false);
+        this.renderConnections();
+        this.updateProcessMarkersPosition();
+
+        // Notify model manager to update semantic model
+        if ((this as any).modelManager) {
+            (this as any).modelManager.notifyUpdate();
+        }
     }
 
     /**
@@ -6230,40 +5706,23 @@ export class VisualDesigner {
             throw new Error(`Port ${portDirection} not found on node ${fromNodeId}`);
         }
 
-        // Check if this port already has a connection (reconnect mode)
-        const existingConnections = this.connectionManager.getConnectionsForNode(fromNodeId, 'output');
-        const existingConnection = existingConnections.find(conn => {
-            const portType = portElement.dataset.portConnectionType || 'sequential';
-            return conn.type === portType || (portType === 'sequential' && !conn.type);
-        });
+        const portType = portElement.dataset.portConnectionType || 'sequential';
+        const portId = portElement.dataset.portId || `output-${portType}`;
 
-        this.connectionDragState = {
-            fromNodeId,
-            fromPortElement: portElement,
-            fromPortType: portElement.dataset.portConnectionType || 'sequential',
-            temporaryLine: null,
-            isReconnect: !!existingConnection,
-            existingConnectionId: existingConnection?.id || null,
-            reconnectEnd: existingConnection ? 'source' : null
-        };
+        // Use ConnectionDragHandler
+        if (this.connectionDragHandler) {
+            this.connectionDragHandler.startDrag(fromNodeId, portId, portType);
+        } else {
+            console.warn('[VisualDesigner] ConnectionDragHandler not initialized');
+        }
     }
 
     endConnectionDrag(toNodeId: string, _direction: 'input' | 'output' = 'input'): ManualConnection | null {
-        if (!this.connectionDragState) {
-            return null;
-        }
-
-        const { fromNodeId, fromPortType } = this.connectionDragState;
-
-        try {
-            const connection = this.createManualConnection(fromNodeId, toNodeId, (fromPortType as ConnectionType) || 'sequential');
-            return connection;
-        } catch (error) {
-            console.warn('Failed to create connection via drag:', error);
-            return null;
-        } finally {
-            this.cancelConnectionDrag();
-        }
+        // ConnectionDragHandler handles drag completion internally
+        // This method is kept for API compatibility but may not be called directly
+        // The actual connection creation happens in ConnectionDragHandler.endDrag()
+        console.warn('[VisualDesigner] endConnectionDrag called - connection should be completed via ConnectionDragHandler');
+        return null;
     }
 
     /**
@@ -6889,12 +6348,60 @@ export class VisualDesigner {
      * Set plugin manager for semantic validation (called after plugins are loaded)
      */
     setPluginManager(pluginManager: PluginManager): void {
+        console.log('[VisualDesigner] setPluginManager called', {
+            hasPluginManager: !!pluginManager,
+            pluginManagerType: typeof pluginManager,
+            pluginManagerValue: pluginManager ? 'not null' : 'null',
+            hasExistingModelManager: !!(this as any).modelManager,
+            hasExistingPluginManager: !!this.pluginManager,
+            nodesCount: this.nodes?.length || 0
+        });
+
+        if (!pluginManager) {
+            console.error('[VisualDesigner] setPluginManager: pluginManager is null/undefined!');
+            return;
+        }
+
         this.pluginManager = pluginManager;
         this.iconLibrary.setPluginManager(pluginManager); // Enable metadata-driven icons
+        // Initialize VisualSemanticModelManager if not already initialized
+        const hasModelManager = !!(this as any).modelManager;
+        const hasPluginManagerAfterSet = !!this.pluginManager;
+        const shouldInitialize = !hasModelManager && hasPluginManagerAfterSet;
+        console.log('[VisualDesigner] setPluginManager: shouldInitialize =', shouldInitialize, {
+            hasModelManager: hasModelManager,
+            hasPluginManager: hasPluginManagerAfterSet,
+            condition1: !hasModelManager,
+            condition2: hasPluginManagerAfterSet
+        });
+        if (shouldInitialize) {
+            try {
+                (this as any).modelManager = new VisualSemanticModelManager(this, this.pluginManager);
+                console.log('✅ [VisualDesigner] VisualSemanticModelManager initialized in setPluginManager()', {
+                    modelManagerType: typeof (this as any).modelManager,
+                    hasModelManager: !!(this as any).modelManager
+                });
+                // Build model if nodes already exist
+                if (this.nodes && this.nodes.length > 0) {
+                    (this as any).modelManager.notifyUpdate();
+                    console.log('[VisualDesigner] setPluginManager: notifyUpdate() called for existing nodes');
+                }
+            } catch (error) {
+                console.error('❌ [VisualDesigner] Failed to initialize VisualSemanticModelManager:', error);
+                throw error;
+            }
+        } else {
+            console.log('[VisualDesigner] setPluginManager: Skipping initialization', {
+                reason: !(this as any).modelManager ? 'modelManager already exists' : 'pluginManager is null'
+            });
+        }
         this.semanticValidator = new SemanticValidator(pluginManager);
         this.detailRegistry = new MasterDetailRegistry(pluginManager);
         this.fallbackDetailSections.clear();
         console.log('✅ [VisualDesigner] Semantic validator initialized');
+
+        // Initialize new connection rendering system (will be initialized when svgElement is created)
+        // ConnectionRenderer and ConnectionDragHandler are initialized in render() method
 
         setContainerResolver((type: string) => {
             if (!this.semanticValidator) {
@@ -7369,153 +6876,6 @@ export class VisualDesigner {
         return this.workflowStatus;
     }
 
-    private getConnectionAnchor(targetId: string): AnchorInfo | null {
-        if (targetId === 'workflow-start' && this.startMarkerPosition) {
-            const element = this.startMarkerElement;
-            const width = element?.offsetWidth ?? 52;
-            const height = element?.offsetHeight ?? 52;
-            const centerX = this.startMarkerPosition.x;
-            const centerY = this.startMarkerPosition.y;
-            const bounds: AnchorBounds = {
-                left: centerX - width / 2,
-                right: centerX + width / 2,
-                top: centerY - height / 2,
-                bottom: centerY + height / 2,
-                width,
-                height,
-                centerX,
-                centerY
-            };
-            return { id: targetId, type: 'marker', bounds, element };
-        }
-
-        if (targetId === 'workflow-end') {
-            // CRITICAL: Respect manual marker position, but update automatic position during node drag
-            let endPosition: { x: number; y: number };
-            
-            if (this.endMarkerManual) {
-                // Marker was manually positioned by user - ALWAYS use manual position
-                endPosition = this.endMarkerPosition || { x: 0, y: 0 };
-            } else {
-                // Marker is automatic - calculate from model positions (most accurate during drag)
-                const focusedContainer = this.getFocusedContainer();
-                const rootNodes = focusedContainer 
-                    ? (focusedContainer.children || [])
-                    : this.nodes;
-                
-                if (rootNodes.length > 0) {
-                    // We have nodes - calculate from model positions
-                    const positions = this.calculateProcessMarkerPositionsFromModel([]);
-                    endPosition = { x: positions.endX, y: positions.endY };
-                    // Update stored position for consistency
-                    this.endMarkerPosition = endPosition;
-                } else if (this.endMarkerElement) {
-                    // No nodes in model - fallback to DOM element position
-                    const rect = this.endMarkerElement.getBoundingClientRect();
-                    const canvasPos = this.viewportToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2);
-                    endPosition = { x: canvasPos.x, y: canvasPos.y };
-                    this.endMarkerPosition = endPosition;
-                } else {
-                    // Last resort: use default position
-                    endPosition = { x: this.START_X + this.DEFAULT_NODE_WIDTH / 2, y: this.START_Y + this.DEFAULT_NODE_HEIGHT + 120 };
-                    this.endMarkerPosition = endPosition;
-                }
-            }
-            
-            const element = this.endMarkerElement;
-            const width = element?.offsetWidth ?? 52;
-            const height = element?.offsetHeight ?? 52;
-            const centerX = endPosition.x;
-            const centerY = endPosition.y;
-            const bounds: AnchorBounds = {
-                left: centerX - width / 2,
-                right: centerX + width / 2,
-                top: centerY - height / 2,
-                bottom: centerY + height / 2,
-                width,
-                height,
-                centerX,
-                centerY
-            };
-            return { id: targetId, type: 'marker', bounds, element };
-        }
-
-        const element = this.canvasElement.querySelector(`[data-node-id="${targetId}"]`) as HTMLElement | null;
-
-        if (element) {
-            // Prefer up-to-date model coordinates if available (DOM may be stale between renders)
-            const modelNode = this.findNodeRecursive(targetId, this.nodes);
-            if (modelNode?.position) {
-                const dims = this.getNodeDimensions(modelNode);
-                const left = modelNode.position.x;
-                const top = modelNode.position.y;
-                const bounds: AnchorBounds = {
-                    left,
-                    top,
-                    right: left + dims.width,
-                    bottom: top + dims.height,
-                    width: dims.width,
-                    height: dims.height,
-                    centerX: left + dims.width / 2,
-                    centerY: top + dims.height / 2
-                };
-                return {
-                    id: targetId,
-                    type: 'node',
-                    bounds,
-                    element
-                };
-            } else {
-                const rect = element.getBoundingClientRect();
-                const topLeft = this.viewportToCanvas(rect.left, rect.top);
-                const bottomRight = this.viewportToCanvas(rect.right, rect.bottom);
-                const width = bottomRight.x - topLeft.x;
-                const height = bottomRight.y - topLeft.y;
-                const bounds: AnchorBounds = {
-                    left: topLeft.x,
-                    top: topLeft.y,
-                    right: bottomRight.x,
-                    bottom: bottomRight.y,
-                    width,
-                    height,
-                    centerX: topLeft.x + width / 2,
-                    centerY: topLeft.y + height / 2
-                };
-
-                return {
-                    id: targetId,
-                    type: 'node',
-                    bounds,
-                    element
-                };
-            }
-        }
-
-        const node = this.findNodeRecursive(targetId, this.nodes);
-        if (!node || !node.position) {
-            return null;
-        }
-        const dimensions = this.getNodeDimensions(node);
-        const left = node.position.x;
-        const top = node.position.y;
-        const bounds: AnchorBounds = {
-            left,
-            top,
-            right: left + dimensions.width,
-            bottom: top + dimensions.height,
-            width: dimensions.width,
-            height: dimensions.height,
-            centerX: left + dimensions.width / 2,
-            centerY: top + dimensions.height / 2
-        };
-
-        return {
-            id: targetId,
-            type: 'node',
-            bounds,
-            element
-        };
-    }
 
     private renderFocusFlowOverlay(focusedContainer: VisualNode): void {
         if (this.focusFlowOverlay) {

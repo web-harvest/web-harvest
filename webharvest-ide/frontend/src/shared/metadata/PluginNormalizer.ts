@@ -10,11 +10,15 @@ import type {
     PluginVisualEnvelope,
     UiToolDefinition
 } from '../../types';
+import { mapSchemaFromExtensions, getAttributeDefinitions } from './SchemaMapper';
 
 export function normalizePlugin(plugin: any): Plugin {
     const semantics = normalizeSemantics(plugin.semantics);
     const visualEnvelope = normalizeVisualEnvelope(plugin.visual);
-    const schema = normalizeSchema(plugin.schema);
+    // Always use extensions.schema as source of truth, with fallback to legacy schema
+    const schema = plugin.extensions?.schema 
+        ? mapSchemaFromExtensions(plugin.extensions, plugin.schema)
+        : normalizeSchema(plugin.schema);
     const visualApiVersion = visualEnvelope?.apiVersion ?? null;
     const visualCapabilities = Array.isArray(visualEnvelope?.capabilities)
         ? visualEnvelope!.capabilities

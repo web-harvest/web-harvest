@@ -262,7 +262,7 @@ public final class PluginMetadataCatalog {
         List<String> dependencies = collectDependencies(metadata, semantics);
 
         // Extract complete schema information for extensions
-        Map<String, Object> extensions = extractSchemaExtensions(metadata, pluginClass);
+        Map<String, Object> extensions = extractSchemaExtensions(metadata, pluginClass, resolved);
 
         return new PluginDescriptor(id, elementName, displayName, origin, pluginClass.getName(), category, description,
                 documentation, semantics, uiHints, dependencies, extensions);
@@ -272,7 +272,7 @@ public final class PluginMetadataCatalog {
      * Extracts complete schema information as extensions map.
      * Includes attribute definitions, namespace, and other schema details.
      */
-    private static Map<String, Object> extractSchemaExtensions(PluginMetadata metadata, Class<? extends Plugin> pluginClass) {
+    private static Map<String, Object> extractSchemaExtensions(PluginMetadata metadata, Class<? extends Plugin> pluginClass, org.webharvest.plugin.semantic.PluginSemantics semantics) {
         Map<String, Object> extensions = new LinkedHashMap<>();
         
         // Extract namespace
@@ -367,6 +367,12 @@ public final class PluginMetadataCatalog {
             extensions.put("masterDetailConstraints", masterDetailConstraints);
         }
         
+        // Extract execution semantics
+        Map<String, Object> executionSemantics = extractExecutionSemantics(pluginClass, metadata, semantics);
+        if (!executionSemantics.isEmpty()) {
+            extensions.put("executionSemantics", executionSemantics);
+        }
+        
         Map<String, Object> uiMetadata = new LinkedHashMap<>();
         if (!attributeUiMetadata.isEmpty()) {
             Map<String, Map<String, Object>> exportedFields = attributeUiMetadata.entrySet()
@@ -445,6 +451,39 @@ public final class PluginMetadataCatalog {
         }
         
         return map;
+    }
+
+    /**
+     * Extract execution semantics from plugin class and metadata
+     */
+    private static Map<String, Object> extractExecutionSemantics(
+            Class<? extends Plugin> pluginClass,
+            PluginMetadata metadata,
+            org.webharvest.plugin.semantic.PluginSemantics semantics) {
+        Map<String, Object> execSemantics = new LinkedHashMap<>();
+        
+        // Determine if plugin is a container
+        boolean isContainer = semantics != null && semantics.allowsChildPlugins();
+        execSemantics.put("isContainer", isContainer);
+        execSemantics.put("isLeaf", !isContainer);
+        
+        // Infer execution order from plugin type
+        String className = pluginClass.getSimpleName().toLowerCase(Locale.ROOT);
+        String executionOrder = "sequential";
+        if (className.contains("if") || className.contains("else") || 
+            className.contains("try") || className.contains("catch") ||
+            className.contains("case")) {
+            executionOrder = "conditional";
+        } else if (className.contains("loop") || className.contains("while")) {
+            executionOrder = "parallel";
+        }
+        execSemantics.put("executionOrder", executionOrder);
+        
+        // All plugins can be paused/resumed
+        execSemantics.put("canPause", true);
+        execSemantics.put("canResume", true);
+        
+        return execSemantics;
     }
 
     private static Map<String, Map<String, Object>> extractAttributeUiMetadata(Class<? extends Plugin> pluginClass) {

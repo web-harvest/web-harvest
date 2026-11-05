@@ -101,9 +101,37 @@ export class App {
         // Initialize new RightSidebar (replaces old sidebar structure)
         // Must be initialized before PropertyPanel and RunWorkflowPanel so containers exist
         try {
+            // First, ensure sidebar element is hidden before creating RightSidebar
+            const sidebarElement = document.getElementById('rightSidebar');
+            if (sidebarElement) {
+                sidebarElement.classList.remove('sidebar-section--visible');
+                sidebarElement.style.setProperty('display', 'none', 'important');
+                sidebarElement.style.setProperty('width', '0', 'important');
+                sidebarElement.style.setProperty('min-width', '0', 'important');
+                sidebarElement.style.setProperty('max-width', '0', 'important');
+                sidebarElement.style.setProperty('flex', '0 0 0', 'important');
+            }
+            
             this.rightSidebar = new RightSidebar('rightSidebar', {
                 onSectionChange: (section) => this.handleSidebarSectionChange(section),
             });
+            
+            // Ensure sidebar is hidden by default after initialization
+            if (this.rightSidebar) {
+                this.rightSidebar.hide();
+            }
+            
+            // Double-check after a short delay
+            setTimeout(() => {
+                if (sidebarElement) {
+                    sidebarElement.classList.remove('sidebar-section--visible');
+                    sidebarElement.style.setProperty('display', 'none', 'important');
+                    sidebarElement.style.setProperty('width', '0', 'important');
+                    sidebarElement.style.setProperty('min-width', '0', 'important');
+                    sidebarElement.style.setProperty('max-width', '0', 'important');
+                    sidebarElement.style.setProperty('flex', '0 0 0', 'important');
+                }
+            }, 100);
 
             // Initialize PropertyPanel after RightSidebar creates #propertyPanel container
             const propertiesContainer = this.rightSidebar.getPropertiesContainer();
@@ -590,6 +618,8 @@ export class App {
             const node = this.visualDesigner.findNode(nodeId);
             if (node) {
                 console.log(`✅ [App] Found node, calling propertyPanel.showNode():`, node);
+                // Show property panel when showing node
+                this.showPropertyPanel();
 
                 // Activate Properties section in RightSidebar
                 if (this.rightSidebar) {
@@ -597,6 +627,8 @@ export class App {
                 }
 
                 if (this.propertyPanel) {
+                    // Show property panel when showing node
+                    this.showPropertyPanel();
                     this.propertyPanel.showNode(node).catch(err => {
                         console.error('❌ [App] Error showing node in PropertyPanel:', err);
                     });
@@ -636,6 +668,8 @@ export class App {
                     this.rightSidebar.showSection('properties');
                 }
                 if (this.propertyPanel) {
+                    // Show property panel when showing node
+                    this.showPropertyPanel();
                     this.propertyPanel.showNode(node).catch(err => {
                         console.error('❌ [App] Error showing node in PropertyPanel:', err);
                     });
@@ -648,7 +682,8 @@ export class App {
                 return;
             }
             if (panelName === 'properties') {
-                this.uiManager.showPropertyPanel(true);
+                // Show property panel when Details button is clicked
+                this.showPropertyPanel();
             }
             this.switchSidebarPanel(panelName);
         });
@@ -858,7 +893,9 @@ export class App {
                                             this.rightSidebar.showSection('properties');
                                         }
                                         if (this.propertyPanel) {
-                                            this.propertyPanel.showNode(node).catch(err => {
+                                            // Show property panel when showing node
+                    this.showPropertyPanel();
+                    this.propertyPanel.showNode(node).catch(err => {
                                                 console.error('❌ [App] Error showing node in PropertyPanel:', err);
                                             });
                                         }
@@ -875,7 +912,9 @@ export class App {
                                 this.rightSidebar.showSection('properties');
                             }
                             if (this.propertyPanel) {
-                                this.propertyPanel.showNode(node).catch(err => {
+                                // Show property panel when showing node
+                    this.showPropertyPanel();
+                    this.propertyPanel.showNode(node).catch(err => {
                                     console.error('❌ [App] Error showing node in PropertyPanel:', err);
                                 });
                             }
@@ -1000,6 +1039,78 @@ export class App {
     toggleSidebar(): void {
         console.log('🔧 [App] toggleSidebar() called');
         this.uiManager.toggleRightSidebar();
+    }
+    
+    /**
+     * Toggle property panel visibility
+     */
+    togglePropertyPanel(): void {
+        console.log('🔧 [App] togglePropertyPanel() called');
+        if (!this.rightSidebar) {
+            console.error('❌ [App] togglePropertyPanel() - rightSidebar is null!');
+            return;
+        }
+        
+        const btn = document.getElementById('btn-toggle-properties');
+        const sidebarElement = document.getElementById('rightSidebar');
+        
+        if (!sidebarElement) {
+            console.error('❌ [App] togglePropertyPanel() - #rightSidebar element not found!');
+            return;
+        }
+        
+        const isVisible = this.rightSidebar.isVisible();
+        console.log(`🔧 [App] Panel currently visible: ${isVisible}`);
+        
+        if (isVisible) {
+            console.log('🔧 [App] Hiding panel...');
+            this.rightSidebar.hide();
+            if (btn) btn.classList.remove('active');
+        } else {
+            console.log('🔧 [App] Showing panel...');
+            this.rightSidebar.show();
+            // Switch to properties section when showing
+            this.rightSidebar.showSection('properties');
+            if (btn) btn.classList.add('active');
+            
+            // Double-check after a short delay
+            setTimeout(() => {
+                const computedDisplay = window.getComputedStyle(sidebarElement).display;
+                const computedWidth = window.getComputedStyle(sidebarElement).width;
+                console.log(`🔧 [App] Panel state after show: display=${computedDisplay}, width=${computedWidth}`);
+                if (computedDisplay === 'none' || computedWidth === '0px') {
+                    console.warn('⚠️ [App] Panel still hidden after show() - forcing display');
+                    sidebarElement.style.display = 'flex';
+                    sidebarElement.style.width = '320px';
+                    sidebarElement.classList.add('sidebar-section--visible');
+                }
+            }, 100);
+        }
+    }
+    
+    /**
+     * Show property panel
+     */
+    showPropertyPanel(): void {
+        console.log('🔧 [App] showPropertyPanel() called');
+        if (this.rightSidebar) {
+            this.rightSidebar.show();
+            this.rightSidebar.showSection('properties');
+            const btn = document.getElementById('btn-toggle-properties');
+            if (btn) btn.classList.add('active');
+        }
+    }
+    
+    /**
+     * Hide property panel
+     */
+    hidePropertyPanel(): void {
+        console.log('🔧 [App] hidePropertyPanel() called');
+        if (this.rightSidebar) {
+            this.rightSidebar.hide();
+            const btn = document.getElementById('btn-toggle-properties');
+            if (btn) btn.classList.remove('active');
+        }
     }
 
     private downloadXml(xml: string, filename: string): void {

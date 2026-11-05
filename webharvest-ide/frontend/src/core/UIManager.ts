@@ -361,13 +361,13 @@ export class UIManager {
             }
         }
         
-        // Ensure sidebar has fixed width
+        // Ensure sidebar has fixed width (reduced to 20% to give more space to canvas)
         const sidebar = document.querySelector('.sidebar-section') as HTMLElement;
         if (sidebar) {
-            sidebar.style.flex = '0 0 360px';
-            sidebar.style.minWidth = '360px';
-            sidebar.style.maxWidth = '360px';
-            console.log(`[UIManager] Sidebar width fixed to 360px`);
+            sidebar.style.flex = '0 0 20%';
+            sidebar.style.minWidth = '280px';
+            sidebar.style.maxWidth = '20%';
+            console.log(`[UIManager] Sidebar width set to 20% (min 280px)`);
         }
         
         this.showEditor(false);

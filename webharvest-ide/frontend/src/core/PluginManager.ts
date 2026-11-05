@@ -10,6 +10,9 @@ export class PluginManager {
     private loaded: boolean = false;
     private schemaVersion: string | null = null;
     private catalogSchema: Record<string, any> | null = null;
+    private lastVersionCheck: number = 0;
+    private versionCheckInterval: number = 60000; // Check every 60 seconds
+    private refreshListeners: Set<() => void> = new Set();
 
     /**
      * Load plugins from API
@@ -108,6 +111,98 @@ export class PluginManager {
     getCategories(): string[] {
         const categories = new Set(this.plugins.map(p => (p.paletteGroup || p.category || 'Other')));
         return Array.from(categories).sort();
+    }
+
+    /**
+     * Check if schema version has changed on the server
+     */
+    async checkSchemaVersion(): Promise<{ changed: boolean; newVersion: string | null }> {
+        try {
+            const response = await fetch('/api/plugins/metadata/version');
+            const data = await response.json();
+            const serverVersion = data.schemaVersion || data.version || null;
+            
+            if (serverVersion && serverVersion !== this.schemaVersion) {
+                return { changed: true, newVersion: serverVersion };
+            }
+            
+            return { changed: false, newVersion: this.schemaVersion };
+        } catch (error) {
+            console.warn('Failed to check schema version:', error);
+            return { changed: false, newVersion: this.schemaVersion };
+        }
+    }
+
+    /**
+     * Refresh plugins from API (force reload)
+     */
+    async refresh(): Promise<Plugin[]> {
+        this.loaded = false;
+        this.plugins = [];
+        this.schemaVersion = null;
+        this.catalogSchema = null;
+        
+        const plugins = await this.loadPlugins();
+        
+        // Notify listeners
+        this.refreshListeners.forEach(listener => {
+            try {
+                listener();
+            } catch (error) {
+                console.error('Error in refresh listener:', error);
+            }
+        });
+        
+        return plugins;
+    }
+
+    /**
+     * Add a listener for refresh events
+     */
+    onRefresh(listener: () => void): () => void {
+        this.refreshListeners.add(listener);
+        return () => {
+            this.refreshListeners.delete(listener);
+        };
+    }
+
+    /**
+     * Start automatic version checking (optional)
+     */
+    startVersionChecking(intervalMs: number = 60000): void {
+        this.versionCheckInterval = intervalMs;
+        this.checkVersionPeriodically();
+    }
+
+    /**
+     * Stop automatic version checking
+     */
+    stopVersionChecking(): void {
+        this.versionCheckInterval = 0;
+    }
+
+    private async checkVersionPeriodically(): Promise<void> {
+        if (this.versionCheckInterval <= 0) {
+            return;
+        }
+
+        const now = Date.now();
+        if (now - this.lastVersionCheck < this.versionCheckInterval) {
+            return;
+        }
+
+        this.lastVersionCheck = now;
+        const { changed, newVersion } = await this.checkSchemaVersion();
+        
+        if (changed) {
+            console.log(`🔄 Schema version changed from ${this.schemaVersion} to ${newVersion}, refreshing plugins...`);
+            await this.refresh();
+        }
+
+        // Schedule next check
+        if (this.versionCheckInterval > 0) {
+            setTimeout(() => this.checkVersionPeriodically(), this.versionCheckInterval);
+        }
     }
 
     /**

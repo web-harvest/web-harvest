@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Arrow Test</title>
+</head>
+<body>
+    <svg width="400" height="200" style="border: 1px solid black;">
+        <defs>
+            <marker id="arrowhead" markerWidth="20" markerHeight="20" refX="20" refY="10" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 20">
+                <polygon points="0 0, 20 10, 0 20" fill="red" stroke="red" stroke-width="1.5" />
+            </marker>
+        </defs>
+        <!-- Test arrow from left to right -->
+        <path d="M 50 100 L 350 100" stroke="blue" stroke-width="3" fill="none" marker-end="url(#arrowhead)" />
+        <!-- Test arrow from right to left -->
+        <path d="M 350 150 L 50 150" stroke="green" stroke-width="3" fill="none" marker-end="url(#arrowhead)" />
+    </svg>
+</body>
+</html>

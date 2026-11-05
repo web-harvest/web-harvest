@@ -108,30 +108,48 @@
 
         /* Right sidebar - Properties/Execution/etc */
         .sidebar-section {
-            display: flex !important;
-            flex: 0 0 30% !important;
-            min-width: 280px !important;
-            max-width: 30% !important;
+            display: none !important;
+            /* Hidden by default */
+            flex: 0 0 0 !important;
+            /* Zero width when hidden */
+            min-width: 0 !important;
+            max-width: 0 !important;
+            width: 0 !important;
             flex-direction: column !important;
             background: white !important;
             border-left: 1px solid var(--gray-200) !important;
+            transition: width 0.3s ease, opacity 0.3s ease !important;
+            overflow: hidden !important;
+        }
+
+        .sidebar-section--visible {
+            display: flex !important;
+            flex: 0 0 320px !important;
+            /* Fixed width when visible - narrower */
+            min-width: 280px !important;
+            max-width: 400px !important;
+            width: 320px !important;
         }
 
         /* Toggle buttons active state */
         #togglePaletteBtn.active,
-        #toggleSidebarBtn.active {
-            background: var(--primary-color, #3b82f6) !important;
+        #toggleSidebarBtn.active,
+        #btn-toggle-properties.active {
+            background: var(--magenta) !important;
             color: white !important;
         }
 
         #togglePaletteBtn:hover,
-        #toggleSidebarBtn:hover {
+        #toggleSidebarBtn:hover,
+        #btn-toggle-properties:hover {
             background: var(--gray-200) !important;
         }
 
         #togglePaletteBtn.active:hover,
-        #toggleSidebarBtn.active:hover {
-            background: var(--primary-color, #2563eb) !important;
+        #toggleSidebarBtn.active:hover,
+        #btn-toggle-properties.active:hover {
+            background: var(--magenta) !important;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -163,19 +181,14 @@
     <!-- Unified Toolbar (Brand Colors!) -->
     <div id="unified-toolbar"
         style="display: flex; padding: var(--spacing-3) var(--spacing-6); background: white; border-bottom: 1px solid var(--gray-200); align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
-        <!-- Left: Filename + Dirty -->
+        <!-- Left: Empty (removed filename) -->
         <div style="display: flex; align-items: center; gap: var(--spacing-2);">
-            <i class="fas fa-file-code" style="color: var(--gray-600);"></i>
-            <span id="current-filename"
-                style="font-weight: 600; font-size: 14px; color: var(--text-primary);">untitled.xml</span>
-            <span id="dirty-indicator"
-                style="display: none; color: var(--magenta); font-size: 16px; margin-left: var(--spacing-2);"
-                title="Unsaved changes">●</span>
+            <!-- Filename removed for cleaner header -->
         </div>
 
         <!-- Center: Mode Toggle -->
         <div class="mode-toggle"
-            style="display: flex; gap: 4px; background: var(--gray-100); border-radius: var(--radius-md); padding: 3px;">
+            style="display: flex; gap: 4px; background: var(--gray-100); border-radius: var(--radius-md); padding: 3px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
             <button id="btn-xml-mode" onclick="window.app.switchMode('xml')"
                 style="padding: var(--spacing-2) var(--spacing-4); border: none; background: white; color: var(--text-primary); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: var(--shadow-sm); transition: all 0.2s;">
                 <i class="fas fa-code"></i> XML
@@ -183,6 +196,11 @@
             <button id="btn-visual-mode" onclick="window.app.switchMode('visual')"
                 style="padding: var(--spacing-2) var(--spacing-4); border: none; background: transparent; color: var(--gray-600); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
                 <i class="fas fa-project-diagram"></i> Visual
+            </button>
+            <button id="btn-toggle-properties" onclick="window.app.togglePropertyPanel()"
+                title="Toggle Properties Panel"
+                style="padding: var(--spacing-2) var(--spacing-3); border: none; background: transparent; color: var(--gray-600); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; margin-left: 8px; border-left: 1px solid var(--gray-300); padding-left: 12px;">
+                <i class="fas fa-sliders-h"></i>
             </button>
         </div>
 
@@ -278,10 +296,12 @@
             </div>
 
             <!-- Monaco Editor (XML mode) -->
-            <div id="editor" class="monaco-editor-container" style="display: none; flex: 1; width: 100%; min-width: 0; min-height: 0;"></div>
+            <div id="editor" class="monaco-editor-container"
+                style="display: none; flex: 1; width: 100%; min-width: 0; min-height: 0;"></div>
 
             <!-- Visual Designer Canvas (hidden by default) -->
-            <div id="visual-canvas" class="visual-canvas" style="display: none; flex: 1; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden;">
+            <div id="visual-canvas" class="visual-canvas"
+                style="display: none; flex: 1; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden;">
                 <div id="canvas-area" class="canvas-area" style="width: 100%; height: 100%;">
                     <!-- Visual nodes will be rendered here -->
                     <!-- Drag & drop handled by VisualDesigner.ts -->
@@ -289,8 +309,9 @@
             </div>
         </div>
 
-        <!-- Right: Sidebar Section (Always Visible, 360px) -->
-        <div class="sidebar-section" id="rightSidebar">
+        <!-- Right: Sidebar Section (Hidden by default) -->
+        <div class="sidebar-section" id="rightSidebar"
+            style="display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; flex: 0 0 0 !important;">
             <!-- New RightSidebar component will render here -->
             <!-- Legacy structure kept for backward compatibility during migration -->
             <div class="sidebar-nav" style="display: none;">
@@ -467,8 +488,8 @@
     </div>
 
     <!-- TypeScript Application -->
-    <script type="module" crossorigin src="dist/assets/main.js?v=2.3.1"></script>
-    <link rel="stylesheet" crossorigin href="dist/assets/main.css?v=2.3.1">
+    <script type="module" crossorigin src="dist/assets/main.js?v=2.3.1&t=202512081430&nocache=1"></script>
+    <link rel="stylesheet" crossorigin href="dist/assets/main.css?v=2.3.1&t=202512081430&nocache=1">
 </body>
 
 </html>

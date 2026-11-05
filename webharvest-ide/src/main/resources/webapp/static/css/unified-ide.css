@@ -9,10 +9,16 @@
 
 .ide-main {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr 0; /* Third column is 0 when hidden */
     height: calc(100vh - 120px);
     background: var(--gray-50);
     gap: 0;
+    transition: grid-template-columns 0.3s ease;
+}
+
+/* When sidebar is visible, use 3 columns with fixed width */
+.ide-main:has(.sidebar-section--visible) {
+    grid-template-columns: auto 1fr 320px;
 }
 
 /* Left Sidebar: Plugin Palette (Visual mode only) */
@@ -41,11 +47,23 @@
 /* Right Sidebar: Context-Dependent */
 .sidebar-section {
     grid-column: 3;
-    width: 400px;
+    width: 0 !important; /* Zero width when hidden */
+    min-width: 0 !important;
+    max-width: 0 !important;
     background: var(--gray-50);
     border-left: 1px solid var(--gray-200);
-    display: flex;
+    display: none !important; /* Hidden by default */
     flex-direction: column;
+    transition: width 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+    flex: 0 0 0 !important;
+}
+
+.sidebar-section--visible {
+    display: flex;
+    width: 320px; /* Fixed width when visible - narrower than 20% */
+    min-width: 280px;
+    max-width: 400px;
 }
 
 /* ===================================

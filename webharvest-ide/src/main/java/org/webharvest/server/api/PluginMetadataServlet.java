@@ -54,6 +54,8 @@ import org.webharvest.plugin.ParentChildRelationship;
  */
 @WebServlet(name = "PluginMetadataServlet", urlPatterns = {
     "/api/plugins/metadata",
+    "/api/plugins/metadata/version",
+    "/api/plugins/ontology",
     "/api/plugins/xsd",
     "/api/plugins/xsd/*"
 })
@@ -78,6 +80,18 @@ public class PluginMetadataServlet extends HttpServlet {
         
         String pathInfo = req.getPathInfo();
         String requestURI = req.getRequestURI();
+        
+        // Handle version endpoint
+        if (requestURI.endsWith("/version") || requestURI.endsWith("/version/")) {
+            handleVersionRequest(req, resp);
+            return;
+        }
+        
+        // Handle ontology endpoint
+        if (requestURI.endsWith("/ontology") || requestURI.endsWith("/ontology/")) {
+            handleOntologyRequest(req, resp);
+            return;
+        }
         
         // Handle XSD endpoints
         if (requestURI.contains("/xsd")) {
@@ -131,6 +145,156 @@ public class PluginMetadataServlet extends HttpServlet {
             
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to load plugin metadata");
+            error.put("message", e.getMessage());
+            error.put("timestamp", System.currentTimeMillis());
+            
+            resp.getWriter().write(GSON.toJson(error));
+        }
+    }
+    
+    /**
+     * Handle version check requests
+     */
+    private void handleVersionRequest(HttpServletRequest req, HttpServletResponse resp) 
+            throws IOException {
+        try {
+            String schemaVersion;
+            try {
+                schemaVersion = PluginMetadataCatalog.getSchemaVersion();
+            } catch (Exception e) {
+                schemaVersion = "2.2.0";
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("schemaVersion", schemaVersion);
+            response.put("version", "2.2.0");
+            response.put("timestamp", System.currentTimeMillis());
+            
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+            
+            resp.getWriter().write(GSON.toJson(response));
+            resp.setStatus(HttpServletResponse.SC_OK);
+            
+        } catch (Exception e) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to get schema version");
+            error.put("message", e.getMessage());
+            error.put("timestamp", System.currentTimeMillis());
+            
+            resp.getWriter().write(GSON.toJson(error));
+        }
+    }
+    
+    /**
+     * Handle ontology schema requests
+     */
+    private void handleOntologyRequest(HttpServletRequest req, HttpServletResponse resp) 
+            throws IOException {
+        try {
+            List<PluginDescriptor> descriptors = PluginMetadataCatalog.getAllDescriptors();
+            Map<String, Object> ontology = new LinkedHashMap<>();
+            
+            // Build entity schemas
+            Map<String, Object> entitySchemas = new LinkedHashMap<>();
+            for (PluginDescriptor desc : descriptors) {
+                Map<String, Object> entitySchema = new LinkedHashMap<>();
+                entitySchema.put("type", "Plugin");
+                entitySchema.put("pluginType", desc.getId());
+                entitySchema.put("category", desc.getCategory());
+                
+                // Properties from schema
+                Map<String, Object> properties = new LinkedHashMap<>();
+                properties.put("id", Map.of("type", "string", "required", true));
+                properties.put("type", Map.of("type", "string", "required", true, "defaultValue", desc.getId()));
+                properties.put("name", Map.of("type", "string", "required", false));
+                properties.put("category", Map.of("type", "string", "required", false));
+                
+                // Add attribute properties from extensions
+                if (desc.getExtensions() != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> schemaExt = (Map<String, Object>) desc.getExtensions().get("schema");
+                    if (schemaExt != null) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> attrs = (List<Map<String, Object>>) schemaExt.get("attributeDefinitions");
+                        if (attrs != null) {
+                            for (Map<String, Object> attr : attrs) {
+                                Map<String, Object> prop = new LinkedHashMap<>();
+                                prop.put("type", attr.getOrDefault("type", "string"));
+                                prop.put("required", attr.getOrDefault("required", false));
+                                if (attr.containsKey("defaultValue")) {
+                                    prop.put("defaultValue", attr.get("defaultValue"));
+                                }
+                                if (attr.containsKey("allowedValues")) {
+                                    prop.put("enumValues", attr.get("allowedValues"));
+                                }
+                                properties.put((String) attr.get("name"), prop);
+                            }
+                        }
+                    }
+                }
+                entitySchema.put("properties", properties);
+                
+                // Relationship constraints from semantics
+                Map<String, Object> relationships = new LinkedHashMap<>();
+                PluginSemantics semantics = desc.getSemantics();
+                if (semantics != null) {
+                    if (semantics.allowsChildren() || semantics.acceptsAnyChild()) {
+                        List<Map<String, Object>> parentOf = new ArrayList<>();
+                        Map<String, Object> parentOfRel = new LinkedHashMap<>();
+                        parentOfRel.put("targetType", semantics.acceptsAnyChild() ? List.of("Node") : semantics.getAllowedChildTypes());
+                        parentOfRel.put("cardinality", Map.of("min", 0, "max", -1));
+                        parentOf.add(parentOfRel);
+                        relationships.put("PARENT_OF", parentOf);
+                    }
+                    if (semantics.getRequiredParentTypes() != null && !semantics.getRequiredParentTypes().isEmpty()) {
+                        List<Map<String, Object>> childOf = new ArrayList<>();
+                        Map<String, Object> childOfRel = new LinkedHashMap<>();
+                        childOfRel.put("targetType", List.of("Node"));
+                        childOfRel.put("cardinality", Map.of("min", 1, "max", 1));
+                        childOf.add(childOfRel);
+                        relationships.put("CHILD_OF", childOf);
+                    }
+                    if (semantics.canAppearAtRoot()) {
+                        List<Map<String, Object>> sequentialTo = new ArrayList<>();
+                        Map<String, Object> seqRel = new LinkedHashMap<>();
+                        seqRel.put("targetType", List.of("Node"));
+                        seqRel.put("cardinality", Map.of("min", 0, "max", -1));
+                        sequentialTo.add(seqRel);
+                        relationships.put("SEQUENTIAL_TO", sequentialTo);
+                    }
+                }
+                entitySchema.put("allowedRelationships", relationships);
+                
+                entitySchemas.put(desc.getId(), entitySchema);
+            }
+            
+            ontology.put("entitySchemas", entitySchemas);
+            ontology.put("version", PluginMetadataCatalog.getSchemaVersion());
+            ontology.put("timestamp", System.currentTimeMillis());
+            
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+            
+            resp.getWriter().write(GSON.toJson(ontology));
+            resp.setStatus(HttpServletResponse.SC_OK);
+            
+        } catch (Exception e) {
+            LOG.error("Failed to generate ontology schema", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to generate ontology schema");
             error.put("message", e.getMessage());
             error.put("timestamp", System.currentTimeMillis());
             
@@ -273,6 +437,22 @@ public class PluginMetadataServlet extends HttpServlet {
             plugin.put("semantics", semanticsMap);
         }
         
+        // Execution semantics from extensions
+        if (desc.getExtensions() != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> execSemantics = (Map<String, Object>) desc.getExtensions().get("executionSemantics");
+            if (execSemantics != null && !execSemantics.isEmpty()) {
+                // Add to semantics map for easier access
+                if (semantics != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> semanticsMap = (Map<String, Object>) plugin.get("semantics");
+                    if (semanticsMap != null) {
+                        semanticsMap.put("executionSemantics", execSemantics);
+                    }
+                }
+            }
+        }
+        
         // Dependencies
         if (desc.getDependencies() != null && !desc.getDependencies().isEmpty()) {
             plugin.put("dependencies", desc.getDependencies());
@@ -314,9 +494,14 @@ public class PluginMetadataServlet extends HttpServlet {
             if (metadata instanceof VisualPluginMetadata) {
                 VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
                 addVisualMetadataFields(plugin, visualMetadata);
+            } else {
+                // Always add default port types even if VisualPluginMetadata is not available
+                addDefaultPortTypes(plugin);
             }
         } catch (Exception e) {
             LOG.debug("Failed to load VisualPluginMetadata for {}: {}", desc.getId(), e.getMessage());
+            // Add default port types as fallback
+            addDefaultPortTypes(plugin);
         }
         
         plugin.put("visual", buildVisualEnvelope(
@@ -1084,6 +1269,45 @@ public class PluginMetadataServlet extends HttpServlet {
         // Allowed child plugins (for master plugins)
         if (visualMetadata.getAllowedChildPlugins() != null && visualMetadata.getAllowedChildPlugins().length > 0) {
             visual.put("allowedChildPlugins", Arrays.asList(visualMetadata.getAllowedChildPlugins()));
+        }
+    }
+    
+    /**
+     * Add default port types when VisualPluginMetadata is not available
+     * Ensures port types are always exported for LLM agent
+     */
+    private void addDefaultPortTypes(Map<String, Object> plugin) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> visual = (Map<String, Object>) plugin.get("visual");
+        if (visual == null) {
+            visual = new HashMap<>();
+            plugin.put("visual", visual);
+        }
+        
+        // Add default input port if not present
+        if (!visual.containsKey("inputPorts")) {
+            List<Map<String, Object>> inputPorts = new ArrayList<>();
+            Map<String, Object> defaultInput = new HashMap<>();
+            defaultInput.put("name", "input");
+            defaultInput.put("type", "STRING");
+            defaultInput.put("required", false);
+            inputPorts.add(defaultInput);
+            visual.put("inputPorts", inputPorts);
+        }
+        
+        // Add default output port if not present
+        if (!visual.containsKey("outputPorts")) {
+            List<Map<String, Object>> outputPorts = new ArrayList<>();
+            Map<String, Object> defaultOutput = new HashMap<>();
+            defaultOutput.put("name", "output");
+            defaultOutput.put("type", "STRING");
+            outputPorts.add(defaultOutput);
+            visual.put("outputPorts", outputPorts);
+        }
+        
+        // Add default portType if not present
+        if (!visual.containsKey("portType")) {
+            visual.put("portType", "STRING");
         }
     }
     

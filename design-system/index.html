@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design System - Connection Routing Mockup</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 Connection Routing Design System</h1>
+            <p>Klikalne demo z etykietami i połączeniami - uproszczona wersja płótna</p>
+        </header>
+
+        <div class="toolbar">
+            <button id="btn-add-node" class="btn">➕ Dodaj Etykietę</button>
+            <button id="btn-clear" class="btn">🗑️ Wyczyść</button>
+            <button id="btn-test-routing" class="btn">🧪 Test Routing</button>
+            <button id="btn-test-collision" class="btn">💥 Test Kolizji</button>
+            <button id="btn-load-config" class="btn">📂 Wczytaj Konfig</button>
+            <label class="checkbox-label">
+                <input type="checkbox" id="chk-show-anchors" checked>
+                Pokaż punkty połączeń
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="chk-show-debug">
+                Debug overlay
+            </label>
+        </div>
+
+        <div class="canvas-container" id="canvas-container">
+            <svg id="connections-svg" class="connections-layer">
+                <defs>
+                    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="12" refY="6" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 12 12">
+                        <polygon points="0 0, 12 6, 0 12" fill="#64748b" stroke="#64748b" stroke-width="1" />
+                    </marker>
+                </defs>
+            </svg>
+            <div id="nodes-layer" class="nodes-layer"></div>
+            <div id="debug-layer" class="debug-layer"></div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Informacje</h3>
+            <div id="info-content">
+                <p>Kliknij "Dodaj Etykietę" aby dodać nową etykietę na płótno.</p>
+                <p>Przeciągnij etykietę aby ją przesunąć.</p>
+                <p>Kliknij na punkt połączenia (kółko) i przeciągnij do innego punktu aby utworzyć połączenie.</p>
+                <p><strong>Zmiana połączenia:</strong> Kliknij na strzałkę (połączenie), następnie przeciągnij koniec strzałki do innej etykiety aby zmienić docelową etykietę.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="connection-router.js"></script>
+    <script src="collision-detector.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

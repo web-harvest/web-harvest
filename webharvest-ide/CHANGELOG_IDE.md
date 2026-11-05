@@ -1,5 +1,33 @@
 # Web-Harvest IDE - Change Log
 
+## Version 2.3.3 - December 9, 2025
+
+### 🎯 Semantic Model Alignment - LLM Agent Integration
+
+#### Backend Enhancements
+- ✅ **Schema Version Synchronization** - Added `/api/plugins/metadata/version` endpoint
+- ✅ **Ontology Endpoint** - Added `/api/plugins/ontology` for unified ontology schema
+- ✅ **Execution Semantics** - Added to `PluginDescriptor.extensions`
+- ✅ **Port Types Defaults** - Always exported, even when `VisualPluginMetadata` unavailable
+
+#### Frontend Enhancements
+- ✅ **Extended Plugin Semantics** - Full `roles` array, `executionSemantics`, `variableSemantics`
+- ✅ **Variable Semantics Correlation** - Automatic correlation with `VariableDependency`
+- ✅ **LLM-Friendly Format** - `toLLMFormat()` method for JSON serialization
+- ✅ **Schema Extensions Unification** - `SchemaMapper` utility always uses `extensions.schema.attributeDefinitions`
+- ✅ **Port Compatibility Matrix** - Added for LLM agent routing decisions
+
+#### Technical Details
+- **API Endpoints**: `/api/plugins/metadata/version`, `/api/plugins/ontology`
+- **New Files**: `SchemaMapper.ts` utility
+- **Modified Files**: 9 files (2 backend, 7 frontend)
+- **Build Status**: ✅ Compilation successful
+- **Documentation**: Complete implementation docs added
+
+See `SEMANTIC_MODEL_ALIGNMENT_IMPLEMENTATION.md` for full details.
+
+---
+
 ## Version 2.3.2 - November 24, 2025
 
 ### 🎯 Canvas Layout & Connection Routing Optimization

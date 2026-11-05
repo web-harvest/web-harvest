@@ -109,9 +109,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[main.ts] toggleSidebar called');
                 appInstance.toggleSidebar();
             },
+            togglePropertyPanel: () => {
+                console.log('[main.ts] togglePropertyPanel called');
+                appInstance.togglePropertyPanel();
+            },
+            showPropertyPanel: () => {
+                console.log('[main.ts] showPropertyPanel called');
+                appInstance.showPropertyPanel();
+            },
+            hidePropertyPanel: () => {
+                console.log('[main.ts] hidePropertyPanel called');
+                appInstance.hidePropertyPanel();
+            },
 
             // For debugging
-            _instance: appInstance
+            _instance: appInstance,
+            
+            // Expose visualDesigner for debugging
+            visualDesigner: appInstance.getVisualDesigner()
         };
 
         console.log('✅ Application ready!');

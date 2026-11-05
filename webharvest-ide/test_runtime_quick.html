@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Quick Runtime Test - Connection Rendering</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        .test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .pass {
+            background: #d4edda;
+        }
+
+        .fail {
+            background: #f8d7da;
+        }
+
+        .info {
+            background: #d1ecf1;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Quick Runtime Test - Connection Rendering Fixes</h1>
+
+    <div class="test info">
+        <h3>Test 1: Sprawdzenie czy IDE działa</h3>
+        <p>Otwórz <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></p>
+        <p>Przełącz na tryb wizualny i dodaj kilka węzłów</p>
+    </div>
+
+    <div class="test info">
+        <h3>Test 2: Sprawdzenie konsoli przeglądarki</h3>
+        <p>Otwórz DevTools (F12) i sprawdź konsolę:</p>
+        <ul>
+            <li>✅ Powinny być logi: "Registered anchor: ..."</li>
+            <li>✅ Powinny być logi: "Registered SVG element"</li>
+            <li>✅ Powinny być logi: "Recalculated connection ..."</li>
+            <li>⚠️ Nie powinno być: "Connection ... marked as pending" (lub tylko na początku)</li>
+        </ul>
+    </div>
+
+    <div class="test info">
+        <h3>Test 3: Debug Overlay</h3>
+        <p>W konsoli przeglądarki wykonaj:</p>
+        <pre>window.__DEBUG_CONNECTIONS__ = true;</pre>
+        <p>Następnie odśwież stronę (F5)</p>
+        <p>Powinny pojawić się:</p>
+        <ul>
+            <li>Niebieskie kropki - pozycje z modelu</li>
+            <li>Czerwone kropki - pozycje z DOM</li>
+            <li>Pomarańczowe linie - różnice > 2px</li>
+        </ul>
+    </div>
+
+    <div class="test info">
+        <h3>Test 4: Sprawdzenie czy linie są w prawidłowych miejscach</h3>
+        <p>Wizualnie sprawdź czy:</p>
+        <ul>
+            <li>Linie łączą się ze środkowymi punktami węzłów (center points)</li>
+            <li>Linie nie są w "losowych miejscach"</li>
+            <li>Linie są ortogonalne (tylko poziome i pionowe segmenty)</li>
+        </ul>
+    </div>
+
+    <div class="test info">
+        <h3>Test 5: Sprawdzenie podczas drag</h3>
+        <p>Przeciągnij węzeł i sprawdź:</p>
+        <ul>
+            <li>Czy linie aktualizują się płynnie (RAF batching)</li>
+            <li>Czy nie ma błędów w konsoli</li>
+            <li>Czy linie pozostają w prawidłowych pozycjach</li>
+        </ul>
+    </div>
+
+    <script>
+        // Auto-test funkcji w konsoli
+        console.log("=== Quick Runtime Test ===");
+        console.log("1. Otwórz http://localhost:8080");
+        console.log("2. Przełącz na tryb wizualny");
+        console.log("3. Dodaj kilka węzłów");
+        console.log("4. Sprawdź konsolę przeglądarki dla logów");
+        console.log("5. Włącz debug overlay: window.__DEBUG_CONNECTIONS__ = true");
+    </script>
+</body>
+
+</html>
+
+

@@ -54,16 +54,23 @@ export class XMLParser {
 
         // Parse children of root (config)
         const nodes: VisualNode[] = [];
+        console.log(`[XMLParser] Root element: ${root.tagName}, children count: ${root.children.length}`);
         for (let i = 0; i < root.children.length; i++) {
             const child = root.children[i];
+            console.log(`[XMLParser] Parsing child ${i}: tagName=${child.tagName}, attributes=${Array.from(child.attributes).map(a => a.name + '=' + a.value).join(', ')}`);
             const node = this.parseElement(child);
             if (node) {
+                console.log(`[XMLParser] ✅ Parsed node: id=${node.id}, type=${node.type}`);
                 nodes.push(node);
+            } else {
+                console.warn(`[XMLParser] ⚠️ parseElement returned null for ${child.tagName}`);
             }
         }
+        console.log(`[XMLParser] Total nodes parsed: ${nodes.length}`);
 
-        // Auto-position nodes using VisualPluginMetadata
-        this.autoPositionNodes(nodes);
+        // NIE ustawiaj pozycji automatycznie - pozwól auto-layoutowi w VisualDesigner to zrobić
+        // Auto-layout w VisualDesigner.loadNodes() ustawi pozycje po renderowaniu
+        // this.autoPositionNodes(nodes);
 
         return nodes;
     }
@@ -73,9 +80,11 @@ export class XMLParser {
      */
     private parseElement(element: Element): VisualNode | null {
         if (!element.tagName) {
+            console.warn(`[XMLParser] parseElement: element has no tagName`);
             return null;
         }
         let tagName = element.tagName.toLowerCase();
+        console.log(`[XMLParser] parseElement: tagName=${tagName}`);
         // Extract attributes
         const attributes: Record<string, string> = {};
         let dimensions: { width: number; height: number } | undefined = undefined;
@@ -158,10 +167,11 @@ export class XMLParser {
             dimensions: dimensions // Include custom dimensions if present
         };
 
-        // Auto-position children recursively
-        if (children.length > 0) {
-            this.autoPositionNodes(children);
-        }
+        // NIE ustawiaj pozycji dzieci automatycznie - pozwól auto-layoutowi w VisualDesigner to zrobić
+        // Auto-layout w VisualDesigner.loadNodes() ustawi pozycje po renderowaniu
+        // if (children.length > 0) {
+        //     this.autoPositionNodes(children);
+        // }
 
         return node;
     }
@@ -212,12 +222,13 @@ export class XMLParser {
             // Update group map
             groupMap.set(group, x);
 
-            // Position children within parent node (nested)
-            if (node.children && node.children.length > 0) {
-                const childStartX = x + this.NESTED_SPACING;
-                const childStartY = currentY + dimensions.height + 20;
-                this.autoPositionNodes(node.children, childStartX, childStartY);
-            }
+            // NIE ustawiaj pozycji dzieci automatycznie - pozwól auto-layoutowi w VisualDesigner to zrobić
+            // Auto-layout w VisualDesigner.loadNodes() ustawi pozycje po renderowaniu
+            // if (node.children && node.children.length > 0) {
+            //     const childStartX = x + this.NESTED_SPACING;
+            //     const childStartY = currentY + dimensions.height + 20;
+            //     this.autoPositionNodes(node.children, childStartX, childStartY);
+            // }
 
             // Move to next row if node is large or if we've positioned many nodes horizontally
             const nextNodeY = currentY + dimensions.height + this.DEFAULT_SPACING;

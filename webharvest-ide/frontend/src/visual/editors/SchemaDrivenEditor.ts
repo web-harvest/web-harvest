@@ -55,16 +55,45 @@ export class SchemaDrivenEditor {
         const attributeUi = plugin.attributeUi || plugin.ui?.fields || {};
         const grouped = this.groupAttributes(attributes, attributeUi);
 
-        grouped.forEach((group, groupIndex) => {
-            const section = document.createElement('section');
-            section.className = 'schema-driven-group';
-            // Styles are now handled by CSS
-            section.style.marginBottom = groupIndex < grouped.length - 1 ? '16px' : '0';
+        // Faza 5: Progressive disclosure - podziel na Basic i Advanced
+        const basicAttributes: typeof grouped = [];
+        const advancedAttributes: typeof grouped = [];
 
-            if (group.label !== DEFAULT_GROUP_LABEL || grouped.length > 1) {
+        grouped.forEach(group => {
+            const basicGroup = { ...group, attributes: [] as typeof group.attributes };
+            const advancedGroup = { ...group, attributes: [] as typeof group.attributes };
+
+            group.attributes.forEach(entry => {
+                // Faza 5: Sprawdź czy atrybut jest advanced (z metadata lub nazwy)
+                const metadata = attributeUi[entry.definition.name];
+                const isAdvanced = (metadata?.advanced) ||
+                                   entry.definition.name.toLowerCase().includes('advanced') ||
+                                   entry.definition.name.toLowerCase().includes('debug') ||
+                                   entry.definition.name.toLowerCase().includes('internal');
+                if (isAdvanced) {
+                    advancedGroup.attributes.push(entry);
+                } else {
+                    basicGroup.attributes.push(entry);
+                }
+            });
+
+            if (basicGroup.attributes.length > 0) {
+                basicAttributes.push(basicGroup);
+            }
+            if (advancedGroup.attributes.length > 0) {
+                advancedAttributes.push(advancedGroup);
+            }
+        });
+
+        // Render Basic attributes
+        basicAttributes.forEach((group, groupIndex) => {
+            const section = document.createElement('section');
+            section.className = 'schema-driven-group schema-driven-group--basic';
+            section.style.marginBottom = groupIndex < basicAttributes.length - 1 ? '16px' : '0';
+
+            if (group.label !== DEFAULT_GROUP_LABEL || basicAttributes.length > 1) {
                 const heading = document.createElement('h3');
                 heading.textContent = group.label;
-                // Styles are now handled by CSS
                 section.appendChild(heading);
             }
 
@@ -94,6 +123,84 @@ export class SchemaDrivenEditor {
 
             container.appendChild(section);
         });
+
+        // Faza 5: Render Advanced attributes w collapsible sekcji
+        if (advancedAttributes.length > 0) {
+            const advancedSection = document.createElement('section');
+            advancedSection.className = 'schema-driven-group schema-driven-group--advanced';
+            
+            const advancedToggle = document.createElement('button');
+            advancedToggle.type = 'button';
+            advancedToggle.className = 'schema-driven-advanced-toggle';
+            advancedToggle.textContent = 'Show Advanced Properties';
+            advancedToggle.style.cssText = `
+                width: 100%;
+                padding: 10px;
+                margin-top: 16px;
+                background: rgba(15, 23, 42, 0.04);
+                border: 1px solid rgba(15, 23, 42, 0.1);
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                color: #6b7280;
+                transition: all 0.2s ease;
+            `;
+            
+            const advancedContent = document.createElement('div');
+            advancedContent.className = 'schema-driven-advanced-content';
+            advancedContent.style.display = 'none';
+            advancedContent.style.marginTop = '12px';
+
+            let isExpanded = false;
+            advancedToggle.addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                advancedContent.style.display = isExpanded ? 'block' : 'none';
+                advancedToggle.textContent = isExpanded ? 'Hide Advanced Properties' : 'Show Advanced Properties';
+                advancedToggle.style.background = isExpanded ? 'rgba(15, 23, 42, 0.08)' : 'rgba(15, 23, 42, 0.04)';
+            });
+
+            advancedAttributes.forEach((group, groupIndex) => {
+                const section = document.createElement('section');
+                section.className = 'schema-driven-group';
+                section.style.marginBottom = groupIndex < advancedAttributes.length - 1 ? '16px' : '0';
+
+                if (group.label !== DEFAULT_GROUP_LABEL || advancedAttributes.length > 1) {
+                    const heading = document.createElement('h3');
+                    heading.textContent = group.label;
+                    section.appendChild(heading);
+                }
+
+                group.attributes.forEach(entry => {
+                    const value = this.currentAttributes[entry.definition.name]
+                        ?? entry.definition.defaultValue
+                        ?? '';
+
+                    const field = createField({
+                        attribute: entry.definition,
+                        metadata: attributeUi[entry.definition.name],
+                        value,
+                        onChange: newValue => this.handleFieldChange(entry.definition.name, newValue)
+                    });
+
+                    this.fields.set(entry.definition.name, field);
+                    section.appendChild(field.element);
+
+                    if (this.fieldDecorator) {
+                        this.fieldDecorator({
+                            name: entry.definition.name,
+                            metadata: attributeUi[entry.definition.name],
+                            field
+                        });
+                    }
+                });
+
+                advancedContent.appendChild(section);
+            });
+
+            advancedSection.appendChild(advancedToggle);
+            advancedSection.appendChild(advancedContent);
+            container.appendChild(advancedSection);
+        }
     }
 
     onChange(callback: (attributes: Record<string, string>) => void): void {

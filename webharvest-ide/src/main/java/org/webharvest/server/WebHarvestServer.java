@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.server.api.ConfigServlet;
 import org.webharvest.server.api.ExecutionServlet;
+import org.webharvest.server.api.VisualSemanticModelServlet;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
+import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -79,17 +81,20 @@ public class WebHarvestServer {
         context.addServlet(new ServletHolder(new org.webharvest.server.api.ExecutionControlServlet()), "/api/execution/*");
         context.addServlet(new ServletHolder(new org.webharvest.server.api.SessionHistoryServlet()), "/api/sessions/*");
         context.addServlet(new ServletHolder(new org.webharvest.server.api.PluginMetadataServlet()), "/api/plugins/*");
-        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/*, /api/sessions/*, /api/plugins/*");
+        context.addServlet(new ServletHolder(new VisualSemanticModelServlet()), "/api/visual/model/*");
+        context.addServlet(new ServletHolder(new org.webharvest.server.api.VisualSemanticModelDiagnosticServlet()), "/api/visual/model/diagnostic");
+        LOG.info("API servlets configured: /api/config/*, /api/execute/*, /api/execution/*, /api/sessions/*, /api/plugins/*, /api/visual/model/*, /api/visual/model/diagnostic");
         
         // 2. WebSocket servlet
         JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {
-            wsContainer.setMaxTextMessageSize(65536);
+            wsContainer.setMaxTextMessageSize(1048576); // 1MB - increased for large semantic models
             wsContainer.setIdleTimeout(java.time.Duration.ofMinutes(10));
-            LOG.info("WebSocket container configured");
+            LOG.info("WebSocket container configured with maxTextMessageSize=1MB");
         });
         
         context.addServlet(new ServletHolder(new ExecutionWebSocketServlet()), "/ws/execution/*");
-        LOG.info("WebSocket servlet configured: /ws/execution/*");
+        context.addServlet(new ServletHolder(new VisualSemanticModelWebSocketServlet()), "/ws/visual/model/*");
+        LOG.info("WebSocket servlets configured: /ws/execution/*, /ws/visual/model/*");
         
         // 3. Default servlet for static files (MUST BE LAST!)
         ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);

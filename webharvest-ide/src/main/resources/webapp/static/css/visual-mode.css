@@ -30,7 +30,9 @@
 
 /* Right Sidebar (context-dependent) */
 .sidebar-section {
-    width: 400px;
+    width: 20%;
+    min-width: 280px;
+    max-width: 20%;
     display: flex;
     flex-direction: column;
     background: var(--gray-50);
