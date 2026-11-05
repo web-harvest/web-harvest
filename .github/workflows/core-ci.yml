@@ -1,0 +1,49 @@
+name: Core CI
+
+on:
+  pull_request:
+    branches:
+      - "2.2.x"
+      - "2.3.x"
+      - "recovery/**"
+  push:
+    branches:
+      - "2.2.x"
+      - "2.3.x"
+      - "recovery/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core unit tests (Java 11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      - name: Run Core tests
+        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
+
+      - name: Upload Core test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-reports-${{ github.run_number }}
+          path: |
+            webharvest-core/target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 14
