@@ -1,0 +1,41 @@
+name: Full Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package all Maven modules (Java 11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      # The IDE Maven module installs Node/npm and runs npm install itself.
+      # No package-lock.json is currently present, so this build is not yet
+      # guaranteed to reproduce an identical frontend dependency tree.
+      - name: Build all modules (tests intentionally not run)
+        run: mvn --batch-mode --no-transfer-progress -DskipTests package
+
+      - name: Upload packaged JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: webharvest-maven-artifacts-${{ github.run_number }}
+          path: |
+            **/target/*.jar
+          if-no-files-found: error
+          retention-days: 30
