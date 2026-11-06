@@ -2,12 +2,13 @@
   "name": "@webharvest/xml-roundtrip",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "dist/packages/visual-shared/xml-roundtrip/src/index.js",
+  "module": "dist/packages/visual-shared/xml-roundtrip/src/index.js",
+  "types": "dist/packages/visual-shared/xml-roundtrip/src/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/packages/visual-shared/xml-roundtrip/src/index.d.ts",
+      "import": "./dist/packages/visual-shared/xml-roundtrip/src/index.js"
     }
   },
   "scripts": {
@@ -16,5 +17,3 @@
   "dependencies": {},
   "devDependencies": {}
 }
-
-
