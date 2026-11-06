@@ -45,7 +45,7 @@ public class FinalPushTo70Test {
     @Test public void testDef05() { assertNotNull(new DefPlugin().getMetadata().getClassName()); }
     @Test public void testDef06() { assertNotNull(new DefPlugin().getMetadata().getConfigurationSchema().getAttributeDefinitions()); }
     @Test public void testDef07() { assertTrue(new DefPlugin().getMetadata().getConfigurationSchema().allowsBody()); }
-    @Test public void testDef08() { assertEquals(new DefPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.1.0"); }
+    @Test public void testDef08() { assertEquals(new DefPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.3.0"); }
     
     // XMLPlugin - 63.41%, need 8 instr
     @Test public void testXML01() { new XMLPlugin().getMetadata().getConfigurationSchema().getAllowedSubElements(); assertTrue(true); }
@@ -55,8 +55,8 @@ public class FinalPushTo70Test {
     @Test public void testXML05() { assertNotNull(new XMLPlugin().getMetadata().getClassName()); }
     @Test public void testXML06() { assertNotNull(new XMLPlugin().getMetadata().getConfigurationSchema().getAttributeDefinitions()); }
     @Test public void testXML07() { assertTrue(new XMLPlugin().getMetadata().getConfigurationSchema().allowsBody()); }
-    @Test public void testXML08() { assertEquals(new XMLPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.1.0"); }
-    @Test public void testXML09() { assertEquals(new XMLPlugin().getMetadata().getCategory(), "core"); }
+    @Test public void testXML08() { assertEquals(new XMLPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.3.0"); }
+    @Test public void testXML09() { assertEquals(new XMLPlugin().getMetadata().getCategory(), "Core"); }
     @Test public void testXML10() { assertNotNull(new XMLPlugin().getMetadata().getTags()); }
     
     // HttpParamPlugin - 63.16%, need 9 instr
@@ -67,8 +67,8 @@ public class FinalPushTo70Test {
     @Test public void testHttpParam05() { assertNotNull(new HttpParamPlugin().getMetadata().getClassName()); }
     @Test public void testHttpParam06() { assertNotNull(new HttpParamPlugin().getMetadata().getConfigurationSchema().getAttributeDefinitions()); }
     @Test public void testHttpParam07() { assertTrue(new HttpParamPlugin().getMetadata().getConfigurationSchema().allowsBody()); }
-    @Test public void testHttpParam08() { assertEquals(new HttpParamPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.1.0"); }
-    @Test public void testHttpParam09() { assertEquals(new HttpParamPlugin().getMetadata().getCategory(), "core"); }
+    @Test public void testHttpParam08() { assertEquals(new HttpParamPlugin().getMetadata().getConfigurationSchema().getVersion(), "2.3.0"); }
+    @Test public void testHttpParam09() { assertEquals(new HttpParamPlugin().getMetadata().getCategory(), "Core"); }
     @Test public void testHttpParam10() { assertNotNull(new HttpParamPlugin().getMetadata().getTags()); }
     @Test public void testHttpParam11() { assertNotNull(new HttpParamPlugin().getMetadata().getDescription()); }
     @Test public void testHttpParam12() { assertNotNull(new HttpParamPlugin().getMetadata().getAuthor()); }
