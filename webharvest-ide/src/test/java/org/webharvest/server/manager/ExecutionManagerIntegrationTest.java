@@ -9,14 +9,10 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.*;
-import com.sun.net.httpserver.HttpServer;
 import org.webharvest.server.support.TestEnvironment;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.net.URI;
-import java.net.InetSocketAddress;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -42,8 +38,6 @@ public class ExecutionManagerIntegrationTest {
     private WebSocketClient client;
     private ExecutionManager executionManager;
     private int testPort = 8888;
-    private HttpServer httpServer;
-    private String httpBaseUrl;
     
     @BeforeClass
     public void setUpServer() throws Exception {
@@ -71,30 +65,7 @@ public class ExecutionManagerIntegrationTest {
         // Start WebSocket client
         client = new WebSocketClient();
         client.start();
-
-        // Local deterministic HTTP fixture: this integration test must not depend on httpbin.org.
-        httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        httpServer.createContext("/", exchange -> {
-            String path = exchange.getRequestURI().getPath();
-            String body;
-            String contentType;
-            if ("/html".equals(path)) {
-                body = "<!DOCTYPE html><html><head><title>WebHarvest Fixture</title></head><body><h1>Local fixture</h1></body></html>";
-                contentType = "text/html; charset=UTF-8";
-            } else {
-                body = "{\"title\":\"Sample Slide Deck\",\"source\":\"webharvest-fixture\"}";
-                contentType = "application/json; charset=UTF-8";
-            }
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", contentType);
-            exchange.sendResponseHeaders(200, bytes.length);
-            try (OutputStream output = exchange.getResponseBody()) {
-                output.write(bytes);
-            }
-        });
-        httpServer.start();
-        httpBaseUrl = "http://127.0.0.1:" + httpServer.getAddress().getPort();
-
+        
         TestEnvironment.ensure();
         executionManager = ExecutionManager.getInstance();
         
@@ -108,9 +79,6 @@ public class ExecutionManagerIntegrationTest {
         }
         if (server != null) {
             server.stop();
-        }
-        if (httpServer != null) {
-            httpServer.stop(0);
         }
         System.out.println("\n✓ Test server stopped");
     }
@@ -160,7 +128,7 @@ public class ExecutionManagerIntegrationTest {
         
         String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <def var=\"url\">" + httpBaseUrl + "/json</def>\n" +
+            "    <def var=\"url\">https://httpbin.org/get</def>\n" +
             "    <def var=\"response\">\n" +
             "        <http url=\"${url}\"/>\n" +
             "    </def>\n" +
@@ -174,8 +142,8 @@ public class ExecutionManagerIntegrationTest {
         // Verify variables
         assertTrue(capture.hasVariable("url"), "Should have 'url' variable");
         assertTrue(capture.hasVariable("response"), "Should have 'response' variable");
-        assertTrue(capture.getVariable("url").contains("/json"), "url should point to the local JSON fixture");
-        assertTrue(capture.getVariable("response").contains("Sample Slide Deck"), "response should contain the local JSON fixture");
+        assertTrue(capture.getVariable("url").contains("httpbin.org/get"), "url should be httpbin.org/get");
+        assertTrue(capture.getVariable("response").contains("httpbin"), "response should contain httpbin");
         
         System.out.println("✓ TEST 2 PASSED: HTTP variables extracted correctly");
         System.out.println("  - url: " + capture.getVariable("url"));
@@ -192,7 +160,7 @@ public class ExecutionManagerIntegrationTest {
         
         String configXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <def var=\"url\">" + httpBaseUrl + "/html</def>\n" +
+            "    <def var=\"url\">https://httpbin.org/html</def>\n" +
             "    <def var=\"html\">\n" +
             "        <http url=\"${url}\"/>\n" +
             "    </def>\n" +
@@ -237,7 +205,7 @@ public class ExecutionManagerIntegrationTest {
         assertTrue(capture.hasVariable("title"), "CRITICAL: 'title' variable must be present");
         
         // Verify content
-        assertTrue(capture.getVariable("url").contains("/html"), "url should point to the local HTML fixture");
+        assertTrue(capture.getVariable("url").contains("httpbin.org/html"), "url should be httpbin.org/html");
         assertTrue(capture.getVariable("html").contains("<!DOCTYPE html>"), "html should contain DOCTYPE");
         assertTrue(capture.getVariable("page").contains("<html>"), "page should contain <html>");
         assertTrue(capture.getVariable("title").contains("Herman Melville"), "title should be 'Herman Melville - Moby-Dick'");
