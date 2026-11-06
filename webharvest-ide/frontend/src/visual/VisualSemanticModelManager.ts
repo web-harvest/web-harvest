@@ -45,6 +45,34 @@ import { planConnections } from './connections/ConnectionPlanner';
 import { VisualModelWebSocketManager } from '../core/VisualModelWebSocketManager';
 
 export class VisualSemanticModelManager {
+    /**
+     * Resolve plugin metadata across the current PluginManager API and legacy
+     * integrations that still expose getPlugin(). The IDE has older adapters
+     * and test fixtures that predate findPlugin()/getSchemaVersion().
+     */
+    private findPlugin(pluginId: string) {
+        const manager = this.pluginManager as PluginManager & {
+            getPlugin?: (id: string) => Plugin | null;
+        };
+
+        if (typeof manager.findPlugin === 'function') {
+            return manager.findPlugin(pluginId);
+        }
+        if (typeof manager.getPlugin === 'function') {
+            return manager.getPlugin(pluginId);
+        }
+        return manager.getPlugins().find(plugin => plugin.id === pluginId) ?? null;
+    }
+
+    private getPluginSchemaVersion(): string | null {
+        const manager = this.pluginManager as PluginManager & {
+            getSchemaVersion?: () => string | null;
+        };
+        return typeof manager.getSchemaVersion === 'function'
+            ? manager.getSchemaVersion()
+            : null;
+    }
+
     private model: VisualSemanticModel | null = null;
     private designer: VisualDesigner;
     private pluginManager: PluginManager;
@@ -881,7 +909,7 @@ export class VisualSemanticModelManager {
 
         const model: VisualSemanticModel = {
             version: '1.0.0',
-            schemaVersion: this.pluginManager.getSchemaVersion(),
+            schemaVersion: this.getPluginSchemaVersion(),
             timestamp: Date.now(),
             workflowId: this.getWorkflowId(),
 
@@ -1085,7 +1113,7 @@ export class VisualSemanticModelManager {
     ): VisualNodeState[] {
         // First pass: build all node states with bounds
         const nodeStatesWithBounds = allNodes.map(node => {
-            const plugin = this.pluginManager.findPlugin(node.type);
+            const plugin = this.findPlugin(node.type);
             const position = node.position || { x: 0, y: 0 };
             const dimensions = this.getNodeDimensions(node);
             const bounds = this.calculateBounds(position, dimensions);
@@ -2292,7 +2320,7 @@ export class VisualSemanticModelManager {
         }
 
         // Fallback to default dimensions
-        const plugin = this.pluginManager.findPlugin(node.type);
+        const plugin = this.findPlugin(node.type);
         return {
             width: plugin?.defaultWidth || 200,
             height: plugin?.defaultHeight || 100
@@ -2531,7 +2559,7 @@ export class VisualSemanticModelManager {
             // Try to rebuild cache if not available
             const node = this.findNodeById(nodeId);
             if (node) {
-                const plugin = this.pluginManager.findPlugin(node.type);
+                const plugin = this.findPlugin(node.type);
                 const position = node.position || { x: 0, y: 0 };
                 const dimensions = this.getNodeDimensions(node);
                 const connectionPoints = this.connectionPointsCalculator.calculate(
@@ -2558,7 +2586,7 @@ export class VisualSemanticModelManager {
             // Try to rebuild cache if not available
             const node = this.findNodeById(nodeId);
             if (node) {
-                const plugin = this.pluginManager.findPlugin(node.type);
+                const plugin = this.findPlugin(node.type);
                 const position = node.position || { x: 0, y: 0 };
                 const dimensions = this.getNodeDimensions(node);
                 const points = this.connectionPointsCalculator.calculate(
@@ -4288,7 +4316,7 @@ export class VisualSemanticModelManager {
 
         // Dodaj nowe node entities
         nodes.forEach(node => {
-            const plugin = this.pluginManager.findPlugin(node.type);
+            const plugin = this.findPlugin(node.type);
             if (plugin) {
                 const entity = this.ontologyBuilder.buildPluginEntity(plugin, node.id);
                 entity.type = 'Node' as EntityType;
