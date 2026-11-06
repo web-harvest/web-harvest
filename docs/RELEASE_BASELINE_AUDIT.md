@@ -1,0 +1,132 @@
+# Release baseline audit — WebHarvest 2.3.x recovery line
+
+**Audit date:** 2026-11-06  
+**Repository:** `web-harvest/web-harvest`  
+**Audit branch:** `stabilization/release-baseline`  
+**Baseline under investigation:** `recovery/set-var-compatibility`  
+**Status:** IN PROGRESS — NOT RELEASE-READY
+
+## 1. Executive decision
+
+Do not merge this work into `2.2.x` or `2.3.x`, do not create a stable release tag, and do not describe the current recovery line as stable.
+
+The most coherent candidate line is:
+
+`2.3.x` → `recovery/uncommitted-development` → `ci/bootstrap` → `recovery/set-var-compatibility`
+
+This is a candidate integration line, not an approved release baseline. It needs product-wide validation, not only Core CI.
+
+## 2. Verified Git topology (2026-11-06)
+
+| Ref | Verified relationship / SHA | Meaning |
+|---|---|---|
+| `2.3.x` | `4cd03edea7f9d26fa768235bf7b541bd359481f2` | Parent of the recovered snapshot |
+| `recovery/uncommitted-development` | `253464416b2f962550fd7f1352c8c4a569968e32` | One commit ahead of `2.3.x`; commit preserves a large recovered working tree |
+| `ci/bootstrap` | `5b2bb0b4810a5fd32d7b7aed438c1029b408b65f` | Three commits ahead of recovered snapshot; adds CI workflows and Maven test separation |
+| `recovery/set-var-compatibility` | `4a8bfd47147141808dc9b70dc2da4e6d81406322` | Six commits ahead of `ci/bootstrap`; restores legacy `<set-var>` alias |
+| default branch | `2.2.x` | Must not be changed as part of this stabilization work |
+
+PR chain:
+- [PR #12](https://github.com/web-harvest/web-harvest/pull/12): `ci/bootstrap` → `recovery/uncommitted-development`; open, non-draft, 3 commits, 3 files.
+- [PR #15](https://github.com/web-harvest/web-harvest/pull/15): `recovery/set-var-compatibility` → `ci/bootstrap`; open, draft, 6 commits, 5 files.
+- PR #15 is stacked on PR #12. The dependency order is #12 then #15; neither is approved for merge by this audit.
+
+## 3. CI evidence
+
+### 3.1 Workflow scope
+
+At `ci/bootstrap`:
+- `.github/workflows/core-ci.yml` runs Core Surefire and Failsafe on PRs/pushes targeting `2.2.x`, `2.3.x`, and `recovery/**`.
+- `.github/workflows/full-build.yml` is manual and runs `mvn -DskipTests package`. It packages modules but deliberately does not execute tests.
+- The Core workflow uploads Surefire and Failsafe reports even on failure.
+
+### 3.2 Latest observed Core CI on PR #15 head
+
+Commit: `4a8bfd47147141808dc9b70dc2da4e6d81406322`  
+Run IDs: `42229617545`, `42229617651`  
+Both runs completed with failure.
+
+| Suite | Observed result | Failure classification from logs |
+|---|---:|---|
+| Surefire | 2,891 tests, 10 failures | CallParam tests (2); FinalPushTo70 expectations (5); HtmlToXml schema expectation (1); plugin metadata JSON expectation (1); visual metadata completeness expectation (1) |
+| Failsafe | 242 tests, 8 failures | WhilePluginIntegrationTest (5); HTTP integration tests (3) |
+| SetVar compatibility tests | No SetVar failures in the latest PR #15 Failsafe output | The three SetVar integration failures seen on the pre-compatibility CI run no longer appear |
+
+The earlier Core CI run on the recovered snapshot (run `42135647082`) reported:
+- Surefire: 2,890 tests, 10 failures.
+- Failsafe: 240 tests, 11 failures, including three `SetVarPluginIntegrationTest` failures.
+- PR #15 therefore appears to remove the three observed SetVar integration failures, but it does not make Core CI green.
+
+### 3.3 Failure triage — do not paper over
+
+| Failure group | Current evidence | Required next action |
+|---|---|---|
+| CallParam (2) | Tests use Mockito mocks against the current plugin execution path; CI reports runtime plugin execution failures | Capture full stack traces and inspect current execution/initialization contract before changing production code or weakening tests |
+| FinalPushTo70 (5) | Tests assert old schema version `2.1.0` and category `core`; current metadata returns `2.3.0` and `Core` | Determine whether assertions are stale coverage scaffolding or public compatibility contracts; replace coverage-only assertions with behavior assertions where appropriate |
+| HtmlToXml (1) | Test expects zero schema attributes; current schema returns 13 | Inspect schema definition and intended public contract; do not delete legitimate attributes to satisfy an obsolete test |
+| PluginMetadata JSON (1) | Test expects `set-var` in generated visual JSON | Generator intentionally skips metadata not implementing `VisualPluginMetadata`; determine whether legacy alias should be visible in visual designer or intentionally omitted |
+| Visual metadata completeness (1) | Completeness test expects 47, found 42; failure output lists non-visual `set-var`, `var`, `body-processor`, `config` | Reconcile the expected count and system/non-visual plugin policy; avoid fabricating visual metadata |
+| While integration (5) | Mockito `MissingMethodInvocation` around a stub; at least one test explicitly mentions SetVar | Inspect test setup and current mocking API; distinguish test harness incompatibility from product behavior |
+| HTTP integration (3) | Empty responses in live HTTP integration tests | Establish deterministic local/mock HTTP fixture and network policy; do not make external network dependency a release gate |
+
+## 4. Known validation gaps
+
+1. Core CI is red; no green Core baseline exists.
+2. Full Build is package-only and cannot be used as test evidence.
+3. Frontend Jest has a known D3 ESM / Jest transform configuration failure from prior investigation; it must be re-run against this exact candidate SHA.
+4. No verified end-to-end IDE/browser test result is attached to this candidate SHA.
+5. No complete Maven reactor test result across all modules is established.
+6. No reproducible dependency lock exists for the frontend; the workflow itself notes that `package-lock.json` is absent.
+7. No physical/browser compatibility matrix or documented manual smoke test is attached to the candidate.
+8. No release artifact has been built and independently inspected from a candidate tag/commit.
+
+## 5. Work plan and gates
+
+### Gate A — establish a trustworthy test baseline
+- Preserve raw Surefire/Failsafe artifacts for each candidate SHA.
+- Re-run the exact CI head once to rule out transient runner noise.
+- Produce a per-test failure matrix with full exception roots, source locations, and first-known commit where practical.
+- Separate product defects, stale assertions, test harness defects, environment/network failures, and intentionally unsupported behavior.
+- Do not mark a test as fixed merely because it is excluded, skipped, or weakened.
+
+**Exit:** every failure has an evidence-backed classification and an owner/action; no unexplained failures remain.
+
+### Gate B — restore Core CI
+- Fix genuine product defects.
+- Update stale tests only when the current product contract is documented and independently confirmed.
+- Make external-service integration tests deterministic or explicitly isolated from the offline CI suite.
+- Keep the SetVar alias contract covered by direct XML parsing, execution, registration, and integration tests.
+
+**Exit:** Surefire and Failsafe both green on the same commit SHA, with no unexplained skips.
+
+### Gate C — validate the whole product
+- Maven reactor/package build across all modules.
+- Core unit + integration tests.
+- IDE backend tests.
+- Frontend install/build/typecheck/Jest; establish lockfile policy.
+- IDE smoke tests against a running local server, including semantic model and visual designer.
+- CLI and representative legacy scraper examples.
+- Review docs, schemas, plugin metadata and generated resources for consistency.
+
+**Exit:** test matrix is green or has explicitly approved, narrowly scoped exceptions with evidence.
+
+### Gate D — freeze a release candidate
+- Select the exact commit and document its ancestry.
+- Build reproducible artifacts from that SHA.
+- Verify artifact contents, version metadata, checksums, and startup/CLI smoke tests.
+- Write release notes and known limitations.
+- Obtain explicit human approval before merge to a protected product branch or tag.
+
+**Exit:** explicit GO decision; otherwise remain on recovery/stabilization branches.
+
+## 6. Non-goals / safety boundaries
+
+- No direct writes to `2.2.x`, `2.3.x`, or `master`.
+- No automatic merge of PR #12 or #15.
+- No stable tag or release publication.
+- No test exclusion, assertion relaxation, or metadata fabrication solely to obtain green CI.
+- No claim that a package-only build validates runtime behavior.
+
+## 7. Immediate next work unit
+
+Start with the ten Surefire failures on PR #15 head, because they are stable and reproducible across the two observed runs. Inspect each failing test and production contract, then make one evidence-backed batch of corrections. In parallel, isolate the eight Failsafe failures into (a) test harness/mocking issues and (b) HTTP environment dependence. Keep the PR #15 SetVar behavior unchanged unless a regression is demonstrated.
