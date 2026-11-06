@@ -14,6 +14,7 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
+import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
 
 /**
