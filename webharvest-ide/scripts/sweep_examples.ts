@@ -9,6 +9,9 @@ import { trimLeadingNoise, stripVisualDesignerMetadata } from '../frontend/src/u
 
 const { window } = new JSDOM('<!doctype html><html></html>');
 (globalThis as any).DOMParser = window.DOMParser;
+(globalThis as any).Node = window.Node;
+(globalThis as any).Element = window.Element;
+(globalThis as any).Document = window.Document;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

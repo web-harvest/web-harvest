@@ -38,6 +38,12 @@
             ],
             "@utils/*": [
                 "src/utils/*"
+            ],
+            "@webharvest/metadata-client": [
+                "../../packages/visual-shared/metadata-client/src/index.ts"
+            ],
+            "@webharvest/xml-roundtrip": [
+                "../../packages/visual-shared/xml-roundtrip/src/index.ts"
             ]
         }
     },

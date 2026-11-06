@@ -1,31 +1,17 @@
 {
-  "name": "webharvest-ide-visual-designer",
+  "name": "webharvest-ide",
   "version": "2.2.0",
-  "description": "WebHarvest Visual Designer - Low-code configuration interface",
+  "private": true,
+  "description": "WebHarvest IDE module root. The authoritative TypeScript frontend lives in ./frontend. This package only hosts maintenance tooling that is not part of the product build.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit",
-    "sweep:examples": "tsx ./scripts/sweep_examples.ts"
-  },
-  "dependencies": {
-    "classnames": "^2.3.2",
-    "fast-xml-parser": "^4.3.2",
-    "lodash-es": "^4.17.21",
-    "rete": "^2.0.3",
-    "rete-area-plugin": "^2.0.3",
-    "rete-connection-plugin": "^2.0.2",
-    "rete-render-utils": "^2.0.2"
+    "sweep:examples": "npm --prefix frontend exec -- tsx ../scripts/sweep_examples.ts"
   },
   "devDependencies": {
-    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.10.5",
     "jsdom": "^27.2.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=18.0.0",

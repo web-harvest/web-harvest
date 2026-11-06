@@ -1,10 +1,12 @@
-export { XMLParser } from '../../../../webharvest-ide/frontend/src/visual/XMLParser';
-export { XMLGenerator } from '../../../../webharvest-ide/frontend/src/visual/XMLGenerator';
+export { XMLParser } from './XMLParser.js';
+export { XMLGenerator } from './XMLGenerator.js';
+export type { XMLGeneratorOptions } from './XMLGenerator.js';
 export {
     sanitizeXmlProlog,
     trimLeadingNoise,
     stripVisualDesignerMetadata,
     prepareXmlForBackend
-} from '../../../../webharvest-ide/frontend/src/utils/xmlSanitizer';
-
-
+} from './xmlSanitizer.js';
+export { resolveLegacyMapping } from './legacyMappings.js';
+export type { LegacyNotice, LegacyRule } from './legacyMappings.js';
+export type { VisualNode } from './visualNode.js';

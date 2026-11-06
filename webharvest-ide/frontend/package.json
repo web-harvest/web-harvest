@@ -7,15 +7,21 @@
         "dev": "vite",
         "build": "tsc && vite build",
         "preview": "vite preview",
+        "build:packages": "npm --prefix ../../packages/visual-shared/metadata-client run build && npm --prefix ../../packages/visual-shared/xml-roundtrip run build",
+        "pretest": "npm run build:packages",
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
         "lint": "eslint src --ext .ts,.tsx",
-        "type-check": "tsc --noEmit"
+        "pretype-check": "npm run build:packages",
+        "type-check": "tsc --noEmit",
+        "prebuild": "npm run build:packages"
     },
     "dependencies": {
         "@types/d3": "^7.4.3",
         "@types/jointjs": "^1.0.5",
+        "@webharvest/metadata-client": "file:../../packages/visual-shared/metadata-client",
+        "@webharvest/xml-roundtrip": "file:../../packages/visual-shared/xml-roundtrip",
         "d3": "^7.9.0",
         "jointjs": "^3.7.7",
         "monaco-editor": "^0.44.0"

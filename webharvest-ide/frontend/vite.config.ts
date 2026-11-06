@@ -10,6 +10,14 @@ export default defineConfig({
             '@panels': path.resolve(__dirname, './src/panels'),
             '@types': path.resolve(__dirname, './src/types'),
             '@utils': path.resolve(__dirname, './src/utils'),
+            '@webharvest/metadata-client': path.resolve(
+                __dirname,
+                '../../packages/visual-shared/metadata-client/src/index.ts'
+            ),
+            '@webharvest/xml-roundtrip': path.resolve(
+                __dirname,
+                '../../packages/visual-shared/xml-roundtrip/src/index.ts'
+            ),
         },
     },
     build: {

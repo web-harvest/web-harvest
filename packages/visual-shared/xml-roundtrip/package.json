@@ -1,20 +1,31 @@
 {
   "name": "@webharvest/xml-roundtrip",
   "version": "0.1.0",
+  "private": true,
+  "description": "XML parse/generate round-trip helpers for WebHarvest visual tooling",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
+  "files": ["dist"],
+  "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test:consumer": "node test/consumer.mjs"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@webharvest/metadata-client": "file:../metadata-client"
+  },
+  "devDependencies": {
+    "jsdom": "^27.2.0",
+    "typescript": "^5.3.3"
+  },
+  "license": "BSD-3-Clause"
 }
-
-

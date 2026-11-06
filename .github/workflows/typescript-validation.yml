@@ -1,0 +1,129 @@
+name: TypeScript Validation
+
+on:
+  pull_request:
+    branches:
+      - "2.3.x"
+      - "recovery/**"
+      - "stabilization/**"
+      - "ci/**"
+  push:
+    branches:
+      - "recovery/**"
+      - "stabilization/**"
+      - "ci/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: typescript-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-typescript-packages:
+    name: Shared TypeScript packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build and smoke-test metadata-client
+        working-directory: packages/visual-shared/metadata-client
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          # Isolation check: compiled output must not reach into the IDE tree
+          if grep -R "webharvest-ide" dist src; then
+            echo "metadata-client still references webharvest-ide" >&2
+            exit 1
+          fi
+          npm run test:consumer
+
+      - name: Build and smoke-test xml-roundtrip
+        working-directory: packages/visual-shared/xml-roundtrip
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+          if grep -R "webharvest-ide" dist src; then
+            echo "xml-roundtrip still references webharvest-ide" >&2
+            exit 1
+          fi
+          npm run test:consumer
+
+  frontend-jest:
+    name: IDE frontend checks and Jest (Node 18)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webharvest-ide/frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.19.0"
+          cache: npm
+          cache-dependency-path: webharvest-ide/frontend/package.json
+
+      - name: Install shared package dependencies
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --prefix ../../packages/visual-shared/metadata-client
+          npm install --no-audit --no-fund --prefix ../../packages/visual-shared/xml-roundtrip
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check frontend
+        run: npm run type-check
+
+      - name: Run frontend Jest tests
+        run: npm test -- --runInBand
+
+      - name: Build frontend
+        run: npm run build
+
+  ide-frontend-authority:
+    name: Documented IDE frontend authority
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Assert retired root workspace is not a product build
+        run: |
+          set -euo pipefail
+          test -f docs/IDE_FRONTEND_WORKSPACE.md
+          test -f webharvest-ide/frontend/package.json
+          test -f webharvest-ide/frontend/tsconfig.json
+          # Root vite product build must remain retired
+          if test -f webharvest-ide/vite.config.js; then
+            echo "obsolete root vite.config.js still present" >&2
+            exit 1
+          fi
+          if test -f webharvest-ide/tsconfig.json; then
+            echo "obsolete root tsconfig.json still present; use tsconfig.base.json" >&2
+            exit 1
+          fi
+          # Root package must not claim a product type-check/build
+          python3 - <<'PY'
+          import json, sys
+          with open("webharvest-ide/package.json") as f:
+              scripts = json.load(f).get("scripts") or {}
+          forbidden = {"type-check", "build", "dev", "preview"}
+          present = forbidden.intersection(scripts)
+          if present:
+              print(f"root package product scripts still present: {sorted(present)}", file=sys.stderr)
+              sys.exit(1)
+          PY

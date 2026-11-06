@@ -1,4 +1,3 @@
-export * from './normalizer';
-export * from './types';
-
-
+export * from './PluginNormalizer.js';
+export * from './SchemaMapper.js';
+export * from './types.js';

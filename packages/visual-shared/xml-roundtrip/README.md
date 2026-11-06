@@ -1,7 +1,7 @@
-## @webharvest/xml-roundtrip
+# @webharvest/xml-roundtrip
 
-Temporary package that re-exports the IDE’s `XMLParser`, `XMLGenerator`, and sanitizer utilities so external consumers (VS Code harness, CLI tools) can share the same round-trip implementation.
+Self-contained XML parse/generate helpers for WebHarvest visual tooling.
 
-> **Note:** Until the code is physically moved, this package proxies files from `webharvest-ide/frontend/src`. Consumers must install the main repo or replace these re-exports once we split the codebase into true packages.
-
-
+Owns `XMLParser`, `XMLGenerator`, legacy tag mappings, and XML sanitizers.
+Depends on `@webharvest/metadata-client` for the `PluginLookup` contract only.
+Requires a DOM `DOMParser` / `Node` (browser or jsdom).
