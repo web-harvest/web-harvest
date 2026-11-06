@@ -155,3 +155,49 @@ GitHub Actions run [#32](https://github.com/web-harvest/web-harvest/actions/runs
 | Failsafe | 242 tests, 0 failures, 0 errors, 0 skipped |
 
 Both Java 11 jobs passed. This is the first green Core baseline in the stabilization line. It does not yet prove the full Maven reactor, IDE frontend/Jest, packaging, or end-to-end runtime behavior. PR #17 remains open and unmerged; no product branch or release tag was changed.
+
+
+## Core CI recovery — verified green (2026-11-06)
+
+The cumulative candidate on PR [#23](https://github.com/web-harvest/web-harvest/pull/23) reached a green Core CI result on exact SHA:
+
+`e1b3f2368e71f23498f290bf587e7531848f4f3a`
+
+Workflow run: [42238136491](https://github.com/web-harvest/web-harvest/actions/runs/42238136491)
+
+| Suite | Result |
+|---|---:|
+| Surefire | 2,891 tests, 0 failures, 0 errors, 0 skipped |
+| Failsafe | 242 tests, 0 failures, 0 errors, 0 skipped |
+| Total | 3,133 tests, all green |
+
+### Corrections supported by CI evidence
+
+1. The eight earlier Surefire failures were stale metadata/schema expectations or an incorrect classification of non-visual plugins. PR #23 carries the corrections; CI confirms these tests now pass.
+2. The two CallParam failures were in tests using a mocked `DynamicScopeContext`. The test now uses a real Guice-initialized `ScraperContext`, matching the established integration-test setup. Surefire is green.
+3. The HTTP failures were test fixture contract mismatches, not evidence of external-network instability: `XmlBasedIntegrationTestBase.HttpStubModule` defines exact fixtures for `https://httpbin.org/json` and `https://httpbin.org/html`, but tests called `/get` and `/status/200`. The tests now use the configured fixture URLs and assert fixture-specific response content. Failsafe is green.
+4. The earlier five While integration failures disappeared in the later Core run after the CallParam test harness correction; no production While implementation change was made. Do not claim a While production fix.
+
+### Candidate PR topology
+
+- PR #12: CI bootstrap, still a dependency in the original recovery chain.
+- PR #15: SetVar compatibility alias, still open/draft in the original stacked chain.
+- PR #23: draft cumulative validation PR targeting `2.3.x`; carries the recovered snapshot, CI bootstrap, SetVar compatibility, metadata/schema corrections, CallParam test correction, and deterministic HTTP fixture assertions.
+- PR #17 and PR #22 were closed as superseded by the cumulative candidate.
+- PR #24: draft validation vehicle for executing the new Full Product Validation workflow on a recovery branch.
+
+## Full product validation — added, execution pending
+
+Added `.github/workflows/full-validation.yml` on `recovery/stabilization-ci`. It covers:
+- all-module Maven unit-test phase and package lifecycle (including the IDE Maven frontend build);
+- all-module Maven Failsafe integration tests;
+- IDE frontend type-check, Jest and Vite build;
+- IDE workspace TypeScript checks/build;
+- shared `metadata-client` and `xml-roundtrip` package builds.
+
+The workflow is being exercised via PR [#24](https://github.com/web-harvest/web-harvest/pull/24) because the new workflow must exist on the PR base branch to run for that PR. Latest observed full-validation run: [42238688660](https://github.com/web-harvest/web-harvest/actions/runs/42238688660), queued at the time of this audit update.
+
+Known limitations:
+- Frontend package lockfiles are absent; npm installs are not yet fully reproducible.
+- The VS Code harness contains TODO placeholder scripts and is not treated as a validated product surface.
+- Core CI green is not yet a release baseline; the full-reactor and frontend workflow must complete, and any failures must be triaged.
