@@ -35,15 +35,21 @@ targeting deleted `visual-designer/` sources is retired. CI validates the
 frontend and shared packages, not a second product type-check at the module root.
 See `docs/IDE_FRONTEND_WORKSPACE.md`.
 
-## Documented limitations
+## Documented limitations (accepted for this unit)
 
 - **Resolution split:** Vite/`tsc` resolve `@webharvest/*` to package `src/` via
   path aliases; Jest resolves to compiled `dist/` (Node16 `.js` import
   specifiers). `pretest`/`prebuild` rebuild packages first.
-- **Jest ratchet:** CI fails on D3 parse errors, suite/test total drift, or
-  failed-count increases above `jest-known-failures.json`. It does not require
-  zero assertion failures in this unit.
+- **Jest ratchet is count-based:** CI fails on D3 parse errors, suite/test total
+  drift, or failed-count increases above `jest-known-failures.json`. It does
+  not name individual failing tests; Issue #26 classification for remaining
+  failures is class-level in `docs/FRONTEND_JEST_TRIAGE.md`, not per-test.
 - **Lockfiles:** root `.gitignore` still ignores `package-lock.json`; installs
   remain unpinned (pre-existing).
 - **Public API surface:** package `export *` re-exports helpers needed by
   frontend shims; narrowing to an explicit export list is follow-up work.
+- **`sweep:examples`:** command runs after workspace retirement fixes, but
+  currently reports round-trip mismatches on examples; not a CI gate for
+  #25–#27.
+- **Node skew:** shared-package job uses Node 20; frontend Jest job uses
+  Node 18.19 (product Maven frontend version).
