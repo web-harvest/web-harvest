@@ -5578,6 +5578,7 @@ export class VisualDesigner {
             ...node,
             attributes: { ...node.attributes },
             body: node.body,
+            contentSequence: node.contentSequence?.map(part => ({ ...part })),
             position: node.position ? { ...node.position } : undefined,
             children: node.children ? this.cloneNodes(node.children) : []
         };

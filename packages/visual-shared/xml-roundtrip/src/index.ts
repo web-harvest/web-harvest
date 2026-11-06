@@ -9,4 +9,4 @@ export {
 } from './xmlSanitizer.js';
 export { resolveLegacyMapping } from './legacyMappings.js';
 export type { LegacyNotice, LegacyRule } from './legacyMappings.js';
-export type { VisualNode } from './visualNode.js';
+export type { VisualContentPart, VisualNode } from './visualNode.js';

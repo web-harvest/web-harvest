@@ -3,7 +3,7 @@
  * Converts VisualNode array to XML string
  */
 
-import type { VisualNode } from './visualNode.js';
+import type { VisualContentPart, VisualNode } from './visualNode.js';
 
 export interface XMLGeneratorOptions {
     indentLevel?: number;
@@ -63,41 +63,85 @@ export class XMLGenerator {
     private generateNode(
         node: VisualNode,
         indentLevel: number,
-        options: ResolvedOptions
+        options: ResolvedOptions,
+        includeIndent: boolean = true
     ): string {
-        const indent = '    '.repeat(indentLevel);
+        const indent = includeIndent ? '    '.repeat(indentLevel) : '';
         const attributes = this.generateAttributes(node.attributes);
         const dimensionsAttrs = this.generateDimensionsAttributes(node, options);
         const tag = node.type;
+        const contentSequence = this.getValidContentSequence(node);
 
-        // Self-closing tag (no body, no children)
-        if (node.body === null && node.children.length === 0) {
-            return `${indent}<${tag}${attributes}${dimensionsAttrs}/>`;
+        // Self-closing tag (no body, no children, and no preserved mixed content).
+        if (!contentSequence && node.body === null && node.children.length === 0) {
+            return indent + '<' + tag + attributes + dimensionsAttrs + '/>';
         }
 
-        // Opening tag
-        let xml = `${indent}<${tag}${attributes}${dimensionsAttrs}>`;
+        let xml = indent + '<' + tag + attributes + dimensionsAttrs + '>';
 
-        // Body content
-        if (node.body !== null && node.body !== '') {
-            if (this.needsCDATA(node.body)) {
-                xml += `<![CDATA[${node.body}]]>`;
-            } else {
-                xml += this.escapeXML(node.body);
+        if (contentSequence) {
+            const childrenById = new Map(node.children.map(child => [child.id, child]));
+            contentSequence.forEach(part => {
+                if (part.kind === 'text') {
+                    if (part.value.length === 0) {
+                        return;
+                    }
+                    xml += this.needsCDATA(part.value)
+                        ? '<![CDATA[' + part.value + ']]>'
+                        : this.escapeXML(part.value);
+                    return;
+                }
+
+                const child = childrenById.get(part.nodeId);
+                if (child) {
+                    // Indentation belongs to the surrounding text segments in
+                    // mixed content; do not inject extra whitespace here.
+                    xml += this.generateNode(child, indentLevel + 1, options, false);
+                }
+            });
+        } else {
+            // Legacy body + children representation for ordinary nodes.
+            if (node.body !== null && node.body !== '') {
+                xml += this.needsCDATA(node.body)
+                    ? '<![CDATA[' + node.body + ']]>'
+                    : this.escapeXML(node.body);
+            }
+
+            if (node.children.length > 0) {
+                xml += '\\n';
+                xml += this.generateInternal(node.children, indentLevel + 1, options, false);
+                xml += '\\n' + indent;
             }
         }
 
-        // Children
-        if (node.children.length > 0) {
-            xml += '\n';
-            xml += this.generateInternal(node.children, indentLevel + 1, options, false);
-            xml += '\n' + indent;
+        return xml + '</' + tag + '>';
+    }
+
+    private getValidContentSequence(node: VisualNode): VisualContentPart[] | null {
+        const sequence = node.contentSequence;
+        if (!sequence || sequence.length === 0) {
+            return null;
         }
 
-        // Closing tag
-        xml += `</${tag}>`;
+        const sequenceText = sequence
+            .filter((part): part is Extract<VisualContentPart, { kind: 'text' }> => part.kind === 'text')
+            .map(part => part.value)
+            .join('');
+        if (sequenceText !== (node.body ?? '')) {
+            return null;
+        }
 
-        return xml;
+        const sequenceChildIds = sequence
+            .filter((part): part is Extract<VisualContentPart, { kind: 'child' }> => part.kind === 'child')
+            .map(part => part.nodeId);
+        if (
+            sequenceChildIds.length !== node.children.length ||
+            sequenceChildIds.some((id, index) => id !== node.children[index]?.id)
+        ) {
+            return null;
+        }
+
+        return sequence;
     }
 
     /**

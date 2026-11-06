@@ -51,6 +51,28 @@ describe('XML round-trip', () => {
         expect(body).not.toContain('data-width');
         expect(body).not.toContain('data-height');
     });
+
+    it('preserves mixed CDATA and child-element order', () => {
+        const xml = '<config><file><![CDATA[ <catalog> ]]><loop><get var="items"/></loop><![CDATA[ </catalog> ]]></file></config>';
+        const parser = new XMLParser();
+        const nodes = parser.parse(xml);
+        const generator = new XMLGenerator();
+
+        expect(nodes[0].contentSequence?.map(part => part.kind)).toEqual([
+            'text',
+            'child',
+            'text'
+        ]);
+
+        const regenerated = generator.generate(nodes);
+        expect(regenerated.indexOf('<![CDATA[ <catalog> ]]>')).toBeLessThan(regenerated.indexOf('<loop>'));
+        expect(regenerated.indexOf('<loop>')).toBeLessThan(regenerated.indexOf('<![CDATA[ </catalog> ]]>'));
+
+        const reparsed = parser.parse('<config>' + regenerated + '</config>');
+        expect(reparsed[0].body).toBe(nodes[0].body);
+        expect(reparsed[0].children[0].type).toBe('loop');
+    });
+
 });
 
 

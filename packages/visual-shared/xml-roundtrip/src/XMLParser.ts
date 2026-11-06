@@ -4,7 +4,7 @@
  */
 
 import type { PluginLookup } from '@webharvest/metadata-client';
-import type { VisualNode } from './visualNode.js';
+import type { VisualContentPart, VisualNode } from './visualNode.js';
 import { resolveLegacyMapping, type LegacyNotice } from './legacyMappings.js';
 
 export class XMLParser {
@@ -119,36 +119,44 @@ export class XMLParser {
             tagName = legacyRule.replacement;
         }
 
-        // Preserve direct text and CDATA nodes in their original order.
-        // Trimming here corrupts meaningful whitespace in text/template nodes,
-        // while preferring CDATA alone drops adjacent text nodes.
-        const bodyNodes = Array.from(element.childNodes).filter(
-            node => node.nodeType === Node.TEXT_NODE ||
-                node.nodeType === Node.CDATA_SECTION_NODE
-        );
-        let body: string | null = null;
-
-        if (bodyNodes.length > 0) {
-            const text = bodyNodes.map(node => node.nodeValue || '').join('');
-            const indentationOnly = element.children.length > 0 && text.trim().length === 0;
-            body = indentationOnly || text.length === 0 ? null : text;
-        }
-
-        // Empty elements with no text nodes remain null-bodied.
-        if (element.children.length === 0 && body === null) {
-            const allText = element.textContent || '';
-            body = allText.length > 0 ? allText : null;
-        }
-
-        // Parse children
+        // Preserve the order of text/CDATA and child elements. VisualNode keeps
+        // body for existing consumers, while contentSequence lets XMLGenerator
+        // reconstruct mixed content without moving trailing CDATA before children.
         const children: VisualNode[] = [];
-        for (let i = 0; i < element.children.length; i++) {
-            const child = element.children[i];
-            const childNode = this.parseElement(child);
-            if (childNode) {
-                children.push(childNode);
+        const contentSequence: VisualContentPart[] = [];
+        const textParts: string[] = [];
+
+        Array.from(element.childNodes).forEach(childNode => {
+            if (
+                childNode.nodeType === Node.TEXT_NODE ||
+                childNode.nodeType === Node.CDATA_SECTION_NODE
+            ) {
+                const value = childNode.nodeValue || '';
+                textParts.push(value);
+                contentSequence.push({ kind: 'text', value });
+                return;
             }
-        }
+
+            if (childNode.nodeType === Node.ELEMENT_NODE) {
+                const parsedChild = this.parseElement(childNode as Element);
+                if (parsedChild) {
+                    children.push(parsedChild);
+                    contentSequence.push({ kind: 'child', nodeId: parsedChild.id });
+                }
+            }
+        });
+
+        const rawBody = textParts.join('');
+        const hasMeaningfulText = rawBody.trim().length > 0;
+        const hasElementChildren = children.length > 0;
+        const body = rawBody.length === 0 ||
+            (hasElementChildren && !hasMeaningfulText)
+            ? null
+            : rawBody;
+        const preservedContentSequence =
+            hasElementChildren && hasMeaningfulText
+                ? contentSequence
+                : undefined;
 
         const node: VisualNode = {
             id: this.generateId(),
@@ -156,6 +164,7 @@ export class XMLParser {
             attributes,
             body,
             children,
+            contentSequence: preservedContentSequence,
             dimensions: dimensions // Include custom dimensions if present
         };
 
