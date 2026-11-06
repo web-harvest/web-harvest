@@ -96,6 +96,23 @@ public abstract class ScraperTestBase {
     }
     
     /**
+     * Parses and validates an XML configuration without executing scraper plugins.
+     * This is used for repository-wide example validation so examples that contact
+     * external websites or services do not make the unit-test phase network-dependent.
+     *
+     * @param xmlString XML configuration source
+     * @return the loaded configuration
+     * @throws Exception if parsing or configuration loading fails
+     */
+    protected Config parseXmlString(String xmlString) throws Exception {
+        ConfigSource configSource = new BufferConfigSource(xmlString);
+        Config config = configFactory.create(configSource);
+        config.reload();
+        assertNotNull(config.getConfigurationTree(), "Configuration tree should be available after reload");
+        return config;
+    }
+
+    /**
      * Executes an XML configuration and returns the value of a specific variable.
      * Uses v2.2 Scraper API.
      * 
