@@ -105,6 +105,8 @@ describe('App WebSocket Integration', () => {
     });
 
     afterEach(() => {
+        // Close the app-owned socket so Jest does not retain an open handle.
+        (app as any)?.wsManager?.disconnect();
         jest.clearAllMocks();
     });
 
