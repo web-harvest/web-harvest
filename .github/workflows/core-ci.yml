@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  core-tests:
+  core-unit-tests:
     name: Core unit tests (Java 11)
     runs-on: ubuntu-latest
     steps:
@@ -35,15 +35,46 @@ jobs:
           java-version: "11"
           cache: maven
 
-      - name: Run Core tests
+      - name: Run Core unit tests (Surefire)
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
 
-      - name: Upload Core test reports
+      - name: Upload Core Surefire reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-test-reports-${{ github.run_number }}
+          name: core-surefire-reports-${{ github.run_number }}
           path: |
             webharvest-core/target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+  core-integration-tests:
+    name: Core integration tests (Java 11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      # Compile tests, then run Failsafe only. Avoid `verify` so parent-bound
+      # checkstyle/pmd/spotbugs (not part of Core CI test scope) do not run.
+      # -DskipUnitTests=true skips Surefire if the test phase is touched;
+      # do not use -DskipTests (it also disables Failsafe).
+      - name: Run Core integration tests (Failsafe)
+        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify -DskipUnitTests=true
+
+      - name: Upload Core Failsafe reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-failsafe-reports-${{ github.run_number }}
+          path: |
+            webharvest-core/target/failsafe-reports/
           if-no-files-found: warn
           retention-days: 14
