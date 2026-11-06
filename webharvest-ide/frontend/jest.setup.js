@@ -12,9 +12,9 @@ Object.defineProperty(globalThis, 'jest', {
 // resize notifications or dimensions.
 if (typeof globalThis.ResizeObserver === 'undefined') {
     class ResizeObserverStub {
-        observe(): void {}
-        unobserve(): void {}
-        disconnect(): void {}
+        observe() {}
+        unobserve() {}
+        disconnect() {}
     }
 
     Object.defineProperty(globalThis, 'ResizeObserver', {
