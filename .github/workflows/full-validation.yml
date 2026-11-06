@@ -121,32 +121,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-  ide-workspace:
-    name: IDE workspace TypeScript build (Node 20)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: webharvest-ide
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: webharvest-ide/package.json
-
-      - name: Install IDE workspace dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Type-check IDE workspace
-        run: npm run type-check
-
-      - name: Build IDE workspace
-        run: npm run build
-
   shared-typescript-packages:
     name: Shared TypeScript packages
     runs-on: ubuntu-latest
@@ -158,6 +132,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      # Shared packages currently re-export implementation from the active
+      # frontend source tree, so install its dependencies before compiling them.
+      - name: Install IDE frontend dependencies
+        working-directory: webharvest-ide/frontend
+        run: npm install --no-audit --no-fund
 
       - name: Build metadata-client and xml-roundtrip
         shell: bash
