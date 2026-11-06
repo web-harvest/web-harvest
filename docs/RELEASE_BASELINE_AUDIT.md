@@ -141,3 +141,17 @@ PR #17 now includes additional test-only corrections, pending CI:
 - HTTP fixtures: `XmlBasedIntegrationTestBase.HttpStubModule` provides deterministic responses for `https://httpbin.org/html`, `https://httpbin.org/json`, and `https://example.com`; it has no `/get` response. Three failing test cases used `/get`. They now use the already-configured `/json` fixture rather than depending on an unconfigured endpoint.
 
 Current PR #17 head: `e090fa406dbc9c42f4992eb03410380491badf39`. Core CI run `42236247295` is in progress (unit + integration jobs). This is the next validation gate; do not treat these test changes as passed until both jobs finish successfully.
+
+
+## 9. Core baseline restored on PR #17 (2026-11-06)
+
+PR #17 (`fix(core): restore Core test baseline and metadata contract`) now includes the evidence-backed corrections described above. Exact candidate head: `e090fa406dbc9c42f4992eb03410380491badf39`.
+
+GitHub Actions run [#32](https://github.com/web-harvest/web-harvest/actions/runs/42236247295) completed successfully on that exact SHA:
+
+| Suite | Result |
+|---|---:|
+| Surefire | 2,891 tests, 0 failures, 0 errors, 0 skipped |
+| Failsafe | 242 tests, 0 failures, 0 errors, 0 skipped |
+
+Both Java 11 jobs passed. This is the first green Core baseline in the stabilization line. It does not yet prove the full Maven reactor, IDE frontend/Jest, packaging, or end-to-end runtime behavior. PR #17 remains open and unmerged; no product branch or release tag was changed.
