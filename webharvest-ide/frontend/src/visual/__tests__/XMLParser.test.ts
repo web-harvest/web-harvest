@@ -157,5 +157,19 @@ describe('XMLParser', () => {
             expect(ids.size).toBe(3); // 3 unique IDs
         });
     });
+
+    describe('preserve text content', () => {
+        it('preserves leading and trailing whitespace in text-only nodes', () => {
+            const nodes = parser.parse('<config><text> User: </text></config>');
+            expect(nodes[0].body).toBe(' User: ');
+        });
+
+        it('preserves text and CDATA segments in their original order', () => {
+            const xml = '<config><template> \\n<![CDATA[<x/>]]>\\n </template></config>';
+            const nodes = parser.parse(xml);
+            expect(nodes[0].body).toBe(' \\n<x/>\\n ');
+        });
+    });
+
 });
 

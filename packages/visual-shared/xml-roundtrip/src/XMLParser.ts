@@ -119,33 +119,25 @@ export class XMLParser {
             tagName = legacyRule.replacement;
         }
 
-        // Extract body (text content or CDATA)
+        // Preserve direct text and CDATA nodes in their original order.
+        // Trimming here corrupts meaningful whitespace in text/template nodes,
+        // while preferring CDATA alone drops adjacent text nodes.
+        const bodyNodes = Array.from(element.childNodes).filter(
+            node => node.nodeType === Node.TEXT_NODE ||
+                node.nodeType === Node.CDATA_SECTION_NODE
+        );
         let body: string | null = null;
 
-        // Check for CDATA
-        const cdataNodes = Array.from(element.childNodes).filter(
-            node => node.nodeType === Node.CDATA_SECTION_NODE
-        );
+        if (bodyNodes.length > 0) {
+            const text = bodyNodes.map(node => node.nodeValue || '').join('');
+            const indentationOnly = element.children.length > 0 && text.trim().length === 0;
+            body = indentationOnly || text.length === 0 ? null : text;
+        }
 
-        if (cdataNodes.length > 0) {
-            // Use CDATA content
-            body = cdataNodes.map(node => node.nodeValue || '').join('');
-        } else {
-            // Get text content (excluding child elements)
-            const textNodes = Array.from(element.childNodes).filter(
-                node => node.nodeType === Node.TEXT_NODE
-            );
-
-            if (textNodes.length > 0) {
-                const text = textNodes.map(node => node.nodeValue || '').join('').trim();
-                body = text || null;
-            }
-
-            // If no children elements, even empty text should be empty string
-            if (element.children.length === 0 && body === null) {
-                const allText = element.textContent?.trim() || '';
-                body = allText.length > 0 ? allText : null;
-            }
+        // Empty elements with no text nodes remain null-bodied.
+        if (element.children.length === 0 && body === null) {
+            const allText = element.textContent || '';
+            body = allText.length > 0 ? allText : null;
         }
 
         // Parse children
