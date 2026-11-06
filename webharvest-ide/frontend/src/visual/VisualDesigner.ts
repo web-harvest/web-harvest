@@ -5592,8 +5592,11 @@ export class VisualDesigner {
         const cloned = this.cloneNode(node);
         const originalChildren = cloned.children || [];
         const children = originalChildren.map(child => this.createNodeWithNewIds(child));
-        const childIdMap = new Map(
-            originalChildren.map((child, index) => [child.id, children[index].id])
+        const childIdMap = new Map<string, string>(
+            originalChildren.map((child, index): [string, string] => [
+                child.id,
+                children[index].id
+            ])
         );
         const contentSequence = cloned.contentSequence?.map(part =>
             part.kind === 'child'
