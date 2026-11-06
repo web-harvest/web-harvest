@@ -47,6 +47,7 @@ describe('App - Panel Initialization (TDD)', () => {
             <div id="plugin-palette"></div>
             <div id="tabs"></div>
             <div id="tabs-container"></div>
+            <div id="rightSidebar" class="sidebar-section"></div>
             <div class="sidebar-section">
                 <div class="sidebar-nav">
                     <button class="sidebar-nav-btn" data-panel="properties" id="propertiesTabBtn" style="display: flex;">
