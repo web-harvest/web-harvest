@@ -152,9 +152,9 @@ async function sweepExample(file: string): Promise<SweepResult> {
     const rootAttributes = Array.from(originalRoot.attributes)
         .map(attribute => ' ' + attribute.name + '="' + escapeXmlAttribute(attribute.value) + '"')
         .join('');
-    const rebuilt = '<?xml version="1.0" encoding="UTF-8"?>\\n' +
-        '<' + originalRoot.tagName + rootAttributes + '>\\n' +
-        regeneratedBody + '\\n</' + originalRoot.tagName + '>';
+    const rebuilt = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<' + originalRoot.tagName + rootAttributes + '>\n' +
+        regeneratedBody + '\n</' + originalRoot.tagName + '>';
 
     const normalizedOriginal = canonicalizeXml(trimLeadingNoise(original));
     const normalizedRebuilt = canonicalizeXml(trimLeadingNoise(rebuilt));
