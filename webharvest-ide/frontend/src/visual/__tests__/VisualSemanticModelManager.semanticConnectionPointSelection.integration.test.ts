@@ -564,8 +564,8 @@ describe('VisualSemanticModelManager - Semantic Connection Point Selection (Inte
 
             // node1 connects to node2, node3, and node4
             connectionManager.createConnection('node-1', 'node-2', 'sequential');
-            connectionManager.addConnection('node-1', 'node-3');
-            connectionManager.addConnection('node-1', 'node-4');
+            connectionManager.createConnection('node-1', 'node-3', 'sequential');
+            connectionManager.createConnection('node-1', 'node-4', 'sequential');
 
             const model = manager.buildModel();
             const node1State = model.workflow.allNodes.get('node-1');
