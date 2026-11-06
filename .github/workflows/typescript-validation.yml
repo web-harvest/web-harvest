@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          npm test -- --runInBand > "${RUNNER_TEMP}/jest-output.txt" 2>&1
+          npm test -- --runInBand --detectOpenHandles --forceExit > "${RUNNER_TEMP}/jest-output.txt" 2>&1
           jest_status=$?
           set -e
           cat "${RUNNER_TEMP}/jest-output.txt"
