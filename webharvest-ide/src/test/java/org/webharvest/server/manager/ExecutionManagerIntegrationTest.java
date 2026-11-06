@@ -98,6 +98,7 @@ public class ExecutionManagerIntegrationTest {
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <def var=\"greeting\">Hello World!</def>\n" +
             "    <def var=\"user\">Web-Harvest User</def>\n" +
+            "    <def var=\"systemDate\">${sys.date()}</def>\n" +
             "</config>";
         
         ExecutionCapture capture = executeAndCapture("test-def", configXml);
@@ -113,8 +114,10 @@ public class ExecutionManagerIntegrationTest {
         // Verify variables
         assertTrue(capture.hasVariable("greeting"), "Should have 'greeting' variable");
         assertTrue(capture.hasVariable("user"), "Should have 'user' variable");
+        assertTrue(capture.hasVariable("systemDate"), "Guice-initialized ScraperContext should expose the built-in sys variable");
         assertTrue(capture.getVariable("greeting").contains("Hello World"), "greeting should contain 'Hello World'");
         assertTrue(capture.getVariable("user").contains("Web-Harvest User"), "user should contain 'Web-Harvest User'");
+        assertTrue(capture.getVariable("systemDate").matches("\\d{8}"), "sys.date() should return yyyyMMdd");
         
         System.out.println("✓ TEST 1 PASSED: Both variables extracted correctly");
         System.out.println("  - greeting: " + capture.getVariable("greeting"));
