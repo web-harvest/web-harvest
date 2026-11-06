@@ -63,7 +63,7 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("var", "counter");
         setVarConfig.setProperty("value", "${counter + 1}");
         
-        // Setup initial counter variable (REAL context, not mock!)
+        // Setup initial counter variable in the real context.
         context.setLocalVar("counter", new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment counter
@@ -72,7 +72,8 @@ public class WhilePluginIntegrationTest {
         
         // Then: Should increment counter
         assertNotNull(setVarResult);
-        assertNotNull(context.getVar("counter"), "Counter variable should be set in context");
+        assertEquals(context.getVar("counter").toString(), "1",
+                "SetVarPlugin should evaluate and store the value attribute");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
@@ -80,7 +81,10 @@ public class WhilePluginIntegrationTest {
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        assertTrue(whileResult instanceof EmptyVariable,
+                "An empty while body produces no list result");
+        assertEquals(context.getVar("counter").toString(), "3",
+                "While should re-evaluate the counter condition after each iteration");
     }
 
     @Test
@@ -95,8 +99,8 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("var", "i");
         setVarConfig.setProperty("value", "${i + 1}");
         
-        // Setup initial index variable
-        when(context.getVar("i")).thenReturn(new NodeVariable("0"));
+        // Setup initial index variable on the real context.
+        context.setLocalVar("i", new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment index
         setVarPlugin.initialize(setVarConfig);
@@ -104,7 +108,8 @@ public class WhilePluginIntegrationTest {
         
         // Then: Should increment index
         assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("i"), any(Variable.class));
+        assertEquals(context.getVar("i").toString(), "1",
+                "SetVarPlugin should update the index variable");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
@@ -112,7 +117,8 @@ public class WhilePluginIntegrationTest {
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        assertTrue(whileResult instanceof EmptyVariable,
+                "An empty while body produces no list result");
     }
 
     @Test
@@ -126,8 +132,8 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("var", "count");
         setVarConfig.setProperty("value", "${count + 1}");
         
-        // Setup initial count variable
-        when(context.getVar("count")).thenReturn(new NodeVariable("0"));
+        // Setup initial count variable on the real context.
+        context.setLocalVar("count", new NodeVariable("0"));
         
         // When: Execute SetVarPlugin first to increment count
         setVarPlugin.initialize(setVarConfig);
@@ -135,7 +141,8 @@ public class WhilePluginIntegrationTest {
         
         // Then: Should increment count
         assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("count"), any(Variable.class));
+        assertEquals(context.getVar("count").toString(), "1",
+                "SetVarPlugin should update the count variable");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
@@ -143,7 +150,8 @@ public class WhilePluginIntegrationTest {
 
         // Then: Should execute body multiple times
         assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        assertTrue(whileResult instanceof EmptyVariable,
+                "An empty while body produces no list result");
     }
 
     @Test
@@ -164,7 +172,8 @@ public class WhilePluginIntegrationTest {
         
         // Then: Should set variable
         assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("testVar"), any(Variable.class));
+        assertEquals(context.getVar("testVar").toString(), "testValue",
+                "SetVarPlugin should set the requested variable value");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
@@ -186,8 +195,8 @@ public class WhilePluginIntegrationTest {
         setVarConfig.setProperty("var", "flag");
         setVarConfig.setProperty("value", "false");
         
-        // Setup initial flag variable
-        when(context.getVar("flag")).thenReturn(new NodeVariable("true"));
+        // Setup initial flag variable on the real context.
+        context.setLocalVar("flag", new NodeVariable("true"));
         
         // When: Execute SetVarPlugin first to set flag to false
         setVarPlugin.initialize(setVarConfig);
@@ -195,7 +204,8 @@ public class WhilePluginIntegrationTest {
         
         // Then: Should set flag to false
         assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("flag"), any(Variable.class));
+        assertEquals(context.getVar("flag").toString(), "false",
+                "SetVarPlugin should update the flag before evaluating while");
         
         // When: Execute WhilePlugin
         whilePlugin.initialize(whileConfig);
@@ -203,6 +213,7 @@ public class WhilePluginIntegrationTest {
 
         // Then: Should execute body once then stop
         assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        assertTrue(whileResult instanceof EmptyVariable,
+                "The false condition prevents execution of the empty body");
     }
 }
