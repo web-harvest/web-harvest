@@ -201,3 +201,27 @@ Known limitations:
 - Frontend package lockfiles are absent; npm installs are not yet fully reproducible.
 - The VS Code harness contains TODO placeholder scripts and is not treated as a validated product surface.
 - Core CI green is not yet a release baseline; the full-reactor and frontend workflow must complete, and any failures must be triaged.
+
+
+## Full Product Validation — first findings (2026-11-06)
+
+Run [42238688660](https://github.com/web-harvest/web-harvest/actions/runs/42238688660) started on recovery validation branch `recovery/full-validation-probe`.
+
+### Results observed so far
+
+| Job | Result / evidence |
+|---|---|
+| IDE frontend type-check | PASS |
+| IDE frontend Jest | FAIL: 62 failed suites, 70 passed; 75 failed tests, 857 passed |
+| Shared TypeScript packages | FAIL: packages are not self-contained; see issue #25 |
+| Root IDE workspace type-check | FAIL: TS18003, configured include path has no source files; see issue #27 |
+| Maven reactor unit tests + package | In progress at audit update |
+| Maven reactor Failsafe integration tests | In progress at audit update |
+
+### New issues opened from direct CI evidence
+
+- [#25 — Make visual-shared TypeScript packages self-contained](https://github.com/web-harvest/web-harvest/issues/25)
+- [#26 — Configure Jest for the frontend's D3 ESM dependency graph](https://github.com/web-harvest/web-harvest/issues/26)
+- [#27 — Resolve the empty legacy webharvest-ide TypeScript workspace](https://github.com/web-harvest/web-harvest/issues/27)
+
+Do not mark the full product baseline stable until Maven reactor jobs complete, the D3/Jest failure is resolved or explicitly accepted, and the shared-package / duplicate-workspace boundaries are decided.
