@@ -235,7 +235,22 @@ public class SetVarPlugin extends AbstractPlugin {
             @Override
             public String[] getDependencies() { return new String[0]; }
             @Override
-            public PluginConfigurationSchema getConfigurationSchema() {
+            public PluginConfigurationSchema getConfigurationSchema() { return SetVarPlugin.this.getConfigurationSchema(); }
+            @Override
+            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
+            @Override
+            public String getElementName() { return "set-var"; }
+            @Override
+            public boolean isCorePlugin() { return true; }
+            @Override
+            public String getClassName() { return SetVarPlugin.this.getClass().getName(); }
+        };
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public PluginConfigurationSchema getConfigurationSchema() {
         return new PluginConfigurationSchema() {
             @Override public String getVersion() { return "2.1.0"; }
             @Override public boolean allowsBody() { return true; }
@@ -243,15 +258,13 @@ public class SetVarPlugin extends AbstractPlugin {
             @Override public String[] getAllowedSubElements() { return new String[0]; }
             @Override public String[] getOptionalAttributes() { return new String[]{"name", "var", "value"}; }
             @Override public String[] getRequiredAttributes() { return new String[0]; }
-            @Override
-            public AttributeDefinition getAttribute(String name) {
+            @Override public AttributeDefinition getAttribute(String name) {
                 for (AttributeDefinition attribute : getAttributeDefinitions()) {
                     if (attribute.getName().equals(name)) return attribute;
                 }
                 return null;
             }
-            @Override
-            public AttributeDefinition[] getAttributeDefinitions() {
+            @Override public AttributeDefinition[] getAttributeDefinitions() {
                 return new AttributeDefinition[]{
                     createNameAttribute("name", "Legacy WebHarvest 1.0 variable name"),
                     createNameAttribute("var", "Variable name accepted by current configurations"),
@@ -271,12 +284,12 @@ public class SetVarPlugin extends AbstractPlugin {
                     @Override public String getDefaultValue() { return null; }
                 };
             }
-            @Override
-            public void validate(PluginConfiguration configuration) throws PluginValidationException {
+            @Override public void validate(PluginConfiguration configuration) throws PluginValidationException {
                 SetVarPlugin.this.doValidateConfiguration(configuration);
             }
         };
     }
+
     /**
      * {@inheritDoc}
      */
@@ -398,10 +411,7 @@ public class SetVarPlugin extends AbstractPlugin {
         }
     }
 
-    /**
-     * Resolves the target using the WebHarvest 1.0 name attribute or the var spelling
-     * accepted by current configurations.
-     */
+    /** Resolves the WebHarvest 1.0 name attribute or the current var spelling. */
     private String resolveVariableName(PluginConfiguration configuration) {
         String legacyName = configuration.getProperty("name");
         String varName = configuration.getProperty("var");
