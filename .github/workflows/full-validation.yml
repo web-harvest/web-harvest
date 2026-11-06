@@ -74,7 +74,7 @@ jobs:
 
       # Run Failsafe across the full reactor without repeating Surefire.
       - name: Run all Maven integration tests
-        run: mvn --batch-mode --no-transfer-progress test-compile failsafe:integration-test failsafe:verify -DskipUnitTests=true
+        run: mvn --batch-mode --no-transfer-progress package -DskipTests && mvn --batch-mode --no-transfer-progress failsafe:integration-test failsafe:verify -DskipUnitTests=true
 
       - name: Upload Maven Failsafe reports
         if: always()
