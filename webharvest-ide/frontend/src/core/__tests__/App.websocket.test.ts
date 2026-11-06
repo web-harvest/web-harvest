@@ -90,7 +90,7 @@ describe('App WebSocket Integration', () => {
             <div id="propertyPanel"></div>
             <div id="plugin-palette"></div>
             <div id="tabs-container"></div>
-            <div id="runPanel"><div id="executionControls"></div></div>
+            <div id="rightSidebar"></div>
         `;
 
         // Capture WebSocket instance
