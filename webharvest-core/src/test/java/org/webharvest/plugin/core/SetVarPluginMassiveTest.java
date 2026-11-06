@@ -70,7 +70,7 @@ public class SetVarPluginMassiveTest {
     @Test public void testAttr02() { SetVarPlugin p = new SetVarPlugin(); var attrs = p.getConfigurationSchema().getAttributeDefinitions(); for (var a : attrs) assertNotNull(a.getType()); }
     @Test public void testAttr03() { SetVarPlugin p = new SetVarPlugin(); var attrs = p.getConfigurationSchema().getAttributeDefinitions(); for (var a : attrs) assertNotNull(a.getDescription()); }
     @Test public void testAttr04() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertEquals(attr.getName(), "var"); }
-    @Test public void testAttr05() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertTrue(attr.isRequired()); }
+    @Test public void testAttr05() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertFalse(attr.isRequired(), "var is optional because legacy name is also accepted"); }
     @Test public void testAttr06() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertNull(attr.getDefaultValue()); }
     @Test public void testAttr07() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertNull(attr.getAllowedValues()); }
     @Test public void testAttr08() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttributeDefinitions()[0]; assertNull(attr.getMinValue()); }

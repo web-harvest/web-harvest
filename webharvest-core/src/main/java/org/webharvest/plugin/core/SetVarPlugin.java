@@ -415,6 +415,14 @@ public class SetVarPlugin extends AbstractPlugin {
     private String resolveVariableName(PluginConfiguration configuration) {
         String legacyName = configuration.getProperty("name", "");
         String varName = configuration.getProperty("var", "");
+        // Retain compatibility with PluginConfiguration implementations and test doubles
+        // that expose only the one-argument property accessor.
+        if (legacyName == null || legacyName.isEmpty()) {
+            legacyName = configuration.getProperty("name");
+        }
+        if (varName == null || varName.isEmpty()) {
+            varName = configuration.getProperty("var");
+        }
         boolean hasLegacyName = legacyName != null && !legacyName.trim().isEmpty();
         boolean hasVarName = varName != null && !varName.trim().isEmpty();
         if (hasLegacyName && hasVarName && !legacyName.equals(varName)) {
