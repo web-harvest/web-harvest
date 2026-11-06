@@ -359,5 +359,76 @@ describe('VisualDesigner - Layout Validation', () => {
             expect(validation.valid).toBe(true);
         });
     });
+
+    describe('cycle-safe optimal layers (Issue #30)', () => {
+        const makeNode = (id: string): VisualNode => ({
+            id,
+            type: 'var',
+            attributes: {},
+            body: null,
+            children: []
+        });
+
+        const computeLayers = (
+            nodes: VisualNode[],
+            connections: Array<{ from: string; to: string }>
+        ): Map<string, number> =>
+            (designer as any).computeOptimalLayers(nodes, connections, nodes);
+
+        it('preserves longest-path layers for DAGs and handles cycles and deep graphs iteratively', () => {
+            // Acyclic graph: A branches to B/C, which converge at D.
+            const dagNodes = ['A', 'B', 'C', 'D', 'isolated'].map(makeNode);
+            const dagLayers = computeLayers(dagNodes, [
+                { from: 'A', to: 'B' },
+                { from: 'A', to: 'C' },
+                { from: 'B', to: 'D' },
+                { from: 'C', to: 'D' }
+            ]);
+            expect(Object.fromEntries(dagLayers)).toEqual({
+                A: 0,
+                B: 1,
+                C: 1,
+                D: 2,
+                isolated: 0
+            });
+
+            // A <-> B is one strongly connected component. Its incoming
+            // predecessor and outgoing successor retain deterministic layers.
+            const cycleNodes = ['P', 'A', 'B', 'T', 'disconnected'].map(makeNode);
+            const cycleLayers = computeLayers(cycleNodes, [
+                { from: 'P', to: 'A' },
+                { from: 'A', to: 'B' },
+                { from: 'B', to: 'A' },
+                { from: 'B', to: 'T' }
+            ]);
+            expect(cycleLayers.get('P')).toBe(0);
+            expect(cycleLayers.get('A')).toBe(1);
+            expect(cycleLayers.get('B')).toBe(1);
+            expect(cycleLayers.get('T')).toBe(2);
+            expect(cycleLayers.get('disconnected')).toBe(0);
+
+            // Self-loops are ignored as before; an isolated node remains layer 0.
+            const selfLoopLayers = computeLayers(
+                ['self', 'other'].map(makeNode),
+                [{ from: 'self', to: 'self' }]
+            );
+            expect(selfLoopLayers.get('self')).toBe(0);
+            expect(selfLoopLayers.get('other')).toBe(0);
+
+            // A long chain proves traversal does not consume recursive call stack.
+            const chainNodes = Array.from({ length: 2500 }, (_value, index) =>
+                makeNode(`node-${index}`)
+            );
+            const chainConnections = chainNodes.slice(1).map((node, index) => ({
+                from: chainNodes[index].id,
+                to: node.id
+            }));
+            const chainLayers = computeLayers(chainNodes, chainConnections);
+            expect(chainLayers.size).toBe(2500);
+            expect(chainLayers.get('node-0')).toBe(0);
+            expect(chainLayers.get('node-2499')).toBe(2499);
+        });
+    });
+
 });
 

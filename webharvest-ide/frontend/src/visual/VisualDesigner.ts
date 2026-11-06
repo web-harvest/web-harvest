@@ -1225,42 +1225,194 @@ export class VisualDesigner {
             reverseAdjacency.get(conn.to)!.add(conn.from);
         });
 
-        // Longest Path Algorithm (Sugiyama framework)
-        const longestPath = new Map<string, number>();
+        // Collapse strongly connected components before assigning layers.
+        // A cycle is a single layout component: its nodes share a layer, while
+        // the resulting condensation graph is always a DAG. This preserves
+        // longest-path layering for acyclic graphs and avoids recursive DFS.
+        const nodeOrder = new Map<string, number>();
+        const orderedNodeIds: string[] = [];
+        const orderedSeen = new Set<string>();
 
-        // Oblicz najdłuższą ścieżkę od źródła do każdego węzła
-        const computeLongestPath = (nodeId: string): number => {
-            if (longestPath.has(nodeId)) {
-                return longestPath.get(nodeId)!;
+        executionOrder.forEach(node => {
+            if (adjacency.has(node.id) && !orderedSeen.has(node.id)) {
+                orderedSeen.add(node.id);
+                orderedNodeIds.push(node.id);
             }
-
-            const predecessors = reverseAdjacency.get(nodeId);
-            if (!predecessors || predecessors.size === 0) {
-                longestPath.set(nodeId, 0);
-                return 0;
+        });
+        nodes.forEach(node => {
+            if (adjacency.has(node.id) && !orderedSeen.has(node.id)) {
+                orderedSeen.add(node.id);
+                orderedNodeIds.push(node.id);
             }
+        });
+        orderedNodeIds.forEach((nodeId, index) => nodeOrder.set(nodeId, index));
 
-            let maxPath = 0;
-            predecessors.forEach(predId => {
-                const pathLength = computeLongestPath(predId) + 1;
-                maxPath = Math.max(maxPath, pathLength);
-            });
-
-            longestPath.set(nodeId, maxPath);
-            return maxPath;
+        const compareNodeIds = (left: string, right: string): number => {
+            const orderDifference =
+                (nodeOrder.get(left) ?? Number.MAX_SAFE_INTEGER) -
+                (nodeOrder.get(right) ?? Number.MAX_SAFE_INTEGER);
+            return orderDifference || left.localeCompare(right);
         };
 
-        // Oblicz dla wszystkich węzłów
-        executionOrder.forEach(node => {
-            computeLongestPath(node.id);
+        // First Kosaraju pass: iterative DFS over the forward graph.
+        // Iteration is intentional: large workflows must not depend on the JS
+        // call-stack limit.
+        const visited = new Set<string>();
+        const finishOrder: string[] = [];
+
+        for (const startNodeId of orderedNodeIds) {
+            if (visited.has(startNodeId)) {
+                continue;
+            }
+
+            visited.add(startNodeId);
+            const stack: Array<{
+                nodeId: string;
+                neighbors: string[];
+                nextNeighborIndex: number;
+            }> = [{
+                nodeId: startNodeId,
+                neighbors: Array.from(adjacency.get(startNodeId) ?? []).sort(compareNodeIds),
+                nextNeighborIndex: 0
+            }];
+
+            while (stack.length > 0) {
+                const frame = stack[stack.length - 1];
+
+                if (frame.nextNeighborIndex < frame.neighbors.length) {
+                    const neighborId = frame.neighbors[frame.nextNeighborIndex++];
+                    if (!visited.has(neighborId)) {
+                        visited.add(neighborId);
+                        stack.push({
+                            nodeId: neighborId,
+                            neighbors: Array.from(adjacency.get(neighborId) ?? []).sort(compareNodeIds),
+                            nextNeighborIndex: 0
+                        });
+                    }
+                    continue;
+                }
+
+                finishOrder.push(frame.nodeId);
+                stack.pop();
+            }
+        }
+
+        // Second Kosaraju pass: discover strongly connected components in the
+        // reverse graph. Each component becomes one vertex in a DAG.
+        const componentByNode = new Map<string, number>();
+        const components: string[][] = [];
+
+        for (let index = finishOrder.length - 1; index >= 0; index--) {
+            const startNodeId = finishOrder[index];
+            if (componentByNode.has(startNodeId)) {
+                continue;
+            }
+
+            const componentId = components.length;
+            const members: string[] = [];
+            const stack = [startNodeId];
+            componentByNode.set(startNodeId, componentId);
+
+            while (stack.length > 0) {
+                const currentId = stack.pop()!;
+                members.push(currentId);
+
+                const predecessors = Array.from(
+                    reverseAdjacency.get(currentId) ?? []
+                ).sort(compareNodeIds);
+
+                for (let predecessorIndex = predecessors.length - 1; predecessorIndex >= 0; predecessorIndex--) {
+                    const predecessorId = predecessors[predecessorIndex];
+                    if (!componentByNode.has(predecessorId)) {
+                        componentByNode.set(predecessorId, componentId);
+                        stack.push(predecessorId);
+                    }
+                }
+            }
+
+            members.sort(compareNodeIds);
+            components.push(members);
+        }
+
+        // Build the condensation DAG and calculate longest-path layers with
+        // Kahn's algorithm. Edges inside one SCC do not affect its layer.
+        const componentAdjacency = new Map<number, Set<number>>();
+        const componentIndegree = new Map<number, number>();
+        const componentLayers = new Map<number, number>();
+
+        components.forEach((_members, componentId) => {
+            componentAdjacency.set(componentId, new Set());
+            componentIndegree.set(componentId, 0);
+            componentLayers.set(componentId, 0);
         });
 
-        // Użyj najdłuższej ścieżki jako warstwy
-        longestPath.forEach((layer, nodeId) => {
-            layers.set(nodeId, layer);
+        orderedNodeIds.forEach(fromId => {
+            const fromComponent = componentByNode.get(fromId);
+            if (fromComponent === undefined) {
+                return;
+            }
+
+            adjacency.get(fromId)?.forEach(toId => {
+                const toComponent = componentByNode.get(toId);
+                if (
+                    toComponent === undefined ||
+                    toComponent === fromComponent
+                ) {
+                    return;
+                }
+
+                const targets = componentAdjacency.get(fromComponent)!;
+                if (!targets.has(toComponent)) {
+                    targets.add(toComponent);
+                    componentIndegree.set(
+                        toComponent,
+                        (componentIndegree.get(toComponent) ?? 0) + 1
+                    );
+                }
+            });
         });
 
-        // Upewnij się, że wszystkie węzły mają warstwę
+        const compareComponents = (left: number, right: number): number =>
+            compareNodeIds(components[left][0], components[right][0]);
+
+        const ready = components
+            .map((_members, componentId) => componentId)
+            .filter(componentId => componentIndegree.get(componentId) === 0)
+            .sort(compareComponents);
+
+        while (ready.length > 0) {
+            const currentComponent = ready.shift()!;
+            const currentLayer = componentLayers.get(currentComponent) ?? 0;
+            const targets = Array.from(
+                componentAdjacency.get(currentComponent) ?? []
+            ).sort(compareComponents);
+
+            targets.forEach(targetComponent => {
+                componentLayers.set(
+                    targetComponent,
+                    Math.max(
+                        componentLayers.get(targetComponent) ?? 0,
+                        currentLayer + 1
+                    )
+                );
+
+                const nextIndegree = (componentIndegree.get(targetComponent) ?? 0) - 1;
+                componentIndegree.set(targetComponent, nextIndegree);
+
+                if (nextIndegree === 0) {
+                    ready.push(targetComponent);
+                    ready.sort(compareComponents);
+                }
+            });
+        }
+
+        components.forEach((members, componentId) => {
+            const layer = componentLayers.get(componentId) ?? 0;
+            members.forEach(nodeId => layers.set(nodeId, layer));
+        });
+
+        // Keep a defensive default for any node omitted from executionOrder
+        // or otherwise absent from the component traversal.
         nodes.forEach(node => {
             if (!layers.has(node.id)) {
                 layers.set(node.id, 0);
