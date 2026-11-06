@@ -32,7 +32,7 @@ global.fetch = jest.fn((url: string) => {
     if (url.includes('/api/plugins')) {
         return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve([]),
+            json: () => Promise.resolve({ plugins: [], schemaVersion: 'test' }),
         } as Response);
     }
     return Promise.reject(new Error('Unknown URL'));
@@ -89,6 +89,7 @@ describe('App WebSocket Integration', () => {
             <div id="visual-canvas"></div>
             <div id="propertyPanel"></div>
             <div id="plugin-palette"></div>
+        <div id="rightSidebar"></div>
             <div id="tabs-container"></div>
             <div id="runPanel"><div id="executionControls"></div></div>
         `;

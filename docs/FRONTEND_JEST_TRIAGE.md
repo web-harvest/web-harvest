@@ -71,3 +71,16 @@ the established body-plus-children behavior. This avoids stale source metadata
 overriding edits.
 
 The Node 20 CI sweep verified all 26 examples: 26 passed, 0 mismatches.
+
+
+## Issue #31 — next contract-migration pass
+
+The verified run `42299758618` completed with 53 failed suites and 244 failed
+tests (1,342 total tests). The failure ceiling was lowered from 255 to 244.
+
+The next migration batch aligns remaining `PluginManager` test doubles with
+the `getSchemaVersion(): string | null` contract, adds a deterministic jsdom
+`ResizeObserver` shim, and migrates the remaining VisualDesigner layout test
+from the removed `getConnections()` API to `getManualConnections()`.
+App fixtures are also being aligned with the current plugin metadata response
+shape and RightSidebar container. These changes remain pending CI verification.

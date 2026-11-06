@@ -48,8 +48,10 @@ See `docs/IDE_FRONTEND_WORKSPACE.md`.
   remain unpinned (pre-existing).
 - **Public API surface:** package `export *` re-exports helpers needed by
   frontend shims; narrowing to an explicit export list is follow-up work.
-- **`sweep:examples`:** command runs after workspace retirement fixes, but
-  currently reports round-trip mismatches on examples; not a CI gate for
-  #25–#27.
-- **Node skew:** shared-package job uses Node 20; frontend Jest job uses
-  Node 18.19 (product Maven frontend version).
+- **`sweep:examples`:** now runs as a Node 20 CI job. It compares semantic
+  XML structure across all 26 examples, preserving wrapper attributes,
+  namespaces, meaningful text/CDATA, and mixed-content order while ignoring
+  comments, declarations, attribute order, layout metadata, and indentation.
+  All 26 examples pass the semantic round-trip gate.
+- **Node skew:** shared-package and XML sweep jobs use Node 20; frontend Jest
+  job uses Node 18.19 (product Maven frontend version).

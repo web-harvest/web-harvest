@@ -23,6 +23,7 @@ describe('App execution control integration', () => {
       <div id="canvas-area"></div>
       <div id="plugin-sidebar"></div>
       <div id="plugin-palette"></div>
+        <div id="rightSidebar"></div>
       <div class="sidebar-section">
         <div class="sidebar-nav">
           <button class="sidebar-nav-btn" data-panel="properties" id="propertiesTabBtn"></button>

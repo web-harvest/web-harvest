@@ -3,6 +3,7 @@ export default {
     testEnvironment: 'jsdom',
     roots: ['<rootDir>/src'],
     testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
+    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     // D3 v7 and its closure ship ESM-only entry points ("type":"module").
     // Transform that closure to CJS so Jest can load the real modules without
     // global D3 mocks or --experimental-vm-modules. Allow-list is the verified

@@ -396,6 +396,7 @@ const plugins: Record<string, Plugin> = {
 };
 
 const pluginManager = {
+    getSchemaVersion: () => null,
     findPlugin: (id: string) => plugins[id] ?? null,
     findPluginById: (id: string) => plugins[id] ?? null,
     getPlugins: () => Object.values(plugins),

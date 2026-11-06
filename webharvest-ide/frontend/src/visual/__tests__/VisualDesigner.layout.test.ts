@@ -343,7 +343,7 @@ describe('VisualDesigner - Layout Validation', () => {
             await new Promise(resolve => setTimeout(resolve, 500));
 
             // Pobierz połączenia z designer
-            const connections = designer.getConnections().map(c => ({ from: c.from, to: c.to }));
+            const connections = designer.getManualConnections().map(c => ({ from: c.from, to: c.to }));
 
             if (connections.length === 0) {
                 console.warn('No connections found - may need to wait longer');

@@ -1,7 +1,7 @@
 {
   "description": "Baseline failure ratchet for Issue #26 after D3 ESM transform. New failures beyond these ceilings fail CI. Individual suite migration is follow-up work; see docs/FRONTEND_JEST_TRIAGE.md.",
   "maxFailedSuites": 53,
-  "maxFailedTests": 255,
+  "maxFailedTests": 244,
   "requiredTotalSuites": 132,
   "requiredTotalTests": 1342
 }
