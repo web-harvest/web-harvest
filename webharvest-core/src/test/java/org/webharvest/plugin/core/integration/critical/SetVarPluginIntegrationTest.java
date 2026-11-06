@@ -37,6 +37,30 @@ public class SetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
     }
     
     @Test
+    public void testSetVarWithWebHarvest10NameAttribute() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <def var=\"counter\" value=\"0\"/>\n" +
+            "    <set-var name=\"counter\" value=\"1\"/>\n" +
+            "</config>";
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable counter = context.getVar("counter");
+        assertNotNull(counter, "Legacy name attribute should update the variable");
+        assertEquals("1", counter.toString().trim());
+    }
+
+    @Test
+    public void testSetVarAcceptsMatchingNameAndVarAttributes() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <set-var name=\"sharedName\" var=\"sharedName\" value=\"compatible\"/>\n" +
+            "</config>";
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable value = context.getVar("sharedName");
+        assertNotNull(value);
+        assertEquals("compatible", value.toString().trim());
+    }
+    @Test
     public void testSetVarWithExpression() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +

@@ -185,7 +185,7 @@ import org.slf4j.LoggerFactory;
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Deprecated:</strong> Use {@code <def>} for new configurations</li>
- *   <li><strong>Attribute name:</strong> Uses {@code name="x"} instead of {@code var="x"}</li>
+ *   <li><strong>Attribute compatibility:</strong> WebHarvest 1.0 {@code name="x"} is preserved; {@code var="x"} is also accepted. If both are supplied, they must match.</li>
  *   <li><strong>Arithmetic caveat:</strong> {@code ${x + 1}} is string concat, not math (use script for real math)</li>
  *   <li><strong>Template support:</strong> Variable name supports template interpolation</li>
  * </ul>
@@ -235,80 +235,54 @@ public class SetVarPlugin extends AbstractPlugin {
             @Override
             public String[] getDependencies() { return new String[0]; }
             @Override
-            public PluginConfigurationSchema getConfigurationSchema() { return SetVarPlugin.this.getConfigurationSchema(); }
-            @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
-            @Override
-            public String getElementName() { return "set-var"; }
-            @Override
-            public boolean isCorePlugin() { return true; }
-            @Override
-            public String getClassName() { return SetVarPlugin.this.getClass().getName(); }
-        };
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public PluginConfigurationSchema getConfigurationSchema() {
+            public PluginConfigurationSchema getConfigurationSchema() {
         return new PluginConfigurationSchema() {
+            @Override public String getVersion() { return "2.1.0"; }
+            @Override public boolean allowsBody() { return true; }
+            @Override public String[] getRequiredSubElements() { return new String[0]; }
+            @Override public String[] getAllowedSubElements() { return new String[0]; }
+            @Override public String[] getOptionalAttributes() { return new String[]{"name", "var", "value"}; }
+            @Override public String[] getRequiredAttributes() { return new String[0]; }
             @Override
-            public String getVersion() { return "2.1.0"; }
-            @Override
-            public boolean allowsBody() { return true; }
-            @Override
-            public String[] getRequiredSubElements() { return new String[0]; }
-            @Override
-            public String[] getAllowedSubElements() { return new String[0]; }
-            @Override
-            public String[] getOptionalAttributes() { return new String[0]; }
-            @Override
-            public String[] getRequiredAttributes() { return new String[]{"var"}; }
-            @Override
-            public AttributeDefinition getAttribute(String name) { 
-                if ("var".equals(name)) {
-                    return getAttributeDefinitions()[0];
+            public AttributeDefinition getAttribute(String name) {
+                for (AttributeDefinition attribute : getAttributeDefinitions()) {
+                    if (attribute.getName().equals(name)) return attribute;
                 }
                 return null;
             }
             @Override
-            public AttributeDefinition[] getAttributeDefinitions() { 
-                return new AttributeDefinition[] {
-                    new AttributeDefinition() {
-                        @Override
-                        public String getName() { return "var"; }
-                        @Override
-                        public String getDescription() { return "Name of the variable to set"; }
-                        @Override
-                        public boolean isRequired() { return true; }
-                        @Override
-                        public AttributeType getType() { return AttributeType.STRING; }
-                        @Override
-                        public String getPattern() { return null; }
-                        @Override
-                        public Number getMaxValue() { return null; }
-                        @Override
-                        public Number getMinValue() { return null; }
-                        @Override
-                        public String[] getAllowedValues() { return null; }
-                        @Override
-                        public String getDefaultValue() { return null; }
-                    }
+            public AttributeDefinition[] getAttributeDefinitions() {
+                return new AttributeDefinition[]{
+                    createNameAttribute("name", "Legacy WebHarvest 1.0 variable name"),
+                    createNameAttribute("var", "Variable name accepted by current configurations")
+                };
+            }
+            private AttributeDefinition createNameAttribute(final String attributeName, final String description) {
+                return new AttributeDefinition() {
+                    @Override public String getName() { return attributeName; }
+                    @Override public String getDescription() { return description; }
+                    @Override public boolean isRequired() { return false; }
+                    @Override public AttributeType getType() { return AttributeType.STRING; }
+                    @Override public String getPattern() { return null; }
+                    @Override public Number getMaxValue() { return null; }
+                    @Override public Number getMinValue() { return null; }
+                    @Override public String[] getAllowedValues() { return null; }
+                    @Override public String getDefaultValue() { return null; }
                 };
             }
             @Override
             public void validate(PluginConfiguration configuration) throws PluginValidationException {
-                // Validation is handled in doValidateConfiguration
+                SetVarPlugin.this.doValidateConfiguration(configuration);
             }
         };
     }
-
     /**
      * {@inheritDoc}
      */
     @Override
     protected void doInitialize(PluginConfiguration configuration) throws PluginException {
-        // No initialization needed for SetVarPlugin
+        // AbstractPlugin.initialize() does not invoke validateConfiguration().
+        doValidateConfiguration(configuration);
     }
 
     /**
@@ -318,7 +292,7 @@ public class SetVarPlugin extends AbstractPlugin {
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("SetVarPlugin.doExecute: START");
         PluginConfiguration config = getConfiguration();
-        String varName = config.getProperty("var", "");
+        String varName = resolveVariableName(config);
         String valueAttr = config.getProperty("value", "");
         
         LOGGER.debug("SetVarPlugin.doExecute: varName='" + varName + "', valueAttr='" + valueAttr + "'");
@@ -412,14 +386,30 @@ public class SetVarPlugin extends AbstractPlugin {
      */
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) throws PluginValidationException {
-        if (configuration == null) {
-            throw new PluginValidationException("Configuration cannot be null");
+        if (configuration == null) throw new PluginValidationException("Configuration cannot be null");
+        try {
+            String varName = resolveVariableName(configuration);
+            if (varName == null || varName.trim().isEmpty()) {
+                throw new PluginValidationException("Variable name is required: provide 'name' or 'var'");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new PluginValidationException(e.getMessage(), e);
         }
-        
-        String varName = configuration.getProperty("name", "");
-        if (varName.isEmpty()) {
-            throw new PluginValidationException("Variable name 'name' is required");
+    }
+
+    /**
+     * Resolves the target using the WebHarvest 1.0 name attribute or the var spelling
+     * accepted by current configurations.
+     */
+    private String resolveVariableName(PluginConfiguration configuration) {
+        String legacyName = configuration.getProperty("name");
+        String varName = configuration.getProperty("var");
+        boolean hasLegacyName = legacyName != null && !legacyName.trim().isEmpty();
+        boolean hasVarName = varName != null && !varName.trim().isEmpty();
+        if (hasLegacyName && hasVarName && !legacyName.equals(varName)) {
+            throw new IllegalArgumentException("Conflicting 'name' and 'var' attributes on <set-var>; provide one or use the same value");
         }
+        return hasVarName ? varName : legacyName;
     }
     
     /**

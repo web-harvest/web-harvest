@@ -68,7 +68,8 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, LogPlugin.class, "log");
         registry.registerMapping(null, ValueOfPlugin.class, "value-of");
         registry.registerMapping(null, XMLPlugin.class, "xml");
-        // SetVarPlugin removed - use DefPlugin instead
+        // Legacy XML compatibility: keep <set-var> available alongside <def>
+        registry.registerMapping(null, SetVarPlugin.class, "set-var");
         registry.registerMapping(null, SleepPlugin.class, "sleep");
         registry.registerMapping(null, StylesheetPlugin.class, "stylesheet");
         registry.registerMapping(null, TemplatePlugin.class, "template");
@@ -84,7 +85,7 @@ public class CorePluginsRegistrar {
         registry.registerMapping(null, XQParamPlugin.class, "xq-param");
         registry.registerMapping(null, XsltPlugin.class, "xslt");
         
-        LOG.info("Registered 43 core plugins (legacy var/set-var removed - use def instead)");
+        LOG.info("Registered 44 core plugins (including legacy set-var compatibility alias)");
         initialized = true;
     }
     
