@@ -130,3 +130,14 @@ The earlier Core CI run on the recovered snapshot (run `42135647082`) reported:
 ## 7. Immediate next work unit
 
 PR #17 now combines the four-element `@CorePlugin.systemComponent` classification correction with the six stale schema/version/category test assertions. The final head is `eaf7852caa965892eae2461888fb4d05c4ad5a8d`. An initial CI run (`42233085655`) started on an earlier head (`9dc5b285`) and is not valid evidence for the final head; no final-head workflow run has yet been surfaced. Next, trigger/confirm CI on the final head, then diagnose the two CallParam NPEs and eight Failsafe failures. Do not weaken tests or exclude failures to obtain a green build.
+
+
+## 8. Follow-up test-fixture investigation (2026-11-06)
+
+PR #17 now includes additional test-only corrections, pending CI:
+
+- `CallParamPluginTest`: the test mocked only `getProperty("name")`, but `CallParamPlugin.doExecute()` calls `getProperty("name", "")`. Mockito returned null for the unstubbed overload and caused the NPE. The execution fixtures now use `DefaultPluginConfiguration`, which implements the documented default-value behavior.
+- `WhilePluginIntegrationTest`: setup creates a real `ScraperContext`, but five assertions/stubs incorrectly treated it as a Mockito mock. Tests now use `setLocalVar` / `getVar` against the real context and assert the empty-body result contract. One test also verifies the current counter-condition behavior.
+- HTTP fixtures: `XmlBasedIntegrationTestBase.HttpStubModule` provides deterministic responses for `https://httpbin.org/html`, `https://httpbin.org/json`, and `https://example.com`; it has no `/get` response. Three failing test cases used `/get`. They now use the already-configured `/json` fixture rather than depending on an unconfigured endpoint.
+
+Current PR #17 head: `e090fa406dbc9c42f4992eb03410380491badf39`. Core CI run `42236247295` is in progress (unit + integration jobs). This is the next validation gate; do not treat these test changes as passed until both jobs finish successfully.
