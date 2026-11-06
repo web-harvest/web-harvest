@@ -71,8 +71,12 @@ public abstract class ScraperTestBase {
         config.reload(); // CRITICAL!
         
         // Create execution context
-        DynamicScopeContext context = new ScraperContext();
+        // Resolve the context through Guice so @PostConstruct initialization runs.
+        // A manually constructed ScraperContext misses the built-in `sys` variable.
+        DynamicScopeContext context = injector.getInstance(ScraperContext.class);
         context.setConfig(config);
+        context.setScriptingLanguage(org.webharvest.runtime.scripting.ScriptingLanguage.BEANSHELL);
+        context.setCharset("UTF-8");
         
         // Create session
         String sessionId = UUID.randomUUID().toString();
