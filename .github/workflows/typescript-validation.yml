@@ -143,3 +143,24 @@ jobs:
               print(f"root package product scripts still present: {sorted(present)}", file=sys.stderr)
               sys.exit(1)
           PY
+
+  sweep-examples:
+    name: XML example semantic round-trip (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build shared XML packages
+        run: bash webharvest-ide/frontend/scripts/build-packages.sh
+
+      - name: Install sweep dependencies
+        run: npm install --no-audit --no-fund --prefix webharvest-ide
+
+      - name: Verify XML examples semantically round-trip
+        run: npm run sweep:examples --prefix webharvest-ide
