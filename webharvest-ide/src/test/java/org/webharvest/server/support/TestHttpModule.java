@@ -5,14 +5,19 @@ import org.webharvest.plugin.services.HttpResponse;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Guice module used by IDE integration tests to stub HTTP requests.
- * Ensures tests do not rely on external network connectivity.
+ * Guice module used by IDE integration tests to stub external HTTP requests.
+ * Requests to the test-owned loopback fixture are passed through to its local
+ * server so the HTTP plugin is exercised end-to-end without external network access.
  */
 public final class TestHttpModule extends AbstractModule {
 
@@ -29,11 +34,11 @@ public final class TestHttpModule extends AbstractModule {
             Map<String, StubResponse> map = new HashMap<>();
 
             map.put("https://jsonplaceholder.typicode.com/users/1",
-                    StubResponse.json("{\"id\":1,\"name\":\"Leanne Graham\",\"email\":\"leanne@example.org\"}"));
+                    StubResponse.json("{\\"id\\":1,\\"name\\":\\"Leanne Graham\\",\\"email\\":\\"leanne@example.org\\"}"));
             map.put("https://httpbin.org/get",
-                    StubResponse.json("{\"url\":\"https://httpbin.org/get\",\"args\":{}}"));
+                    StubResponse.json("{\\"url\\":\\"https://httpbin.org/get\\",\\"args\\":{}}"));
             map.put("https://httpbin.org/json",
-                    StubResponse.json("{\"slideshow\":{\"title\":\"Sample Slide Deck\",\"author\":\"Yours Truly\",\"slides\":[{\"title\":\"Wake up to WonderWidgets!\"}]}}"));
+                    StubResponse.json("{\\"slideshow\\":{\\"title\\":\\"Sample Slide Deck\\",\\"author\\":\\"Yours Truly\\",\\"slides\\":[{\\"title\\":\\"Wake up to WonderWidgets!\\"}]}}"));
             map.put("https://httpbin.org/html",
                     StubResponse.html("<!DOCTYPE html><html><head><title>Herman Melville - Moby-Dick</title></head><body><h1>Example Domain</h1></body></html>"));
             map.put("https://example.com",
@@ -58,14 +63,56 @@ public final class TestHttpModule extends AbstractModule {
         }
 
         private HttpResponse respond(String method, String url) throws HttpServiceException {
+            if (isLocalFixtureUrl(url)) {
+                return requestLocalFixture(method, url);
+            }
+
             StubResponse response = responses.get(url);
             if (response != null) {
                 return response;
             }
 
-            // Default stubbed JSON response for any unsupported URL.
-            String json = "{\"stub\":true,\"method\":\"" + method + "\",\"url\":\"" + url + "\"}";
+            // Default stubbed JSON response for any unsupported external URL.
+            String json = "{\\"stub\\":true,\\"method\\":\\"" + method + "\\",\\"url\\":\\"" + url + "\\"}";
             return StubResponse.json(json);
+        }
+
+        private boolean isLocalFixtureUrl(String url) {
+            try {
+                URI uri = URI.create(url);
+                String host = uri.getHost();
+                boolean loopbackHost = "127.0.0.1".equals(host)
+                        || "localhost".equalsIgnoreCase(host);
+                boolean fixturePath = "/json".equals(uri.getPath())
+                        || "/html".equals(uri.getPath());
+                return loopbackHost && fixturePath;
+            } catch (IllegalArgumentException exception) {
+                return false;
+            }
+        }
+
+        private HttpResponse requestLocalFixture(String method, String url) throws HttpServiceException {
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) new URL(url).openConnection();
+                connection.setRequestMethod(method);
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(3000);
+
+                int status = connection.getResponseCode();
+                InputStream stream = status >= 400
+                        ? connection.getErrorStream()
+                        : connection.getInputStream();
+                byte[] bytes = stream == null ? new byte[0] : stream.readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                return new StubResponse(status, body, connection.getContentType());
+            } catch (Exception exception) {
+                throw new HttpServiceException("Local HTTP fixture request failed: " + url, exception);
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
         }
     }
 
@@ -124,5 +171,3 @@ public final class TestHttpModule extends AbstractModule {
         }
     }
 }
-
-
