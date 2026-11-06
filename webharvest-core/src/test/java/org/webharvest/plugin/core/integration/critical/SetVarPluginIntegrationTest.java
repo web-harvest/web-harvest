@@ -61,29 +61,6 @@ public class SetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertEquals("compatible", value.toString().trim());
     }
     @Test
-    public void testSetVarRejectsConflictingNameAndVarAttributes() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <set-var name=\"first\" var=\"second\" value=\"invalid\"/>\n" +
-            "</config>";
-        try {
-            executeXmlString(xml);
-            fail("Conflicting name and var attributes must be rejected");
-        } catch (Exception expected) {
-            Throwable cause = expected;
-            boolean foundConflict = false;
-            while (cause != null) {
-                if (cause.getMessage() != null && cause.getMessage().contains("Conflicting 'name' and 'var'")) {
-                    foundConflict = true;
-                    break;
-                }
-                cause = cause.getCause();
-            }
-            assertTrue(foundConflict, "Expected validation error for conflicting target attributes");
-        }
-    }
-
-    @Test
     public void testSetVarWithExpression() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +

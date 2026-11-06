@@ -5,6 +5,8 @@
 package org.webharvest.plugin.core;
 
 import org.testng.annotations.Test;
+import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.plugin.exceptions.PluginValidationException;
 import static org.testng.Assert.*;
 
 /**
@@ -88,6 +90,20 @@ public class SetVarPluginMassiveTest {
     @Test public void testCoverage09() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getAllowedSubElements().length, 0); }
     @Test public void testCoverage10() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getOptionalAttributes().length, 3); }
     
+    @Test
+    public void testConflictingNameAndVarAttributesAreRejected() throws Exception {
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
+        configuration.setProperty("name", "first");
+        configuration.setProperty("var", "second");
+        try {
+            new SetVarPlugin().validateConfiguration(configuration);
+            fail("Conflicting name and var attributes must be rejected");
+        } catch (PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("Conflicting 'name' and 'var'"));
+        }
+    }
+
     // ==================== Stress Tests ====================
     
     @Test public void testMultipleInstances01() { for (int i = 0; i < 10; i++) { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getMetadata()); } }
