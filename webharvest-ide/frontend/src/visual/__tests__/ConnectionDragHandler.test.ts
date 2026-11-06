@@ -13,6 +13,8 @@ import type { PluginManager } from '../../core/PluginManager';
 
 // Mock VisualDesigner
 class MockVisualDesigner {
+    public svgElement!: SVGSVGElement;
+
     getAllNodes() {
         return [];
     }
@@ -21,12 +23,6 @@ class MockVisualDesigner {
     }
     viewportToCanvas(x: number, y: number) {
         return { x, y };
-    }
-    get svgElement() {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '2000');
-        svg.setAttribute('height', '2000');
-        return svg;
     }
     get canvasElement() {
         const div = document.createElement('div');
