@@ -254,7 +254,8 @@ public class SetVarPlugin extends AbstractPlugin {
             public AttributeDefinition[] getAttributeDefinitions() {
                 return new AttributeDefinition[]{
                     createNameAttribute("name", "Legacy WebHarvest 1.0 variable name"),
-                    createNameAttribute("var", "Variable name accepted by current configurations")
+                    createNameAttribute("var", "Variable name accepted by current configurations"),
+                    createNameAttribute("value", "Value expression or literal assigned to the variable")
                 };
             }
             private AttributeDefinition createNameAttribute(final String attributeName, final String description) {
