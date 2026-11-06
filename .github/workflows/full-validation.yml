@@ -1,0 +1,167 @@
+name: Full Product Validation
+
+on:
+  pull_request:
+    branches:
+      - "2.3.x"
+      - "recovery/**"
+  push:
+    branches:
+      - "recovery/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-product-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maven-reactor-package:
+    name: Maven reactor tests and package (Java 11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      # package includes the Surefire test phase and builds every Maven module.
+      # webharvest-ide's frontend-maven-plugin also installs Node/npm and builds
+      # its Vite frontend during the Maven compile lifecycle.
+      - name: Run all Maven unit tests and package the reactor
+        run: mvn --batch-mode --no-transfer-progress package
+
+      - name: Upload Maven Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reactor-surefire-reports-${{ github.run_number }}
+          path: |
+            **/target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Maven artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webharvest-reactor-jars-${{ github.run_number }}
+          path: |
+            **/target/*.jar
+          if-no-files-found: error
+          retention-days: 30
+
+  maven-reactor-integration:
+    name: Maven reactor integration tests (Java 11)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      # Run Failsafe across the full reactor without repeating Surefire.
+      - name: Run all Maven integration tests
+        run: mvn --batch-mode --no-transfer-progress test-compile failsafe:integration-test failsafe:verify -DskipUnitTests=true
+
+      - name: Upload Maven Failsafe reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reactor-failsafe-reports-${{ github.run_number }}
+          path: |
+            **/target/failsafe-reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend-jest:
+    name: IDE frontend checks and Jest (Node 18)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webharvest-ide/frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.19.0"
+          cache: npm
+          cache-dependency-path: webharvest-ide/frontend/package.json
+
+      # No package-lock.json exists yet. npm install is used intentionally and
+      # the workflow records that frontend dependency resolution is not locked.
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check frontend
+        run: npm run type-check
+
+      - name: Run frontend Jest tests
+        run: npm test -- --runInBand
+
+      - name: Build frontend
+        run: npm run build
+
+  ide-workspace:
+    name: IDE workspace TypeScript build (Node 20)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webharvest-ide
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: webharvest-ide/package.json
+
+      - name: Install IDE workspace dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check IDE workspace
+        run: npm run type-check
+
+      - name: Build IDE workspace
+        run: npm run build
+
+  shared-typescript-packages:
+    name: Shared TypeScript packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build metadata-client and xml-roundtrip
+        shell: bash
+        run: |
+          set -euo pipefail
+          for package in packages/visual-shared/metadata-client packages/visual-shared/xml-roundtrip; do
+            echo "=== ${package} ==="
+            cd "${GITHUB_WORKSPACE}/${package}"
+            npm install --no-save --no-package-lock --no-audit --no-fund typescript@5.3.3
+            npm run build
+          done
