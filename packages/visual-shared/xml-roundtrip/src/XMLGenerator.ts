@@ -108,9 +108,9 @@ export class XMLGenerator {
             }
 
             if (node.children.length > 0) {
-                xml += '\\n';
+                xml += '\n';
                 xml += this.generateInternal(node.children, indentLevel + 1, options, false);
-                xml += '\\n' + indent;
+                xml += '\n' + indent;
             }
         }
 
