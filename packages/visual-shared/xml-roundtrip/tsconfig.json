@@ -1,11 +1,11 @@
 {
-  "extends": "../../../../tsconfig.json",
+  "extends": "../../../webharvest-ide/frontend/tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rootDir": "../../../",
     "outDir": "dist",
     "declaration": true
   },
   "include": ["src"]
 }
-
-
