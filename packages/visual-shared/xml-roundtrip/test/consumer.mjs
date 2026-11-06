@@ -1,17 +1,9 @@
 import { JSDOM } from 'jsdom';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkgRoot = path.resolve(__dirname, '..');
-const entry = pathToFileURL(path.join(pkgRoot, 'dist', 'index.js')).href;
+import { XMLParser, XMLGenerator, prepareXmlForBackend } from '@webharvest/xml-roundtrip';
 
 const { window } = new JSDOM('<!doctype html><html></html>');
 globalThis.DOMParser = window.DOMParser;
 globalThis.Node = window.Node;
-
-const { XMLParser, XMLGenerator, prepareXmlForBackend } = await import(entry);
 
 const parser = new XMLParser();
 const nodes = parser.parse('<config><var name="x">1</var></config>');

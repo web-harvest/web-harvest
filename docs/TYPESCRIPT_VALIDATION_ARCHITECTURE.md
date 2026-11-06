@@ -34,3 +34,16 @@ test-runtime changes; see `docs/FRONTEND_JEST_TRIAGE.md`.
 targeting deleted `visual-designer/` sources is retired. CI validates the
 frontend and shared packages, not a second product type-check at the module root.
 See `docs/IDE_FRONTEND_WORKSPACE.md`.
+
+## Documented limitations
+
+- **Resolution split:** Vite/`tsc` resolve `@webharvest/*` to package `src/` via
+  path aliases; Jest resolves to compiled `dist/` (Node16 `.js` import
+  specifiers). `pretest`/`prebuild` rebuild packages first.
+- **Jest ratchet:** CI fails on D3 parse errors, suite/test total drift, or
+  failed-count increases above `jest-known-failures.json`. It does not require
+  zero assertion failures in this unit.
+- **Lockfiles:** root `.gitignore` still ignores `package-lock.json`; installs
+  remain unpinned (pre-existing).
+- **Public API surface:** package `export *` re-exports helpers needed by
+  frontend shims; narrowing to an explicit export list is follow-up work.

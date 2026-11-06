@@ -18,12 +18,13 @@ existing test mechanics with a config-only change.
 - 932 tests: 75 failed, 857 passed
 - Root error: `SyntaxError: Unexpected token 'export'` from `d3` ESM entry
 
-## After D3 transform (local evidence, Specialist B)
+## After D3 transform (local + CI evidence)
 
 - 132 suites load; D3 parse errors: 0
-- ~1337 tests execute (previously masked suites now run)
-- Remaining failures (~262–276) are non-D3: stale fixtures, retired APIs,
-  incomplete PluginManager doubles, jsdom gaps (`fetch`, SVG geometry)
+- 1337 tests execute (previously masked suites now run)
+- Remaining failures: **53 suites / 262 tests** (CI run on `stabilization/ts-validation-25-26-27`)
+- CI ratchet: `webharvest-ide/frontend/jest-known-failures.json` fails the job if
+  failed counts rise or suite/test totals drift
 
 ## Failure classes (product / test contract — not D3)
 
@@ -31,8 +32,10 @@ existing test mechanics with a config-only change.
 |---|---|---|
 | Legacy VisualDesigner / ConnectionManager APIs | Calls to removed helpers (`getConnectionAnchor`, `addConnection`, …) | Migrate tests to current APIs |
 | Incomplete PluginManager doubles | Missing `findPlugin` / `getSchemaVersion` | Complete fixtures or narrow adapters |
-| jsdom platform gaps | `fetch`, `SVGPathElement`, layout geometry | Explicit shims / deterministic fixtures |
-| UI/layout contract drift | Old sidebar / panel expectations | Align fixtures to current UI |
+| jsdom platform gaps | `fetch`, `SVGPathElement`, `ResizeObserver is not defined`, layout geometry | Explicit shims / deterministic fixtures |
+| UI/layout contract drift | Old sidebar / panel expectations; `Cannot set property svgElement` on mocks | Align fixtures to current UI |
+| Possible product defect: layout recursion | `RangeError: Maximum call stack size exceeded` in `VisualDesigner.computeLongestPath` | Investigate cycle guard; do not treat as fixture-only until cleared |
 
 These classes are tracked as follow-up work. This unit does not skip, exclude,
-or weaken suites to force a green count.
+or weaken suites to force a green count. The CI job is an infrastructure +
+ratchet gate, not a claim that all assertions pass.

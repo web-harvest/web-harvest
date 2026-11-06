@@ -1,12 +1,4 @@
-import { pathToFileURL } from 'node:url';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkgRoot = path.resolve(__dirname, '..');
-const entry = pathToFileURL(path.join(pkgRoot, 'dist', 'index.js')).href;
-
-const { normalizePlugin } = await import(entry);
+import { normalizePlugin } from '@webharvest/metadata-client';
 
 const plugin = normalizePlugin({
   id: 'var',

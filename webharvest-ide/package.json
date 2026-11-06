@@ -5,10 +5,12 @@
   "description": "WebHarvest IDE module root. The authoritative TypeScript frontend lives in ./frontend. This package only hosts maintenance tooling that is not part of the product build.",
   "type": "module",
   "scripts": {
-    "sweep:examples": "npm --prefix frontend exec -- tsx ../scripts/sweep_examples.ts"
+    "sweep:examples": "tsx ./scripts/sweep_examples.ts"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
+    "@webharvest/metadata-client": "file:../packages/visual-shared/metadata-client",
+    "@webharvest/xml-roundtrip": "file:../packages/visual-shared/xml-roundtrip",
     "jsdom": "^27.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.3.3"

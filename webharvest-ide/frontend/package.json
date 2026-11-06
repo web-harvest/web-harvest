@@ -7,7 +7,7 @@
         "dev": "vite",
         "build": "tsc && vite build",
         "preview": "vite preview",
-        "build:packages": "npm --prefix ../../packages/visual-shared/metadata-client run build && npm --prefix ../../packages/visual-shared/xml-roundtrip run build",
+        "build:packages": "bash ./scripts/build-packages.sh",
         "pretest": "npm run build:packages",
         "test": "jest",
         "test:watch": "jest --watch",

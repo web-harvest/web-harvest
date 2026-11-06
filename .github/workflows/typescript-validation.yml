@@ -76,41 +76,27 @@ jobs:
           cache: npm
           cache-dependency-path: webharvest-ide/frontend/package.json
 
-      - name: Install shared package dependencies
-        run: |
-          set -euo pipefail
-          npm install --no-audit --no-fund --prefix ../../packages/visual-shared/metadata-client
-          npm install --no-audit --no-fund --prefix ../../packages/visual-shared/xml-roundtrip
-
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
 
       - name: Type-check frontend
+        # pretest/pretype-check/prebuild install+build shared packages via scripts/build-packages.sh
         run: npm run type-check
 
-      # Issue #26 gate: all suites must load under the D3 ESM transform.
-      # Remaining assertion failures are classified product/test-debt
-      # (docs/FRONTEND_JEST_TRIAGE.md) and do not fail this infrastructure gate.
+      # Issue #26 gate: D3 must load, all 132 suites must run, and failed counts
+      # must not exceed the checked-in ratchet (jest-known-failures.json).
       - name: Run frontend Jest tests
-        id: jest
-        continue-on-error: true
-        run: npm test -- --runInBand 2>&1 | tee "${RUNNER_TEMP}/jest-output.txt"
-
-      - name: Assert Jest loaded all suites without D3 ESM parse errors
         run: |
           set -euo pipefail
-          log="${RUNNER_TEMP}/jest-output.txt"
-          test -s "${log}"
-          if grep -E "SyntaxError: Unexpected token 'export'|d3\\.mjs|d3/src/index\\.js" "${log}"; then
-            echo "D3 ESM parse failure still present" >&2
-            exit 1
-          fi
-          if ! grep -E "Test Suites:.*132 total" "${log}"; then
-            echo "Expected 132 Jest suites in the summary" >&2
-            tail -n 80 "${log}" >&2
-            exit 1
-          fi
-          echo "Jest D3/load gate passed (assertion failures may remain; see triage doc)."
+          set +e
+          npm test -- --runInBand > "${RUNNER_TEMP}/jest-output.txt" 2>&1
+          jest_status=$?
+          set -e
+          cat "${RUNNER_TEMP}/jest-output.txt"
+          node ./scripts/assert-jest-gate.mjs "${RUNNER_TEMP}/jest-output.txt"
+          # assert-jest-gate encodes the acceptance gate; jest_status may be non-zero
+          # when classified baseline failures remain.
+          exit 0
 
       - name: Upload Jest output
         if: always()

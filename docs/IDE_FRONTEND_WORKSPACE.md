@@ -23,8 +23,12 @@ The module-root `webharvest-ide/package.json` is now a maintenance shell for
 
 ## What CI must validate
 
-1. `webharvest-ide/frontend` type-check, Jest, and build.
+1. `webharvest-ide/frontend` type-check, Jest (D3/load + failure ratchet), and build.
 2. Shared `@webharvest/*` packages under `packages/visual-shared/`.
-3. Maven packaging of `webharvest-ide` (which builds the frontend).
+3. Frontend `build:packages` must install package dependencies so Maven's
+   `frontend-maven-plugin` (`npm install` + `npm run build` in `frontend/`)
+   works from a clean checkout.
 
 CI must not require a product type-check/build of the retired root Vite workspace.
+Full reactor Maven packaging remains covered by the manual `full-build.yml`
+workflow and local verification for this unit.
