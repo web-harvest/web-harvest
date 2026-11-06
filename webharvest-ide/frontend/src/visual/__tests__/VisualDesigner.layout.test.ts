@@ -428,6 +428,30 @@ describe('VisualDesigner - Layout Validation', () => {
             expect(chainLayers.get('node-0')).toBe(0);
             expect(chainLayers.get('node-2499')).toBe(2499);
         });
+
+        it('remaps mixed-content child references when cloning nodes', () => {
+            const child = makeNode('child-original');
+            const parent: VisualNode = {
+                id: 'file-original',
+                type: 'file',
+                attributes: {},
+                body: ' <catalog>  </catalog> ',
+                children: [child],
+                contentSequence: [
+                    { kind: 'text', value: ' <catalog> ' },
+                    { kind: 'child', nodeId: child.id },
+                    { kind: 'text', value: ' </catalog> ' }
+                ]
+            };
+
+            const cloned = (designer as any).createNodeWithNewIds(parent) as VisualNode;
+            expect(cloned.children[0].id).not.toBe(child.id);
+            expect(cloned.contentSequence?.[1]).toEqual({
+                kind: 'child',
+                nodeId: cloned.children[0].id
+            });
+        });
+
     });
 
 });

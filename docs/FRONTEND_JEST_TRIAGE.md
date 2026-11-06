@@ -50,8 +50,9 @@ iterative, so large workflows do not depend on the JavaScript call-stack limit.
 
 Regression coverage includes branching/converging DAGs, a two-node cycle with
 incoming and outgoing edges, self-loops, disconnected nodes, and a 2,500-node
-chain. The current 1,341-test total includes one graph-layout regression test
-covering those cases, two XML text/CDATA tests, and one mixed-content test.
+chain. The current 1,342-test total includes one graph-layout regression test
+covering those cases, two XML text/CDATA tests, one mixed-content round-trip
+test, and one mixed-content clone-reference test.
 The failed-test ceiling is ratcheted down from 262 to 255; the failed-suite
 ceiling remains 53 while Issue #31 migration continues.
 

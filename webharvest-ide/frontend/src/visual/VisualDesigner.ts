@@ -5590,10 +5590,22 @@ export class VisualDesigner {
 
     private createNodeWithNewIds(node: VisualNode): VisualNode {
         const cloned = this.cloneNode(node);
+        const originalChildren = cloned.children || [];
+        const children = originalChildren.map(child => this.createNodeWithNewIds(child));
+        const childIdMap = new Map(
+            originalChildren.map((child, index) => [child.id, children[index].id])
+        );
+        const contentSequence = cloned.contentSequence?.map(part =>
+            part.kind === 'child'
+                ? { ...part, nodeId: childIdMap.get(part.nodeId) ?? part.nodeId }
+                : { ...part }
+        );
+
         const newNode: VisualNode = {
             ...cloned,
             id: this.generateNodeId(node.type),
-            children: cloned.children ? cloned.children.map(child => this.createNodeWithNewIds(child)) : []
+            children,
+            contentSequence
         };
 
         if (newNode.position) {
