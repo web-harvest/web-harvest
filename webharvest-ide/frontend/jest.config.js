@@ -1,5 +1,8 @@
 export default {
-    preset: 'ts-jest',
+    // The frontend is an ESM package and D3 v7 ships ESM-only entry points.
+    // Use Jest's ESM preset rather than transforming the test graph to CommonJS.
+    preset: 'ts-jest/presets/default-esm',
+    extensionsToTreatAsEsm: ['.ts'],
     testEnvironment: 'jsdom',
     roots: ['<rootDir>/src'],
     testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
@@ -25,14 +28,3 @@ export default {
         },
     },
 };
-
-
-
-
-
-
-
-
-
-
-

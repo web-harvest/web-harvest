@@ -1,5 +1,8 @@
 package org.webharvest.server.manager;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
@@ -336,18 +339,14 @@ public class ExecutionManagerIntegrationTest {
         
         public String getVariable(String varName) {
             if (finalMessage == null) return null;
-            
-            // Simple JSON parsing (good enough for tests)
-            int start = finalMessage.indexOf("\"" + varName + "\":");
-            if (start == -1) return null;
-            
-            start = finalMessage.indexOf("\"", start + varName.length() + 3);
-            if (start == -1) return null;
-            
-            int end = finalMessage.indexOf("\"", start + 1);
-            if (end == -1) return null;
-            
-            return finalMessage.substring(start + 1, end);
+
+            JsonObject message = JsonParser.parseString(finalMessage).getAsJsonObject();
+            JsonObject results = message.getAsJsonObject("results");
+            if (results == null) return null;
+
+            JsonElement value = results.get(varName);
+            if (value == null || value.isJsonNull()) return null;
+            return value.getAsString();
         }
     }
 }

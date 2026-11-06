@@ -111,7 +111,11 @@ jobs:
       - name: Type-check frontend
         run: npm run type-check
 
+      # Jest 29 uses Node's experimental VM modules to execute ESM dependencies
+      # such as D3 v7. Keep test failures visible; do not mock or skip D3 suites.
       - name: Run frontend Jest tests
+        env:
+          NODE_OPTIONS: --experimental-vm-modules
         run: npm test -- --runInBand
 
       - name: Build frontend
