@@ -25,6 +25,10 @@ class MockPluginManager {
         return Array.from(this.plugins.values());
     }
 
+    getSchemaVersion(): string | null {
+        return null;
+    }
+
     addPlugin(plugin: Plugin): void {
         this.plugins.set(plugin.id, plugin);
     }

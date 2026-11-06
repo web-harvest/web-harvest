@@ -29,6 +29,10 @@ class MockPluginManager implements Partial<PluginManager> {
     getPlugins() {
         return [];
     }
+
+    getSchemaVersion(): string | null {
+        return null;
+    }
 }
 
 describe('ConnectionRenderer', () => {

@@ -54,3 +54,19 @@ chain. The current 1,341-test total includes one graph-layout regression test
 covering those cases, two XML text/CDATA tests, and one mixed-content test.
 The failed-test ceiling is ratcheted down from 262 to 255; the failed-suite
 ceiling remains 53 while Issue #31 migration continues.
+
+
+## Issue #32 — semantic XML example round-trip
+
+The sweep now compares parsed XML structure rather than serialized formatting.
+It preserves the source `config` wrapper attributes (including namespaces and
+charset), ignores comments/XML declarations/attribute order/indentation-only
+text and Visual Designer layout metadata, and retains meaningful text/CDATA.
+
+The shared `VisualNode` contract now has optional `contentSequence` metadata
+for mixed text/child ordering. The generator uses it only while its text and
+child-ID snapshots still match the node; edited or reordered nodes fall back to
+the established body-plus-children behavior. This avoids stale source metadata
+overriding edits.
+
+The Node 20 CI sweep verified all 26 examples: 26 passed, 0 mismatches.
