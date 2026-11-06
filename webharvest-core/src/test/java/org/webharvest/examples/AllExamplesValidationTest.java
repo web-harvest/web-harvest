@@ -6,6 +6,7 @@ package org.webharvest.examples;
 
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.webharvest.definition.Config;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -65,30 +66,14 @@ public class AllExamplesValidationTest extends ScraperTestBase {
         assertFalse(configXml.trim().isEmpty(), "Config XML should not be empty");
         
         try {
-            // Try to parse and execute the configuration
-            // This will catch syntax errors, unknown plugins, and structural issues
-            executeXmlString(configXml);
-            System.out.println("✅ " + filename + " - parsing and execution successful");
+            // Parse and validate structure only. Runtime/network behavior belongs in dedicated integration tests.
+            Config config = parseXmlString(configXml);
+            assertNotNull(config.getConfigurationTree(), "Configuration tree should be loaded");
+            System.out.println("✓ " + filename + " - parsing and structural validation successful");
         } catch (Exception e) {
-            // Some examples might fail due to network issues or missing resources
-            // Log the error but check if it's a validation issue or runtime issue
-            String errorMsg = e.getMessage();
-            
-            if (errorMsg != null && (
-                errorMsg.contains("Unknown plugin") ||
-                errorMsg.contains("Invalid plugin") ||
-                errorMsg.contains("Validation error") ||
-                errorMsg.contains("Schema validation") ||
-                errorMsg.contains("required attribute") ||
-                errorMsg.contains("SAXParseException"))) {
-                // This is a validation/structural error - FAIL the test
-                System.err.println("❌ VALIDATION ERROR in: " + filename);
-                System.err.println("Error: " + errorMsg);
-                fail(filename + " has validation/structural errors: " + errorMsg, e);
-            } else {
-                // This is likely a runtime error (network, missing file, etc.) - just log it
-                System.out.println("⚠️  " + filename + " - runtime error (expected): " + errorMsg);
-            }
+            System.err.println("❌ PARSE/VALIDATION ERROR in: " + filename);
+            System.err.println("Error: " + e.getMessage());
+            fail(filename + " has parse/validation errors: " + e.getMessage(), e);
         }
     }
     
