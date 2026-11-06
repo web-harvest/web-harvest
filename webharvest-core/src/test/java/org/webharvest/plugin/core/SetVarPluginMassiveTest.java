@@ -49,14 +49,14 @@ public class SetVarPluginMassiveTest {
     @Test public void testSchema06() { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getConfigurationSchema().getAllowedSubElements()); }
     @Test public void testSchema07() { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getConfigurationSchema().getOptionalAttributes()); }
     @Test public void testSchema08() { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getConfigurationSchema().getRequiredAttributes()); }
-    @Test public void testSchema09() { SetVarPlugin p = new SetVarPlugin(); String[] req = p.getConfigurationSchema().getRequiredAttributes(); assertEquals(req.length, 1); }
-    @Test public void testSchema10() { SetVarPlugin p = new SetVarPlugin(); String[] req = p.getConfigurationSchema().getRequiredAttributes(); assertEquals(req[0], "var"); }
+    @Test public void testSchema09() { SetVarPlugin p = new SetVarPlugin(); String[] req = p.getConfigurationSchema().getRequiredAttributes(); assertEquals(req.length, 0, "name and var are alternative target attributes"); }
+    @Test public void testSchema10() { SetVarPlugin p = new SetVarPlugin(); String[] req = p.getConfigurationSchema().getRequiredAttributes(); assertEquals(req.length, 0, "no single target attribute is mandatory"); }
     @Test public void testSchema11() { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getConfigurationSchema().getAttributeDefinitions()); }
     @Test public void testSchema12() { SetVarPlugin p = new SetVarPlugin(); assertTrue(p.getConfigurationSchema().getAttributeDefinitions().length > 0); }
-    @Test public void testSchema13() { SetVarPlugin p = new SetVarPlugin(); assertEquals(p.getConfigurationSchema().getAttributeDefinitions().length, 1); }
+    @Test public void testSchema13() { SetVarPlugin p = new SetVarPlugin(); assertEquals(p.getConfigurationSchema().getAttributeDefinitions().length, 3); }
     @Test public void testSchema14() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertNotNull(attr); }
     @Test public void testSchema15() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertEquals(attr.getName(), "var"); }
-    @Test public void testSchema16() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertTrue(attr.isRequired()); }
+    @Test public void testSchema16() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertFalse(attr.isRequired(), "var is optional because legacy name is also accepted"); }
     @Test public void testSchema17() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertNotNull(attr.getDescription()); }
     @Test public void testSchema18() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("var"); assertNotNull(attr.getType()); }
     @Test public void testSchema19() { SetVarPlugin p = new SetVarPlugin(); var attr = p.getConfigurationSchema().getAttribute("nonexistent"); assertNull(attr); }
@@ -86,7 +86,7 @@ public class SetVarPluginMassiveTest {
     @Test public void testCoverage07() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertNotNull(schema.getAllowedSubElements()); }
     @Test public void testCoverage08() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getRequiredSubElements().length, 0); }
     @Test public void testCoverage09() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getAllowedSubElements().length, 0); }
-    @Test public void testCoverage10() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getOptionalAttributes().length, 0); }
+    @Test public void testCoverage10() { SetVarPlugin p = new SetVarPlugin(); var schema = p.getConfigurationSchema(); assertEquals(schema.getOptionalAttributes().length, 3); }
     
     // ==================== Stress Tests ====================
     

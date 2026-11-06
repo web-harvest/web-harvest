@@ -266,8 +266,8 @@ public class SetVarPlugin extends AbstractPlugin {
             }
             @Override public AttributeDefinition[] getAttributeDefinitions() {
                 return new AttributeDefinition[]{
-                    createNameAttribute("name", "Legacy WebHarvest 1.0 variable name"),
                     createNameAttribute("var", "Variable name accepted by current configurations"),
+                    createNameAttribute("name", "Legacy WebHarvest 1.0 variable name"),
                     createNameAttribute("value", "Value expression or literal assigned to the variable")
                 };
             }
@@ -413,8 +413,8 @@ public class SetVarPlugin extends AbstractPlugin {
 
     /** Resolves the WebHarvest 1.0 name attribute or the current var spelling. */
     private String resolveVariableName(PluginConfiguration configuration) {
-        String legacyName = configuration.getProperty("name");
-        String varName = configuration.getProperty("var");
+        String legacyName = configuration.getProperty("name", "");
+        String varName = configuration.getProperty("var", "");
         boolean hasLegacyName = legacyName != null && !legacyName.trim().isEmpty();
         boolean hasVarName = varName != null && !varName.trim().isEmpty();
         if (hasLegacyName && hasVarName && !legacyName.equals(varName)) {
