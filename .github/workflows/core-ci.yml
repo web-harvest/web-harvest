@@ -78,3 +78,74 @@ jobs:
             webharvest-core/target/failsafe-reports/
           if-no-files-found: warn
           retention-days: 14
+
+  frontend-validation:
+    name: IDE frontend validation (Node 18)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webharvest-ide/frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.19.0"
+
+      # No package-lock.json is currently committed in this frontend.
+      # npm install creates a lockfile for this diagnostic run; upload it so
+      # the resolved dependency graph can be reviewed before committing one.
+      - name: Install frontend dependencies
+        id: install
+        continue-on-error: true
+        run: npm install --no-audit --no-fund
+
+      - name: Run Jest
+        id: jest
+        if: always()
+        continue-on-error: true
+        run: npm test -- --runInBand --coverage=false
+
+      - name: TypeScript type check
+        id: typecheck
+        if: always()
+        continue-on-error: true
+        run: npm run type-check
+
+      - name: Vite production build
+        id: build
+        if: always()
+        continue-on-error: true
+        run: npm run build
+
+      - name: ESLint
+        id: lint
+        if: always()
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Upload generated dependency lock
+        if: always() && hashFiles('webharvest-ide/frontend/package-lock.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-package-lock-${{ github.run_number }}
+          path: webharvest-ide/frontend/package-lock.json
+          retention-days: 14
+
+      - name: Enforce frontend validation results
+        if: always()
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          JEST_OUTCOME: ${{ steps.jest.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+        run: |
+          printf 'install=%s jest=%s typecheck=%s build=%s lint=%s\\n' "$INSTALL_OUTCOME" "$JEST_OUTCOME" "$TYPECHECK_OUTCOME" "$BUILD_OUTCOME" "$LINT_OUTCOME"
+          test "$INSTALL_OUTCOME" = success &&
+          test "$JEST_OUTCOME" = success &&
+          test "$TYPECHECK_OUTCOME" = success &&
+          test "$BUILD_OUTCOME" = success &&
+          test "$LINT_OUTCOME" = success
