@@ -9,6 +9,9 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.webharvest.server.support.TestEnvironment;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
@@ -329,25 +332,20 @@ public class ExecutionManagerIntegrationTest {
             );
         }
         
-        public boolean hasVariable(String varName) {
-            if (finalMessage == null) return false;
-            return finalMessage.contains("\"" + varName + "\"");
+        private JsonObject getResults() {
+            if (finalMessage == null) return new JsonObject();
+            JsonObject message = JsonParser.parseString(finalMessage).getAsJsonObject();
+            JsonElement results = message.get("results");
+            return results != null && results.isJsonObject() ? results.getAsJsonObject() : new JsonObject();
         }
-        
+
+        public boolean hasVariable(String varName) {
+            return getResults().has(varName);
+        }
+
         public String getVariable(String varName) {
-            if (finalMessage == null) return null;
-            
-            // Simple JSON parsing (good enough for tests)
-            int start = finalMessage.indexOf("\"" + varName + "\":");
-            if (start == -1) return null;
-            
-            start = finalMessage.indexOf("\"", start + varName.length() + 3);
-            if (start == -1) return null;
-            
-            int end = finalMessage.indexOf("\"", start + 1);
-            if (end == -1) return null;
-            
-            return finalMessage.substring(start + 1, end);
+            JsonElement value = getResults().get(varName);
+            return value == null || value.isJsonNull() ? null : value.getAsString();
         }
     }
 }
