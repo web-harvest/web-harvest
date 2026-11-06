@@ -12,6 +12,7 @@ import org.testng.annotations.Test;
 // import org.webharvest.definition.CorePluginDef;
 // import org.webharvest.definition.IElementDef;
 import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.exceptions.PluginException;
@@ -39,7 +40,6 @@ public class CallParamPluginTest {
     @Mock
     private DynamicScopeContext context;
     
-    @Mock
     private PluginConfiguration configuration;
     
     private CallParamPlugin plugin;
@@ -55,10 +55,13 @@ public class CallParamPluginTest {
         // when(xmlNode.getText()).thenReturn("Test param value");
         // when(elementDef.hasOperations()).thenReturn(false);
         
-        // Mock configuration with required 'name' attribute
-        when(configuration.getProperty("name")).thenReturn("testParam");
-        when(configuration.getProperty("id")).thenReturn(null); // Optional attribute
-        
+        // Use the production configuration implementation so overloaded
+        // getProperty(name, defaultValue) calls follow the real contract.
+        DefaultPluginConfiguration config = new DefaultPluginConfiguration(
+                "CallParamPlugin", "http://org.webharvest/schema/2.1/core", "call-param");
+        config.setProperty("name", "testParam");
+        configuration = config;
+
         // Initialize plugin
         plugin.initialize(configuration);
     }
@@ -219,11 +222,12 @@ public class CallParamPluginTest {
         CallParamPlugin newPlugin = new CallParamPlugin();
         
         // Mock configuration with both 'name' and 'id' attributes
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getProperty("name")).thenReturn("testParam");
-        when(config.getProperty("id")).thenReturn("paramId");
-        
-        // Initialize plugin with mocked configuration
+        DefaultPluginConfiguration config = new DefaultPluginConfiguration(
+                "CallParamPlugin", "http://org.webharvest/schema/2.1/core", "call-param");
+        config.setProperty("name", "testParam");
+        config.setProperty("id", "paramId");
+
+        // Initialize plugin with a real configuration implementation
         newPlugin.initialize(config);
         
         // Execute plugin
