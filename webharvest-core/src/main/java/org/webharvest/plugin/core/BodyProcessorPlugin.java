@@ -103,7 +103,8 @@ import org.slf4j.LoggerFactory;
 @CorePlugin(
     elementName = "body-processor",
     description = "Plugin which executes only body and returns variables list",
-    version = "1.0.0"
+    version = "1.0.0",
+    systemComponent = true
 )
 public class BodyProcessorPlugin extends AbstractPlugin {
     
