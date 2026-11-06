@@ -2,8 +2,6 @@ package org.webharvest.plugin.core;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.ioc.ScraperModule;
@@ -13,11 +11,9 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.variables.EmptyVariable;
-import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
-import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 /**
