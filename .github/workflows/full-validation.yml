@@ -74,7 +74,7 @@ jobs:
 
       # Run Failsafe across the full reactor without repeating Surefire.
       - name: Run all Maven integration tests
-        run: mvn --batch-mode --no-transfer-progress test-compile failsafe:integration-test failsafe:verify -DskipUnitTests=true
+        run: mvn --batch-mode --no-transfer-progress -DskipUnitTests=true package failsafe:integration-test failsafe:verify
 
       - name: Upload Maven Failsafe reports
         if: always()
@@ -115,6 +115,7 @@ jobs:
         run: npm test -- --runInBand
 
       - name: Build frontend
+        if: always()
         run: npm run build
 
   ide-workspace:
@@ -158,10 +159,17 @@ jobs:
       - name: Build metadata-client and xml-roundtrip
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          status=0
           for package in packages/visual-shared/metadata-client packages/visual-shared/xml-roundtrip; do
             echo "=== ${package} ==="
             cd "${GITHUB_WORKSPACE}/${package}"
-            npm install --no-save --no-package-lock --no-audit --no-fund typescript@5.3.3
-            npm run build
+            if ! npm install --no-save --no-package-lock --no-audit --no-fund typescript@5.3.3; then
+              status=1
+              continue
+            fi
+            if ! npm run build; then
+              status=1
+            fi
           done
+          exit "${status}"
