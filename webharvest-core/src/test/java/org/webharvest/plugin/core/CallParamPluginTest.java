@@ -5,9 +5,14 @@
 package org.webharvest.plugin.core;
 
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import org.webharvest.ioc.ScraperModule;
+import org.webharvest.definition.Config;
+import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.scripting.ScriptingLanguage;
 // REMOVED in v2.2.x - old architecture classes no longer exist
 // import org.webharvest.definition.CorePluginDef;
 // import org.webharvest.definition.IElementDef;
@@ -37,8 +42,8 @@ public class CallParamPluginTest {
     // @Mock
     // private XmlNode xmlNode;
     
-    @Mock
     private DynamicScopeContext context;
+    private Injector injector;
     
     private PluginConfiguration configuration;
     
@@ -46,7 +51,11 @@ public class CallParamPluginTest {
 
     @BeforeMethod
     public void setUp() throws PluginException {
-        MockitoAnnotations.openMocks(this);
+        injector = Guice.createInjector(new ScraperModule("."));
+        context = injector.getInstance(ScraperContext.class);
+        context.setConfig(mock(Config.class));
+        context.setScriptingLanguage(ScriptingLanguage.BEANSHELL);
+        context.setCharset("UTF-8");
         plugin = new CallParamPlugin();
         
         // v2.2.x: elementDef/xmlNode removed - no longer needed
@@ -151,9 +160,6 @@ public class CallParamPluginTest {
 
     @Test
     public void testCallParamPluginExecute() throws InterruptedException {
-        // Mock context
-        when(context.getCharset()).thenReturn("UTF-8");
-        
         // Execute plugin
         Variable result = plugin.execute(context);
         
@@ -164,9 +170,6 @@ public class CallParamPluginTest {
 
     @Test(expectedExceptions = RuntimeException.class)
     public void testCallParamPluginExecuteWithInterruptedException() throws InterruptedException, PluginException {
-        // Mock context to simulate interruption
-        when(context.getCharset()).thenReturn("UTF-8");
-        
         // Create a plugin that will throw InterruptedException
         CallParamPlugin testPlugin = new CallParamPlugin() {
             @Override
