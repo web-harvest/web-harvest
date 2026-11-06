@@ -27,7 +27,7 @@ public class HttpPluginSimpleIntegrationTest extends XmlBasedIntegrationTestBase
         
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <http url=\"https://httpbin.org/get\"/>\n" +
+            "    <http url=\"https://httpbin.org/json\"/>\n" +
             "</config>";
         
         System.out.println("XML: " + xml);
@@ -67,7 +67,7 @@ public class HttpPluginSimpleIntegrationTest extends XmlBasedIntegrationTestBase
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
             "    <def var=\"response\">\n" +
-            "        <http url=\"https://httpbin.org/get\"/>\n" +
+            "        <http url=\"https://httpbin.org/json\"/>\n" +
             "    </def>\n" +
             "</config>";
         
