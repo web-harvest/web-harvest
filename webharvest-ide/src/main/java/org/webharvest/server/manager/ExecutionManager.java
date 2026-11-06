@@ -16,6 +16,7 @@ import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionMetrics;
@@ -236,9 +237,12 @@ public class ExecutionManager {
             // Maintain legacy log expectation for IDE tests/UI
             sendLog(job.getId(), "INFO", "Configuration loaded");
             
-            // Create execution context
-            DynamicScopeContext context = new ScraperContext();
+            // Resolve the context through Guice so ScraperContext @PostConstruct runs.
+            // This initializes the built-in "sys" variable used by existing scraper configurations.
+            DynamicScopeContext context = injector.getInstance(ScraperContext.class);
             context.setConfig(config);
+            context.setScriptingLanguage(ScriptingLanguage.BEANSHELL);
+            context.setCharset("UTF-8");
             
             // Create session for tracking
             sendLog(job.getId(), "INFO", "Creating session...");
