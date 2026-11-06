@@ -225,3 +225,29 @@ Run [42238688660](https://github.com/web-harvest/web-harvest/actions/runs/422386
 - [#27 — Resolve the empty legacy webharvest-ide TypeScript workspace](https://github.com/web-harvest/web-harvest/issues/27)
 
 Do not mark the full product baseline stable until Maven reactor jobs complete, the D3/Jest failure is resolved or explicitly accepted, and the shared-package / duplicate-workspace boundaries are decided.
+
+
+## Follow-up validation and test isolation corrections — 2026-11-06
+
+### Core CI re-confirmed
+
+Core CI on candidate SHA `2a06810375c6e5a731f92cc49f16883b12116020` completed successfully:
+- Surefire: 2,891 passed, 0 failed.
+- Failsafe: 242 passed, 0 failed.
+- Both jobs passed on the same SHA.
+
+### Full-reactor test harness corrections
+
+The full-reactor Failsafe run exposed an IDE WebSocket integration test that used HTTP URLs inconsistent with the IDE's configured `TestHttpModule`. The test was returned to the exact deterministic fixture URLs already defined by that module (`https://httpbin.org/get`, `https://httpbin.org/html`); it no longer starts an unrelated local server.
+
+The full-reactor Surefire run exposed that `AllExamplesValidationTest` was executing every IDE example, including examples that contact external websites, despite its stated purpose being syntax/structural validation and its test logic already treating runtime errors as expected. It now parses/reloads each example and checks its configuration tree without executing scraper plugins. Runtime behavior remains covered by dedicated integration tests. This avoids network-dependent, slow example execution in the unit-test phase.
+
+These corrections are on `recovery/full-validation-probe` and are awaiting the next Full Product Validation run. Do not count them as verified until that run completes.
+
+### Current validation issues
+
+- Jest D3 ESM: [#26](https://github.com/web-harvest/web-harvest/issues/26) — 62 suites fail at module loading; 70 pass.
+- Shared TypeScript package boundaries: [#25](https://github.com/web-harvest/web-harvest/issues/25).
+- Empty legacy IDE workspace: [#27](https://github.com/web-harvest/web-harvest/issues/27).
+
+Latest Full Product Validation run after these corrections is expected on the current recovery probe head; Maven reactor package and integration jobs are the key remaining evidence gates.
