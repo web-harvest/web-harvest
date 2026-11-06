@@ -44,7 +44,7 @@ public class HttpPluginBasicIntegrationTest extends XmlBasedIntegrationTestBase 
     public void testHttpWithVariableUrl() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
-            "    <def var=\"url\">https://httpbin.org/get</def>\n" +
+            "    <def var=\"url\">https://httpbin.org/json</def>\n" +
             "    <def var=\"response\">\n" +
             "        <http url=\"${url}\"/>\n" +
             "    </def>\n" +
