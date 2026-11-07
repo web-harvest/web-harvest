@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
 
     // Font Awesome and Google Fonts are presentation dependencies, not part
     // of the application-shell smoke contract.
-    await page.route(/^https?:\\/\\/(?!127\\.0\\.0\\.1)/, route => route.abort());
+    await page.route('https://**/*', route => route.abort());
 });
 
 test('Vite serves the WebHarvest IDE application shell', async ({ page }) => {
