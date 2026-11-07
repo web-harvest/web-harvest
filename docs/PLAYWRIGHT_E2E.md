@@ -64,11 +64,15 @@ output rather than fixed sleeps.
 The suite does not yet exercise node selection, drag/reposition, or connection editing. Those
 remain separate interaction coverage units.
 
-## Reproducibility limitation
+## Reproducibility
 
-The frontend currently has no committed `package-lock.json`. CI therefore still uses
-`npm install`; dependency installation is not yet fully reproducible. Issue #37 tracks
-generation and review of a lockfile, followed by migration to `npm ci`.
+The frontend now has a committed npm lockfile (`webharvest-ide/frontend/package-lock.json`,
+lockfileVersion 3). CI generated it, inspected the local shared-package links and pinned
+Playwright version, and verified it with a clean `npm ci`.
+
+The root `.gitignore` retains the general package-lock ignore rule with a narrow exception
+for this frontend lockfile only. The frontend validation and Playwright jobs use `npm ci`,
+with dependency caching keyed by the lockfile.
 
 ## CI
 
