@@ -97,7 +97,7 @@ describe('ConnectionPointsRenderer', () => {
             renderer.showForNode(nodeId);
             
             // Check if points are rendered
-            const circles = svgElement.querySelectorAll('circle.connection-point');
+            const circles = (designer as any).canvasElement.querySelectorAll('.connection-point[data-node-id="' + nodeId + '"]');
             // Should have 12 points: 3 per edge × 4 edges (but may have more if plugin has custom ports)
             expect(circles.length).toBeGreaterThanOrEqual(12);
         });
@@ -154,12 +154,12 @@ describe('ConnectionPointsRenderer', () => {
             // Show connection points for both nodes
             renderer.showForNode(nodeId1);
             renderer.showForNode(nodeId2);
-            const circlesBefore = svgElement.querySelectorAll('circle.connection-point');
+            const circlesBefore = (designer as any).canvasElement.querySelectorAll('.connection-point');
             expect(circlesBefore.length).toBeGreaterThan(0);
             
             // Hide all
             renderer.hideAll();
-            const circlesAfter = svgElement.querySelectorAll('circle.connection-point');
+            const circlesAfter = (designer as any).canvasElement.querySelectorAll('.connection-point');
             expect(circlesAfter.length).toBe(0);
         });
     });
