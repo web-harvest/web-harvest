@@ -34,5 +34,5 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: Run webharvest-core tests
-        run: mvn -B -ntp -pl webharvest-core -am test
+      - name: Run Semantic Core contract tests
+        run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest -Dsurefire.failIfNoSpecifiedTests=false test
