@@ -17,6 +17,8 @@ public class SemanticModelTest {
         assertEquals(document.getRoot().getAttributes().get(0).getName().getLocalName(), "a");
         assertEquals(document.getRoot().getAttributes().get(1).getName().getLocalName(), "b");
         assertTrue(document.getContent().get(0) instanceof SemanticProcessingInstruction);
+        assertSame(document.getContent().get(1), document.getRoot(),
+                "The document root must be the same immutable instance exposed in document content");
         assertTrue(document.getRoot().getContent().get(0) instanceof SemanticText);
         assertTrue(((SemanticText) document.getRoot().getContent().get(1)).isCdata());
         assertTrue(document.getRoot().getContent().get(2) instanceof SemanticComment);
@@ -56,7 +58,40 @@ public class SemanticModelTest {
         assertTrue(result.getDocument().isEmpty());
     }
 
+    @Test
+    public void failsClosedWhenDepthLimitIsExceeded() {
+        SemanticModel limited = new SemanticModel(new SemanticXmlAnalyzer(
+                new SemanticXmlAnalyzer.Limits(100, 2, 10, 4, 100)));
+        SemanticLoadResult result = limited.load("<r><a><b/></a></r>", SourceOrigin.unknown());
+        assertFalse(result.isSuccessful());
+        assertTrue(result.getDocument().isEmpty());
+        assertEquals(result.getDiagnostics().get(0).getCode(), "LIMIT_EXCEEDED");
+    }
+
+    @Test
+    public void failsClosedWhenTextLimitIsExceeded() {
+        SemanticModel limited = new SemanticModel(new SemanticXmlAnalyzer(
+                new SemanticXmlAnalyzer.Limits(100, 4, 10, 4, 5)));
+        SemanticLoadResult result = limited.load("<r>123456</r>", SourceOrigin.unknown());
+        assertFalse(result.isSuccessful());
+        assertTrue(result.getDocument().isEmpty());
+        assertEquals(result.getDiagnostics().get(0).getCode(), "LIMIT_EXCEEDED");
+    }
+
+    @Test
+    public void reportsNamespaceAwareNames() {
+        SemanticLoadResult result = model.load(
+                "<p:root xmlns:p='urn:example'><p:item/></p:root>", SourceOrigin.unknown());
+        assertTrue(result.isSuccessful(), diagnosticText(result));
+        assertEquals(result.getDocument().get().getRoot().getName().getNamespaceUri(), "urn:example");
+        SemanticElement child = (SemanticElement) result.getDocument().get().getRoot().getContent().get(0);
+        assertEquals(child.getName().getLocalName(), "item");
+        assertEquals(child.getName().getPrefix(), "p");
+    }
+
     private static String diagnosticText(SemanticLoadResult result) {
-        return result.getDiagnostics().toString();
+        return result.getDiagnostics().stream()
+                .map(d -> d.getCode() + ": " + d.getMessage())
+                .collect(java.util.stream.Collectors.joining("; "));
     }
 }
