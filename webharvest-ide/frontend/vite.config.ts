@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { defineConfig, type Plugin } from 'vite';
 import path from 'path';
@@ -30,22 +31,27 @@ function runtimeHtmlForDevelopment(): Plugin {
         transformIndexHtml: {
             order: 'pre',
             handler() {
-                const productionShell = require('node:fs').readFileSync(runtimeHtmlPath, 'utf-8');
-                const withViteEntry = productionShell.replace(
-                    /<script\\b(?=[^>]*\\bsrc=["']dist\\/assets\\/main\\.js(?:\\?[^"']*)?["'])[^>]*>\\s*<\\/script>/i,
-                    '<script type="module" src="/src/main.ts"></script>',
-                );
-                const developmentShell = withViteEntry.replace(
-                    /<link\\b(?=[^>]*\\bhref=["']dist\\/assets\\/main\\.css(?:\\?[^"']*)?["'])[^>]*\\/?\s*>/i,
-                    '',
-                );
+                const productionShell = readFileSync(runtimeHtmlPath, 'utf-8');
+                const scriptMarker = '<script type="module" crossorigin src="dist/assets/main.js';
+                const scriptStart = productionShell.indexOf(scriptMarker);
+                const scriptEnd = productionShell.indexOf('</script>', scriptStart);
+                const stylesheetMarker = '<link rel="stylesheet" crossorigin href="dist/assets/main.css';
+                const stylesheetStart = productionShell.indexOf(stylesheetMarker);
+                const stylesheetEnd = productionShell.indexOf('>', stylesheetStart);
 
-                if (developmentShell === productionShell) {
+                if (scriptStart < 0 || scriptEnd < 0 || stylesheetStart < 0 || stylesheetEnd < 0) {
                     throw new Error(
                         'Could not adapt the canonical WebHarvest runtime HTML: expected production main.js and main.css references were not found.',
                     );
                 }
 
+                const withViteEntry =
+                    productionShell.slice(0, scriptStart) +
+                    '<script type="module" src="/src/main.ts"></script>' +
+                    productionShell.slice(scriptEnd + '</script>'.length);
+                const developmentShell =
+                    withViteEntry.slice(0, stylesheetStart) +
+                    withViteEntry.slice(stylesheetEnd + 1);
                 return developmentShell;
             },
         },
