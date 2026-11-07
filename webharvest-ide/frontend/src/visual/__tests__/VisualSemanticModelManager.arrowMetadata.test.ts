@@ -101,8 +101,8 @@ describe('VisualSemanticModelManager - Arrow Metadata', () => {
             await new Promise(resolve => setTimeout(resolve, 200));
 
             // Connect nodes
-            designer.connectNodes('node1', 'node2', 'sequential');
-            designer.connectNodes('node2', 'node3', 'sequential'); // Reverse connection
+            designer.createManualConnection('node1', 'node2', 'sequential');
+            designer.createManualConnection('node2', 'node3', 'sequential'); // Reverse connection
 
             // Wait for connections
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -170,9 +170,9 @@ describe('VisualSemanticModelManager - Arrow Metadata', () => {
             await new Promise(resolve => setTimeout(resolve, 200));
 
             // Connect in all directions
-            designer.connectNodes('node1', 'node2', 'sequential'); // Down
-            designer.connectNodes('node1', 'node3', 'sequential'); // Right
-            designer.connectNodes('node4', 'node1', 'sequential'); // Right (reverse)
+            designer.createManualConnection('node1', 'node2', 'sequential'); // Down
+            designer.createManualConnection('node1', 'node3', 'sequential'); // Right
+            designer.createManualConnection('node4', 'node1', 'sequential'); // Right (reverse)
 
             await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -216,7 +216,7 @@ describe('VisualSemanticModelManager - Arrow Metadata', () => {
 
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            designer.connectNodes('node1', 'node2', 'sequential');
+            designer.createManualConnection('node1', 'node2', 'sequential');
 
             await new Promise(resolve => setTimeout(resolve, 200));
 
