@@ -66,8 +66,15 @@ header label applies the selected-node styling, opens the real right sidebar, ac
 Properties section and renders the selected node's type in the PropertyPanel.
 
 The suite also verifies that a real pointer drag beyond the movement threshold still repositions
-a node after the click/drag lifecycle fix. Connection editing remains a separate interaction
-coverage unit.
+a node after the click/drag lifecycle fix.
+
+The visible PortSystem controls are tested against the semantic connection model. A real drag
+from a node's output port to another node's input port must create one manual connection and
+render its D3 path. Self-loop and outside-canvas drops must be rejected and remove the temporary
+drag line without disturbing the valid connection.
+
+The browser test uses the real port controls; it does not call private
+`ConnectionDragHandler.endDrag()` or mutate connection-manager state directly.
 
 ## Reproducibility
 
