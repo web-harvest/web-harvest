@@ -410,9 +410,10 @@ test('visible semantic ports create a manual connection and cancel invalid drops
     if (!sourceBox) {
         throw new Error('The middle node output port has no browser bounding box');
     }
+    const viewportHeight = page.viewportSize()?.height ?? 720;
     await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(12, window.innerHeight - 12, { steps: 8 });
+    await page.mouse.move(12, viewportHeight - 12, { steps: 8 });
     await page.mouse.up();
 
     await expect.poll(() => page.evaluate(() =>
