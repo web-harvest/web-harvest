@@ -65,7 +65,9 @@ The suite also exercises node selection through the rendered canvas UI. Clicking
 header label applies the selected-node styling, opens the real right sidebar, activates the
 Properties section and renders the selected node's type in the PropertyPanel.
 
-Drag/reposition and connection editing remain separate interaction coverage units.
+The suite also verifies that a real pointer drag beyond the movement threshold still repositions
+a node after the click/drag lifecycle fix. Connection editing remains a separate interaction
+coverage unit.
 
 ## Reproducibility
 
