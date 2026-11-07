@@ -114,3 +114,35 @@ failed tests. This is still a non-zero baseline, not a green Jest suite.
 Next: migrate one failure family at a time against current source contracts,
 run the focused suites, then rerun the full workflow. Do not lower the ratchet
 again unless a new full Jest run proves the lower counts.
+
+
+### Verification checkpoint — run 42358219708 (PR #35 / Issue #31 unit A)
+
+Commit: `d6727a67819814b38120abaf86c93e57b2b5b462`.
+
+- 132 suites executed: 48 failed, 84 passed.
+- 1,342 tests executed: 165 failed, 1,177 passed.
+- TypeScript Validation workflow: success; this is a passing ratchet, not a green Jest suite.
+- Shared package builds/consumer tests, frontend type-check, Jest ratchet, Vite build,
+  IDE frontend authority guard, and XML semantic sweep all passed.
+- UIManager unit A reduced the observed baseline by one suite and three tests
+  (from 49/168 to 48/165); no assertions were removed and no suites were skipped.
+
+### Issue #31 — ConnectionRenderer SVG lifecycle classification
+
+The active `VisualDesigner` implementation constructs `D3ConnectionRenderer`,
+whose `updateSvgElement` replaces the SVG reference and whose next
+`renderAll(modelManager)` clears prior rendered nodes and draws into the new SVG.
+
+The older `ConnectionRenderer` class is imported but not instantiated by the
+active VisualDesigner path. Its own `updateSvgElement` method explicitly
+documents and implements a no-op for compatibility. Tests that expected this
+legacy class to move nodes or change its SVG reference were asserting the
+opposite of its documented contract. The migration unit therefore keeps that
+no-op contract explicit and adds a positive lifecycle regression test for the
+active D3 renderer. This is a test-contract correction, not a claim that the
+legacy renderer is the active production path.
+
+Verification of this migration unit is pending focused Jest and a fresh full
+TypeScript Validation run. Do not lower the ratchet until that run confirms
+the lower failure counts.
