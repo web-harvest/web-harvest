@@ -306,3 +306,119 @@ test('dragging a canvas node beyond the movement threshold repositions it', asyn
         return Math.hypot(after.x - before!.x, after.y - before!.y);
     }).toBeGreaterThan(20);
 });
+
+
+test('visible semantic ports create a manual connection and cancel invalid drops', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+
+    const initialized = page.waitForEvent('console', message =>
+        message.type() === 'log' &&
+        message.text().includes('WebHarvest IDE initialized successfully')
+    );
+
+    await page.goto('/');
+    await initialized;
+
+    await page.evaluate(() => {
+        const designer = (window as any).app?.visualDesigner;
+        if (!designer) {
+            throw new Error('The initialized application did not expose VisualDesigner');
+        }
+
+        designer.loadNodes([
+            {
+                id: 'e2e-source',
+                type: 'log',
+                attributes: { level: 'info' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 100 },
+            },
+            {
+                id: 'e2e-middle',
+                type: 'sleep',
+                attributes: { milliseconds: '10' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 360 },
+            },
+            {
+                id: 'e2e-target',
+                type: 'log',
+                attributes: { level: 'warn' },
+                body: null,
+                children: [],
+                position: { x: 420, y: 360 },
+            },
+        ]);
+    });
+
+    const sourceNode = page.locator('.visual-node[data-node-id="e2e-source"]');
+    const targetNode = page.locator('.visual-node[data-node-id="e2e-target"]');
+    await expect(sourceNode).toBeVisible();
+    await expect(targetNode).toBeVisible();
+
+    const sourcePort = sourceNode.locator('.port-output');
+    const targetPort = targetNode.locator('.port-input');
+    await expect(sourcePort).toHaveAttribute('data-port-id', 'output-default-bottom-center');
+    await expect(targetPort).toHaveAttribute('data-port-id', 'input-default-top-center');
+
+    const initialManualConnections = await page.evaluate(() =>
+        (window as any).app.visualDesigner.getManualConnections().length
+    );
+    expect(initialManualConnections).toBe(0);
+
+    // This is a real mouse drag across the visible PortSystem controls.
+    await sourcePort.dragTo(targetPort);
+
+    await expect.poll(() => page.evaluate(() => {
+        const connections = (window as any).app.visualDesigner.getManualConnections();
+        return connections.length;
+    })).toBe(1);
+
+    const manualConnection = await page.evaluate(() => {
+        const connections = (window as any).app.visualDesigner.getManualConnections();
+        const connection = connections.find((item: any) =>
+            item.from === 'e2e-source' && item.to === 'e2e-target'
+        );
+        return connection ? { id: connection.id, from: connection.from, to: connection.to } : null;
+    });
+    expect(manualConnection).toMatchObject({
+        from: 'e2e-source',
+        to: 'e2e-target',
+    });
+    expect(manualConnection?.id).toBeTruthy();
+
+    const renderedManualPath = page.locator(
+        `svg path.connection-path[data-connection-id="${manualConnection!.id}"]`
+    );
+    await expect(renderedManualPath).toBeAttached({ timeout: 15_000 });
+    await expect(renderedManualPath).toBeVisible();
+
+    // A self-loop is rejected by the existing connection validator and must
+    // clean up the temporary drag line without deleting the valid connection.
+    await sourcePort.dragTo(sourceNode.locator('.port-input'));
+    await expect.poll(() => page.evaluate(() =>
+        (window as any).app.visualDesigner.getManualConnections().length
+    )).toBe(1);
+    await expect(page.locator('svg .connection-drag-temporary')).toHaveCount(0);
+
+    // Dropping a second drag on empty page space must cancel without adding an edge.
+    const middleOutput = page.locator('.visual-node[data-node-id="e2e-middle"] .port-output');
+    const sourceBox = await middleOutput.boundingBox();
+    if (!sourceBox) {
+        throw new Error('The middle node output port has no browser bounding box');
+    }
+    await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(12, window.innerHeight - 12, { steps: 8 });
+    await page.mouse.up();
+
+    await expect.poll(() => page.evaluate(() =>
+        (window as any).app.visualDesigner.getManualConnections().length
+    )).toBe(1);
+    await expect(page.locator('svg .connection-drag-temporary')).toHaveCount(0);
+
+    expect(pageErrors, 'manual connection drag should not throw browser errors').toEqual([]);
+});
