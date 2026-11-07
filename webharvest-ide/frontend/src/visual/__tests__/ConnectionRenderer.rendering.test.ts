@@ -26,6 +26,7 @@ describe('ConnectionRenderer Rendering', () => {
 
         // Create mock plugin manager
         pluginManager = {
+            findPlugin: () => null,
             getSchemaVersion: () => null,
             getPlugins: () => [],
             getPlugin: () => null,
