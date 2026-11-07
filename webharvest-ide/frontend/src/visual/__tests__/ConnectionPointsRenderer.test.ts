@@ -35,7 +35,8 @@ describe('ConnectionPointsRenderer', () => {
             getPlugins: () => [],
             getSchemaVersion: () => null
         };
-        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
+        designer.setPluginManager(pluginManager as any);
+        modelManager = (designer as any).modelManager as VisualSemanticModelManager;
 
         // The renderer operates on the actual inner canvas created by VisualDesigner.
         renderer = new ConnectionPointsRenderer(
