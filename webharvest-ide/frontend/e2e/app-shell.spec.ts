@@ -173,6 +173,9 @@ test('D3 renders a semantic connection path and matching arrow for a two-node wo
         ]);
     });
 
+    await expect(page.locator('.visual-node[data-node-id="e2e-log"]')).toBeVisible();
+    await expect(page.locator('.visual-node[data-node-id="e2e-sleep"]')).toBeVisible();
+
     const connectionPath = page.locator('svg path.connection-path').first();
     const connectionArrow = page.locator('svg polygon.connection-arrow').first();
 
