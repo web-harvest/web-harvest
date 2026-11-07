@@ -30,15 +30,19 @@ describe('ConnectionPointsRenderer', () => {
         designer = new VisualDesigner('test-canvas');
 
         // Get model manager from designer
-        modelManager = (designer as any).modelManager;
-        if (!modelManager) {
-            // Initialize model manager if not exists
-            (designer as any).modelManager = new VisualSemanticModelManager(designer, null);
-            modelManager = (designer as any).modelManager;
-        }
+        const pluginManager = {
+            findPlugin: () => null,
+            getPlugins: () => [],
+            getSchemaVersion: () => null
+        };
+        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
 
-        // Create renderer
-        renderer = new ConnectionPointsRenderer(svgElement, modelManager);
+        // The renderer operates on the actual inner canvas created by VisualDesigner.
+        renderer = new ConnectionPointsRenderer(
+            svgElement,
+            modelManager,
+            (designer as any).canvasElement
+        );
     });
 
     afterEach(() => {
