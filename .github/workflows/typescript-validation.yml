@@ -77,8 +77,20 @@ jobs:
           cache: npm
           cache-dependency-path: webharvest-ide/frontend/package.json
 
-      - name: Install frontend dependencies
+      - name: Install frontend dependencies and generate lockfile
         run: npm install --no-audit --no-fund
+
+      - name: Upload generated frontend lockfile for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-package-lock-${{ github.run_number }}
+          path: webharvest-ide/frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify clean install from generated lockfile
+        run: npm ci --no-audit --no-fund
 
       - name: Type-check frontend
         # pretest/pretype-check/prebuild install+build shared packages via scripts/build-packages.sh
