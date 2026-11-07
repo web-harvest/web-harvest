@@ -114,3 +114,33 @@ failed tests. This is still a non-zero baseline, not a green Jest suite.
 Next: migrate one failure family at a time against current source contracts,
 run the focused suites, then rerun the full workflow. Do not lower the ratchet
 again unless a new full Jest run proves the lower counts.
+
+
+## Issue #31 — migration unit A: UIManager display-mode tests
+
+### Evidence from CI run 42318210798
+
+The `UIManager` suite had three failures with distinct causes:
+
+1. `showEditor(true)` and `switchToXMLMode()` expected `display: block`, while
+   the current production contract deliberately configures the editor as a flex
+   layout (`display: flex`) with flex sizing.
+2. `switchToVisualMode()` schedules canvas activation after 10ms so the editor
+   can finish hiding before canvas measurement. The test asserted synchronously
+   before that transition had run.
+
+### Change in this unit
+
+- Align the two editor visibility expectations with the current flex-layout
+  contract; production code is unchanged.
+- Use Jest fake timers and advance exactly 10ms in the visual-mode test, making
+  the asynchronous transition deterministic rather than relying on wall-clock
+  sleeps.
+- Preserve assertions for editor visibility, canvas visibility and plugin
+  sidebar visibility.
+
+### Verification status
+
+The change is pushed on `stabilization/issue31-uimanager-contract`.
+Focused Jest and the full TypeScript Validation workflow are pending. Do not
+count these failures as resolved until the CI output confirms the suite passes.
