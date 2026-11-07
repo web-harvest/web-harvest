@@ -39,7 +39,15 @@ export class PortSystem {
 
         const nodePorts: Port[] = [];
 
-        const inputPortElement = this.createPortElement('input', 'sequential', nodeId);
+        // Keep the visible legacy port aligned with the semantic model's
+        // top-center default input anchor.
+        const inputPortElement = this.createPortElement(
+            'input',
+            'sequential',
+            nodeId,
+            undefined,
+            'input-default-top-center'
+        );
         this.positionPort(inputPortElement, 'top', '50%');
         element.appendChild(inputPortElement);
 
@@ -53,9 +61,28 @@ export class PortSystem {
         if (portsConfig.outputs && portsConfig.outputs.length > 1) {
             const outputCount = portsConfig.outputs.length;
             portsConfig.outputs.forEach((portConfig, index) => {
-                const portElement = this.createPortElement('output', portConfig.type, nodeId, portConfig.label);
-                const leftPercent = ((index + 1) / (outputCount + 1)) * 100;
-                this.positionPort(portElement, 'bottom', `${leftPercent}%`);
+                const semanticPositions = outputCount === 2
+                    ? [
+                        { id: 'output-default-bottom-start', left: '15px' },
+                        { id: 'output-default-bottom-end', left: 'calc(100% - 15px)' }
+                    ]
+                    : outputCount === 3
+                        ? [
+                            { id: 'output-default-bottom-start', left: '15px' },
+                            { id: 'output-default-bottom-center', left: '50%' },
+                            { id: 'output-default-bottom-end', left: 'calc(100% - 15px)' }
+                        ]
+                        : [];
+                const semanticPosition = semanticPositions[index];
+                const portElement = this.createPortElement(
+                    'output',
+                    portConfig.type,
+                    nodeId,
+                    portConfig.label,
+                    semanticPosition?.id
+                );
+                const left = semanticPosition?.left ?? `${((index + 1) / (outputCount + 1)) * 100}%`;
+                this.positionPort(portElement, 'bottom', left);
                 element.appendChild(portElement);
 
                 nodePorts.push({
@@ -67,7 +94,14 @@ export class PortSystem {
                 });
             });
         } else {
-            const outputPortElement = this.createPortElement('output', 'sequential', nodeId);
+            // The default visible output is the semantic bottom-center anchor.
+            const outputPortElement = this.createPortElement(
+                'output',
+                'sequential',
+                nodeId,
+                undefined,
+                'output-default-bottom-center'
+            );
             this.positionPort(outputPortElement, 'bottom', '50%');
             element.appendChild(outputPortElement);
 
@@ -89,13 +123,17 @@ export class PortSystem {
         direction: 'input' | 'output',
         type: PortType,
         nodeId: string,
-        label?: string
+        label?: string,
+        semanticPortId?: string
     ): HTMLElement {
         const port = document.createElement('div');
         port.className = `port port-${direction}`;
         port.dataset.nodeId = nodeId;
         port.dataset.portType = direction;
         port.dataset.portConnectionType = type;
+        if (semanticPortId) {
+            port.dataset.portId = semanticPortId;
+        }
 
         // Port styling
         port.style.cssText = `
