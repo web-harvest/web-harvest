@@ -73,7 +73,7 @@ describe('Spatial Metadata', () => {
         const mock = createMockDesigner();
         designer = mock.designer;
         pluginManager = mock.pluginManager;
-        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
+        modelManager = (designer as any).modelManager as VisualSemanticModelManager;
     });
 
     describe('ArrowMetadata spatialInfo', () => {
