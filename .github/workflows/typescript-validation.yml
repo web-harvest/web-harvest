@@ -75,21 +75,9 @@ jobs:
         with:
           node-version: "18.19.0"
           cache: npm
-          cache-dependency-path: webharvest-ide/frontend/package.json
+          cache-dependency-path: webharvest-ide/frontend/package-lock.json
 
-      - name: Install frontend dependencies and generate lockfile
-        run: npm install --no-audit --no-fund
-
-      - name: Upload generated frontend lockfile for review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-package-lock-${{ github.run_number }}
-          path: webharvest-ide/frontend/package-lock.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Verify clean install from generated lockfile
+      - name: Install frontend dependencies from committed lockfile
         run: npm ci --no-audit --no-fund
 
       - name: Type-check frontend
@@ -193,10 +181,8 @@ jobs:
         with:
           node-version: "18.19.0"
 
-      # The frontend currently has no committed package-lock.json. Keep this
-      # bootstrap on npm install until a reviewed lockfile is added in Issue #37.
-      - name: Install frontend and Playwright dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install frontend and Playwright dependencies from lockfile
+        run: npm ci --no-audit --no-fund
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -214,44 +200,3 @@ jobs:
             webharvest-ide/frontend/test-results/
           if-no-files-found: warn
           retention-days: 14
-
-
-  # One-time bootstrap for Issue #37: create the reviewed lockfile on PR #38's
-  # own branch after a clean npm ci. This job is scoped to that PR only.
-  frontend-lockfile-sync:
-    name: Commit verified frontend lockfile (PR #38 only)
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 38 && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - name: Check out PR source branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18.19.0"
-
-      - name: Generate and verify frontend lockfile
-        working-directory: webharvest-ide/frontend
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm ci --no-audit --no-fund
-
-      - name: Commit lockfile to PR branch
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          set -euo pipefail
-          git add webharvest-ide/frontend/package-lock.json
-          if git diff --cached --quiet; then
-            echo "Frontend lockfile already committed; no update needed."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "build(ide): lock frontend dependencies"
-          git push origin "HEAD:${HEAD_REF}"
