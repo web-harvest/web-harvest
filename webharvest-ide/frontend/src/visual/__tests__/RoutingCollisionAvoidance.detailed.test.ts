@@ -103,7 +103,7 @@ describe('Routing Collision Avoidance - Detailed TDD', () => {
         }
 
         // Act: Connect node1 to node2
-        designer.connectNodes('node1', 'node2', 'sequential');
+        designer.createManualConnection('node1', 'node2', 'sequential');
         designer.render();
 
         // Assert: Path should not intersect obstacle
@@ -177,7 +177,7 @@ describe('Routing Collision Avoidance - Detailed TDD', () => {
             modelManager.buildModel();
         }
 
-        designer.connectNodes('node1', 'node2', 'sequential');
+        designer.createManualConnection('node1', 'node2', 'sequential');
         designer.render();
 
         const anchor1 = (designer as any).getConnectionAnchor('node1');
