@@ -1,0 +1,47 @@
+# IDE browser E2E (Playwright)
+
+## Purpose
+
+Playwright is a separate browser-level test layer for the authoritative IDE frontend in
+`webharvest-ide/frontend`. Jest remains the unit/integration test runner. Browser tests
+are intended to cover real browser DOM, layout, SVG rendering and user interactions.
+
+## Current harness
+
+- Runner: `@playwright/test` (pinned direct dependency).
+- Browser gate: Chromium only.
+- Local command: `npm run test:e2e`.
+- Configuration: `playwright.config.ts`.
+- Tests: `e2e/**/*.spec.ts`.
+- Vite is started by Playwright on `127.0.0.1:4173`.
+- Backend plugin metadata and version endpoints are stubbed by the smoke fixture.
+- External HTTPS assets are blocked so the shell test does not depend on CDNs.
+- On failure, Playwright retains trace, screenshot and video; CI uploads the report and
+  test-results directory.
+
+The first test is deliberately only an application-document/Vite smoke test. It verifies
+that the HTML entrypoint is served, the expected title is present and the application
+mount point exists. **It does not yet prove successful IDE initialization, canvas layout,
+node rendering, SVG lifecycle or user interaction.** Those require a stable application
+fixture and will be added as subsequent units rather than simulated through private APIs.
+
+## Reproducibility limitation
+
+The frontend currently has no committed `package-lock.json`. This initial harness therefore
+uses `npm install` in CI and is not yet a fully reproducible dependency installation.
+Do not treat this as the final CI dependency contract. Issue #37 tracks generation and
+review of a lockfile, followed by migration to `npm ci`.
+
+## CI
+
+The `IDE browser E2E (Playwright, Chromium)` job is separate from the existing frontend Jest,
+type-check and build job. It installs Chromium and uploads Playwright diagnostics even
+when tests fail. It is not a substitute for the existing Jest ratchet or XML semantic sweep.
+
+## Next coverage units
+
+1. Establish a supported fixture-loading path for a real Visual Designer workflow.
+2. Assert the active D3 renderer produces SVG path and arrow elements in the live browser.
+3. Exercise a user-facing interaction (node selection/property panel or zoom).
+4. Only after stable repeated runs, consider additional browser engines or making this a
+   required merge check.
