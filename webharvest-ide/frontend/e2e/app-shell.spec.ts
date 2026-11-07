@@ -386,5 +386,14 @@ test('PropertyPanel Cancel restores the original value and Apply persists edits 
     )).toBe('warn');
     await expect(applyButton).toBeDisabled();
 
+    // App's documented sync path updates both the active tab and Monaco value.
+    await expect.poll(() => page.evaluate(() =>
+        (window as any).app._instance.getEditor().getValue()
+    )).toContain('<log level="warn"/>');
+    const activeTabXml = await page.evaluate(() =>
+        (window as any).app._instance.getTabManager().getActiveTab()?.content
+    );
+    expect(activeTabXml).toContain('<log level="warn"/>');
+
     expect(pageErrors, 'PropertyPanel edit lifecycle should not throw browser errors').toEqual([]);
 });
