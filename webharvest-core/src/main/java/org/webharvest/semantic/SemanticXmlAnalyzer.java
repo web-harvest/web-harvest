@@ -115,7 +115,7 @@ final class SemanticXmlAnalyzer {
         throw new SAXException("External entity resolution is prohibited");
     };
 
-    private static XMLReader newSecureReader() throws Exception {
+    static XMLReader newSecureReader() throws Exception {
         SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(true);
         factory.setValidating(false);
