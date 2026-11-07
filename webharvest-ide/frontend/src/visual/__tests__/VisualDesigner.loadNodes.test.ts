@@ -73,7 +73,7 @@ describe('VisualDesigner.loadNodes', () => {
         } as Plugin);
         
         designer.setPluginManager(pluginManager as any);
-        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
+        modelManager = (designer as any).modelManager as VisualSemanticModelManager;
     });
 
     afterEach(() => {
