@@ -189,8 +189,10 @@ test('D3 renders a semantic connection path and matching arrow for a two-node wo
     const pathData = await connectionPath.getAttribute('d');
     const pathConnectionId = await connectionPath.getAttribute('data-connection-id');
     const arrowConnectionId = await connectionArrow.getAttribute('data-connection-id');
+    const arrowPoints = await connectionArrow.getAttribute('points');
 
     expect(pathData).toMatch(/^M/);
     expect(pathConnectionId).toBeTruthy();
     expect(arrowConnectionId).toBe(pathConnectionId);
+    expect(arrowPoints).toBeTruthy();
 });
