@@ -25,6 +25,42 @@ test.beforeEach(async ({ page }) => {
                 },
             },
         });
+
+        // VisualSemanticModelManager opens an optional backend WebSocket during
+        // startup. Keep this shell test fully offline and avoid Vite proxy retries.
+        class OfflineWebSocket {
+            static readonly CONNECTING = 0;
+            static readonly OPEN = 1;
+            static readonly CLOSING = 2;
+            static readonly CLOSED = 3;
+
+            readonly url: string;
+            readyState = OfflineWebSocket.CONNECTING;
+            onopen: ((event: Event) => void) | null = null;
+            onmessage: ((event: MessageEvent) => void) | null = null;
+            onerror: ((event: Event) => void) | null = null;
+            onclose: ((event: CloseEvent) => void) | null = null;
+
+            constructor(url: string | URL) {
+                this.url = String(url);
+                queueMicrotask(() => {
+                    this.readyState = OfflineWebSocket.OPEN;
+                    this.onopen?.(new Event('open'));
+                });
+            }
+
+            send(_data: string): void {}
+
+            close(): void {
+                this.readyState = OfflineWebSocket.CLOSED;
+                this.onclose?.(new CloseEvent('close', { code: 1000, wasClean: true }));
+            }
+        }
+
+        Object.defineProperty(window, 'WebSocket', {
+            configurable: true,
+            value: OfflineWebSocket,
+        });
     });
 
     // Backend plugin metadata is an explicit fixture, not a DOM substitute.
