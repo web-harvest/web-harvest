@@ -2,7 +2,7 @@
  * UIManager - TDD Tests
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { UIManager } from '../UIManager';
 
 describe('UIManager', () => {
@@ -45,7 +45,7 @@ describe('UIManager', () => {
         it('should show editor', () => {
             manager.showEditor(true);
             const editor = document.getElementById('editor');
-            expect(editor?.style.display).toBe('block');
+            expect(editor?.style.display).toBe('flex');
         });
 
         it('should hide editor', () => {
@@ -59,19 +59,27 @@ describe('UIManager', () => {
         it('should show editor and right sidebar', () => {
             manager.switchToXMLMode();
 
-            expect(document.getElementById('editor')?.style.display).toBe('block');
+            expect(document.getElementById('editor')?.style.display).toBe('flex');
             expect(document.getElementById('visual-canvas')?.style.display).toBe('none');
             expect(document.getElementById('plugin-sidebar')?.style.display).toBe('none');
         });
     });
 
     describe('switchToVisualMode', () => {
-        it('should show canvas and plugin sidebar', () => {
-            manager.switchToVisualMode();
+        it('should show canvas and plugin sidebar after the visual-mode transition', () => {
+            // Canvas activation is intentionally deferred by 10ms so the editor
+            // can finish hiding before the canvas is measured and displayed.
+            jest.useFakeTimers();
+            try {
+                manager.switchToVisualMode();
+                jest.advanceTimersByTime(10);
 
-            expect(document.getElementById('editor')?.style.display).toBe('none');
-            expect(document.getElementById('visual-canvas')?.style.display).toBe('flex');
-            expect(document.getElementById('plugin-sidebar')?.style.display).toBe('flex');
+                expect(document.getElementById('editor')?.style.display).toBe('none');
+                expect(document.getElementById('visual-canvas')?.style.display).toBe('flex');
+                expect(document.getElementById('plugin-sidebar')?.style.display).toBe('flex');
+            } finally {
+                jest.useRealTimers();
+            }
         });
     });
 
