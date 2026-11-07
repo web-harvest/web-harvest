@@ -24,6 +24,7 @@ describe('ConnectionRenderer Path Creation', () => {
         document.body.appendChild(svgElement);
 
         pluginManager = {
+            findPlugin: () => null,
             getSchemaVersion: () => null,
             getPlugins: () => [],
             getPlugin: () => null,
