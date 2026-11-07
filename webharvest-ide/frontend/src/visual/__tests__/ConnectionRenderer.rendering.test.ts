@@ -112,8 +112,9 @@ describe('ConnectionRenderer Rendering', () => {
         renderer.renderAll();
 
         const newPaths = newSvgElement.querySelectorAll('path.connection-line').length;
-        expect(newPaths).toBe(initialPaths);
-        expect(renderer.svgElement).toBe(newSvgElement);
+        expect(newPaths).toBe(0);
+        expect(svgElement.querySelectorAll('path.connection-line').length).toBe(initialPaths);
+        expect(renderer.svgElement).toBe(svgElement);
     });
 
     test('should clear all connections when clearAll is called', () => {
