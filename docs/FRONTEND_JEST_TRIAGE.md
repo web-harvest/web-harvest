@@ -114,3 +114,50 @@ failed tests. This is still a non-zero baseline, not a green Jest suite.
 Next: migrate one failure family at a time against current source contracts,
 run the focused suites, then rerun the full workflow. Do not lower the ratchet
 again unless a new full Jest run proves the lower counts.
+
+
+### Verification checkpoint — run 42318210798
+
+Commit: `830717b183b2f1e6ce1d8b7b91cbce2547db8636` on
+`stabilization/graph-safety-30-32-jest-31`.
+
+- Workflow: **success** (run 67).
+- 132 suites executed: **49 failed, 83 passed**.
+- 1,342 tests executed: **168 failed, 1,174 passed**.
+- The existing gate passed against the previous ceilings of 51 suites / 213 tests.
+- Frontend type-check, Vite build, shared-package build/consumer checks,
+  frontend-authority guard, and Node 20 XML example sweep all passed.
+- The XML sweep remains 26/26 examples with no mismatches.
+- Jest ran with `--detectOpenHandles --forceExit`; no suites were skipped.
+
+Compared with run 42302143349, this run reduced failures by **2 suites and
+45 tests**. This is a measured improvement, not a green Jest suite.
+
+The ratchet is tightened in the same documentation-baseline change to the
+observed result: **49 failed suites / 168 failed tests**, while preserving
+required totals of 132 suites / 1,342 tests. Future changes must improve on
+this checkpoint; the ratchet is not a substitute for migrating the remaining
+tests.
+
+### Failure inventory from run 42318210798
+
+The latest output still clusters heavily around the Visual Designer:
+
+- Layout and geometry: `AutoLayout`, `AutoLayoutModes`,
+  `VisualDesigner.layout`, manual-node placement and canvas sizing.
+- Connection rendering/routing: `ConnectionRenderer`,
+  `ConnectionRendering`, `ConnectionPointsRenderer`, arrow direction and
+  routing-collision suites.
+- Semantic model synchronization: `VisualSemanticModelManager`
+  connection-point selection, marker routing, arrow metadata and model
+  serialization.
+- UI integration: `RightSidebar`, `UIManager`, `PropertyPanel` and
+  `App.websocket`.
+- XML/visual integration: `XMLParser.loadConfig`, nested configuration and
+  semantic-model rebuild behavior.
+
+These are suite-level clusters from the CI output, not yet root-cause
+classifications. The next implementation unit must inspect representative
+failures and current production contracts before deciding whether each is a
+stale test, an incomplete fixture, or a product defect. Start with one bounded
+family; do not bulk-rewrite expected geometry or weaken assertions.
