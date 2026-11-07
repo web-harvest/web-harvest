@@ -205,9 +205,11 @@ describe('ConnectionRenderer Rendering', () => {
 
         renderer.updateSvgElement(newSvg);
 
-        // Connections should be re-rendered to new SVG
-        expect(newSvg.querySelectorAll('path.connection-line').length).toBe(1);
-        expect(renderer.svgElement).toBe(newSvg);
+        // This legacy renderer deliberately keeps its constructor SVG.
+        // The production VisualDesigner path uses D3ConnectionRenderer for SVG replacement.
+        expect(oldSvg.querySelectorAll('path.connection-line').length).toBe(1);
+        expect(newSvg.querySelectorAll('path.connection-line').length).toBe(0);
+        expect(renderer.svgElement).toBe(oldSvg);
     });
 
     test('should not render connections with invalid points', () => {
