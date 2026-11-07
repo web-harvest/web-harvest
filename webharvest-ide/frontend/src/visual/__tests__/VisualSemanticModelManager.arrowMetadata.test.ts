@@ -56,7 +56,7 @@ describe('VisualSemanticModelManager - Arrow Metadata', () => {
 
         designer = new VisualDesigner('test-canvas-arrow-metadata');
         designer.setPluginManager(pluginManager as any);
-        modelManager = (designer as any).modelManager as VisualSemanticModelManager;
+        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
     });
 
     afterEach(() => {
