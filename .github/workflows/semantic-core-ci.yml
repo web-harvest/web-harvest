@@ -24,6 +24,7 @@ jobs:
   core-tests:
     name: Core tests (Java 11)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
