@@ -35,13 +35,10 @@ function runtimeHtmlForDevelopment(): Plugin {
                 const scriptMarker = '<script type="module" crossorigin src="dist/assets/main.js';
                 const scriptStart = productionShell.indexOf(scriptMarker);
                 const scriptEnd = productionShell.indexOf('</script>', scriptStart);
-                const stylesheetMarker = '<link rel="stylesheet" crossorigin href="dist/assets/main.css';
-                const stylesheetStart = productionShell.indexOf(stylesheetMarker);
-                const stylesheetEnd = productionShell.indexOf('>', stylesheetStart);
 
-                if (scriptStart < 0 || scriptEnd < 0 || stylesheetStart < 0 || stylesheetEnd < 0) {
+                if (scriptStart < 0 || scriptEnd < 0) {
                     throw new Error(
-                        'Could not adapt the canonical WebHarvest runtime HTML: expected production main.js and main.css references were not found.',
+                        'Could not adapt the canonical WebHarvest runtime HTML: production main.js reference was not found.',
                     );
                 }
 
@@ -49,10 +46,20 @@ function runtimeHtmlForDevelopment(): Plugin {
                     productionShell.slice(0, scriptStart) +
                     '<script type="module" src="/src/main.ts"></script>' +
                     productionShell.slice(scriptEnd + '</script>'.length);
-                const developmentShell =
+                const stylesheetMarker = '<link rel="stylesheet" crossorigin href="dist/assets/main.css';
+                const stylesheetStart = withViteEntry.indexOf(stylesheetMarker);
+                const stylesheetEnd = withViteEntry.indexOf('>', stylesheetStart);
+
+                if (stylesheetStart < 0 || stylesheetEnd < 0) {
+                    throw new Error(
+                        'Could not adapt the canonical WebHarvest runtime HTML: production main.css reference was not found.',
+                    );
+                }
+
+                return (
                     withViteEntry.slice(0, stylesheetStart) +
-                    withViteEntry.slice(stylesheetEnd + 1);
-                return developmentShell;
+                    withViteEntry.slice(stylesheetEnd + 1)
+                );
             },
         },
         configureServer(server) {
