@@ -59,11 +59,15 @@ This is now an IDE bootstrap/layout/interaction test, but it does not yet assert
 workflow node, D3 SVG path/arrow lifecycle, or node selection. Those require a deterministic
 visual workflow fixture and remain the next coverage unit.
 
-## Reproducibility limitation
+## Reproducibility
 
-The frontend currently has no committed `package-lock.json`. CI therefore still uses
-`npm install`; dependency installation is not yet fully reproducible. Issue #37 tracks
-generation and review of a lockfile, followed by migration to `npm ci`.
+The frontend now has a committed npm lockfile (`webharvest-ide/frontend/package-lock.json`,
+lockfileVersion 3). CI generated it, inspected the local shared-package links and pinned
+Playwright version, and verified it with a clean `npm ci`.
+
+The root `.gitignore` retains the general package-lock ignore rule with a narrow exception
+for this frontend lockfile only. The frontend validation and Playwright jobs use `npm ci`,
+with dependency caching keyed by the lockfile.
 
 ## CI
 
