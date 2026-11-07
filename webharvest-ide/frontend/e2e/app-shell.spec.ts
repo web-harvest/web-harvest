@@ -65,6 +65,8 @@ test('Vite boots the canonical runtime shell and supports a real toolbar interac
     expect(response, 'the application document should be served').not.toBeNull();
     expect(response!.ok()).toBeTruthy();
     await expect(page).toHaveTitle(/WebHarvest IDE/);
+    await expect(page.locator('script[src="/src/main.ts"]')).toHaveCount(1);
+    await expect(page.locator('link[href*="dist/assets/main.css"]')).toHaveCount(0);
 
     // The production shell is authoritative and intentionally has no #app mount.
     await expect(page.locator('#canvas-area')).toBeAttached();
