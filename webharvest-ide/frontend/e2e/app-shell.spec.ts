@@ -88,8 +88,11 @@ test('Vite boots the canonical runtime shell and supports a real toolbar interac
     expect(canvasBounds!.width).toBeGreaterThan(0);
     expect(canvasBounds!.height).toBeGreaterThan(0);
 
-    // Exercise the public toolbar control and observe the user-visible result.
+    // The runtime starts with the plugin palette visible. Exercise both
+    // directions of the existing toolbar toggle and observe the user-visible state.
     const pluginSidebar = page.locator('#plugin-sidebar');
+    await expect(pluginSidebar).toBeVisible();
+    await page.locator('#togglePaletteBtn').click();
     await expect(pluginSidebar).toBeHidden();
     await page.locator('#togglePaletteBtn').click();
     await expect(pluginSidebar).toBeVisible();
