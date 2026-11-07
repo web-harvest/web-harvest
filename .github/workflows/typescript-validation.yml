@@ -167,7 +167,7 @@ jobs:
 
   ide-browser-e2e:
     name: IDE browser E2E (Playwright, Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: webharvest-ide/frontend
