@@ -53,8 +53,9 @@ incoming and outgoing edges, self-loops, disconnected nodes, and a 2,500-node
 chain. The current 1,342-test total includes one graph-layout regression test
 covering those cases, two XML text/CDATA tests, one mixed-content round-trip
 test, and one mixed-content clone-reference test.
-The failed-test ceiling is ratcheted down from 262 to 255; the failed-suite
-ceiling remains 53 while Issue #31 migration continues.
+The initial follow-up run lowered the failed-test ceiling from 262 to 255.
+A later verified run on the current branch tip reduced the remaining failures
+further; see the Issue #31 verification checkpoint below.
 
 
 ## Issue #32 — semantic XML example round-trip
@@ -78,9 +79,38 @@ The Node 20 CI sweep verified all 26 examples: 26 passed, 0 mismatches.
 The verified run `42299758618` completed with 53 failed suites and 244 failed
 tests (1,342 total tests). The failure ceiling was lowered from 255 to 244.
 
-The next migration batch aligns remaining `PluginManager` test doubles with
-the `getSchemaVersion(): string | null` contract, adds a deterministic jsdom
-`ResizeObserver` shim, and migrates the remaining VisualDesigner layout test
-from the removed `getConnections()` API to `getManualConnections()`.
-App fixtures are also being aligned with the current plugin metadata response
-shape and RightSidebar container. These changes remain pending CI verification.
+### Verification checkpoint — run 42302143349
+
+Commit: `7412b0fa65efe1863e70f8af91e0f69584b53a08`.
+
+- 132 suites executed: 51 failed, 81 passed.
+- 1,342 tests executed: 213 failed, 1,129 passed.
+- Jest gate passed against the then-current ceilings of 53 suites / 244 tests.
+- Frontend type-check and Vite build passed.
+- Shared package builds and consumer smoke tests passed.
+- Node 20 semantic XML sweep passed: 26 examples, 0 mismatches.
+- IDE frontend authority guard passed.
+
+Compared with run `42299758618`, this run reduced failures by 2 suites and
+31 tests. No suites were skipped. The Jest process used `--detectOpenHandles
+--forceExit` to make open-handle diagnostics explicit.
+
+The checked-in ratchet is now reduced to the observed 51 failed suites / 213
+failed tests. This is still a non-zero baseline, not a green Jest suite.
+
+### Remaining failure clusters from run 42302143349
+
+- Stale VisualDesigner test APIs: `connectNodes`, `getConnections`, and
+  `exportModelForLLM` are not current public methods; current equivalents
+  include `createManualConnection`, `getManualConnections`, and the
+  `VisualSemanticModelManager` model/LLM-format methods.
+- Incomplete test doubles: `ConnectionRenderer` / model tests still supply
+  plugin-manager doubles without `findPlugin` or pass a null manager.
+- Drag-handler fixtures assign to the read-only `svgElement` getter.
+- Layout/UI expectations still encode old geometry or display contracts
+  (manual-node positions, swim lanes, sidebar visibility, SVG identity).
+- Some App and PropertyPanel tests still need fixture/API migration.
+
+Next: migrate one failure family at a time against current source contracts,
+run the focused suites, then rerun the full workflow. Do not lower the ratchet
+again unless a new full Jest run proves the lower counts.
