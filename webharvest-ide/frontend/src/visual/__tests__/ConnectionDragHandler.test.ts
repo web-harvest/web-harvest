@@ -22,16 +22,8 @@ class MockVisualDesigner {
     viewportToCanvas(x: number, y: number) {
         return { x, y };
     }
-    get svgElement() {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '2000');
-        svg.setAttribute('height', '2000');
-        return svg;
-    }
-    get canvasElement() {
-        const div = document.createElement('div');
-        return div;
-    }
+    svgElement: SVGSVGElement | null = null;
+    canvasElement: HTMLElement = document.createElement('div');
 }
 
 // Mock PluginManager
@@ -41,6 +33,9 @@ class MockPluginManager implements Partial<PluginManager> {
     }
     getPlugins() {
         return [];
+    }
+    getSchemaVersion() {
+        return null;
     }
 }
 
