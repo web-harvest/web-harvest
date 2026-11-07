@@ -154,6 +154,7 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 yarn.lock
+!webharvest-ide/frontend/package-lock.json
 
 # ============================================
 # Python (for doc generation scripts)
