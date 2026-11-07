@@ -89,7 +89,7 @@ describe('Arrow Rendering - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -155,7 +155,7 @@ describe('Arrow Rendering - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -212,7 +212,7 @@ describe('Arrow Rendering - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -247,7 +247,7 @@ describe('Arrow Rendering - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -280,7 +280,7 @@ describe('Arrow Rendering - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
