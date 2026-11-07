@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { VisualDesigner } from '../VisualDesigner';
+import { VisualSemanticModelManager } from '../VisualSemanticModelManager';
 import type { VisualNode, Plugin } from '../types';
 import type { PluginManager } from '../../core/PluginManager';
 
@@ -32,6 +33,7 @@ describe('VisualDesigner.loadNodes', () => {
     let designer: VisualDesigner;
     let container: HTMLElement;
     let pluginManager: MockPluginManager;
+    let modelManager: VisualSemanticModelManager;
 
     beforeEach(() => {
         container = document.createElement('div');
@@ -71,6 +73,7 @@ describe('VisualDesigner.loadNodes', () => {
         } as Plugin);
         
         designer.setPluginManager(pluginManager as any);
+        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
     });
 
     afterEach(() => {
@@ -132,7 +135,7 @@ describe('VisualDesigner.loadNodes', () => {
             designer.loadNodes([]);
             
             // Connections should be cleared
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             expect(Object.keys(model.workflow.connections).length).toBe(0);
         });
     });
@@ -154,7 +157,7 @@ describe('VisualDesigner.loadNodes', () => {
             // Wait for async operations (auto-layout, model build)
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             
             expect(model).toBeDefined();
             expect(model.workflow).toBeDefined();
@@ -193,7 +196,7 @@ describe('VisualDesigner.loadNodes', () => {
             // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const allNodes = model.workflow.allNodes;
             
             // Should have at least 2 root nodes + 1 child = 3 total
@@ -217,7 +220,7 @@ describe('VisualDesigner.loadNodes', () => {
             // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const allNodes = model.workflow.allNodes;
             
             const nodeIds = Object.keys(allNodes);
@@ -241,7 +244,7 @@ describe('VisualDesigner.loadNodes', () => {
             // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             
             expect(model).toBeDefined();
             expect(model.workflow.rootNodes).toHaveLength(0);
@@ -266,7 +269,7 @@ describe('VisualDesigner.loadNodes', () => {
             // Wait for auto-layout
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const allNodes = model.workflow.allNodes;
             
             const nodeIds = Object.keys(allNodes);
