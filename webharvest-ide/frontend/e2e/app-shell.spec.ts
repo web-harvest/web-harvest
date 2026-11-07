@@ -251,3 +251,58 @@ test('selecting a canvas node opens its Properties panel', async ({ page }) => {
 
     expect(pageErrors, 'node selection and property rendering should not throw browser errors').toEqual([]);
 });
+
+test('dragging a canvas node beyond the movement threshold repositions it', async ({ page }) => {
+    const initialized = page.waitForEvent('console', message =>
+        message.type() === 'log' &&
+        message.text().includes('WebHarvest IDE initialized successfully')
+    );
+
+    await page.goto('/');
+    await initialized;
+
+    await page.evaluate(() => {
+        const designer = (window as any).app?.visualDesigner;
+        if (!designer) {
+            throw new Error('The initialized application did not expose VisualDesigner');
+        }
+
+        designer.loadNodes([
+            {
+                id: 'e2e-log',
+                type: 'log',
+                attributes: { level: 'info' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 100 },
+            },
+            {
+                id: 'e2e-sleep',
+                type: 'sleep',
+                attributes: { milliseconds: '10' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 360 },
+            },
+        ]);
+    });
+
+    const node = page.locator('.visual-node[data-node-id="e2e-log"]');
+    await expect(node).toBeVisible();
+
+    const before = await node.boundingBox();
+    expect(before, 'the node should have a measurable browser position').not.toBeNull();
+
+    const startX = before!.x + before!.width / 2;
+    const startY = before!.y + before!.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 50, startY + 40, { steps: 5 });
+    await page.mouse.up();
+
+    await expect.poll(async () => {
+        const after = await node.boundingBox();
+        if (!after) return 0;
+        return Math.hypot(after.x - before!.x, after.y - before!.y);
+    }).toBeGreaterThan(20);
+});
