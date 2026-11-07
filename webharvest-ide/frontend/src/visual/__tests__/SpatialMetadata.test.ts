@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { VisualDesigner } from '../VisualDesigner';
+import { VisualSemanticModelManager } from '../VisualSemanticModelManager';
 import type { VisualNode, Plugin } from '../types';
 import type { PluginManager } from '../../core/PluginManager';
 import type { VisualSemanticModel } from '../VisualSemanticModel';
@@ -66,11 +67,13 @@ function createMockDesigner(): { designer: VisualDesigner; pluginManager: MockPl
 describe('Spatial Metadata', () => {
     let designer: VisualDesigner;
     let pluginManager: MockPluginManager;
+    let modelManager: VisualSemanticModelManager;
 
     beforeEach(() => {
         const mock = createMockDesigner();
         designer = mock.designer;
         pluginManager = mock.pluginManager;
+        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
     });
 
     describe('ArrowMetadata spatialInfo', () => {
@@ -97,7 +100,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -141,7 +144,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -189,7 +192,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -234,7 +237,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -280,7 +283,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -321,7 +324,7 @@ describe('Spatial Metadata', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
