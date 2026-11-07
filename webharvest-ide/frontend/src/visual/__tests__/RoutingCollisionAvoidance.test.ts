@@ -100,7 +100,7 @@ describe('Routing Collision Avoidance', () => {
             }
 
             // Act: Connect node1 to node2
-            designer.connectNodes('node1', 'node2', 'sequential');
+            designer.createManualConnection('node1', 'node2', 'sequential');
             designer.render();
 
             // Assert: Path should not intersect obstacle
@@ -153,7 +153,7 @@ describe('Routing Collision Avoidance', () => {
                 modelManager.buildModel();
             }
 
-            designer.connectNodes('node1', 'node2', 'sequential');
+            designer.createManualConnection('node1', 'node2', 'sequential');
             designer.render();
 
             const anchor1 = (designer as any).getConnectionAnchor('node1');
@@ -205,7 +205,7 @@ describe('Routing Collision Avoidance', () => {
                 modelManager.buildModel();
             }
 
-            designer.connectNodes('node1', 'node2', 'sequential');
+            designer.createManualConnection('node1', 'node2', 'sequential');
             designer.render();
 
             const anchor1 = (designer as any).getConnectionAnchor('node1');
@@ -268,7 +268,7 @@ describe('Routing Collision Avoidance', () => {
                 modelManager.buildModel();
             }
 
-            designer.connectNodes('node1', 'node2', 'sequential');
+            designer.createManualConnection('node1', 'node2', 'sequential');
             designer.render();
 
             const anchor1 = (designer as any).getConnectionAnchor('node1');
