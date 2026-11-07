@@ -71,7 +71,9 @@ a node after the click/drag lifecycle fix.
 The PropertyPanel edit test changes a node attribute through the rendered editor, verifies
 Cancel restores the original value without mutating the VisualDesigner model, then applies a
 second value and verifies the App callback persists it through `VisualDesigner.updateNode()`.
-Dirty-state transitions are asserted through the actual Apply button.
+It also verifies the generated XML is synchronized to both the active tab content and the
+Monaco editor value through App's existing `syncVisualToXML()` path. Dirty-state transitions
+are asserted through the actual Apply button.
 
 Connection editing and broader plugin-schema validation remain separate coverage units.
 
