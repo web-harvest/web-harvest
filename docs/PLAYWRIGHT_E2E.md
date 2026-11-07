@@ -55,9 +55,14 @@ The current Chromium test verifies:
 Backend metadata is stubbed as an empty plugin catalog. The test does not fake the canvas DOM
 or instantiate VisualDesigner through a test-only path.
 
-This is now an IDE bootstrap/layout/interaction test, but it does not yet assert a rendered
-workflow node, D3 SVG path/arrow lifecycle, or node selection. Those require a deterministic
-visual workflow fixture and remain the next coverage unit.
+The suite also loads a deterministic two-node root workflow through the existing
+`window.app.visualDesigner.loadNodes()` API and verifies that the live D3 renderer emits an
+SVG `path.connection-path` and a matching `polygon.connection-arrow` with non-empty path data.
+The test waits for the semantic-model/anchor-registration lifecycle through observable DOM
+output rather than fixed sleeps.
+
+The suite does not yet exercise node selection, drag/reposition, or connection editing. Those
+remain separate interaction coverage units.
 
 ## Reproducibility limitation
 
