@@ -66,8 +66,14 @@ header label applies the selected-node styling, opens the real right sidebar, ac
 Properties section and renders the selected node's type in the PropertyPanel.
 
 The suite also verifies that a real pointer drag beyond the movement threshold still repositions
-a node after the click/drag lifecycle fix. Connection editing remains a separate interaction
-coverage unit.
+a node after the click/drag lifecycle fix.
+
+The PropertyPanel edit test changes a node attribute through the rendered editor, verifies
+Cancel restores the original value without mutating the VisualDesigner model, then applies a
+second value and verifies the App callback persists it through `VisualDesigner.updateNode()`.
+Dirty-state transitions are asserted through the actual Apply button.
+
+Connection editing and broader plugin-schema validation remain separate coverage units.
 
 ## Reproducibility
 
