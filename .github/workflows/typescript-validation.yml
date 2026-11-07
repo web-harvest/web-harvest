@@ -164,3 +164,40 @@ jobs:
 
       - name: Verify XML examples semantically round-trip
         run: npm run sweep:examples --prefix webharvest-ide
+
+  ide-browser-e2e:
+    name: IDE browser E2E (Playwright, Chromium)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webharvest-ide/frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.19.0"
+
+      # The frontend currently has no committed package-lock.json. Keep this
+      # bootstrap on npm install until a reviewed lockfile is added in Issue #37.
+      - name: Install frontend and Playwright dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-chromium-${{ github.run_number }}
+          path: |
+            webharvest-ide/frontend/playwright-report/
+            webharvest-ide/frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 14
