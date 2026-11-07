@@ -71,9 +71,11 @@ describe('ConnectionRenderer Diagnostics', () => {
         // Update SVG
         renderer.updateSvgElement(newSvg);
 
-        // Verify connections moved to new SVG
-        expect(renderer.svgElement).toBe(newSvg);
-        expect(newSvg.children.length).toBe(initialConnections * 2); // paths + arrows
+        // Legacy ConnectionRenderer.updateSvgElement is an intentional no-op.
+        // The active VisualDesigner renderer is D3ConnectionRenderer.
+        expect(renderer.svgElement).toBe(svgElement);
+        expect(newSvg.children.length).toBe(0);
+        expect(svgElement.children.length).toBe(initialConnections * 2); // paths + arrows
         expect(renderer.renderedConnections.size).toBe(initialConnections);
     });
 
