@@ -17,6 +17,8 @@ and user interactions.
 - Backend plugin metadata and runtime-version endpoints are stubbed by the browser fixture.
 - External HTTPS assets are blocked; Monaco's public editor API is stubbed for deterministic
   startup without downloading the third-party editor distribution.
+- The optional backend WebSocket is stubbed as an offline connection so the browser fixture
+  does not depend on a local backend or produce Vite proxy retries.
 - On failure, Playwright retains trace, screenshot and video; CI uploads the report and
   test-results directory.
 
