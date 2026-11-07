@@ -25,6 +25,7 @@ describe('ConnectionRenderer Diagnostics', () => {
 
         // Create mock plugin manager
         pluginManager = {
+            findPlugin: () => null,
             getSchemaVersion: () => null,
             getPlugins: () => [],
             getPlugin: () => null,
