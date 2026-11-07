@@ -22,6 +22,7 @@ describe('ConnectionRenderer Routing Types', () => {
         document.body.appendChild(svgElement);
 
         pluginManager = {
+            findPlugin: () => null,
             getSchemaVersion: () => null,
             getPlugins: () => [],
             getPlugin: () => null,
