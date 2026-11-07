@@ -61,8 +61,11 @@ SVG `path.connection-path` and a matching `polygon.connection-arrow` with non-em
 The test waits for the semantic-model/anchor-registration lifecycle through observable DOM
 output rather than fixed sleeps.
 
-The suite does not yet exercise node selection, drag/reposition, or connection editing. Those
-remain separate interaction coverage units.
+The suite also exercises node selection through the rendered canvas UI. Clicking the node
+header label applies the selected-node styling, opens the real right sidebar, activates the
+Properties section and renders the selected node's type in the PropertyPanel.
+
+Drag/reposition and connection editing remain separate interaction coverage units.
 
 ## Reproducibility
 
