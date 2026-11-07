@@ -306,3 +306,85 @@ test('dragging a canvas node beyond the movement threshold repositions it', asyn
         return Math.hypot(after.x - before!.x, after.y - before!.y);
     }).toBeGreaterThan(20);
 });
+
+
+test('PropertyPanel Cancel restores the original value and Apply persists edits to the visual model', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+
+    const initialized = page.waitForEvent('console', message =>
+        message.type() === 'log' &&
+        message.text().includes('WebHarvest IDE initialized successfully')
+    );
+
+    await page.goto('/');
+    await initialized;
+
+    await page.evaluate(() => {
+        const designer = (window as any).app?.visualDesigner;
+        if (!designer) {
+            throw new Error('The initialized application did not expose VisualDesigner');
+        }
+
+        designer.loadNodes([
+            {
+                id: 'e2e-log',
+                type: 'log',
+                attributes: { level: 'info' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 100 },
+            },
+            {
+                id: 'e2e-sleep',
+                type: 'sleep',
+                attributes: { milliseconds: '10' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 360 },
+            },
+        ]);
+    });
+
+    const logNode = page.locator('.visual-node[data-node-id="e2e-log"]');
+    await expect(logNode).toBeVisible();
+    await logNode.locator('.visual-node__header-title').click();
+
+    const propertyForm = page.locator('#propertyPanel .property-panel__form');
+    await expect(propertyForm).toBeVisible();
+    await expect(propertyForm).toContainText('Type:');
+    await expect(propertyForm).toContainText('log');
+
+    const levelInput = propertyForm.locator('input.detail-input').first();
+    await expect(levelInput).toHaveValue('info');
+
+    const applyButton = page.locator('#propertyPanel .property-panel-shell__button--primary');
+    const cancelButton = page.locator('#propertyPanel .property-panel-shell__button--ghost');
+
+    // Cancel must discard the working copy and leave the actual VisualDesigner node untouched.
+    await levelInput.fill('debug');
+    await levelInput.press('Tab');
+    await expect(applyButton).toBeEnabled();
+    await cancelButton.click();
+
+    await expect(propertyForm.locator('input.detail-input').first()).toHaveValue('info');
+    const afterCancel = await page.evaluate(() =>
+        (window as any).app.visualDesigner.findNode('e2e-log')?.attributes?.level
+    );
+    expect(afterCancel).toBe('info');
+    await expect(applyButton).toBeDisabled();
+
+    // Apply must flow through App.onChange → VisualDesigner.updateNode.
+    const restoredLevelInput = propertyForm.locator('input.detail-input').first();
+    await restoredLevelInput.fill('warn');
+    await restoredLevelInput.press('Tab');
+    await expect(applyButton).toBeEnabled();
+    await applyButton.click();
+
+    await expect.poll(() => page.evaluate(() =>
+        (window as any).app.visualDesigner.findNode('e2e-log')?.attributes?.level
+    )).toBe('warn');
+    await expect(applyButton).toBeDisabled();
+
+    expect(pageErrors, 'PropertyPanel edit lifecycle should not throw browser errors').toEqual([]);
+});
