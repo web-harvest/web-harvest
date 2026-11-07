@@ -196,3 +196,58 @@ test('D3 renders a semantic connection path and matching arrow for a two-node wo
     expect(arrowConnectionId).toBe(pathConnectionId);
     expect(arrowPoints).toBeTruthy();
 });
+
+test('selecting a canvas node opens its Properties panel', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+
+    const initialized = page.waitForEvent('console', message =>
+        message.type() === 'log' &&
+        message.text().includes('WebHarvest IDE initialized successfully')
+    );
+
+    await page.goto('/');
+    await initialized;
+
+    await page.evaluate(() => {
+        const designer = (window as any).app?.visualDesigner;
+        if (!designer) {
+            throw new Error('The initialized application did not expose VisualDesigner');
+        }
+
+        designer.loadNodes([
+            {
+                id: 'e2e-log',
+                type: 'log',
+                attributes: { level: 'info' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 100 },
+            },
+            {
+                id: 'e2e-sleep',
+                type: 'sleep',
+                attributes: { milliseconds: '10' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 360 },
+            },
+        ]);
+    });
+
+    const selectedNode = page.locator('.visual-node[data-node-id="e2e-log"]');
+    await expect(selectedNode).toBeVisible();
+    await selectedNode.locator('.visual-node__header-title').click();
+
+    // Selection is a real DOM interaction; App handles the emitted nodeSelected event.
+    await expect(selectedNode).toHaveClass(/node-selected/);
+    await expect(page.locator('#rightSidebar')).toBeVisible();
+    await expect(page.locator('#rightSidebar .right-sidebar__section--properties')).toBeVisible();
+
+    const propertyForm = page.locator('#propertyPanel .property-panel__form');
+    await expect(propertyForm).toBeVisible();
+    await expect(propertyForm).toContainText('Type:');
+    await expect(propertyForm).toContainText('log');
+
+    expect(pageErrors, 'node selection and property rendering should not throw browser errors').toEqual([]);
+});
