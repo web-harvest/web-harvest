@@ -1,6 +1,8 @@
 package org.webharvest.semantic;
 
 import org.testng.annotations.Test;
+import javax.xml.XMLConstants;
+import org.xml.sax.XMLReader;
 import static org.testng.Assert.*;
 
 public class SemanticModelTest {
@@ -76,6 +78,20 @@ public class SemanticModelTest {
         assertFalse(result.isSuccessful());
         assertTrue(result.getDocument().isEmpty());
         assertEquals(result.getDiagnostics().get(0).getCode(), "LIMIT_EXCEEDED");
+    }
+
+    @Test
+    public void configuresAndVerifiesTheActiveSaxProviderSecurityFeatures() throws Exception {
+        XMLReader reader = SemanticXmlAnalyzer.newSecureReader();
+        System.out.println("Semantic XML SAX provider: " + reader.getClass().getName());
+        assertTrue(reader.getFeature(XMLConstants.FEATURE_SECURE_PROCESSING));
+        assertTrue(reader.getFeature("http://apache.org/xml/features/disallow-doctype-decl"));
+        assertFalse(reader.getFeature("http://xml.org/sax/features/external-general-entities"));
+        assertFalse(reader.getFeature("http://xml.org/sax/features/external-parameter-entities"));
+        assertFalse(reader.getFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd"));
+        assertFalse(reader.getFeature("http://xml.org/sax/features/validation"));
+        assertEquals(reader.getProperty(XMLConstants.ACCESS_EXTERNAL_DTD), "");
+        assertEquals(reader.getProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA), "");
     }
 
     @Test
