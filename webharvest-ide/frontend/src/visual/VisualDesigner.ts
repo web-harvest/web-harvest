@@ -4003,22 +4003,16 @@ export class VisualDesigner {
         const freshInputPorts = nodeElement.querySelectorAll('.port-input');
 
         freshInputPorts.forEach(portElement => {
-            // Input ports handle mouseup to complete connection drag
+            // The mouseup lands on this concrete input control. Its semantic ID
+            // is authoritative; repeating hit-testing through viewportToCanvas()
+            // can disagree with the DOM target after scroll/zoom transforms.
             portElement.addEventListener('mouseup', (e: Event) => {
                 e.stopPropagation();
 
-                // ConnectionDragHandler handles the drag completion
-                // This is just a placeholder - the actual handling is in ConnectionDragHandler
-                if (this.connectionDragHandler && e instanceof MouseEvent) {
+                if (this.connectionDragHandler) {
                     const port = portElement as HTMLElement;
-                    const portId = port.dataset.portId || 'input-default-left';
-                    // ConnectionDragHandler will find the target port from mouse position
-                    const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
-                    const target = this.connectionDragHandler.findTargetPort(canvasPos);
-                    if (target && target.nodeId === node.id && target.portId === portId) {
-                        // End drag at this port
-                        this.connectionDragHandler.endDrag(node.id, portId);
-                    }
+                    const portId = port.dataset.portId || 'input-default-top-center';
+                    this.connectionDragHandler.endDrag(node.id, portId);
                 }
             });
         });
