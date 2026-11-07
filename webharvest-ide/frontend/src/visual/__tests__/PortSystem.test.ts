@@ -75,12 +75,33 @@ describe('PortSystem', () => {
             expect(errorPort).not.toBeNull();
         });
 
+        it('should map multiple output ports to matching semantic bottom-edge anchors', () => {
+            mockNode.type = 'if';
+
+            portSystem.addPorts(mockElement, mockNode);
+
+            const outputPorts = Array.from(mockElement.querySelectorAll('.port-output')) as HTMLElement[];
+            expect(outputPorts).toHaveLength(2);
+            expect(outputPorts.map(port => port.dataset.portId)).toEqual([
+                'output-default-bottom-start',
+                'output-default-bottom-end'
+            ]);
+            expect(outputPorts.map(port => port.style.left)).toEqual([
+                '15px',
+                'calc(100% - 15px)'
+            ]);
+        });
+
         it('should set port data attributes', () => {
             portSystem.addPorts(mockElement, mockNode);
 
             const inputPort = mockElement.querySelector('.port-input') as HTMLElement;
             expect(inputPort.dataset.nodeId).toBe('node-1');
             expect(inputPort.dataset.portType).toBe('input');
+            expect(inputPort.dataset.portId).toBe('input-default-top-center');
+
+            const outputPort = mockElement.querySelector('.port-output') as HTMLElement;
+            expect(outputPort.dataset.portId).toBe('output-default-bottom-center');
         });
     });
 
