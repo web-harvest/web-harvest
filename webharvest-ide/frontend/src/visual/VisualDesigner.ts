@@ -3820,10 +3820,13 @@ export class VisualDesigner {
      */
     private setupNodeDragHandlers(nodeElement: HTMLElement, node: VisualNode): void {
         let isDragging = false;
-        let startX = 0;
-        let startY = 0;
+        let hasMoved = false;
+        let mouseDownClientX = 0;
+        let mouseDownClientY = 0;
         let offsetX = 0;
         let offsetY = 0;
+
+        const dragThreshold = 4;
 
         nodeElement.style.cursor = 'grab';
         nodeElement.style.touchAction = 'manipulation';
@@ -3850,24 +3853,41 @@ export class VisualDesigner {
                 return;
             }
 
+            // A press is not a drag. Preserve the original DOM target so the
+            // browser can dispatch click and the node's selection handler runs.
             isDragging = true;
-            this.isNodeDragging = true;
-            // Calculate offset in canvas coordinates (accounting for transform)
+            hasMoved = false;
+            mouseDownClientX = e.clientX;
+            mouseDownClientY = e.clientY;
+
             const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
-            startX = canvasPos.x;
-            startY = canvasPos.y;
-            // Offset is the distance from mouse to node's current position (in canvas coords)
             offsetX = canvasPos.x - (node.position?.x || 0);
             offsetY = canvasPos.y - (node.position?.y || 0);
-
-            nodeElement.style.cursor = 'grabbing';
-            nodeElement.style.userSelect = 'none';
-            document.body.style.userSelect = 'none';
-            e.preventDefault();
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
+
+            // Start a drag only after the pointer crosses a small threshold.
+            // This prevents a simple click from being treated as a move and
+            // avoids replacing the node element before its click event fires.
+            if (!hasMoved) {
+                const distance = Math.hypot(
+                    e.clientX - mouseDownClientX,
+                    e.clientY - mouseDownClientY,
+                );
+                if (distance < dragThreshold) {
+                    return;
+                }
+
+                hasMoved = true;
+                this.isNodeDragging = true;
+                nodeElement.style.cursor = 'grabbing';
+                nodeElement.style.userSelect = 'none';
+                document.body.style.userSelect = 'none';
+            }
+
+            e.preventDefault();
 
             const canvasPos = this.viewportToCanvas(e.clientX, e.clientY);
             const newX = canvasPos.x - offsetX;
@@ -3921,13 +3941,16 @@ export class VisualDesigner {
         });
 
         document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                this.isNodeDragging = false;
-                nodeElement.style.cursor = 'grab';
-                nodeElement.style.touchAction = 'manipulation';
-                nodeElement.style.userSelect = '';
-                document.body.style.userSelect = '';
+            if (!isDragging) return;
+
+            isDragging = false;
+            this.isNodeDragging = false;
+            nodeElement.style.cursor = 'grab';
+            nodeElement.style.touchAction = 'manipulation';
+            nodeElement.style.userSelect = '';
+            document.body.style.userSelect = '';
+
+            if (hasMoved) {
                 // Usuń wizualną informację zwrotną o kolizji
                 nodeElement.classList.remove('node-collision-warning');
                 this.render();
