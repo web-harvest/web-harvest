@@ -4,6 +4,7 @@
  */
 
 import { ConnectionRenderer } from '../ConnectionRenderer';
+import { D3ConnectionRenderer } from '../D3ConnectionRenderer';
 import { VisualSemanticModelManager } from '../VisualSemanticModelManager';
 import { VisualDesigner } from '../VisualDesigner';
 import { PluginManager } from '../../core/PluginManager';
@@ -54,13 +55,13 @@ describe('ConnectionRenderer SVG Element Handling', () => {
         document.body.innerHTML = '';
     });
 
-    test('should update SVG element reference', () => {
+    test('legacy updateSvgElement keeps the constructor SVG', () => {
         expect(renderer.svgElement).toBe(svgElement1);
-        
+
         renderer.updateSvgElement(svgElement2);
-        
-        expect(renderer.svgElement).toBe(svgElement2);
-        expect(renderer.svgElement).not.toBe(svgElement1);
+
+        expect(renderer.svgElement).toBe(svgElement1);
+        expect(renderer.svgElement).not.toBe(svgElement2);
     });
 
     test('should move rendered connections to new SVG', () => {
@@ -91,18 +92,46 @@ describe('ConnectionRenderer SVG Element Handling', () => {
         document.body.appendChild(svgElement2);
         renderer.updateSvgElement(svgElement2);
 
-        // Check connections moved to new SVG
+        // Legacy updateSvgElement is intentionally a no-op; existing nodes stay put.
         const newPaths = svgElement2.querySelectorAll('path.connection-line').length;
-        expect(newPaths).toBe(initialPaths);
-        
-        // Old SVG should have no connections
+        expect(newPaths).toBe(0);
+
         const oldPaths = svgElement1.querySelectorAll('path.connection-line').length;
-        expect(oldPaths).toBe(0);
+        expect(oldPaths).toBe(initialPaths);
+        expect(renderer.svgElement).toBe(svgElement1);
     });
 
     test('should handle SVG update when no connections rendered', () => {
         expect(() => renderer.updateSvgElement(svgElement2)).not.toThrow();
-        expect(renderer.svgElement).toBe(svgElement2);
+        expect(renderer.svgElement).toBe(svgElement1);
+    });
+
+    test('active D3 renderer re-renders into its replacement SVG', () => {
+        const activeRenderer = new D3ConnectionRenderer(svgElement1);
+        const connection = {
+            connectionId: 'conn-active-1',
+            fromNodeId: 'node-1',
+            toNodeId: 'node-2',
+            path: { points: [{ x: 10, y: 20 }, { x: 110, y: 120 }] }
+        };
+        const activeModelManager = {
+            getModel: () => ({
+                workflow: { connections: new Map([['conn-active-1', connection]]) }
+            })
+        };
+
+        activeRenderer.renderAll(activeModelManager);
+        expect(svgElement1.querySelector('path.connection-path')).not.toBeNull();
+        expect(svgElement1.querySelector('polygon.connection-arrow')).not.toBeNull();
+
+        document.body.appendChild(svgElement2);
+        activeRenderer.updateSvgElement(svgElement2);
+        activeRenderer.renderAll(activeModelManager);
+
+        expect(activeRenderer.svgElement).toBe(svgElement2);
+        expect(svgElement1.querySelector('path.connection-path')).toBeNull();
+        expect(svgElement2.querySelector('path.connection-path')).not.toBeNull();
+        expect(svgElement2.querySelector('polygon.connection-arrow')).not.toBeNull();
     });
 
     test('should not update if SVG is the same', () => {
