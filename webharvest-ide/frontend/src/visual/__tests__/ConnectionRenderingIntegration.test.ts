@@ -99,7 +99,7 @@ describe('Connection Rendering Integration - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -168,7 +168,7 @@ describe('Connection Rendering Integration - TDD', () => {
                     designer.render();
 
                     setTimeout(() => {
-                        designer.connectNodes('node1', 'node2', 'sequential');
+                        designer.createManualConnection('node1', 'node2', 'sequential');
                         designer.render();
 
                         setTimeout(() => {
@@ -226,8 +226,8 @@ describe('Connection Rendering Integration - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
-                    designer.connectNodes('node2', 'node3', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node2', 'node3', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
@@ -269,7 +269,7 @@ describe('Connection Rendering Integration - TDD', () => {
 
             return new Promise<void>((resolve) => {
                 setTimeout(() => {
-                    designer.connectNodes('node1', 'node2', 'sequential');
+                    designer.createManualConnection('node1', 'node2', 'sequential');
                     designer.render();
 
                     setTimeout(() => {
