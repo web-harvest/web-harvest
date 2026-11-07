@@ -1,4 +1,4 @@
-name: Semantic Core CI
+name: Semantic Core Contract CI
 
 on:
   push:
