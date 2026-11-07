@@ -75,7 +75,7 @@ describe('ConnectionPointsRenderer', () => {
             renderer.showForNode(nodeId);
             
             // Check if points are rendered
-            const circles = svgElement.querySelectorAll('circle.connection-point');
+            const circles = (designer as any).canvasElement.querySelectorAll('.connection-point[data-node-id="' + nodeId + '"]');
             expect(circles.length).toBeGreaterThan(0);
         });
 
@@ -120,11 +120,11 @@ describe('ConnectionPointsRenderer', () => {
             
             // Show then hide connection points
             renderer.showForNode(nodeId);
-            const circlesBefore = svgElement.querySelectorAll('circle.connection-point');
+            const circlesBefore = (designer as any).canvasElement.querySelectorAll('.connection-point[data-node-id="' + nodeId + '"]');
             expect(circlesBefore.length).toBeGreaterThan(0);
             
             renderer.hideForNode(nodeId);
-            const circlesAfter = svgElement.querySelectorAll('circle.connection-point');
+            const circlesAfter = (designer as any).canvasElement.querySelectorAll('.connection-point[data-node-id="' + nodeId + '"]');
             expect(circlesAfter.length).toBe(0);
         });
     });
