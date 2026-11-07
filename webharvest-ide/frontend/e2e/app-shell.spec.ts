@@ -135,3 +135,59 @@ test('Vite boots the canonical runtime shell and supports a real toolbar interac
 
     expect(pageErrors, 'the application should not throw uncaught browser errors').toEqual([]);
 });
+
+test('D3 renders a semantic connection path and matching arrow for a two-node workflow', async ({ page }) => {
+    const initialized = page.waitForEvent('console', message =>
+        message.type() === 'log' &&
+        message.text().includes('WebHarvest IDE initialized successfully')
+    );
+
+    await page.goto('/');
+    await initialized;
+
+    // Use the application's existing public fixture-loading API. The node shape
+    // is the shared VisualNode contract; no DOM or semantic-model internals are mocked.
+    await page.evaluate(() => {
+        const designer = (window as any).app?.visualDesigner;
+        if (!designer) {
+            throw new Error('The initialized application did not expose VisualDesigner');
+        }
+
+        designer.loadNodes([
+            {
+                id: 'e2e-log',
+                type: 'log',
+                attributes: { level: 'info' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 100 },
+            },
+            {
+                id: 'e2e-sleep',
+                type: 'sleep',
+                attributes: { milliseconds: '10' },
+                body: null,
+                children: [],
+                position: { x: 100, y: 360 },
+            },
+        ]);
+    });
+
+    const connectionPath = page.locator('svg path.connection-path').first();
+    const connectionArrow = page.locator('svg polygon.connection-arrow').first();
+
+    // Anchor registration and semantic-model notification are asynchronous;
+    // wait for their observable browser output instead of using fixed sleeps.
+    await expect(connectionPath).toBeAttached({ timeout: 15_000 });
+    await expect(connectionArrow).toBeAttached({ timeout: 15_000 });
+    await expect(connectionPath).toBeVisible();
+    await expect(connectionArrow).toBeVisible();
+
+    const pathData = await connectionPath.getAttribute('d');
+    const pathConnectionId = await connectionPath.getAttribute('data-connection-id');
+    const arrowConnectionId = await connectionArrow.getAttribute('data-connection-id');
+
+    expect(pathData).toMatch(/^M/);
+    expect(pathConnectionId).toBeTruthy();
+    expect(arrowConnectionId).toBe(pathConnectionId);
+});
