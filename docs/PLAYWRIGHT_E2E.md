@@ -2,46 +2,72 @@
 
 ## Purpose
 
-Playwright is a separate browser-level test layer for the authoritative IDE frontend in
-`webharvest-ide/frontend`. Jest remains the unit/integration test runner. Browser tests
-are intended to cover real browser DOM, layout, SVG rendering and user interactions.
+Playwright is a separate browser-level test layer for the IDE frontend. Jest remains the
+unit/integration test runner. Browser tests cover the real browser DOM, layout, SVG rendering
+and user interactions.
 
 ## Current harness
 
 - Runner: `@playwright/test` (pinned direct dependency).
 - Browser gate: Chromium only.
 - Local command: `npm run test:e2e`.
-- Configuration: `playwright.config.ts`.
-- Tests: `e2e/**/*.spec.ts`.
+- Configuration: `webharvest-ide/frontend/playwright.config.ts`.
+- Tests: `webharvest-ide/frontend/e2e/**/*.spec.ts`.
 - Vite is started by Playwright on `127.0.0.1:4173`.
-- Backend plugin metadata and version endpoints are stubbed by the smoke fixture.
-- External HTTPS assets are blocked so the shell test does not depend on CDNs.
+- Backend plugin metadata and runtime-version endpoints are stubbed by the browser fixture.
+- External HTTPS assets are blocked; Monaco's public editor API is stubbed for deterministic
+  startup without downloading the third-party editor distribution.
 - On failure, Playwright retains trace, screenshot and video; CI uploads the report and
   test-results directory.
 
-The first test is deliberately only an application-document/Vite smoke test. It verifies
-that the HTML entrypoint is served, the expected title is present and the application
-mount point exists. **It does not yet prove successful IDE initialization, canvas layout,
-node rendering, SVG lifecycle or user interaction.** Those require a stable application
-fixture and will be added as subsequent units rather than simulated through private APIs.
+## HTML and bootstrap contract
+
+The canonical HTML shell is
+`webharvest-ide/src/main/resources/webapp/index.html`. It is the production document paired
+with the Maven/runtime application and owns the required IDE DOM structure.
+
+Vite development serves that same shell through the `webharvest-runtime-html` plugin. The
+plugin changes only the production bundle references:
+- `dist/assets/main.js` becomes the Vite source entry `/src/main.ts`;
+- the production `dist/assets/main.css` link is removed because `main.ts` imports the
+  frontend stylesheet directly.
+
+The production HTML file is not copied or separately maintained for tests. Production bundle
+paths, Vite build output and Maven/runtime HTML remain unchanged.
+
+The Vite development server also serves the existing `webapp/static/**` tree at its original
+`/static/**` URL prefix. The middleware confines resolved paths to that static directory and
+does not expose arbitrary filesystem paths.
+
+## Browser coverage
+
+The current Chromium test verifies:
+1. The canonical runtime shell is served, including the real canvas, plugin palette and right
+   sidebar containers (there is intentionally no `#app` mount in the runtime shell).
+2. The existing `/static/css/enterprise.css` URL resolves through Vite.
+3. `App.initialize()` completes and the visual canvas becomes visible.
+4. The canvas has non-zero browser layout dimensions.
+5. A real toolbar click toggles the plugin sidebar and changes its visible state.
+6. No uncaught browser page errors occur during this startup path.
+
+Backend metadata is stubbed as an empty plugin catalog. The test does not fake the canvas DOM
+or instantiate VisualDesigner through a test-only path.
+
+This is now an IDE bootstrap/layout/interaction test, but it does not yet assert a rendered
+workflow node, D3 SVG path/arrow lifecycle, or node selection. Those require a deterministic
+visual workflow fixture and remain the next coverage unit.
 
 ## Reproducibility limitation
 
-The frontend currently has no committed `package-lock.json`. This initial harness therefore
-uses `npm install` in CI and is not yet a fully reproducible dependency installation.
-Do not treat this as the final CI dependency contract. Issue #37 tracks generation and
-review of a lockfile, followed by migration to `npm ci`.
+The frontend currently has no committed `package-lock.json`. CI therefore still uses
+`npm install`; dependency installation is not yet fully reproducible. Issue #37 tracks
+generation and review of a lockfile, followed by migration to `npm ci`.
 
 ## CI
 
 The `IDE browser E2E (Playwright, Chromium)` job is separate from the existing frontend Jest,
-type-check and build job. It installs Chromium and uploads Playwright diagnostics even
-when tests fail. It is not a substitute for the existing Jest ratchet or XML semantic sweep.
+type-check and build job. It installs Chromium and uploads Playwright diagnostics even when
+tests fail. It is not a substitute for the existing Jest ratchet or XML semantic sweep.
 
-## Next coverage units
-
-1. Establish a supported fixture-loading path for a real Visual Designer workflow.
-2. Assert the active D3 renderer produces SVG path and arrow elements in the live browser.
-3. Exercise a user-facing interaction (node selection/property panel or zoom).
-4. Only after stable repeated runs, consider additional browser engines or making this a
-   required merge check.
+Firefox/WebKit and required-merge-check status remain deferred until Chromium coverage is
+stable and independently reviewed.
