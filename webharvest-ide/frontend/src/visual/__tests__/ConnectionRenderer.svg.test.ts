@@ -20,6 +20,7 @@ describe('ConnectionRenderer SVG Element Handling', () => {
     beforeEach(() => {
         // Create mock plugin manager
         pluginManager = {
+            findPlugin: () => null,
             getSchemaVersion: () => null,
             getPlugins: () => [],
             getPlugin: () => null,
