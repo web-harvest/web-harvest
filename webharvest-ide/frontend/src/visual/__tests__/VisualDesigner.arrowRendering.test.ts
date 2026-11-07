@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { VisualDesigner } from '../VisualDesigner';
+import { VisualSemanticModelManager } from '../VisualSemanticModelManager';
 import type { VisualNode, Plugin } from '../types';
 import type { PluginManager } from '../../core/PluginManager';
 
@@ -66,11 +67,13 @@ function createMockDesigner(): { designer: VisualDesigner; pluginManager: MockPl
 describe('VisualDesigner Arrow Rendering', () => {
     let designer: VisualDesigner;
     let pluginManager: MockPluginManager;
+    let modelManager: VisualSemanticModelManager;
 
     beforeEach(() => {
         const mock = createMockDesigner();
         designer = mock.designer;
         pluginManager = mock.pluginManager;
+        modelManager = new VisualSemanticModelManager(designer, pluginManager as any);
     });
 
     describe('Arrow rendering for simple connections', () => {
@@ -98,7 +101,7 @@ describe('VisualDesigner Arrow Rendering', () => {
             designer.render();
 
             // Get connections
-            const connections = designer.getConnections();
+            const connections = designer.getManualConnections();
             expect(connections.length).toBeGreaterThan(0);
 
             // Check if arrows are rendered in DOM
@@ -175,7 +178,7 @@ describe('VisualDesigner Arrow Rendering', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const connections = designer.getConnections();
+            const connections = designer.getManualConnections();
             const svg = document.querySelector('#test-canvas svg');
             const arrows = svg?.querySelectorAll('.connection-arrow');
 
@@ -209,7 +212,7 @@ describe('VisualDesigner Arrow Rendering', () => {
             designer.render();
 
             // Get model and check arrow metadata
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -243,7 +246,7 @@ describe('VisualDesigner Arrow Rendering', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
@@ -293,7 +296,7 @@ describe('VisualDesigner Arrow Rendering', () => {
             designer.loadNodes(nodes);
             designer.render();
 
-            const model = designer.exportModelForLLM();
+            const model = modelManager.toLLMFormat();
             const connections = Object.values(model.workflow.connections);
 
             connections.forEach(conn => {
