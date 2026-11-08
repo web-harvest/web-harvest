@@ -36,7 +36,8 @@ public class PluginSemanticsResolverTest {
         assertTrue(semantics.hasRole(PluginNodeRole.BODY_EVALUATOR));
         assertTrue(semantics.allowsChildPlugins());
         assertFalse(semantics.requiresParent());
-        assertTrue(semantics.allowsAnyChild(), "Body evaluators should accept arbitrary nested plugins");
+        assertTrue(semantics.allowsAnyChild(), "Legacy body semantics remain available to existing consumers");
+        assertFalse(semantics.explicitlyAcceptsAnyChild(), "BODY_EVALUATOR inference is not an explicit child policy");
     }
 
     @Test
@@ -50,6 +51,7 @@ public class PluginSemanticsResolverTest {
                 "loop should evaluate its body in addition to being a container");
         assertTrue(semantics.providesExecutionContext());
         assertTrue(semantics.allowsChildPlugins());
+        assertTrue(semantics.explicitlyAcceptsAnyChild(), "Loop explicitly declares arbitrary child support");
     }
 
     @Test
@@ -65,6 +67,7 @@ public class PluginSemanticsResolverTest {
         assertTrue(semantics.getAllowedChildElements().contains("http-header"));
         assertTrue(semantics.getAllowedChildElements().contains("http-param"));
         assertFalse(semantics.allowsAnyChild(), "http plugin should restrict children to explicit metadata");
+        assertFalse(semantics.explicitlyAcceptsAnyChild());
     }
 
     @Test
