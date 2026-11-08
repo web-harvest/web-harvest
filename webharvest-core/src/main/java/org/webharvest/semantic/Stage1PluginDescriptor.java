@@ -35,6 +35,9 @@ public final class Stage1PluginDescriptor {
     private final Optional<Boolean> allowsBody;
     private final Optional<Boolean> canAppearAtRoot;
     private final List<String> requiredParents;
+    private final List<QualifiedName> allowedChildNames;
+    private final List<QualifiedName> requiredChildNames;
+    private final List<QualifiedName> requiredParentNames;
     private final ChildPolicy childPolicy;
     private final ChildPolicyProvenance childPolicyProvenance;
 
@@ -52,6 +55,9 @@ public final class Stage1PluginDescriptor {
         this.allowsBody = builder.allowsBody;
         this.canAppearAtRoot = builder.canAppearAtRoot;
         this.requiredParents = List.copyOf(builder.requiredParents);
+        this.allowedChildNames = List.copyOf(builder.allowedChildNames);
+        this.requiredChildNames = List.copyOf(builder.requiredChildNames);
+        this.requiredParentNames = List.copyOf(builder.requiredParentNames);
         this.childPolicy = Objects.requireNonNull(builder.childPolicy, "childPolicy");
         this.childPolicyProvenance = Objects.requireNonNull(builder.childPolicyProvenance, "childPolicyProvenance");
     }
@@ -75,22 +81,11 @@ public final class Stage1PluginDescriptor {
                 .localName(catalog.getElementName())
                 .className(catalog.getClassName());
 
-        org.webharvest.plugin.metadata.PluginSemantics catalogSemantics = catalog.getSemantics();
-        if (catalogSemantics != null) {
-            List<String> catalogChildren = catalogSemantics.getAllowedChildTypes();
-            if (catalogChildren != null && !catalogChildren.isEmpty()) {
-                builder.allowedSubElements(catalogChildren);
-                builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
-            } else if (catalogSemantics.explicitlyAcceptsAnyChild()) {
-                builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
-            } else if (catalogSemantics.acceptsAnyChild()) {
-                builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
-            }
-        }
-
         Object schemaObj = extensions.get("schema");
         if (!(schemaObj instanceof Map)) {
-            return builder.reliableSchema(false).build();
+            builder.reliableSchema(false);
+            applyCatalogSemantics(builder, catalog.getSemantics());
+            return builder.build();
         }
 
         Map<String, Object> schema = (Map<String, Object>) schemaObj;
@@ -118,7 +113,35 @@ public final class Stage1PluginDescriptor {
             }
             builder.attributeDefinitions(parsed);
         }
+        applyCatalogSemantics(builder, catalog.getSemantics());
         return builder.build();
+    }
+
+    private static void applyCatalogSemantics(Builder builder,
+            org.webharvest.plugin.metadata.PluginSemantics semantics) {
+        if (semantics != null) {
+            if (semantics.explicitlyAcceptsAnyChild()) {
+                builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+                return;
+            }
+            List<String> catalogChildren = semantics.getAllowedChildTypes();
+            if (catalogChildren != null && !catalogChildren.isEmpty()) {
+                // Catalog semantics contains the schema + visual metadata union.
+                builder.allowedSubElements(catalogChildren);
+                builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
+                return;
+            }
+            if (semantics.acceptsAnyChild()) {
+                // Legacy BODY_EVALUATOR inference is not structural authority.
+                builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+                return;
+            }
+        }
+        if (!builder.allowedSubElements.isEmpty()) {
+            builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST);
+        } else {
+            builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.MISSING_METADATA);
+        }
     }
 
     public static Builder builder() {
@@ -196,6 +219,11 @@ public final class Stage1PluginDescriptor {
     public List<String> getRequiredParents() {
         return requiredParents;
     }
+
+    /** Exact namespace-qualified child identities; legacy local-name edges are kept separately. */
+    public List<QualifiedName> getAllowedChildNames() { return allowedChildNames; }
+    public List<QualifiedName> getRequiredChildNames() { return requiredChildNames; }
+    public List<QualifiedName> getRequiredParentNames() { return requiredParentNames; }
 
     public ChildPolicy getChildPolicy() {
         return childPolicy;
@@ -344,6 +372,9 @@ public final class Stage1PluginDescriptor {
         private Optional<Boolean> allowsBody = Optional.empty();
         private Optional<Boolean> canAppearAtRoot = Optional.empty();
         private List<String> requiredParents = List.of();
+        private List<QualifiedName> allowedChildNames = List.of();
+        private List<QualifiedName> requiredChildNames = List.of();
+        private List<QualifiedName> requiredParentNames = List.of();
         private ChildPolicy childPolicy = ChildPolicy.UNKNOWN;
         private ChildPolicyProvenance childPolicyProvenance = ChildPolicyProvenance.MISSING_METADATA;
 
@@ -412,6 +443,21 @@ public final class Stage1PluginDescriptor {
 
         public Builder requiredParents(List<String> requiredParents) {
             this.requiredParents = requiredParents == null ? List.of() : requiredParents;
+            return this;
+        }
+
+        public Builder allowedChildNames(List<QualifiedName> names) {
+            this.allowedChildNames = names == null ? List.of() : List.copyOf(names);
+            return this;
+        }
+
+        public Builder requiredChildNames(List<QualifiedName> names) {
+            this.requiredChildNames = names == null ? List.of() : List.copyOf(names);
+            return this;
+        }
+
+        public Builder requiredParentNames(List<QualifiedName> names) {
+            this.requiredParentNames = names == null ? List.of() : List.copyOf(names);
             return this;
         }
 
