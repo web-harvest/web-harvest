@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - recovery/uncommitted-development
+      - implementation/issue-46-metadata-contract
     paths:
       - "webharvest-core/**"
       - "pom.xml"

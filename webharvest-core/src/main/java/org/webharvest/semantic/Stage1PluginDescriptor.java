@@ -75,22 +75,11 @@ public final class Stage1PluginDescriptor {
                 .localName(catalog.getElementName())
                 .className(catalog.getClassName());
 
-        org.webharvest.plugin.metadata.PluginSemantics catalogSemantics = catalog.getSemantics();
-        if (catalogSemantics != null) {
-            List<String> catalogChildren = catalogSemantics.getAllowedChildTypes();
-            if (catalogChildren != null && !catalogChildren.isEmpty()) {
-                builder.allowedSubElements(catalogChildren);
-                builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
-            } else if (catalogSemantics.explicitlyAcceptsAnyChild()) {
-                builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
-            } else if (catalogSemantics.acceptsAnyChild()) {
-                builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
-            }
-        }
-
         Object schemaObj = extensions.get("schema");
         if (!(schemaObj instanceof Map)) {
-            return builder.reliableSchema(false).build();
+            builder.reliableSchema(false);
+            applyCatalogSemantics(builder, catalog.getSemantics());
+            return builder.build();
         }
 
         Map<String, Object> schema = (Map<String, Object>) schemaObj;
@@ -118,7 +107,35 @@ public final class Stage1PluginDescriptor {
             }
             builder.attributeDefinitions(parsed);
         }
+        applyCatalogSemantics(builder, catalog.getSemantics());
         return builder.build();
+    }
+
+    private static void applyCatalogSemantics(Builder builder,
+            org.webharvest.plugin.metadata.PluginSemantics semantics) {
+        if (semantics != null) {
+            if (semantics.explicitlyAcceptsAnyChild()) {
+                builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+                return;
+            }
+            List<String> catalogChildren = semantics.getAllowedChildTypes();
+            if (catalogChildren != null && !catalogChildren.isEmpty()) {
+                // Catalog semantics already contains the schema + visual metadata union.
+                builder.allowedSubElements(catalogChildren);
+                builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
+                return;
+            }
+            if (semantics.acceptsAnyChild()) {
+                // Legacy BODY_EVALUATOR inference is deliberately not structural authority.
+                builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+                return;
+            }
+        }
+        if (!builder.allowedSubElements.isEmpty()) {
+            builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST);
+        } else {
+            builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.MISSING_METADATA);
+        }
     }
 
     public static Builder builder() {
