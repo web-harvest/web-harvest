@@ -346,6 +346,9 @@ public class PluginDescriptorIndexTest {
         assertEquals(http.getChildPolicy(), ChildPolicy.ALLOW_LIST);
         assertTrue(http.getAllowedSubElements().contains("http-header"));
         assertTrue(http.getAllowedSubElements().contains("http-param"));
+        // The current catalog projection is local-name-only; do not invent QNames.
+        assertTrue(http.getAllowedChildNames().isEmpty(),
+                "Catalog local-name allow-lists are not qualified child identities");
 
         for (String className : List.of(
                 "org.webharvest.plugin.core.LoopPlugin",
