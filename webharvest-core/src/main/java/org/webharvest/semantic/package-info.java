@@ -84,18 +84,20 @@
  *
  * <h3>Schema-dependent and qualified relationship checks</h3>
  * Resolution diagnostics and runtime-availability diagnostics are evaluated
- * independently of schema presence. Root-placement and parent checks are also
- * evaluated independently of the legacy schema snapshot: root placement uses
- * {@link Stage1PluginDescriptor#getCanAppearAtRoot()}, while parent enforcement
- * requires namespace-qualified parent metadata. Qualified required-child and
- * child-allow relationships are evaluated from their corresponding qualified
- * metadata, with namespace and element aliases canonicalized by the index.
+ * independently of schema presence. Root placement is checked when
+ * {@link Stage1PluginDescriptor#getCanAppearAtRoot()} is present; the current
+ * catalog obtains this flag from its schema extension, so absent schema metadata
+ * normally means no root-placement conclusion is available. Absence is not
+ * interpreted as permission to appear at the root. Parent enforcement requires
+ * namespace-qualified parent metadata. Qualified required-child and child-allow
+ * relationships are evaluated from their corresponding qualified metadata,
+ * with namespace and element aliases canonicalized by the index.
  *
  * Attribute and text checks require
  * {@link Stage1PluginDescriptor#hasReliableSchema()}. If schema metadata is
  * absent, these checks are skipped and a {@code METADATA_LIMITATION} diagnostic
- * explains the missing schema. A missing schema does not suppress qualified
- * relationship checks.
+ * explains the missing schema. A missing schema does not suppress explicitly
+ * available root-placement or qualified relationship checks.
  *
  * <h3>Child policy and metadata provenance</h3>
  * {@link Stage1PluginDescriptor#getChildPolicy()} distinguishes
