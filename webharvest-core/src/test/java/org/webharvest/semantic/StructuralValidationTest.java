@@ -320,6 +320,49 @@ public class StructuralValidationTest {
     }
 
     @Test
+    public void qualifiedRelationshipsAreValidatedEvenWhenLegacySchemaIsAbsent() {
+        String otherNs = "http://example.org/other";
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(false)
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS)
+                .allowedChildNames(List.of(new QualifiedName(NS, "child", "")))
+                .build();
+        Stage1PluginDescriptor childA = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.ChildA").reliableSchema(false).build();
+        Stage1PluginDescriptor childB = Stage1PluginDescriptor.builder()
+                .id("child@" + otherNs).namespaceUri(otherNs).localName("child")
+                .className("org.example.ChildB").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, childA, childB));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS + "\"><child xmlns=\"" + otherNs + "\"/></parent>"));
+
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertTrue(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+    }
+
+    @Test
+    public void requiredParentUsesExactNamespaceIdentity() {
+        String otherNs = "http://example.org/other";
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + otherNs).namespaceUri(otherNs).localName("parent")
+                .className("org.example.OtherParent").reliableSchema(false).build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false)
+                .requiredParentNames(List.of(new QualifiedName(NS, "parent", "")))
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + otherNs + "\"><child xmlns=\"" + NS + "\"/></parent>"));
+
+        assertTrue(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
+    }
+
+    @Test
     public void explicitAnyChildPolicyDoesNotInferFromBodyPermission() {
         Stage1PluginDescriptor any = Stage1PluginDescriptor.builder()
                 .id("loop@" + NS).namespaceUri(NS).localName("loop")
