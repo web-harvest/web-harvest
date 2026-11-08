@@ -34,8 +34,10 @@ store those names without namespace URIs, Stage 1 records the list but does not 
 it to reject a child by local name alone.
 
 Empty or missing legacy lists mean `UNKNOWN`, never `FORBID_CHILDREN`.
-`FORBID_CHILDREN` must be introduced only by a future explicit closed-policy
-metadata producer.
+`FORBID_CHILDREN` must be introduced only by an explicit closed-policy
+metadata producer. The public Stage-1 descriptor builder enforces this invariant:
+a `FORBID_CHILDREN` policy paired with any provenance other than
+`EXPLICIT_CLOSED_POLICY` is rejected at construction time.
 
 ## Qualified relationships
 
@@ -80,6 +82,14 @@ changed by this contract.
 
 - Legacy resolver `allowsAnyChild` behavior is preserved for existing catalog
   consumers; Stage 1 uses the separate explicit declaration.
+- The public `PluginResolution` API change from
+  `isRuntimeExecutable()` / the boolean `resolved(..., boolean)` factory to
+  `RuntimeAvailabilityStatus` is source- and binary-incompatible. Consumers
+  must migrate to `getRuntimeAvailabilityStatus()` and the enum-based factory.
+  This API must not be shipped as a compatible minor/patch update: before
+  artifact publication, the project must either make a major-version decision
+  or deliberately restore a compatibility bridge. This PR does not itself
+  declare a release version or authorize artifact publication.
 - Legacy local-name relationship getters remain available but are not used for
   hard namespace-aware validation.
 - New authoritative metadata producers should populate qualified identities.
