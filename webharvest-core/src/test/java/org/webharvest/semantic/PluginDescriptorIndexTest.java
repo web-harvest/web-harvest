@@ -17,7 +17,7 @@ public class PluginDescriptorIndexTest {
         org.webharvest.plugin.metadata.PluginSemantics explicit =
                 new org.webharvest.plugin.metadata.PluginSemantics(
                         java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.CONTEXT_CONTAINER),
-                        true, true, true, true, true, List.of(), List.of(), true);
+                        true, true, true, true, true, List.of("explicit-child"), List.of(), true);
         org.webharvest.plugin.metadata.PluginSemantics inferred =
                 new org.webharvest.plugin.metadata.PluginSemantics(
                         java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.BODY_EVALUATOR),
@@ -25,6 +25,10 @@ public class PluginDescriptorIndexTest {
 
         Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("loop", explicit));
         Stage1PluginDescriptor def = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("def", inferred));
+
+        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
+        assertTrue(loop.getAllowedSubElements().contains("explicit-child"),
+                "Explicit ANY_CHILD must not discard the catalog's visual allow-list");
 
         for (String className : List.of(
                 "org.webharvest.plugin.core.LoopPlugin",
