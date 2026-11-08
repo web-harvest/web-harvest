@@ -94,16 +94,18 @@ final class StructuralValidator {
         if (!descriptor.hasReliableSchema()) {
             diagnostics.add(warning(METADATA_LIMITATION,
                     describe(element) + ": reliable schema metadata is absent; "
-                            + "structural attribute/child/body/root/parent rules were not applied",
+                            + "attribute, text, and root-placement checks were not applied",
                     element.getLocation()));
-            return;
         }
 
         boolean isRoot = element == documentRoot;
+        // Qualified relationship metadata is independent of the legacy schema snapshot.
         validateRootAndParent(element, parent, isRoot, descriptor, index, diagnostics);
-        validateAttributes(element, descriptor, diagnostics);
         validateChildren(element, descriptor, index, diagnostics);
-        validateText(element, descriptor, diagnostics);
+        if (descriptor.hasReliableSchema()) {
+            validateAttributes(element, descriptor, diagnostics);
+            validateText(element, descriptor, diagnostics);
+        }
     }
 
     private static void emitResolutionDiagnostics(SemanticElement element,
