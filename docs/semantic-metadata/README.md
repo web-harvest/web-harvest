@@ -37,6 +37,14 @@ startup by `PluginMetadataCatalog` and exposed via
 | `DEPENDENT` | Helper element that must live inside a specific parent (`http-header`, `catch`, `zip-entry`). |
 | `LEAF` | Standalone processor without body or children (`sleep`, `exit`, `log`). |
 
+## Stage-1 structural contract
+
+The Stage-1 semantic model uses a stricter contract than the legacy visual metadata
+summary. See [`STAGE1_CONTRACT.md`](./STAGE1_CONTRACT.md) for child-policy states,
+namespace-qualified relationship matching, provenance, and the scope of runtime
+availability diagnostics. In particular, body evaluation does not by itself declare
+that arbitrary plugin children are structurally valid.
+
 ## Contributor Workflow
 
 1. **Register plugin classes** in `PluginClassIndex` so the runtime catalog can
