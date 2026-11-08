@@ -73,9 +73,16 @@ final class StructuralValidator {
         emitResolutionDiagnostics(element, resolution, diagnostics);
 
         if (resolution.getStatus() == PluginResolutionStatus.RESOLVED
-                && !resolution.isRuntimeExecutable()) {
+                && resolution.getRuntimeAvailabilityStatus()
+                        == RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY) {
             diagnostics.add(warning(RUNTIME_UNAVAILABLE,
-                    describe(element) + ": plugin is recognized but not registered for runtime execution",
+                    describe(element) + ": local name is absent from the current CorePluginRegistry snapshot; "
+                            + "this namespace-unaware probe does not establish qualified executability",
+                    element.getLocation()));
+        } else if (resolution.getStatus() == PluginResolutionStatus.RESOLVED
+                && resolution.getRuntimeAvailabilityStatus() == RuntimeAvailabilityStatus.UNKNOWN) {
+            diagnostics.add(warning(METADATA_LIMITATION,
+                    describe(element) + ": runtime availability could not be established",
                     element.getLocation()));
         }
 

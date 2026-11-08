@@ -13,20 +13,20 @@ import java.util.Optional;
 public final class PluginResolution {
     private final PluginResolutionStatus status;
     private final Stage1PluginDescriptor descriptor;
-    private final boolean runtimeExecutable;
+    private final RuntimeAvailabilityStatus runtimeAvailabilityStatus;
     private final List<Stage1PluginDescriptor> namespaceMismatchCandidates;
     private final String message;
     private final String detail;
 
     private PluginResolution(PluginResolutionStatus status,
             Stage1PluginDescriptor descriptor,
-            boolean runtimeExecutable,
+            RuntimeAvailabilityStatus runtimeAvailabilityStatus,
             List<Stage1PluginDescriptor> namespaceMismatchCandidates,
             String message,
             String detail) {
         this.status = Objects.requireNonNull(status, "status");
         this.descriptor = descriptor;
-        this.runtimeExecutable = runtimeExecutable;
+        this.runtimeAvailabilityStatus = Objects.requireNonNull(runtimeAvailabilityStatus, "runtimeAvailabilityStatus");
         this.namespaceMismatchCandidates = namespaceMismatchCandidates == null
                 ? List.of()
                 : List.copyOf(namespaceMismatchCandidates);
@@ -34,18 +34,24 @@ public final class PluginResolution {
         this.detail = detail == null ? "" : detail;
     }
 
-    public static PluginResolution resolved(Stage1PluginDescriptor descriptor, boolean runtimeExecutable) {
+    public static PluginResolution resolved(Stage1PluginDescriptor descriptor,
+            RuntimeAvailabilityStatus runtimeAvailabilityStatus) {
         Objects.requireNonNull(descriptor, "descriptor");
-        String detail = runtimeExecutable
-                ? "runtime registry reports the local name as registered"
-                : "descriptor known in catalog but not registered for runtime execution";
-        return new PluginResolution(
-                PluginResolutionStatus.RESOLVED,
-                descriptor,
-                runtimeExecutable,
-                List.of(),
-                "Resolved plugin {" + descriptor.getNamespaceUri() + "}" + descriptor.getLocalName(),
-                detail);
+        Objects.requireNonNull(runtimeAvailabilityStatus, "runtimeAvailabilityStatus");
+        String detail;
+        switch (runtimeAvailabilityStatus) {
+            case LEGACY_LOCAL_NAME_REGISTERED:
+                detail = "CorePluginRegistry contains this local name; namespace is not part of the probe";
+                break;
+            case NOT_REGISTERED_IN_CORE_REGISTRY:
+                detail = "CorePluginRegistry does not contain this local name in the current registry snapshot";
+                break;
+            default:
+                detail = "runtime availability was not established";
+                break;
+        }
+        return new PluginResolution(PluginResolutionStatus.RESOLVED, descriptor, runtimeAvailabilityStatus,
+                List.of(), "Resolved plugin {" + descriptor.getNamespaceUri() + "}" + descriptor.getLocalName(), detail);
     }
 
     public static PluginResolution unknown(String canonicalNamespaceUri, String localName) {
@@ -110,12 +116,11 @@ public final class PluginResolution {
     }
 
     /**
-     * Meaningful when {@link #getStatus()} is {@link PluginResolutionStatus#RESOLVED}:
-     * whether {@code CorePluginRegistry} (or an injected predicate) reports the
-     * local name as registered for runtime dispatch.
+     * Scoped availability signal. It describes the legacy local-name registry probe,
+     * not namespace-qualified executability or guaranteed successful execution.
      */
-    public boolean isRuntimeExecutable() {
-        return runtimeExecutable;
+    public RuntimeAvailabilityStatus getRuntimeAvailabilityStatus() {
+        return runtimeAvailabilityStatus;
     }
 
     /**

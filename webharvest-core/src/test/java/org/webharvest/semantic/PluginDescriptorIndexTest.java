@@ -21,7 +21,7 @@ public class PluginDescriptorIndexTest {
         assertEquals(resolution.getStatus(), PluginResolutionStatus.RESOLVED);
         assertTrue(resolution.getDescriptor().isPresent());
         assertEquals(resolution.getDescriptor().get(), http);
-        assertTrue(resolution.isRuntimeExecutable());
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
     }
 
     @Test
@@ -32,7 +32,7 @@ public class PluginDescriptorIndexTest {
         assertEquals(resolution.getStatus(), PluginResolutionStatus.UNKNOWN_ELEMENT);
         assertTrue(resolution.getDescriptor().isEmpty());
         assertTrue(resolution.getNamespaceMismatchCandidates().isEmpty());
-        assertFalse(resolution.isRuntimeExecutable());
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN);
     }
 
     @Test
@@ -104,7 +104,7 @@ public class PluginDescriptorIndexTest {
         PluginResolution resolution = index.resolve(NS_A, "dup");
         assertEquals(resolution.getStatus(), PluginResolutionStatus.AMBIGUOUS);
         assertTrue(resolution.getDescriptor().isEmpty());
-        assertFalse(resolution.isRuntimeExecutable());
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN);
     }
 
     @Test
@@ -141,7 +141,7 @@ public class PluginDescriptorIndexTest {
 
         PluginResolution resolution = index.resolve(NS_A, "http");
         assertEquals(resolution.getStatus(), PluginResolutionStatus.RESOLVED);
-        assertFalse(resolution.isRuntimeExecutable());
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY);
     }
 
     @Test
@@ -183,7 +183,7 @@ public class PluginDescriptorIndexTest {
         PluginResolution second = index.resolve(new QualifiedName(NS_A, "http", "x"));
         assertEquals(first.getStatus(), second.getStatus());
         assertEquals(first.getDescriptor(), second.getDescriptor());
-        assertEquals(first.isRuntimeExecutable(), second.isRuntimeExecutable());
+        assertEquals(first.getRuntimeAvailabilityStatus(), second.getRuntimeAvailabilityStatus());
         assertEquals(first.getMessage(), second.getMessage());
         assertEquals(probes.get(), 2);
     }
