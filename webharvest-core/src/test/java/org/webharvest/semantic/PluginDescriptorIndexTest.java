@@ -26,8 +26,17 @@ public class PluginDescriptorIndexTest {
         Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("loop", explicit));
         Stage1PluginDescriptor def = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("def", inferred));
 
-        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
-        assertEquals(loop.getChildPolicyProvenance(), ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+        for (String className : List.of(
+                "org.webharvest.plugin.core.LoopPlugin",
+                "org.webharvest.plugin.core.WhilePlugin",
+                "org.webharvest.plugin.core.IfPlugin",
+                "org.webharvest.plugin.core.TryPlugin")) {
+            Stage1PluginDescriptor container = Stage1PluginDescriptor.fromCatalog(
+                    findCatalogDescriptor(className));
+            assertEquals(container.getChildPolicy(), ChildPolicy.ANY_CHILD, className);
+            assertEquals(container.getChildPolicyProvenance(),
+                    ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA, className);
+        }
         assertEquals(def.getChildPolicy(), ChildPolicy.UNKNOWN);
         assertEquals(def.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
     }
@@ -217,6 +226,8 @@ public class PluginDescriptorIndexTest {
         PluginResolution resolution = index.resolve(NS_A, "http");
         assertEquals(resolution.getStatus(), PluginResolutionStatus.RESOLVED);
         assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY);
+        assertTrue(resolution.getDetail().contains("current registry snapshot"));
+        assertFalse(resolution.getDetail().contains("qualified executability"));
     }
 
     @Test
@@ -319,13 +330,9 @@ public class PluginDescriptorIndexTest {
                 findCatalogDescriptor("org.webharvest.plugin.core.RegexpPatternPlugin");
         org.webharvest.plugin.metadata.PluginDescriptor httpCatalog =
                 findCatalogDescriptor("org.webharvest.plugin.core.HttpPlugin");
-        org.webharvest.plugin.metadata.PluginDescriptor loopCatalog =
-                findCatalogDescriptor("org.webharvest.plugin.core.LoopPlugin");
-
         Stage1PluginDescriptor header = Stage1PluginDescriptor.fromCatalog(headerCatalog);
         Stage1PluginDescriptor regexp = Stage1PluginDescriptor.fromCatalog(regexpCatalog);
         Stage1PluginDescriptor http = Stage1PluginDescriptor.fromCatalog(httpCatalog);
-        Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(loopCatalog);
 
         assertEquals(header.getChildPolicy(), ChildPolicy.UNKNOWN);
         assertEquals(header.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
