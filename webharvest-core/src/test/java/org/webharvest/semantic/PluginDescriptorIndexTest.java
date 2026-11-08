@@ -13,6 +13,49 @@ public class PluginDescriptorIndexTest {
     private static final String NS_B = "http://example.org/ns-b";
 
     @Test
+    public void stage1PreservesExplicitAnyChildAndRejectsBodyHeuristicAsAuthority() {
+        org.webharvest.plugin.metadata.PluginSemantics explicit =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.CONTEXT_CONTAINER),
+                        true, true, true, true, true, List.of(), List.of(), true);
+        org.webharvest.plugin.metadata.PluginSemantics inferred =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.BODY_EVALUATOR),
+                        true, true, true, true, true, List.of(), List.of(), false);
+
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("loop", explicit));
+        Stage1PluginDescriptor def = Stage1PluginDescriptor.fromCatalog(catalogDescriptor("def", inferred));
+
+        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
+        assertEquals(loop.getChildPolicyProvenance(), ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+        assertEquals(def.getChildPolicy(), ChildPolicy.UNKNOWN);
+        assertEquals(def.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+    }
+
+    @Test
+    public void stage1PreservesVisualOnlyAllowListWithoutSchemaExtension() {
+        org.webharvest.plugin.metadata.PluginSemantics visualOnly =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.CONTEXT_CONTAINER),
+                        true, true, false, true, true, List.of("http-header"), List.of(), false);
+
+        Stage1PluginDescriptor descriptor = Stage1PluginDescriptor.fromCatalog(
+                catalogDescriptor("http", visualOnly));
+
+        assertFalse(descriptor.hasReliableSchema());
+        assertEquals(descriptor.getAllowedSubElements(), List.of("http-header"));
+        assertEquals(descriptor.getChildPolicy(), ChildPolicy.ALLOW_LIST);
+        assertEquals(descriptor.getChildPolicyProvenance(), ChildPolicyProvenance.CATALOG_SEMANTICS);
+    }
+
+    private static org.webharvest.plugin.metadata.PluginDescriptor catalogDescriptor(
+            String localName, org.webharvest.plugin.metadata.PluginSemantics semantics) {
+        return new org.webharvest.plugin.metadata.PluginDescriptor(
+                localName + "@" + NS_A, localName, localName, "test", "org.example." + localName,
+                "test", "test", null, semantics, null, List.of(), java.util.Map.of("namespace", NS_A));
+    }
+
+    @Test
     public void resolvesExactNamespaceAndLocalName() {
         Stage1PluginDescriptor http = descriptor(NS_A, "http", "org.example.Http");
         PluginDescriptorIndex index = indexOf(http);
