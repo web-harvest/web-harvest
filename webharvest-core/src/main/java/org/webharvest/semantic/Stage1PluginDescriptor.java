@@ -120,14 +120,17 @@ public final class Stage1PluginDescriptor {
     private static void applyCatalogSemantics(Builder builder,
             org.webharvest.plugin.metadata.PluginSemantics semantics) {
         if (semantics != null) {
+            List<String> catalogChildren = semantics.getAllowedChildTypes();
+            if (catalogChildren != null && !catalogChildren.isEmpty()) {
+                // Catalog semantics contains the schema + visual metadata union.
+                // Preserve it even when an explicit ANY_CHILD policy takes precedence.
+                builder.allowedSubElements(catalogChildren);
+            }
             if (semantics.explicitlyAcceptsAnyChild()) {
                 builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
                 return;
             }
-            List<String> catalogChildren = semantics.getAllowedChildTypes();
             if (catalogChildren != null && !catalogChildren.isEmpty()) {
-                // Catalog semantics contains the schema + visual metadata union.
-                builder.allowedSubElements(catalogChildren);
                 builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
                 return;
             }
