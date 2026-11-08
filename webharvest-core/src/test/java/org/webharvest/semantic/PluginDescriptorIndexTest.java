@@ -278,4 +278,41 @@ public class PluginDescriptorIndexTest {
                 .runtimeAvailability(PluginDescriptorIndex.RuntimeAvailability.always(true))
                 .build();
     }
+
+    @Test
+    public void realCatalogCounterexamplesDoNotPromoteBodyHeuristicToAnyChild() {
+        org.webharvest.plugin.metadata.PluginDescriptor headerCatalog =
+                findCatalogDescriptor("org.webharvest.plugin.core.HttpHeaderPlugin");
+        org.webharvest.plugin.metadata.PluginDescriptor regexpCatalog =
+                findCatalogDescriptor("org.webharvest.plugin.core.RegexpPatternPlugin");
+        org.webharvest.plugin.metadata.PluginDescriptor httpCatalog =
+                findCatalogDescriptor("org.webharvest.plugin.core.HttpPlugin");
+        org.webharvest.plugin.metadata.PluginDescriptor loopCatalog =
+                findCatalogDescriptor("org.webharvest.plugin.core.LoopPlugin");
+
+        Stage1PluginDescriptor header = Stage1PluginDescriptor.fromCatalog(headerCatalog);
+        Stage1PluginDescriptor regexp = Stage1PluginDescriptor.fromCatalog(regexpCatalog);
+        Stage1PluginDescriptor http = Stage1PluginDescriptor.fromCatalog(httpCatalog);
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(loopCatalog);
+
+        assertEquals(header.getChildPolicy(), ChildPolicy.UNKNOWN);
+        assertEquals(header.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+        assertEquals(regexp.getChildPolicy(), ChildPolicy.UNKNOWN);
+        assertEquals(regexp.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+
+        assertEquals(http.getChildPolicy(), ChildPolicy.ALLOW_LIST);
+        assertTrue(http.getAllowedSubElements().contains("http-header"));
+        assertTrue(http.getAllowedSubElements().contains("http-param"));
+
+        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
+        assertEquals(loop.getChildPolicyProvenance(), ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+    }
+
+    private static org.webharvest.plugin.metadata.PluginDescriptor findCatalogDescriptor(String className) {
+        return org.webharvest.plugin.metadata.PluginMetadataCatalog.getAllDescriptors().stream()
+                .filter(descriptor -> className.equals(descriptor.getClassName()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing catalog descriptor for " + className));
+    }
+
 }
