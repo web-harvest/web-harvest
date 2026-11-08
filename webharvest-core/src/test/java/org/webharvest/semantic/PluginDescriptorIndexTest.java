@@ -83,8 +83,8 @@ public class PluginDescriptorIndexTest {
     public void qualifiedNameIdentityIgnoresPrefixButIncludesNamespace() {
         assertEquals(new QualifiedName(NS_A, "http", "a"),
                 new QualifiedName(NS_A, "http", "b"));
-        assertNotEquals(new QualifiedName(NS_A, "http", "a"),
-                new QualifiedName(NS_B, "http", "a"));
+        assertFalse(new QualifiedName(NS_A, "http", "a").equals(
+                new QualifiedName(NS_B, "http", "a")));
     }
 
     @Test
