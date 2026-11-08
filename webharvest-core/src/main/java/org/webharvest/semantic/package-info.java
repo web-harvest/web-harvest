@@ -82,26 +82,56 @@
  *       missing/unreliable or a closed constraint set is absent</li>
  * </ul>
  *
- * <h3>Rules gated by reliable schema</h3>
- * Resolution statuses (and runtime-unavailable warnings) are always checked.
- * Attribute, child, body, root, and parent rules run only when
- * {@link Stage1PluginDescriptor#hasReliableSchema()} is {@code true}; otherwise
- * a single per-element {@code METADATA_LIMITATION} is emitted and those checks
- * are skipped.
+ * <h3>Schema-dependent and qualified relationship checks</h3>
+ * Resolution diagnostics and runtime-availability diagnostics are evaluated
+ * independently of schema presence. Root-placement and parent checks are also
+ * evaluated independently of the legacy schema snapshot: root placement uses
+ * {@link Stage1PluginDescriptor#getCanAppearAtRoot()}, while parent enforcement
+ * requires namespace-qualified parent metadata. Qualified required-child and
+ * child-allow relationships are evaluated from their corresponding qualified
+ * metadata, with namespace and element aliases canonicalized by the index.
+ *
+ * Attribute and text checks require
+ * {@link Stage1PluginDescriptor#hasReliableSchema()}. If schema metadata is
+ * absent, these checks are skipped and a {@code METADATA_LIMITATION} diagnostic
+ * explains the missing schema. A missing schema does not suppress qualified
+ * relationship checks.
+ *
+ * <h3>Child policy and metadata provenance</h3>
+ * {@link Stage1PluginDescriptor#getChildPolicy()} distinguishes
+ * {@code ANY_CHILD}, {@code ALLOW_LIST}, {@code FORBID_CHILDREN}, and
+ * {@code UNKNOWN}. The policy provenance records whether the decision came
+ * from explicit visual metadata, catalog semantics, a schema allow-list,
+ * a legacy body heuristic, an explicit closed policy, or missing metadata.
+ * Only explicit visual metadata establishes {@code ANY_CHILD}; a legacy
+ * {@code BODY_EVALUATOR} heuristic is retained as provenance but yields
+ * {@code UNKNOWN}. Missing or empty metadata is not interpreted as either
+ * allow-all or forbid-all.
  *
  * <h3>Documented limitations</h3>
  * <ul>
- *   <li>{@code acceptsAnyChild} / arbitrary-child semantics are <strong>not</strong>
- *       exposed on {@link Stage1PluginDescriptor}. When {@code allowedSubElements}
- *       is empty under a reliable schema, child-allow checks emit
- *       {@code METADATA_LIMITATION} rather than inventing “allow all”.</li>
- *   <li>Sub-element and parent names are local-name only (namespace-unaware) as
- *       stored in today's catalog schema snapshot.</li>
+ *   <li>Today's catalog child and parent relationships are represented as
+ *       namespace-unqualified local names. They are retained in the legacy
+ *       {@code allowedSubElements}, {@code requiredSubElements}, and
+ *       {@code requiredParents} fields, but are not promoted to qualified
+ *       {@link QualifiedName} relationships. No namespace is inferred from
+ *       a plugin descriptor or its parent.</li>
+ *   <li>For {@code ALLOW_LIST}, structural child rejection is enforced only
+ *       when {@code allowedChildNames} contains qualified identities. If the
+ *       policy is {@code ALLOW_LIST} but that qualified set is empty, the
+ *       validator emits {@code METADATA_LIMITATION} and skips
+ *       {@code DISALLOWED_CHILD} checks. This is the current catalog projection
+ *       gap, not an assertion that the element accepts arbitrary children.</li>
+ *   <li>Legacy local-name-only required-child and parent relationships likewise
+ *       produce {@code METADATA_LIMITATION}; hard relationship enforcement
+ *       requires qualified metadata.</li>
  *   <li>Unknown-attribute checks require a closed name set from
  *       {@code attributeDefinitions} or the union of required+optional lists;
  *       otherwise {@code METADATA_LIMITATION}.</li>
  *   <li>{@code xmlns} / {@code xmlns:*} attributes are ignored for unknown-attribute
  *       checks. No database↔db element alias is invented.</li>
+ *   <li>{@code FORBID_CHILDREN} is modeled for an explicit closed policy, but
+ *       current catalog metadata does not produce it.</li>
  *   <li>Does not execute plugins, mutate the document, or replace IDE/runtime
  *       validators.</li>
  * </ul>
