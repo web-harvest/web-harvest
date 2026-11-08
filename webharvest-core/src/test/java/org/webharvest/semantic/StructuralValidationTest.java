@@ -563,4 +563,32 @@ public class StructuralValidationTest {
         assertFalse(codes(result).contains("DISALLOWED_TEXT"), diagnosticText(result));
     }
 
+
+    @Test
+    public void legacyLocalNameChildEdgesNeverDriveQualifiedChecks() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(true).canAppearAtRoot(true)
+                .allowedSubElements(List.of("child"))
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST)
+                .build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS_OTHER).namespaceUri(NS_OTHER).localName("child")
+                .className("org.example.Child").reliableSchema(true)
+                .requiredSubElements(List.of("required"))
+                .build();
+        Stage1PluginDescriptor required = Stage1PluginDescriptor.builder()
+                .id("required@" + NS_OTHER).namespaceUri(NS_OTHER).localName("required")
+                .className("org.example.Required").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child, required));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS + "\"><child xmlns=\"" + NS_OTHER
+                        + "\"><required/></child></parent>"));
+
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+        assertFalse(codes(result).contains("REQUIRED_CHILD_MISSING"), diagnosticText(result));
+    }
+
 }
