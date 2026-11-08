@@ -94,7 +94,8 @@ final class StructuralValidator {
         if (!descriptor.hasReliableSchema()) {
             diagnostics.add(warning(METADATA_LIMITATION,
                     describe(element) + ": reliable schema metadata is absent; "
-                            + "attribute, text, and root-placement checks were not applied",
+                            + "attribute and text checks were not applied; root placement is checked "
+                            + "only when canAppearAtRoot metadata is available",
                     element.getLocation()));
         }
 
