@@ -343,8 +343,17 @@ public class PluginDescriptorIndexTest {
         assertTrue(http.getAllowedSubElements().contains("http-header"));
         assertTrue(http.getAllowedSubElements().contains("http-param"));
 
-        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
-        assertEquals(loop.getChildPolicyProvenance(), ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+        for (String className : List.of(
+                "org.webharvest.plugin.core.LoopPlugin",
+                "org.webharvest.plugin.core.WhilePlugin",
+                "org.webharvest.plugin.core.IfPlugin",
+                "org.webharvest.plugin.core.TryPlugin")) {
+            Stage1PluginDescriptor container = Stage1PluginDescriptor.fromCatalog(
+                    findCatalogDescriptor(className));
+            assertEquals(container.getChildPolicy(), ChildPolicy.ANY_CHILD, className);
+            assertEquals(container.getChildPolicyProvenance(),
+                    ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA, className);
+        }
     }
 
     private static org.webharvest.plugin.metadata.PluginDescriptor findCatalogDescriptor(String className) {
