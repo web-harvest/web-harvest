@@ -63,6 +63,29 @@ public class StructuralValidationTest {
     }
 
     @Test
+    public void rootPlacementMetadataIsHonoredWithoutReliableSchema() {
+        Stage1PluginDescriptor plugin = Stage1PluginDescriptor.builder()
+                .id("item@" + NS)
+                .namespaceUri(NS)
+                .localName("item")
+                .className("org.example.Item")
+                .reliableSchema(false)
+                .canAppearAtRoot(false)
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(plugin));
+
+        StructuralValidationResult result = model.validateStructural(
+                load(model, "<item xmlns=\"" + NS + "\"/>"));
+
+        assertTrue(codes(result).contains("DISALLOWED_ROOT"), diagnosticText(result));
+        assertTrue(result.getDiagnostics().stream()
+                .filter(d -> "METADATA_LIMITATION".equals(d.getCode()))
+                .anyMatch(d -> d.getMessage().contains(
+                        "root placement is checked only when canAppearAtRoot metadata is available")),
+                diagnosticText(result));
+    }
+
+    @Test
     public void requiredAndUnknownAttributesWithReliableSchema() {
         Stage1PluginDescriptor plugin = Stage1PluginDescriptor.builder()
                 .id("item@" + NS)
