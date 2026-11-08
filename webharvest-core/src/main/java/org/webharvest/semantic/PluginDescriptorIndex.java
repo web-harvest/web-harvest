@@ -24,7 +24,7 @@ import org.webharvest.plugin.metadata.PluginMetadataCatalog;
  *   <li>Apply {@link ElementAliasTable} to the local name (default: none).</li>
  *   <li>Canonicalize namespace via {@link NamespaceAliasTable}.</li>
  *   <li>If the ambiguous multi-map has the key → {@code AMBIGUOUS}.</li>
- *   <li>If a unique descriptor exists → {@code RESOLVED} (+ runtimeExecutable).</li>
+ *   <li>If a unique descriptor exists → {@code RESOLVED} (+ scoped runtime availability status).</li>
  *   <li>Else if {@link OptionalPluginProfile} matches and {@code Class.forName} fails
  *       → {@code UNAVAILABLE_OPTIONAL}.</li>
  *   <li>Else if the same local name exists under other namespace(s) →
