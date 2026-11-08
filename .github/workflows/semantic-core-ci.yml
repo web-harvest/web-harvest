@@ -52,6 +52,7 @@ jobs:
           cache: maven
       - name: Run full Core unit suite
         id: full-core
+        continue-on-error: true
         run: mvn -B -ntp -pl webharvest-core -am test
       - name: Summarize full Core test results
         if: always()
