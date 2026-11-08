@@ -19,5 +19,11 @@ public final class InspectionView {
     public SemanticDocument getDocument() { return document; }
     public int getElementCount() { return elementCount; }
     public int getAttributeCount() { return attributeCount; }
+
+    /**
+     * Number of {@link SemanticText} nodes in the entire document graph, including
+     * document-level text outside the root element. CDATA counts; comments and
+     * processing instructions do not.
+     */
     public int getTextNodeCount() { return textNodeCount; }
 }

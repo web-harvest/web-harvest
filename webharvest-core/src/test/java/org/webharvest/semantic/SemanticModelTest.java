@@ -2,7 +2,9 @@ package org.webharvest.semantic;
 
 import org.testng.annotations.Test;
 import javax.xml.XMLConstants;
+import org.webharvest.semantic.internal.SemanticXmlAnalyzer;
 import org.xml.sax.XMLReader;
+import org.xml.sax.ext.LexicalHandler;
 import static org.testng.Assert.*;
 
 public class SemanticModelTest {
@@ -47,8 +49,11 @@ public class SemanticModelTest {
         SemanticLoadResult result = model.load(xml, SourceOrigin.unknown());
         assertFalse(result.isSuccessful());
         assertTrue(result.getDocument().isEmpty());
+        // With disallow-doctype-decl, JDK Xerces typically fails as XML_PARSE_ERROR before
+        // startDTD; SECURITY_VIOLATION applies only when the typed lexical path fires.
         assertTrue(result.getDiagnostics().stream().anyMatch(d ->
-                "SECURITY_VIOLATION".equals(d.getCode())));
+                "XML_PARSE_ERROR".equals(d.getCode()) || "SECURITY_VIOLATION".equals(d.getCode())),
+                diagnosticText(result));
         assertEquals(result.getSourceXml().get(), xml);
     }
 
@@ -63,7 +68,7 @@ public class SemanticModelTest {
     @Test
     public void failsClosedWhenDepthLimitIsExceeded() {
         SemanticModel limited = new SemanticModel(new SemanticXmlAnalyzer(
-                new SemanticXmlAnalyzer.Limits(100, 2, 10, 4, 100)));
+                new SemanticXmlAnalyzer.Limits(100, 2, 10, 4, 100, 1_000_000)));
         SemanticLoadResult result = limited.load("<r><a><b/></a></r>", SourceOrigin.unknown());
         assertFalse(result.isSuccessful());
         assertTrue(result.getDocument().isEmpty());
@@ -73,7 +78,7 @@ public class SemanticModelTest {
     @Test
     public void failsClosedWhenTextLimitIsExceeded() {
         SemanticModel limited = new SemanticModel(new SemanticXmlAnalyzer(
-                new SemanticXmlAnalyzer.Limits(100, 4, 10, 4, 5)));
+                new SemanticXmlAnalyzer.Limits(100, 4, 10, 4, 5, 1_000_000)));
         SemanticLoadResult result = limited.load("<r>123456</r>", SourceOrigin.unknown());
         assertFalse(result.isSuccessful());
         assertTrue(result.getDocument().isEmpty());
@@ -92,6 +97,11 @@ public class SemanticModelTest {
         assertFalse(reader.getFeature("http://xml.org/sax/features/validation"));
         assertEquals(reader.getProperty(XMLConstants.ACCESS_EXTERNAL_DTD), "");
         assertEquals(reader.getProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA), "");
+
+        LexicalHandler lexicalHandler = new NoOpLexicalHandler();
+        reader.setProperty(SemanticXmlAnalyzer.LEXICAL_HANDLER, lexicalHandler);
+        assertSame(reader.getProperty(SemanticXmlAnalyzer.LEXICAL_HANDLER), lexicalHandler,
+                "Active SAX provider must round-trip the lexical-handler property to the same instance");
     }
 
     @Test
@@ -109,5 +119,15 @@ public class SemanticModelTest {
         return result.getDiagnostics().stream()
                 .map(d -> d.getCode() + ": " + d.getMessage())
                 .collect(java.util.stream.Collectors.joining("; "));
+    }
+
+    private static final class NoOpLexicalHandler implements LexicalHandler {
+        @Override public void startDTD(String name, String publicId, String systemId) { }
+        @Override public void endDTD() { }
+        @Override public void startEntity(String name) { }
+        @Override public void endEntity(String name) { }
+        @Override public void startCDATA() { }
+        @Override public void endCDATA() { }
+        @Override public void comment(char[] ch, int start, int length) { }
     }
 }

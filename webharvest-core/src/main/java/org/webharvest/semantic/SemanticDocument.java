@@ -5,8 +5,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Immutable, ordered XML inspection graph. This is deliberately not the final
+ * Immutable, ordered inspection graph. This is deliberately not the final
  * canonical configuration model and carries no runtime execution objects.
+ *
+ * <p>Public construction is supported so non-XML adapters may build the same
+ * immutable graph. A constructed instance is <strong>not</strong> proof that the
+ * content was produced by the hardened XML analyzer or that any XML validation
+ * or security policy was applied.</p>
  */
 public final class SemanticDocument {
     private final SourceOrigin origin;
@@ -18,8 +23,19 @@ public final class SemanticDocument {
             SemanticElement root) {
         this.origin = Objects.requireNonNull(origin, "origin");
         this.sourceXml = Objects.requireNonNull(sourceXml, "sourceXml");
-        this.content = List.copyOf(content);
+        Objects.requireNonNull(content, "content");
         this.root = Objects.requireNonNull(root, "root");
+        this.content = List.copyOf(content);
+        boolean rootInContent = false;
+        for (SemanticContent item : this.content) {
+            if (item == this.root) {
+                rootInContent = true;
+                break;
+            }
+        }
+        if (!rootInContent) {
+            throw new IllegalArgumentException("content must contain the same root element instance");
+        }
     }
 
     public SourceOrigin getOrigin() { return origin; }
