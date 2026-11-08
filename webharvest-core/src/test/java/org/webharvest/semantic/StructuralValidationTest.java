@@ -14,6 +14,35 @@ public class StructuralValidationTest {
     private static final String NS_OTHER = "http://example.org/other";
 
     @Test
+    public void forbidChildrenRequiresExplicitClosedPolicyProvenance() {
+        try {
+            Stage1PluginDescriptor.builder()
+                    .id("closed@" + NS)
+                    .namespaceUri(NS)
+                    .localName("closed")
+                    .className("org.example.Closed")
+                    .childPolicy(ChildPolicy.FORBID_CHILDREN,
+                            ChildPolicyProvenance.MISSING_METADATA)
+                    .build();
+            fail("FORBID_CHILDREN must not be accepted without explicit closed-policy provenance");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("EXPLICIT_CLOSED_POLICY"));
+        }
+
+        Stage1PluginDescriptor valid = Stage1PluginDescriptor.builder()
+                .id("closed@" + NS)
+                .namespaceUri(NS)
+                .localName("closed")
+                .className("org.example.Closed")
+                .childPolicy(ChildPolicy.FORBID_CHILDREN,
+                        ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY)
+                .build();
+        assertEquals(valid.getChildPolicy(), ChildPolicy.FORBID_CHILDREN);
+        assertEquals(valid.getChildPolicyProvenance(),
+                ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY);
+    }
+
+    @Test
     public void inspectAndValidateStructuralShareSameDocumentInstance() {
         PluginDescriptorIndex index = indexOf(reliableRoot("config"));
         SemanticModel model = new SemanticModel(index);
