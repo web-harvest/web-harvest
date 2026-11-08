@@ -45,6 +45,11 @@ namespace-qualified relationship matching, provenance, and the scope of runtime
 availability diagnostics. In particular, body evaluation does not by itself declare
 that arbitrary plugin children are structurally valid.
 
+The catalog preserves both `acceptsAnyChild` (the legacy effective value, which may
+include BODY_EVALUATOR inference) and `explicitlyAcceptsAnyChild` (an explicit
+metadata declaration only). Stage 1 uses only the explicit field as authority for
+`ANY_CHILD`; the JSON schema documents both fields.
+
 ## Contributor Workflow
 
 1. **Register plugin classes** in `PluginClassIndex` so the runtime catalog can
