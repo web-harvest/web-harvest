@@ -93,9 +93,9 @@ final class StructuralValidator {
         }
 
         boolean isRoot = element == documentRoot;
-        validateRootAndParent(element, parent, isRoot, descriptor, diagnostics);
+        validateRootAndParent(element, parent, isRoot, descriptor, index, diagnostics);
         validateAttributes(element, descriptor, diagnostics);
-        validateChildren(element, descriptor, diagnostics);
+        validateChildren(element, descriptor, index, diagnostics);
         validateText(element, descriptor, diagnostics);
     }
 
@@ -145,6 +145,7 @@ final class StructuralValidator {
             SemanticElement parent,
             boolean isRoot,
             Stage1PluginDescriptor descriptor,
+            PluginDescriptorIndex index,
             List<SemanticDiagnostic> diagnostics) {
         if (isRoot) {
             Optional<Boolean> canAppearAtRoot = descriptor.getCanAppearAtRoot();
@@ -155,21 +156,25 @@ final class StructuralValidator {
             }
         }
 
-        List<String> requiredParents = descriptor.getRequiredParents();
+        if (!descriptor.getRequiredParents().isEmpty()) {
+            diagnostics.add(warning(METADATA_LIMITATION,
+                    describe(element) + ": requiredParents contains namespace-unqualified legacy names; "
+                            + "qualified parent validation was skipped",
+                    element.getLocation()));
+        }
+        List<QualifiedName> requiredParents = descriptor.getRequiredParentNames();
         if (!requiredParents.isEmpty()) {
             if (parent == null) {
                 diagnostics.add(error(INVALID_PARENT,
-                        describe(element) + ": requires parent in " + requiredParents
-                                + " but element is at document root (no parent)",
+                        describe(element) + ": requires a namespace-qualified parent in "
+                                + requiredParents + " but element is at document root (no parent)",
                         element.getLocation()));
-            } else {
-                String parentLocal = parent.getName().getLocalName();
-                if (!requiredParents.contains(parentLocal)) {
-                    diagnostics.add(error(INVALID_PARENT,
-                            describe(element) + ": parent local name '" + parentLocal
-                                    + "' is not in requiredParents " + requiredParents,
-                            element.getLocation()));
-                }
+            } else if (requiredParents.stream().noneMatch(name ->
+                    sameQualifiedName(name, parent.getName(), index))) {
+                diagnostics.add(error(INVALID_PARENT,
+                        describe(element) + ": parent " + parent.getName().expandedName()
+                                + " is not in required qualified parents " + requiredParents,
+                        element.getLocation()));
             }
         }
     }
@@ -330,6 +335,7 @@ final class StructuralValidator {
 
     private static void validateChildren(SemanticElement element,
             Stage1PluginDescriptor descriptor,
+            PluginDescriptorIndex index,
             List<SemanticDiagnostic> diagnostics) {
         List<SemanticElement> childElements = new ArrayList<>();
         for (SemanticContent content : element.getContent()) {
@@ -338,39 +344,79 @@ final class StructuralValidator {
             }
         }
 
-        List<String> allowed = descriptor.getAllowedSubElements();
-        if (allowed.isEmpty()) {
-            // acceptsAnyChild is not exposed on Stage1PluginDescriptor — documented limitation.
+        if (!descriptor.getAllowedSubElements().isEmpty()) {
             diagnostics.add(warning(METADATA_LIMITATION,
-                    describe(element) + ": allowedSubElements is empty; child-allow policy unknown "
-                            + "(acceptsAnyChild not exposed on Stage1PluginDescriptor); "
-                            + "DISALLOWED_CHILD checks were not applied",
+                    describe(element) + ": allowedSubElements contains namespace-unqualified legacy names; "
+                            + "qualified child validation was skipped",
                     element.getLocation()));
-        } else {
-            Set<String> allowedSet = new HashSet<>(allowed);
-            for (SemanticElement child : childElements) {
-                String childLocal = child.getName().getLocalName();
-                if (!allowedSet.contains(childLocal)) {
-                    diagnostics.add(error(DISALLOWED_CHILD,
-                            describe(element) + ": child '" + childLocal
-                                    + "' (" + describe(child) + ") is not in allowedSubElements "
-                                    + allowed,
-                            element.getLocation()));
-                }
-            }
         }
 
-        Set<String> presentChildLocals = new HashSet<>();
-        for (SemanticElement child : childElements) {
-            presentChildLocals.add(child.getName().getLocalName());
+        switch (descriptor.getChildPolicy()) {
+            case ANY_CHILD:
+                break;
+            case FORBID_CHILDREN:
+                for (SemanticElement child : childElements) {
+                    diagnostics.add(error(DISALLOWED_CHILD,
+                            describe(element) + ": child " + child.getName().expandedName()
+                                    + " is forbidden by explicit closed child policy",
+                            element.getLocation()));
+                }
+                break;
+            case ALLOW_LIST:
+                if (descriptor.getAllowedChildNames().isEmpty()) {
+                    diagnostics.add(warning(METADATA_LIMITATION,
+                            describe(element) + ": child policy is ALLOW_LIST but no namespace-qualified "
+                                    + "child identities are available; DISALLOWED_CHILD checks were skipped",
+                            element.getLocation()));
+                } else {
+                    for (SemanticElement child : childElements) {
+                        if (descriptor.getAllowedChildNames().stream().noneMatch(name ->
+                                sameQualifiedName(name, child.getName(), index))) {
+                            diagnostics.add(error(DISALLOWED_CHILD,
+                                    describe(element) + ": child " + child.getName().expandedName()
+                                            + " (" + describe(child) + ") is not in qualified child allow-list "
+                                            + descriptor.getAllowedChildNames(),
+                                    element.getLocation()));
+                        }
+                    }
+                }
+                break;
+            case UNKNOWN:
+            default:
+                diagnostics.add(warning(METADATA_LIMITATION,
+                        describe(element) + ": child policy is UNKNOWN ("
+                                + descriptor.getChildPolicyProvenance()
+                                + "); structural child allow/deny checks were skipped",
+                        element.getLocation()));
+                break;
         }
-        for (String required : descriptor.getRequiredSubElements()) {
-            if (!presentChildLocals.contains(required)) {
+
+        if (!descriptor.getRequiredSubElements().isEmpty()) {
+            diagnostics.add(warning(METADATA_LIMITATION,
+                    describe(element) + ": requiredSubElements contains namespace-unqualified legacy names; "
+                            + "qualified required-child validation was skipped",
+                    element.getLocation()));
+        }
+        for (QualifiedName required : descriptor.getRequiredChildNames()) {
+            boolean present = childElements.stream().anyMatch(child ->
+                    sameQualifiedName(required, child.getName(), index));
+            if (!present) {
                 diagnostics.add(error(REQUIRED_CHILD_MISSING,
-                        describe(element) + ": required child '" + required + "' is missing",
+                        describe(element) + ": required qualified child "
+                                + required.expandedName() + " is missing",
                         element.getLocation()));
             }
         }
+    }
+
+    private static boolean sameQualifiedName(QualifiedName expected,
+            QualifiedName actual,
+            PluginDescriptorIndex index) {
+        String expectedNamespace = index.getNamespaceAliases().canonicalize(expected.getNamespaceUri());
+        String actualNamespace = index.getNamespaceAliases().canonicalize(actual.getNamespaceUri());
+        String expectedLocal = index.getElementAliases().canonicalize(expected.getLocalName());
+        String actualLocal = index.getElementAliases().canonicalize(actual.getLocalName());
+        return expectedNamespace.equals(actualNamespace) && expectedLocal.equals(actualLocal);
     }
 
     private static void validateText(SemanticElement element,
