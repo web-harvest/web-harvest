@@ -10,7 +10,7 @@ A Stage-1 descriptor carries a child policy and its provenance.
 
 | Policy | Meaning | Structural behavior |
 | --- | --- | --- |
-| `ALLOW_LIST` | A closed set of explicitly namespace-qualified child identities is available. | Reject a child only when its qualified identity is absent from the list. |
+| `ALLOW_LIST` | An authoritative closed child allow-list is declared. Its entries may still be legacy local-name-only metadata. | Reject a child only when a qualified allow-list identity is available and the child's qualified identity is absent; otherwise emit a metadata limitation and skip the hard check. |
 | `ANY_CHILD` | An authoritative plugin declaration explicitly accepts arbitrary plugin children. | Do not apply an allow-list rejection. |
 | `FORBID_CHILDREN` | An authoritative producer explicitly declares a closed policy with no plugin children. | Reject every plugin child. No current metadata producer supplies this state. |
 | `UNKNOWN` | Available metadata cannot establish a safe child policy. | Skip allow/deny conclusions and emit a metadata limitation. |
