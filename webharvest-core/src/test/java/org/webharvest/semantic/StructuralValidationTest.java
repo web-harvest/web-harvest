@@ -464,4 +464,86 @@ public class StructuralValidationTest {
         }
         return parts.toString();
     }
+
+    @Test
+    public void requiredChildUsesExactNamespaceIdentity() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(false).canAppearAtRoot(true)
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA)
+                .requiredChildNames(List.of(new QualifiedName(NS, "child", "p")))
+                .build();
+        Stage1PluginDescriptor childA = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.ChildA").reliableSchema(false).build();
+        Stage1PluginDescriptor childB = Stage1PluginDescriptor.builder()
+                .id("child@" + NS_OTHER).namespaceUri(NS_OTHER).localName("child")
+                .className("org.example.ChildB").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, childA, childB));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS + "\"><child xmlns=\"" + NS_OTHER + "\"/></parent>"));
+
+        assertTrue(codes(result).contains("REQUIRED_CHILD_MISSING"), diagnosticText(result));
+    }
+
+    @Test
+    public void qualifiedRelationshipIdentityIgnoresPrefixSpelling() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(false).canAppearAtRoot(true)
+                .allowedChildNames(List.of(new QualifiedName(NS, "child", "p")))
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS)
+                .build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<p:parent xmlns:p=\"" + NS + "\"><q:child xmlns:q=\"" + NS + "\"/></p:parent>"));
+
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+    }
+
+    @Test
+    public void legacyUnqualifiedParentEdgeIsNeverPromotedToQualifiedMatch() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS_OTHER).namespaceUri(NS_OTHER).localName("parent")
+                .className("org.example.Parent").reliableSchema(false).canAppearAtRoot(true).build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false)
+                .requiredParents(List.of("parent"))
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS_OTHER + "\"><child xmlns=\"" + NS + "\"/></parent>"));
+
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
+    }
+
+    @Test
+    public void bodyPermissionDoesNotAuthorizePluginChildren() {
+        Stage1PluginDescriptor box = Stage1PluginDescriptor.builder()
+                .id("box@" + NS).namespaceUri(NS).localName("box")
+                .className("org.example.Box").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true)
+                .childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC)
+                .build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("known@" + NS).namespaceUri(NS).localName("known")
+                .className("org.example.Known").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(box, child));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<box xmlns=\"" + NS + "\">text<known/></box>"));
+
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+        assertFalse(codes(result).contains("DISALLOWED_TEXT"), diagnosticText(result));
+    }
+
 }
