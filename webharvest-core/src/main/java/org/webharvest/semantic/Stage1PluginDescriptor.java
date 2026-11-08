@@ -35,6 +35,8 @@ public final class Stage1PluginDescriptor {
     private final Optional<Boolean> allowsBody;
     private final Optional<Boolean> canAppearAtRoot;
     private final List<String> requiredParents;
+    private final ChildPolicy childPolicy;
+    private final ChildPolicyProvenance childPolicyProvenance;
 
     private Stage1PluginDescriptor(Builder builder) {
         this.id = Objects.requireNonNull(builder.id, "id");
@@ -50,6 +52,8 @@ public final class Stage1PluginDescriptor {
         this.allowsBody = builder.allowsBody;
         this.canAppearAtRoot = builder.canAppearAtRoot;
         this.requiredParents = List.copyOf(builder.requiredParents);
+        this.childPolicy = Objects.requireNonNull(builder.childPolicy, "childPolicy");
+        this.childPolicyProvenance = Objects.requireNonNull(builder.childPolicyProvenance, "childPolicyProvenance");
     }
 
     /**
@@ -70,6 +74,19 @@ public final class Stage1PluginDescriptor {
                 .namespaceUri(namespaceUri)
                 .localName(catalog.getElementName())
                 .className(catalog.getClassName());
+
+        org.webharvest.plugin.metadata.PluginSemantics catalogSemantics = catalog.getSemantics();
+        if (catalogSemantics != null) {
+            List<String> catalogChildren = catalogSemantics.getAllowedChildTypes();
+            if (catalogChildren != null && !catalogChildren.isEmpty()) {
+                builder.allowedSubElements(catalogChildren);
+                builder.childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.CATALOG_SEMANTICS);
+            } else if (catalogSemantics.explicitlyAcceptsAnyChild()) {
+                builder.childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+            } else if (catalogSemantics.acceptsAnyChild()) {
+                builder.childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+            }
+        }
 
         Object schemaObj = extensions.get("schema");
         if (!(schemaObj instanceof Map)) {
@@ -178,6 +195,14 @@ public final class Stage1PluginDescriptor {
     /** Local names as declared; namespace-unaware in today's catalog schema. */
     public List<String> getRequiredParents() {
         return requiredParents;
+    }
+
+    public ChildPolicy getChildPolicy() {
+        return childPolicy;
+    }
+
+    public ChildPolicyProvenance getChildPolicyProvenance() {
+        return childPolicyProvenance;
     }
 
     @Override
@@ -319,6 +344,8 @@ public final class Stage1PluginDescriptor {
         private Optional<Boolean> allowsBody = Optional.empty();
         private Optional<Boolean> canAppearAtRoot = Optional.empty();
         private List<String> requiredParents = List.of();
+        private ChildPolicy childPolicy = ChildPolicy.UNKNOWN;
+        private ChildPolicyProvenance childPolicyProvenance = ChildPolicyProvenance.MISSING_METADATA;
 
         private Builder() {
         }
@@ -385,6 +412,12 @@ public final class Stage1PluginDescriptor {
 
         public Builder requiredParents(List<String> requiredParents) {
             this.requiredParents = requiredParents == null ? List.of() : requiredParents;
+            return this;
+        }
+
+        public Builder childPolicy(ChildPolicy policy, ChildPolicyProvenance provenance) {
+            this.childPolicy = Objects.requireNonNull(policy, "policy");
+            this.childPolicyProvenance = Objects.requireNonNull(provenance, "provenance");
             return this;
         }
 

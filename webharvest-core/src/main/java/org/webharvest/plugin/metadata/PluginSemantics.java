@@ -14,6 +14,7 @@ public final class PluginSemantics {
     private final boolean canAppearAtRoot;
     private final boolean allowsChildren;
     private final boolean acceptsAnyChild;
+    private final boolean explicitlyAcceptsAnyChild;
     private final boolean allowBody;
     private final boolean allowTextContent;
     private final List<String> allowedChildTypes;
@@ -27,7 +28,7 @@ public final class PluginSemantics {
             boolean allowTextContent,
             List<String> allowedChildTypes,
             List<String> requiredParentTypes) {
-        this(EnumSet.of(role), canAppearAtRoot, allowsChildren, acceptsAnyChild, allowBody, allowTextContent, allowedChildTypes, requiredParentTypes);
+        this(EnumSet.of(role), canAppearAtRoot, allowsChildren, acceptsAnyChild, allowBody, allowTextContent, allowedChildTypes, requiredParentTypes, false);
     }
 
     public PluginSemantics(Set<PluginSemanticRole> roles,
@@ -38,6 +39,19 @@ public final class PluginSemantics {
             boolean allowTextContent,
             List<String> allowedChildTypes,
             List<String> requiredParentTypes) {
+        this(roles, canAppearAtRoot, allowsChildren, acceptsAnyChild, allowBody, allowTextContent,
+                allowedChildTypes, requiredParentTypes, false);
+    }
+
+    public PluginSemantics(Set<PluginSemanticRole> roles,
+            boolean canAppearAtRoot,
+            boolean allowsChildren,
+            boolean acceptsAnyChild,
+            boolean allowBody,
+            boolean allowTextContent,
+            List<String> allowedChildTypes,
+            List<String> requiredParentTypes,
+            boolean explicitlyAcceptsAnyChild) {
         EnumSet<PluginSemanticRole> roleSet = roles.isEmpty()
                 ? EnumSet.of(PluginSemanticRole.LEAF)
                 : EnumSet.copyOf(roles);
@@ -45,6 +59,7 @@ public final class PluginSemantics {
         this.canAppearAtRoot = canAppearAtRoot;
         this.allowsChildren = allowsChildren;
         this.acceptsAnyChild = allowsChildren && acceptsAnyChild;
+        this.explicitlyAcceptsAnyChild = allowsChildren && explicitlyAcceptsAnyChild;
         this.allowBody = allowBody;
         this.allowTextContent = allowTextContent;
         this.allowedChildTypes = allowedChildTypes == null
@@ -81,6 +96,11 @@ public final class PluginSemantics {
 
     public boolean acceptsAnyChild() {
         return acceptsAnyChild;
+    }
+
+    /** Explicit declaration only; excludes legacy BODY_EVALUATOR inference. */
+    public boolean explicitlyAcceptsAnyChild() {
+        return explicitlyAcceptsAnyChild;
     }
 
     public boolean allowsBody() {

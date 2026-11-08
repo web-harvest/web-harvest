@@ -599,7 +599,8 @@ public final class PluginMetadataCatalog {
                 : semantics.getRequiredParentElements().stream().sorted().collect(Collectors.toList());
 
         return new PluginSemantics(roles, canAppearAtRoot, allowsChildren, semantics.allowsAnyChild(),
-                allowsBody, allowsText, allowedChildTypes, requiredParents);
+                allowsBody, allowsText, allowedChildTypes, requiredParents,
+                semantics.explicitlyAcceptsAnyChild());
     }
 
     private static PluginDescriptor mergeDescriptors(PluginDescriptor runtimeDescriptor, PluginDescriptor override) {
