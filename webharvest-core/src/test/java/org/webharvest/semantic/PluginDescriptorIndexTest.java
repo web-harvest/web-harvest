@@ -56,6 +56,38 @@ public class PluginDescriptorIndexTest {
     }
 
     @Test
+    public void runtimeAvailabilityProbeIsExplicitlyLocalNameOnlyAcrossNamespaces() {
+        AtomicInteger probes = new AtomicInteger();
+        PluginDescriptorIndex index = PluginDescriptorIndex.builder()
+                .addDescriptor(descriptor(NS_A, "shared", "org.example.SharedA"))
+                .addDescriptor(descriptor(NS_B, "shared", "org.example.SharedB"))
+                .namespaceAliases(NamespaceAliasTable.empty())
+                .elementAliases(ElementAliasTable.empty())
+                .optionalProfile(OptionalPluginProfile.empty())
+                .runtimeAvailability(localName -> {
+                    assertEquals(localName, "shared");
+                    probes.incrementAndGet();
+                    return true;
+                })
+                .build();
+
+        PluginResolution a = index.resolve(NS_A, "shared");
+        PluginResolution b = index.resolve(NS_B, "shared");
+
+        assertEquals(a.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
+        assertEquals(b.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
+        assertEquals(probes.get(), 2);
+    }
+
+    @Test
+    public void qualifiedNameIdentityIgnoresPrefixButIncludesNamespace() {
+        assertEquals(new QualifiedName(NS_A, "http", "a"),
+                new QualifiedName(NS_A, "http", "b"));
+        assertNotEquals(new QualifiedName(NS_A, "http", "a"),
+                new QualifiedName(NS_B, "http", "a"));
+    }
+
+    @Test
     public void resolvesExactNamespaceAndLocalName() {
         Stage1PluginDescriptor http = descriptor(NS_A, "http", "org.example.Http");
         PluginDescriptorIndex index = indexOf(http);

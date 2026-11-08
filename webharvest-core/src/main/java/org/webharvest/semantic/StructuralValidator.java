@@ -355,7 +355,9 @@ final class StructuralValidator {
             }
         }
 
-        if (!descriptor.getAllowedSubElements().isEmpty()) {
+        if (!descriptor.getAllowedSubElements().isEmpty()
+                && descriptor.getChildPolicy() != ChildPolicy.ANY_CHILD
+                && descriptor.getChildPolicy() != ChildPolicy.FORBID_CHILDREN) {
             diagnostics.add(warning(METADATA_LIMITATION,
                     describe(element) + ": allowedSubElements contains namespace-unqualified legacy names; "
                             + "qualified child validation was skipped",

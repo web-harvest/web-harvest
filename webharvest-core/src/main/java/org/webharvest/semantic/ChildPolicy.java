@@ -2,7 +2,7 @@ package org.webharvest.semantic;
 
 /** Structural policy for plugin child elements. */
 public enum ChildPolicy {
-    /** Only explicitly qualified child identities are accepted. */
+    /** A closed child allow-list is declared; hard checks require qualified identities. */
     ALLOW_LIST,
     /** Any plugin child is accepted by an explicit authoritative declaration. */
     ANY_CHILD,

@@ -320,6 +320,23 @@ public class StructuralValidationTest {
     }
 
     @Test
+    public void explicitAnyChildPolicyDoesNotEmitLegacyAllowListLimitation() {
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.builder()
+                .id("loop@" + NS).namespaceUri(NS).localName("loop")
+                .className("org.example.Loop").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true).allowedSubElements(List.of("legacy-child"))
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA)
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(loop));
+        StructuralValidationResult result = model.validateStructural(
+                load(model, "<loop xmlns=\"" + NS + "\"><unknown/></loop>"));
+
+        assertFalse(result.getDiagnostics().stream()
+                .anyMatch(d -> d.getMessage().contains("allowedSubElements")));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"));
+    }
+
+    @Test
     public void qualifiedRelationshipsAreValidatedEvenWhenLegacySchemaIsAbsent() {
         String otherNs = "http://example.org/other";
         Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
