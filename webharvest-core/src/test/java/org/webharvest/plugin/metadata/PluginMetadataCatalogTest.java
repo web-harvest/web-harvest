@@ -104,6 +104,24 @@ public class PluginMetadataCatalogTest {
         assertEquals(schema.get("type"), "object");
         assertTrue(schema.containsKey("properties"), "Schema must expose properties definition");
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void catalogSchemaDocumentsExplicitAnyChildSemantics() {
+        Map<String, Object> schema = PluginMetadataCatalog.getCatalogSchema();
+        Map<String, Object> properties = (Map<String, Object>) schema.get("properties");
+        Map<String, Object> plugins = (Map<String, Object>) properties.get("plugins");
+        Map<String, Object> items = (Map<String, Object>) plugins.get("items");
+        Map<String, Object> pluginProperties = (Map<String, Object>) items.get("properties");
+        Map<String, Object> semantics = (Map<String, Object>) pluginProperties.get("semantics");
+        Map<String, Object> semanticsProperties = (Map<String, Object>) semantics.get("properties");
+
+        assertTrue(semanticsProperties.containsKey("explicitlyAcceptsAnyChild"),
+                "Schema must distinguish explicit arbitrary-child declarations from legacy inference");
+
+        PluginDescriptor loop = PluginMetadataCatalog.getDescriptor("loop");
+        assertNotNull(loop);
+        assertTrue(loop.getSemantics().explicitlyAcceptsAnyChild());
+    }
+
 }
-
-
