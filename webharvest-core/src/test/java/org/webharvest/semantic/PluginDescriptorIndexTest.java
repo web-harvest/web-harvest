@@ -363,4 +363,25 @@ public class PluginDescriptorIndexTest {
                 .orElseThrow(() -> new AssertionError("Missing catalog descriptor for " + className));
     }
 
+
+    @Test
+    public void runtimeAvailabilityProbeFailureProducesUnknownStatus() {
+        Stage1PluginDescriptor plugin = descriptor(NS_A, "http", "org.example.Http");
+        PluginDescriptorIndex index = PluginDescriptorIndex.builder()
+                .addDescriptor(plugin)
+                .namespaceAliases(NamespaceAliasTable.empty())
+                .elementAliases(ElementAliasTable.empty())
+                .optionalProfile(OptionalPluginProfile.empty())
+                .runtimeAvailability(localName -> {
+                    throw new IllegalStateException("registry snapshot unavailable");
+                })
+                .build();
+
+        PluginResolution resolution = index.resolve(NS_A, "http");
+
+        assertEquals(resolution.getStatus(), PluginResolutionStatus.RESOLVED);
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN);
+        assertTrue(resolution.getDetail().contains("runtime availability was not established"));
+    }
+
 }
