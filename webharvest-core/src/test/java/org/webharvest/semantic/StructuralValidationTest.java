@@ -591,4 +591,28 @@ public class StructuralValidationTest {
         assertFalse(codes(result).contains("REQUIRED_CHILD_MISSING"), diagnosticText(result));
     }
 
+
+    @Test
+    public void ambiguousQualifiedChildRemainsAmbiguousDespiteMatchingRelationshipIdentity() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(false).canAppearAtRoot(true)
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA)
+                .requiredChildNames(List.of(new QualifiedName(NS, "child", "")))
+                .build();
+        Stage1PluginDescriptor childA = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.ChildA").reliableSchema(false).build();
+        Stage1PluginDescriptor childB = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.ChildB").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, childA, childB));
+
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS + "\"><child/></parent>"));
+
+        assertTrue(codes(result).contains("AMBIGUOUS_ELEMENT"), diagnosticText(result));
+        assertFalse(codes(result).contains("UNKNOWN_ELEMENT"), diagnosticText(result));
+    }
+
 }
