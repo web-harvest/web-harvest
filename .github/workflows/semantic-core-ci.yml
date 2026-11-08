@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - recovery/uncommitted-development
+      - implementation/issue-46-metadata-contract
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -35,4 +36,4 @@ jobs:
           java-version: "11"
           cache: maven
       - name: Run Semantic Core contract tests
-        run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginSemanticsResolverTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
