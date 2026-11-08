@@ -101,9 +101,11 @@ final class StructuralValidator {
         boolean isRoot = element == documentRoot;
         // Qualified relationship metadata is independent of the legacy schema snapshot.
         validateRootAndParent(element, parent, isRoot, descriptor, index, diagnostics);
-        validateChildren(element, descriptor, index, diagnostics);
         if (descriptor.hasReliableSchema()) {
             validateAttributes(element, descriptor, diagnostics);
+        }
+        validateChildren(element, descriptor, index, diagnostics);
+        if (descriptor.hasReliableSchema()) {
             validateText(element, descriptor, diagnostics);
         }
     }
