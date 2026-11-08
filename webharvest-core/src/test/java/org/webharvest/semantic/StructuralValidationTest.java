@@ -569,13 +569,13 @@ public class StructuralValidationTest {
         Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
                 .id("parent@" + NS).namespaceUri(NS).localName("parent")
                 .className("org.example.Parent").reliableSchema(true).canAppearAtRoot(true)
-                .allowedSubElements(List.of("child"))
+                .allowedSubElements(List.of("legacy-allowed"))
                 .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST)
                 .build();
         Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
                 .id("child@" + NS_OTHER).namespaceUri(NS_OTHER).localName("child")
                 .className("org.example.Child").reliableSchema(true)
-                .requiredSubElements(List.of("required"))
+                .requiredSubElements(List.of("required-other"))
                 .build();
         Stage1PluginDescriptor required = Stage1PluginDescriptor.builder()
                 .id("required@" + NS_OTHER).namespaceUri(NS_OTHER).localName("required")
