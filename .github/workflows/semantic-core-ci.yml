@@ -37,3 +37,60 @@ jobs:
           cache: maven
       - name: Run Semantic Core contract tests
         run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginSemanticsResolverTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
+  core-regression:
+    name: Full Core unit regression (baseline debt visible)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+      - name: Run full Core unit suite
+        id: full-core
+        continue-on-error: true
+        run: mvn -B -ntp -pl webharvest-core -am test
+      - name: Summarize full Core test results
+        if: always()
+        env:
+          STEP_OUTCOME: ${{ steps.full-core.outcome }}
+        run: |
+          python3 - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          files = glob.glob("webharvest-core/target/surefire-reports/TEST-*.xml")
+          totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+          failed = []
+          for path in files:
+              root = ET.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(root.attrib.get(key, 0))
+              for case in root.findall(".//testcase"):
+                  failure = case.find("failure")
+                  if failure is None:
+                      failure = case.find("error")
+                  if failure is not None:
+                      failed.append(f"{case.attrib.get('classname','?')}#{case.attrib.get('name','?')}")
+          outcome = os.environ.get("STEP_OUTCOME", "unknown")
+          lines = [
+              "### Full Core unit regression",
+              f"- Maven step outcome: **{outcome}**",
+              f"- Test reports: {len(files)}",
+              f"- Tests: {totals['tests']}; failures: {totals['failures']}; errors: {totals['errors']}; skipped: {totals['skipped']}",
+          ]
+          if failed:
+              lines.append("- Failed test cases:")
+              lines.extend(f"  - `{name}`" for name in sorted(set(failed)))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("\n".join(lines) + "\n")
+          PY
+      - name: Upload full Core Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-46-full-core-surefire
+          path: webharvest-core/target/surefire-reports/
+          if-no-files-found: warn
