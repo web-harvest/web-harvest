@@ -58,7 +58,7 @@ public final class PluginResolution {
         return new PluginResolution(
                 PluginResolutionStatus.UNKNOWN_ELEMENT,
                 null,
-                false,
+                RuntimeAvailabilityStatus.UNKNOWN,
                 List.of(),
                 "Unknown element {" + nullToEmpty(canonicalNamespaceUri) + "}" + localName,
                 "No catalog descriptor for this canonical key");
@@ -76,7 +76,7 @@ public final class PluginResolution {
         return new PluginResolution(
                 PluginResolutionStatus.UNKNOWN_ELEMENT,
                 null,
-                false,
+                RuntimeAvailabilityStatus.UNKNOWN,
                 candidates,
                 "Unknown element {" + nullToEmpty(canonicalNamespaceUri) + "}" + localName
                         + " (namespace mismatch candidates present)",
@@ -89,7 +89,7 @@ public final class PluginResolution {
         return new PluginResolution(
                 PluginResolutionStatus.AMBIGUOUS,
                 null,
-                false,
+                RuntimeAvailabilityStatus.UNKNOWN,
                 List.of(),
                 "Ambiguous element {" + nullToEmpty(canonicalNamespaceUri) + "}" + localName,
                 "Catalog contains " + colliding.size() + " descriptors for this canonical key");
@@ -100,7 +100,7 @@ public final class PluginResolution {
         return new PluginResolution(
                 PluginResolutionStatus.UNAVAILABLE_OPTIONAL,
                 null,
-                false,
+                RuntimeAvailabilityStatus.UNKNOWN,
                 List.of(),
                 "Optional plugin {" + entry.getNamespaceUri() + "}" + entry.getLocalName()
                         + " is not available",
