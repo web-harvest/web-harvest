@@ -1,104 +1,101 @@
 # WebHarvest
 
-**WebHarvest** is a Java framework for configuring and running web data extraction workflows using XML and an extensible plugin architecture.
+WebHarvest is an open-source, Java-based framework for extracting data from web pages using XML scraper configurations and an extensible plugin system.
 
-The project is being actively modernized. The GitHub repository is the canonical home for source code, issues, pull requests, CI, and documentation:
+**Canonical repository:** https://github.com/web-harvest/web-harvest
 
-- **Repository:** https://github.com/web-harvest/web-harvest
-- **Issues:** https://github.com/web-harvest/web-harvest/issues
-- **Pull requests:** https://github.com/web-harvest/web-harvest/pulls
-- **Contribution guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
+The repository's Maven project version is currently **2.3.1**. This is project metadata, not a claim that a 2.3.1 release is published or production-ready. The project is under active development; consult the current issues, pull requests, and CI results before relying on a particular capability or build.
 
-> **Project status:** Development and stabilization are in progress. Do not interpret historical test totals, badges, or release references from older project material as a statement that the current default branch is fully green or production-ready. Follow current CI results and the open stabilization issues before adopting a build.
-
-## What it provides
-
-- XML-based configuration of extraction and data-processing workflows.
-- A modular Java codebase with a plugin-based execution model.
-- HTTP, HTML/XML processing, XPath/XQuery, scripting, templating, and control-flow capabilities.
-- Optional modules for CLI, IDE, database, FTP, mail, web-browser, and ZIP integrations.
-- Extensibility for custom plugins and application integrations.
-
-The exact capabilities and compatibility guarantees depend on the module and version being used. Consult the source and module documentation for behavior not covered here.
-
-## Repository layout
+## Project modules
 
 The Maven reactor currently contains these modules:
 
 | Module | Purpose |
 |---|---|
 | `webharvest-core` | Core configuration, plugin, and execution functionality |
-| `webharvest-cli` | Command-line application |
-| `webharvest-ide` | Web-based visual development environment |
+| `webharvest-cli` | Command-line interface |
+| `webharvest-ide` | IDE application and related integration |
 | `webharvest-database` | Database integration |
 | `webharvest-ftp` | FTP integration |
 | `webharvest-mail` | Mail integration |
-| `webharvest-webbrowser` | Browser integration |
-| `webharvest-zip` | ZIP/archive integration |
-| `docs` | Project documentation |
+| `webharvest-webbrowser` | Browser-related integration |
+| `webharvest-zip` | ZIP archive integration |
+| `docs` | Documentation resources |
+
+The root `pom.xml` is the Maven reactor entry point. The configured Java compiler source and target levels are 11.
 
 ## Requirements
 
-- Java 11 or newer for the current development line.
-- Maven 3.6 or newer.
+- JDK 11
+- Maven (use a current Maven 3.x installation)
 
-Some optional modules and integration tests may require additional services or environment configuration. Check their module documentation and test setup before running them.
+Check the active CI workflow and module POMs for any additional environment-specific requirements.
 
 ## Build and test
 
-Clone the canonical repository:
+Run commands from the repository root.
+
+Build and run the complete Maven verification lifecycle:
 
 ```bash
-git clone https://github.com/web-harvest/web-harvest.git
-cd web-harvest
+mvn --batch-mode --no-transfer-progress verify
 ```
 
-Build the Maven reactor:
-
-```bash
-mvn --batch-mode --no-transfer-progress clean install
-```
-
-Run the Core module with its required upstream modules:
+Run the Core module and its required upstream reactor modules:
 
 ```bash
 mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
 ```
 
-These commands describe how to request the build and test lifecycle; they are not a claim that every current branch or test suite passes. For a change, record the exact commit, command, exit status, test counts, skipped tests, and relevant CI run in its pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Run the Core unit-test phase only:
 
-## Development status and known work
+```bash
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
+```
 
-The project is undergoing a staged modernization and regression-remediation effort. Current work includes Core contracts and compatibility, plugin/catalog behavior, XML fidelity and security, IDE integration, and CI reliability.
+A successful focused test run is not equivalent to a successful full reactor verification. When reporting validation, state the exact command, commit SHA, test counts, failures, errors, and skipped tests. Check the GitHub Actions result for the commit under review; do not infer current project health from historical test counts in old documentation.
 
-Before depending on a particular capability:
+## Getting started
 
-1. Check the current default-branch CI status.
-2. Review open Issues for known regressions and compatibility constraints.
-3. Pin the exact commit or released artifact used by your application.
-4. Run the tests relevant to your integration.
+1. Clone the canonical repository:
 
-Historical notes and investigation results are retained in GitHub Issues and commit history. Older documentation may describe behavior or test results from a different code baseline.
+   ```bash
+   git clone https://github.com/web-harvest/web-harvest.git
+   cd web-harvest
+   ```
+
+2. Inspect the current issues and pull requests to understand active work and known limitations.
+3. Build and test using the commands above before making changes.
+4. Explore the module-specific documentation and examples in the repository. Treat examples as illustrative and verify them against the current implementation.
 
 ## Contributing
 
-Contributions are welcome, but the project uses a review-first workflow:
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 
-1. Search or open a GitHub Issue to agree on expected behavior.
-2. Create a focused branch from the intended base.
-3. Add tests for the behavior being changed.
-4. Run the relevant test lifecycle and report exact evidence.
-5. Open a pull request and wait for CI and review.
+All project development activity belongs in this GitHub repository:
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting. GitHub is the sole source of truth; do not use historical external trackers or SVN repositories.
+- [Issues and bug reports](https://github.com/web-harvest/web-harvest/issues)
+- [Pull requests](https://github.com/web-harvest/web-harvest/pulls)
+- [Repository activity and commits](https://github.com/web-harvest/web-harvest/commits/2.2.x)
 
-## License and third-party notices
+Use a focused branch, add or update tests for behavior changes, run the relevant verification, and include reproducible evidence in the pull request. GitHub is the sole source of truth for project development; do not use historical external trackers or SVN repositories.
 
-The repository contains the project's license text at [licences/webharvest_licence.txt](licences/webharvest_licence.txt), Apache License 2.0 text at [licences/apache_licence.txt](licences/apache_licence.txt), additional third-party license texts under `licences/`, and attribution information in [NOTICE](NOTICE).
+## Project status and compatibility
 
-Preserve all applicable copyright, license, and third-party notices when redistributing the project. The project-level license and the terms for bundled third-party components must be reviewed separately. See the files above for the actual terms; this README is not a substitute for them.
+WebHarvest has a long project history and is undergoing ongoing maintenance and modernization. Some modules, integrations, examples, and historical compatibility paths may have different levels of validation.
 
-## Security
+Before adopting the project or upgrading an existing integration:
 
-Do not publish credentials, tokens, private keys, personal data, or vulnerability details in public Issues or pull requests. Use GitHub's private vulnerability reporting facility if it is enabled for this repository. If it is not available, contact the repository maintainers through the GitHub organization before disclosing sensitive details publicly.
+- inspect the current issue tracker for known defects and limitations;
+- verify the required Java and dependency versions;
+- run representative configurations against the exact version and modules you intend to use;
+- review compatibility notes and release information rather than assuming all historical behavior is unchanged.
+
+No claim of complete test-suite success, release readiness, or support for every historical configuration is made by this README.
+
+## License and attribution
+
+The repository identifies the project license as a BSD-style license. The full project license text is in [licences/webharvest_licence.txt](licences/webharvest_licence.txt). See [NOTICE](NOTICE) for attribution and historical contributor information.
+
+Preserve the license and third-party notices when redistributing the project or derivative works. The repository also contains separate third-party license texts under `licences/`.
 
