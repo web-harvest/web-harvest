@@ -136,4 +136,90 @@ public class PluginMetadataCatalogTest {
         assertEquals(execution.get("canPause"), Boolean.TRUE);
         assertEquals(execution.get("canResume"), Boolean.TRUE);
     }
+
+    @Test
+    public void httpDescriptorProjectsTheCompleteConfigurationSchema() {
+        PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor("http");
+        assertNotNull(descriptor, "The built-in http plugin must have a catalog descriptor");
+
+        Map<?, ?> schema = (Map<?, ?>) descriptor.getExtensions().get("schema");
+        assertNotNull(schema, "HTTP descriptor must expose its configuration schema");
+
+        List<?> definitions = (List<?>) schema.get("attributeDefinitions");
+        assertNotNull(definitions);
+        assertEquals(definitions.size(), 3);
+
+        Map<?, ?> url = findAttribute(definitions, "url");
+        assertEquals(url.get("type"), "URL");
+        assertEquals(url.get("required"), Boolean.TRUE);
+        assertEquals(url.get("description"), "The URL to request");
+        assertFalse(url.containsKey("defaultValue"));
+
+        Map<?, ?> method = findAttribute(definitions, "method");
+        assertEquals(method.get("type"), "ENUM");
+        assertEquals(method.get("required"), Boolean.FALSE);
+        assertEquals(method.get("defaultValue"), "GET");
+        assertTrue(((List<?>) method.get("allowedValues")).containsAll(List.of("GET", "POST")));
+
+        Map<?, ?> body = findAttribute(definitions, "body");
+        assertEquals(body.get("type"), "STRING");
+        assertEquals(body.get("required"), Boolean.FALSE);
+        assertEquals(body.get("description"), "Request body for POST requests");
+
+        assertEquals(schema.get("requiredAttributes"), List.of("url"));
+        assertEquals(schema.get("optionalAttributes"), List.of("method", "body"));
+        assertEquals(schema.get("allowedSubElements"), List.of("http-header", "http-param"));
+        assertEquals(schema.get("allowsBody"), Boolean.FALSE);
+        assertEquals(schema.get("version"), "2.1.0-SNAPSHOT");
+        assertEquals(descriptor.getUiHints().getIcon(), "fa-globe");
+    }
+
+    @Test
+    public void builtInControlPluginsProjectMasterDetailAndExecutionHints() {
+        assertMasterDetailConstraint("case", "else", "Else Branch", "Add Else");
+        assertMasterDetailConstraint("try", "catch", "Catch Block", "Add Catch");
+
+        PluginDescriptor whileDescriptor = PluginMetadataCatalog.getDescriptor("while");
+        assertNotNull(whileDescriptor);
+        Map<?, ?> whileExecution = (Map<?, ?>) whileDescriptor.getExtensions().get("executionSemantics");
+        assertEquals(whileExecution.get("executionOrder"), "parallel");
+        assertEquals(whileDescriptor.getUiHints().getPaletteGroup(), "Control");
+        assertEquals(whileDescriptor.getUiHints().getIcon(), "fa-rotate");
+        assertTrue(whileDescriptor.getUiHints().getTags().contains("while"));
+
+        PluginDescriptor callDescriptor = PluginMetadataCatalog.getDescriptor("call");
+        assertNotNull(callDescriptor);
+        Map<?, ?> callExecution = (Map<?, ?>) callDescriptor.getExtensions().get("executionSemantics");
+        assertEquals(callExecution.get("executionOrder"), "sequential");
+    }
+
+    private void assertMasterDetailConstraint(String pluginId, String detailType,
+            String sectionTitle, String addLabel) {
+        PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor(pluginId);
+        assertNotNull(descriptor, "Missing descriptor for " + pluginId);
+
+        Object rawConstraints = descriptor.getExtensions().get("masterDetailConstraints");
+        assertTrue(rawConstraints instanceof List, "Missing master/detail constraints for " + pluginId);
+        List<?> constraints = (List<?>) rawConstraints;
+        assertEquals(constraints.size(), 1);
+
+        Map<?, ?> constraint = (Map<?, ?>) constraints.get(0);
+        assertEquals(constraint.get("detailType"), detailType);
+        assertEquals(constraint.get("maxOccurs"), 1);
+        assertEquals(constraint.get("minOccurs"), 0);
+        assertEquals(constraint.get("sectionTitle"), sectionTitle);
+        assertEquals(constraint.get("addLabel"), addLabel);
+    }
+
+    private Map<?, ?> findAttribute(List<?> definitions, String name) {
+        for (Object definition : definitions) {
+            Map<?, ?> attribute = (Map<?, ?>) definition;
+            if (name.equals(attribute.get("name"))) {
+                return attribute;
+            }
+        }
+        fail("Missing schema attribute: " + name);
+        return Map.of();
+    }
+
 }
