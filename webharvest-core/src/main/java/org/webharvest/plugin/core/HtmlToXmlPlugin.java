@@ -342,7 +342,7 @@ import java.io.StringReader;
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>No parameters:</strong> html-to-xml has no attributes - uses body content only</li>
+ *   <li><strong>Input and options:</strong> HTML is supplied through body content; optional boolean attributes control conversion and output cleanup</li>
  *   <li><strong>Input source:</strong> Can be from {@code <http>}, {@code <file>}, {@code <def>}, or literal text</li>
  *   <li><strong>Output format:</strong> Always well-formed XML (validates against XML spec)</li>
  *   <li><strong>Memory usage:</strong> Entire HTML is loaded into memory - consider file size</li>
