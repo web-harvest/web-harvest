@@ -57,6 +57,8 @@ public class CallParamPluginTest {
         
         // Mock configuration with required 'name' attribute
         when(configuration.getProperty("name")).thenReturn("testParam");
+        // doExecute uses the two-argument accessor; Mockito does not apply its real default-value behavior.
+        when(configuration.getProperty("name", "")).thenReturn("testParam");
         when(configuration.getProperty("id")).thenReturn(null); // Optional attribute
         
         // Initialize plugin
@@ -221,6 +223,7 @@ public class CallParamPluginTest {
         // Mock configuration with both 'name' and 'id' attributes
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(config.getProperty("name")).thenReturn("testParam");
+        when(config.getProperty("name", "")).thenReturn("testParam");
         when(config.getProperty("id")).thenReturn("paramId");
         
         // Initialize plugin with mocked configuration
