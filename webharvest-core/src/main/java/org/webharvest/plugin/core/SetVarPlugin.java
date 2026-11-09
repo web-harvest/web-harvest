@@ -206,7 +206,8 @@ import org.slf4j.LoggerFactory;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "set-var",
     description = "Sets a variable value in the context",
-    version = "2.1.0"
+    version = "2.1.0",
+    paletteComponent = false
 )
 public class SetVarPlugin extends AbstractPlugin {
 
