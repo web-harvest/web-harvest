@@ -49,11 +49,11 @@ public class PluginMetadataJsonGeneratorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PluginMetadataJsonGeneratorTest.class);
     
     /**
-     * Get all user-facing core plugins (excluding system components).
+     * Get IDs of all Core processors explicitly eligible for the visual palette.
      * 
      * @return List of plugin element names that are user-facing (not system components)
      */
-    private List<String> getUserFacingCorePlugins() {
+    private List<String> getPaletteEligibleCorePluginIds() {
         List<String> userPlugins = new ArrayList<>();
         PluginRegistry registry = PluginRegistryHolder.getInstance();
         Collection<Plugin> allPlugins = registry.getAllPlugins();
@@ -64,10 +64,10 @@ public class PluginMetadataJsonGeneratorTest {
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
             if (annotation != null && !annotation.systemComponent() && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
-                if (metadata != null) {
-                    // The registry is keyed by metadata ID, not XML element name.
-                    userPlugins.add(metadata.getId());
-                }
+                assertNotNull(metadata, "Palette-eligible processor must provide metadata: "
+                    + plugin.getClass().getName());
+                // The registry is keyed by metadata ID, not XML element name.
+                userPlugins.add(metadata.getId());
             }
         }
         
@@ -153,7 +153,7 @@ public class PluginMetadataJsonGeneratorTest {
     public void testGeneratedJsonContainsAllPlugins() throws Exception {
         // RED: This test validates that all user-facing plugins are in JSON
         
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         assertFalse(userPlugins.isEmpty(), "Should have at least one user-facing plugin");
         
         try {
