@@ -1,9 +1,6 @@
 package org.webharvest.plugin.metadata;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -54,7 +51,7 @@ public final class PluginMetadataCatalog {
     static {
         // All metadata generated dynamically from plugin classes - no static JSON files needed
         // UI hints are auto-generated from plugin category and element names
-        CatalogBundle bundle = buildRuntimeCatalog(new UIMetadataOverrides(Map.of()));
+        CatalogBundle bundle = buildRuntimeCatalog();
         DESCRIPTORS = bundle.descriptors();
         CATALOG_SCHEMA = loadSchemaDocument();
     }
@@ -135,58 +132,17 @@ public final class PluginMetadataCatalog {
      * This method is deprecated - all UI hints come from inferUiHints() based on category and element name.
      */
     @Deprecated
-    private static UIMetadataOverrides loadUIMetadataOverrides() {
-        // All UI hints are now auto-generated - no static file needed
-        LOG.debug("UI hints are auto-generated from plugin classes - no static file needed");
-        return new UIMetadataOverrides(Map.of());
-    }
-    
+        
     /**
      * Applies UI-only overrides to a descriptor.
      * Only affects UI hints (icon, paletteGroup, tags, color), NOT semantics.
      */
-    private static PluginDescriptor applyUIOverrides(PluginDescriptor descriptor, UIMetadataOverrides overrides) {
-        Map<String, Object> override = overrides.getOverride(descriptor.getId());
-        if (override == null || override.isEmpty()) {
-            return descriptor;
-        }
-        
-        @SuppressWarnings("unchecked")
-        Map<String, Object> uiOverride = (Map<String, Object>) override.get("ui");
-        if (uiOverride == null || uiOverride.isEmpty()) {
-            return descriptor;
-        }
-        
-        // Apply only UI hints
-        String icon = uiOverride.containsKey("icon") ? (String) uiOverride.get("icon") : descriptor.getUiHints().getIcon();
-        String paletteGroup = uiOverride.containsKey("paletteGroup") ? (String) uiOverride.get("paletteGroup") : descriptor.getUiHints().getPaletteGroup();
-        @SuppressWarnings("unchecked")
-        List<String> tags = uiOverride.containsKey("tags") ? (List<String>) uiOverride.get("tags") : descriptor.getUiHints().getTags();
-        
-        PluginUIHints newUiHints = new PluginUIHints(paletteGroup, icon, tags);
-        
-        // Return new descriptor with updated UI hints, everything else unchanged
-        return new PluginDescriptor(
-            descriptor.getId(),
-            descriptor.getElementName(),
-            descriptor.getDisplayName(),
-            descriptor.getOrigin(),
-            descriptor.getClassName(),
-            descriptor.getCategory(),
-            descriptor.getDescription(),
-            descriptor.getDocumentation(),
-            descriptor.getSemantics(), // Semantics NEVER overridden
-            newUiHints,
-            descriptor.getDependencies(),
-            descriptor.getExtensions()
-        );
-    }
-
+    
     /**
      * Builds runtime catalog from dynamically discovered plugins.
      * All metadata generated from plugin classes - no static JSON files needed.
      */
-    private static CatalogBundle buildRuntimeCatalog(UIMetadataOverrides uiOverrides) {
+    private static CatalogBundle buildRuntimeCatalog() {
         Map<String, PluginDescriptor> descriptors = new LinkedHashMap<>();
 
         // Generate all metadata dynamically from plugin classes
@@ -602,149 +558,10 @@ public final class PluginMetadataCatalog {
                 allowsBody, allowsText, allowedChildTypes, requiredParents);
     }
 
-    private static PluginDescriptor mergeDescriptors(PluginDescriptor runtimeDescriptor, PluginDescriptor override) {
-        if (override == null) {
-            return runtimeDescriptor;
-        }
-
-        String id = runtimeDescriptor.getId();
-        String elementName = firstNonBlank(override.getElementName(), runtimeDescriptor.getElementName());
-        String displayName = firstNonBlank(override.getDisplayName(), runtimeDescriptor.getDisplayName());
-        String origin = firstNonBlank(override.getOrigin(), runtimeDescriptor.getOrigin());
-        String className = firstNonBlank(override.getClassName(), runtimeDescriptor.getClassName());
-        String category = firstNonBlank(override.getCategory(), runtimeDescriptor.getCategory());
-        String description = firstNonBlank(override.getDescription(), runtimeDescriptor.getDescription());
-
-        PluginDocumentation documentation = override.getDocumentation() != null
-                ? override.getDocumentation()
-                : runtimeDescriptor.getDocumentation();
-
-        PluginSemantics semantics = override.getSemantics() != null
-                ? override.getSemantics()
-                : runtimeDescriptor.getSemantics();
-
-        PluginUIHints uiHints = override.getUiHints() != null
-                ? override.getUiHints()
-                : runtimeDescriptor.getUiHints();
-
-        List<String> dependencies = override.getDependencies().isEmpty()
-                ? runtimeDescriptor.getDependencies()
-                : override.getDependencies();
-
-        Map<String, Object> extensions = override.getExtensions().isEmpty()
-                ? runtimeDescriptor.getExtensions()
-                : override.getExtensions();
-
-        return new PluginDescriptor(id, elementName, displayName, origin, className, category, description,
-                documentation, semantics, uiHints, dependencies, extensions);
-    }
-
-    private static PluginDescriptor toDescriptor(JsonObject obj) {
-        String id = obj.get("id").getAsString();
-        String element = obj.has("elementName") ? obj.get("elementName").getAsString() : id;
-        String displayName = obj.has("displayName") ? obj.get("displayName").getAsString() : humanize(element);
-        String origin = obj.has("origin") ? obj.get("origin").getAsString() : "core";
-        String category = obj.has("category") ? obj.get("category").getAsString() : "Uncategorized";
-        String className = obj.has("className") ? obj.get("className").getAsString() : null;
-        String description = obj.has("description") ? obj.get("description").getAsString() : displayName;
-
-        PluginDocumentation documentation = null;
-        if (obj.has("documentation")) {
-            JsonObject docObj = obj.getAsJsonObject("documentation");
-            List<String> examples = new ArrayList<>();
-            if (docObj.has("examples")) {
-                for (JsonElement el : docObj.getAsJsonArray("examples")) {
-                    examples.add(el.getAsString());
-                }
-            }
-            documentation = new PluginDocumentation(
-                    docObj.has("summary") ? docObj.get("summary").getAsString() : description,
-                    docObj.has("url") ? docObj.get("url").getAsString() : null,
-                    examples);
-        }
-
-        PluginSemantics semantics = parseSemantics(obj.getAsJsonObject("semantics"));
-        PluginUIHints uiHints = parseUiHints(obj.getAsJsonObject("ui"));
-
-        Map<String, Object> extensions = obj.has("extensions")
-                ? GSON.fromJson(obj.get("extensions"), Map.class)
-                : Map.of();
-
-        List<String> dependencies = new ArrayList<>();
-        if (obj.has("dependencies")) {
-            for (JsonElement el : obj.getAsJsonArray("dependencies")) {
-                dependencies.add(el.getAsString());
-            }
-        }
-
-        return new PluginDescriptor(id, element, displayName, origin, className, category, description,
-                documentation, semantics, uiHints, dependencies, extensions);
-    }
-
-    private static PluginSemantics parseSemantics(JsonObject semanticsObj) {
-        if (semanticsObj == null) {
-            return new PluginSemantics(PluginSemanticRole.LEAF, true, false, false,
-                    false, false, List.of(), List.of());
-        }
-
-        EnumSet<PluginSemanticRole> roles = EnumSet.noneOf(PluginSemanticRole.class);
-        if (semanticsObj.has("roles")) {
-            for (JsonElement el : semanticsObj.getAsJsonArray("roles")) {
-                roles.add(PluginSemanticRole.valueOf(el.getAsString()));
-            }
-        } else if (semanticsObj.has("role")) {
-            roles.add(PluginSemanticRole.valueOf(semanticsObj.get("role").getAsString()));
-        }
-        if (roles.isEmpty()) {
-            roles.add(PluginSemanticRole.LEAF);
-        }
-
-        boolean canAppearAtRoot = semanticsObj.has("canAppearAtRoot")
-                && semanticsObj.get("canAppearAtRoot").getAsBoolean();
-        boolean allowsChildren = semanticsObj.has("allowsChildren")
-                && semanticsObj.get("allowsChildren").getAsBoolean();
-        boolean acceptsAnyChild = semanticsObj.has("acceptsAnyChild")
-                && semanticsObj.get("acceptsAnyChild").getAsBoolean();
-        boolean allowBody = semanticsObj.has("allowsBody")
-                && semanticsObj.get("allowsBody").getAsBoolean();
-        boolean allowTextContent = semanticsObj.has("allowTextContent")
-                && semanticsObj.get("allowTextContent").getAsBoolean();
-
-        List<String> allowedChildTypes = new ArrayList<>();
-        if (semanticsObj.has("allowedChildTypes")) {
-            for (JsonElement el : semanticsObj.getAsJsonArray("allowedChildTypes")) {
-                allowedChildTypes.add(el.getAsString());
-            }
-        }
-
-        List<String> requiredParentTypes = new ArrayList<>();
-        if (semanticsObj.has("requiredParentTypes")) {
-            for (JsonElement el : semanticsObj.getAsJsonArray("requiredParentTypes")) {
-                requiredParentTypes.add(el.getAsString());
-            }
-        }
-
-        return new PluginSemantics(roles, canAppearAtRoot, allowsChildren, acceptsAnyChild,
-                allowBody, allowTextContent, allowedChildTypes, requiredParentTypes);
-    }
-
-    private static PluginUIHints parseUiHints(JsonObject uiObj) {
-        if (uiObj == null) {
-            return new PluginUIHints(null, null, List.of());
-        }
-
-        String paletteGroup = uiObj.has("paletteGroup") ? uiObj.get("paletteGroup").getAsString() : null;
-        String icon = uiObj.has("icon") ? uiObj.get("icon").getAsString() : null;
-        List<String> tags = new ArrayList<>();
-        if (uiObj.has("tags")) {
-            for (JsonElement el : uiObj.getAsJsonArray("tags")) {
-                tags.add(el.getAsString());
-            }
-        }
-
-        return new PluginUIHints(paletteGroup, icon, tags);
-    }
-
+    
+    
+    
+    
     private static PluginUIHints inferUiHints(PluginMetadata metadata, String elementName, String category) {
         String paletteGroup = normalizeGroup(category);
         String icon = pickIcon(elementName, category);
@@ -978,13 +795,7 @@ public final class PluginMetadataCatalog {
         return defaultValue;
     }
 
-    private static String firstNonBlank(String primary, String secondary) {
-        if (primary != null && !primary.isBlank()) {
-            return primary;
-        }
-        return secondary;
-    }
-
+    
     private static boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
@@ -1014,22 +825,7 @@ public final class PluginMetadataCatalog {
      * UI-only overrides container (icon, color, paletteGroup).
      * Does NOT contain semantic metadata - that must come from plugin classes.
      */
-    private static final class UIMetadataOverrides {
-        private final Map<String, Map<String, Object>> overrides;
-
-        UIMetadataOverrides(Map<String, Map<String, Object>> overrides) {
-            this.overrides = Map.copyOf(overrides);
-        }
-
-        boolean hasOverride(String pluginId) {
-            return overrides.containsKey(pluginId);
-        }
-
-        Map<String, Object> getOverride(String pluginId) {
-            return overrides.get(pluginId);
-        }
-    }
-
+    
     private static final class CatalogBundle {
         private final Map<String, PluginDescriptor> descriptors;
 
