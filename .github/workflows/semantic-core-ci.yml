@@ -45,7 +45,7 @@ jobs:
         run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
 
   core-regression:
-    name: Full Core test suites (Java 11; Checkstyle config blocker)
+    name: Full Core test suites (Java 11; Surefire/Failsafe diagnostics)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -63,7 +63,7 @@ jobs:
       - name: Run Core integration tests (Failsafe)
         if: always()
         # Invoke test-compile plus Failsafe goals directly. This still runs after Surefire fails,
-        # while avoiding a second Surefire execution. Checkstyle remains the separately tracked blocker.
+        # while avoiding a second Surefire execution. The unqualified verify job owns the Checkstyle gate.
         run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
       - name: Upload Surefire and Failsafe reports
         if: always()
@@ -98,19 +98,19 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "JaCoCo report files under the Core module:"
-          find webharvest-core/target -type f \( -path '*/site/jacoco/*' -o -name 'jacoco.exec' \) -print 2>/dev/null || true
-          test -s webharvest-core/target/site/jacoco/jacoco.xml
-          test -s webharvest-core/target/site/jacoco/index.html
+          echo "JaCoCo report files under the Core module (configured outputDirectory: target/jacoco-report):"
+          find webharvest-core/target -type f \( -path '*/jacoco-report/*' -o -name 'jacoco.exec' \) -print 2>/dev/null || true
+          test -s webharvest-core/target/jacoco-report/jacoco.xml
+          test -s webharvest-core/target/jacoco-report/index.html
       - name: Upload full verify quality diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: core-full-verify-quality-diagnostics
           path: |
-            webharvest-core/target/site/jacoco/**
+            webharvest-core/target/jacoco-report/**
             webharvest-core/target/jacoco.exec
-            **/target/site/jacoco/**
+            **/target/jacoco-report/**
             **/target/spotbugsXml.xml
             **/target/checkstyle-result.xml
             **/target/pmd.xml
