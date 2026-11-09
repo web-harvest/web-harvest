@@ -179,7 +179,7 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li><strong>Arithmetic:</strong> Only basic + and - operations, result is string concatenation unless using script</li>
  *   <li><strong>Type conversion:</strong> Limited automatic type conversion</li>
- *   <li><strong>Scope:</strong> Can only update variables in current scope</li>
+ *   <li><strong>Scope:</strong> Updates an existing visible variable; a newly introduced variable is local to the current scope</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
@@ -364,8 +364,14 @@ public class SetVarPlugin extends AbstractPlugin {
                 }
             }
             
-            // Set the variable in the context
-            context.setLocalVar(varName, value);
+            // SetVar is an assignment operation: update an existing visible variable
+            // in place so loop-body changes survive the iteration scope. A new variable
+            // remains local to the current scope and is cleaned up with that scope.
+            if (context.containsVar(varName)) {
+                context.replaceExistingVar(varName, value);
+            } else {
+                context.setLocalVar(varName, value);
+            }
             LOGGER.debug("SetVarPlugin.doExecute: Set variable '" + varName + "' to value: " + value);
             
             // Verify the variable was set
