@@ -315,7 +315,7 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
             "  <function name=\"lastItem\">\n" +
             "    <xpath expression=\"//item/text()\">\n" +
-            "      <template><root><item>first</item><item>last</item></root></template>\n" +
+            "      <template><![CDATA[<root><item>first</item><item>last</item></root>]]></template>\n" +
             "    </xpath>\n" +
             "  </function>\n" +
             "  <def var=\"result\"><call name=\"lastItem\"/></def>\n" +
@@ -335,7 +335,7 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
             "  <function name=\"noMatch\">\n" +
             "    <xpath expression=\"//missing/text()\">\n" +
-            "      <template><root><item>present</item></root></template>\n" +
+            "      <template><![CDATA[<root><item>present</item></root>]]></template>\n" +
             "    </xpath>\n" +
             "  </function>\n" +
             "  <def var=\"result\"><call name=\"noMatch\"/></def>\n" +
@@ -372,7 +372,7 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
             "  <function name=\"explicitEmpty\">\n" +
             "    <template>body value must not be returned</template>\n" +
             "    <return>\n" +
-            "      <xpath expression=\"//missing/text()\"><template><root/></template></xpath>\n" +
+            "      <xpath expression=\"//missing/text()\"><template><![CDATA[<root/>]]></template></xpath>\n" +
             "    </return>\n" +
             "  </function>\n" +
             "  <def var=\"result\"><call name=\"explicitEmpty\"/></def>\n" +
