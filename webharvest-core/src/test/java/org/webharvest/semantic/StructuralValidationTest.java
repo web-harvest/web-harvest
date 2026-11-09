@@ -378,6 +378,77 @@ public class StructuralValidationTest {
         assertInvalidAttribute(malformedModel, "malformed", "code", "anything", "declared pattern");
     }
 
+    @Test
+    public void numericBoundsRejectNonFiniteValuesButUnboundedDoublePreservesJavaParsing() {
+        Stage1PluginDescriptor bounded = Stage1PluginDescriptor.builder()
+                .id("bounded@" + NS)
+                .namespaceUri(NS)
+                .localName("bounded")
+                .className("org.example.Bounded")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("value", "DOUBLE", false, List.of(),
+                                Integer.valueOf(0), Integer.valueOf(10), null)))
+                .build();
+        SemanticModel boundedModel = new SemanticModel(indexOf(bounded));
+
+        StructuralValidationResult boundaries = boundedModel.validateStructural(load(boundedModel,
+                "<bounded xmlns=\"" + NS + "\" value=\"0\"/>"));
+        assertTrue(boundaries.isSuccessful(), diagnosticText(boundaries));
+        assertInvalidAttribute(boundedModel, "bounded", "value", "NaN", "must be finite");
+        assertInvalidAttribute(boundedModel, "bounded", "value", "Infinity", "must be finite");
+        assertInvalidAttribute(boundedModel, "bounded", "value", "-Infinity", "must be finite");
+
+        Stage1PluginDescriptor unbounded = Stage1PluginDescriptor.builder()
+                .id("unbounded@" + NS)
+                .namespaceUri(NS)
+                .localName("unbounded")
+                .className("org.example.Unbounded")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("value", "DOUBLE", false, List.of(), null, null, null)))
+                .build();
+        SemanticModel unboundedModel = new SemanticModel(indexOf(unbounded));
+        for (String value : List.of("NaN", "Infinity", "-Infinity")) {
+            StructuralValidationResult accepted = unboundedModel.validateStructural(load(unboundedModel,
+                    "<unbounded xmlns=\"" + NS + "\" value=\"" + value + "\"/>"));
+            assertTrue(accepted.isSuccessful(), diagnosticText(accepted));
+        }
+    }
+
+    @Test
+    public void namespacedAttributeDoesNotSatisfyUnqualifiedSchemaAttribute() {
+        Stage1PluginDescriptor plugin = Stage1PluginDescriptor.builder()
+                .id("item@" + NS)
+                .namespaceUri(NS)
+                .localName("item")
+                .className("org.example.Item")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .requiredAttributes(List.of("name"))
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("name", "STRING", true, List.of(), null, null, null)))
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(plugin));
+
+        StructuralValidationResult namespaced = model.validateStructural(load(model,
+                "<item xmlns=\"" + NS + "\" xmlns:x=\"" + NS_OTHER
+                        + "\" x:name=\"value\"/>"));
+        assertTrue(codes(namespaced).contains("REQUIRED_ATTRIBUTE_MISSING"), diagnosticText(namespaced));
+        assertTrue(codes(namespaced).contains("UNKNOWN_ATTRIBUTE"), diagnosticText(namespaced));
+        assertTrue(firstOf(namespaced, "UNKNOWN_ATTRIBUTE").getMessage().contains("{" + NS_OTHER + "}name"));
+
+        StructuralValidationResult unqualified = model.validateStructural(load(model,
+                "<item xmlns=\"" + NS + "\" name=\"value\"/>"));
+        assertFalse(codes(unqualified).contains("REQUIRED_ATTRIBUTE_MISSING"), diagnosticText(unqualified));
+        assertFalse(codes(unqualified).contains("UNKNOWN_ATTRIBUTE"), diagnosticText(unqualified));
+    }
+
     private static void assertInvalidTypedValue(SemanticModel model, String attribute,
             String value, String expectedType) {
         StructuralValidationResult result = model.validateStructural(load(model,

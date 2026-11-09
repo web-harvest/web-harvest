@@ -177,9 +177,11 @@ final class StructuralValidator {
     private static void validateAttributes(SemanticElement element,
             Stage1PluginDescriptor descriptor,
             List<SemanticDiagnostic> diagnostics) {
+        // Stage1PluginDescriptor stores attribute names as unqualified XML names.
+        // A prefixed attribute is a different expanded name and must not satisfy it.
         Map<String, SemanticAttribute> byLocalName = new HashMap<>();
         for (SemanticAttribute attribute : element.getAttributes()) {
-            if (isXmlnsAttribute(attribute)) {
+            if (isXmlnsAttribute(attribute) || !attribute.getName().getNamespaceUri().isEmpty()) {
                 continue;
             }
             byLocalName.putIfAbsent(attribute.getName().getLocalName(), attribute);
@@ -210,7 +212,17 @@ final class StructuralValidator {
             if (isXmlnsAttribute(attribute)) {
                 continue;
             }
+            String namespaceUri = attribute.getName().getNamespaceUri();
             String localName = attribute.getName().getLocalName();
+            if (!namespaceUri.isEmpty()) {
+                if (knownNames.isPresent()) {
+                    diagnostics.add(error(UNKNOWN_ATTRIBUTE,
+                            describe(element) + ": unknown namespaced attribute '"
+                                    + attribute.getName().expandedName() + "'",
+                            element.getLocation()));
+                }
+                continue;
+            }
             if (knownNames.isPresent() && !knownNames.get().contains(localName)) {
                 diagnostics.add(error(UNKNOWN_ATTRIBUTE,
                         describe(element) + ": unknown attribute '" + localName + "'",
@@ -278,6 +290,11 @@ final class StructuralValidator {
         if (definition.getMinValue().isPresent() || definition.getMaxValue().isPresent()) {
             try {
                 double number = Double.parseDouble(value.trim());
+                // Java parses NaN and infinities, but they cannot participate meaningfully
+                // in an inclusive numeric range check.
+                if (!Double.isFinite(number)) {
+                    return Optional.of("value '" + value + "' must be finite for min/max check");
+                }
                 if (definition.getMinValue().isPresent()
                         && number < definition.getMinValue().get().doubleValue()) {
                     return Optional.of("value '" + value + "' is below minValue "
