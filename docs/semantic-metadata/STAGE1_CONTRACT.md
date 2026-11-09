@@ -85,14 +85,18 @@ runtime dispatch, or execution behavior is changed by this contract.
 
 - Legacy resolver `allowsAnyChild` behavior is preserved for existing catalog
   consumers; Stage 1 uses the separate explicit declaration.
-- The public `PluginResolution` API change from
-  `isRuntimeExecutable()` / the boolean `resolved(..., boolean)` factory to
-  `RuntimeAvailabilityStatus` is source- and binary-incompatible. Consumers
-  must migrate to `getRuntimeAvailabilityStatus()` and the enum-based factory.
-  This API must not be shipped as a compatible minor/patch update: before
-  artifact publication, the project must either make a major-version decision
-  or deliberately restore a compatibility bridge. This PR does not itself
-  declare a release version or authorize artifact publication.
+- An intermediate implementation replaced the public
+  `PluginResolution.isRuntimeExecutable()` and
+  `resolved(..., boolean)` signatures with the enum API, which would have been
+  source- and binary-incompatible. The final PR head restores both original
+  signatures as deprecated compatibility bridges while adding the
+  `RuntimeAvailabilityStatus` API. Existing callers therefore retain those
+  method descriptors; new callers should migrate to
+  `getRuntimeAvailabilityStatus()` and the enum-based factory to distinguish
+  UNKNOWN from a negative legacy registry probe. This compatibility statement
+  is limited to these two signatures; the complete public API diff still
+  requires independent review. This PR does not declare a release version or
+  authorize artifact publication.
 - Legacy local-name relationship getters remain available but are not used for
   hard namespace-aware validation.
 - New authoritative metadata producers should populate qualified identities.
