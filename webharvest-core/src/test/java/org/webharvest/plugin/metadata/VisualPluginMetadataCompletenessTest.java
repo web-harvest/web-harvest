@@ -58,9 +58,9 @@ public class VisualPluginMetadataCompletenessTest {
     private static final Pattern FONT_AWESOME_PATTERN = Pattern.compile("^fas? fa-[a-z0-9-]+$");
     
     /**
-     * Get all user-facing core plugins (excluding system components).
+     * Get IDs of all Core processors explicitly eligible for the visual palette.
      */
-    private List<String> getUserFacingCorePlugins() {
+    private List<String> getPaletteEligibleCorePluginIds() {
         List<String> userPlugins = new ArrayList<>();
         PluginRegistry registry = PluginRegistryHolder.getInstance();
         Collection<Plugin> allPlugins = registry.getAllPlugins();
@@ -71,10 +71,10 @@ public class VisualPluginMetadataCompletenessTest {
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
             if (annotation != null && !annotation.systemComponent() && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
-                if (metadata != null) {
-                    // The registry is keyed by metadata ID, not XML element name.
-                    userPlugins.add(metadata.getId());
-                }
+                assertNotNull(metadata, "Palette-eligible processor must provide metadata: "
+                    + plugin.getClass().getName());
+                // The registry is keyed by metadata ID, not XML element name.
+                userPlugins.add(metadata.getId());
             }
         }
         
@@ -84,7 +84,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testAllPluginsHaveVisualMetadata() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         int pluginsWithVisualMetadata = 0;
         List<String> missingPlugins = new ArrayList<>();
@@ -131,7 +131,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testVisualMetadataFieldsArePopulated() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         List<String> gaps = new ArrayList<>();
         
@@ -180,7 +180,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testVisualMetadataFieldFormatsAreValid() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         List<String> invalidFields = new ArrayList<>();
         
@@ -230,7 +230,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testInputOutputPortsAreValid() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         List<String> portIssues = new ArrayList<>();
         
@@ -286,7 +286,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testAccessibilityMetadataIsComplete() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         List<String> accessibilityGaps = new ArrayList<>();
         
@@ -328,7 +328,7 @@ public class VisualPluginMetadataCompletenessTest {
     @Test
     public void testParentChildRelationshipsAreConsistent() {
         PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
+        List<String> userPlugins = getPaletteEligibleCorePluginIds();
         
         List<String> relationshipIssues = new ArrayList<>();
         
