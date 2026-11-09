@@ -62,14 +62,11 @@ public class PluginMetadataJsonGeneratorTest {
             if (plugin == null) continue;
             
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
-            if (annotation != null) {
-                if (annotation.systemComponent()) {
-                    continue;
-                }
-                
+            if (annotation != null && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
                 if (metadata != null) {
-                    userPlugins.add(metadata.getElementName());
+                    // The registry is keyed by metadata ID, not XML element name.
+                    userPlugins.add(metadata.getId());
                 }
             }
         }
@@ -77,6 +74,34 @@ public class PluginMetadataJsonGeneratorTest {
         return userPlugins;
     }
     
+    @Test
+    public void testLegacyProcessorsRemainRegisteredOutsidePalette() {
+        PluginRegistry registry = PluginRegistryHolder.getInstance();
+        String[] legacyIds = {"var", "set-var"};
+        for (String id : legacyIds) {
+            Plugin plugin = registry.getPlugin(id);
+            assertNotNull(plugin, "Legacy processor must remain registered: " + id);
+            CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
+            assertNotNull(annotation, "Legacy processor must retain CorePlugin registration: " + id);
+            assertFalse(annotation.paletteComponent(), "Legacy processor must not appear in visual palette: " + id);
+            assertFalse(annotation.systemComponent(), "Legacy compatibility processor is not an internal system component: " + id);
+        }
+    }
+
+    @Test
+    public void testInternalProcessorsAreSystemAndNotPaletteComponents() {
+        PluginRegistry registry = PluginRegistryHolder.getInstance();
+        String[] internalIds = {"config", "body-processor"};
+        for (String id : internalIds) {
+            Plugin plugin = registry.getPlugin(id);
+            assertNotNull(plugin, "Internal processor must remain registered: " + id);
+            CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
+            assertNotNull(annotation, "Internal processor must retain CorePlugin registration: " + id);
+            assertTrue(annotation.systemComponent(), "Internal processor must be classified as system: " + id);
+            assertFalse(annotation.paletteComponent(), "Internal processor must not appear in visual palette: " + id);
+        }
+    }
+
     @Test
     public void testJsonGeneratorExists() {
         // RED: This test will fail until PluginMetadataJsonGenerator class exists
