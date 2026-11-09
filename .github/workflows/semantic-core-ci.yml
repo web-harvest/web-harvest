@@ -1,10 +1,12 @@
 name: Semantic Core Contract CI
 
 on:
+  # Implementation branches are validated by pull_request events to avoid
+  # duplicate three-job runs for the same SHA. Keep push validation for the
+  # recovery integration baseline, which may be updated outside a PR.
   push:
     branches:
       - recovery/uncommitted-development
-      - "implementation/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
