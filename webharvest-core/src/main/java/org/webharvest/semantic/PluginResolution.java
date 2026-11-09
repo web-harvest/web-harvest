@@ -34,6 +34,20 @@ public final class PluginResolution {
         this.detail = detail == null ? "" : detail;
     }
 
+    /**
+     * Compatibility bridge for consumers compiled against the original boolean factory.
+     * A false value means the legacy local-name registry probe did not positively
+     * establish registration; use the enum overload when UNKNOWN must be distinguished.
+     *
+     * @deprecated use {@link #resolved(Stage1PluginDescriptor, RuntimeAvailabilityStatus)}
+     */
+    @Deprecated
+    public static PluginResolution resolved(Stage1PluginDescriptor descriptor, boolean runtimeExecutable) {
+        return resolved(descriptor, runtimeExecutable
+                ? RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED
+                : RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY);
+    }
+
     public static PluginResolution resolved(Stage1PluginDescriptor descriptor,
             RuntimeAvailabilityStatus runtimeAvailabilityStatus) {
         Objects.requireNonNull(descriptor, "descriptor");
@@ -121,6 +135,19 @@ public final class PluginResolution {
      */
     public RuntimeAvailabilityStatus getRuntimeAvailabilityStatus() {
         return runtimeAvailabilityStatus;
+    }
+
+    /**
+     * Compatibility bridge for the former boolean runtime probe.
+     * Returns true only when the legacy local-name registry probe positively
+     * reports registration. False also covers UNKNOWN; use
+     * {@link #getRuntimeAvailabilityStatus()} to distinguish those cases.
+     *
+     * @deprecated use {@link #getRuntimeAvailabilityStatus()}
+     */
+    @Deprecated
+    public boolean isRuntimeExecutable() {
+        return runtimeAvailabilityStatus == RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED;
     }
 
     /**
