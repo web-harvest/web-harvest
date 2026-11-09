@@ -115,14 +115,10 @@ public class VisualPluginMetadataCompletenessTest {
             }
         }
         
-        // Allow small tolerance (1 plugin) for edge cases or plugins in transition
-        int difference = Math.abs(pluginsWithVisualMetadata - userPlugins.size());
-        if (difference > 1) {
-            fail("Too many plugins missing VisualPluginMetadata. Expected: " + userPlugins.size() + 
-                ", Found: " + pluginsWithVisualMetadata + ". Missing: " + missingPlugins);
-        } else if (difference == 1 && !missingPlugins.isEmpty()) {
-            LOGGER.warn("One plugin missing VisualPluginMetadata - acceptable for transition: {}", missingPlugins);
-        }
+        // Palette eligibility is an explicit contract: every eligible processor
+        // must provide VisualPluginMetadata. Do not tolerate transitional gaps.
+        assertEquals(pluginsWithVisualMetadata, userPlugins.size(),
+            "Every palette-eligible plugin must provide VisualPluginMetadata. Missing: " + missingPlugins);
         
         LOGGER.info("Metadata completeness check: {}/{} plugins have VisualPluginMetadata", 
             pluginsWithVisualMetadata, userPlugins.size());
