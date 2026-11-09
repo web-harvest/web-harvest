@@ -128,17 +128,6 @@ public final class PluginMetadataCatalog {
     }
 
     /**
-     * UI hints are now fully auto-generated from plugin classes.
-     * This method is deprecated - all UI hints come from inferUiHints() based on category and element name.
-     */
-    @Deprecated
-        
-    /**
-     * Applies UI-only overrides to a descriptor.
-     * Only affects UI hints (icon, paletteGroup, tags, color), NOT semantics.
-     */
-    
-    /**
      * Builds runtime catalog from dynamically discovered plugins.
      * All metadata generated from plugin classes - no static JSON files needed.
      */
@@ -821,11 +810,6 @@ public final class PluginMetadataCatalog {
         return builder.toString();
     }
 
-    /**
-     * UI-only overrides container (icon, color, paletteGroup).
-     * Does NOT contain semantic metadata - that must come from plugin classes.
-     */
-    
     private static final class CatalogBundle {
         private final Map<String, PluginDescriptor> descriptors;
 
