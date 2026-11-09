@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Legacy `<set-var>` compatibility**: Restored runtime registration, preserved the WebHarvest 1.0 `name` attribute, accepted the current `var` spelling, and rejected conflicting target attributes.
+
 ### Added
 - **Canvas Layout & Connection Routing Optimization** (v2.3.2)
   - Node collision detection and prevention during drag operations
