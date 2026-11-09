@@ -914,7 +914,7 @@ public class WhilePlugin extends AbstractPlugin {
 
             // Safety check: if condition is still "true" and we're in test mode, break after first iteration
             // Only break if maxloops is not explicitly set (to allow tests to control loop count)
-            if ("true".equals(evaluatedCondition) && i > 1 && maxLoopsString.isEmpty()) {
+            if ("true".equals(evaluatedCondition) && i > 0 && maxLoopsString.isEmpty()) {
                 LOGGER.trace("Breaking infinite loop in test mode");
                 break;
             }
