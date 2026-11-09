@@ -91,3 +91,20 @@ jobs:
           cache: maven
       - name: Run unqualified Core verify
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
+      - name: Run Checkstyle independently if full verify is blocked
+        if: failure()
+        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am checkstyle:check
+      - name: Upload full verify quality diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-full-verify-quality-diagnostics
+          path: |
+            **/target/site/jacoco/**
+            **/target/spotbugsXml.xml
+            **/target/checkstyle-result.xml
+            **/target/pmd.xml
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+          if-no-files-found: warn
+          retention-days: 14
