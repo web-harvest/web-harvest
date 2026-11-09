@@ -34,12 +34,16 @@ public class WhilePluginIntegrationTest extends XmlBasedIntegrationTestBase {
         DynamicScopeContext result = executeXmlString(
             "<config xmlns=\"" + NS + "\">" +
             "  <def var=\"count\" value=\"0\"/>" +
+            "  <def var=\"lastIndex\" value=\"-1\"/>" +
             "  <while test=\"${count &lt; 3}\" index=\"i\" maxloops=\"5\">" +
+            "    <set-var name=\"lastIndex\" value=\"${i}\"/>" +
             "    <set-var name=\"count\" value=\"${count + 1}\"/>" +
             "  </while>" +
             "</config>");
         assertEquals(result.getVar("count").toString(), "3");
         assertEquals(result.getVar("i").toString(), "3");
+        assertEquals(result.getVar("lastIndex").toString(), "2",
+            "The loop body must observe zero-based indices 0, 1, 2");
     }
 
     @Test
