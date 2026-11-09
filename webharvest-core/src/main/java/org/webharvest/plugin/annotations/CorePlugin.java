@@ -99,6 +99,15 @@ public @interface CorePlugin {
     String category() default "Core";
     
     /**
+     * Indicates whether this processor is available as a node in the Visual Designer palette.
+     * Runtime registration is independent: a processor may remain available to XML configs
+     * while being intentionally absent from the visual palette (for example, legacy aliases).
+     *
+     * @return true when the processor is eligible for the visual palette (default: true)
+     */
+    boolean paletteComponent() default true;
+
+    /**
      * Indicates whether this plugin is a system component (not a user-facing plugin).
      * 
      * <p>System components are internal framework components that are used automatically
