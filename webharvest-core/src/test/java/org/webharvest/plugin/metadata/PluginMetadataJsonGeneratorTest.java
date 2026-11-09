@@ -171,10 +171,25 @@ public class PluginMetadataJsonGeneratorTest {
             assertNotNull(jsonContent, "JSON content should not be null");
             assertFalse(jsonContent.trim().isEmpty(), "JSON content should not be empty");
             
-            // Verify all plugins are present (basic check - JSON contains element names)
-            for (String pluginName : userPlugins) {
-                assertTrue(jsonContent.contains(pluginName), 
-                    "Generated JSON should contain plugin: " + pluginName);
+            // Compare exact serialized plugin IDs; substring matching can produce false positives.
+            com.google.gson.JsonObject root =
+                new com.google.gson.JsonParser().parse(jsonContent).getAsJsonObject();
+            com.google.gson.JsonArray serializedPlugins = root.getAsJsonArray("plugins");
+            assertNotNull(serializedPlugins, "Generated JSON must contain a plugins array");
+
+            java.util.Set<String> actualIds = new java.util.HashSet<>();
+            for (com.google.gson.JsonElement element : serializedPlugins) {
+                actualIds.add(element.getAsJsonObject().get("id").getAsString());
+            }
+            assertEquals(actualIds.size(), serializedPlugins.size(),
+                "Serialized plugin IDs must be unique");
+            assertEquals(actualIds, new java.util.HashSet<>(userPlugins),
+                "Serialized plugin IDs must exactly match the palette-eligible Core plugin IDs");
+
+            // Runtime compatibility and internal processors remain registered but are not palette entries.
+            for (String excludedId : new String[]{"var", "set-var", "config", "body-processor"}) {
+                assertFalse(actualIds.contains(excludedId),
+                    "Non-palette processor must not be serialized: " + excludedId);
             }
             
             // Cleanup
