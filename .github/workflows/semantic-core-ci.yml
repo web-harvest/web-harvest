@@ -38,7 +38,7 @@ jobs:
         run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
 
   core-regression:
-    name: Full Core verify (Java 11)
+    name: Full Core test suites (Java 11; Checkstyle config blocker)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -51,7 +51,9 @@ jobs:
           java-version: "11"
           cache: maven
       - name: Run complete Core verify lifecycle
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
+        # Root Checkstyle is currently misconfigured (missing checkstyle.xml).
+        # Skip only that plugin execution so the full Surefire/Failsafe suites still run and fail normally.
+        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am verify
       - name: Upload Surefire and Failsafe reports
         if: always()
         uses: actions/upload-artifact@v4
