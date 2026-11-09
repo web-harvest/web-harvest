@@ -73,10 +73,13 @@ Stage 1 exposes this as `RuntimeAvailabilityStatus`:
 - `NOT_REGISTERED_IN_CORE_REGISTRY`
 - `UNKNOWN`
 
-The former `PluginResolution.isRuntimeExecutable()` boolean is retired because
-its name implied a stronger guarantee than the probe could establish. No parser,
-registry lifecycle, namespace-aware runtime dispatch, or execution behavior is
-changed by this contract.
+The former `PluginResolution.isRuntimeExecutable()` boolean is retained as a
+`@Deprecated` compatibility bridge. It returns true only when the legacy
+local-name probe positively reports registration; false also covers UNKNOWN.
+The boolean `resolved(..., boolean)` factory is likewise retained and deprecated.
+New consumers should use `getRuntimeAvailabilityStatus()` and the enum factory to
+preserve the UNKNOWN distinction. No parser, registry lifecycle, namespace-aware
+runtime dispatch, or execution behavior is changed by this contract.
 
 ## Compatibility and migration
 
