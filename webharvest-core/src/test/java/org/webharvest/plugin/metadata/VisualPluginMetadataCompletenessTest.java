@@ -69,7 +69,7 @@ public class VisualPluginMetadataCompletenessTest {
             if (plugin == null) continue;
             
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
-            if (annotation != null && annotation.paletteComponent()) {
+            if (annotation != null && !annotation.systemComponent() && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
                 if (metadata != null) {
                     // The registry is keyed by metadata ID, not XML element name.
@@ -91,7 +91,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (metadata == null) {
@@ -137,7 +137,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (!(metadata instanceof VisualPluginMetadata)) continue;
@@ -186,7 +186,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (!(metadata instanceof VisualPluginMetadata)) continue;
@@ -236,7 +236,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (!(metadata instanceof VisualPluginMetadata)) continue;
@@ -292,7 +292,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (!(metadata instanceof VisualPluginMetadata)) continue;
@@ -334,7 +334,7 @@ public class VisualPluginMetadataCompletenessTest {
         
         for (String pluginName : userPlugins) {
             Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
+            assertNotNull(plugin, "Palette plugin must be registered by metadata ID: " + pluginName);
             
             PluginMetadata metadata = plugin.getMetadata();
             if (!(metadata instanceof VisualPluginMetadata)) continue;
