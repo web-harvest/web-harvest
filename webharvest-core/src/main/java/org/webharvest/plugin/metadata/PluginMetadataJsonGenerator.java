@@ -100,8 +100,8 @@ import java.util.stream.Collectors;
  * }
  * }</pre>
  * 
- * <p>System components (plugins with {@code @CorePlugin(systemComponent = true)})
- * are excluded from the generated JSON.</p>
+ * <p>Only processors explicitly eligible for the visual palette are serialized.
+ * Runtime registration and palette eligibility are separate contracts.</p>
  * 
  * <p>Usage:</p>
  * <pre>{@code
@@ -119,8 +119,9 @@ public class PluginMetadataJsonGenerator {
     /**
      * Generates JSON metadata file for all user-facing core plugins.
      * 
-     * <p>Discovers all plugins from PluginRegistry, filters out system components,
-     * and generates JSON containing VisualPluginMetadata for each plugin.</p>
+     * <p>Discovers registered Core processors, excludes system and non-palette
+     * components, and requires every palette-eligible processor to provide
+     * VisualPluginMetadata.</p>
      * 
      * @param outputPath path to output JSON file (will create parent directories if needed)
      * @throws IOException if file operations fail
@@ -145,7 +146,6 @@ public class PluginMetadataJsonGenerator {
         
         int processedCount = 0;
         int skippedNonPaletteComponents = 0;
-        int skippedNonVisual = 0;
         
         for (Plugin plugin : allPlugins) {
             if (plugin == null) continue;
@@ -158,7 +158,7 @@ public class PluginMetadataJsonGenerator {
             
             // Only explicitly palette-eligible processors are serialized. This is
             // intentionally independent of runtime registration and system classification.
-            if (!annotation.paletteComponent()) {
+            if (annotation.systemComponent() || !annotation.paletteComponent()) {
                 skippedNonPaletteComponents++;
                 LOGGER.debug("Skipping non-palette processor: " + plugin.getClass().getSimpleName());
                 continue;
