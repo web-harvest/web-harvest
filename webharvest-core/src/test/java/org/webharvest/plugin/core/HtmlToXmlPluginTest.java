@@ -88,7 +88,11 @@ public class HtmlToXmlPluginTest {
         assertNotNull(schema);
         assertTrue(schema.allowsBody());
         assertEquals(schema.getRequiredAttributes().length, 0);
-        assertEquals(schema.getAttributeDefinitions().length, 0); // No attributes
+        assertEquals(schema.getAttributeDefinitions().length, 13);
+        assertEquals(schema.getOptionalAttributes().length, 13);
+        assertNotNull(schema.getAttribute("omitcomments"));
+        assertNotNull(schema.getAttribute("omitxmlns"));
+        assertNotNull(schema.getAttribute("advancedxmlescape"));
     }
 
     @Test
