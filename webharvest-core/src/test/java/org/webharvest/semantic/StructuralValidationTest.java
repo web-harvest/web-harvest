@@ -358,10 +358,10 @@ public class StructuralValidationTest {
                 "<constrained xmlns=\"" + NS + "\" quantity=\"2\" code=\"AZ\"/>"));
         assertTrue(boundaryValues.isSuccessful(), diagnosticText(boundaryValues));
 
-        assertInvalidAttribute(model, "quantity", "1", "below minValue");
-        assertInvalidAttribute(model, "quantity", "9", "above maxValue");
-        assertInvalidAttribute(model, "quantity", "many", "not numeric for min/max");
-        assertInvalidAttribute(model, "code", "A1", "does not match pattern");
+        assertInvalidAttribute(model, "constrained", "quantity", "1", "below minValue");
+        assertInvalidAttribute(model, "constrained", "quantity", "9", "above maxValue");
+        assertInvalidAttribute(model, "constrained", "quantity", "many", "not numeric for min/max");
+        assertInvalidAttribute(model, "constrained", "code", "A1", "does not match pattern");
 
         Stage1PluginDescriptor malformedPattern = Stage1PluginDescriptor.builder()
                 .id("malformed@" + NS)
@@ -375,7 +375,7 @@ public class StructuralValidationTest {
                         new AttributeDefinition("code", "STRING", false, List.of(), null, null, "[")))
                 .build();
         SemanticModel malformedModel = new SemanticModel(indexOf(malformedPattern));
-        assertInvalidAttribute(malformedModel, "code", "anything", "declared pattern");
+        assertInvalidAttribute(malformedModel, "malformed", "code", "anything", "declared pattern");
     }
 
     private static void assertInvalidTypedValue(SemanticModel model, String attribute,
