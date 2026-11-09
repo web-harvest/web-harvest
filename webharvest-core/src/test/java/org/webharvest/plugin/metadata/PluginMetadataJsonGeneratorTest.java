@@ -51,7 +51,7 @@ public class PluginMetadataJsonGeneratorTest {
     /**
      * Get IDs of all Core processors explicitly eligible for the visual palette.
      * 
-     * @return List of plugin element names that are user-facing (not system components)
+     * @return List of plugin IDs eligible for the visual palette
      */
     private List<String> getPaletteEligibleCorePluginIds() {
         List<String> userPlugins = new ArrayList<>();
