@@ -86,8 +86,13 @@ public class CommonUtilContractTest {
 
         Path missing = Files.createTempFile("webharvest-commonutil-missing-", ".txt");
         Files.deleteIfExists(missing);
-        assertThrows(IOException.class,
-                () -> CommonUtil.readStringFromFile(missing.toFile(), StandardCharsets.UTF_8.name()));
+        boolean missingFileRejected = false;
+        try {
+            CommonUtil.readStringFromFile(missing.toFile(), StandardCharsets.UTF_8.name());
+        } catch (IOException expected) {
+            missingFileRejected = true;
+        }
+        assertTrue(missingFileRejected, "Reading a missing file must throw IOException");
     }
 
     @Test
