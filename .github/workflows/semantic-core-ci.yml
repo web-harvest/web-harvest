@@ -99,7 +99,7 @@ jobs:
         shell: bash
         run: |
           echo "JaCoCo report files under the Core module:"
-          find webharvest-core/target -type f \\( -path '*/site/jacoco/*' -o -name 'jacoco.exec' \\) -print 2>/dev/null || true
+          find webharvest-core/target -type f \( -path '*/site/jacoco/*' -o -name 'jacoco.exec' \) -print 2>/dev/null || true
           test -s webharvest-core/target/site/jacoco/jacoco.xml
           test -s webharvest-core/target/site/jacoco/index.html
       - name: Upload full verify quality diagnostics
