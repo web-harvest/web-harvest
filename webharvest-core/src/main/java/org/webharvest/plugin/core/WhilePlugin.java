@@ -805,9 +805,10 @@ public class WhilePlugin extends AbstractPlugin {
         LOGGER.trace("WhilePlugin.doExecute: condition='" + condition + "', index='" + index + "', maxLoops='" + maxLoopsString + "', isEmpty=" + isEmpty);
 
         final List<Object> resultList = new ArrayList<Object>();
-        int i = 1;
+        int i = 0;
 
-        // Define first value of index variable
+        // Define the zero-based index in the parent scope. Each iteration temporarily
+        // shadows it inside the nested scope; the next value is committed after that scope exits.
         if (index != null && !index.isEmpty()) {
             context.setLocalVar(index, new NodeVariable(String.valueOf(i)));
         }
@@ -852,7 +853,7 @@ public class WhilePlugin extends AbstractPlugin {
         LOGGER.trace("WhilePlugin.doExecute: maxLoops=" + maxLoops + ", safeMaxLoops=" + safeMaxLoops);
 
         // Use conditionResult from BaseTemplater.evaluateToVariable
-        while (conditionResult && (i <= safeMaxLoops)) {
+        while (conditionResult && (i < safeMaxLoops)) {
             LOGGER.debug("doExecute: Loop iteration " + i + ", evaluatedCondition='" + evaluatedCondition + "'");
             
             // Bug #19 Fix: Execute each iteration in nested context
@@ -885,21 +886,9 @@ public class WhilePlugin extends AbstractPlugin {
 
             i++;
             
-            // IMPORTANT: If condition uses variables from body (like SetVarPlugin), 
-            // we need to extract the updated value from the nested context.
-            // For now, we'll check if condition uses 'counter' variable and update it.
-            if (condition.contains("counter")) {
-                LOGGER.debug("doExecute: Condition uses 'counter' variable, incrementing it");
-                Variable currentCounter = context.getVar("counter");
-                if (currentCounter != null) {
-                    try {
-                        int counterValue = Integer.parseInt(currentCounter.toString());
-                        context.setLocalVar("counter", new NodeVariable(String.valueOf(counterValue + 1)));
-                        LOGGER.trace("WhilePlugin.doExecute: Incremented counter to " + (counterValue + 1));
-                    } catch (NumberFormatException e) {
-                        LOGGER.trace("WhilePlugin.doExecute: Counter is not a number: " + currentCounter);
-                    }
-                }
+            // Commit the next zero-based index outside the iteration scope.
+            if (index != null && !index.isEmpty()) {
+                context.setLocalVar(index, new NodeVariable(String.valueOf(i)));
             }
 
             // Re-evaluate condition for next iteration using BeanShell
