@@ -167,8 +167,8 @@ public class PluginMetadataJsonGenerator {
             // Get metadata
             PluginMetadata metadata = plugin.getMetadata();
             if (metadata == null) {
-                LOGGER.warn("Plugin " + plugin.getClass().getSimpleName() + " has no metadata, skipping");
-                continue;
+                throw new IllegalStateException("Palette-eligible plugin "
+                    + plugin.getClass().getName() + " has no metadata");
             }
             
             // Check if metadata implements VisualPluginMetadata
