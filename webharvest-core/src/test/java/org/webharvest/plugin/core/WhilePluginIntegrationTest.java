@@ -1,208 +1,92 @@
 package org.webharvest.plugin.core;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.ioc.ScraperModule;
-import org.webharvest.plugin.DefaultPluginConfiguration;
-import org.webharvest.plugin.PluginConfiguration;
-import org.webharvest.definition.Config;
+import org.webharvest.plugin.integration.XmlBasedIntegrationTestBase;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.templaters.BaseTemplater;
-import org.webharvest.runtime.variables.EmptyVariable;
-import org.webharvest.runtime.variables.ListVariable;
-import org.webharvest.runtime.variables.NodeVariable;
-import org.webharvest.runtime.variables.Variable;
 
-import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 /**
- * Integration tests for WhilePlugin with SetVarPlugin to verify correct behavior together.
- * 
- * v2.2.x FIX: This test uses REAL ScraperContext (not mocks) because:
- * 1. BaseTemplater.scriptEngineFactory must be initialized via Guice
- * 2. JSRScriptEngineAdapter.copyVariables() requires context to be Iterable
- * 3. This is a true integration test of plugin interaction
+ * XML-runtime integration tests for WhilePlugin variable and index semantics.
+ *
+ * These tests deliberately use the real parser, plugin registry, context and body
+ * executor. The former tests attempted Mockito stubbing/verifying on a real
+ * ScraperContext and invoked SetVarPlugin outside the while body.
  */
-public class WhilePluginIntegrationTest {
+public class WhilePluginIntegrationTest extends XmlBasedIntegrationTestBase {
 
-    private Injector injector;
-    private DynamicScopeContext context;
-    private WhilePlugin whilePlugin;
-    private SetVarPlugin setVarPlugin;
-    private DefaultPluginConfiguration whileConfig;
-    private DefaultPluginConfiguration setVarConfig;
-
-    @BeforeMethod
-    public void setUp() {
-        // v2.2.x: Create Guice injector and get real ScraperContext
-        injector = Guice.createInjector(new ScraperModule("."));
-        context = injector.getInstance(org.webharvest.runtime.ScraperContext.class);
-        
-        // Setup mock config for context (needed by ScraperContext)
-        Config mockConfig = mock(Config.class);
-        context.setConfig(mockConfig);
-        context.setScriptingLanguage(org.webharvest.runtime.scripting.ScriptingLanguage.BEANSHELL);
-        
-        whilePlugin = new WhilePlugin();
-        setVarPlugin = new SetVarPlugin();
-    }
+    private static final String NS = "http://org.webharvest/schema/2.1/core";
 
     @Test
     public void testWhilePluginWithSetVarPluginCounter() throws Exception {
-        // Given: WhilePlugin with counter condition and SetVarPlugin for incrementing
-        whileConfig = new DefaultPluginConfiguration("WhilePlugin", "http://org.webharvest/schema/2.1/core", "while");
-        whileConfig.setProperty("test", "${counter} < 3");
-        whileConfig.setProperty("maxloops", "5"); // Safety limit
-        
-        setVarConfig = new DefaultPluginConfiguration("SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
-        setVarConfig.setProperty("var", "counter");
-        setVarConfig.setProperty("value", "${counter + 1}");
-        
-        // Setup initial counter variable (REAL context, not mock!)
-        context.setLocalVar("counter", new NodeVariable("0"));
-        
-        // When: Execute SetVarPlugin first to increment counter
-        setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(context);
-        
-        // Then: Should increment counter
-        assertNotNull(setVarResult);
-        assertNotNull(context.getVar("counter"), "Counter variable should be set in context");
-        
-        // When: Execute WhilePlugin
-        whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(context);
-
-        // Then: Should execute body multiple times
-        assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <def var=\"counter\" value=\"0\"/>" +
+            "  <while test=\"${counter &lt; 3}\" maxloops=\"5\">" +
+            "    <set-var name=\"counter\" value=\"${counter + 1}\"/>" +
+            "  </while>" +
+            "</config>");
+        assertEquals(result.getVar("counter").toString(), "3");
     }
 
     @Test
     public void testWhilePluginWithSetVarPluginIndex() throws Exception {
-        // Given: WhilePlugin with index variable and SetVarPlugin
-        whileConfig = new DefaultPluginConfiguration("WhilePlugin", "http://org.webharvest/schema/2.1/core", "while");
-        whileConfig.setProperty("test", "${i} < 3");
-        whileConfig.setProperty("index", "i");
-        whileConfig.setProperty("maxloops", "5"); // Safety limit
-        
-        setVarConfig = new DefaultPluginConfiguration("SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
-        setVarConfig.setProperty("var", "i");
-        setVarConfig.setProperty("value", "${i + 1}");
-        
-        // Setup initial index variable
-        when(context.getVar("i")).thenReturn(new NodeVariable("0"));
-        
-        // When: Execute SetVarPlugin first to increment index
-        setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(context);
-        
-        // Then: Should increment index
-        assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("i"), any(Variable.class));
-        
-        // When: Execute WhilePlugin
-        whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(context);
-
-        // Then: Should execute body multiple times
-        assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <def var=\"count\" value=\"0\"/>" +
+            "  <while test=\"${count &lt; 3}\" index=\"i\" maxloops=\"5\">" +
+            "    <set-var name=\"count\" value=\"${count + 1}\"/>" +
+            "  </while>" +
+            "</config>");
+        assertEquals(result.getVar("count").toString(), "3");
+        assertEquals(result.getVar("i").toString(), "3");
     }
 
     @Test
     public void testWhilePluginWithSetVarPluginMultipleVariables() throws Exception {
-        // Given: WhilePlugin with multiple variables
-        whileConfig = new DefaultPluginConfiguration("WhilePlugin", "http://org.webharvest/schema/2.1/core", "while");
-        whileConfig.setProperty("test", "${count} < 2");
-        whileConfig.setProperty("maxloops", "5"); // Safety limit
-        
-        setVarConfig = new DefaultPluginConfiguration("SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
-        setVarConfig.setProperty("var", "count");
-        setVarConfig.setProperty("value", "${count + 1}");
-        
-        // Setup initial count variable
-        when(context.getVar("count")).thenReturn(new NodeVariable("0"));
-        
-        // When: Execute SetVarPlugin first to increment count
-        setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(context);
-        
-        // Then: Should increment count
-        assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("count"), any(Variable.class));
-        
-        // When: Execute WhilePlugin
-        whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(context);
-
-        // Then: Should execute body multiple times
-        assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <def var=\"count\" value=\"0\"/>" +
+            "  <def var=\"total\" value=\"0\"/>" +
+            "  <while test=\"${count &lt; 2}\" maxloops=\"5\">" +
+            "    <set-var name=\"count\" value=\"${count + 1}\"/>" +
+            "    <set-var name=\"total\" value=\"${total + 10}\"/>" +
+            "  </while>" +
+            "</config>");
+        assertEquals(result.getVar("count").toString(), "2");
+        assertEquals(result.getVar("total").toString(), "20");
     }
 
     @Test
     public void testWhilePluginWithSetVarPluginEmptyBody() throws Exception {
-        // Given: WhilePlugin with empty body
-        whileConfig = new DefaultPluginConfiguration("WhilePlugin", "http://org.webharvest/schema/2.1/core", "while");
-        whileConfig.setProperty("test", "true");
-        whileConfig.setProperty("empty", "true");
-        whileConfig.setProperty("maxloops", "2");
-        
-        setVarConfig = new DefaultPluginConfiguration("SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
-        setVarConfig.setProperty("var", "testVar");
-        setVarConfig.setProperty("value", "testValue");
-        
-        // When: Execute SetVarPlugin first
-        setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(context);
-        
-        // Then: Should set variable
-        assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("testVar"), any(Variable.class));
-        
-        // When: Execute WhilePlugin
-        whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(context);
-
-        // Then: Should return empty result
-        assertNotNull(whileResult);
-        assertTrue(whileResult instanceof EmptyVariable);
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <while test=\"true\" index=\"i\" maxloops=\"2\"/>" +
+            "</config>");
+        assertEquals(result.getVar("i").toString(), "2");
     }
 
     @Test
     public void testWhilePluginWithSetVarPluginConditionalLogic() throws Exception {
-        // Given: WhilePlugin with conditional logic
-        whileConfig = new DefaultPluginConfiguration("WhilePlugin", "http://org.webharvest/schema/2.1/core", "while");
-        whileConfig.setProperty("test", "${flag} == true");
-        whileConfig.setProperty("maxloops", "5"); // Safety limit
-        
-        setVarConfig = new DefaultPluginConfiguration("SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
-        setVarConfig.setProperty("var", "flag");
-        setVarConfig.setProperty("value", "false");
-        
-        // Setup initial flag variable
-        when(context.getVar("flag")).thenReturn(new NodeVariable("true"));
-        
-        // When: Execute SetVarPlugin first to set flag to false
-        setVarPlugin.initialize(setVarConfig);
-        Variable setVarResult = setVarPlugin.execute(context);
-        
-        // Then: Should set flag to false
-        assertNotNull(setVarResult);
-        verify(context).setLocalVar(eq("flag"), any(Variable.class));
-        
-        // When: Execute WhilePlugin
-        whilePlugin.initialize(whileConfig);
-        Variable whileResult = whilePlugin.execute(context);
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <def var=\"flag\" value=\"true\"/>" +
+            "  <while test=\"${flag == true}\" maxloops=\"5\">" +
+            "    <set-var name=\"flag\" value=\"false\"/>" +
+            "  </while>" +
+            "</config>");
+        assertEquals(result.getVar("flag").toString(), "false");
+    }
 
-        // Then: Should execute body once then stop
-        assertNotNull(whileResult);
-        assertTrue(whileResult instanceof ListVariable);
+    @Test
+    public void testNewSetVarCreatedInsideLoopRemainsScopedToIteration() throws Exception {
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <while test=\"true\" maxloops=\"1\">" +
+            "    <set-var name=\"iterationOnly\" value=\"temporary\"/>" +
+            "  </while>" +
+            "</config>");
+        assertNull(result.getVar("iterationOnly"),
+            "A variable first created inside an iteration must not leak into the outer scope");
     }
 }
