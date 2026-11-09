@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Core unit-test contracts**: Corrected CallParam mock setup to stub the configured default-value accessor, aligned stale schema version/category assertions with current metadata, and documented/tested the 13 supported HtmlToXml conversion options.
+
 ### Added
 - **Legacy SetVar XML compatibility**: preserve WebHarvest 1.0 `<set-var name="...">` while accepting the current `var` spelling; matching aliases are accepted and conflicting values are rejected.
 - **Canvas Layout & Connection Routing Optimization** (v2.3.2)
