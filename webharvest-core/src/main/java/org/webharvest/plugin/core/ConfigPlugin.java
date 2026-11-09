@@ -220,7 +220,9 @@ import org.slf4j.LoggerFactory;
     namespace = "http://org.webharvest/schema/2.1/core",
     elementName = "config",
     description = "Config plugin that provides configuration functionality",
-    version = "2.2.0"
+    version = "2.2.0",
+    systemComponent = true,
+    paletteComponent = false
 )
 @ScrapingScope
 public class ConfigPlugin extends AbstractPlugin {
