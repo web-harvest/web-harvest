@@ -62,7 +62,7 @@ public class PluginMetadataJsonGeneratorTest {
             if (plugin == null) continue;
             
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
-            if (annotation != null && annotation.paletteComponent()) {
+            if (annotation != null && !annotation.systemComponent() && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
                 if (metadata != null) {
                     // The registry is keyed by metadata ID, not XML element name.
