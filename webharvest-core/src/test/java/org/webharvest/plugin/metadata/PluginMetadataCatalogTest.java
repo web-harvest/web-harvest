@@ -104,6 +104,36 @@ public class PluginMetadataCatalogTest {
         assertEquals(schema.get("type"), "object");
         assertTrue(schema.containsKey("properties"), "Schema must expose properties definition");
     }
+
+    @Test
+    public void ifDescriptorProjectsMasterDetailAndExecutionSemantics() {
+        PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor("if");
+        assertNotNull(descriptor, "The built-in if plugin must have a catalog descriptor");
+
+        Object rawConstraints = descriptor.getExtensions().get("masterDetailConstraints");
+        assertTrue(rawConstraints instanceof List,
+                "The if descriptor must expose its master/detail constraint");
+
+        List<?> constraints = (List<?>) rawConstraints;
+        assertEquals(constraints.size(), 1, "IfPlugin declares one else-branch constraint");
+
+        Object rawConstraint = constraints.get(0);
+        assertTrue(rawConstraint instanceof Map);
+        Map<?, ?> constraint = (Map<?, ?>) rawConstraint;
+        assertEquals(constraint.get("detailType"), "else");
+        assertEquals(constraint.get("maxOccurs"), 1);
+        assertEquals(constraint.get("minOccurs"), 0);
+        assertEquals(constraint.get("sectionTitle"), "Else Branch");
+        assertEquals(constraint.get("addLabel"), "Add Else");
+        assertFalse(constraint.containsKey("usesBody"),
+                "False/default optional constraint values must not be emitted");
+
+        Object rawExecution = descriptor.getExtensions().get("executionSemantics");
+        assertTrue(rawExecution instanceof Map,
+                "Every plugin descriptor must expose execution semantics");
+        Map<?, ?> execution = (Map<?, ?>) rawExecution;
+        assertEquals(execution.get("executionOrder"), "conditional");
+        assertEquals(execution.get("canPause"), Boolean.TRUE);
+        assertEquals(execution.get("canResume"), Boolean.TRUE);
+    }
 }
-
-
