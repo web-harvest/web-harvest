@@ -144,7 +144,7 @@ public class PluginMetadataJsonGenerator {
         Collection<Plugin> allPlugins = registry.getAllPlugins();
         
         int processedCount = 0;
-        int skippedSystemComponents = 0;
+        int skippedNonPaletteComponents = 0;
         int skippedNonVisual = 0;
         
         for (Plugin plugin : allPlugins) {
@@ -156,10 +156,11 @@ public class PluginMetadataJsonGenerator {
                 continue; // Skip non-core plugins
             }
             
-            // Skip system components
-            if (annotation.systemComponent()) {
-                skippedSystemComponents++;
-                LOGGER.debug("Skipping system component: " + plugin.getClass().getSimpleName());
+            // Only explicitly palette-eligible processors are serialized. This is
+            // intentionally independent of runtime registration and system classification.
+            if (!annotation.paletteComponent()) {
+                skippedNonPaletteComponents++;
+                LOGGER.debug("Skipping non-palette processor: " + plugin.getClass().getSimpleName());
                 continue;
             }
             
@@ -172,9 +173,8 @@ public class PluginMetadataJsonGenerator {
             
             // Check if metadata implements VisualPluginMetadata
             if (!(metadata instanceof VisualPluginMetadata)) {
-                skippedNonVisual++;
-                LOGGER.warn("Plugin " + metadata.getElementName() + " metadata does not implement VisualPluginMetadata, skipping");
-                continue;
+                throw new IllegalStateException("Palette-eligible plugin " + metadata.getElementName()
+                    + " does not provide VisualPluginMetadata");
             }
             
             VisualPluginMetadata visualMetadata = (VisualPluginMetadata) metadata;
@@ -185,8 +185,8 @@ public class PluginMetadataJsonGenerator {
             processedCount++;
         }
         
-        LOGGER.info(String.format("Processed %d plugins, skipped %d system components, skipped %d non-visual plugins",
-            processedCount, skippedSystemComponents, skippedNonVisual));
+        LOGGER.info(String.format("Processed %d palette plugins, skipped %d non-palette processors",
+            processedCount, skippedNonPaletteComponents));
         
         // Create output structure
         Map<String, Object> output = new HashMap<>();
