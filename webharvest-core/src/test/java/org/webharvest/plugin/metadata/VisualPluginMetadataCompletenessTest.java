@@ -69,14 +69,11 @@ public class VisualPluginMetadataCompletenessTest {
             if (plugin == null) continue;
             
             CorePlugin annotation = plugin.getClass().getAnnotation(CorePlugin.class);
-            if (annotation != null) {
-                if (annotation.systemComponent()) {
-                    continue;
-                }
-                
+            if (annotation != null && annotation.paletteComponent()) {
                 PluginMetadata metadata = plugin.getMetadata();
                 if (metadata != null) {
-                    userPlugins.add(metadata.getElementName());
+                    // The registry is keyed by metadata ID, not XML element name.
+                    userPlugins.add(metadata.getId());
                 }
             }
         }
