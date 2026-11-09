@@ -307,6 +307,95 @@ public class StructuralValidationTest {
         assertSame(result.getDocument(), loaded.getDocument().get());
     }
 
+    @Test
+    public void typedAttributeValuesAcceptValidFormsAndRejectInvalidForms() {
+        Stage1PluginDescriptor typed = Stage1PluginDescriptor.builder()
+                .id("typed@" + NS)
+                .namespaceUri(NS)
+                .localName("typed")
+                .className("org.example.Typed")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("integerValue", "INTEGER", false, List.of(), null, null, null),
+                        new AttributeDefinition("longValue", "LONG", false, List.of(), null, null, null),
+                        new AttributeDefinition("doubleValue", "DOUBLE", false, List.of(), null, null, null),
+                        new AttributeDefinition("booleanValue", "BOOLEAN", false, List.of(), null, null, null)))
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(typed));
+
+        StructuralValidationResult valid = model.validateStructural(load(model,
+                "<typed xmlns=\"" + NS + "\" integerValue=\" -12 \" longValue=\"9223372036854775807\""
+                        + " doubleValue=\"1.25e2\" booleanValue=\"TrUe\"/>"));
+        assertTrue(valid.isSuccessful(), diagnosticText(valid));
+
+        assertInvalidTypedValue(model, "integerValue", "1.5", "INTEGER");
+        assertInvalidTypedValue(model, "longValue", "9223372036854775808", "LONG");
+        assertInvalidTypedValue(model, "doubleValue", "not-a-number", "DOUBLE");
+        assertInvalidTypedValue(model, "booleanValue", "yes", "BOOLEAN");
+    }
+
+    @Test
+    public void numericBoundsAndPatternsReportTheirDistinctInvalidReasons() {
+        Stage1PluginDescriptor constrained = Stage1PluginDescriptor.builder()
+                .id("constrained@" + NS)
+                .namespaceUri(NS)
+                .localName("constrained")
+                .className("org.example.Constrained")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("quantity", "STRING", false, List.of(),
+                                Integer.valueOf(2), Integer.valueOf(8), null),
+                        new AttributeDefinition("code", "STRING", false, List.of(),
+                                null, null, "^[A-Z]{2}$")))
+                .build();
+        SemanticModel model = new SemanticModel(indexOf(constrained));
+
+        StructuralValidationResult boundaryValues = model.validateStructural(load(model,
+                "<constrained xmlns=\"" + NS + "\" quantity=\"2\" code=\"AZ\"/>"));
+        assertTrue(boundaryValues.isSuccessful(), diagnosticText(boundaryValues));
+
+        assertInvalidAttribute(model, "quantity", "1", "below minValue");
+        assertInvalidAttribute(model, "quantity", "9", "above maxValue");
+        assertInvalidAttribute(model, "quantity", "many", "not numeric for min/max");
+        assertInvalidAttribute(model, "code", "A1", "does not match pattern");
+
+        Stage1PluginDescriptor malformedPattern = Stage1PluginDescriptor.builder()
+                .id("malformed@" + NS)
+                .namespaceUri(NS)
+                .localName("malformed")
+                .className("org.example.Malformed")
+                .reliableSchema(true)
+                .canAppearAtRoot(true)
+                .allowsBody(false)
+                .attributeDefinitions(List.of(
+                        new AttributeDefinition("code", "STRING", false, List.of(), null, null, "[")))
+                .build();
+        SemanticModel malformedModel = new SemanticModel(indexOf(malformedPattern));
+        assertInvalidAttribute(malformedModel, "code", "anything", "declared pattern");
+    }
+
+    private static void assertInvalidTypedValue(SemanticModel model, String attribute,
+            String value, String expectedType) {
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<typed xmlns=\"" + NS + "\" " + attribute + "=\"" + value + "\"/>"));
+        assertTrue(codes(result).contains("INVALID_ATTRIBUTE_VALUE"), diagnosticText(result));
+        assertTrue(firstOf(result, "INVALID_ATTRIBUTE_VALUE").getMessage().contains("valid " + expectedType),
+                diagnosticText(result));
+    }
+
+    private static void assertInvalidAttribute(SemanticModel model, String elementName,
+            String attribute, String value, String expectedReason) {
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<" + elementName + " xmlns=\"" + NS + "\" " + attribute + "=\"" + value + "\"/>"));
+        assertTrue(codes(result).contains("INVALID_ATTRIBUTE_VALUE"), diagnosticText(result));
+        assertTrue(firstOf(result, "INVALID_ATTRIBUTE_VALUE").getMessage().contains(expectedReason),
+                diagnosticText(result));
+    }
+
     private static Stage1PluginDescriptor reliableRoot(String localName) {
         return Stage1PluginDescriptor.builder()
                 .id(localName + "@" + NS)
