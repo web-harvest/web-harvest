@@ -818,10 +818,7 @@ public class WhilePlugin extends AbstractPlugin {
         LOGGER.debug("doExecute: evaluatedCondition='" + evaluatedCondition + "'");
         LOGGER.trace("WhilePlugin.doExecute: context.getScriptingLanguage()=" + context.getScriptingLanguage());
         
-        // Check if counter is set in context
-        Variable counterVar = context.getVar("counter");
-        LOGGER.trace("WhilePlugin.doExecute: counter in context=" + counterVar);
-        
+
         // Try to evaluate as boolean using BeanShell directly
         boolean conditionResult = false;
         try {
