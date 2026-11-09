@@ -71,6 +71,15 @@ public class WhilePluginIntegrationTest extends XmlBasedIntegrationTestBase {
     }
 
     @Test
+    public void testWhileWithoutExplicitMaxloopsStopsAfterOneIteration() throws Exception {
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <while test=\"true\" index=\"i\"/>" +
+            "</config>");
+        assertEquals(result.getVar("i").toString(), "1");
+    }
+
+    @Test
     public void testWhilePluginWithSetVarPluginConditionalLogic() throws Exception {
         DynamicScopeContext result = executeXmlString(
             "<config xmlns=\"" + NS + "\">" +
