@@ -351,6 +351,9 @@ public class CommonUtil {
      * @param defaultValue value to be returned if string value is not valid double
      */
     public static double getDoubleValue(String value, double defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
         try {
             return Double.parseDouble(value);
         } catch (NumberFormatException e) {
