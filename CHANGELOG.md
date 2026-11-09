@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Legacy SetVar XML compatibility**: preserve WebHarvest 1.0 `<set-var name="...">` while accepting the current `var` spelling; matching aliases are accepted and conflicting values are rejected.
 - **Canvas Layout & Connection Routing Optimization** (v2.3.2)
   - Node collision detection and prevention during drag operations
   - Automatic node pushing to avoid overlaps
