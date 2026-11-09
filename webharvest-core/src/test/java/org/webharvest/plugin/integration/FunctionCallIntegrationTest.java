@@ -311,14 +311,14 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
 
     @Test(groups = {"integration", "function", "call", "return-normalization"})
     public void testFunctionWithMultipleXPathResultsReturnsLastNonEmptyItem() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n" +
-            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\\n" +
-            "  <function name=\"lastItem\">\\n" +
-            "    <xpath expression=\"//item/text()\">\\n" +
-            "      <template><root><item>first</item><item>last</item></root></template>\\n" +
-            "    </xpath>\\n" +
-            "  </function>\\n" +
-            "  <def var=\"result\"><call name=\"lastItem\"/></def>\\n" +
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"lastItem\">\n" +
+            "    <xpath expression=\"//item/text()\">\n" +
+            "      <template><root><item>first</item><item>last</item></root></template>\n" +
+            "    </xpath>\n" +
+            "  </function>\n" +
+            "  <def var=\"result\"><call name=\"lastItem\"/></def>\n" +
             "</config>";
 
         DynamicScopeContext ctx = executeXmlStringFromTest(xml);
@@ -331,14 +331,14 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
 
     @Test(groups = {"integration", "function", "call", "return-normalization"})
     public void testFunctionWithNoXPathMatchesReturnsEmptyVariable() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n" +
-            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\\n" +
-            "  <function name=\"noMatch\">\\n" +
-            "    <xpath expression=\"//missing/text()\">\\n" +
-            "      <template><root><item>present</item></root></template>\\n" +
-            "    </xpath>\\n" +
-            "  </function>\\n" +
-            "  <def var=\"result\"><call name=\"noMatch\"/></def>\\n" +
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"noMatch\">\n" +
+            "    <xpath expression=\"//missing/text()\">\n" +
+            "      <template><root><item>present</item></root></template>\n" +
+            "    </xpath>\n" +
+            "  </function>\n" +
+            "  <def var=\"result\"><call name=\"noMatch\"/></def>\n" +
             "</config>";
 
         DynamicScopeContext ctx = executeXmlStringFromTest(xml);
@@ -351,10 +351,10 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
 
     @Test(groups = {"integration", "function", "call", "return-normalization"})
     public void testFunctionNormalizesBracketedTemplateReturnValue() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n" +
-            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\\n" +
-            "  <function name=\"bracketed\"><template>Hello [Alice] [Bob]</template></function>\\n" +
-            "  <def var=\"result\"><call name=\"bracketed\"/></def>\\n" +
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"bracketed\"><template>Hello [Alice] [Bob]</template></function>\n" +
+            "  <def var=\"result\"><call name=\"bracketed\"/></def>\n" +
             "</config>";
 
         DynamicScopeContext ctx = executeXmlStringFromTest(xml);
@@ -367,15 +367,15 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
 
     @Test(groups = {"integration", "function", "call", "return-normalization"})
     public void testExplicitEmptyReturnOverridesEarlierBodyValue() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n" +
-            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\\n" +
-            "  <function name=\"explicitEmpty\">\\n" +
-            "    <template>body value must not be returned</template>\\n" +
-            "    <return>\\n" +
-            "      <xpath expression=\"//missing/text()\"><template><root/></template></xpath>\\n" +
-            "    </return>\\n" +
-            "  </function>\\n" +
-            "  <def var=\"result\"><call name=\"explicitEmpty\"/></def>\\n" +
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"explicitEmpty\">\n" +
+            "    <template>body value must not be returned</template>\n" +
+            "    <return>\n" +
+            "      <xpath expression=\"//missing/text()\"><template><root/></template></xpath>\n" +
+            "    </return>\n" +
+            "  </function>\n" +
+            "  <def var=\"result\"><call name=\"explicitEmpty\"/></def>\n" +
             "</config>";
 
         DynamicScopeContext ctx = executeXmlStringFromTest(xml);
