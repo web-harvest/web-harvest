@@ -100,6 +100,7 @@ jobs:
         run: |
           echo "JaCoCo report files under the Core module (configured outputDirectory: target/jacoco-report):"
           find webharvest-core/target -type f \( -path '*/jacoco-report/*' -o -name 'jacoco.exec' \) -print 2>/dev/null || true
+          test -s webharvest-core/target/jacoco.exec
           test -s webharvest-core/target/jacoco-report/jacoco.xml
           test -s webharvest-core/target/jacoco-report/index.html
       - name: Upload full verify quality diagnostics
