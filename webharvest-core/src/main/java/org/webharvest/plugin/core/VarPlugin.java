@@ -79,7 +79,8 @@ import org.webharvest.runtime.variables.Variable;
 @CorePlugin(
     elementName = "var",
     description = "Variable reference plugin",
-    version = "2.1.0"
+    version = "2.1.0",
+    paletteComponent = false
 )
 public class VarPlugin extends AbstractPlugin {
     
