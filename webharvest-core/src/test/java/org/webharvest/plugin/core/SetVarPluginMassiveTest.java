@@ -104,6 +104,18 @@ public class SetVarPluginMassiveTest {
         }
     }
 
+    @Test
+    public void testMissingNameAndVarAttributesAreRejected() throws Exception {
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "SetVarPlugin", "http://org.webharvest/schema/2.1/core", "set-var");
+        try {
+            new SetVarPlugin().validateConfiguration(configuration);
+            fail("At least one of name or var must be provided");
+        } catch (PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("Variable name is required"));
+        }
+    }
+
     // ==================== Stress Tests ====================
     
     @Test public void testMultipleInstances01() { for (int i = 0; i < 10; i++) { SetVarPlugin p = new SetVarPlugin(); assertNotNull(p.getMetadata()); } }
