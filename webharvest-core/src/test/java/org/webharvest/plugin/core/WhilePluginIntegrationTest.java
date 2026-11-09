@@ -84,7 +84,7 @@ public class WhilePluginIntegrationTest extends XmlBasedIntegrationTestBase {
         DynamicScopeContext result = executeXmlString(
             "<config xmlns=\"" + NS + "\">" +
             "  <def var=\"flag\" value=\"true\"/>" +
-            "  <while test=\"${flag == true}\" maxloops=\"5\">" +
+            "  <while test=\"${flag} == true\" maxloops=\"5\">" +
             "    <set-var name=\"flag\" value=\"false\"/>" +
             "  </while>" +
             "</config>");
