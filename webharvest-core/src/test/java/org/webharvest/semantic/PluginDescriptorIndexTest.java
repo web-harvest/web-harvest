@@ -391,4 +391,26 @@ public class PluginDescriptorIndexTest {
         assertTrue(resolution.getDetail().contains("runtime availability was not established"));
     }
 
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void legacyPluginResolutionApiRemainsSourceAndBinaryCompatible() {
+        Stage1PluginDescriptor plugin = descriptor(NS_A, "legacy", "org.example.Legacy");
+
+        PluginResolution registered = PluginResolution.resolved(plugin, true);
+        assertTrue(registered.isRuntimeExecutable());
+        assertEquals(registered.getRuntimeAvailabilityStatus(),
+                RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
+
+        PluginResolution notRegistered = PluginResolution.resolved(plugin, false);
+        assertFalse(notRegistered.isRuntimeExecutable());
+        assertEquals(notRegistered.getRuntimeAvailabilityStatus(),
+                RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY);
+
+        PluginResolution unknown = PluginResolution.resolved(plugin, RuntimeAvailabilityStatus.UNKNOWN);
+        assertFalse(unknown.isRuntimeExecutable(),
+                "Legacy boolean must not claim registration when the probe is UNKNOWN");
+        assertEquals(unknown.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN,
+                "The enum API preserves the distinction lost by the compatibility boolean");
+    }
 }
