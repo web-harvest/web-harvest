@@ -99,11 +99,13 @@ public @interface CorePlugin {
     String category() default "Core";
     
     /**
-     * Indicates whether this processor is available as a node in the Visual Designer palette.
-     * Runtime registration is independent: a processor may remain available to XML configs
-     * while being intentionally absent from the visual palette (for example, legacy aliases).
+     * Additional opt-out from the Visual Designer palette for a registered, non-system processor.
+     * A processor is effectively palette-eligible only when {@code systemComponent()} is false
+     * and {@code paletteComponent()} is true. System components are always excluded; setting this
+     * flag to false also excludes compatibility/runtime processors such as legacy aliases without
+     * removing their XML runtime registration.
      *
-     * @return true when the processor is eligible for the visual palette (default: true)
+     * @return true when this non-system processor may appear in the visual palette (default: true)
      */
     boolean paletteComponent() default true;
 
