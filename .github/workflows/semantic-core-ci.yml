@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - recovery/uncommitted-development
+      - "implementation/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
