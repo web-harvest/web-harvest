@@ -156,8 +156,8 @@ public class PluginMetadataJsonGenerator {
                 continue; // Skip non-core plugins
             }
             
-            // Only explicitly palette-eligible processors are serialized. This is
-            // intentionally independent of runtime registration and system classification.
+            // Effective eligibility requires both conditions: not a system component,
+            // and explicitly allowed in the visual palette. Runtime registration is separate.
             if (annotation.systemComponent() || !annotation.paletteComponent()) {
                 skippedNonPaletteComponents++;
                 LOGGER.debug("Skipping non-palette processor: " + plugin.getClass().getSimpleName());
