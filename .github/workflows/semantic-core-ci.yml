@@ -9,6 +9,7 @@ on:
       - "webharvest-core/**"
       - "pom.xml"
       - "checkstyle.xml"
+      - "spotbugs-include.xml"
       - ".github/workflows/semantic-core-ci.yml"
   pull_request:
     branches:
@@ -19,6 +20,7 @@ on:
       - "webharvest-core/**"
       - "pom.xml"
       - "checkstyle.xml"
+      - "spotbugs-include.xml"
       - ".github/workflows/semantic-core-ci.yml"
   workflow_dispatch:
 
