@@ -50,10 +50,14 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: Run complete Core verify lifecycle
-        # Root Checkstyle is currently misconfigured (missing checkstyle.xml).
-        # Skip only that plugin execution so the full Surefire/Failsafe suites still run and fail normally.
-        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am verify
+      - name: Run Core unit tests (Surefire)
+        # Keep this as a separate Maven invocation so a Surefire failure cannot prevent Failsafe diagnostics.
+        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test
+      - name: Run Core integration tests (Failsafe)
+        if: always()
+        # Invoke test-compile plus Failsafe goals directly. This still runs after Surefire fails,
+        # while avoiding a second Surefire execution. Checkstyle remains the separately tracked blocker.
+        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
       - name: Upload Surefire and Failsafe reports
         if: always()
         uses: actions/upload-artifact@v4
