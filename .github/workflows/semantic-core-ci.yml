@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - recovery/uncommitted-development
+      - stabilization/release-readiness-core
       - "implementation/**"
+      - "stabilization/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -14,8 +16,11 @@ on:
   pull_request:
     branches:
       - recovery/uncommitted-development
+      - 2.2.x
+      - stabilization/release-readiness-core
       - ci/core-regression-remediation
       - "implementation/**"
+      - "stabilization/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"

@@ -177,6 +177,7 @@ ENV/
 *~
 .#*
 \#*#
+.iteration-evidence/
 
 # ============================================
 # SVN (legacy - keeping for reference)

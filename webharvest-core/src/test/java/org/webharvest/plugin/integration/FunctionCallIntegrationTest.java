@@ -366,6 +366,40 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
     }
 
     @Test(groups = {"integration", "function", "call", "return-normalization"})
+    public void testFunctionNormalizesSingleItemListWrappedInNodeVariable() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"singleItem\">\n" +
+            "    <xpath expression=\"//item/text()\">\n" +
+            "      <template><![CDATA[<root><item>only</item></root>]]></template>\n" +
+            "    </xpath>\n" +
+            "  </function>\n" +
+            "  <def var=\"result\"><call name=\"singleItem\"/></def>\n" +
+            "</config>";
+
+        DynamicScopeContext ctx = executeXmlStringFromTest(xml);
+        Variable result = ctx.getVar("result");
+        assertNotNull(result);
+        assertEquals(result.toString(), "only",
+                "A single-item list return must unwrap to the item value");
+    }
+
+    @Test(groups = {"integration", "function", "call", "return-normalization"})
+    public void testFunctionNormalizesNestedBracketedListString() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
+            "  <function name=\"nestedBrackets\"><template>[[alpha]]</template></function>\n" +
+            "  <def var=\"result\"><call name=\"nestedBrackets\"/></def>\n" +
+            "</config>";
+
+        DynamicScopeContext ctx = executeXmlStringFromTest(xml);
+        Variable result = ctx.getVar("result");
+        assertNotNull(result);
+        assertEquals(result.toString().trim(), "alpha",
+                "Nested bracket wrappers in returned text must be stripped");
+    }
+
+    @Test(groups = {"integration", "function", "call", "return-normalization"})
     public void testExplicitEmptyReturnOverridesEarlierBodyValue() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<config xmlns=\"http://org.webharvest/schema/2.1/core\" charset=\"UTF-8\">\n" +
