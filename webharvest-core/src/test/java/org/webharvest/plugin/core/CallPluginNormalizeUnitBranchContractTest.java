@@ -67,4 +67,47 @@ public class CallPluginNormalizeUnitBranchContractTest {
         assertNull(normalize(null));
         assertSame(normalize(EmptyVariable.INSTANCE), EmptyVariable.INSTANCE);
     }
+
+    @Test
+    public void listVariableSkipsNullItemsWhenSelectingLastValue() throws Exception {
+        ListVariable list = new ListVariable(Arrays.asList(
+                null,
+                new NodeVariable("keep"),
+                null));
+        assertEquals(normalize(list).toString(), "keep");
+    }
+
+    @Test
+    public void emptyWrappedListBecomesEmptyVariable() throws Exception {
+        assertSame(normalize(new NodeVariable(Collections.emptyList())), EmptyVariable.INSTANCE);
+    }
+
+    @Test
+    public void nestedSingleListUnwrapsRecursively() throws Exception {
+        NodeVariable nested = new NodeVariable(Collections.singletonList(Collections.singletonList("deep")));
+        assertEquals(normalize(nested).toString(), "deep");
+    }
+
+    @Test
+    public void multiItemListTreatsNullEntriesAsEmptyFragments() throws Exception {
+        NodeVariable wrapped = new NodeVariable(Arrays.asList(null, "alpha", null));
+        assertEquals(normalize(wrapped).toString().trim(), "alpha");
+    }
+
+    @Test
+    public void plainNodeWithoutBracketsPassesThroughUnchanged() throws Exception {
+        NodeVariable plain = new NodeVariable("plain-text");
+        assertSame(normalize(plain), plain);
+    }
+
+    @Test
+    public void capitalizeHandlesNullEmptyAndSingleCharacterKeys() throws Exception {
+        Method capitalize = CallPlugin.class.getDeclaredMethod("capitalize", String.class);
+        capitalize.setAccessible(true);
+        CallPlugin plugin = new CallPlugin();
+        assertNull(capitalize.invoke(plugin, (Object) null));
+        assertEquals(capitalize.invoke(plugin, ""), "");
+        assertEquals(capitalize.invoke(plugin, "a"), "A");
+        assertEquals(capitalize.invoke(plugin, "name"), "Name");
+    }
 }
