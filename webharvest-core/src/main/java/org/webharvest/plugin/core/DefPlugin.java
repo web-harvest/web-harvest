@@ -46,7 +46,12 @@ import org.webharvest.plugin.AccessibilityMetadata;
 import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
+import org.webharvest.plugin.annotations.ExpressionCapable;
+import org.webharvest.plugin.annotations.UiField;
+import org.webharvest.plugin.annotations.UiFieldKind;
+import org.webharvest.plugin.annotations.UiTool;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.metadata.CatalogUiToolMarkers;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -237,6 +242,39 @@ import org.slf4j.LoggerFactory;
     description = "Defines variables with their values",
     version = "2.1.0",
     category = "Variables"
+)
+@UiField(
+    attribute = "var",
+    kind = UiFieldKind.TEXT,
+    group = "Variable",
+    order = 1,
+    helperText = "Name of the variable to define",
+    placeholder = "result",
+    localizationKey = "plugin.def.var",
+    helperTextKey = "plugin.def.var.help",
+    placeholderKey = "plugin.def.var.placeholder",
+    minLength = 1,
+    maxLength = 256
+)
+@UiField(
+    attribute = "value",
+    kind = UiFieldKind.EXPRESSION,
+    group = "Variable",
+    order = 2,
+    helperText = "Optional inline value; supports template expressions",
+    placeholder = "${...}",
+    format = "template",
+    expressionCapable = true,
+    advanced = false
+)
+@ExpressionCapable(attribute = "value", context = "template")
+@UiTool(
+    value = CatalogUiToolMarkers.ExpressionBuilder.class,
+    id = "expression-builder",
+    label = "Expression Builder",
+    description = "Build template expressions for variable values",
+    icon = "fa-code",
+    placement = "panel"
 )
 public class DefPlugin extends AbstractPlugin {
 

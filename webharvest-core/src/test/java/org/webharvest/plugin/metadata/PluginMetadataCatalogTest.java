@@ -125,8 +125,11 @@ public class PluginMetadataCatalogTest {
         assertEquals(constraint.get("minOccurs"), 0);
         assertEquals(constraint.get("sectionTitle"), "Else Branch");
         assertEquals(constraint.get("addLabel"), "Add Else");
-        assertFalse(constraint.containsKey("usesBody"),
-                "False/default optional constraint values must not be emitted");
+        assertEquals(constraint.get("emptyLabel"), "No else branch");
+        assertEquals(constraint.get("usesBody"), Boolean.TRUE,
+                "True optional constraint values must be projected");
+        assertFalse(constraint.containsKey("primaryAttribute"),
+                "Blank optional constraint attributes must not be emitted");
 
         Object rawExecution = descriptor.getExtensions().get("executionSemantics");
         assertTrue(rawExecution instanceof Map,
@@ -135,6 +138,15 @@ public class PluginMetadataCatalogTest {
         assertEquals(execution.get("executionOrder"), "conditional");
         assertEquals(execution.get("canPause"), Boolean.TRUE);
         assertEquals(execution.get("canResume"), Boolean.TRUE);
+
+        Map<?, ?> ui = (Map<?, ?>) descriptor.getExtensions().get("ui");
+        assertNotNull(ui, "If plugin must expose UI metadata projections");
+        Map<?, ?> fields = (Map<?, ?>) ui.get("fields");
+        assertNotNull(fields);
+        Map<?, ?> condition = (Map<?, ?>) fields.get("condition");
+        assertEquals(condition.get("fieldKind"), "EXPRESSION");
+        assertEquals(condition.get("expressionCapable"), Boolean.TRUE);
+        assertEquals(condition.get("format"), "template");
     }
 
     @Test
@@ -172,6 +184,83 @@ public class PluginMetadataCatalogTest {
         assertEquals(schema.get("allowsBody"), Boolean.FALSE);
         assertEquals(schema.get("version"), "2.1.0-SNAPSHOT");
         assertEquals(descriptor.getUiHints().getIcon(), "fa-globe");
+
+        Map<?, ?> urlUi = (Map<?, ?>) url.get("ui");
+        assertNotNull(urlUi, "HTTP url attribute must project UiField metadata");
+        assertEquals(urlUi.get("fieldKind"), "URL");
+        assertEquals(urlUi.get("expressionCapable"), Boolean.TRUE);
+        assertEquals(urlUi.get("minLength"), 1);
+        assertEquals(urlUi.get("maxLength"), 4096);
+        assertEquals(urlUi.get("expressionContext"), "template");
+
+        Map<?, ?> bodyUi = (Map<?, ?>) body.get("ui");
+        assertEquals(bodyUi.get("fieldKind"), "TEXTAREA");
+        assertEquals(bodyUi.get("advanced"), Boolean.TRUE);
+
+        Map<?, ?> ui = (Map<?, ?>) descriptor.getExtensions().get("ui");
+        assertNotNull(ui);
+        List<?> tools = (List<?>) ui.get("tools");
+        assertNotNull(tools);
+        assertEquals(tools.size(), 1);
+        Map<?, ?> tool = (Map<?, ?>) tools.get(0);
+        assertEquals(tool.get("id"), "http-inspector");
+        assertEquals(tool.get("label"), "HTTP Inspector");
+        assertEquals(tool.get("icon"), "fa-search");
+        assertEquals(tool.get("placement"), "panel");
+        assertEquals(tool.get("className"),
+                "org.webharvest.plugin.metadata.CatalogUiToolMarkers$HttpInspector");
+    }
+
+    @Test
+    public void defDescriptorProjectsUiFieldExpressionAndToolMetadata() {
+        PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor("def");
+        assertNotNull(descriptor);
+
+        Map<?, ?> ui = (Map<?, ?>) descriptor.getExtensions().get("ui");
+        assertNotNull(ui, "def must expose UI metadata");
+        assertEquals(ui.get("version"), "1.0");
+
+        Map<?, ?> fields = (Map<?, ?>) ui.get("fields");
+        assertNotNull(fields);
+        Map<?, ?> varField = (Map<?, ?>) fields.get("var");
+        assertEquals(varField.get("fieldKind"), "TEXT");
+        assertEquals(varField.get("group"), "Variable");
+        assertEquals(varField.get("order"), 1);
+        assertEquals(varField.get("helperText"), "Name of the variable to define");
+        assertEquals(varField.get("localizationKey"), "plugin.def.var");
+        assertEquals(varField.get("helperTextKey"), "plugin.def.var.help");
+        assertEquals(varField.get("placeholderKey"), "plugin.def.var.placeholder");
+        assertEquals(varField.get("minLength"), 1);
+        assertEquals(varField.get("maxLength"), 256);
+        assertFalse(varField.containsKey("expressionCapable"));
+
+        Map<?, ?> valueField = (Map<?, ?>) fields.get("value");
+        assertEquals(valueField.get("fieldKind"), "EXPRESSION");
+        assertEquals(valueField.get("expressionCapable"), Boolean.TRUE);
+        assertEquals(valueField.get("format"), "template");
+        assertEquals(valueField.get("expressionContext"), "template");
+
+        List<?> tools = (List<?>) ui.get("tools");
+        assertEquals(tools.size(), 1);
+        Map<?, ?> tool = (Map<?, ?>) tools.get(0);
+        assertEquals(tool.get("id"), "expression-builder");
+        assertEquals(tool.get("label"), "Expression Builder");
+        assertEquals(tool.get("className"),
+                "org.webharvest.plugin.metadata.CatalogUiToolMarkers$ExpressionBuilder");
+    }
+
+    @Test
+    public void tryDescriptorProjectsEnrichedMasterDetailConstraint() {
+        PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor("try");
+        assertNotNull(descriptor);
+        List<?> constraints = (List<?>) descriptor.getExtensions().get("masterDetailConstraints");
+        assertEquals(constraints.size(), 1);
+        Map<?, ?> constraint = (Map<?, ?>) constraints.get(0);
+        assertEquals(constraint.get("detailType"), "catch");
+        assertEquals(constraint.get("emptyLabel"), "No catch block");
+        assertEquals(constraint.get("primaryAttribute"), "id");
+        assertEquals(constraint.get("secondaryAttribute"), "var");
+        assertEquals(constraint.get("usesBody"), Boolean.TRUE);
     }
 
     @Test

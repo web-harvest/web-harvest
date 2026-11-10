@@ -225,8 +225,21 @@ import org.slf4j.LoggerFactory;
     maxOccurs = 1,
     minOccurs = 0,
     sectionTitle = "Else Branch",
-    addLabel = "Add Else"
+    addLabel = "Add Else",
+    emptyLabel = "No else branch",
+    usesBody = true
 )
+@org.webharvest.plugin.annotations.UiField(
+    attribute = "condition",
+    kind = org.webharvest.plugin.annotations.UiFieldKind.EXPRESSION,
+    group = "Condition",
+    order = 1,
+    helperText = "Boolean expression controlling the if branch",
+    placeholder = "${flag} == true",
+    expressionCapable = true,
+    format = "template"
+)
+@org.webharvest.plugin.annotations.ExpressionCapable(attribute = "condition", context = "template")
 public class IfPlugin extends AbstractPlugin {
     
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.IfPlugin");

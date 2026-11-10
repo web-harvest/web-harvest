@@ -195,6 +195,42 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
     version = "2.2.0",
     category = "Network"
 )
+@org.webharvest.plugin.annotations.UiField(
+    attribute = "url",
+    kind = org.webharvest.plugin.annotations.UiFieldKind.URL,
+    group = "Request",
+    order = 1,
+    helperText = "Absolute or template-capable HTTP URL",
+    placeholder = "https://example.com",
+    localizationKey = "plugin.http.url",
+    expressionCapable = true,
+    minLength = 1,
+    maxLength = 4096
+)
+@org.webharvest.plugin.annotations.UiField(
+    attribute = "method",
+    kind = org.webharvest.plugin.annotations.UiFieldKind.SELECT,
+    group = "Request",
+    order = 2,
+    helperText = "HTTP method"
+)
+@org.webharvest.plugin.annotations.UiField(
+    attribute = "body",
+    kind = org.webharvest.plugin.annotations.UiFieldKind.TEXTAREA,
+    group = "Request",
+    order = 3,
+    helperText = "Optional request body for methods that send content",
+    advanced = true
+)
+@org.webharvest.plugin.annotations.ExpressionCapable(attribute = "url", context = "template")
+@org.webharvest.plugin.annotations.UiTool(
+    value = org.webharvest.plugin.metadata.CatalogUiToolMarkers.HttpInspector.class,
+    id = "http-inspector",
+    label = "HTTP Inspector",
+    description = "Inspect request and response metadata",
+    icon = "fa-search",
+    placement = "panel"
+)
 public class HttpPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.HttpPlugin");

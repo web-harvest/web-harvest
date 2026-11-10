@@ -166,7 +166,11 @@ import java.util.List;
     maxOccurs = 1,
     minOccurs = 0,
     sectionTitle = "Catch Block",
-    addLabel = "Add Catch"
+    addLabel = "Add Catch",
+    emptyLabel = "No catch block",
+    primaryAttribute = "id",
+    secondaryAttribute = "var",
+    usesBody = true
 )
 public class TryPlugin extends AbstractPlugin {
 
