@@ -105,18 +105,24 @@ public class ElementInfo {
                     nsAttsSet.add(WHConstants.XMLNS_PARAM);
                 } else if ("v:*".equals(token)) {
                     nsAttsSet.add(WHConstants.XMLNS_VAR);
-                } else if (token.startsWith("!")) {
-                    token = token.substring(1);
-                    this.requiredAttsSet.add(token);
-                }
-                // check if attribute name is followed by possible values in brackets: attname(value1;value2;...;valueN)
-                int openBracketIndex = token.indexOf('(');
-                if (openBracketIndex > 0) {
-                    int closedBracketIndex = token.indexOf(')', openBracketIndex + 1);
-                    if (closedBracketIndex > openBracketIndex) {
-                        String[] attValuesArray = CommonUtil.tokenize(token.substring(openBracketIndex + 1, closedBracketIndex), ";");
-                        token = token.substring(0, openBracketIndex);
-                        attValues.put(token, attValuesArray);
+                } else {
+                    boolean required = false;
+                    if (token.startsWith("!")) {
+                        token = token.substring(1);
+                        required = true;
+                    }
+                    // check if attribute name is followed by possible values in brackets: attname(value1;value2;...;valueN)
+                    int openBracketIndex = token.indexOf('(');
+                    if (openBracketIndex > 0) {
+                        int closedBracketIndex = token.indexOf(')', openBracketIndex + 1);
+                        if (closedBracketIndex > openBracketIndex) {
+                            String[] attValuesArray = CommonUtil.tokenize(token.substring(openBracketIndex + 1, closedBracketIndex), ";");
+                            token = token.substring(0, openBracketIndex);
+                            attValues.put(token, attValuesArray);
+                        }
+                    }
+                    if (required) {
+                        this.requiredAttsSet.add(token);
                     }
                 }
                 this.attsSet.add(token);
