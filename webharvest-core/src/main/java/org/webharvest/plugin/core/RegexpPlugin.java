@@ -37,8 +37,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.WHConstants;
-// REMOVED in v2.2.x
-import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
@@ -475,39 +473,6 @@ public class RegexpPlugin extends AbstractPlugin {
     }
 
     /**
-     * Process XML template by executing child elements and concatenating results.
-     */
-    private String processXmlTemplate(XmlNode templateNode, DynamicScopeContext context) {
-        StringBuilder result = new StringBuilder();
-        
-        List<java.io.Serializable> elementList = templateNode.getElementList();
-        if (elementList != null) {
-            for (java.io.Serializable element : elementList) {
-                if (element instanceof String) {
-                    // Add text content
-                    result.append((String) element);
-                } else if (element instanceof XmlNode) {
-                    XmlNode childNode = (XmlNode) element;
-                    if ("var".equals(childNode.getName())) {
-                        // Execute var element as a plugin
-                        String varName = childNode.getAttribute("name");
-                        if (varName != null) {
-                            Variable varValue = context.getVar(varName);
-                            String replacement = (varValue != null) ? varValue.toString() : "";
-                            result.append(replacement);
-                        }
-                    } else {
-                        // Add other elements as text
-                        result.append(childNode.getText());
-                    }
-                }
-            }
-        }
-        
-        return result.toString();
-    }
-
-    /**
      * Simple template processing for var elements using regex.
      */
     private String processSimpleTemplate(String template, DynamicScopeContext context) {
@@ -527,29 +492,6 @@ public class RegexpPlugin extends AbstractPlugin {
         
         return result.toString();
     }
-
-    /**
-     * Helper method to find a child element by name.
-     */
-    private XmlNode findChildElement(XmlNode parentNode, String elementName) {
-        if (parentNode == null) {
-            return null;
-        }
-
-        List<java.io.Serializable> elementList = parentNode.getElementList();
-        if (elementList != null) {
-            for (java.io.Serializable element : elementList) {
-                if (element instanceof XmlNode) {
-                    XmlNode childNode = (XmlNode) element;
-                    if (elementName.equals(childNode.getName())) {
-                        return childNode;
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
 
     /**
      * Metadata for RegexpPlugin.
@@ -777,28 +719,6 @@ public class RegexpPlugin extends AbstractPlugin {
     @Override
     protected void doValidateConfiguration(PluginConfiguration configuration) {
         // No specific validation needed for regexp plugin placeholder
-    }
-
-    /**
-     * Helper method to get text content from a child element by name.
-     */
-    protected String getChildText(XmlNode parentNode, String elementName) {
-        if (parentNode == null) {
-            return "";
-        }
-
-        List<java.io.Serializable> elementList = parentNode.getElementList();
-        if (elementList != null) {
-            for (java.io.Serializable element : elementList) {
-                if (element instanceof XmlNode) {
-                    XmlNode childNode = (XmlNode) element;
-                    if (elementName.equals(childNode.getName())) {
-                        return childNode.getText();
-                    }
-                }
-            }
-        }
-        return "";
     }
 
     private String extractChildText(PluginConfiguration child, DynamicScopeContext context) throws InterruptedException {

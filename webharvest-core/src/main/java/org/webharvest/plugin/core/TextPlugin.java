@@ -541,12 +541,4 @@ public class TextPlugin extends AbstractPlugin {
         }
     }
 
-    /**
-     * Execute child elements directly in the same context (not using BodyProcessor)
-     * to avoid context isolation issues and return actual results instead of raw XML.
-     */
-    private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        // v2.2.x ULTRA-LEAN: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
-        return super.executeBody(context);
-    }
 }

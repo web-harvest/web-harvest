@@ -1065,15 +1065,6 @@ public class FilePlugin extends AbstractPlugin {
         return new FilePluginMetadata().getConfigurationSchema();
     }
 
-    /**
-     * Execute child elements directly in the same context (v2.2.x ULTRA-LEAN)
-     * Uses new architecture: PluginBodyExecutor
-     */
-    private Variable executeChildElementsDirectly(DynamicScopeContext context) throws InterruptedException {
-        // v2.2.x: Use AbstractPlugin.executeBody() which uses PluginBodyExecutor
-        return super.executeBody(context);
-    }
-
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.info("FilePlugin.doExecute: START");
         PluginConfiguration config = getConfiguration();
