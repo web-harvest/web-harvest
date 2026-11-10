@@ -86,6 +86,9 @@ public abstract class AbstractPlugin implements Plugin {
         try {
             doInitialize(configuration);
             this.initialized = true;
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException e) {
+            // Configuration errors must remain distinguishable so callers can fail hard.
+            throw e;
         } catch (Exception e) {
             throw new PluginException("Failed to initialize plugin: " + e.getMessage(), e);
         }

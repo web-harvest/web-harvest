@@ -89,9 +89,16 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 if (childResult != null && !(childResult instanceof EmptyVariable)) {
                     results.add(childResult);
                 }
+            } catch (IllegalArgumentException e) {
+                if (e.getCause() instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
+                    // Invalid configuration is a hard failure.
+                    throw e;
+                }
+                LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
             } catch (Exception e) {
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
-                // Continue with other children
+                // Preserve historical body behavior for non-validation runtime failures:
+                // continue with remaining siblings.
             }
         }
         
@@ -170,9 +177,16 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         } catch (InstantiationException | IllegalAccessException e) {
             LOGGER.error("Failed to create plugin instance: {}", pluginClass.getName(), e);
             return EmptyVariable.INSTANCE;
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException e) {
+            LOGGER.error("Invalid configuration for plugin {}: {}", childConfig.getElementName(), e.getMessage());
+            throw new IllegalArgumentException(
+                    "Invalid configuration for plugin '" + childConfig.getElementName() + "': " + e.getMessage(),
+                    e);
         } catch (org.webharvest.plugin.exceptions.PluginException e) {
             LOGGER.error("Failed to initialize plugin: {}", childConfig.getElementName(), e);
             return EmptyVariable.INSTANCE;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Failed to execute plugin: {}", childConfig.getElementName(), e);
             throw e;

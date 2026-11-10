@@ -90,6 +90,61 @@ public class SetVarPluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertNotNull(context.getVar("var2"));
         assertNotNull(context.getVar("var3"));
     }
+
+    @Test
+    public void testSetVarBodyArithmeticAddition() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <def var=\"counter\" value=\"3\"/>\n" +
+            "    <set-var var=\"counter\">${counter + 2}</set-var>\n" +
+            "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable counter = context.getVar("counter");
+        assertNotNull(counter);
+        assertEquals(counter.toString().trim(), "5",
+                "Body arithmetic ${counter + 2} must update the existing variable");
+    }
+
+    @Test
+    public void testSetVarBodyArithmeticSubtractionAndNonNumericFallback() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <def var=\"counter\" value=\"abc\"/>\n" +
+            "    <set-var var=\"counter\">${counter - 1}</set-var>\n" +
+            "    <def var=\"offset\" value=\"7\"/>\n" +
+            "    <set-var var=\"offset\">${offset - xyz}</set-var>\n" +
+            "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        assertEquals(context.getVar("counter").toString().trim(), "-1",
+                "Non-numeric left operand falls back to 0, so ${counter - 1} becomes -1");
+        assertEquals(context.getVar("offset").toString().trim(), "7",
+                "Non-numeric right operand falls back to 0, so ${offset - xyz} remains 7");
+    }
+
+    @Test
+    public void testSetVarRejectsConflictingNameAndVarAttributes() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n" +
+            "    <set-var name=\"legacy\" var=\"modern\" value=\"x\"/>\n" +
+            "</config>";
+
+        try {
+            executeXmlString(xml);
+            fail("Conflicting name/var attributes must fail validation or execution");
+        } catch (Exception expected) {
+            StringBuilder messages = new StringBuilder();
+            for (Throwable cursor = expected; cursor != null; cursor = cursor.getCause()) {
+                if (cursor.getMessage() != null) {
+                    messages.append(' ').append(cursor.getMessage());
+                }
+            }
+            String combined = messages.toString().toLowerCase();
+            assertTrue(combined.contains("name") && combined.contains("var") && combined.contains("conflict"),
+                    "Failure must mention the conflicting name/var attributes: " + messages);
+        }
+    }
     
     // v2.2.x: executeXmlString() moved to XmlBasedIntegrationTestBase
 }
