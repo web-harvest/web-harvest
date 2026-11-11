@@ -143,8 +143,8 @@ public class XSDMetadataParserResidualBranchContractTest {
             Files.write(secret, marker.getBytes(StandardCharsets.UTF_8));
             String xsd = ""
                     + "<!DOCTYPE xs:schema [<!ENTITY xxe SYSTEM \"" + secret.toUri() + "\">]>"
-                    + "<xs:schema xmlns:xs=\\"http://www.w3.org/2001/XMLSchema\\">"
-                    + "  <xs:element name=\\"unsafe\\">"
+                    + "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
+                    + "  <xs:element name=\"unsafe\">"
                     + "    <xs:annotation><xs:documentation>&xxe;</xs:documentation></xs:annotation>"
                     + "  </xs:element>"
                     + "</xs:schema>";
