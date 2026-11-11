@@ -182,12 +182,12 @@ public class XSDMetadataParserResidualBranchContractTest {
     @Test
     public void groupWithoutReferenceAllowsBodyButAddsNoChildName() {
         String xsd = ""
-                + "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>\\n"
-                + "<xs:schema xmlns:xs=\\"http://www.w3.org/2001/XMLSchema\\">\\n"
-                + "  <xs:element name=\\"holder\\">\\n"
-                + "    <xs:complexType><xs:group/></xs:complexType>\\n"
-                + "  </xs:element>\\n"
-                + "</xs:schema>\\n";
+                + "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                + "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">\n"
+                + "  <xs:element name=\"holder\">\n"
+                + "    <xs:complexType><xs:group/></xs:complexType>\n"
+                + "  </xs:element>\n"
+                + "</xs:schema>\n";
         Map<String, XSDElementMetadata> elements = XSDMetadataParser.parseXSD(
                 new ByteArrayInputStream(xsd.getBytes(StandardCharsets.UTF_8)));
         XSDElementMetadata holder = elements.get("holder");
@@ -195,5 +195,4 @@ public class XSDMetadataParserResidualBranchContractTest {
         assertTrue(holder.allowsBody());
         assertTrue(holder.getChildElements().isEmpty());
     }
-
 }
