@@ -4,6 +4,8 @@ import static org.testng.Assert.*;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.testng.annotations.Test;
@@ -130,6 +132,33 @@ public class XSDMetadataParserResidualBranchContractTest {
         assertEquals(metadata.getChildElements(), List.of());
         assertTrue(metadata.allowsBody());
         assertFalse(metadata.isMixedContent());
+    }
+
+
+    @Test
+    public void externalEntitiesAreNeverExpandedFromLocalFiles() throws Exception {
+        Path secret = Files.createTempFile("webharvest-xsd-xxe-", ".txt");
+        String marker = "WEBHARVEST_XXE_MUST_NOT_BE_EXPOSED";
+        try {
+            Files.write(secret, marker.getBytes(StandardCharsets.UTF_8));
+            String xsd = ""
+                    + "<!DOCTYPE xs:schema [<!ENTITY xxe SYSTEM \"" + secret.toUri() + "\">]>"
+                    + "<xs:schema xmlns:xs=\\"http://www.w3.org/2001/XMLSchema\\">"
+                    + "  <xs:element name=\\"unsafe\\">"
+                    + "    <xs:annotation><xs:documentation>&xxe;</xs:documentation></xs:annotation>"
+                    + "  </xs:element>"
+                    + "</xs:schema>";
+
+            Map<String, XSDElementMetadata> elements = XSDMetadataParser.parseXSD(
+                    new ByteArrayInputStream(xsd.getBytes(StandardCharsets.UTF_8)));
+
+            assertNotEquals(
+                    elements.containsKey("unsafe") ? elements.get("unsafe").getDocumentation() : null,
+                    marker,
+                    "XSD parsing must not disclose content from an external entity");
+        } finally {
+            Files.deleteIfExists(secret);
+        }
     }
 
     @Test
