@@ -152,9 +152,9 @@ public class XSDMetadataParserResidualBranchContractTest {
             Map<String, XSDElementMetadata> elements = XSDMetadataParser.parseXSD(
                     new ByteArrayInputStream(xsd.getBytes(StandardCharsets.UTF_8)));
 
-            assertNotEquals(
-                    elements.containsKey("unsafe") ? elements.get("unsafe").getDocumentation() : null,
-                    marker,
+            String documentation = elements.containsKey("unsafe")
+                    ? elements.get("unsafe").getDocumentation() : null;
+            assertFalse(marker.equals(documentation),
                     "XSD parsing must not disclose content from an external entity");
         } finally {
             Files.deleteIfExists(secret);
