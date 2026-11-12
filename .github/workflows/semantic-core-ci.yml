@@ -1,12 +1,11 @@
 name: Semantic Core Contract CI
 
 on:
+  # Implementation/stabilization branches are validated through their PRs.
+  # Keep direct push validation only for the recovery integration baseline.
   push:
     branches:
       - recovery/uncommitted-development
-      - stabilization/release-readiness-core
-      - "implementation/**"
-      - "stabilization/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -28,6 +27,12 @@ on:
       - "spotbugs-include.xml"
       - ".github/workflows/semantic-core-ci.yml"
   workflow_dispatch:
+
+# A push and its PR event share the same group for same-repository branches.
+# Cancel stale runs when a newer commit arrives; never cancel a different branch's run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
