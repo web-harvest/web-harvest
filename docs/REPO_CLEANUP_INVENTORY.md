@@ -97,3 +97,14 @@ The following dispositions were checked against the exact file contents at the c
 - Local Surefire/Failsafe and static-analysis results are recorded above as local evidence only.
 - Full Maven `verify` remains **FAIL** solely because branch coverage is 78.84% against the unchanged 80% threshold. This is intentionally deferred; no threshold was changed.
 - GitHub Actions has no successful runner evidence for this branch while account billing/spending restrictions remain. Public-repository standard runner use is free under GitHub's current billing policy, but account-level eligibility must be tested after visibility is changed.
+
+
+## Project decision — defer 80% JaCoCo branch target (2026-11-13)
+
+The repository-owner priority is to complete public-readiness cleanup and enable standard GitHub Actions, not to complete Gate C branch coverage first.
+
+- Keep the configured JaCoCo threshold at 80%; do not weaken it.
+- The observed 78.84% branch result remains a known failing quality gate on the tested cleanup commit.
+- No further Gate C work is required as a prerequisite for the current public-readiness cleanup.
+- PR #76 / issue #75 are deferred; do not merge their coverage-only changes merely to pursue the threshold. Revisit after public CI is available or when coverage work is reprioritized.
+- Surefire/Failsafe local results remain useful evidence, but are not a substitute for exact-head GitHub Actions runs.
