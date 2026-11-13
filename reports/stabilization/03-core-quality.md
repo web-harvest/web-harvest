@@ -1,59 +1,60 @@
 # Phase 3 continued — Core quality (JaCoCo / Checkstyle / SpotBugs)
 
-**SHA under test:** working tree on `stabilization/comprehensive-cleanup-20261113` (pre-push; see closeout for final commit SHAs)  
+**SHA under test:** working tree on `stabilization/comprehensive-cleanup-20261113` after Gate C residual batch 2 (pre-commit; see closeout for final commit SHAs)  
 **Command:** `mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify`  
-**Log summary:** `evidence/08-verify-final.summary.txt`  
-**Exit code:** **1** (JaCoCo branch gate only)
+**Log:** `evidence/12-verify-after-batch2.log`  
+**Summary:** `evidence/12-verify-after-batch2.summary.txt`  
+**JaCoCo XML parse:** `evidence/13-jacoco-final.summary.txt`  
+**Exit code:** **0** (`BUILD SUCCESS`)
 
 ## Executed suite counts (final verify)
 
 | Suite | Tests | Failures | Errors | Skipped |
 | --- | ---: | ---: | ---: | ---: |
-| Surefire | **3523** | 0 | 0 | 0 |
+| Surefire | **3552** | 0 | 0 | 0 |
 | Failsafe | **255** | 0 | 0 | 0 |
 | Checkstyle | **0** violations | | | |
-| SpotBugs | Analysis completed (`failOnError=false` unchanged) | | | |
+| SpotBugs | **0** `BugInstance` findings (`spotbugsXml.xml`) | | | |
 
 ## JaCoCo (from `webharvest-core/target/jacoco-report/jacoco.xml`)
 
 | Counter | Covered | Missed | Total | Ratio | Gate 80% |
 | --- | ---: | ---: | ---: | ---: | --- |
-| INSTRUCTION | 47087 | 4753 | 51840 | **90.83%** | met |
-| **BRANCH** | **3717** | **980** | **4697** | **79.14%** | **NOT met** |
-| LINE | 10567 | 1168 | 11735 | 90.05% | n/a |
-| METHOD | 4165 | 242 | 4407 | 94.51% | n/a |
+| INSTRUCTION | 47327 | 4513 | 51840 | **91.29%** | met |
+| **BRANCH** | **3758** | **939** | **4697** | **80.01%** | **met** |
+| LINE | 10615 | 1120 | 11735 | 90.46% | n/a |
+| METHOD | 4170 | 237 | 4407 | 94.62% | n/a |
 | CLASS | 461 | 11 | 472 | 97.67% | n/a |
 
-Branches still required for 80% (fixed total): **~41**.
+Branches required for 80% at fixed total 4697: **3758**. Measured covered: **3758** (ratio **0.800085**).
 
-### Campaign delta
+### Campaign delta (this continuation)
 
 | Point | Branch covered | Ratio |
 | --- | ---: | ---: |
-| Tip baseline this session (`04-verify`) | 3701 | 78.79% |
-| After residual test batches (`08-verify-final`) | 3717 | 79.14% |
-| Measured gain | **+16 branches** | **+0.35 pp** |
+| Prior campaign tip (`08-verify-final`) | 3717 | 79.14% |
+| After Gate C residual batch 2 (`12-verify`) | 3758 | 80.01% |
+| Measured gain | **+41 branches** | **+0.87 pp** |
 
-Threshold **not lowered**.
+Threshold **not lowered**. Unqualified Core `verify` now passes locally.
 
-## Test batches added (behavior-asserting)
+## Test batches added this session (behavior-asserting)
 
-1. `StabilizationResidualBranchContractTest` — Script/Include/GetVar/XML/Call/While/JsonGenerator path validation and return contracts  
-2. `StabilizationCallWhileResidualBranchContractTest` — Call blank-name validation, Include stub execute, While false condition, multi-param call  
-3. `CommonUtilIoAndUrlResidualBranchContractTest` — file IO + query `fullUrl` + `createVariable` edges  
+1. `GateCStabilizationResidualBatch2ContractTest` — If condition matrix (`==` / `!=` / literals), JsonToXml array/scalar/invalid JSON, XPath CSS/empty expression routing, While `empty` + literal-true safety break, Template language conversion, Call unknown-function fallback, SetVar empty/value expression  
+2. `DefaultPluginFactoryMetadataCtorBranchContractTest` — PluginMetadata-only constructor instantiation  
+3. `DefaultPluginRegistryUnregisterResidualBranchContractTest` — null/blank/missing unregister + sparse metadata cleanup  
+4. `Stage1AndEqualsResidualBranchContractTest` — OptionalPluginProfile/LinkedService/KeyboardShortcut equals + Stage1 schema projection  
 
-## Largest remaining branch gaps (class)
+Focused pre-verify run: **29 tests / 0 failures** (`evidence/11-batch2-focused-ok.log`).
 
-| Class | Missed branches | Approx % |
-| --- | ---: | ---: |
-| `PluginMetadataCatalog` | 55 | 82.8% |
-| `CallPlugin` | 36 | 74.6% |
-| `CommonUtil` | 20 | 92.3% |
-| `HttpPlugin` | 20 | 83.1% |
-| `SemanticXmlAnalyzer$Handler` | 20 | 71.4% |
-| `PluginMetadataJsonGenerator` | 17 | 67.3% |
-| `WhilePlugin` | 16 | 72.4% |
+## Largest remaining branch gaps (class) after gate pass
 
-### Why 80% remains unmet
+| Class | Missed branches |
+| --- | ---: |
+| `PluginMetadataCatalog` | 55 |
+| `CallPlugin` | 36 |
+| `CommonUtil` | 20 |
+| `HttpPlugin` | 20 |
+| `SemanticXmlAnalyzer$Handler` | 20 |
 
-Remaining gaps concentrate in deep metadata catalog schema projection, CallPlugin execution lambda edge combinations (return-flag / explicit-return fallbacks), HTTP networking branches, and semantic XML handler edges. Closing ~41 branches requires another focused Gate C iteration under Issue #75 — not achievable honestly by assertion-free line poking.
+These residuals remain meaningful follow-up under Issue #75 but no longer block the 80% Maven gate.

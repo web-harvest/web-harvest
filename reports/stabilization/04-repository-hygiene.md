@@ -9,6 +9,7 @@
 | Remove accidental `CallPluginTest.java.backup` | `git rm` |
 | CI: concurrency cancellation; push/PR triggers for `quality/**` and `maintenance/**` | `.github/workflows/semantic-core-ci.yml` |
 | Add residual meaningful Core contract tests | `StabilizationResidualBranchContractTest` |
+| Gate C residual batch 2 (session continuation) | `GateCStabilizationResidualBatch2ContractTest`, factory/registry/Stage1 equals contracts |
 | Stabilization reports under `reports/stabilization/` | this tree |
 
 ## Explicitly preserved (do not delete without Issue #79)

@@ -1,0 +1,7 @@
+69:[INFO] You have 0 Checkstyle violations.
+126481:[INFO] Tests run: 3552, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 46.948 s - in TestSuite
+126485:[INFO] Tests run: 3552, Failures: 0, Errors: 0, Skipped: 0
+187841:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.07 s -- in TestSuite
+187845:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0
+203472:[INFO] You have 0 Checkstyle violations.
+203481:[INFO] BUILD SUCCESS

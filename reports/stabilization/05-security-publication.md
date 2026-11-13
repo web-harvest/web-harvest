@@ -7,6 +7,7 @@ Tool: `gitleaks` (`/opt/homebrew/bin/gitleaks`)
 | Scope | Result | Exit / note |
 | --- | --- | --- |
 | Working tree (`gitleaks detect --no-git`) | **0 findings** | exit 0; `evidence/gitleaks-workdir.json` |
+| Working tree re-scan (session continuation) | **0 findings** | exit 0; `evidence/gitleaks-workdir-session2.summary` |
 | Reachable history (`gitleaks git --log-opts="--all"`) | **2 findings** | same rule, same path |
 
 ### History findings (confirmed pattern; remediated in current tips)

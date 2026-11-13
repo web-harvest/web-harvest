@@ -41,7 +41,7 @@ Classification key: **1** Active implementation · **2** Stacked-PR dependency �
 | `stabilization/ts-validation-25-26-27` | `7b6e700` | 2026-11-06 | 48/6 | **no** | TS validation line; separate from Core tip | 4 |
 | `2.3.x` | `4cd03ed` | 2025-11-24 | 40/6 | yes (ancestor of tip via recovery path) | Local only; tagged `archive/2.3.x`; park | 7 |
 | `maintenance/issue-77-gitleaks-remediation` | `8a7f552` | 2026-11-13 | 1/3 | n/a | Content merged via #81 to `2.2.x`; local tip is stale rebase of same fix | 6 |
-| `stabilization/comprehensive-cleanup-20261113` | (this campaign) | 2026-11-13 | based on `6eac8c5` | campaign branch | Active implementation for this session | 1 |
+| `stabilization/comprehensive-cleanup-20261113` | tip advances this session | 2026-11-13 | based on `6eac8c5` + campaign | **Open PR #82** → `2.2.x` | Active implementation; Gate C 80% now locally green | 1 |
 
 **Exact SHA comparison notes**
 
@@ -53,6 +53,7 @@ Classification key: **1** Active implementation · **2** Stacked-PR dependency �
 
 | PR | State | Base ← Head | Disposition |
 | --- | --- | --- | --- |
+| **#82** | **Open** | `2.2.x` ← stabilization tip | **Primary consolidation PR**; review/merge after owner branch-strategy approval |
 | #81 | **Merged** | `2.2.x` ← gitleaks | Done; re-apply equivalent fix onto Core tip (this campaign) |
 | #80 | Closed unmerged | quality ← maint cleanup | Reopen equivalent after tip re-push; contains hygiene + Http Surefire restore |
 | #78 | Closed unmerged | stab ← CI cost | Do **not** resurrect blindly; verify overlap with #63/#67 first |

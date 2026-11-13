@@ -1,0 +1,7 @@
+SHA tip before commit: see git
+INSTRUCTION: covered=47327 missed=4513 total=51840 ratio=0.912944
+BRANCH: covered=3758 missed=939 total=4697 ratio=0.800085
+LINE: covered=10615 missed=1120 total=11735 ratio=0.904559
+COMPLEXITY: covered=5709 missed=1094 total=6803 ratio=0.839189
+METHOD: covered=4170 missed=237 total=4407 ratio=0.946222
+CLASS: covered=461 missed=11 total=472 ratio=0.976695
