@@ -7,6 +7,8 @@ on:
       - stabilization/release-readiness-core
       - "implementation/**"
       - "stabilization/**"
+      - "quality/**"
+      - "maintenance/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -21,6 +23,8 @@ on:
       - ci/core-regression-remediation
       - "implementation/**"
       - "stabilization/**"
+      - "quality/**"
+      - "maintenance/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -28,6 +32,10 @@ on:
       - "spotbugs-include.xml"
       - ".github/workflows/semantic-core-ci.yml"
   workflow_dispatch:
+
+concurrency:
+  group: semantic-core-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

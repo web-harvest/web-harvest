@@ -187,3 +187,6 @@ ENV/
 
 # Note: All generated files now go to target/ directory (which is already ignored above)
 # No need for webharvest-core specific patterns
+
+# Local heavy Maven dumps (summaries are committed)
+reports/stabilization/evidence/*.log
