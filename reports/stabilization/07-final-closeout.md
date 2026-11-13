@@ -49,7 +49,8 @@ See `03-core-quality.md`. Verify exit **0**; JaCoCo branch gate met.
 
 | Item | SHA |
 | --- | --- |
-| Campaign tip (tests) | `66caefdd7bcabd4092154c9500a104b76bd83cf9` |
+| Campaign tip (final pushed) | `19fc3571994557f0cc1cb5b3f450ba299764418f` |
+| Tests commit | `66caefdd7bcabd4092154c9500a104b76bd83cf9` |
 | Prior tip at session start | `c9f67ff7463d09f868f632f22b17f8d36a7409ed` |
 | Parent tip | `6eac8c5fd3ff27b79715500005abb736b114ed27` |
 | Default `2.2.x` | `1ad20f84e03206a5e1be2d7a93f0098684d43004` |
