@@ -1,7 +1,7 @@
 # WebHarvest Documentation Index
 
 **Version**: 2.3.1  
-**Last Updated**: November 3, 2025
+**Last Updated**: November 13, 2026
 
 ---
 
@@ -57,29 +57,21 @@
 
 ## 🚀 Deployment & Operations
 
-14. **[SFTP-UPLOAD-INSTRUCTIONS.md](SFTP-UPLOAD-INSTRUCTIONS.md)** - SourceForge deployment
-15. **[SOURCEFORGE-SETUP.md](SOURCEFORGE-SETUP.md)** - SourceForge project setup
-16. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Release notes
-17. **[XQUERY_FIX_SUMMARY.md](XQUERY_FIX_SUMMARY.md)** - XQuery fix documentation
+14. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Release notes
+15. **Canonical SCM**: [GitHub `web-harvest/web-harvest`](https://github.com/web-harvest/web-harvest)
+16. **Contribution flow**: [CONTRIBUTING.md](CONTRIBUTING.md) (GitHub Issues and Pull Requests only)
+17. **Cleanup inventory**: [docs/REPO_CLEANUP_INVENTORY.md](docs/REPO_CLEANUP_INVENTORY.md)
+18. Historical SourceForge upload scripts and guides remain in-tree until PR #70 retires them against `2.2.x`. Do not treat them as the current contribution or publish workflow.
 
 ---
 
 ## 📂 Scripts & Automation
 
-17. **[docs/scripts/](docs/scripts/)** - Documentation generation scripts
+19. **[docs/scripts/](docs/scripts/)** - Documentation generation scripts
     - `generate_all_plugin_docs.py` - Master script (all plugins)
     - `generate_core_plugin_docs.py` - 46 core plugins
     - `generate_external_plugin_docs.py` - 8 external plugins
     - `generate_plugins_index.py` - Plugin index page
-
-18. **[publish-release.sh](publish-release.sh)** - Release publishing script
-    - Uploads JARs to SourceForge Files
-    - Dynamic version from pom.xml
-    - Overwrite protection
-
-19. **[upload-docs.sh](upload-docs.sh)** - Documentation upload script
-    - Uploads docs/web/ to SourceForge website
-    - Supports --dry-run and --clean-remote modes
 
 ---
 

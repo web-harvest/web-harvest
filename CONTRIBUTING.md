@@ -1,414 +1,81 @@
 # Contributing to WebHarvest
 
-Thank you for your interest in contributing to WebHarvest! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to WebHarvest.
 
-## Table of Contents
+## Source of truth
 
-1. [Code of Conduct](#code-of-conduct)
-2. [Getting Started](#getting-started)
-3. [Development Setup](#development-setup)
-4. [Contributing Process](#contributing-process)
-5. [Code Standards](#code-standards)
-6. [Testing Guidelines](#testing-guidelines)
-7. [Documentation](#documentation)
-8. [Release Process](#release-process)
+The GitHub repository is the sole source of truth for the project:
 
-## Code of Conduct
+- Repository: https://github.com/web-harvest/web-harvest
+- Issues and bug reports: https://github.com/web-harvest/web-harvest/issues
+- Pull requests: https://github.com/web-harvest/web-harvest/pulls
 
-This project adheres to a code of conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+Use this repository for source code, branches, issues, reviews, CI results, and project documentation. Do not submit patches through external or historical project trackers.
 
-## Getting Started
+## Development prerequisites
 
-### Prerequisites
+- Java 11 or newer (use the version required by the module being changed).
+- Maven 3.6 or newer.
+- Node.js and npm only when working on the IDE frontend or other JavaScript packages.
 
-- **Java 11 or higher**: Required for development
-- **Maven 3.6+**: Required for building the project
-- **SVN Client**: Required for version control (TortoiseSVN, command-line svn, etc.)
-- **IDE**: IntelliJ IDEA, Eclipse, or VS Code recommended
+Import the repository as a Maven project in IntelliJ IDEA, Eclipse, or another Maven-compatible IDE.
 
-### Checkout from SourceForge
+## Build and test
 
-1. Check out the repository from SourceForge SVN:
-```bash
-svn checkout https://svn.code.sf.net/p/web-harvest/code/trunk web-harvest
-cd web-harvest
-```
-
-2. Or if you have commit access:
-```bash
-svn checkout svn+ssh://USERNAME@svn.code.sf.net/p/web-harvest/code/trunk web-harvest
-```
-
-## Development Setup
-
-### Building the Project
+From the repository root:
 
 ```bash
-# Clean and build all modules
-mvn clean install
+# Build the project
+mvn --batch-mode --no-transfer-progress clean install
 
-# Build specific module
-mvn clean install -pl webharvest-core
-
-# Skip tests (for faster builds during development)
-mvn clean install -DskipTests
+# Run the Core test lifecycle and its required upstream modules
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
 ```
 
-### Running Tests
+Run focused tests while developing, but run the relevant full module test lifecycle before requesting review. For Core changes, preserve the Surefire/Failsafe separation and the configured quality checks.
 
-```bash
-# Run all tests
-mvn test
+Do not obtain a green build by deleting tests, weakening assertions, adding broad exclusions, setting `continue-on-error`, or lowering coverage thresholds. If a test is environment-dependent, document the dependency and keep it available through an explicit test path.
 
-# Run tests for specific module
-mvn test -pl webharvest-core
+For frontend changes, use the scripts declared by the package being changed and follow the corresponding repository CI workflow. Record the exact commands and results in the pull request.
 
-# Run tests with coverage report
-mvn clean test jacoco:report
-```
+## Contribution workflow
 
-### IDE Setup
+1. Search existing GitHub Issues before starting work. If the change is substantial or its expected behavior is unclear, open an issue to agree on the contract first.
+2. Create a focused branch from the intended base branch. Check the base and current HEAD before making changes.
+3. Keep changes bounded and avoid mixing unrelated refactors, generated files, or formatting churn.
+4. Add or update tests that demonstrate the intended behavior. Prefer public API and real XML/runtime integration tests where appropriate.
+5. Run the relevant checks and record exact results, including failures and known limitations.
+6. Open a pull request against the intended base branch. Explain the problem, design, compatibility implications, tests run, and any remaining risks.
+7. Keep stacked pull requests explicit: identify parent PRs and do not merge a child independently of its required parent.
+8. Wait for CI and review. Do not merge or release while required checks are failing or the change has unresolved blocking review feedback.
 
-#### IntelliJ IDEA
+Use clear commit and pull-request titles in English. Reference related Issues and use GitHub's closing keywords only when the PR fully resolves the referenced issue.
 
-1. Import the project as a Maven project
-2. Configure Java SDK to Java 11 or higher
-3. Enable annotation processing
-4. Configure code style settings (use project .editorconfig if available)
+## Code standards
 
-#### Eclipse
+- Use English for source code, identifiers, comments, Javadoc, commit messages, and Markdown documentation.
+- Follow the existing formatting and conventions in the affected module.
+- Document public API behavior and compatibility constraints.
+- Avoid new dependencies unless they are justified and reviewed.
+- Preserve backward compatibility unless a breaking change has been explicitly agreed and documented.
+- Update relevant user and developer documentation when behavior, configuration, or supported workflows change.
 
-1. Import as Maven project
-2. Install M2Eclipse plugin if not already installed
-3. Configure Java compiler to 11 or higher
-4. Enable annotation processing
+## Tests and evidence
 
-## Contributing Process
+A pull request should state:
 
-### 1. Find or Create an Issue
+- The exact commit or branch head tested.
+- Commands executed and their exit status.
+- Unit and integration test counts, including failures, errors, and skipped tests.
+- Relevant CI workflow/run links and diagnostic artifacts.
+- What the tests do not cover and any remaining unknowns.
 
-- Check existing issues on SourceForge tracker
-- Create a new ticket if needed
-- Discuss your approach with maintainers
+A focused passing test is not evidence that the complete module or repository is green. Distinguish targeted validation from full regression validation.
 
-### 2. Make Your Changes
+## Security
 
-1. Update your working copy:
-```bash
-svn update
-```
+Never commit credentials, access tokens, private keys, production data, or other secrets. Use GitHub Actions secrets or an approved local secret-management mechanism. Report suspected vulnerabilities privately through the repository owner's GitHub security contact or GitHub's private vulnerability reporting facility when enabled; do not publish exploit details in a public issue.
 
-2. Create your changes following the code standards below
+## License and attribution
 
-3. Test your changes:
-```bash
-mvn clean test
-```
-
-4. Ensure code quality:
-```bash
-mvn clean verify
-```
-
-### 3. Commit Your Changes
-
-```bash
-# Check what you've changed
-svn status
-
-# Add new files if any
-svn add path/to/new/file
-
-# Commit with clear message in English
-svn commit -m "Add: Brief description of changes
-
-Detailed explanation of what was changed and why.
-
-Fixes: #ticket-number (if applicable)"
-```
-
-### 4. Submit Patch (if you don't have commit access)
-
-If you don't have direct commit access:
-
-1. Create a patch file:
-```bash
-svn diff > my-changes.patch
-```
-
-2. Submit the patch to SourceForge:
-   - Go to https://sourceforge.net/p/web-harvest/tickets/
-   - Create new ticket with your patch attached
-   - Describe your changes
-
-## Code Standards
-
-### Java Code Style
-
-- **Indentation**: 4 spaces (no tabs)
-- **Line length**: Maximum 120 characters
-- **Encoding**: UTF-8
-- **Line endings**: LF (Unix style)
-
-### Code Quality
-
-All code must pass:
-
-```bash
-# PMD static analysis
-mvn pmd:check
-
-# SpotBugs analysis
-mvn spotbugs:check
-
-# Checkstyle
-mvn checkstyle:check
-```
-
-### Naming Conventions
-
-- **Classes**: PascalCase (e.g., `DatabasePlugin`)
-- **Methods**: camelCase (e.g., `executeQuery()`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_RETRIES`)
-- **Packages**: lowercase (e.g., `org.webharvest.plugin`)
-
-### Documentation
-
-- All public APIs must have Javadoc
-- Include `@since` tag for new features
-- Document parameters and return values
-- Provide usage examples where appropriate
-
-### Language Requirements
-
-- **Code**: All code, comments, and identifiers in English
-- **Documentation**: All .md files in English
-- **Commit Messages**: All SVN commit messages in English
-- **Javadoc**: All API documentation in English
-
-## Testing Guidelines
-
-### Test Requirements
-
-All contributions must include appropriate tests:
-
-1. **Unit Tests**: For individual classes and methods
-2. **Integration Tests**: For plugin functionality using XML configurations
-3. **Test Coverage**: Aim for ≥70% for new code (50%+ is acceptable for legacy code)
-
-### Writing Tests
-
-```java
-@Test
-public void testFeatureName() {
-    // Arrange - setup test data
-    MyPlugin plugin = new MyPlugin();
-    
-    // Act - execute the code
-    Variable result = plugin.execute(context);
-    
-    // Assert - verify results
-    assertNotNull(result);
-    assertEquals("expected", result.toString());
-}
-```
-
-### Integration Tests
-
-Create XML-based integration tests in `src/test/resources/integration-tests/`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Your test configuration -->
-</config>
-```
-
-### Running Tests
-
-```bash
-# All tests
-mvn test
-
-# Specific test class
-mvn test -Dtest=MyPluginTest
-
-# Integration tests
-mvn verify
-
-# With coverage
-mvn clean test jacoco:report
-```
-
-## Documentation
-
-### Types of Documentation
-
-1. **Code Documentation**: Javadoc for all public APIs
-2. **User Documentation**: README.md, PLUGINS.md
-3. **Developer Documentation**: DEVELOPER_GUIDE.md
-4. **Change Documentation**: CHANGELOG.md
-
-### Documentation Standards
-
-- Write in clear, concise English
-- Use Markdown formatting
-- Include code examples
-- Keep documentation up-to-date with code changes
-
-### Updating Documentation
-
-When making changes:
-- Update relevant .md files
-- Add entries to CHANGELOG.md
-- Update Javadoc if API changes
-- Include documentation changes in your commit
-
-## Module Structure
-
-### Core Modules
-
-```
-web-harvest/
-├── webharvest-core/          Pure core (NO database)
-├── webharvest-database/      Database functionality
-├── webharvest-ftp/           FTP plugins
-├── webharvest-mail/          Mail plugins
-├── webharvest-webbrowser/    WebBrowser plugins
-├── webharvest-zip/           Zip plugins
-├── webharvest-cli/           Command-line interface
-└── webharvest-ide/           GUI application
-```
-
-### Dependencies
-
-- `webharvest-core` has NO database dependencies
-- `webharvest-database` depends on `webharvest-core`
-- Plugin modules depend on `webharvest-core`
-- `webharvest-cli` and `webharvest-ide` depend on all modules
-
-## Release Process
-
-### Version Numbering
-
-WebHarvest follows [Semantic Versioning](https://semver.org/):
-- **MAJOR.MINOR.PATCH** (e.g., 2.2.0)
-- MAJOR: Breaking changes
-- MINOR: New features, backward compatible
-- PATCH: Bug fixes
-
-### Release Steps
-
-1. Update version in all pom.xml files
-2. Update CHANGELOG.md with release notes
-3. Run full test suite: `mvn clean verify`
-4. Build distribution: `mvn clean install`
-5. Tag release in SVN:
-```bash
-svn copy https://svn.code.sf.net/p/web-harvest/code/trunk \
-         https://svn.code.sf.net/p/web-harvest/code/tags/v2.2.0 \
-         -m "Release 2.2.0"
-```
-6. Upload to SourceForge File Release System
-7. Update project website
-8. Announce release
-
-## Getting Help
-
-### Resources
-
-- **SourceForge Project**: https://sourceforge.net/projects/web-harvest/
-- **Issue Tracker**: https://sourceforge.net/p/web-harvest/tickets/
-- **Mailing List**: web-harvest-users@lists.sourceforge.net
-- **Documentation**: See README.md and DEVELOPER_GUIDE.md
-
-### Communication Channels
-
-- **Tickets**: Bug reports and feature requests on SourceForge
-- **Mailing List**: General questions and discussions
-- **Patches**: Code contributions via SourceForge tickets
-
-## Best Practices
-
-### Before Committing
-
-- [ ] Run `mvn clean test` - all tests pass
-- [ ] Run `mvn verify` - code quality checks pass
-- [ ] Update documentation if needed
-- [ ] Write clear commit message in English
-- [ ] Add appropriate tests for your changes
-
-### Commit Message Format
-
-```
-Type: Brief description (max 72 characters)
-
-Detailed explanation of what was changed and why.
-Include any relevant ticket numbers.
-
-- List specific changes
-- Use bullet points for clarity
-
-Fixes: #123 (if applicable)
-```
-
-Types: `Add`, `Fix`, `Update`, `Remove`, `Refactor`, `Docs`, `Test`
-
-### Code Review Checklist
-
-- [ ] Code follows project style guidelines
-- [ ] Tests are included and passing
-- [ ] Documentation is updated
-- [ ] No unnecessary dependencies added
-- [ ] Changes are backward compatible (or breaking changes documented)
-- [ ] Code is properly commented
-- [ ] Commit message is clear
-
-## Common Tasks
-
-### Adding a New Plugin
-
-1. Create plugin class in appropriate module (e.g., `webharvest-core/src/main/java/org/webharvest/plugin/core/`)
-2. Annotate with `@CorePlugin`
-3. Implement required methods
-4. Create unit tests
-5. Create integration test with XML example
-6. Add documentation to PLUGINS.md
-7. Update CHANGELOG.md
-
-### Fixing a Bug
-
-1. Create test that reproduces the bug
-2. Fix the bug
-3. Verify test now passes
-4. Run full test suite
-5. Commit with clear message referencing ticket
-
-### Improving Test Coverage
-
-1. Check current coverage: `mvn jacoco:report`
-2. Identify low-coverage areas
-3. Add tests (unit or integration)
-4. Verify coverage improvement
-5. Submit patch or commit
-
-## License
-
-By contributing to WebHarvest, you agree that your contributions will be licensed under the BSD License.
-
----
-
-## Questions?
-
-If you have questions about contributing:
-- Check DEVELOPER_GUIDE.md for technical details
-- Post on the mailing list
-- Create a ticket on SourceForge
-- Contact project maintainers
-
-**Thank you for contributing to WebHarvest!**
-
----
-
-**Last Updated**: October 13, 2025  
-**Version**: 2.2.0
+Contributions are subject to the project's applicable license and contribution terms. Preserve existing copyright, license, and third-party attribution notices. Do not remove or rewrite historical attribution as part of unrelated changes.

@@ -11,7 +11,7 @@
         Open Source Web Data Extraction tool written in Java.
         It offers a way to collect desired Web pages and extract useful data from them.
     </description>
-    <url>http://web-harvest.sourceforge.net/</url>
+    <url>https://github.com/web-harvest/web-harvest</url>
     <inceptionYear>2006</inceptionYear>
     <developers>
         <developer>
@@ -63,8 +63,8 @@
         </license>
     </licenses>
     <scm>
-        <url>http://web-harvest.svn.sourceforge.net/</url>
-        <connection>http://web-harvest.svn.sourceforge.net/</connection>
+        <url>https://github.com/web-harvest/web-harvest</url>
+        <connection>scm:git:https://github.com/web-harvest/web-harvest.git</connection>
     </scm>
     <properties>
         <saxon.version>9.1.0.8</saxon.version>
