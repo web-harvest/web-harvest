@@ -146,11 +146,18 @@ Workflow `.github/workflows/semantic-core-ci.yml` triggers on push/PR for listed
 3. Owner-only later: create/retarget `main`, change default branch, or merge/close/retarget PR #82 — **not** done here.
 4. Optionally extend CI triggers to `integration/**` if automated GHA evidence is required for future cutover candidates — **not** changed here.
 
+## Publication
+
+- PR #82 STOP comment: https://github.com/web-harvest/web-harvest/pull/82#issuecomment-6865873972
+- Report path (local / unpushed): `reports/stabilization/09-option-b-integration.md`
+- Because verify failed, this report was committed locally only and was **not** published to the remote integration tip.
+
 ## Local recovery pointers
 
 ```text
 Worktree: /Users/robertbala/src/web-harvest-option-b-integration-wt
 Branch:   integration/main-cutover-20261113
-Local tip: 66343080f381eb6dc90c5054740e69bf7f3f6139  (merge + this report commit, if committed)
+Merge:    66343080f381eb6dc90c5054740e69bf7f3f6139
+Report:   efd86d43e015dfd66cdf982b7e3eb737e27950d5 (plus any follow-up docs commits)
 Remote tip: a3b2977b26e42cf69b792898211aab77c82a6284
 ```
