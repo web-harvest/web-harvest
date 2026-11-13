@@ -49,14 +49,29 @@ See `03-core-quality.md`. Verify exit **0**; JaCoCo branch gate met.
 
 | Item | SHA |
 | --- | --- |
-| Campaign tip (final pushed) | `2f1ae5eb350795cdfb29dc003305f0861f617f8b` |
+| Campaign tip (current PR #82 head) | `a3b2977b26e42cf69b792898211aab77c82a6284` |
+| Prior closeout tip | `2f1ae5eb350795cdfb29dc003305f0861f617f8b` |
 | Reports evidence commit | `19fc3571994557f0cc1cb5b3f450ba299764418f` |
-| Tests commit | `66caefdd7bcabd4092154c9500a104b76bd83cf9` |
+| Tests commit (Gate C verify) | `66caefdd7bcabd4092154c9500a104b76bd83cf9` |
 | Prior tip at session start | `c9f67ff7463d09f868f632f22b17f8d36a7409ed` |
 | Parent tip | `6eac8c5fd3ff27b79715500005abb736b114ed27` |
 | Default `2.2.x` | `1ad20f84e03206a5e1be2d7a93f0098684d43004` |
+| Merge-base / `master` | `645baf8c61c6f3686907cfa487104ded340d90fe` |
+
+## Integration decision gate (final audit)
+
+Full evidence: `08-integration-architecture-audit.md`.
+
+| Decision | Status |
+| --- | --- |
+| Reproduced ahead/behind | **6 behind / 158 ahead** (`2.2.x`…campaign) |
+| Unique `2.2.x` behavioral content missing from campaign? | **No** (docs/LICENSE/Bug#36 identical; session files archived vs deleted) |
+| Merge PR #82 as-is? | **STOP** — CONFLICTING (`pom.xml` + 3 rename/delete) |
+| Recommended architecture | **Option B** — integration commit on campaign + create `main`; keep `2.2.x` |
+| Create `main` / change default / merge? | **STOP** until explicit owner authorization |
 
 ## Published artifacts
 
 - PR: https://github.com/web-harvest/web-harvest/pull/82
 - Issues: #75 (Gate C), #77 (hygiene), #79 (publication)
+- Audit report: `reports/stabilization/08-integration-architecture-audit.md`

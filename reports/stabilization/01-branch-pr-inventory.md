@@ -8,19 +8,18 @@
 
 Do **not** mechanically rename `master` → `main`. GitHub default is already `2.2.x`, not `master`.
 
+**Final audit (2026-11-13):** see `08-integration-architecture-audit.md`. Verified `6 / 158` divergence; unique `2.2.x` **content** already on campaign tip; remaining work is conflict-resolved reintegration + `main` cutover (**Option B**).
+
 | Role | Proposed branch | Rationale |
 | --- | --- | --- |
-| Long-term integration / future default | New `main` created from the **verified Core stack tip after reintegration with `2.2.x`** (today: cleanup tip + cherry-picks of `9c4a645`, `87ec535`/`1ad20f8` intent) | Carries Issue #48 stack, Gate C coverage work, hygiene, CI workflow |
-| Maintained release / bugfix line | Keep `2.2.x` until first public tag from the new integration line | Preserves PR ancestry and the only remote head with recent publication docs (#70 subset, #81) |
-| Next-gen / visual designer line | Archive or park local `2.3.x` @ `4cd03ed` (already tagged `archive/2.3.x`) | Diverged; not the Core CI stack; unique IDE/layout commits need explicit port or retention |
-| Historical | Keep `master` as frozen ancestor (`645baf8`); reachable from `2.2.x` | No unique commits vs `2.2.x` (ahead 0 / behind 6) |
+| Long-term integration / future default | New `main` from **integration commit** = campaign tip `a3b2977` **after** merging `origin/2.2.x` (resolve archive rename/delete + `pom.xml`) | Carries Issue #48 stack, Gate C 80%, hygiene, CI workflow, **and** IDE lineage through `archive/2.3.x` |
+| Maintained release / bugfix line | Keep `2.2.x` @ `1ad20f8` until first public tag from `main` | Preserves thin release pointer; #81/#70 content already duplicated on campaign |
+| Visual designer | Already inside campaign ancestry (`4cd03ed`); further IDE work = separate PRs onto `main` after cutover | Cannot strip IDE by merging PR #82 as-is |
+| Historical | Keep `master` as frozen ancestor (`645baf8`); reachable from both lines | Ahead 0 / behind 6 vs `2.2.x`; **do not auto-rename** |
 
 ### Migration sequence (commands for owner; **not executed**)
 
-1. Push the verified stabilization branch and open a PR targeting `2.2.x` **or** a newly created `main` that fast-forwards/`merge`s from that tip.
-2. After CI green and review: either merge into `2.2.x` then `gh api` rename default → `main` from that tip, **or** create `main` from the tip and switch default once.
-3. Retarget any reopened stacked PRs only after parent SHAs are restored on GitHub.
-4. Delete remote heads only after archive tags exist and Issue #77 owner checklist is checked.
+Exact commands and GO/STOP: `08-integration-architecture-audit.md` §§5–7 (Option B).
 
 ## Branch matrix (local heads after origin prune)
 
