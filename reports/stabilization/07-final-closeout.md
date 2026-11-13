@@ -44,3 +44,18 @@ See `03-core-quality.md`. Verify exit **1** solely due to JaCoCo branch gate.
 - `05-security-publication.md`
 - `06-ci-assessment.md`
 - `07-final-closeout.md`
+
+## Final campaign HEAD
+
+| Item | SHA |
+| --- | --- |
+| Campaign tip | `7af2e580db4db31703098eb80156a05968c955f3` (pre-redaction; see tip after redaction commit) |
+| Parent tip | `6eac8c5fd3ff27b79715500005abb736b114ed27` |
+| Default `2.2.x` | `1ad20f84e03206a5e1be2d7a93f0098684d43004` |
+
+Commits on this branch beyond parent tip:
+
+1. `2f3e670` fix(core): remediate credential-shaped fixture and add residual contracts
+2. `b4294ef` docs: restore canonical README and tighten Semantic Core CI triggers
+3. `7af2e58` docs: record comprehensive stabilization campaign evidence
+4. (follow-up) gitleaks evidence redaction
