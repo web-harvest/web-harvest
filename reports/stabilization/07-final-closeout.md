@@ -49,7 +49,7 @@ See `03-core-quality.md`. Verify exit **1** solely due to JaCoCo branch gate.
 
 | Item | SHA |
 | --- | --- |
-| Campaign tip | `6844ac552003a74405621327bed6f27abd23a94f` |
+| Campaign tip | `1566c500339119cbb41fe21dd923c16bbcafa3a3` |
 | Parent tip | `6eac8c5fd3ff27b79715500005abb736b114ed27` |
 | Default `2.2.x` | `1ad20f84e03206a5e1be2d7a93f0098684d43004` |
 
@@ -60,3 +60,9 @@ Commits on this branch beyond parent tip:
 3. `7af2e58` docs: record comprehensive stabilization campaign evidence
 4. `8740c2a` docs: redact secret material from gitleaks history evidence
 5. `6844ac5` docs: annotate closeout with campaign commit SHAs
+
+## Published artifacts
+
+- PR: https://github.com/web-harvest/web-harvest/pull/82
+- Tip SHA at issue comments: `1566c500339119cbb41fe21dd923c16bbcafa3a3`
+- Issue updates: #75, #77, #79
