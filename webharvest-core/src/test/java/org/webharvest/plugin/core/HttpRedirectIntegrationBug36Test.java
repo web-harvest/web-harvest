@@ -197,16 +197,18 @@ public class HttpRedirectIntegrationBug36Test {
         System.out.println("SCENARIO: API version migration (v1 → v2 redirect)");
         System.out.println("");
         
-        // API requires X-API-Key header on all requests
+        // API requires X-API-Key header on all requests.
+        // Use an unmistakably synthetic placeholder (not a credential-shaped token).
+        final String exampleApiKey = "test-api-key-placeholder-not-a-credential";
         Map<String, String> apiHeaders = new HashMap<>();
-        apiHeaders.put("X-API-Key", "sk_live_abc123def456");
-        apiHeaders.put("Authorization", "Bearer eyJhbGc...");
+        apiHeaders.put("X-API-Key", exampleApiKey);
+        apiHeaders.put("Authorization", "Bearer test-jwt-placeholder.not-a-credential");
         
         HttpService apiService = new HttpServiceImpl(true, apiHeaders);
         
         System.out.println("Configuration:");
-        System.out.println("   API Key: sk_live_abc123def456");
-        System.out.println("   Auth: Bearer token");
+        System.out.println("   API Key: [synthetic placeholder configured]");
+        System.out.println("   Auth: Bearer token [synthetic placeholder]");
         System.out.println("");
         System.out.println("Request: GET https://api.example.com/v1/users/123");
         System.out.println("   → Headers: X-API-Key ✅, Authorization ✅");
@@ -225,6 +227,10 @@ public class HttpRedirectIntegrationBug36Test {
         System.out.println("   Result: ❌ 401 Unauthorized");
         
         assertNotNull(apiService, "API service configured with auth preservation");
+        assertEquals(exampleApiKey, apiHeaders.get("X-API-Key"),
+                "X-API-Key header must retain the configured synthetic API key");
+        assertTrue(apiHeaders.containsKey("Authorization"),
+                "Authorization header must be present for redirect preservation scenario");
         System.out.println("");
         System.out.println("✅ Bug #36 fix enables seamless API version migrations");
     }
