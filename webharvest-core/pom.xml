@@ -27,15 +27,10 @@
                     <reuseForks>true</reuseForks>
                     <excludedGroups>network</excludedGroups>
                     <excludes>
-                        <!-- Skip flaky/external-network dependent tests (httpbin.org) -->
                         <!-- Keep integration-named tests out of Surefire; Failsafe owns them at verify. -->
+                        <!-- Offline-safe Http* unit tests (mocks/WireMock) must run in Surefire. -->
+                        <!-- Live network suites are skipped via excludedGroups=network above. -->
                         <exclude>**/*IntegrationTest.java</exclude>
-                        <exclude>**/*Http*.java</exclude>
-                        <exclude>**/*http*.java</exclude>
-                        <exclude>**/*HttpClient*.java</exclude>
-                        <exclude>**/*httpclient*.java</exclude>
-                        <exclude>**/*HttpService*.java</exclude>
-                        <exclude>**/HttpServiceImplBasicTest.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>

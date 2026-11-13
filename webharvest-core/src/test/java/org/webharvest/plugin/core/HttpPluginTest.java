@@ -222,6 +222,7 @@ public class HttpPluginTest {
         // Given
         HttpPlugin plugin = createHttpPluginWithInjection();
         when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
         
         Map<String, String> customHeaders = new HashMap<>();
         customHeaders.put("User-Agent", "Web-Harvest-Plugin");
@@ -249,6 +250,7 @@ public class HttpPluginTest {
         when(httpResponse.getBody()).thenReturn("");
         when(httpService.get(anyString(), anyMap())).thenReturn(httpResponse);
         when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
         
         plugin.initialize(configuration);
         
@@ -390,6 +392,7 @@ public class HttpPluginTest {
         when(httpResponse.getBody()).thenReturn(largeResponse.toString());
         when(httpService.get(anyString(), anyMap())).thenReturn(httpResponse);
         when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
         
         plugin.initialize(configuration);
         
@@ -410,6 +413,7 @@ public class HttpPluginTest {
         when(httpResponse.getStatusCode()).thenReturn(200);
         when(httpService.get(anyString(), anyMap())).thenReturn(httpResponse);
         when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
         
         plugin.initialize(configuration);
         Variable result = plugin.execute(context);
@@ -417,6 +421,8 @@ public class HttpPluginTest {
         
         // Test 404 Not Found
         reset(httpService, httpResponse);
+        when(configuration.getProperty("url")).thenReturn("https://httpbin.org/get");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
         HttpServiceException notFoundException = new HttpServiceException("404 Not Found", new RuntimeException());
         when(httpService.get(anyString(), anyMap())).thenThrow(notFoundException);
         

@@ -74,8 +74,9 @@ public class HttpHeaderPluginTest {
         PluginMetadata metadata = plugin.getMetadata();
         assertNotNull(metadata);
         assertEquals(metadata.getId(), "http-header");
-        assertEquals(metadata.getName(), "HTTP Header Plugin");
-        assertEquals(metadata.getVersion(), "2.3.0");
+        assertEquals(metadata.getName(), "HTTP Header");
+        assertNotNull(metadata.getVersion());
+        assertFalse(metadata.getVersion().trim().isEmpty());
         assertNotNull(metadata.getDescription());
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "http-header");

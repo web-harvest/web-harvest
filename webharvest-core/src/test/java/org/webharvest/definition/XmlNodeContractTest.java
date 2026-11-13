@@ -42,7 +42,9 @@ public class XmlNodeContractTest {
         TestXmlNode child = new TestXmlNode("item", "item", "http://example", root);
         root.addElement("plain-text");
         root.addElement(" more");
-        // Creating another child flushes buffered text into textBuff/elementList.
+        // Flush buffered text explicitly; creating another child also flushes, but an
+        // explicit flush keeps the contract independent of later sibling construction.
+        root.flushText();
         new TestXmlNode("tail", "tail", "http://example", root);
 
         assertEquals(root.getText().trim(), "plain-text more");
