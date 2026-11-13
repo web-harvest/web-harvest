@@ -69,3 +69,31 @@ GitHub Actions: account spending limit — workflows not used as verification.
 - `PluginMetadataJsonGenerator` ~67% branch
 - `PluginMetadataCatalog` / `HttpPlugin` / `CommonUtil` ≥80% branch
 - Further Gate C lift remains owned by PR #76 / issue #75
+
+
+## Root-document deletion review (2026-11-13)
+
+The following dispositions were checked against the exact file contents at the cleanup base. Deletion from the current tree does not erase the original blobs from Git history; the files remain recoverable from their pre-cleanup commits.
+
+| File(s) | Disposition | Reason |
+| --- | --- | --- |
+| `CHATGPT_PROMPT.md`, `CHATGPT_PROMPT_CONNECTION_FIX.md`, `CHATGPT_PROMPT_FINAL_FIX.md` | Delete | Assistant prompts and debugging handoff notes, not maintained project documentation. |
+| `COMPREHENSIVE_ACTION_PLAN.md` | Delete | Dated 2025-11-04 plan explicitly marked completed; implementation is represented by current code and maintained guides. |
+| `CONDUCTOR_ANALYSIS_AND_ROADMAP.md` | Delete from root | Dated exploratory roadmap with TODOs; not a current product contract. Historical blob remains in Git history. |
+| `D3_RENDERER_IMPLEMENTATION.md` | Delete from root | Short implementation snapshot; current renderer source and maintained developer guide are authoritative. |
+| `DOCS_UPLOAD_SIMPLIFICATION.md`, `RELEASE_SCRIPTS_ENHANCEMENT.md` | Delete | Describe retired SourceForge upload/release scripts and deployment workflow. |
+| `DOCUMENTATION_STATUS.md` | Delete | Dated 2025-11-03 status snapshot; no longer a live status source. |
+| `IMPLEMENTATION_PROGRESS.md`, `TEST_RESULTS_PHASE_2.md` | Delete | Dated 2025-11-04 progress/test snapshots; results are stale and superseded by current source/tests and current verification reports. |
+| `NIFI_CODE_SEARCH.md`, `NIFI_CONNECTION_RESEARCH.md` | Delete | Exploratory search/research notes; not authoritative implementation documentation. |
+| `NIFI_CONNECTION_IMPLEMENTATION.md`, `NIFI_GET_PERIMETER_POINT.md`, `NIFI_SOLUTIONS_SUMMARY.md` | Delete from root | Historical NiFi-inspired implementation notes; current IDE source is authoritative and the notes are not maintained specifications. Original content remains in Git history. |
+| `XQUERY_FIX_SUMMARY.md` | **Retain** | The current README links to this document. Keep it until the README link is removed or redirected in a coordinated docs change. |
+
+### Follow-up corrections made on this branch
+- Restored `XQUERY_FIX_SUMMARY.md` because the current README directly links to it.
+- Replaced stale entries in `DOCUMENTATION_INDEX.md` that pointed to deleted files or described SourceForge/SVN as current operations.
+- PR #70 remains the owner of the GitHub-only README/CONTRIBUTING/LICENSE/SCM and retirement of legacy publishing scripts. Do not duplicate these ownership changes in the Core stack.
+
+### Verification classification
+- Local Surefire/Failsafe and static-analysis results are recorded above as local evidence only.
+- Full Maven `verify` remains **FAIL** solely because branch coverage is 78.84% against the unchanged 80% threshold. This is intentionally deferred; no threshold was changed.
+- GitHub Actions has no successful runner evidence for this branch while account billing/spending restrictions remain. Public-repository standard runner use is free under GitHub's current billing policy, but account-level eligibility must be tested after visibility is changed.
