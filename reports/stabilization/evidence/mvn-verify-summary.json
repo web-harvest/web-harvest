@@ -1,0 +1,32 @@
+{
+  "commit": "66343080f381eb6dc90c5054740e69bf7f3f6139",
+  "command": "mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify",
+  "maven_exit_code": 1,
+  "build": "FAILURE",
+  "surefire": {
+    "tests": 3552,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failsafe": {
+    "tests": 255,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "checkstyle_violations": 0,
+  "spotbugs_findings": 0,
+  "jacoco": {
+    "instruction_covered": 47318,
+    "instruction_missed": 4522,
+    "instruction_ratio": 0.912770061728395,
+    "branch_covered": 3756,
+    "branch_missed": 941,
+    "branch_ratio": 0.7996593570364062,
+    "threshold": 0.8,
+    "instruction_pass": true,
+    "branch_pass": false
+  },
+  "failure": "jacoco:check branches covered ratio 0.79 < 0.80"
+}

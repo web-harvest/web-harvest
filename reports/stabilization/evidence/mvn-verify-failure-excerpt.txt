@@ -1,0 +1,81 @@
+[INFO] Starting audit...
+Audit done.
+[INFO] You have 0 Checkstyle violations.
+[INFO] 
+[INFO] --- failsafe:3.2.2:verify (default) @ webharvest ---
+[INFO] 
+[INFO] -------------------< org.webharvest:webharvest-core >-------------------
+[INFO] Building WebHarvest Core 2.3.1                                     [2/2]
+---
+34108 [main] INFO org.webharvest.plugin.schema.PluginSchemaPostProcessor - Successfully generated and registered plugin schemas using XSDGenerator
+[Fatal Error] :1:25: XML document structures must start and end within the same entity.
+[INFO] Tests run: 3552, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 35.375 s - in TestSuite
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 3552, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+---
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 3552, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:2.3.1:jar (default-jar) @ webharvest-core ---
+[INFO] Building jar: /Users/robertbala/src/web-harvest-option-b-integration-wt/webharvest-core/target/webharvest-core-2.3.1.jar
+[INFO] 
+---
+[XmlMethodSelector] CLASSNAME:org.apache.maven.surefire.testng.utils.GroupMatcherMethodSelector
+[XmlMethodSelector] SETTING PRIORITY:9999
+[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.59 s -- in TestSuite
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+---
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] >>> pmd:3.21.0:check (pmd-check) > :pmd @ webharvest-core >>>
+[INFO] 
+[INFO] --- pmd:3.21.0:pmd (pmd) @ webharvest-core ---
+---
+[INFO] 
+[INFO] --- spotbugs:4.8.2.0:check (spotbugs-check) @ webharvest-core ---
+[INFO] BugInstance size is 0
+[INFO] Error size is 0
+[INFO] No errors/warnings found
+[INFO] 
+[INFO] --- jacoco:0.8.13:report (default-report) @ webharvest-core ---
+[INFO] Loading execution data file /Users/robertbala/src/web-harvest-option-b-integration-wt/webharvest-core/target/jacoco.exec
+---
+[INFO] Loading execution data file /Users/robertbala/src/web-harvest-option-b-integration-wt/webharvest-core/target/jacoco.exec
+[INFO] Analyzed bundle 'webharvest-core' with 472 classes
+[WARNING] Rule violated for bundle webharvest-core: branches covered ratio is 0.79, but expected minimum is 0.80
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for WebHarvest 2.3.1:
+[INFO] 
+[INFO] WebHarvest ......................................... SUCCESS [  2.117 s]
+[INFO] WebHarvest Core .................................... FAILURE [01:12 min]
+---
+[INFO] WebHarvest Core .................................... FAILURE [01:12 min]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:14 min
+[INFO] Finished at: 2026-11-13T22:52:11+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.8.13:check (check) on project webharvest-core: Coverage checks have not been met. See log for details. -> [Help 1]
+---
+[INFO] Finished at: 2026-11-13T22:52:11+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.8.13:check (check) on project webharvest-core: Coverage checks have not been met. See log for details. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+---
