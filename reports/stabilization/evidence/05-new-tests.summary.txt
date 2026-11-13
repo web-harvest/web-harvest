@@ -1,0 +1,5 @@
+# Compact summary 05-new-tests
+296:[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.996 s - in org.webharvest.plugin.core.StabilizationResidualBranchContractTest
+300:[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0
+308:[INFO] BUILD SUCCESS
+313:EXIT:0

@@ -1,0 +1,11 @@
+# Compact summary extracted from 03-failsafe.log
+60326:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 19.84 s -- in TestSuite
+60330:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0
+60340:[INFO] BUILD SUCCESS
+60345:FAILSAFE_EXIT:0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  22.770 s
+[INFO] Finished at: 2026-11-13T21:35:27+01:00
+[INFO] ------------------------------------------------------------------------
+FAILSAFE_EXIT:0

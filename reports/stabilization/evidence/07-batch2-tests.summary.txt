@@ -1,0 +1,5 @@
+# Compact summary 07-batch2-tests
+388:[INFO] Tests run: 34, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.946 s - in TestSuite
+392:[INFO] Tests run: 34, Failures: 0, Errors: 0, Skipped: 0
+400:[INFO] BUILD SUCCESS
+405:EXIT:0

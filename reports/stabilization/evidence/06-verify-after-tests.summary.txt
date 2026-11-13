@@ -1,0 +1,17 @@
+# Compact summary extracted from 06-verify-after-tests.log
+69:[INFO] You have 0 Checkstyle violations.
+126225:[INFO] Tests run: 3509, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 34.378 s - in TestSuite
+126229:[INFO] Tests run: 3509, Failures: 0, Errors: 0, Skipped: 0
+187585:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.51 s -- in TestSuite
+187589:[INFO] Tests run: 255, Failures: 0, Errors: 0, Skipped: 0
+191429:[INFO] Done SpotBugs Analysis....
+191446:[WARNING] Rule violated for bundle webharvest-core: branches covered ratio is 0.79, but expected minimum is 0.80
+191453:[INFO] BUILD FAILURE
+191458:[ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.8.13:check (check) on project webharvest-core: Coverage checks have not been met. See log for details. -> [Help 1]
+191468:VERIFY_EXIT:1
+
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :webharvest-core
+VERIFY_EXIT:1

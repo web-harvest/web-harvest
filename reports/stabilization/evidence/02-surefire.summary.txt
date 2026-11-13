@@ -1,0 +1,11 @@
+# Compact summary extracted from 02-surefire.log
+125961:[INFO] Tests run: 3489, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 41.847 s - in TestSuite
+125965:[INFO] Tests run: 3489, Failures: 0, Errors: 0, Skipped: 0
+125973:[INFO] BUILD SUCCESS
+125978:SUREFIRE_EXIT:0
+
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  52.495 s
+[INFO] Finished at: 2026-11-13T21:35:02+01:00
+[INFO] ------------------------------------------------------------------------
+SUREFIRE_EXIT:0
