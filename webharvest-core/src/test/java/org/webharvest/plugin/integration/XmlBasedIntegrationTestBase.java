@@ -85,7 +85,7 @@ public abstract class XmlBasedIntegrationTestBase {
     protected static final String TEST_RESOURCES_BASE = "integration-tests";
     protected static final String NEW_PLUGINS_DIR = TEST_RESOURCES_BASE + "/new_plugins";
     
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() {
         LOG.info("Setting up XML-based integration test environment");
         
