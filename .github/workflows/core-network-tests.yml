@@ -2,6 +2,10 @@ name: Core Network Tests
 
 on:
   workflow_dispatch:
+  # Temporary branch-scoped trigger validates this workflow before it is merged.
+  push:
+    branches:
+      - ci/core-network-test-path
 
 permissions:
   contents: read
