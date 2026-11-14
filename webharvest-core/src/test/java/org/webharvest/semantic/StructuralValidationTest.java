@@ -555,6 +555,35 @@ public class StructuralValidationTest {
                 .childPolicy(ChildPolicy.FORBID_CHILDREN, ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY)
                 .build();
         assertEquals(valid.getChildPolicy(), ChildPolicy.FORBID_CHILDREN);
+
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false).build();
+        Stage1PluginDescriptor closed = Stage1PluginDescriptor.builder()
+                .id("closed@" + NS).namespaceUri(NS).localName("closed")
+                .className("org.example.Closed").reliableSchema(true).canAppearAtRoot(true)
+                .childPolicy(ChildPolicy.FORBID_CHILDREN,
+                        ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY).build();
+        SemanticModel model = new SemanticModel(indexOf(closed, child));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<closed xmlns=\"" + NS + "\"><child/></closed>"));
+        assertTrue(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+    }
+
+    @Test
+    public void explicitAnyChildPolicyAcceptsUnknownChildWithoutLegacyLimitation() {
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.builder()
+                .id("loop@" + NS).namespaceUri(NS).localName("loop")
+                .className("org.example.Loop").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true).allowedSubElements(List.of("legacy-child"))
+                .childPolicy(ChildPolicy.ANY_CHILD,
+                        ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA).build();
+        SemanticModel model = new SemanticModel(indexOf(loop));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<loop xmlns=\"" + NS + "\"><unknown/></loop>"));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+        assertFalse(result.getDiagnostics().stream()
+                .anyMatch(d -> d.getMessage().contains("allowedSubElements")), diagnosticText(result));
     }
 
     @Test
