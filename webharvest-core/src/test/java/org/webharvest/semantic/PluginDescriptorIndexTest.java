@@ -44,7 +44,7 @@ public class PluginDescriptorIndexTest {
         org.webharvest.plugin.metadata.PluginSemantics semantics =
                 new org.webharvest.plugin.metadata.PluginSemantics(
                         java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.CONTEXT_CONTAINER),
-                        true, true, false, true, true, List.of("visual-child"), List.of(), false);
+                        true, true, false, true, true, List.of("visual-child"), List.of("outer"), false);
         org.webharvest.plugin.metadata.PluginDescriptor catalog =
                 new org.webharvest.plugin.metadata.PluginDescriptor(
                         "container@" + NS_A, "container", "Container", "test", "org.example.Container",
@@ -55,6 +55,8 @@ public class PluginDescriptorIndexTest {
         assertEquals(descriptor.getAllowedSubElements(), List.of("visual-child"));
         assertEquals(descriptor.getChildPolicy(), ChildPolicy.ALLOW_LIST);
         assertEquals(descriptor.getChildPolicyProvenance(), ChildPolicyProvenance.CATALOG_SEMANTICS);
+        assertEquals(descriptor.getRequiredParents(), List.of("outer"),
+                "Visual/catalog parent relationships must survive even without extensions.schema");
     }
 
     @Test
