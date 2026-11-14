@@ -43,10 +43,14 @@ Do not obtain a green build by deleting tests, weakening assertions, adding broa
 The Core network-tagged TestNG suites are intentionally excluded from the default deterministic gate. To run them explicitly from the repository root, use:
 
 ```bash
-mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile surefire:test failsafe:integration-test failsafe:verify
+# Run network-tagged Core unit tests
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile surefire:test
+
+# Run network-tagged Core integration tests separately, even if the unit run fails
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile failsafe:integration-test failsafe:verify
 ```
 
-The `network-tests` profile selects the `network` TestNG group in both Surefire and Failsafe and overrides only the default group exclusion. The dedicated manual GitHub Actions workflow runs the same goals and uploads the Surefire/Failsafe reports. This path requires network access and is diagnostic/opt-in; it does not replace or weaken the deterministic Core gate.
+The `network-tests` profile selects the `network` TestNG group in both Surefire and Failsafe and overrides only the default group exclusion. Run the unit and integration commands as separate Maven invocations so an unsuccessful Surefire run does not prevent Failsafe diagnostics. The dedicated manual GitHub Actions workflow follows the same separation and uploads the Surefire/Failsafe reports. This path requires network access and is diagnostic/opt-in; it does not replace or weaken the deterministic Core gate.
 
 For frontend changes, use the scripts declared by the package being changed and follow the corresponding repository CI workflow. Record the exact commands and results in the pull request.
 
