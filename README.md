@@ -1,101 +1,146 @@
 # WebHarvest
 
-WebHarvest is an open-source, Java-based framework for extracting data from web pages using XML scraper configurations and an extensible plugin system.
+WebHarvest is an open-source Java framework for extracting and transforming web data with XML workflow configurations, an extensible plugin system, a command-line runner, and an optional web IDE.
 
-**Canonical repository:** https://github.com/web-harvest/web-harvest
+**Canonical repository:** https://github.com/web-harvest/web-harvest  
+**Intended public site identity:** `webharvest.org` (domain purchased; hosting/DNS cutover is not part of this documentation update)  
+**Website source repository:** https://github.com/web-harvest/website
 
-The repository's Maven project version is currently **2.3.1**. This is project metadata, not a claim that a 2.3.1 release is published or production-ready. The project is under active development; consult the current issues, pull requests, and CI results before relying on a particular capability or build.
+The Maven project version declared in the root POM is **2.3.1**. That is project metadata only. It is **not** evidence that a 2.3.1 GitHub Release or Maven Central artifact has been published. As of the inspection recorded in [Issue #88](https://github.com/web-harvest/web-harvest/issues/88), this repository has no GitHub Releases, and Maven Central search did not list `org.webharvest:webharvest` artifacts for 2.3.1.
 
-## Project modules
+## What it does
 
-The Maven reactor currently contains these modules:
+- Runs XML scraper/workflow configurations against HTTP and other data sources
+- Provides a Core execution runtime and plugin registry
+- Ships optional integration modules (database, FTP, mail, ZIP, web browser)
+- Offers a CLI for headless configuration execution
+- Includes an optional IDE with XML editing and a visual designer surface
 
-| Module | Purpose |
-|---|---|
-| `webharvest-core` | Core configuration, plugin, and execution functionality |
-| `webharvest-cli` | Command-line interface |
-| `webharvest-ide` | IDE application and related integration |
-| `webharvest-database` | Database integration |
-| `webharvest-ftp` | FTP integration |
-| `webharvest-mail` | Mail integration |
-| `webharvest-webbrowser` | Browser-related integration |
-| `webharvest-zip` | ZIP archive integration |
-| `docs` | Documentation resources |
-
-The root `pom.xml` is the Maven reactor entry point. The configured Java compiler source and target levels are 11.
+Treat historical docs, marketing pages, and older guides as illustrative until verified against the current `main` sources and CI.
 
 ## Requirements
 
-- JDK 11
-- Maven (use a current Maven 3.x installation)
+- **JDK 11** (root reactor compiler `source`/`target` are 11)
+- **Maven 3.x** (3.6+ recommended)
+- **Node.js / npm** only when changing IDE frontend packages
 
-Check the active CI workflow and module POMs for any additional environment-specific requirements.
+Some nested modules historically declare older compiler settings (for example CLI `1.8`, docs module `8`). Prefer the root reactor Java 11 baseline unless a module-specific build path is intentionally used and documented.
 
-## Build and test
+## Quick start
 
-Run commands from the repository root.
-
-Build and run the complete Maven verification lifecycle:
-
-```bash
-mvn --batch-mode --no-transfer-progress verify
-```
-
-Run the Core module and its required upstream reactor modules:
-
-```bash
-mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
-```
-
-Run the Core unit-test phase only:
-
-```bash
-mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
-```
-
-A successful focused test run is not equivalent to a successful full reactor verification. When reporting validation, state the exact command, commit SHA, test counts, failures, errors, and skipped tests. Check the GitHub Actions result for the commit under review; do not infer current project health from historical test counts in old documentation.
-
-## Getting started
-
-1. Clone the canonical repository:
+1. Clone and enter the repository:
 
    ```bash
    git clone https://github.com/web-harvest/web-harvest.git
    cd web-harvest
    ```
 
-2. Inspect the current issues and pull requests to understand active work and known limitations.
-3. Build and test using the commands above before making changes.
-4. Explore the module-specific documentation and examples in the repository. Treat examples as illustrative and verify them against the current implementation.
+2. Build Core and its upstream reactor modules:
+
+   ```bash
+   mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
+   ```
+
+3. Inspect example configurations under `docs/web/examples/` (for example `simple_test.xml`). Examples are illustrative; verify behavior against the modules you actually build and run.
+
+4. CLI entry point (after a successful CLI module build): shaded/main class `org.webharvest.cli.WebHarvestCLI` in `webharvest-cli`.
+
+## Build and verification
+
+Run commands from the repository root on the commit under review.
+
+Full reactor verification:
+
+```bash
+mvn --batch-mode --no-transfer-progress verify
+```
+
+Core module with required upstream modules:
+
+```bash
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
+```
+
+Core unit tests only (Surefire):
+
+```bash
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
+```
+
+Core integration tests are executed through Failsafe in the Semantic Core CI workflow. A green focused unit-test run is **not** equivalent to full reactor verification.
+
+Canonical CI workflow: [`.github/workflows/semantic-core-ci.yml`](.github/workflows/semantic-core-ci.yml)  
+Successful published-main verification previously recorded: Actions run [`43578560301`](https://github.com/web-harvest/web-harvest/actions/runs/43578560301) on `436cd50b159a5a22fc9e040663ebd323c5cdfa52`.
+
+When reporting validation, record the exact command, commit SHA, test counts, failures, errors, skipped tests, and CI run URL.
+
+## Module overview
+
+| Module | Responsibility |
+|---|---|
+| `webharvest-core` | Configuration model, plugin contracts/registry, execution runtime, Stage 1 semantic XML inspection |
+| `webharvest-cli` | Command-line execution of configurations |
+| `webharvest-ide` | Optional IDE / Visual Designer client (not the semantic source of truth) |
+| `webharvest-database` | Database plugin extensions |
+| `webharvest-ftp` | FTP plugin extensions |
+| `webharvest-mail` | Mail plugin extensions |
+| `webharvest-webbrowser` | Browser automation plugin extensions |
+| `webharvest-zip` | ZIP archive plugin extensions |
+| `docs` | Documentation resources and Maven-coupled generators |
+
+Dependency direction: extension modules and CLI/IDE depend on Core; Core must not depend on IDE. See [docs/MONOREPO.md](docs/MONOREPO.md).
+
+## Plugin ecosystem
+
+Core registers built-in processors (including the legacy `<set-var>` compatibility alias alongside `<def>`). Optional capabilities live in the extension modules above.
+
+Authoritative plugin identity and metadata live in Core sources and descriptors, not in outdated root markdown summaries. Prefer:
+
+- Core plugin registration and metadata under `webharvest-core`
+- [docs/semantic-metadata/](docs/semantic-metadata/) for catalog/schema notes
+- Example XML under `docs/web/examples/` and module `examples/` trees
+
+Do not treat historical plugin counts in older documents as current guarantees without verifying against source or tests.
+
+## IDE
+
+`webharvest-ide` is an optional client/editor. Workflow meaning belongs to Core. The embedded IDE web application under `webharvest-ide/src/main/resources/webapp/` is product UI, not the public project website.
+
+## Documentation and examples
+
+| Resource | Notes |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution workflow and evidence expectations |
+| [docs/MONOREPO.md](docs/MONOREPO.md) | Module boundaries and extraction criteria |
+| [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) | Honest release/distribution status |
+| [docs/GITHUB_TAXONOMY.md](docs/GITHUB_TAXONOMY.md) | Issue label/topic taxonomy |
+| [docs/web/examples/](docs/web/examples/) | Illustrative XML configurations |
+| [docs/semantic-metadata/](docs/semantic-metadata/) | Plugin metadata catalog notes |
+| [web-harvest/website](https://github.com/web-harvest/website) | Canonical public website source (migration in progress) |
+
+Root files such as `PLUGINS.md`, `DEVELOPER_GUIDE.md`, and `DOCUMENTATION_INDEX.md` may mix current and historical material. Prefer code, tests, and CI over narrative claims when they disagree.
+
+The application tree still contains `docs/web/**` until the website repository cutover is complete. Do not assume that tree has already been removed.
+
+## Current development status
+
+- Default branch: **`main`**
+- Public repository publication completed under [Issue #79](https://github.com/web-harvest/web-harvest/issues/79)
+- Active public-launch readiness work: [Issue #84](https://github.com/web-harvest/web-harvest/issues/84)
+- Product/architecture roadmap: [Issue #1](https://github.com/web-harvest/web-harvest/issues/1)
+- Stage 1 Core semantic XML inspection exists in `org.webharvest.semantic` and is covered by focused CI contract tests; it is **not** the finished format-independent canonical model
+- MCP, a new DSL syntax, and broad IDE semantic ownership are **not** current product deliverables
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 
-All project development activity belongs in this GitHub repository:
-
-- [Issues and bug reports](https://github.com/web-harvest/web-harvest/issues)
+- [Issues](https://github.com/web-harvest/web-harvest/issues)
 - [Pull requests](https://github.com/web-harvest/web-harvest/pulls)
-- [Repository activity and commits](https://github.com/web-harvest/web-harvest/commits/2.2.x)
+- [Commits on `main`](https://github.com/web-harvest/web-harvest/commits/main)
 
-Use a focused branch, add or update tests for behavior changes, run the relevant verification, and include reproducible evidence in the pull request. GitHub is the sole source of truth for project development; do not use historical external trackers or SVN repositories.
-
-## Project status and compatibility
-
-WebHarvest has a long project history and is undergoing ongoing maintenance and modernization. Some modules, integrations, examples, and historical compatibility paths may have different levels of validation.
-
-Before adopting the project or upgrading an existing integration:
-
-- inspect the current issue tracker for known defects and limitations;
-- verify the required Java and dependency versions;
-- run representative configurations against the exact version and modules you intend to use;
-- review compatibility notes and release information rather than assuming all historical behavior is unchanged.
-
-No claim of complete test-suite success, release readiness, or support for every historical configuration is made by this README.
+GitHub is the sole source of truth for development. Do not use historical external trackers as active contribution channels.
 
 ## License and attribution
 
-The repository identifies the project license as a BSD-style license. The full project license text is in [licences/webharvest_licence.txt](licences/webharvest_licence.txt). See [NOTICE](NOTICE) for attribution and historical contributor information.
-
-Preserve the license and third-party notices when redistributing the project or derivative works. The repository also contains separate third-party license texts under `licences/`.
-
+BSD-style project license text: [licences/webharvest_licence.txt](licences/webharvest_licence.txt). See [LICENSE](LICENSE) and [NOTICE](NOTICE) for license and historical attribution. Preserve license and third-party notices when redistributing.

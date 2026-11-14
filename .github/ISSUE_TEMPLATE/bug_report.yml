@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible defect with evidence
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first. See [CONTRIBUTING.md](https://github.com/web-harvest/web-harvest/blob/main/CONTRIBUTING.md).
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences?
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA or version under test
+      placeholder: e.g. 436cd50 or local branch tip
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Exact commands, configuration snippets, and environment.
+      placeholder: |
+        1. mvn ...
+        2. Run configuration ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include stack traces, test output, or CI links when available.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core
+        - plugins
+        - ide
+        - cli
+        - docs
+        - ci
+        - unknown
+    validations:
+      required: true

@@ -7,10 +7,14 @@ Thank you for your interest in contributing to WebHarvest.
 The GitHub repository is the sole source of truth for the project:
 
 - Repository: https://github.com/web-harvest/web-harvest
+- Default branch: `main`
 - Issues and bug reports: https://github.com/web-harvest/web-harvest/issues
 - Pull requests: https://github.com/web-harvest/web-harvest/pulls
+- Roadmap: https://github.com/web-harvest/web-harvest/issues/1
 
 Use this repository for source code, branches, issues, reviews, CI results, and project documentation. Do not submit patches through external or historical project trackers.
+
+Public website source belongs in https://github.com/web-harvest/website. Application docs may still contain `docs/web/**` until that migration is cut over.
 
 ## Development prerequisites
 
@@ -41,7 +45,7 @@ For frontend changes, use the scripts declared by the package being changed and 
 ## Contribution workflow
 
 1. Search existing GitHub Issues before starting work. If the change is substantial or its expected behavior is unclear, open an issue to agree on the contract first.
-2. Create a focused branch from the intended base branch. Check the base and current HEAD before making changes.
+2. Create a focused branch from the intended base branch (usually `main`). Check the base and current HEAD before making changes. Do not casually base public-launch work on maintainer long-lived lines such as `2.2.x` unless that is explicitly required.
 3. Keep changes bounded and avoid mixing unrelated refactors, generated files, or formatting churn.
 4. Add or update tests that demonstrate the intended behavior. Prefer public API and real XML/runtime integration tests where appropriate.
 5. Run the relevant checks and record exact results, including failures and known limitations.
