@@ -84,6 +84,23 @@ public class ScraperSessionTest {
         assertNotNull(session.getContext());
         assertEquals(session.getContext(), mockContext);
     }
+
+    @Test(groups = {"unit", "session"})
+    public void testMarkRunning_WhenNotPending_ThrowsIllegalStateException() {
+        ScraperSessionImpl session = new ScraperSessionImpl("session-123", null, mockConfig);
+        session.markRunning(mockContext);
+        assertEquals(session.getStatus(), SessionStatus.RUNNING);
+
+        try {
+            session.markRunning(mockContext);
+            fail("Expected IllegalStateException when markRunning is called from RUNNING");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("Cannot mark as running from state: RUNNING"),
+                    expected.getMessage());
+        }
+        assertEquals(session.getStatus(), SessionStatus.RUNNING);
+        assertEquals(session.getContext(), mockContext);
+    }
     
     @Test(groups = {"unit", "session"})
     public void testStatusTransition_RunningToCompleted() {
@@ -94,6 +111,21 @@ public class ScraperSessionTest {
         
         assertEquals(session.getStatus(), SessionStatus.COMPLETED);
         assertNull(session.getError());
+    }
+
+    @Test(groups = {"unit", "session"})
+    public void testMarkCompleted_WhenNotRunning_ThrowsIllegalStateException() {
+        ScraperSessionImpl session = new ScraperSessionImpl("session-123", null, mockConfig);
+        assertEquals(session.getStatus(), SessionStatus.PENDING);
+
+        try {
+            session.markCompleted();
+            fail("Expected IllegalStateException when markCompleted is called from PENDING");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("Cannot mark as completed from state: PENDING"),
+                    expected.getMessage());
+        }
+        assertEquals(session.getStatus(), SessionStatus.PENDING);
     }
     
     @Test(groups = {"unit", "session"})

@@ -181,6 +181,15 @@ public class GateCStabilizationResidualBatch2ContractTest extends XmlBasedIntegr
         new XPathPlugin().getConfigurationSchema().validate(configuration);
     }
 
+    @Test(expectedExceptions = PluginValidationException.class)
+    public void xpathSchemaRejectsNonVariableAttributesWithoutExpression() throws Exception {
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+                "xpath", NS, "xpath");
+        configuration.setProperty("id", "xpath-1");
+        configuration.setProperty("type", "xpath");
+        new XPathPlugin().getConfigurationSchema().validate(configuration);
+    }
+
     @Test
     public void xpathSchemaAcceptsVariablePrefixedAttributeWithoutExpression() throws Exception {
         DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
