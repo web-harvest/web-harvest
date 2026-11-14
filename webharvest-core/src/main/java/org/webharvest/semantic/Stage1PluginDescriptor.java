@@ -125,6 +125,11 @@ public final class Stage1PluginDescriptor {
     private static void applyCatalogSemantics(Builder builder,
             org.webharvest.plugin.metadata.PluginSemantics semantics) {
         if (semantics != null) {
+            List<String> catalogParents = semantics.getRequiredParentTypes();
+            if (catalogParents != null && !catalogParents.isEmpty()) {
+                // Catalog semantics is the schema + visual metadata union.
+                builder.requiredParents(catalogParents);
+            }
             List<String> catalogChildren = semantics.getAllowedChildTypes();
             if (catalogChildren != null && !catalogChildren.isEmpty()) {
                 // Catalog semantics contains the schema + visual metadata union.
