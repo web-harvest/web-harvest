@@ -105,6 +105,23 @@ public class PluginMetadataCatalogTest {
         assertTrue(schema.containsKey("properties"), "Schema must expose properties definition");
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void catalogSchemaDocumentsExplicitAnyChildSemantics() {
+        Map<String, Object> schema = PluginMetadataCatalog.getCatalogSchema();
+        Map<String, Object> properties = (Map<String, Object>) schema.get("properties");
+        Map<String, Object> plugins = (Map<String, Object>) properties.get("plugins");
+        Map<String, Object> items = (Map<String, Object>) plugins.get("items");
+        Map<String, Object> pluginProperties = (Map<String, Object>) items.get("properties");
+        Map<String, Object> semantics = (Map<String, Object>) pluginProperties.get("semantics");
+        Map<String, Object> semanticsProperties = (Map<String, Object>) semantics.get("properties");
+        assertTrue(semanticsProperties.containsKey("explicitlyAcceptsAnyChild"));
+
+        PluginDescriptor loop = PluginMetadataCatalog.getDescriptor("loop");
+        assertNotNull(loop);
+        assertTrue(loop.getSemantics().explicitlyAcceptsAnyChild());
+    }
+
     @Test
     public void ifDescriptorProjectsMasterDetailAndExecutionSemantics() {
         PluginDescriptor descriptor = PluginMetadataCatalog.getDescriptor("if");
