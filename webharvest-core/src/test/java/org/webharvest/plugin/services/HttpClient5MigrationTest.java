@@ -38,7 +38,7 @@ public class HttpClient5MigrationTest {
 
     private HttpService httpService;
 
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() {
         // Use target/ as working directory - all generated files will go to target/
         String targetDir = "target";
