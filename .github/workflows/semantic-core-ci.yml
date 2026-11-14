@@ -3,6 +3,8 @@ name: Semantic Core Contract CI
 on:
   push:
     branches:
+      - main
+      - "project/**"
       - recovery/uncommitted-development
       - stabilization/release-readiness-core
       - "implementation/**"
@@ -17,6 +19,8 @@ on:
       - ".github/workflows/semantic-core-ci.yml"
   pull_request:
     branches:
+      - main
+      - "project/**"
       - recovery/uncommitted-development
       - 2.2.x
       - stabilization/release-readiness-core

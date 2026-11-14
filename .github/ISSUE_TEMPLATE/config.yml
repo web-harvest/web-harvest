@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/web-harvest/web-harvest/blob/main/CONTRIBUTING.md
+    about: Build, test, and pull-request expectations
+  - name: Product roadmap
+    url: https://github.com/web-harvest/web-harvest/issues/1
+    about: Staged Core/IDE/plugin direction and deferred work

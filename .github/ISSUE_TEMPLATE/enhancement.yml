@@ -1,0 +1,52 @@
+name: Enhancement request
+description: Propose a bounded capability or contract change
+title: "[ENHANCEMENT] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prefer agreeing the contract in an issue before a large implementation. See [CONTRIBUTING.md](https://github.com/web-harvest/web-harvest/blob/main/CONTRIBUTING.md) and roadmap [#1](https://github.com/web-harvest/web-harvest/issues/1).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or maintainer problem does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the intended contract. Label unknowns honestly.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What should explicitly stay out of scope?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core
+        - plugins
+        - ide
+        - cli
+        - docs
+        - ci
+        - project
+        - unknown
+    validations:
+      required: true
+  - type: checkboxes
+    id: evidence
+    attributes:
+      label: Evidence mindset
+      options:
+        - label: I will not claim existing capabilities without citing source, tests, or CI.
+          required: true
