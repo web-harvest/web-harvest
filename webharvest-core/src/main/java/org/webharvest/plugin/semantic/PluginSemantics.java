@@ -107,6 +107,7 @@ public final class PluginSemantics {
         map.put("providesExecutionContext", providesExecutionContext);
         map.put("executable", executable);
         map.put("allowsAnyChild", allowsAnyChild);
+        map.put("explicitlyAcceptsAnyChild", explicitlyAcceptsAnyChild);
         map.put("allowedChildElements", allowedChildElements);
         map.put("requiredParentElements", requiredParentElements);
         return map;
