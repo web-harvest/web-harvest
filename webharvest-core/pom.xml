@@ -14,6 +14,9 @@
     <name>WebHarvest Core</name>
     <properties>
         <surefireArgLine></surefireArgLine>
+        <!-- Keep network-tagged tests out of the default deterministic test suites. -->
+        <core.test.groups></core.test.groups>
+        <core.test.excludedGroups>network</core.test.excludedGroups>
     </properties>
     <build>
         <plugins>
@@ -25,7 +28,8 @@
                     <argLine>@{argLine} ${surefireArgLine} --add-opens java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
                     <forkCount>1</forkCount>
                     <reuseForks>true</reuseForks>
-                    <excludedGroups>network</excludedGroups>
+                    <groups>${core.test.groups}</groups>
+                    <excludedGroups>${core.test.excludedGroups}</excludedGroups>
                     <excludes>
                         <!-- Keep integration-named tests out of Surefire; Failsafe owns them at verify. -->
                         <!-- Offline-safe Http* unit tests (mocks/WireMock) must run in Surefire. -->
@@ -39,7 +43,8 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
                     <!-- Match the existing offline-safe test policy: network-tagged tests are not part of the deterministic CI suite. -->
-                    <excludedGroups>network</excludedGroups>
+                    <groups>${core.test.groups}</groups>
+                    <excludedGroups>${core.test.excludedGroups}</excludedGroups>
                 </configuration>
             </plugin>
             <plugin>
@@ -76,6 +81,17 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>network-tests</id>
+            <properties>
+                <!-- Select only live-network tests and override the default network exclusion. -->
+                <core.test.groups>network</core.test.groups>
+                <!-- TestNG requires a non-empty exclusion value; this sentinel matches no project group. -->
+                <core.test.excludedGroups>__webharvest_no_matching_test_group__</core.test.excludedGroups>
+            </properties>
+        </profile>
+    </profiles>
     <dependencies>
         <!--
             Required for class based mock objects (easymock with conjuction with
