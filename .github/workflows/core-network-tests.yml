@@ -45,8 +45,11 @@ jobs:
           test -s "$EFFECTIVE_POM"
           test "$(grep -Fc '<groups>network</groups>' "$EFFECTIVE_POM")" -ge 2
           test "$(grep -Fc '<excludedGroups>__webharvest_no_matching_test_group__</excludedGroups>' "$EFFECTIVE_POM")" -ge 2
-      - name: Run network-tagged Core unit and integration tests
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile surefire:test failsafe:integration-test failsafe:verify
+      - name: Run network-tagged Core unit tests (Surefire)
+        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile surefire:test
+      - name: Run network-tagged Core integration tests (Failsafe)
+        if: always()
+        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile failsafe:integration-test failsafe:verify
       - name: Upload Surefire and Failsafe reports
         if: always()
         uses: actions/upload-artifact@v4
