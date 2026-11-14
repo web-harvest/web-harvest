@@ -2,6 +2,10 @@ name: Core Network Tests
 
 on:
   workflow_dispatch:
+  # Branch-scoped push trigger validates the new workflow before it is merged.
+  push:
+    branches:
+      - ci/core-network-test-path
   pull_request:
     branches:
       - main
