@@ -12,7 +12,7 @@ No release tag, GitHub Release, or Maven deploy was performed as part of this as
 |---|---|---|
 | Source / default branch | Public repo; default branch `main`; baseline SHA above | FACT |
 | CI on baseline | Workflow `Semantic Core Contract CI` run [`43578560301`](https://github.com/web-harvest/web-harvest/actions/runs/43578560301) succeeded on that SHA (`workflow_dispatch`) | FACT |
-| CI default triggers | Workflow historically targeted recovery/implementation branches and `2.2.x` PRs; `main` was not the only/natural PR base | FACT (addressed in this iteration by adding `main` / `project/**` triggers) |
+| CI default triggers | Workflow historically targeted recovery/implementation branches and `2.2.x` PRs; `main` was not the only/natural PR base | FACT (addressed in this iteration: `push` includes `main` and `project/**`; `pull_request.branches` includes `main` as the PR base filter — not the head branch) |
 | POM version | Root and modules declare `2.3.1`, `groupId` `org.webharvest` | FACT |
 | GitHub Releases | `0` releases via GitHub API | FACT |
 | Git tags | Historical/archive tags exist (including `2.2.0`, `2.1.0rc1`); no verified `2.3.1` release tag identified as a published product release | FACT / INFERENCE |
