@@ -34,7 +34,7 @@ public class HttpServiceImplBasicTest {
 
     private HttpService httpService;
 
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() {
         // Create Guice injector to get HttpService
         // Use target/ as working directory to prevent polluting project root
