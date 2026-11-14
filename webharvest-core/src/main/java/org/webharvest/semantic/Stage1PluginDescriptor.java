@@ -427,6 +427,12 @@ public final class Stage1PluginDescriptor {
 
         public Builder allowedSubElements(List<String> allowedSubElements) {
             this.allowedSubElements = allowedSubElements == null ? List.of() : allowedSubElements;
+            if (!this.allowedSubElements.isEmpty()
+                    && this.childPolicy == ChildPolicy.UNKNOWN
+                    && this.childPolicyProvenance == ChildPolicyProvenance.MISSING_METADATA) {
+                this.childPolicy = ChildPolicy.ALLOW_LIST;
+                this.childPolicyProvenance = ChildPolicyProvenance.SCHEMA_ALLOW_LIST;
+            }
             return this;
         }
 
