@@ -145,6 +145,8 @@ The public Plugin Author Guide describes the target contract and current limitat
 
 ### Phase B — Inventory and close the Core plugin set
 
+Tracking: [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93). The [preliminary source inventory](PLUGIN_INVENTORY.md) records the current registration/discovery baseline and known discrepancies; it is not the final classification.
+
 - Inventory every plugin implementation across current modules.
 - Record element names and aliases, implementation class, owner module, dependencies, configuration/schema, validation, execution/variable semantics, metadata, discovery, lifecycle, tests and compatibility.
 - Classify each implementation as Core execution, Core control flow, Core data/extraction, internal/system or optional integration.
