@@ -54,4 +54,18 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
         Variable selectedBranch = context.getVar("selectedBranch");
         assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "true");
     }
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void nonEmptyStringVariableMustRemainTruthy() throws Exception {
+        String xml = PREFIX
+            + "<def var="flag" value="enabled"/>"
+            + "<if condition="\u0024{flag}">"
+            + "  <def var="selectedBranch" value="executed"/>"
+            + "</if>" + SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable selectedBranch = context.getVar("selectedBranch");
+        assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "executed",
+            "A non-empty ordinary string must remain truthy for If conditions");
+    }
+
 }
