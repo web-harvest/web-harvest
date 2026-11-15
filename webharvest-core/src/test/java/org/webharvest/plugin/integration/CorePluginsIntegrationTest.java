@@ -122,12 +122,11 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing GetVarPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("21_getvar_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // GetVar plugin should execute successfully
-        assertTrue(true, "GetVarPlugin should execute successfully");
+
+        assertEquals(executeAndGetVariable(xmlPath, "retrievedText").toString(), "Hello World",
+            "GetVarPlugin should return the retrieved text variable to its caller");
+        assertEquals(executeAndGetVariable(xmlPath, "retrievedNumber").toString(), "42",
+            "GetVarPlugin should return the retrieved numeric variable to its caller");
     }
 
     @Test(groups = {"integration", "core-plugins"})
