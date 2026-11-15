@@ -199,6 +199,24 @@ public class HttpClient5MigrationWithMockTest {
     }
     
     @Test
+    public void testHttpClient5_HeaderLookupIsCaseInsensitive() throws Exception {
+        // HTTP field names are case-insensitive; preserve and resolve a lowercase
+        // response header exactly as a server is allowed to send it.
+        stubFor(get(urlEqualTo("/lowercase-content-type"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withHeader("content-type", "image/png")
+                .withBody("image")));
+
+        HttpResponse response = httpService.get(baseUrl + "/lowercase-content-type", null);
+
+        assertNotNull(response);
+        assertEquals(response.getHeader("Content-Type"), "image/png");
+        assertEquals(response.getHeader("CONTENT-TYPE"), "image/png");
+        assertEquals(response.getContentType(), "image/png");
+    }
+
+    @Test
     public void testHttpClient5_EmptyResponse() throws Exception {
         // GIVEN: Mock server returns empty body
         stubFor(get(urlEqualTo("/empty"))
