@@ -71,8 +71,8 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
     @Test(groups = {"integration", "control-flow-plugins"})
     public void trueBooleanLiteralMustExecuteIfBody() throws Exception {
         String xml = PREFIX
-            + "<if condition="\u0022\u0024{true}\u0022>"
-            + "  <def var="\u0022selectedBranch\u0022 value="\u0022true\u0022/>"
+            + "<if condition=\"\u0024{true}\">"
+            + "  <def var=\"selectedBranch\" value=\"true\"/>"
             + "</if>" + SUFFIX;
 
         DynamicScopeContext context = executeXmlString(xml);
@@ -83,8 +83,8 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
     @Test(groups = {"integration", "control-flow-plugins"})
     public void zeroNumericLiteralMustNotExecuteIfBody() throws Exception {
         String xml = PREFIX
-            + "<if condition="\u0022\u0024{0}\u0022>"
-            + "  <def var="\u0022unexpected\u0022 value="\u0022executed\u0022/>"
+            + "<if condition=\"\u0024{0}\">"
+            + "  <def var=\"unexpected\" value=\"executed\"/>"
             + "</if>" + SUFFIX;
 
         DynamicScopeContext context = executeXmlString(xml);
@@ -94,8 +94,8 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
     @Test(groups = {"integration", "control-flow-plugins"})
     public void nonZeroNumericLiteralMustExecuteIfBody() throws Exception {
         String xml = PREFIX
-            + "<if condition="\u0022\u0024{1}\u0022>"
-            + "  <def var="\u0022selectedBranch\u0022 value="\u0022executed\u0022/>"
+            + "<if condition=\"\u0024{1}\">"
+            + "  <def var=\"selectedBranch\" value=\"executed\"/>"
             + "</if>" + SUFFIX;
 
         DynamicScopeContext context = executeXmlString(xml);
