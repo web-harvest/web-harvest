@@ -616,6 +616,14 @@ public class IfPlugin extends AbstractPlugin {
         }
 
         try {
+            // Older callers can execute plugins with a bare ScraperContext that has
+            // no scripting language configured. Preserve the historical variable /
+            // comparison contract in that case instead of asking BaseTemplater to
+            // return the unevaluated template as plain text.
+            if (context.getScriptingLanguage() == null) {
+                return evaluateWithoutConfiguredLanguage(condition, context);
+            }
+
             // Use the same configured expression engine as templates and scripts.
             Variable evaluated = BaseTemplater.evaluateToVariable(
                     condition.trim(), context.getScriptingLanguage(), context);
@@ -624,6 +632,47 @@ public class IfPlugin extends AbstractPlugin {
             LOGGER.error("Error evaluating If condition: {}", condition, e);
             return false;
         }
+    }
+
+    /**
+     * Preserves the legacy If behavior for direct plugin callers that have not
+     * configured a scripting language on their context.
+     */
+    private boolean evaluateWithoutConfiguredLanguage(
+            String condition, DynamicScopeContext context) {
+        String expression = condition.trim();
+        if (expression.startsWith("${") && expression.endsWith("}")) {
+            expression = expression.substring(2, expression.length() - 1).trim();
+        }
+
+        for (String operator : new String[] {"==", "!="}) {
+            int operatorIndex = expression.indexOf(operator);
+            if (operatorIndex >= 0) {
+                String leftName = expression.substring(0, operatorIndex).trim();
+                String rightValue = unquote(expression.substring(operatorIndex + operator.length()).trim());
+                Variable leftVariable = context.getVar(leftName);
+                String leftValue = leftVariable == null ? "" : leftVariable.toString().trim();
+                boolean equal = leftValue.equals(rightValue);
+                return "==".equals(operator) ? equal : !equal;
+            }
+        }
+
+        Variable variable = context.getVar(expression);
+        if (variable != null) {
+            return isTruthyConditionValue(variable);
+        }
+        return isTruthyConditionValue(new NodeVariable(expression));
+    }
+
+    private String unquote(String value) {
+        if (value.length() >= 2) {
+            char first = value.charAt(0);
+            char last = value.charAt(value.length() - 1);
+            if ((first == '\\'' && last == '\\'') || (first == '"' && last == '"')) {
+                return value.substring(1, value.length() - 1);
+            }
+        }
+        return value;
     }
 
     /**
