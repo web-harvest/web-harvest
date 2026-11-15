@@ -67,7 +67,7 @@ Do not obtain a green build by deleting tests, weakening assertions, adding broa
 
 ### Bug fixes
 
-- Fix unreleased-work bugs on a short-lived branch from `main).
+- Fix unreleased-work bugs on a short-lived branch from `main`.
 - Fix a bug affecting a supported release on the corresponding `release/x.y` branch.
 - Merge the hotfix to that release line and forward-port it to `main` through a reviewed PR when applicable.
 - Backport a `main` fix only when the defect affects a supported release and the change is compatible.
