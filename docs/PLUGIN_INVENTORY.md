@@ -116,3 +116,66 @@ The `@CorePlugin` annotation and `PluginMetadata.isCorePlugin()` are not reliabl
 This baseline was produced from the Git tree and targeted source reads on the stated `main` commit. It does not yet include a complete per-plugin read of configuration schemas, runtime call sites, dependencies, semantic descriptors and tests. No class has been moved or removed, and no Core membership decision is implied.
 
 The authoritative work item is [Issue #93](https://github.com/web-harvest/web-harvest/issues/93). Update this inventory as each implementation is inspected and record source/test evidence rather than relying on historical plugin counts.
+
+
+## 6. Runtime registration is not the same as metadata discovery
+
+A deeper call-path inspection found a more important architectural gap than the initial count mismatch:
+
+- `ScraperModule.configure()` calls `CorePluginsRegistrar.registerCorePlugins()`. That registrar populates `CorePluginRegistry` with the 44 built-in element mappings.
+- `DefaultPluginBodyExecutor` resolves child execution by calling `CorePluginRegistry.getPluginClass(childConfig.getElementName())`. If the mapping is absent, it logs that the plugin class was not found and does not execute that child.
+- `PluginPackageScanner` can scan arbitrary packages and register `@CorePlugin` classes into that same runtime registry. Its API is covered by dedicated tests, but the default `ScraperModule` wiring does not instantiate or invoke it. The former per-module `CorePluginsPostProcessor` wiring is commented out as removed.
+- Separately, `PluginClassScanner` scans six module package roots and feeds `PluginMetadataCatalog`. The catalog creates descriptors for discovered classes; this does not register them in `CorePluginRegistry` and does not make XML execution available.
+- `StreamingXmlParser` currently sets `elementInfo = null`, explicitly skips the old resolver lookup, and creates `PluginConfigurationTree` nodes with a null `pluginClass`. Its comments label this as a POC fallback and say direct `PluginRegistry` lookup is future work. Actual child execution later relies on `CorePluginRegistry` name lookup.
+
+**Consequence:** metadata visibility in the IDE/catalog is not proof that a plugin can execute from XML. A plugin may be discoverable by `PluginClassScanner` and still be absent from the runtime registry. The current package scanner is a usable building block, but the default application does not yet provide the automatic, opt-in extension registration experience described by the target architecture.
+
+Evidence:
+- [ScraperModule.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/ioc/ScraperModule.java)
+- [CorePluginsRegistrar.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginsRegistrar.java)
+- [DefaultPluginBodyExecutor.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/DefaultPluginBodyExecutor.java)
+- [PluginPackageScanner.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/scanner/PluginPackageScanner.java)
+- [PluginClassScanner.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/metadata/PluginClassScanner.java)
+- [PluginMetadataCatalog.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/metadata/PluginMetadataCatalog.java)
+- [StreamingXmlParser.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/StreamingXmlParser.java)
+
+## 7. Optional-module implementation and test evidence
+
+The following module boundaries are confirmed by each module POM: every optional module depends on `webharvest-core`; Core does not declare these optional modules as dependencies. The modules currently add their integration library as follows:
+
+| Module | Plugin XML elements | Direct integration dependency | Test evidence in source tree | Preliminary assessment |
+|---|---|---|---|---|
+| `webharvest-ftp` | `ftp`, `ftp-get`, `ftp-put`, `ftp-list` | Apache Commons Net | `FtpPluginTest` includes tests for parent and child operations; separate live/integration test exists | Strong optional-integration candidate |
+| `webharvest-database` | `database`, `connection` | Commons DBCP | Unit tests for both plugin classes and driver manager; XML example resource | Strong optional-integration candidate |
+| `webharvest-mail` | `mail` | Commons Email | Unit tests, exception tests, bug regression and integration test | Strong optional-integration candidate |
+| `webharvest-webbrowser` | `web-browser` | HtmlUnit | Unit, metadata, regression and integration tests | Strong optional-integration candidate |
+| `webharvest-zip` | `zip`, `zip-entry` | JDK ZIP APIs only | Only one integration-named test currently visible; see limitation below | Optional extension candidate, but classification and tests need review |
+
+The FTP child classes do not have separate test source files, but `FtpPluginTest` contains explicit `testFtpGetPlugin`, `testFtpPutPlugin` and `testFtpListPlugin` methods. Do not infer missing coverage solely from file-name matching.
+
+### ZIP test gap and parent contract
+
+The current `ZipPluginIntegrationTest.testZipPluginExample()` only locates the XML example resource and asserts that the file exists. It does not load or execute the configuration, nor assert the generated archive contents. It is therefore not evidence of end-to-end ZIP runtime behavior.
+
+`ZipEntryPlugin` requires a parent `ZipPlugin` in execution and throws if it cannot resolve one. The parent-resolution helper currently returns `null` with a TODO. This is a direct defect or unfinished path, not merely a test naming gap. The ZIP module must not be considered complete until the parent/child context contract and an actual archive-content integration test are repaired.
+
+## 8. Core implementation test baseline
+
+A source-tree inventory found 44 concrete class files named `*Plugin.java` under `webharvest-core/.../plugin/core`, but this count includes classes not in the manual 44 XML mapping set (including `BodyProcessorPlugin`, `ConfigPlugin` and legacy `VarPlugin`). Filename-based test matching shows that many registered classes have dedicated unit tests; it is not a substitute for executing tests or verifying assertions.
+
+Notable classifications to resolve:
+- `BodyProcessorPlugin` and `ConfigPlugin`: determine whether internal runtime/system components or public XML plugins.
+- `VarPlugin`: explicitly commented as removed from the manual registrar in favor of `DefPlugin`; establish compatibility/deprecation expectations and whether it should remain discoverable.
+- `SetVarPlugin`: retained as the `set-var` XML alias and has dedicated compatibility and execution tests.
+- `HttpPlugin`, `FilePlugin`, `ScriptPlugin`, XSLT/XQuery and XML/HTML transforms: currently in Core, but their dependency footprint, security boundary and minimal-runtime necessity still require an explicit product decision.
+
+## 9. Required follow-up before calling the plugin platform complete
+
+1. Define one authoritative runtime registration API and remove the split-brain between metadata-only scanning and execution registry registration.
+2. Make extension registration opt-in and module/classloader aware; never require Core to depend on optional integrations.
+3. Ensure the same discovered descriptor drives XML element resolution, metadata catalog, schema/validation and semantic resolution.
+4. Add duplicate ID/element/namespace conflict checks and deterministic ordering.
+5. Add integration tests proving: plugin jar on classpath -> discovered -> registered -> XML parsed -> instantiated with DI -> executed -> lifecycle/resources closed.
+6. Add an out-of-tree test plugin Maven project before stabilizing the SPI or extracting the company extensions repository.
+7. Repair ZIP parent resolution and replace the current resource-existence test with an actual execution/output assertion.
+
