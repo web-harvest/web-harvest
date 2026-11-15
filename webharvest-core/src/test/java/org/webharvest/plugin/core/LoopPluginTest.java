@@ -70,6 +70,16 @@ public class LoopPluginTest {
         assertEquals(context.getVar("_item").toString(), "third");
     }
 
+    @Test(description = "Negative maxloops without explicit items performs zero fallback iterations")
+    public void testLoopWithUnlimitedMaxloopsAndNoItems() throws Exception {
+        executeLoop("-1", null);
+
+        assertNull(context.getVar("_index"),
+            "Without an explicit item source, unlimited mode must not enter an unbounded fallback loop");
+        assertNull(context.getVar("_item"),
+            "No item variable should be created when the fallback loop performs zero iterations");
+    }
+
     @Test(description = "Loop plugin metadata")
     public void testLoopPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
