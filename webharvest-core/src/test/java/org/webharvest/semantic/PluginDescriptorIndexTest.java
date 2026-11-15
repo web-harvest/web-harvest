@@ -13,6 +13,61 @@ public class PluginDescriptorIndexTest {
     private static final String NS_B = "http://example.org/ns-b";
 
     @Test
+    public void anyChildRequiresExplicitVisualMetadataProvenance() {
+        ChildPolicyProvenance[] invalidProvenance = {
+                ChildPolicyProvenance.CATALOG_SEMANTICS,
+                ChildPolicyProvenance.SCHEMA_ALLOW_LIST,
+                ChildPolicyProvenance.LEGACY_BODY_HEURISTIC,
+                ChildPolicyProvenance.MISSING_METADATA,
+                ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY
+        };
+        for (ChildPolicyProvenance provenance : invalidProvenance) {
+            try {
+                Stage1PluginDescriptor.builder()
+                        .id("invalid-any@" + NS_A).namespaceUri(NS_A).localName("invalid-any")
+                        .className("org.example.InvalidAny")
+                        .childPolicy(ChildPolicy.ANY_CHILD, provenance)
+                        .build();
+                fail("ANY_CHILD must reject provenance " + provenance);
+            } catch (IllegalArgumentException expected) {
+                assertTrue(expected.getMessage().contains("EXPLICIT_VISUAL_METADATA"));
+            }
+        }
+
+        Stage1PluginDescriptor valid = Stage1PluginDescriptor.builder()
+                .id("valid-any@" + NS_A).namespaceUri(NS_A).localName("valid-any")
+                .className("org.example.ValidAny")
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA)
+                .build();
+        assertEquals(valid.getChildPolicy(), ChildPolicy.ANY_CHILD);
+    }
+
+    @Test
+    public void catalogRootPlacementSurvivesMissingSchemaAndIsValidated() {
+        org.webharvest.plugin.metadata.PluginSemantics semantics =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.LEAF),
+                        false, false, false, false, false, List.of(), List.of(), false);
+        org.webharvest.plugin.metadata.PluginDescriptor catalog =
+                new org.webharvest.plugin.metadata.PluginDescriptor(
+                        "leaf@" + NS_A, "leaf", "Leaf", "test", "org.example.Leaf",
+                        "test", "test", null, semantics, null, List.of(),
+                        java.util.Map.of("namespace", NS_A));
+
+        Stage1PluginDescriptor descriptor = Stage1PluginDescriptor.fromCatalog(catalog);
+        assertFalse(descriptor.hasReliableSchema());
+        assertEquals(descriptor.getCanAppearAtRoot(), java.util.Optional.of(false));
+
+        SemanticModel model = new SemanticModel(indexOf(descriptor));
+        SemanticLoadResult loaded = model.load(
+                "<leaf xmlns=\"" + NS_A + "\"/>", new org.webharvest.semantic.SourceOrigin("test:root-placement"));
+        assertTrue(loaded.isSuccessful(), loaded.getDiagnostics().toString());
+        StructuralValidationResult result = model.validateStructural(loaded.getDocument().get());
+        assertTrue(result.getDiagnostics().stream()
+                .anyMatch(d -> "DISALLOWED_ROOT".equals(d.getCode())), result.getDiagnostics().toString());
+    }
+
+    @Test
     public void catalogProjectionPreservesExplicitAndUnknownChildPolicies() {
         org.webharvest.plugin.metadata.PluginDescriptor httpCatalog =
                 org.webharvest.plugin.metadata.PluginMetadataCatalog.getDescriptor("http");
