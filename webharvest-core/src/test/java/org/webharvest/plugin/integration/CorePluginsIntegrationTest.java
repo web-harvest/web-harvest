@@ -72,12 +72,10 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing TextPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("02_text_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Text plugin test should execute without errors
-        assertTrue(true, "TextPlugin should execute successfully");
+        String content = executeAndReadOutputFile(xmlPath, "text_output.txt");
+
+        assertEquals(content, "This is plain text content from Text Plugin",
+            "TextPlugin should write the exact configured text");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -99,12 +97,10 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing DefPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("04_def_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Verify that def variables were created
-        assertTrue(true, "DefPlugin should execute successfully");
+        String content = executeAndReadOutputFile(xmlPath, "def_output.txt");
+
+        assertEquals(content, "Greeting: Hello World!, User: Web-Harvest User",
+            "DefPlugin should define variables consumed by the template");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -112,12 +108,13 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing SetVarPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("20_setvar_plugin_example.xml");
-        
+
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // SetVar plugin should execute successfully
-        assertTrue(true, "SetVarPlugin should execute successfully");
+        Variable value = ctx.getVar("initial");
+
+        assertNotNull(value, "Legacy set-var should leave the existing variable available");
+        assertEquals(value.toString(), "updated value from setvar example",
+            "Legacy set-var name attribute and body value should update the variable");
     }
 
     @Test(groups = {"integration", "core-plugins"})
