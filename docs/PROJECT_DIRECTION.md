@@ -121,7 +121,7 @@ The public Plugin Author Guide describes the target contract and current limitat
 
 ### Bug fixes and backports
 
-- A bug affecting only unreleased work is fixed on a short-lived branch from `main), then merged by PR.
+- A bug affecting only unreleased work is fixed on a short-lived branch from `main`, then merged by PR.
 - A bug affecting a supported release is fixed on a short-lived branch based on the corresponding `release/x.y` branch, then merged there by PR.
 - A release hotfix is merged into that release line and then forward-ported to `main` through a separate reviewed PR (normally a cherry-pick) when applicable.
 - A fix made on `main` is backported to a supported release only when the defect affects that release and the change is compatible; use a separate short-lived branch and PR based on that release branch.
