@@ -278,3 +278,42 @@ Evidence:
 - [CorePluginRegistry.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginRegistry.java)
 - [SetVarCompatibilityRegistrationContractTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/definition/SetVarCompatibilityRegistrationContractTest.java)
 - [DefaultPluginBodyExecutorTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/DefaultPluginBodyExecutorTest.java)
+
+## 13. Core integration-test evidence quality
+
+The source tree does contain Failsafe-owned XML integration suites. In particular, `XmlBasedIntegrationTestBase` creates a Guice-backed `Harvest`, loads a `ConfigSource`, and executes through `Harvester`. Its default HTTP test module supplies deterministic stubs. Therefore it would be incorrect to say that Core has no end-to-end XML execution tests.
+
+However, a source-level review of six major suites shows that test presence often overstates behavioral evidence:
+
+| Test class | Test methods | Placeholder `assertTrue(true)` occurrences | Evidence qualification |
+|---|---:|---:|---|
+| `CorePluginsIntegrationTest` | 16 | 13 | XML execution exists; many cases only check non-null context or unconditional success |
+| `ControlFlowPluginsIntegrationTest` | 10 | 8 | XML execution exists; several cases lack assertions on branch/iteration outcomes |
+| `AdvancedPluginsIntegrationTest` | 9 | 8 | XML execution exists; broad catch-and-pass behavior can hide failures |
+| `HttpPluginsIntegrationTest` | 7 | 11 | Broad catch-and-pass; deterministic stub tests should fail on unexpected execution errors |
+| `XmlTransformationPluginsIntegrationTest` | 10 | 6 | Mixed; XPath includes an observable output assertion, several others only check context |
+| `TextProcessingPluginsIntegrationTest` | 10 | 4 | Mixed; some observable assertions, some smoke-only placeholders |
+
+These counts are static source inspection of the current files, not test-run results. A placeholder occurrence can coexist with a meaningful assertion in the same method; the table records occurrences, not a claim that every such method has no other assertion. The important defect pattern is broad exception handling and unconditional success assertions that can allow behavior regressions to pass.
+
+Tracked as [Issue #98 — Strengthen Core XML integration tests with observable behavior assertions](https://github.com/web-harvest/web-harvest/issues/98).
+
+### Revised evidence policy for the 44-element matrix
+
+For each default-registered XML element, record the strongest evidence actually present:
+
+- **Meaningful runtime behavior:** executes through XML and asserts an observable result, state change, output or precise expected exception.
+- **Execution smoke only:** XML is executed but the assertion is only non-null context / no exception, or success is unconditional.
+- **Metadata/unit only:** class construction, metadata, schema or isolated method tests without runtime XML execution.
+- **No evidence found:** no relevant test artifact located.
+
+Do not infer meaningful coverage from test filenames, class names, annotations, or a green aggregate test run alone. The target is one authoritative mapping/alias contract plus meaningful per-element behavioral evidence where appropriate. This is a prerequisite for reliable Core plugin membership decisions, not a reason to delay unrelated current work.
+
+Evidence links:
+- [XmlBasedIntegrationTestBase.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlBasedIntegrationTestBase.java)
+- [CorePluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/CorePluginsIntegrationTest.java)
+- [ControlFlowPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/ControlFlowPluginsIntegrationTest.java)
+- [AdvancedPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/AdvancedPluginsIntegrationTest.java)
+- [HttpPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/HttpPluginsIntegrationTest.java)
+- [XmlTransformationPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlTransformationPluginsIntegrationTest.java)
+- [TextProcessingPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
