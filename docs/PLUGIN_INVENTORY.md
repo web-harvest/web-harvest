@@ -189,7 +189,37 @@ Even for the 44 current runtime mappings, membership in a minimal engine is not 
 - Legacy `set-var` must remain available for compatibility even if it is not recommended for new configurations.
 - `VarPlugin` should remain out of the default runtime unless a deliberate compatibility requirement is established; its deprecated class and tests alone do not imply support.
 
-## 9. Required follow-up before calling the plugin platform complete
+## 9. Core Maven dependency footprint — current baseline
+
+The current `webharvest-core/pom.xml` declares the following non-test dependencies. This is a declared module footprint, not yet a per-plugin reachability/dependency map; transitive dependencies are not expanded here.
+
+| Dependency | Scope | Initial review question |
+|---|---|---|
+| SLF4J API | compile | Core logging contract; likely foundational |
+| Guice | compile | Is DI a permanent Core runtime requirement or an implementation detail? |
+| CGLIB | compile | Identify the exact Core features requiring class generation |
+| JSON (`org.json`) and Gson | compile | Which JSON/XML conversion and metadata paths require each library? |
+| TagSoup and Jsoup | compile | HTML parsing/repair; consider whether HTML extraction is a separately selectable capability |
+| Apache Tika Core | compile | Identify the actual MIME/type-detection call sites and whether optional |
+| Commons Lang, Commons IO, Commons Collections | compile | Trace shared utility use and determine whether any can be removed/replaced with JDK APIs |
+| Reflections | compile | Dynamic package scanning is not the authoritative runtime registration path today; evaluate whether it belongs in minimal Core |
+| Saxon (declared twice) | compile | Duplicate dependency declaration should be reconciled; determine exact XSLT/XQuery feature needs |
+| BeanShell | compile | Script engine is part of the default runtime path; define scripting capability and security boundary |
+| Groovy | runtime | Optional script language; should not necessarily burden every Core consumer |
+| Rhino | runtime | JavaScript scripting engine; define supported runtime capability and lifecycle |
+| Guava | compile | Trace remaining usage; assess whether JDK replacements are practical |
+| Apache HttpClient 5 | compile | HTTP is a major Core capability; review dependency and transport boundary |
+| `javax.annotation-api` | compile | Verify required annotations and Java baseline |
+
+### Dependency review implications
+
+- The current Core is not a tiny execution kernel: it bundles HTTP, HTML parsing, XSLT/XQuery, scripting engines and dynamic classpath scanning dependencies alongside execution primitives.
+- Do not remove these dependencies based on POM inspection alone. First map each dependency to concrete classes, call sites, tests and public XML behavior.
+- The eventual minimal Core may need capability modules (for example HTTP, HTML extraction, transformations, scripting) that remain first-party but are independently selectable. This is a design candidate, not an approved module split.
+- The duplicate Saxon declaration is a low-risk POM cleanup candidate, but should be checked against Maven effective dependency resolution before changing it.
+- The optional-module extraction decision should be based on the combined public XML contract, dependency graph, licensing/security, and runtime integration tests—not module names alone.
+
+## 10. Required follow-up before calling the plugin platform complete
 
 1. Define one authoritative runtime registration API and remove the split-brain between metadata-only scanning and execution registry registration.
 2. Make extension registration opt-in and module/classloader aware; never require Core to depend on optional integrations.
