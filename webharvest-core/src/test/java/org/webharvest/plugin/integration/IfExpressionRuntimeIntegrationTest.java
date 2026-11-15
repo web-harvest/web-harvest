@@ -103,4 +103,29 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
         assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "executed");
     }
 
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void variableTruthinessMustDistinguishFalseZeroEmptyAndTruthyValues() throws Exception {
+        String xml = PREFIX
+            + "<def var=\"falseFlag\" value=\"false\"/>"
+            + "<def var=\"zeroFlag\" value=\"0\"/>"
+            + "<def var=\"emptyFlag\" value=\"\"/>"
+            + "<def var=\"oneFlag\" value=\"1\"/>"
+            + "<def var=\"ordinaryFlag\" value=\"enabled\"/>"
+            + "<if condition=\"\u0024{falseFlag}\"><def var=\"unexpectedFalse\" value=\"yes\"/></if>"
+            + "<if condition=\"\u0024{zeroFlag}\"><def var=\"unexpectedZero\" value=\"yes\"/></if>"
+            + "<if condition=\"\u0024{emptyFlag}\"><def var=\"unexpectedEmpty\" value=\"yes\"/></if>"
+            + "<if condition=\"\u0024{oneFlag}\"><def var=\"oneSelected\" value=\"yes\"/></if>"
+            + "<if condition=\"\u0024{ordinaryFlag}\"><def var=\"ordinarySelected\" value=\"yes\"/></if>"
+            + SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+        assertNull(context.getVar("unexpectedFalse"));
+        assertNull(context.getVar("unexpectedZero"));
+        assertNull(context.getVar("unexpectedEmpty"));
+        assertEquals(context.getVar("oneSelected").toString(), "yes");
+        assertEquals(context.getVar("ordinarySelected").toString(), "yes");
+    }
+
+
 }
