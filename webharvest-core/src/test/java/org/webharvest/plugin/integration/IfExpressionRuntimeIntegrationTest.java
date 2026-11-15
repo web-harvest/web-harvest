@@ -57,9 +57,9 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
     @Test(groups = {"integration", "control-flow-plugins"})
     public void nonEmptyStringVariableMustRemainTruthy() throws Exception {
         String xml = PREFIX
-            + "<def var="flag" value="enabled"/>"
-            + "<if condition="\u0024{flag}">"
-            + "  <def var="selectedBranch" value="executed"/>"
+            + "<def var=\"flag\" value=\"enabled\"/>"
+            + "<if condition=\"\u0024{flag}\">"
+            + "  <def var=\"selectedBranch\" value=\"executed\"/>"
             + "</if>" + SUFFIX;
 
         DynamicScopeContext context = executeXmlString(xml);
