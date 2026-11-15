@@ -610,21 +610,75 @@ public class IfPlugin extends AbstractPlugin {
         }
     }
     
-    private boolean evaluateCondition(String condition, DynamicScopeContext context) {
-        if (condition == null || condition.trim().isEmpty()) {
-            return false;
-        }
-
-        try {
-            // Use the same configured expression engine as templates and scripts.
-            // This keeps If semantics aligned with the root configuration's scriptlang.
-            Variable evaluated = BaseTemplater.evaluateToVariable(
-                    condition.trim(), context.getScriptingLanguage(), context);
-            return evaluated != null && evaluated.toBoolean();
-        } catch (RuntimeException e) {
-            LOGGER.error("Error evaluating If condition: {}", condition, e);
-            return false;
-        }
-    }
+                private boolean evaluateCondition(String condition, DynamicScopeContext context) {
+                    if (condition == null || condition.isEmpty()) {
+                        return false;
+                    }
+                    
+                    try {
+                        LOGGER.debug("IfPlugin.evaluateCondition: Original condition=" + condition);
+                        
+                        // Handle template expressions like ${condition == 'true'}
+                        if (condition.contains("${") && condition.contains("}")) {
+                            // Extract the expression inside ${...}
+                            String expression = condition.substring(condition.indexOf("${") + 2, condition.lastIndexOf("}"));
+                            LOGGER.debug("IfPlugin.evaluateCondition: Extracted expression=" + expression);
+                            
+                            // Handle comparison expressions like "condition == 'true'"
+                            if (expression.contains("==")) {
+                                String[] parts = expression.split("==");
+                                if (parts.length == 2) {
+                                    String leftVar = parts[0].trim();
+                                    String rightValue = parts[1].trim().replaceAll("['\"]", "");
+                                    
+                                    LOGGER.debug("IfPlugin.evaluateCondition: leftVar='" + leftVar + "', rightValue='" + rightValue + "'");
+                                    
+                                    // Get the variable value from context
+                                    Variable leftVarValue = context.getVar(leftVar);
+                                    String leftValue = leftVarValue != null ? leftVarValue.toString() : "";
+                                    
+                                    LOGGER.debug("IfPlugin.evaluateCondition: leftValue='" + leftValue + "'");
+                                    
+                                    boolean result = leftValue.equals(rightValue);
+                                    LOGGER.debug("IfPlugin.evaluateCondition: comparison result=" + result);
+                                    return result;
+                                }
+                            }
+                            
+                            // Handle other comparison operators
+                            if (expression.contains("!=")) {
+                                String[] parts = expression.split("!=");
+                                if (parts.length == 2) {
+                                    String leftVar = parts[0].trim();
+                                    String rightValue = parts[1].trim().replaceAll("['\"]", "");
+                                    
+                                    Variable leftVarValue = context.getVar(leftVar);
+                                    String leftValue = leftVarValue != null ? leftVarValue.toString() : "";
+                                    
+                                    boolean result = !leftValue.equals(rightValue);
+                                    LOGGER.debug("IfPlugin.evaluateCondition: != comparison result=" + result);
+                                    return result;
+                                }
+                            }
+                            
+                            // If it's a simple variable reference, get its value
+                            Variable varValue = context.getVar(expression.trim());
+                            if (varValue != null) {
+                                String value = varValue.toString();
+                                boolean result = !value.equals("false") && !value.equals("0") && !value.isEmpty();
+                                LOGGER.debug("IfPlugin.evaluateCondition: variable value='" + value + "', result=" + result);
+                                return result;
+                            }
+                        }
+                        
+                        // For simple boolean values
+                        boolean result = !condition.equals("false") && !condition.equals("0") && !condition.isEmpty();
+                        LOGGER.debug("IfPlugin.evaluateCondition: simple boolean result=" + result);
+                        return result;
+                    } catch (Exception e) {
+                        LOGGER.error("Error evaluating condition: " + condition, e);
+                        return false;
+                    }
+                }
 
 }
