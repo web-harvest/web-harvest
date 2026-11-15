@@ -60,17 +60,18 @@ Do not obtain a green build by deleting tests, weakening assertions, adding broa
 ### Branches
 
 - `main` is the current integration/development line and the default branch.
-- `release/<major.minor>` is created from a verified `main` commit only when a version enters release stabilization/RC.
-- Historical `master` and `2.2.x` branches are preserved as historical lines unless a separate maintenance decision is made.
+- `release/<major.minor>` is created from a verified `main` commit only after scope freeze, when the version enters stabilization/RC. After the cut, `main` moves to the next development version.
+- Keep one active maintenance branch per explicitly supported release line. Historical `master` and `2.2.x` branches are preserved read-only unless a separate maintenance decision is made; `2.2.x` is not active support by default.
 - Use short-lived `feature/*`, `fix/*` and `docs/*` branches for pull requests. Delete the head branch after merge (prefer repository automatic deletion).
 - Do not create a permanent `develop` branch or speculative release lines without an explicit reason.
 
 ### Bug fixes
 
 - Fix unreleased-work bugs on a short-lived branch from `main`.
-- Fix a bug affecting a supported release on the corresponding `release/x.y` branch.
-- Merge the hotfix to that release line and forward-port it to `main` through a reviewed PR when applicable.
-- Backport a `main` fix only when the defect affects a supported release and the change is compatible.
+- Fix a bug affecting a supported release on a short-lived branch from the corresponding `release/x.y` branch.
+- Merge the hotfix to that release line and forward-port it to `main` through a separate reviewed PR (normally a cherry-pick) when applicable.
+- Backport a `main` fix only when the defect affects a supported release and the change is compatible; use a separate branch/PR based on that release line.
+- Do not merge all of `main` into a release branch to carry one fix; require CI evidence on each target line.
 - Identify the source fix, target release, compatibility considerations and CI evidence in every backport PR.
 
 ### Pull request expectations
