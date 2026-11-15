@@ -203,7 +203,7 @@ The current `webharvest-core/pom.xml` declares the following non-test dependenci
 | Apache Tika Core | compile | Identify the actual MIME/type-detection call sites and whether optional |
 | Commons Lang, Commons IO, Commons Collections | compile | Trace shared utility use and determine whether any can be removed/replaced with JDK APIs |
 | Reflections | compile | Dynamic package scanning is not the authoritative runtime registration path today; evaluate whether it belongs in minimal Core |
-| Saxon (declared twice) | compile | Duplicate dependency declaration should be reconciled; determine exact XSLT/XQuery feature needs |
+| Saxon (base artifact plus `dom` classifier) | compile | Verify both artifacts are required and map them to XSLT/XQuery call sites |
 | BeanShell | compile | Script engine is part of the default runtime path; define scripting capability and security boundary |
 | Groovy | runtime | Optional script language; should not necessarily burden every Core consumer |
 | Rhino | runtime | JavaScript scripting engine; define supported runtime capability and lifecycle |
@@ -216,7 +216,7 @@ The current `webharvest-core/pom.xml` declares the following non-test dependenci
 - The current Core is not a tiny execution kernel: it bundles HTTP, HTML parsing, XSLT/XQuery, scripting engines and dynamic classpath scanning dependencies alongside execution primitives.
 - Do not remove these dependencies based on POM inspection alone. First map each dependency to concrete classes, call sites, tests and public XML behavior.
 - The eventual minimal Core may need capability modules (for example HTTP, HTML extraction, transformations, scripting) that remain first-party but are independently selectable. This is a design candidate, not an approved module split.
-- The duplicate Saxon declaration is a low-risk POM cleanup candidate, but should be checked against Maven effective dependency resolution before changing it.
+- Saxon is declared as both the base artifact and a `dom` classifier variant; this is not an exact duplicate. Verify which classes need each artifact before changing the dependency declarations.
 - The optional-module extraction decision should be based on the combined public XML contract, dependency graph, licensing/security, and runtime integration tests—not module names alone.
 
 ## 10. Required follow-up before calling the plugin platform complete
