@@ -261,3 +261,20 @@ Evidence links:
 - [ZipPluginIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
 
 These findings refine the inventory only. No runtime code, module boundaries or dependency versions were changed.
+
+## 12. Runtime registry contract gaps
+
+A focused review of `CorePluginsRegistrar`, `CorePluginRegistry` and the test tree found these additional issues for the unified registration design (Issue #94):
+
+- The test tree contains an explicit `SetVarCompatibilityRegistrationContractTest`, but no exhaustive contract test for all 44 current mappings. `DefaultPluginBodyExecutorTest` exercises only a small subset. The 44-entry count is source-confirmed, but the full set is not protected by one authoritative expected-mapping test.
+- `CorePluginRegistry.registerMapping(...)` uses `ConcurrentHashMap.put`, so duplicate element names silently overwrite earlier mappings. No explicit duplicate/override policy is enforced.
+- The `processorClass` argument to `registerMapping(Class processorClass, Class<? extends Plugin> pluginClass, String elementName)` is ignored; only element name to plugin class is stored. The signature therefore suggests a relationship the registry does not preserve.
+- `CorePluginsRegistrar` maintains a static `initialized` flag separately from the global singleton registry. Calling `CorePluginRegistry.clear()` without `CorePluginsRegistrar.reset()` can leave the registry empty while later `registerCorePlugins()` calls return early because the flag remains true.
+
+These findings are not a recommendation to patch the current registry in isolation. They are requirements for the reviewed registration architecture: exhaustive mapping/alias contract tests, deterministic duplicate handling, accurate descriptor identity, and lifecycle-safe registry ownership/isolation.
+
+Evidence:
+- [CorePluginsRegistrar.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginsRegistrar.java)
+- [CorePluginRegistry.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginRegistry.java)
+- [SetVarCompatibilityRegistrationContractTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/definition/SetVarCompatibilityRegistrationContractTest.java)
+- [DefaultPluginBodyExecutorTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/DefaultPluginBodyExecutorTest.java)
