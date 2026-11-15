@@ -68,4 +68,39 @@ public class IfExpressionRuntimeIntegrationTest extends XmlBasedIntegrationTestB
             "A non-empty ordinary string must remain truthy for If conditions");
     }
 
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void trueBooleanLiteralMustExecuteIfBody() throws Exception {
+        String xml = PREFIX
+            + "<if condition="\u0022\u0024{true}\u0022>"
+            + "  <def var="\u0022selectedBranch\u0022 value="\u0022true\u0022/>"
+            + "</if>" + SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable selectedBranch = context.getVar("selectedBranch");
+        assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "true");
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void zeroNumericLiteralMustNotExecuteIfBody() throws Exception {
+        String xml = PREFIX
+            + "<if condition="\u0022\u0024{0}\u0022>"
+            + "  <def var="\u0022unexpected\u0022 value="\u0022executed\u0022/>"
+            + "</if>" + SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+        assertNull(context.getVar("unexpected"));
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void nonZeroNumericLiteralMustExecuteIfBody() throws Exception {
+        String xml = PREFIX
+            + "<if condition="\u0022\u0024{1}\u0022>"
+            + "  <def var="\u0022selectedBranch\u0022 value="\u0022executed\u0022/>"
+            + "</if>" + SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable selectedBranch = context.getVar("selectedBranch");
+        assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "executed");
+    }
+
 }
