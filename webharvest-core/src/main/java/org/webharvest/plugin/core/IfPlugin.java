@@ -668,7 +668,7 @@ public class IfPlugin extends AbstractPlugin {
         if (value.length() >= 2) {
             char first = value.charAt(0);
             char last = value.charAt(value.length() - 1);
-            if ((first == '\\'' && last == '\\'') || (first == '"' && last == '"')) {
+            if ((first == '\'' && last == '\'') || (first == '"' && last == '"')) {
                 return value.substring(1, value.length() - 1);
             }
         }
