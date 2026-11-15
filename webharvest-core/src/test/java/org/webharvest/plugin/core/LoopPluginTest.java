@@ -53,6 +53,14 @@ public class LoopPluginTest {
             "maxloops must resolve totalPages instead of falling back to 100");
     }
 
+    @Test(description = "Unknown maxloops variable retains the safe default limit")
+    public void testLoopWithUnknownMaxloopsVariable() throws Exception {
+        executeLoop("${missingLimit}", "first,second,third");
+
+        assertEquals(context.getVar("_index").toString(), "2",
+            "An unresolved limit must retain the default and process the supplied items");
+    }
+
     @Test(description = "Negative maxloops processes all explicitly supplied items")
     public void testLoopWithUnlimitedExplicitItems() throws Exception {
         executeLoop("-1", "first,second,third");
