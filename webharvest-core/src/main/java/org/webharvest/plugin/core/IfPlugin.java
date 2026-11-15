@@ -619,10 +619,39 @@ public class IfPlugin extends AbstractPlugin {
             // Use the same configured expression engine as templates and scripts.
             Variable evaluated = BaseTemplater.evaluateToVariable(
                     condition.trim(), context.getScriptingLanguage(), context);
-            return evaluated != null && evaluated.toBoolean();
+            return isTruthyConditionValue(evaluated);
         } catch (RuntimeException e) {
             LOGGER.error("Error evaluating If condition: {}", condition, e);
             return false;
+        }
+    }
+
+    /**
+     * Applies the documented If truthiness rules without changing the shared
+     * Variable conversion contract used by other plugins.
+     */
+    private boolean isTruthyConditionValue(Variable value) {
+        if (value == null || value.getWrappedObject() == null) {
+            return false;
+        }
+
+        Object wrapped = value.getWrappedObject();
+        if (wrapped instanceof Boolean) {
+            return (Boolean) wrapped;
+        }
+        if (wrapped instanceof Number) {
+            return ((Number) wrapped).doubleValue() != 0.0d;
+        }
+
+        String text = value.toString().trim();
+        if (text.isEmpty() || "false".equalsIgnoreCase(text) || "null".equalsIgnoreCase(text)) {
+            return false;
+        }
+        try {
+            return Double.parseDouble(text) != 0.0d;
+        } catch (NumberFormatException ignored) {
+            // Per the If contract, every non-empty non-falsy string is truthy.
+            return true;
         }
     }
 
