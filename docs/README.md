@@ -7,6 +7,7 @@ For current project direction and contribution guidance, start here:
 - [Project Direction and Architecture Roadmap](PROJECT_DIRECTION.md) — product goals, architecture principles, phases and exit gates.
 - [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md) — target external plugin contract, discovery and compatibility expectations; explicitly marks what is not yet stable.
 - [Monorepo and Module Boundary Policy](MONOREPO.md) — current Maven modules, dependency direction and future repository extraction gates.
+- [Plugin Inventory](PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery baseline; not yet an approved Core membership list.
 - [Contributor Guide](../CONTRIBUTING.md) — branches, bug fixes, CI, review and evidence expectations.
 - [Project roadmap on GitHub](https://github.com/web-harvest/web-harvest/issues/1).
 
