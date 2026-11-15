@@ -326,7 +326,7 @@ public abstract class XmlBasedIntegrationTestBase {
 
             private StubHttpService() {
                 Map<String, StubResponse> map = new HashMap<>();
-                map.put("https://httpbin.org/html", StubResponse.html("<html><head><title>Moby-Dick</title></head><body><h1>Herman Melville - Moby-Dick</h1></body></html>"));
+                map.put("https://httpbin.org/html", StubResponse.html("<html><head></head><body><h1>Herman Melville - Moby-Dick</h1></body></html>"));
                 map.put("https://httpbin.org/get", StubResponse.json(
                         "{\"args\":{},\"headers\":{},\"origin\":\"127.0.0.1\",\"url\":\"https://httpbin.org/get\"}"));
                 map.put("https://httpbin.org/status/200", StubResponse.html("OK"));
