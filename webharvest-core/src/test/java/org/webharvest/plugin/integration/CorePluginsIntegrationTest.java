@@ -189,16 +189,15 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         
         String xmlPath = getNewPluginExamplePath("23_sleep_plugin_example.xml");
         
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        long endTime = System.currentTimeMillis();
-        
+        long durationMillis = (System.nanoTime() - startTime) / 1_000_000;
+
         assertNotNull(ctx);
-        
-        // Sleep should take some time (at least the configured duration)
-        long duration = endTime - startTime;
-        LOG.debug("Sleep execution took {} ms", duration);
-        assertTrue(duration >= 0, "Sleep plugin should execute successfully");
+
+        LOG.debug("Sleep execution took {} ms", durationMillis);
+        assertTrue(durationMillis >= 80,
+            "Sleep plugin should honor the configured 100 ms delay (allowing scheduler and clock tolerance)");
     }
 
     @Test(groups = {"integration", "core-plugins"})
