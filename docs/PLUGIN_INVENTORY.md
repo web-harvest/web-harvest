@@ -229,3 +229,35 @@ The current `webharvest-core/pom.xml` declares the following non-test dependenci
 6. Add an out-of-tree test plugin Maven project before stabilizing the SPI or extracting the company extensions repository.
 7. Repair ZIP parent resolution and replace the current resource-existence test with an actual execution/output assertion.
 
+
+## 11. Follow-up verification — BodyProcessor execution path and ZIP defect
+
+Source snapshot: `main` at `4e6794de4163c770f9823dd065bc2b975f69d123` (2026-11-15).
+
+### BodyProcessorPlugin is not the framework's current body executor
+
+A follow-up call-path check narrows the earlier uncertainty:
+
+- `AbstractPlugin.executeBody(context)` directly constructs `DefaultPluginBodyExecutor` and invokes `executeBody(configuration, context)` when child configuration exists.
+- No call from this execution path constructs or invokes `BodyProcessorPlugin`.
+- `CorePluginsRegistrar` does not map `body-processor` into `CorePluginRegistry`.
+- `BodyProcessorPluginTest` tests metadata, schema and initialization; it does not exercise `doExecute` or prove an execution call path.
+- The only matching XML example is `src/test/resources/integration-tests/new_plugins/42_bodyprocessor_plugin_example.xml`; no dedicated test class was found that loads and executes that fixture.
+
+Current classification: legacy/internal metadata artifact, not a current default-runtime XML capability. The fixture should be repaired into a genuine integration test or removed as stale. Do not count this class as an active Core element on the basis of its annotation or fixture alone.
+
+### ZIP parent resolution is a confirmed blocker
+
+The current `ZipEntryPlugin.getParentZipPlugin(context)` implementation returns `null` unconditionally and contains an explicit TODO. `doExecute` immediately throws when the result is null, before it writes an entry. The existing `ZipPluginIntegrationTest.testZipPluginExample()` only checks that the XML resource exists; it does not load the configuration, execute it or inspect archive contents.
+
+This is now tracked as [Issue #97 — ZIP entry plugin cannot resolve its parent ZIP plugin](https://github.com/web-harvest/web-harvest/issues/97). The ZIP module remains an optional extension candidate but is not functionally validated and must not be described as production-ready until the parent/child execution contract, stream cleanup and archive-content tests are implemented.
+
+Evidence links:
+- [AbstractPlugin.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/AbstractPlugin.java)
+- [BodyProcessorPlugin.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/core/BodyProcessorPlugin.java)
+- [BodyProcessorPluginTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/core/BodyProcessorPluginTest.java)
+- [BodyProcessor XML fixture](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/resources/integration-tests/new_plugins/42_bodyprocessor_plugin_example.xml)
+- [ZipEntryPlugin.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipEntryPlugin.java)
+- [ZipPluginIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
+
+These findings refine the inventory only. No runtime code, module boundaries or dependency versions were changed.
