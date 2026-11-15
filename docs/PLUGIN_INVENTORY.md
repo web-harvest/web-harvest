@@ -159,15 +159,35 @@ The current `ZipPluginIntegrationTest.testZipPluginExample()` only locates the X
 
 `ZipEntryPlugin` requires a parent `ZipPlugin` in execution and throws if it cannot resolve one. The parent-resolution helper currently returns `null` with a TODO. This is a direct defect or unfinished path, not merely a test naming gap. The ZIP module must not be considered complete until the parent/child context contract and an actual archive-content integration test are repaired.
 
-## 8. Core implementation test baseline
+## 8. Core implementation inventory and test evidence
 
-A source-tree inventory found 44 concrete class files named `*Plugin.java` under `webharvest-core/.../plugin/core`, but this count includes classes not in the manual 44 XML mapping set (including `BodyProcessorPlugin`, `ConfigPlugin` and legacy `VarPlugin`). Filename-based test matching shows that many registered classes have dedicated unit tests; it is not a substitute for executing tests or verifying assertions.
+The current source tree contains **47** Java classes named `*Plugin.java` in `webharvest-core/.../plugin/core`. The manual runtime registrar exposes **44 XML element mappings**. The 47-class count is not a product count.
 
-Notable classifications to resolve:
-- `BodyProcessorPlugin` and `ConfigPlugin`: determine whether internal runtime/system components or public XML plugins.
-- `VarPlugin`: explicitly commented as removed from the manual registrar in favor of `DefPlugin`; establish compatibility/deprecation expectations and whether it should remain discoverable.
-- `SetVarPlugin`: retained as the `set-var` XML alias and has dedicated compatibility and execution tests.
-- `HttpPlugin`, `FilePlugin`, `ScriptPlugin`, XSLT/XQuery and XML/HTML transforms: currently in Core, but their dependency footprint, security boundary and minimal-runtime necessity still require an explicit product decision.
+A source-level comparison of the 47 class paths with the Core test tree found a matching test filename for every class, but this is only a navigation aid, not proof of meaningful coverage or passing tests. Several important distinctions are now source-confirmed:
+
+| Class | Annotation / metadata evidence | Runtime registrar | Test evidence | Preliminary status |
+|---|---|---|---|---|
+| `BodyProcessorPlugin` | `@CorePlugin(elementName="body-processor")`; class comment describes an internal body execution processor; metadata tests exist | Not registered | Dedicated unit test | Internal runtime helper; do not count as public Core XML element without contrary call-site evidence |
+| `ConfigPlugin` | `@CorePlugin(elementName="config")`; metadata and execution tests exist | Not registered | Unit, XML and integration tests | Unresolved system/configuration element; investigate historical XML use and parser/executor call sites before excluding or promoting |
+| `VarPlugin` | `@CorePlugin(elementName="var")`; explicitly deprecated in favor of `<def>` | Not registered | Legacy unit tests still exist | Deprecated compatibility candidate; not currently enabled by default runtime |
+| `SetVarPlugin` | `@CorePlugin(elementName="set-var")`; deprecated for new configurations, retained for old XML | Registered as `set-var` | Dedicated tests and an explicit registrar contract test | Public legacy compatibility element; preserve |
+| Remaining registrar classes | Manual element mapping is authoritative for current default runtime | Registered | Per-class test files exist in the test tree | Current Core runtime candidates; final product membership still requires dependency/security/semantic review |
+
+### A key inconsistency in the metadata audit
+
+`AllPluginsMetadataAuditTest` builds its own explicit list of Core classes and explicitly excludes `VarPlugin` and `SetVarPlugin`, describing both as removed in favor of `DefPlugin`. That test's list also excludes `BodyProcessorPlugin` and `ConfigPlugin`. However, the runtime registrar still registers `SetVarPlugin`, and `SetVarCompatibilityRegistrationContractTest` explicitly asserts that `set-var` remains mapped. The test audit therefore describes a *new-configuration metadata cohort*, not the actual enabled runtime set. Its comment/list must not be used as the authoritative runtime inventory.
+
+The `@CorePlugin` annotation Javadoc says annotated plugins are always available Core functionality. That statement is too broad for current behavior: `BodyProcessorPlugin`, `ConfigPlugin`, and `VarPlugin` are annotated but absent from the default registrar; FTP implementations also carry the annotation while living in an optional module. The annotation currently mixes at least three concepts: implementation lineage, IDE metadata/palette classification, and runtime/product membership. These must become separate fields or descriptor decisions in the future SPI.
+
+### Core dependency and risk classification still needed
+
+Even for the 44 current runtime mappings, membership in a minimal engine is not yet approved. In particular:
+- Network and extraction plugins (`HttpPlugin`, `HtmlToXmlPlugin`, JSON/XML transforms, XPath/XQuery, XSLT) need a dependency/license/security review before declaring them indispensable Core.
+- `ScriptPlugin` needs an explicit policy for script engines, language support and execution sandboxing.
+- `FilePlugin` needs a documented filesystem access/security boundary.
+- `ConfigPlugin` and `BodyProcessorPlugin` need internal-vs-public contracts resolved.
+- Legacy `set-var` must remain available for compatibility even if it is not recommended for new configurations.
+- `VarPlugin` should remain out of the default runtime unless a deliberate compatibility requirement is established; its deprecated class and tests alone do not imply support.
 
 ## 9. Required follow-up before calling the plugin platform complete
 
