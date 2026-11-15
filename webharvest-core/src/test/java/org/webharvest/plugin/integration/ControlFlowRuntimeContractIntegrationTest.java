@@ -141,4 +141,19 @@ public class ControlFlowRuntimeContractIntegrationTest extends XmlBasedIntegrati
         assertEquals(selectedBranch == null ? null : selectedBranch.toString(), "default",
             "Case default Else must execute when no condition matches");
     }
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void ifMustEvaluateTrueNumericComparisons() throws Exception {
+        String xml = CONFIG_PREFIX
+            + "<def var=\"count\" value=\"11\"/>"
+            + "<if condition=\"\u0024{count > 10}\">"
+            + "  <def var=\"selectedBranch\" value=\"true\"/>"
+            + "</if>"
+            + CONFIG_SUFFIX;
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertEquals(context.getVar("selectedBranch").toString(), "true",
+            "A true numeric comparison must execute the If body");
+    }
+
 }
