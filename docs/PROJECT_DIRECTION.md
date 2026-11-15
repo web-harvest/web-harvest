@@ -110,7 +110,10 @@ The public Plugin Author Guide describes the target contract and current limitat
 ### Branches
 
 - `main` is the current integration/development line and the default branch.
-- `release/<major.minor>` is created from a verified `main` commit when that version enters release stabilization or release-candidate work.
+- `release/<major.minor>` is created from a verified `main` commit only after the release scope is frozen and the version enters stabilization/RC. Do not create it merely because development has started.
+- Immediately after the release cut, `main` continues as the next development line (for example, cutting `release/2.3.x` means `main` moves to the next development version, such as `2.4.0-SNAPSHOT`).
+- Keep one active maintenance branch per supported release line. A previous release line remains only while it has an explicit support commitment; otherwise it is preserved as a read-only historical ref.
+- The existing `2.2.x` branch is 164 commits behind current `main`; it is historical, not an active maintenance line unless support is explicitly reinstated.
 - A release branch is maintained only while that release line is supported.
 - `feature/*`, `fix/*` and `docs/*` branches are short-lived PR branches and should be deleted after merge.
 - Historical `master` and `2.2.x` refs are preserved as historical lines unless a separate maintenance decision is made.
@@ -119,9 +122,10 @@ The public Plugin Author Guide describes the target contract and current limitat
 ### Bug fixes and backports
 
 - A bug affecting only unreleased work is fixed on a short-lived branch from `main), then merged by PR.
-- A bug affecting a supported release is fixed from the corresponding `release/x.y` branch.
-- A release hotfix is merged into that release line and then forward-ported to `main` through a reviewed PR when applicable.
-- A fix made on `main` is backported to a supported release only when the defect affects that release and the change is compatible.
+- A bug affecting a supported release is fixed on a short-lived branch based on the corresponding `release/x.y` branch, then merged there by PR.
+- A release hotfix is merged into that release line and then forward-ported to `main` through a separate reviewed PR (normally a cherry-pick) when applicable.
+- A fix made on `main` is backported to a supported release only when the defect affects that release and the change is compatible; use a separate short-lived branch and PR based on that release branch.
+- Do not merge all of `main` into a release branch to carry one fix. Each target line gets its own CI evidence.
 - Every backport must identify the source fix, target release, compatibility considerations and independent CI evidence.
 
 ### Merge and branch hygiene
