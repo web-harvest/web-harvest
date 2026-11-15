@@ -60,6 +60,11 @@ public final class Stage1PluginDescriptor {
         this.requiredParentNames = List.copyOf(builder.requiredParentNames);
         this.childPolicy = Objects.requireNonNull(builder.childPolicy, "childPolicy");
         this.childPolicyProvenance = Objects.requireNonNull(builder.childPolicyProvenance, "childPolicyProvenance");
+        if (this.childPolicy == ChildPolicy.ANY_CHILD
+                && this.childPolicyProvenance != ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA) {
+            throw new IllegalArgumentException(
+                    "ANY_CHILD requires EXPLICIT_VISUAL_METADATA provenance");
+        }
         if (this.childPolicy == ChildPolicy.FORBID_CHILDREN
                 && this.childPolicyProvenance != ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY) {
             throw new IllegalArgumentException(
