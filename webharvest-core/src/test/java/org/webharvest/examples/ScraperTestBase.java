@@ -37,7 +37,7 @@ public abstract class ScraperTestBase {
     protected Injector injector;
     protected ConfigFactory configFactory;
     
-    @BeforeMethod
+    @BeforeMethod(alwaysRun = true)
     public void setUp() {
         LOG.info("Setting up v2.2 Scraper test environment");
         // Use target/ as working directory - all generated files will go to target/

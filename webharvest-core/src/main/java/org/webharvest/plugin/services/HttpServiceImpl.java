@@ -298,12 +298,20 @@ public class HttpServiceImpl implements HttpService {
         
         @Override
         public String getHeader(String name) {
-            return headers.get(name);
+            if (name == null) {
+                return null;
+            }
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                if (name.equalsIgnoreCase(header.getKey())) {
+                    return header.getValue();
+                }
+            }
+            return null;
         }
         
         @Override
         public String getContentType() {
-            return headers.get("Content-Type");
+            return getHeader("Content-Type");
         }
         
         @Override
