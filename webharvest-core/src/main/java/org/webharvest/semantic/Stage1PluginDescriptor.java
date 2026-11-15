@@ -130,6 +130,8 @@ public final class Stage1PluginDescriptor {
     private static void applyCatalogSemantics(Builder builder,
             org.webharvest.plugin.metadata.PluginSemantics semantics) {
         if (semantics != null) {
+            // Root placement is an independent catalog semantic, not part of schema reliability.
+            builder.canAppearAtRoot(semantics.canAppearAtRoot());
             List<String> catalogParents = semantics.getRequiredParentTypes();
             if (catalogParents != null && !catalogParents.isEmpty()) {
                 // Catalog semantics is the schema + visual metadata union.
