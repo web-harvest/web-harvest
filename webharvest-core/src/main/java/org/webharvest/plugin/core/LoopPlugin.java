@@ -52,6 +52,7 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -319,7 +320,7 @@ public class LoopPlugin extends AbstractPlugin {
             String itemVarName = item == null || item.trim().isEmpty() ? "_item" : item.trim();
             String indexVarName = index == null || index.trim().isEmpty() ? "_index" : index.trim();
 
-            int maxIterations = parseMaxLoops(maxloops);
+            int maxIterations = resolveMaxLoops(maxloops, context);
 
             StringBuilder result = new StringBuilder();
 
@@ -373,6 +374,41 @@ public class LoopPlugin extends AbstractPlugin {
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
             return EmptyVariable.INSTANCE;
         }
+    }
+
+    /**
+     * Resolves template expressions in the iteration limit against the current
+     * execution context before parsing the numeric value.
+     */
+    private int resolveMaxLoops(String configuredValue, DynamicScopeContext context) {
+        String resolvedValue = configuredValue;
+
+        if (configuredValue != null && configuredValue.contains(BaseTemplater.VAR_START)) {
+            if (BaseTemplater.scriptEngineFactory != null && context.getScriptingLanguage() != null) {
+                resolvedValue = BaseTemplater.evaluateToString(
+                    configuredValue, context.getScriptingLanguage(), context);
+            }
+
+            // Keep simple variable references usable in lightweight contexts where
+            // the scripting engine has not been initialized (for example unit tests).
+            if (resolvedValue != null && resolvedValue.contains(BaseTemplater.VAR_START)) {
+                String expression = configuredValue.trim();
+                if (expression.startsWith(BaseTemplater.VAR_START)
+                        && expression.endsWith(BaseTemplater.VAR_END)
+                        && expression.indexOf(BaseTemplater.VAR_START,
+                            BaseTemplater.VAR_START.length()) < 0) {
+                    String variableName = expression.substring(
+                        BaseTemplater.VAR_START.length(),
+                        expression.length() - BaseTemplater.VAR_END.length()).trim();
+                    Variable variable = context.getVar(variableName);
+                    if (variable != null) {
+                        resolvedValue = variable.toString();
+                    }
+                }
+            }
+        }
+
+        return parseMaxLoops(resolvedValue);
     }
 
     private int parseMaxLoops(String maxloops) {
