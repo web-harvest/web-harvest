@@ -801,30 +801,22 @@ public class IfPluginTest {
         // When: evaluation failures must not be converted into a false condition.
         plugin.execute(context);
     }
-    @Test
-    public void testUnsupportedComparisonWithoutScriptingLanguageDoesNotBecomeTruthy() throws Exception {
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testUnsupportedComparisonWithoutScriptingLanguagePropagates() throws Exception {
         ScraperContext directContext = new ScraperContext();
         assertNull(directContext.getScriptingLanguage(),
             "This regression must exercise the no-engine compatibility path");
         directContext.setLocalVar("count", new NodeVariable("11"));
 
-        IfPlugin directPlugin = new IfPlugin() {
-            @Override
-            protected Variable executeBody(DynamicScopeContext executionContext) {
-                return new NodeVariable("if-body-executed");
-            }
-        };
-
+        IfPlugin directPlugin = new IfPlugin();
         Map<String, String> properties = new HashMap<>();
         properties.put("condition", "${count > 10}");
         DefaultPluginConfiguration directConfiguration = new DefaultPluginConfiguration(
             "if", "http://org.webharvest/schema/2.1/core", "if", properties);
         directPlugin.initialize(directConfiguration);
 
-        Variable result = directPlugin.execute(directContext);
-
-        assertTrue(result instanceof EmptyVariable,
-            "An unsupported comparison without a configured expression engine must fail closed, not become truthy");
+        // Unsupported operators must be reported, not interpreted as false.
+        directPlugin.execute(directContext);
     }
 
     @Test
