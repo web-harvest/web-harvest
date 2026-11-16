@@ -1,8 +1,8 @@
 # Plugin inventory — evidence baseline
 
 **Status:** Preliminary inventory baseline; not an approved Core membership list.
-**Source snapshot:** `main` at `3a1837eb0b7921fdaf858bacc6b7f556c4e4f420` (2026-11-16).
-**Refresh note:** The seven primary registration/runtime/ZIP evidence files cited in this inventory were verified unchanged since the prior snapshot. This remains a targeted evidence baseline, not a complete per-plugin re-audit.
+**Source snapshot:** `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
+**Refresh note:** The seven primary registration/runtime/ZIP evidence files cited in this inventory were verified unchanged since the prior snapshot. This remains a targeted evidence baseline, not a complete per-plugin re-audit. Stage 1 descriptor projection and structural validation were subsequently merged in PR #90; they do not change the manual Core mappings or parser/registry lifecycle described here.
 **Tracking:** [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93).
 **Purpose:** Reconcile runtime registration, metadata discovery and module ownership before making any plugin moves.
 
@@ -233,7 +233,7 @@ The current `webharvest-core/pom.xml` declares the following non-test dependenci
 
 ## 11. Follow-up verification — BodyProcessor execution path and ZIP defect
 
-Source snapshot: `main` at `3a1837eb0b7921fdaf858bacc6b7f556c4e4f420` (2026-11-16).
+Source snapshot: `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
 
 ### BodyProcessorPlugin is not the framework's current body executor
 
