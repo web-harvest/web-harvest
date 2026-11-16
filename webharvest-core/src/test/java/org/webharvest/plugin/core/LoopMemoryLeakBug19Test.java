@@ -14,6 +14,7 @@ import static org.testng.Assert.*;
 
 /**
  * TDD tests for Bug #19: Memory leak in Loop plugin
+ * Active runtime regression assertions now live in LoopPluginTest; this class preserves historical scenarios.
  * 
  * <h3>Bug #19: Memory Leak</h3>
  * 
