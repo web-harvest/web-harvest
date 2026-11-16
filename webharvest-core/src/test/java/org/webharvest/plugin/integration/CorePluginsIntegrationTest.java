@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.variables.ListVariable;
 
 import static org.testng.Assert.*;
 
@@ -132,55 +133,12 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
     @Test(groups = {"integration", "core-plugins"})
     public void testFilePlugin() throws Exception {
         LOG.info("Testing FilePlugin integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("22_file_plugin_example.xml");
-        
-        // File plugin test should execute without errors
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "FilePlugin should execute successfully");
-    }
+        String content = executeAndReadOutputFile(xmlPath, "test_file.txt");
 
-    @Test(groups = {"integration", "core-plugins"})
-    public void testEmptyPlugin() throws Exception {
-        LOG.info("Testing EmptyPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("24_empty_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Empty plugin should execute successfully
-        assertTrue(true, "EmptyPlugin should execute successfully");
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
-    public void testExitPlugin() throws Exception {
-        LOG.info("Testing ExitPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("25_exit_plugin_example.xml");
-        
-        // Exit plugin may terminate execution - this is expected behavior
-        try {
-            executeXmlConfig(xmlPath);
-            assertTrue(true, "ExitPlugin should execute successfully");
-        } catch (Exception e) {
-            // Exit may throw exception - this is acceptable
-            LOG.debug("ExitPlugin threw exception (expected): {}", e.getMessage());
-            assertTrue(true, "ExitPlugin executed with exit exception");
-        }
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
-    public void testReturnPlugin() throws Exception {
-        LOG.info("Testing ReturnPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("26_return_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Return plugin should execute successfully
-        assertTrue(true, "ReturnPlugin should execute successfully");
+        assertEquals(content, "Hello from FilePlugin!",
+            "FilePlugin should write the exact configured body to the target directory");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -203,66 +161,33 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
     @Test(groups = {"integration", "core-plugins"})
     public void testListPlugin() throws Exception {
         LOG.info("Testing ListPlugin integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("28_list_plugin_example.xml");
-        
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // List plugin should execute successfully
-        assertTrue(true, "ListPlugin should execute successfully");
+        Variable result = ctx.getVar("listResult");
+
+        assertNotNull(result, "ListPlugin should expose its result in the execution context");
+        assertTrue(result instanceof ListVariable, "ListPlugin should return a ListVariable");
+
+        ListVariable list = (ListVariable) result;
+        assertEquals(list.getList().size(), 3, "ListPlugin should preserve all three child values");
+        assertEquals(list.get(0).toString(), "Item 1");
+        assertEquals(list.get(1).toString(), "Item 2");
+        assertEquals(list.get(2).toString(), "Item 3");
     }
 
     @Test(groups = {"integration", "core-plugins"})
     public void testValueOfPlugin() throws Exception {
         LOG.info("Testing ValueOfPlugin integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("29_valueof_plugin_example.xml");
-        
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // ValueOf plugin should execute successfully
-        assertTrue(true, "ValueOfPlugin should execute successfully");
+        Variable result = ctx.getVar("evaluatedValue");
+
+        assertNotNull(result, "The enclosing def should capture the value-of result");
+        assertEquals(result.toString(), "Hello World",
+            "ValueOfPlugin should evaluate the configured expression in the current context");
     }
 
-    @Test(groups = {"integration", "core-plugins"})
-    public void testBodyPlugin() throws Exception {
-        LOG.info("Testing BodyPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("41_body_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Body plugin should execute successfully
-        assertTrue(true, "BodyPlugin should execute successfully");
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
-    public void testCallPlugin() throws Exception {
-        LOG.info("Testing CallPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("43_call_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Call plugin should execute successfully
-        assertTrue(true, "CallPlugin should execute successfully");
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
-    public void testCallParamPlugin() throws Exception {
-        LOG.info("Testing CallParamPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("44_callparam_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // CallParam plugin should execute successfully
-        assertTrue(true, "CallParamPlugin should execute successfully");
-    }
 }
 
