@@ -562,7 +562,7 @@ public class DefaultPluginBodyExecutorTest {
         parent.setChildren(children);
 
         try {
-            executor.executeBody(parent, context);
+            executor.executeChildren(children, context);
             fail("An Else without an immediately preceding sibling If must be rejected");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("Else must immediately follow"));
@@ -586,7 +586,7 @@ public class DefaultPluginBodyExecutorTest {
         parent.setChildren(children);
 
         try {
-            executor.executeBody(parent, context);
+            executor.executeChildren(children, context);
             fail("A second Else cannot reuse the same preceding If branch");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("Else must immediately follow"));
