@@ -129,6 +129,10 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
+            } catch (InterruptedException e) {
+                // Cancellation aborts the current body; later siblings must not run.
+                // The enclosing AbstractPlugin lifecycle restores the flag after cleanup.
+                throw e;
             } catch (Exception e) {
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
                 // Preserve historical body behavior for non-validation runtime failures:
