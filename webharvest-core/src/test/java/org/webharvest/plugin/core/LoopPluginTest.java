@@ -425,9 +425,9 @@ public class LoopPluginTest {
         nested.addVariable(new NodeVariable("nested-value"));
         NodeVariable scalar = new NodeVariable("scalar-value");
 
-        ListVariable source = new ListVariable();
-        source.addVariable(nested);
-        source.addVariable(scalar);
+        // The Iterable constructor preserves direct Variable members. addVariable(ListVariable)
+        // intentionally flattens its argument and therefore cannot construct this fixture.
+        ListVariable source = new ListVariable(java.util.Arrays.asList(nested, scalar));
         sourceContext.setLocalVar("source", source);
 
         java.util.List<Variable> observedItems = new java.util.ArrayList<>();
