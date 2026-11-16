@@ -14,6 +14,7 @@ import static org.testng.Assert.*;
 
 /**
  * TDD tests for Bug #19: Memory leak in Loop plugin
+ * Active runtime regression assertions now live in LoopPluginTest; this class preserves historical scenarios.
  * 
  * <h3>Bug #19: Memory Leak</h3>
  * 
@@ -205,38 +206,8 @@ public class LoopMemoryLeakBug19Test {
         assertTrue(true, "Workaround validated");
     }
     
-    /**
-     * Bug #19 RED Test 5: Proposed fix - Loop should auto-cleanup
-     * 
-     * <p>Loop should use executeWithinNewContext automatically</p>
-     */
-    @Test(groups = {"unit", "bugs", "hard"}, enabled = false)
-    public void testBug19_LoopShouldAutoCleanup() {
-        System.out.println("\n### Bug #19 RED Test 5: Loop auto-cleanup (NOT IMPLEMENTED) ###");
-        
-        System.out.println("");
-        System.out.println("PROPOSED FIX:");
-        System.out.println("");
-        System.out.println("// LoopPlugin.java - BEFORE:");
-        System.out.println("for (int i = 0; i < items.length; i++) {");
-        System.out.println("    context.setLocalVar(\"item\", item);");
-        System.out.println("    Variable result = executeBody(context);  // ← NO CLEANUP");
-        System.out.println("}");
-        System.out.println("");
-        System.out.println("// LoopPlugin.java - AFTER (Bug #19 fix):");
-        System.out.println("for (int i = 0; i < items.length; i++) {");
-        System.out.println("    final int iteration = i;");
-        System.out.println("    context.executeWithinNewContext(() -> {  // ← AUTO CLEANUP!");
-        System.out.println("        context.setLocalVar(\"item\", items[iteration]);");
-        System.out.println("        context.setLocalVar(\"index\", iteration);");
-        System.out.println("        return executeBody(context);");
-        System.out.println("    });");
-        System.out.println("}");
-        System.out.println("");
-        System.out.println("BENEFIT: Variables auto-cleaned after each iteration");
-        System.out.println("IMPACT: Fixes memory leak for large loops");
-        
-        fail("NOT IMPLEMENTED YET - this is expected in RED phase");
-    }
+    // The executable iteration-scope regression tests live in LoopPluginTest.
+    // Keep this class limited to the historical Bug #19 explanatory scenarios.
+
 }
 
