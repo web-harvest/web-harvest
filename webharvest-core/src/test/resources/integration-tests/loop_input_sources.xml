@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+    <def var="sourceList">
+        <text>alpha</text>
+        <text>beta</text>
+        <text>gamma</text>
+    </def>
+    <def var="scalarSource">solo</def>
+    <def var="delimitedScalarSource">one,two</def>
+    <def var="inlineUrls">
+        north
+        south
+    </def>
+    <def var="xpathXml"><![CDATA[<root><entry>left</entry><entry>right</entry></root>]]></def>
+
+    <def var="variableSourceOutput">
+        <loop items="${sourceList}" item="entry" index="i">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="scalarVariableOutput">
+        <loop items="${scalarSource}" item="entry" index="i">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="delimitedScalarVariableOutput">
+        <loop items="${delimitedScalarSource}" delimiter="," item="entry" index="i">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="inlineVariableTextOutput">
+        <loop item="entry" index="i">
+            ${inlineUrls}
+            <body>
+                <template>${i}:${entry}|</template>
+            </body>
+        </loop>
+    </def>
+
+    <def var="xpathSourceOutput">
+        <loop item="entry" index="i">
+            <xpath expression="//entry/text()">
+                <get var="xpathXml"/>
+            </xpath>
+            <body>
+                <template>${i}:${entry}|</template>
+            </body>
+        </loop>
+    </def>
+
+    <def var="sourceOnlyOutput">
+        <loop item="entry">
+            <list>
+                <text>cat</text>
+                <text>dog</text>
+            </list>
+        </loop>
+    </def>
+
+    <def var="childListSourceOutput">
+        <loop item="entry" index="i">
+            <list>
+                <text>red</text>
+                <text>blue</text>
+            </list>
+            <body>
+                <template>${i}:${entry}|</template>
+            </body>
+        </loop>
+    </def>
+
+    <def var="directChildBodyOutput">
+        <loop item="entry" index="i">
+            <list>
+                <text>north</text>
+                <text>south</text>
+            </list>
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="inlineTextSourceOutput">
+        <loop item="entry" index="i">
+            first
+            second
+            third
+            <body>
+                <template>${i}:${entry}|</template>
+            </body>
+        </loop>
+    </def>
+
+    <def var="literalDelimiterOutput">
+        <loop items="a||b||c" delimiter="||" item="entry" index="i">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="emptyPreservedOutput">
+        <loop items="a,,b," item="entry" index="i" empty="false">
+            <template>${i}[${entry}]|</template>
+        </loop>
+    </def>
+
+    <def var="emptySkippedOutput">
+        <loop items="a,,b," item="entry" index="i" empty="true">
+            <template>${i}[${entry}]|</template>
+        </loop>
+    </def>
+
+    <def var="emptySkippedWithinMaxloopsOutput">
+        <loop items=",alpha,beta,gamma" item="entry" index="i" maxloops="2" empty="true">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="emptyWhitespaceOutput">
+        <loop items="a, ,b" item="entry" index="i" empty="true">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+
+    <def var="delimitedScalarVariableMaxloopsOutput">
+        <loop items="${delimitedScalarSource}" delimiter="," item="entry" index="i" maxloops="1">
+            <template>${i}:${entry}|</template>
+        </loop>
+    </def>
+</config>
