@@ -402,7 +402,7 @@ public class DefaultPluginBodyExecutorTest {
         }
     }
 
-    @Test
+    @Test(description = "Core plugin wrappers preserve child cancellation and lifecycle cleanup ordering")
     public void testCorePluginWrappersPropagateChildInterruption() throws Exception {
         registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
 
