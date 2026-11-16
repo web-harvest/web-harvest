@@ -602,6 +602,7 @@ public class IfPlugin extends AbstractPlugin {
      * the legacy compatibility evaluator for contexts without a language.
      */
     boolean matchesCondition(DynamicScopeContext context) {
+        validateElseOwnership();
         PluginConfiguration config = getConfiguration();
         preEvaluatedCondition = evaluateCondition(config.getProperty("condition", ""), context);
         return preEvaluatedCondition;
