@@ -402,5 +402,59 @@ public class DefaultPluginBodyExecutorTest {
         }
     }
 
+    @Test
+    public void testCorePluginWrappersPropagateChildInterruption() throws Exception {
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.TryPlugin(),
+            wrapperConfiguration("try", new java.util.HashMap<String, String>()));
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.ListPlugin(),
+            wrapperConfiguration("list", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> defProperties = new java.util.HashMap<>();
+        defProperties.put("var", "result");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.DefPlugin(),
+            wrapperConfiguration("def", defProperties));
+
+        java.util.Map<String, String> xpathProperties = new java.util.HashMap<>();
+        xpathProperties.put("expression", "//root");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XPathPlugin(),
+            wrapperConfiguration("xpath", xpathProperties));
+    }
+
+    private DefaultPluginConfiguration wrapperConfiguration(
+            String elementName, java.util.Map<String, String> properties) {
+        DefaultPluginConfiguration wrapper = new DefaultPluginConfiguration(
+            elementName, "http://org.webharvest/schema/2.1/core", elementName, properties);
+        wrapper.setChildren(java.util.Collections.<PluginConfiguration>singletonList(
+            new DefaultPluginConfiguration(
+                "interrupting-child", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN)));
+        return wrapper;
+    }
+
+    private void assertWrapperPropagatesInterruption(
+            AbstractPlugin plugin, PluginConfiguration configuration) throws Exception {
+        InterruptingTestPlugin.cleanupCalled.set(false);
+        InterruptingTestPlugin.cleanupObservedInterrupt.set(true);
+        Thread.interrupted();
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail(plugin.getClass().getSimpleName()
+                + " must propagate child interruption instead of swallowing or wrapping it");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(InterruptingTestPlugin.cleanupCalled.get(),
+                "The interrupted child must still complete its cleanup");
+            assertFalse(InterruptingTestPlugin.cleanupObservedInterrupt.get(),
+                "The child cleanup must run before interrupt restoration");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "The wrapper lifecycle must restore interrupt status after cleanup");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
 }
 
