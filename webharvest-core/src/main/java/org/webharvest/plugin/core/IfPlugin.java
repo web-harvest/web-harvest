@@ -581,6 +581,7 @@ public class IfPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("IfPlugin.doExecute: START");
+        validateElseOwnership();
         Boolean cachedCondition = preEvaluatedCondition;
         preEvaluatedCondition = null;
         boolean conditionMatched = cachedCondition != null
@@ -676,7 +677,33 @@ public class IfPlugin extends AbstractPlugin {
         if (selected.isEmpty()) {
             return EmptyVariable.INSTANCE;
         }
-        return new org.webharvest.plugin.DefaultPluginBodyExecutor().executeChildren(selected, context);
+        return new org.webharvest.plugin.DefaultPluginBodyExecutor().executeSelectedBranch(selected, context);
+    }
+
+    /**
+     * Validates Else ownership inside this If before condition evaluation.
+     * A sibling Else following a nested If belongs to that nested If; a synthetic
+     * sibling Else belongs to this If. At most one Else may belong to this If.
+     */
+    private void validateElseOwnership() {
+        java.util.List<PluginConfiguration> children = getConfiguration().getChildren();
+        int ownedElseBranches = 0;
+        for (int i = 0; i < children.size(); i++) {
+            PluginConfiguration child = children.get(i);
+            if (!"else".equals(child.getElementName())) {
+                continue;
+            }
+            boolean syntheticSiblingElse = child.getBooleanProperty(
+                    org.webharvest.plugin.DefaultPluginBodyExecutor.SYNTHETIC_SIBLING_ELSE_PROPERTY,
+                    false);
+            boolean pairedWithPreviousIf = !syntheticSiblingElse
+                    && i > 0
+                    && "if".equals(children.get(i - 1).getElementName());
+            if (!pairedWithPreviousIf && ++ownedElseBranches > 1) {
+                throw new IllegalArgumentException(
+                        "If may own only one Else branch; found multiple unpaired Else elements");
+            }
+        }
     }
 
     private boolean evaluateCondition(String condition, DynamicScopeContext context) {
