@@ -82,7 +82,6 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return EmptyVariable.INSTANCE;
         }
 
-        validateSiblingElsePairs(config.getChildren());
         return executeChildren(config.getChildren(), context);
     }
 
@@ -115,7 +114,27 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      */
     public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
             throws InterruptedException {
+        validateSiblingElsePairs(children);
+        return executeChildrenInternal(children, context);
+    }
 
+    /**
+     * Executes the already-selected contents of a conditional branch. A selected
+     * Else is intentionally passed without its owning If, so sibling validation
+     * must happen before selection, not on this reduced list.
+     *
+     * @param children selected branch configurations
+     * @param context execution context
+     * @return aggregated selected branch results
+     * @throws InterruptedException if child execution is interrupted
+     */
+    public Variable executeSelectedBranch(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+        return executeChildrenInternal(children, context);
+    }
+
+    private Variable executeChildrenInternal(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
         if (children == null || children.isEmpty()) {
             return EmptyVariable.INSTANCE;
         }
