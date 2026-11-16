@@ -468,7 +468,7 @@ public class DefaultPluginBodyExecutorTest {
         }
     }
 
-    @Test(description = "Secondary plugin wrappers preserve child cancellation and lifecycle cleanup ordering")
+    @Test(description = "Constant, Template, Var, XML, XQExpression and HttpHeader propagate cancellation")
     public void testSecondaryCorePluginWrappersPropagateChildInterruption() throws Exception {
         registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
 
