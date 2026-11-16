@@ -66,24 +66,58 @@ import java.util.List;
 public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPluginBodyExecutor.class);
+
+    /** Internal marker identifying an Else paired with an adjacent sibling If. */
+    public static final String SYNTHETIC_SIBLING_ELSE_PROPERTY = "__webharvest.runtime.siblingElse";
     
     /**
      * {@inheritDoc}
      */
     @Override
-    public Variable executeBody(PluginConfiguration config, DynamicScopeContext context) 
+    public Variable executeBody(PluginConfiguration config, DynamicScopeContext context)
             throws InterruptedException {
-        
+
         if (config == null || !config.hasChildren()) {
             LOGGER.debug("No children to execute in configuration");
             return EmptyVariable.INSTANCE;
         }
-        
-        LOGGER.debug("Executing body with {} children", config.getChildren().size());
-        
+
+        return executeChildren(config.getChildren(), context);
+    }
+
+    /**
+     * Executes an ordered list of child configurations. An adjacent sibling
+     * {@code <else>} is paired with its preceding {@code <if>} so both XML
+     * representations share the same conditional execution path.
+     *
+     * @param children ordered child configurations
+     * @param context execution context
+     * @return aggregated child results
+     * @throws InterruptedException if child execution is interrupted
+     */
+    public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
+            throws InterruptedException {
+
+        if (children == null || children.isEmpty()) {
+            return EmptyVariable.INSTANCE;
+        }
+
+        LOGGER.debug("Executing body with {} children", children.size());
         final List<Object> results = new ArrayList<>();
-        
-        for (PluginConfiguration childConfig : config.getChildren()) {
+
+        for (int i = 0; i < children.size(); i++) {
+            PluginConfiguration childConfig = children.get(i);
+
+            // XML permits Else either as an If child or as the immediately
+            // following sibling. Normalize the sibling form at execution time
+            // without mutating the parsed configuration tree.
+            if ("if".equals(childConfig.getElementName())
+                    && i + 1 < children.size()
+                    && "else".equals(children.get(i + 1).getElementName())) {
+                childConfig = withSiblingElse(childConfig, children.get(i + 1));
+                i++;
+            }
+
             try {
                 Variable childResult = executeChildPlugin(childConfig, context);
                 if (childResult != null && !(childResult instanceof EmptyVariable)) {
@@ -101,11 +135,33 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 // continue with remaining siblings.
             }
         }
-        
-        // Always return ListVariable (even if empty) for consistency with old architecture
+
         return new ListVariable(results);
     }
-    
+
+    private PluginConfiguration withSiblingElse(
+            PluginConfiguration ifConfig, PluginConfiguration elseConfig) {
+        List<PluginConfiguration> children = new ArrayList<>(ifConfig.getChildren());
+        // Preserve explicit ownership when the flattened child list contains
+        // both a nested If and this outer If's following sibling Else.
+        DefaultPluginConfiguration ownedElse = new DefaultPluginConfiguration(
+                elseConfig.getPluginId(),
+                elseConfig.getNamespace(),
+                elseConfig.getElementName(),
+                elseConfig.getAllProperties());
+        ownedElse.setChildren(elseConfig.getChildren());
+        ownedElse.setProperty(SYNTHETIC_SIBLING_ELSE_PROPERTY, true);
+        children.add(ownedElse);
+
+        DefaultPluginConfiguration paired = new DefaultPluginConfiguration(
+                ifConfig.getPluginId(),
+                ifConfig.getNamespace(),
+                ifConfig.getElementName(),
+                ifConfig.getAllProperties());
+        paired.setChildren(children);
+        return paired;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -132,51 +188,57 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      * @return execution result
      * @throws InterruptedException if interrupted
      */
-    private Variable executeChildPlugin(PluginConfiguration childConfig, DynamicScopeContext context) 
+    private Variable executeChildPlugin(PluginConfiguration childConfig, DynamicScopeContext context)
             throws InterruptedException {
-        
+
         LOGGER.debug("Executing child plugin: {}", childConfig.getElementName());
-        
-        // Get plugin class from registry
-        CorePluginRegistry registry = CorePluginRegistry.getInstance();
-        Class<? extends Plugin> pluginClass = registry.getPluginClass(childConfig.getElementName());
-        
-        if (pluginClass == null) {
-            LOGGER.warn("Plugin class not found for element: {}", childConfig.getElementName());
+        Plugin childPlugin = createChildPlugin(childConfig);
+        if (childPlugin == null) {
             return EmptyVariable.INSTANCE;
         }
-        
+
+        Variable result = childPlugin.execute(context);
+        LOGGER.debug("Child plugin {} executed successfully", childConfig.getElementName());
+        return result;
+    }
+
+    /**
+     * Creates and initializes a child plugin using the same registry and
+     * dependency-injection path as ordinary body execution. Conditional
+     * containers can use this when they must inspect a branch before execution.
+     *
+     * @param childConfig child plugin configuration
+     * @return initialized plugin, or {@code null} when the plugin cannot be created
+     */
+    public Plugin createChildPlugin(PluginConfiguration childConfig) {
+        if (childConfig == null) {
+            throw new IllegalArgumentException("Child plugin configuration cannot be null");
+        }
+
+        CorePluginRegistry registry = CorePluginRegistry.getInstance();
+        Class<? extends Plugin> pluginClass = registry.getPluginClass(childConfig.getElementName());
+        if (pluginClass == null) {
+            LOGGER.warn("Plugin class not found for element: {}", childConfig.getElementName());
+            return null;
+        }
+
         try {
-            // v2.2.0 CRITICAL FIX: Use Guice Injector to create plugin instances
-            // This ensures @Inject dependencies (like HttpService) are properly injected!
-            // OLD: Plugin childPlugin = pluginClass.newInstance(); // ❌ No dependency injection!
-            // NEW: Use InjectorHelper to get Guice-managed instance
             Plugin childPlugin;
             Injector injector = InjectorHelper.getInjector();
             if (injector != null) {
-                // Use Guice to create instance (with dependency injection)
                 childPlugin = injector.getInstance(pluginClass);
                 LOGGER.debug("Created plugin {} via Guice injector", childConfig.getElementName());
             } else {
-                // Fallback to reflection (for tests without Guice)
                 childPlugin = pluginClass.newInstance();
-                LOGGER.warn("Created plugin {} via reflection (no Guice injector available)", 
-                           childConfig.getElementName());
+                LOGGER.warn("Created plugin {} via reflection (no Guice injector available)",
+                        childConfig.getElementName());
             }
-            
-            // Initialize plugin
+
             childPlugin.initialize(childConfig);
-            
-            // Execute plugin
-            Variable result = childPlugin.execute(context);
-            
-            LOGGER.debug("Child plugin {} executed successfully", childConfig.getElementName());
-            
-            return result;
-            
+            return childPlugin;
         } catch (InstantiationException | IllegalAccessException e) {
             LOGGER.error("Failed to create plugin instance: {}", pluginClass.getName(), e);
-            return EmptyVariable.INSTANCE;
+            return null;
         } catch (org.webharvest.plugin.exceptions.PluginValidationException e) {
             LOGGER.error("Invalid configuration for plugin {}: {}", childConfig.getElementName(), e.getMessage());
             throw new IllegalArgumentException(
@@ -184,13 +246,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                     e);
         } catch (org.webharvest.plugin.exceptions.PluginException e) {
             LOGGER.error("Failed to initialize plugin: {}", childConfig.getElementName(), e);
-            return EmptyVariable.INSTANCE;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute plugin: {}", childConfig.getElementName(), e);
-            throw e;
+            return null;
         }
     }
+
 }
 
