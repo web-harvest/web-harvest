@@ -197,9 +197,6 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 
         LOGGER.debug("Executing child plugin: {}", childConfig.getElementName());
         Plugin childPlugin = createChildPlugin(childConfig);
-        if (childPlugin == null) {
-            return EmptyVariable.INSTANCE;
-        }
 
         Variable result = childPlugin.execute(context);
         LOGGER.debug("Child plugin {} executed successfully", childConfig.getElementName());
@@ -212,7 +209,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      * containers can use this when they must inspect a branch before execution.
      *
      * @param childConfig child plugin configuration
-     * @return initialized plugin, or {@code null} when the plugin cannot be created
+     * @return initialized plugin
+     * @throws IllegalArgumentException if no plugin is registered for the element
+     * @throws IllegalStateException if plugin construction or initialization fails
      */
     public Plugin createChildPlugin(PluginConfiguration childConfig) {
         if (childConfig == null) {
@@ -222,8 +221,8 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         CorePluginRegistry registry = CorePluginRegistry.getInstance();
         Class<? extends Plugin> pluginClass = registry.getPluginClass(childConfig.getElementName());
         if (pluginClass == null) {
-            LOGGER.warn("Plugin class not found for element: {}", childConfig.getElementName());
-            return null;
+            throw new IllegalArgumentException(
+                    "No plugin registered for element '" + childConfig.getElementName() + "'");
         }
 
         try {
@@ -242,7 +241,8 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return childPlugin;
         } catch (InstantiationException | IllegalAccessException e) {
             LOGGER.error("Failed to create plugin instance: {}", pluginClass.getName(), e);
-            return null;
+            throw new IllegalStateException(
+                    "Failed to create plugin '" + childConfig.getElementName() + "'", e);
         } catch (org.webharvest.plugin.exceptions.PluginValidationException e) {
             LOGGER.error("Invalid configuration for plugin {}: {}", childConfig.getElementName(), e.getMessage());
             throw new IllegalArgumentException(
@@ -250,7 +250,8 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                     e);
         } catch (org.webharvest.plugin.exceptions.PluginException e) {
             LOGGER.error("Failed to initialize plugin: {}", childConfig.getElementName(), e);
-            return null;
+            throw new IllegalStateException(
+                    "Failed to initialize plugin '" + childConfig.getElementName() + "'", e);
         }
     }
 
