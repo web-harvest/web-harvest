@@ -538,6 +538,7 @@ public class CasePlugin extends AbstractPlugin {
             }
 
             IfPlugin branch = (IfPlugin) childPlugin;
+            // Evaluation errors propagate; they are not non-matches and must not select the default Else.
             if (branch.matchesCondition(context)) {
                 LOGGER.debug("CasePlugin: executing first matching If branch");
                 // Execute through the plugin lifecycle (events and cleanup) while
