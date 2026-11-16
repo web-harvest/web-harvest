@@ -102,4 +102,20 @@ public class WhilePluginIntegrationTest extends XmlBasedIntegrationTestBase {
         assertNull(result.getVar("iterationOnly"),
             "A variable first created inside an iteration must not leak into the outer scope");
     }
+    @Test
+    public void testDynamicWhileConditionWithoutExplicitMaxloopsRunsUntilFalse() throws Exception {
+        DynamicScopeContext result = executeXmlString(
+            "<config xmlns=\"" + NS + "\">" +
+            "  <def var=\"count\" value=\"0\"/>" +
+            "  <while test=\"${count &lt; 2}\" index=\"i\">" +
+            "    <set-var name=\"count\" value=\"${count + 1}\"/>" +
+            "  </while>" +
+            "</config>");
+        assertEquals(result.getVar("count").toString(), "2",
+            "A dynamic condition must continue after initially evaluating to true");
+        assertEquals(result.getVar("i").toString(), "2",
+            "The parent index must reflect both completed iterations");
+    }
+
+
 }
