@@ -146,22 +146,34 @@ public class CasePluginTest {
         assertTrue(result instanceof EmptyVariable);
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testCasePluginExecuteWithInterruptedException() throws InterruptedException, PluginException {
-        when(context.getCharset()).thenReturn("UTF-8");
-        
-        CasePlugin testPlugin = new CasePlugin() {
-            @Override
-            protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-                throw new InterruptedException("Test interruption");
+    @Test
+    public void testCasePluginExecuteWithInterruptedException() throws PluginException {
+        Thread.interrupted();
+        try {
+            when(context.getCharset()).thenReturn("UTF-8");
+
+            CasePlugin testPlugin = new CasePlugin() {
+                @Override
+                protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+                    throw new InterruptedException("Test interruption");
+                }
+            };
+
+            PluginConfiguration config = mock(PluginConfiguration.class);
+            when(config.getProperty("id")).thenReturn("testId");
+            testPlugin.initialize(config);
+
+            try {
+                testPlugin.execute(context);
+                fail("InterruptedException must propagate through the Case plugin lifecycle");
+            } catch (InterruptedException expected) {
+                assertEquals(expected.getMessage(), "Test interruption");
+                assertTrue(Thread.currentThread().isInterrupted(),
+                    "The lifecycle must restore the interrupt flag after cleanup");
             }
-        };
-        
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getProperty("id")).thenReturn("testId");
-        testPlugin.initialize(config);
-        
-        testPlugin.execute(context);
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test
