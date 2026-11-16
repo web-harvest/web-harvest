@@ -5,6 +5,8 @@
 package org.webharvest.plugin.core;
 
 import org.mockito.Mock;
+import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.definition.CorePluginsRegistrar;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -26,6 +28,8 @@ import org.webharvest.runtime.variables.Variable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -366,5 +370,54 @@ public class CasePluginTest {
             assertTrue(expected.getMessage().contains("Unsupported If operator"));
         }
     }
+
+    @Test
+    public void testCaseCleansUpBranchWhenConditionEvaluationFails() throws Exception {
+        CorePluginsRegistrar.registerCorePlugins();
+        CorePluginRegistry registry = CorePluginRegistry.getInstance();
+        Class<? extends org.webharvest.plugin.Plugin> originalIfPlugin = registry.getPluginClass("if");
+        assertNotNull(originalIfPlugin, "Core If plugin must be registered before this regression test");
+
+        registry.registerMapping(null, CleanupTrackingIfPlugin.class, "if");
+        try {
+            CleanupTrackingIfPlugin.CLEANUP_CALLS.set(0);
+            ScraperContext directContext = new ScraperContext();
+            directContext.setLocalVar("count", new NodeVariable("11"));
+
+            Map<String, String> properties = new HashMap<>();
+            properties.put("condition", "${count > 10}");
+            DefaultPluginConfiguration branch = new DefaultPluginConfiguration(
+                "if-cleanup-test", "http://org.webharvest/schema/2.1/core", "if", properties);
+            DefaultPluginConfiguration caseConfiguration = new DefaultPluginConfiguration(
+                "case-cleanup-test", "http://org.webharvest/schema/2.1/core", "case");
+            caseConfiguration.setChildren(Collections.singletonList(branch));
+
+            CasePlugin casePlugin = new CasePlugin();
+            casePlugin.initialize(caseConfiguration);
+
+            try {
+                casePlugin.execute(directContext);
+                fail("Case must propagate condition evaluation errors");
+            } catch (RuntimeException expected) {
+                assertTrue(expected.getCause() instanceof IllegalArgumentException,
+                    "The original condition error must remain the cause");
+            }
+
+            assertEquals(CleanupTrackingIfPlugin.CLEANUP_CALLS.get(), 1,
+                "A branch initialized for condition matching must be cleaned up exactly once on failure");
+        } finally {
+            registry.registerMapping(null, originalIfPlugin, "if");
+        }
+    }
+
+    public static class CleanupTrackingIfPlugin extends IfPlugin {
+        private static final AtomicInteger CLEANUP_CALLS = new AtomicInteger();
+
+        @Override
+        protected void doCleanup() {
+            CLEANUP_CALLS.incrementAndGet();
+        }
+    }
+
 
 }
