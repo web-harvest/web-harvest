@@ -2,7 +2,7 @@
 <config xmlns="http://org.webharvest/schema/2.1/core">
     <def var="condition">true</def>
     <file action="write" path="if_output.txt">
-        <if test="${condition}">
+        <if condition="${condition}">
             <text>Condition is true!</text>
         </if>
         <else>
@@ -10,9 +10,3 @@
         </else>
     </file>
 </config>
-
-
-
-
-
-

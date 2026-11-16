@@ -72,12 +72,10 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing TextPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("02_text_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Text plugin test should execute without errors
-        assertTrue(true, "TextPlugin should execute successfully");
+        String content = executeAndReadOutputFile(xmlPath, "text_output.txt");
+
+        assertEquals(content, "This is plain text content from Text Plugin",
+            "TextPlugin should write the exact configured text");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -99,12 +97,10 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing DefPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("04_def_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Verify that def variables were created
-        assertTrue(true, "DefPlugin should execute successfully");
+        String content = executeAndReadOutputFile(xmlPath, "def_output.txt");
+
+        assertEquals(content, "Greeting: Hello World!, User: Web-Harvest User",
+            "DefPlugin should define variables consumed by the template");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -112,12 +108,13 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing SetVarPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("20_setvar_plugin_example.xml");
-        
+
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // SetVar plugin should execute successfully
-        assertTrue(true, "SetVarPlugin should execute successfully");
+        Variable value = ctx.getVar("initial");
+
+        assertNotNull(value, "Legacy set-var should leave the existing variable available");
+        assertEquals(value.toString(), "updated value from setvar example",
+            "Legacy set-var name attribute and body value should update the variable");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -125,12 +122,11 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         LOG.info("Testing GetVarPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("21_getvar_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // GetVar plugin should execute successfully
-        assertTrue(true, "GetVarPlugin should execute successfully");
+
+        assertEquals(executeAndGetVariable(xmlPath, "retrievedText").toString(), "Hello World",
+            "GetVarPlugin should return the retrieved text variable to its caller");
+        assertEquals(executeAndGetVariable(xmlPath, "retrievedNumber").toString(), "42",
+            "GetVarPlugin should return the retrieved numeric variable to its caller");
     }
 
     @Test(groups = {"integration", "core-plugins"})
@@ -193,16 +189,15 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
         
         String xmlPath = getNewPluginExamplePath("23_sleep_plugin_example.xml");
         
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        long endTime = System.currentTimeMillis();
-        
+        long durationMillis = (System.nanoTime() - startTime) / 1_000_000;
+
         assertNotNull(ctx);
-        
-        // Sleep should take some time (at least the configured duration)
-        long duration = endTime - startTime;
-        LOG.debug("Sleep execution took {} ms", duration);
-        assertTrue(duration >= 0, "Sleep plugin should execute successfully");
+
+        LOG.debug("Sleep execution took {} ms", durationMillis);
+        assertTrue(durationMillis >= 80,
+            "Sleep plugin should honor the configured 100 ms delay (allowing scheduler and clock tolerance)");
     }
 
     @Test(groups = {"integration", "core-plugins"})

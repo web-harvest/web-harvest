@@ -57,12 +57,10 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         LOG.info("Testing If/Else plugins integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("11_if_else_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // If/Else should execute successfully
-        assertTrue(true, "If/Else plugins should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "if_output.txt");
+
+        assertEquals(output.trim(), "Condition is true!",
+            "If should select the true branch and Else should not emit output");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
@@ -70,12 +68,16 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         LOG.info("Testing LoopPlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("12_loop_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Loop should iterate successfully
-        assertTrue(true, "LoopPlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "loop_output.txt");
+
+        int item1 = output.indexOf("Item: item1");
+        int item2 = output.indexOf("Item: item2");
+        int item3 = output.indexOf("Item: item3");
+        assertTrue(item1 >= 0, "Loop output should contain the first item");
+        assertTrue(item2 > item1, "Loop output should contain the second item after the first");
+        assertTrue(item3 > item2, "Loop output should contain the third item after the second");
+        assertEquals(countOccurrences(output, "Item: "), 3,
+            "Loop should render exactly one output for each configured item");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
@@ -117,12 +119,20 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         LOG.info("Testing CasePlugin integration with XML example");
         
         String xmlPath = getNewPluginExamplePath("27_case_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Case should execute successfully
-        assertTrue(true, "CasePlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "case_output.txt");
+
+        assertEquals(output.trim(), "Case 2",
+            "Case should emit only the branch matching the configured value");
+    }
+
+    private int countOccurrences(String text, String token) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(token, index)) >= 0) {
+            count++;
+            index += token.length();
+        }
+        return count;
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})

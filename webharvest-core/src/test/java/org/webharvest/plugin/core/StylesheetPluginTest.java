@@ -127,25 +127,35 @@ public class StylesheetPluginTest {
         assertTrue(result instanceof EmptyVariable);
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
+    @Test
     public void testStylesheetPluginExecuteWithInterruptedException() throws InterruptedException, PluginException {
-        // Mock context to simulate interruption
-        when(context.getCharset()).thenReturn("UTF-8");
+        Thread.interrupted();
+        try {
+            // Mock context to simulate interruption
+            when(context.getCharset()).thenReturn("UTF-8");
+            
+            // Create a plugin that will throw InterruptedException
+            StylesheetPlugin testPlugin = new StylesheetPlugin() {
+                @Override
+                protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+                    throw new InterruptedException("Test interruption");
+                }
+            };
+            
+            // Initialize the plugin
+            PluginConfiguration config = mock(PluginConfiguration.class);
+            testPlugin.initialize(config);
+            
+            // Execute plugin
+            testPlugin.execute(context);
         
-        // Create a plugin that will throw InterruptedException
-        StylesheetPlugin testPlugin = new StylesheetPlugin() {
-            @Override
-            protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-                throw new InterruptedException("Test interruption");
-            }
-        };
-        
-        // Initialize the plugin
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        testPlugin.initialize(config);
-        
-        // Execute plugin
-        testPlugin.execute(context);
+        } catch (InterruptedException expected) {
+            org.testng.Assert.assertEquals(expected.getMessage(), "Test interruption");
+            org.testng.Assert.assertTrue(Thread.currentThread().isInterrupted(),
+                "The interrupt flag must be restored after plugin cleanup");
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test

@@ -539,6 +539,8 @@ public class HttpHeaderPlugin extends AbstractPlugin {
             
             return EmptyVariable.INSTANCE;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error during HTTP header processing", e);
             return EmptyVariable.INSTANCE;
