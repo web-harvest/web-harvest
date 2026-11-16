@@ -547,5 +547,52 @@ public class DefaultPluginBodyExecutorTest {
     }
 
 
+    @Test
+    public void testExecuteBodyRejectsOrphanElseBeforeExecutingEarlierSiblings() throws Exception {
+        FollowingSiblingTestPlugin.executions.set(0);
+        registry.registerMapping(null, FollowingSiblingTestPlugin.class, FOLLOWING_SIBLING_PLUGIN);
+
+        DefaultPluginConfiguration parent = new DefaultPluginConfiguration(
+            "malformed-orphan-else", "http://org.webharvest/schema/2.1/core", "config");
+        List<PluginConfiguration> children = new ArrayList<>();
+        children.add(new DefaultPluginConfiguration(
+            "earlier-child", "http://org.webharvest/schema/2.1/core", FOLLOWING_SIBLING_PLUGIN));
+        children.add(new DefaultPluginConfiguration(
+            "orphan-else", "http://org.webharvest/schema/2.1/core", "else"));
+        parent.setChildren(children);
+
+        try {
+            executor.executeBody(parent, context);
+            fail("An Else without an immediately preceding sibling If must be rejected");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("Else must immediately follow"));
+        }
+
+        assertEquals(FollowingSiblingTestPlugin.executions.get(), 0,
+            "Malformed branch structure must be rejected before any sibling executes");
+    }
+
+    @Test
+    public void testExecuteBodyRejectsMultipleElseSiblingsForOneIf() throws Exception {
+        DefaultPluginConfiguration parent = new DefaultPluginConfiguration(
+            "malformed-duplicate-else", "http://org.webharvest/schema/2.1/core", "config");
+        List<PluginConfiguration> children = new ArrayList<>();
+        children.add(new DefaultPluginConfiguration(
+            "if-branch", "http://org.webharvest/schema/2.1/core", "if"));
+        children.add(new DefaultPluginConfiguration(
+            "first-else", "http://org.webharvest/schema/2.1/core", "else"));
+        children.add(new DefaultPluginConfiguration(
+            "second-else", "http://org.webharvest/schema/2.1/core", "else"));
+        parent.setChildren(children);
+
+        try {
+            executor.executeBody(parent, context);
+            fail("A second Else cannot reuse the same preceding If branch");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("Else must immediately follow"));
+        }
+    }
+
+
 }
 
