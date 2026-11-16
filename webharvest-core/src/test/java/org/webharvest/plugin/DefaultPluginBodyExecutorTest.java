@@ -307,6 +307,8 @@ public class DefaultPluginBodyExecutorTest {
             fail("executeBody must propagate child interruption");
         } catch (InterruptedException expected) {
             assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "executeBody must preserve the child lifecycle interrupt status");
         } finally {
             Thread.interrupted();
         }
@@ -317,6 +319,8 @@ public class DefaultPluginBodyExecutorTest {
             fail("getBodyTextContent must propagate child interruption");
         } catch (InterruptedException expected) {
             assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "getBodyTextContent must preserve the child lifecycle interrupt status");
         } finally {
             Thread.interrupted();
         }
