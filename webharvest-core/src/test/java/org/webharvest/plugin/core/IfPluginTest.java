@@ -848,4 +848,24 @@ public class IfPluginTest {
     }
 
 
+    @Test
+    public void testIfRejectsMultipleUnpairedElseBranchesBeforeConditionEvaluation() throws Exception {
+        IfPlugin directPlugin = new IfPlugin();
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "if-multiple-else", "http://org.webharvest/schema/2.1/core", "if");
+        configuration.setProperty("condition", "true");
+        configuration.setChildren(java.util.Arrays.<PluginConfiguration>asList(
+            new DefaultPluginConfiguration("else-one", "http://org.webharvest/schema/2.1/core", "else"),
+            new DefaultPluginConfiguration("else-two", "http://org.webharvest/schema/2.1/core", "else")));
+        directPlugin.initialize(configuration);
+
+        try {
+            directPlugin.matchesCondition(new ScraperContext());
+            fail("If condition matching must reject multiple unpaired Else branches");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("only one Else branch"));
+        }
+    }
+
+
 }
