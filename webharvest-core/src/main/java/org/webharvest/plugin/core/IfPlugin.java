@@ -738,6 +738,20 @@ public class IfPlugin extends AbstractPlugin {
             }
         }
 
+        // Literal values are not variable names. Resolve them before consulting
+        // the context (which correctly rejects names such as "0" and "false").
+        if ("true".equalsIgnoreCase(expression)
+                || "false".equalsIgnoreCase(expression)
+                || "null".equalsIgnoreCase(expression)) {
+            return isTruthyConditionValue(new NodeVariable(expression));
+        }
+        try {
+            Double numericLiteral = Double.valueOf(expression);
+            return numericLiteral.doubleValue() != 0.0d;
+        } catch (NumberFormatException notNumericLiteral) {
+            // Continue with variable lookup for non-literal expressions.
+        }
+
         Variable variable = context.getVar(expression);
         if (variable != null) {
             return isTruthyConditionValue(variable);
