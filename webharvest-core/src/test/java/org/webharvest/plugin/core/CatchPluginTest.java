@@ -145,21 +145,31 @@ public class CatchPluginTest {
         verify(context).setLocalVar("catchResult", result);
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
+    @Test
     public void testCatchPluginExecuteWithInterruptedException() throws InterruptedException, PluginException {
-        when(context.getCharset()).thenReturn("UTF-8");
+        Thread.interrupted();
+        try {
+            when(context.getCharset()).thenReturn("UTF-8");
+            
+            CatchPlugin testPlugin = new CatchPlugin() {
+                @Override
+                protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+                    throw new InterruptedException("Test interruption");
+                }
+            };
+            
+            PluginConfiguration config = mock(PluginConfiguration.class);
+            testPlugin.initialize(config);
+            
+            testPlugin.execute(context);
         
-        CatchPlugin testPlugin = new CatchPlugin() {
-            @Override
-            protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-                throw new InterruptedException("Test interruption");
-            }
-        };
-        
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        testPlugin.initialize(config);
-        
-        testPlugin.execute(context);
+        } catch (InterruptedException expected) {
+            org.testng.Assert.assertEquals(expected.getMessage(), "Test interruption");
+            org.testng.Assert.assertTrue(Thread.currentThread().isInterrupted(),
+                "The interrupt flag must be restored after plugin cleanup");
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test

@@ -35,6 +35,7 @@ package org.webharvest.plugin.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.webharvest.exception.PluginException;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -49,17 +50,11 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.annotations.MasterDetailConstraint;
-import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.templaters.BaseTemplater;
 import org.webharvest.runtime.variables.EmptyVariable;
-import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.webharvest.utils.CommonUtil;
 
 /**
  * Multi-branch conditional processor - switch/case statement with multiple conditions.
@@ -516,12 +511,53 @@ public class CasePlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.info("CasePlugin.doExecute: START");
-        
-        // Execute child elements (if/else branches) and collect results
-        Variable result = super.executeBody(context);
-        
-        LOGGER.info("CasePlugin.doExecute: Result: {}", result);
-        return result;
+
+        org.webharvest.plugin.DefaultPluginBodyExecutor bodyExecutor =
+                new org.webharvest.plugin.DefaultPluginBodyExecutor();
+        PluginConfiguration defaultBranch = null;
+        for (PluginConfiguration child : getConfiguration().getChildren()) {
+            if ("else".equals(child.getElementName())) {
+                if (defaultBranch == null) {
+                    defaultBranch = child;
+                } else {
+                    LOGGER.warn("CasePlugin: ignoring additional Else branch");
+                }
+                continue;
+            }
+
+            if (!"if".equals(child.getElementName())) {
+                LOGGER.warn("CasePlugin: ignoring unsupported branch element '{}'",
+                        child.getElementName());
+                continue;
+            }
+
+            org.webharvest.plugin.Plugin childPlugin = bodyExecutor.createChildPlugin(child);
+            if (!(childPlugin instanceof IfPlugin)) {
+                LOGGER.warn("CasePlugin: registered 'if' element did not create an IfPlugin");
+                continue;
+            }
+
+            IfPlugin branch = (IfPlugin) childPlugin;
+            if (branch.matchesCondition(context)) {
+                LOGGER.debug("CasePlugin: executing first matching If branch");
+                // Execute through the plugin lifecycle (events and cleanup) while
+                // reusing the condition already evaluated for branch selection.
+                return branch.execute(context);
+            }
+            branch.cleanup();
+        }
+
+        if (defaultBranch != null) {
+            org.webharvest.plugin.Plugin fallback = bodyExecutor.createChildPlugin(defaultBranch);
+            if (fallback == null) {
+                return EmptyVariable.INSTANCE;
+            }
+            LOGGER.debug("CasePlugin: executing default Else branch");
+            return fallback.execute(context);
+        }
+
+        LOGGER.debug("CasePlugin: no matching branch and no default Else");
+        return EmptyVariable.INSTANCE;
     }
 }
 
