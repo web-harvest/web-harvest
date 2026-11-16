@@ -167,9 +167,11 @@ public class LoopPluginTest {
     @Test(description = "Loop propagates interruption after cleaning the current iteration scope")
     public void testLoopPropagatesInterruptionAndCleansIterationScope() throws Exception {
         ScraperContext isolatedContext = new ScraperContext();
+        isolatedContext.setLocalVar("iterationScratch", new NodeVariable("outer"));
         LoopPlugin interruptedLoop = new LoopPlugin() {
             @Override
             protected Variable executeBody(DynamicScopeContext executionContext) throws InterruptedException {
+                executionContext.setLocalVar("iterationScratch", new NodeVariable("inner"));
                 executionContext.setLocalVar("createdBeforeInterrupt", new NodeVariable("temporary"));
                 throw new InterruptedException("simulated cancellation");
             }
@@ -195,6 +197,8 @@ public class LoopPluginTest {
                 "The plugin lifecycle restores the interrupt flag after cleanup");
             assertNull(isolatedContext.getVar("createdBeforeInterrupt"),
                 "Variables created before interruption must be cleaned up");
+            assertEquals(isolatedContext.getVar("iterationScratch").toString(), "outer",
+                "Overridden outer variables must be restored after interruption");
             assertEquals(isolatedContext.getVar("_item").toString(), "first");
             assertEquals(isolatedContext.getVar("_index").toString(), "0");
         } finally {
