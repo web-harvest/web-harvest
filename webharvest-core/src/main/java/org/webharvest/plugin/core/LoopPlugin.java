@@ -404,10 +404,12 @@ public class LoopPlugin extends AbstractPlugin {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
-        } catch (Exception e) {
-            LOGGER.debug("LoopPlugin: Error: {}", e.getMessage());
+        } catch (RuntimeException e) {
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
-            return EmptyVariable.INSTANCE;
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
+            throw new IllegalStateException("Loop execution failed", e);
         }
     }
 
