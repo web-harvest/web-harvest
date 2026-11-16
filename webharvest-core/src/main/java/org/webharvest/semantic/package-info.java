@@ -82,12 +82,23 @@
  *       missing/unreliable or a closed constraint set is absent</li>
  * </ul>
  *
- * <h3>Rules gated by reliable schema</h3>
- * Resolution statuses (and runtime-unavailable warnings) are always checked.
- * Attribute, child, body, root, and parent rules run only when
- * {@link Stage1PluginDescriptor#hasReliableSchema()} is {@code true}; otherwise
- * a single per-element {@code METADATA_LIMITATION} is emitted and those checks
- * are skipped.
+ * <h3>Schema-dependent and qualified relationship checks</h3>
+ * Resolution diagnostics and runtime-availability diagnostics are evaluated
+ * independently of schema presence. Root placement is checked when
+ * {@link Stage1PluginDescriptor#getCanAppearAtRoot()} is present. Attribute
+ * and text checks require {@link Stage1PluginDescriptor#hasReliableSchema()}.
+ * A missing schema does not suppress explicitly available qualified relationship
+ * checks; unavailable metadata is not interpreted as permission.
+ *
+ * <h3>Child policy and metadata provenance</h3>
+ * {@link Stage1PluginDescriptor#getChildPolicy()} distinguishes
+ * {@code ANY_CHILD}, {@code ALLOW_LIST}, {@code FORBID_CHILDREN}, and
+ * {@code UNKNOWN}. Provenance records whether the decision came from explicit
+ * visual metadata, catalog semantics, a schema allow-list, a legacy body
+ * heuristic, an explicit closed policy, or missing metadata. Only an explicit
+ * {@link org.webharvest.plugin.VisualPluginMetadata#acceptsArbitraryChildren()}
+ * declaration establishes {@code ANY_CHILD}; a legacy {@code BODY_EVALUATOR}
+ * heuristic remains {@code UNKNOWN}. Empty metadata never means forbid-all.
  *
  * <h3>Documented limitations</h3>
  * <ul>

@@ -95,6 +95,10 @@
                             "acceptsAnyChild": {
                                 "type": "boolean"
                             },
+                            "explicitlyAcceptsAnyChild": {
+                                "type": "boolean",
+                                "description": "True only when plugin metadata explicitly declares arbitrary child plugins; excludes legacy body-role inference."
+                            },
                             "allowBody": {
                                 "type": "boolean"
                             },

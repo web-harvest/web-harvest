@@ -16,18 +16,15 @@ import org.webharvest.plugin.metadata.PluginMetadataCatalog;
  * {@code (namespaceUri, localName)}.
  *
  * <p>Primary key collisions are stored as {@link PluginResolutionStatus#AMBIGUOUS}
- * and never resolved by silent pick. Runtime executability is separate from catalog
- * presence: after {@link PluginResolutionStatus#RESOLVED},
- * {@link PluginResolution#isRuntimeExecutable()} is set from
- * {@link CorePluginRegistry#isPluginRegistered(String)} (local-name only) or an
- * injected {@link RuntimeAvailability} predicate for tests.
+ * and never resolved by silent pick. Runtime availability is separate from catalog
+ * presence and reports only the namespace-unaware local-name registry probe.
  *
  * <p>Resolution algorithm (deterministic):
  * <ol>
  *   <li>Apply {@link ElementAliasTable} to the local name (default: none).</li>
  *   <li>Canonicalize namespace via {@link NamespaceAliasTable}.</li>
  *   <li>If the ambiguous multi-map has the key → {@code AMBIGUOUS}.</li>
- *   <li>If a unique descriptor exists → {@code RESOLVED} (+ runtimeExecutable).</li>
+ *   <li>If a unique descriptor exists → {@code RESOLVED} (+ scoped runtime availability status).</li>
  *   <li>Else if {@link OptionalPluginProfile} matches and {@code Class.forName} fails
  *       → {@code UNAVAILABLE_OPTIONAL}.</li>
  *   <li>Else if the same local name exists under other namespace(s) →
@@ -112,8 +109,15 @@ public final class PluginDescriptorIndex {
 
         Stage1PluginDescriptor uniqueHit = unique.get(key);
         if (uniqueHit != null) {
-            boolean executable = runtimeAvailability.isRegistered(aliasedLocal);
-            return PluginResolution.resolved(uniqueHit, executable);
+            RuntimeAvailabilityStatus availability;
+            try {
+                availability = runtimeAvailability.isRegistered(aliasedLocal)
+                        ? RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED
+                        : RuntimeAvailabilityStatus.NOT_REGISTERED_IN_CORE_REGISTRY;
+            } catch (RuntimeException ex) {
+                availability = RuntimeAvailabilityStatus.UNKNOWN;
+            }
+            return PluginResolution.resolved(uniqueHit, availability);
         }
 
         Optional<OptionalPluginProfile.Entry> profileHit = optionalProfile.find(canonicalNs, aliasedLocal);

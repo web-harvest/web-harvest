@@ -118,7 +118,8 @@ public final class PluginSemanticsResolver {
                 ? null
                 : allowedChildren.toArray(String[]::new));
         builder.requiredParentElements(requiredParents.toArray(String[]::new));
-        builder.allowsAnyChild(allowsAnyChild);
+        builder.explicitlyAcceptsAnyChild(acceptsAnyChild)
+               .allowsAnyChild(allowsAnyChild);
 
         return builder.build();
     }

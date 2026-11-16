@@ -60,7 +60,7 @@ public class StructuralValidatorAttributeBranchContractTest {
     }
 
     @Test
-    public void invalidParentWhenRequiredParentLocalNameDiffers() {
+    public void legacyRequiredParentLocalNameDoesNotProduceQualifiedParentError() {
         Stage1PluginDescriptor container = Stage1PluginDescriptor.builder()
                 .id("container@" + NS)
                 .namespaceUri(NS)
@@ -85,9 +85,10 @@ public class StructuralValidatorAttributeBranchContractTest {
 
         StructuralValidationResult result = model.validateStructural(load(model,
                 "<container xmlns=\"" + NS + "\"><leaf/></container>"));
-        assertTrue(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
         assertTrue(messages(result).stream()
-                .anyMatch(m -> m.contains("parent local name 'container'")));
+                .anyMatch(m -> m.contains("namespace-unqualified legacy names")));
     }
 
     private static PluginDescriptorIndex indexOf(Stage1PluginDescriptor... descriptors) {
