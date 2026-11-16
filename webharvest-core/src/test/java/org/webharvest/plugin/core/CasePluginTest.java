@@ -443,7 +443,7 @@ public class CasePluginTest {
                 fail("Case must reject a registry mapping that does not create an IfPlugin");
             } catch (RuntimeException expected) {
                 assertTrue(expected.getCause() instanceof IllegalStateException);
-                assertTrue(expected.getCause().getMessage().contains("must create an IfPlugin"));
+                assertTrue(expected.getCause().getMessage().contains("must create IfPlugin"));
             }
         } finally {
             registry.registerMapping(null, originalIfPlugin, "if");
