@@ -632,7 +632,7 @@ public class XPathPlugin extends AbstractPlugin {
     /**
      * Get XML content from context - using the same logic as original XPathProcessor
      */
-    protected Variable getXmlContent(DynamicScopeContext context) {
+    protected Variable getXmlContent(DynamicScopeContext context) throws InterruptedException {
         try {
             // Execute body content to get XML
             Variable bodyContent = executeBody(context);
