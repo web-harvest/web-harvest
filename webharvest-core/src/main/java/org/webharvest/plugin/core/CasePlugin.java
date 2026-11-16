@@ -533,8 +533,9 @@ public class CasePlugin extends AbstractPlugin {
 
             org.webharvest.plugin.Plugin childPlugin = bodyExecutor.createChildPlugin(child);
             if (!(childPlugin instanceof IfPlugin)) {
-                LOGGER.warn("CasePlugin: registered 'if' element did not create an IfPlugin");
-                continue;
+                throw new IllegalStateException(
+                        "Registered 'if' element must create an IfPlugin, but created "
+                                + childPlugin.getClass().getName());
             }
 
             IfPlugin branch = (IfPlugin) childPlugin;
@@ -563,8 +564,10 @@ public class CasePlugin extends AbstractPlugin {
 
         if (defaultBranch != null) {
             org.webharvest.plugin.Plugin fallback = bodyExecutor.createChildPlugin(defaultBranch);
-            if (fallback == null) {
-                return EmptyVariable.INSTANCE;
+            if (!(fallback instanceof ElsePlugin)) {
+                throw new IllegalStateException(
+                        "Registered 'else' element must create an ElsePlugin, but created "
+                                + fallback.getClass().getName());
             }
             LOGGER.debug("CasePlugin: executing default Else branch");
             return fallback.execute(context);
