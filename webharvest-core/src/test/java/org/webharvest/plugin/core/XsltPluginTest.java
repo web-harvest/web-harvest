@@ -4,11 +4,12 @@
 
 package org.webharvest.plugin.core;
 
+import java.util.Arrays;
+
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.DefaultPluginConfiguration;
-import java.util.Arrays;
+import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
@@ -72,6 +73,35 @@ public class XsltPluginTest {
         try {
             plugin.execute(mockContext);
             fail("Missing <xml> input must fail instead of returning a placeholder");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Plugin execution failed"));
+        }
+    }
+
+
+    @Test
+    public void testExecuteRejectsExternalEntityDeclarations() throws Exception {
+        String xml = "<!DOCTYPE root [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
+            + "<root>&xxe;</root>";
+        String stylesheet = "<xsl:stylesheet version=\"1.0\" "
+            + "xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+            + "<xsl:template match=\"/\"><result><xsl:value-of select=\"/root\"/>"
+            + "</result></xsl:template></xsl:stylesheet>";
+
+        DefaultPluginConfiguration xmlChild = new DefaultPluginConfiguration(
+            "xml", "", "xml");
+        xmlChild.setProperty("_textContent", xml);
+        DefaultPluginConfiguration stylesheetChild = new DefaultPluginConfiguration(
+            "stylesheet", "", "stylesheet");
+        stylesheetChild.setProperty("_textContent", stylesheet);
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "xslt", "", "xslt");
+        configuration.setChildren(Arrays.<PluginConfiguration>asList(xmlChild, stylesheetChild));
+
+        plugin.initialize(configuration);
+        try {
+            plugin.execute(mockContext);
+            fail("External entity declarations must be rejected");
         } catch (RuntimeException expected) {
             assertTrue(expected.getMessage().contains("Plugin execution failed"));
         }
