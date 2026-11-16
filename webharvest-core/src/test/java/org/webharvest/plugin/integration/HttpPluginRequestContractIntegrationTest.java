@@ -12,7 +12,6 @@ import java.util.Map;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.services.HttpResponse;
 import org.webharvest.plugin.services.HttpService;
-import org.webharvest.plugin.services.HttpServiceException;
 
 import static org.testng.Assert.*;
 
