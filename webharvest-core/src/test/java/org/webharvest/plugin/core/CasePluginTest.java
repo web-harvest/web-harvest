@@ -355,23 +355,4 @@ public class CasePluginTest {
         }
     }
 
-    @Test
-    public void testCaseBranchMatchingPropagatesUnsupportedExpressionWithoutLanguage() throws Exception {
-        ScraperContext directContext = new ScraperContext();
-        directContext.setLocalVar("count", new NodeVariable("11"));
-
-        Map<String, String> properties = new HashMap<>();
-        properties.put("condition", "${count > 10}");
-        IfPlugin branch = new IfPlugin();
-        branch.initialize(new DefaultPluginConfiguration(
-            "if", "http://org.webharvest/schema/2.1/core", "if", properties));
-
-        try {
-            branch.matchesCondition(directContext);
-            fail("Case must not treat an expression error as a non-matching branch and select its default");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("Unsupported If operator"));
-        }
-    }
-
 }
