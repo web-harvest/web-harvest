@@ -512,22 +512,26 @@ public class CasePlugin extends AbstractPlugin {
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.info("CasePlugin.doExecute: START");
 
+        java.util.List<PluginConfiguration> branches = getConfiguration().getChildren();
+        PluginConfiguration defaultBranch = null;
+        for (PluginConfiguration child : branches) {
+            if ("else".equals(child.getElementName())) {
+                if (defaultBranch != null) {
+                    throw new IllegalArgumentException(
+                            "Case may contain only one default Else branch");
+                }
+                defaultBranch = child;
+            } else if (!"if".equals(child.getElementName())) {
+                throw new IllegalArgumentException(
+                        "Unsupported Case branch element '" + child.getElementName()
+                                + "'; expected If or Else");
+            }
+        }
+
         org.webharvest.plugin.DefaultPluginBodyExecutor bodyExecutor =
                 new org.webharvest.plugin.DefaultPluginBodyExecutor();
-        PluginConfiguration defaultBranch = null;
-        for (PluginConfiguration child : getConfiguration().getChildren()) {
+        for (PluginConfiguration child : branches) {
             if ("else".equals(child.getElementName())) {
-                if (defaultBranch == null) {
-                    defaultBranch = child;
-                } else {
-                    LOGGER.warn("CasePlugin: ignoring additional Else branch");
-                }
-                continue;
-            }
-
-            if (!"if".equals(child.getElementName())) {
-                LOGGER.warn("CasePlugin: ignoring unsupported branch element '{}'",
-                        child.getElementName());
                 continue;
             }
 
