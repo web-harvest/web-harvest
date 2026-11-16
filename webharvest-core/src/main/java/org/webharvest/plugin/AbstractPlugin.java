@@ -181,6 +181,8 @@ public abstract class AbstractPlugin implements Plugin {
                 // Don't re-throw cleanup exceptions - original exception takes precedence
             }
 
+            // Restore only after cleanup: nested plugin cancellation must not
+            // make this plugin's cleanup run with the interrupt flag already set.
             if (executionError instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
