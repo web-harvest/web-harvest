@@ -60,6 +60,14 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.XMLConstants;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import javax.xml.transform.sax.SAXSource;
+import java.io.IOException;
 import java.util.List;
 import org.webharvest.exception.XsltException;
 import org.slf4j.Logger;
@@ -432,18 +440,22 @@ public class XsltPlugin extends AbstractPlugin {
         try {
             TransformerFactory factory = TransformerFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+            factory.setURIResolver((href, base) -> {
+                throw new TransformerException("External XSLT resources are disabled: " + href);
+            });
 
-            Source stylesheetSource = new StreamSource(new StringReader(stylesheetContent));
+            Source stylesheetSource = createSecureSource(stylesheetContent);
             Transformer transformer = factory.newTransformer(stylesheetSource);
-            Source xmlSource = new StreamSource(new StringReader(xmlContent));
+            transformer.setURIResolver((href, base) -> {
+                throw new TransformerException("External XSLT resources are disabled: " + href);
+            });
+            Source xmlSource = createSecureSource(xmlContent);
             StringWriter writer = new StringWriter();
             Result result = new StreamResult(writer);
             transformer.transform(xmlSource, result);
 
             return new NodeVariable(writer.toString());
-        } catch (TransformerException | IllegalArgumentException e) {
+        } catch (TransformerException | ParserConfigurationException | SAXException | IOException e) {
             LOGGER.error("Failed to perform XSLT transformation: {}", e.getMessage(), e);
             throw new XsltException("Error during XSLT transformation", e);
         }
@@ -469,6 +481,26 @@ public class XsltPlugin extends AbstractPlugin {
         }
         throw new XsltException("XSLT requires a <" + elementName + "> child");
     }
+    /**
+     * Parses XML with external entities and DTD processing disabled.
+     */
+    private Source createSecureSource(String content)
+            throws ParserConfigurationException, SAXException, IOException {
+        SAXParserFactory parserFactory = SAXParserFactory.newInstance();
+        parserFactory.setNamespaceAware(true);
+        parserFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        SAXParser parser = parserFactory.newSAXParser();
+        XMLReader reader = parser.getXMLReader();
+        reader.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        reader.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        reader.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        reader.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        reader.setEntityResolver((publicId, systemId) -> {
+            throw new SAXException("External XML entities are disabled");
+        });
+        return new SAXSource(reader, new InputSource(new StringReader(content)));
+    }
+
 }
 
 
