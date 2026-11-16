@@ -213,7 +213,7 @@ public class ListPluginTest {
             PluginConfiguration config = mock(PluginConfiguration.class);
             testPlugin.initialize(config);
             
-            // Execute plugin - should throw RuntimeException wrapping InterruptedException
+            // Execute plugin - checked interruption must propagate and stop execution
             testPlugin.execute(context);
         
         } catch (InterruptedException expected) {
