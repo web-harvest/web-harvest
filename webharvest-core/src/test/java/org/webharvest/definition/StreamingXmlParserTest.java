@@ -194,11 +194,11 @@ public class StreamingXmlParserTest {
      */
     @Test(groups = {"unit", "v3", "parser", "loop-contract"})
     public void testParseLoopListSourceAndBodyAsDistinctChildren() throws Exception {
-        String xml = "<config xmlns=\\"http://org.webharvest/schema/2.1/core\\">"
-            + "<def var=\\"items\\">one,two</def>"
-            + "<loop items=\\"\\u0024{items}\\" delimiter=\\",\\">"
-            + "  <list><get var=\\"items\\"/></list>"
-            + "  <body><template>Item: \\u0024{item}</template></body>"
+        String xml = "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "<def var=\"items\">one,two</def>"
+            + "<loop items=\"${items}\" delimiter=\",\">"
+            + "  <list><get var=\"items\"/></list>"
+            + "  <body><template>Item: ${item}</template></body>"
             + "</loop>"
             + "</config>";
 
