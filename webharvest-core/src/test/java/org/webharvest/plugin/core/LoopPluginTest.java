@@ -8,8 +8,12 @@ import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.variables.ListVariable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.testng.Assert.*;
@@ -204,6 +208,99 @@ public class LoopPluginTest {
         } finally {
             Thread.interrupted();
         }
+    }
+
+    @Test(description = "Loop preserves Variable types when items references a ListVariable")
+    public void testLoopResolvesTypedListVariableItems() throws Exception {
+        ScraperContext typedContext = new ScraperContext();
+        typedContext.setLocalVar("sourceItems", new ListVariable(Arrays.asList(
+            new NodeVariable(Integer.valueOf(42)),
+            new NodeVariable("second")
+        )));
+        List<Object> observedValues = new ArrayList<>();
+
+        LoopPlugin typedLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                observedValues.add(executionContext.getVar("value").getWrappedObject());
+                return EmptyVariable.INSTANCE;
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("items", "${sourceItems}");
+        properties.put("item", "value");
+        properties.put("maxloops", "10");
+        typedLoop.initialize(new DefaultPluginConfiguration(
+            "loop", "http://org.webharvest/schema/2.1/core", "loop", properties));
+
+        typedLoop.execute(typedContext);
+
+        assertEquals(observedValues.size(), 2,
+            "A ListVariable source must produce one iteration per member");
+        assertTrue(observedValues.get(0) instanceof Integer,
+            "ListVariable members must not be stringified before binding");
+        assertEquals(observedValues.get(0), Integer.valueOf(42));
+        assertEquals(observedValues.get(1), "second");
+        assertEquals(typedContext.getVar("value").toString(), "second");
+    }
+
+    @Test(description = "Loop splits a scalar variable reference using the configured delimiter and respects maxloops")
+    public void testLoopResolvesScalarVariableItemsAndMaxloops() throws Exception {
+        ScraperContext scalarContext = new ScraperContext();
+        scalarContext.setLocalVar("sourceItems", new NodeVariable("one,two,three"));
+        List<String> observedItems = new ArrayList<>();
+
+        LoopPlugin scalarLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                observedItems.add(executionContext.getVar("value").toString());
+                return EmptyVariable.INSTANCE;
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("items", "${sourceItems}");
+        properties.put("item", "value");
+        properties.put("index", "position");
+        properties.put("delimiter", ",");
+        properties.put("maxloops", "2");
+        scalarLoop.initialize(new DefaultPluginConfiguration(
+            "loop", "http://org.webharvest/schema/2.1/core", "loop", properties));
+
+        scalarLoop.execute(scalarContext);
+
+        assertEquals(observedItems, Arrays.asList("one", "two"),
+            "Scalar variable content must be split and capped by maxloops");
+        assertEquals(scalarContext.getVar("position").toString(), "1");
+    }
+
+    @Test(description = "An explicitly referenced empty ListVariable must not trigger maxloops fallback")
+    public void testLoopWithEmptyReferencedListDoesNotUseFallback() throws Exception {
+        ScraperContext emptyContext = new ScraperContext();
+        emptyContext.setLocalVar("sourceItems", new ListVariable());
+        int[] executions = new int[]{0};
+
+        LoopPlugin emptyLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                executions[0]++;
+                return EmptyVariable.INSTANCE;
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("items", "${sourceItems}");
+        properties.put("maxloops", "3");
+        emptyLoop.initialize(new DefaultPluginConfiguration(
+            "loop", "http://org.webharvest/schema/2.1/core", "loop", properties));
+
+        emptyLoop.execute(emptyContext);
+
+        assertEquals(executions[0], 0,
+            "An explicitly supplied empty collection is zero items, not an absent source");
+        assertNull(emptyContext.getVar("_index"));
+        assertNull(emptyContext.getVar("_item"));
     }
 
     private void executeLoop(String maxloops, String items) throws Exception {
