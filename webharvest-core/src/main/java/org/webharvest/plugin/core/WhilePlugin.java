@@ -912,10 +912,12 @@ public class WhilePlugin extends AbstractPlugin {
                 conditionResult = false;
             }
 
-            // Safety check: if condition is still "true" and we're in test mode, break after first iteration
-            // Only break if maxloops is not explicitly set (to allow tests to control loop count)
-            if ("true".equals(evaluatedCondition) && i > 0 && maxLoopsString.isEmpty()) {
-                LOGGER.trace("Breaking infinite loop in test mode");
+            // Preserve the single-iteration safety behavior only for a literal
+            // constant true condition. A dynamic expression may evaluate to the
+            // string "true" initially and still need further iterations.
+            if ("true".equalsIgnoreCase(condition == null ? "" : condition.trim())
+                    && i > 0 && maxLoopsString.isEmpty()) {
+                LOGGER.trace("Breaking infinite loop for literal true condition without maxloops");
                 break;
             }
         }
