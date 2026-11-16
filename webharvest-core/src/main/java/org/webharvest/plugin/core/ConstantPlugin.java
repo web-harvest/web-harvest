@@ -432,6 +432,8 @@ public class ConstantPlugin extends AbstractPlugin {
                     value = bodyContent.toString();
                     LOGGER.info("ConstantPlugin.doExecute: Using body content: '{}'", value);
                 }
+            } catch (InterruptedException e) {
+                throw e;
             } catch (Exception e) {
                 LOGGER.warn("ConstantPlugin.doExecute: Error executing body content: {}", e.getMessage());
             }

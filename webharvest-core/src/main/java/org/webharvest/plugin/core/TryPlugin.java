@@ -478,6 +478,9 @@ public class TryPlugin extends AbstractPlugin {
             
             return result;
             
+        } catch (InterruptedException e) {
+            // Cancellation is not an application failure and must bypass <catch>.
+            throw e;
         } catch (Exception e) {
             LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
             LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());

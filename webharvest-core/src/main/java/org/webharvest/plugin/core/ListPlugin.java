@@ -406,6 +406,8 @@ public class ListPlugin extends AbstractPlugin {
             
             return result;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error in list plugin", e);
             return EmptyVariable.INSTANCE;

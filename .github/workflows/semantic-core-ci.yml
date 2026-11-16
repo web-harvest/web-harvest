@@ -31,6 +31,10 @@ on:
       - "stabilization/**"
       - "quality/**"
       - "maintenance/**"
+      # Stacked implementation PRs target active fix/** and test/** branches.
+      # Include those base branches so every current PR head receives exact-SHA CI.
+      - "fix/**"
+      - "test/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
