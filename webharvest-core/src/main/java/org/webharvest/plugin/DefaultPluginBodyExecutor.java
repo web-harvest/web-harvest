@@ -82,7 +82,25 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return EmptyVariable.INSTANCE;
         }
 
+        validateSiblingElsePairs(config.getChildren());
         return executeChildren(config.getChildren(), context);
+    }
+
+    /**
+     * Ensures each sibling Else belongs to exactly one immediately preceding If.
+     * This validation runs before any child executes, so malformed control-flow
+     * structures cannot partially mutate the execution context.
+     *
+     * @param children ordered child configurations
+     */
+    private void validateSiblingElsePairs(List<PluginConfiguration> children) {
+        for (int i = 0; i < children.size(); i++) {
+            if ("else".equals(children.get(i).getElementName())
+                    && (i == 0 || !"if".equals(children.get(i - 1).getElementName()))) {
+                throw new IllegalArgumentException(
+                        "Else must immediately follow exactly one sibling If (child index " + i + ")");
+            }
+        }
     }
 
     /**
