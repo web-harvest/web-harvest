@@ -172,7 +172,6 @@ final class LoopInputSourceResolver {
         }
         return childResults.iterator().next();
     }
-    }
 
     private static List<Variable> flatten(final Variable variable) {
         final List<Variable> items = new ArrayList<>();
