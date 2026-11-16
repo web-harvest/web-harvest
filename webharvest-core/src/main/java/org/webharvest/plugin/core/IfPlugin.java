@@ -581,24 +581,19 @@ public class IfPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("IfPlugin.doExecute: START");
-        try {
-            Boolean cachedCondition = preEvaluatedCondition;
-            preEvaluatedCondition = null;
-            boolean conditionMatched = cachedCondition != null
-                    ? cachedCondition
-                    : evaluateCondition(getConfiguration().getProperty("condition", ""), context);
+        Boolean cachedCondition = preEvaluatedCondition;
+        preEvaluatedCondition = null;
+        boolean conditionMatched = cachedCondition != null
+                ? cachedCondition
+                : evaluateCondition(getConfiguration().getProperty("condition", ""), context);
 
-            if (conditionMatched) {
-                LOGGER.debug("IfPlugin.doExecute: condition matched");
-                return executeMatchedBranch(context);
-            }
-
-            LOGGER.debug("IfPlugin.doExecute: condition did not match");
-            return executeElseBranch(context);
-        } catch (RuntimeException e) {
-            LOGGER.error("Error during if condition evaluation", e);
-            return EmptyVariable.INSTANCE;
+        if (conditionMatched) {
+            LOGGER.debug("IfPlugin.doExecute: condition matched");
+            return executeMatchedBranch(context);
         }
+
+        LOGGER.debug("IfPlugin.doExecute: condition did not match");
+        return executeElseBranch(context);
     }
 
     /**
@@ -741,6 +736,20 @@ public class IfPlugin extends AbstractPlugin {
                 throw new IllegalArgumentException(
                     "Unsupported If operator without a configured scripting language: " + operator);
             }
+        }
+
+        // Literal values are not variable names. Resolve them before consulting
+        // the context (which correctly rejects names such as "0" and "false").
+        if ("true".equalsIgnoreCase(expression)
+                || "false".equalsIgnoreCase(expression)
+                || "null".equalsIgnoreCase(expression)) {
+            return isTruthyConditionValue(new NodeVariable(expression));
+        }
+        try {
+            Double numericLiteral = Double.valueOf(expression);
+            return numericLiteral.doubleValue() != 0.0d;
+        } catch (NumberFormatException notNumericLiteral) {
+            // Continue with variable lookup for non-literal expressions.
         }
 
         Variable variable = context.getVar(expression);

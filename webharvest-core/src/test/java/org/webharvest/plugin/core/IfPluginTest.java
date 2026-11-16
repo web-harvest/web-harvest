@@ -790,45 +790,40 @@ public class IfPluginTest {
         assertTrue(result instanceof EmptyVariable);
     }
 
-    @Test
-    public void testExecuteWithTemplateExpressionException() throws PluginException, InterruptedException {
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testExecuteWithTemplateExpressionExceptionPropagates() throws PluginException, InterruptedException {
         // Given
         when(configuration.getProperty("condition", "")).thenReturn("${user.active == 'true'}");
         when(context.getVar("user.active")).thenThrow(new RuntimeException("Test exception"));
-        
+
         plugin.initialize(configuration);
-        
-        // When
-        Variable result = plugin.execute(context);
-        
-        // Then
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+
+        // When: evaluation failures must not be converted into a false condition.
+        plugin.execute(context);
     }
     @Test
-    public void testUnsupportedComparisonWithoutScriptingLanguageDoesNotBecomeTruthy() throws Exception {
+    public void testUnsupportedComparisonWithoutScriptingLanguagePropagates() throws Exception {
         ScraperContext directContext = new ScraperContext();
         assertNull(directContext.getScriptingLanguage(),
             "This regression must exercise the no-engine compatibility path");
         directContext.setLocalVar("count", new NodeVariable("11"));
 
-        IfPlugin directPlugin = new IfPlugin() {
-            @Override
-            protected Variable executeBody(DynamicScopeContext executionContext) {
-                return new NodeVariable("if-body-executed");
-            }
-        };
-
+        IfPlugin directPlugin = new IfPlugin();
         Map<String, String> properties = new HashMap<>();
         properties.put("condition", "${count > 10}");
         DefaultPluginConfiguration directConfiguration = new DefaultPluginConfiguration(
             "if", "http://org.webharvest/schema/2.1/core", "if", properties);
         directPlugin.initialize(directConfiguration);
 
-        Variable result = directPlugin.execute(directContext);
-
-        assertTrue(result instanceof EmptyVariable,
-            "An unsupported comparison without a configured expression engine must fail closed, not become truthy");
+        try {
+            // The public plugin lifecycle wraps implementation exceptions.
+            directPlugin.execute(directContext);
+            fail("Unsupported operators must not be interpreted as false");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof IllegalArgumentException,
+                "The original unsupported-operator error must remain available as the cause");
+            assertTrue(expected.getCause().getMessage().contains("Unsupported If operator"));
+        }
     }
 
     @Test
