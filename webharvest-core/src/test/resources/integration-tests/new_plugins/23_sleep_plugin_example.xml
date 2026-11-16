@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
     <template>Before sleep</template>
-    <sleep time="1000"/>
+    <sleep milliseconds="100"/>
     <template>After sleep</template>
 </config>
-

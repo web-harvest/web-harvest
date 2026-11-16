@@ -2,6 +2,7 @@ package org.webharvest.plugin;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginRegistry;
@@ -17,6 +18,8 @@ import org.webharvest.runtime.variables.Variable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.testng.Assert.*;
 
@@ -33,6 +36,11 @@ public class DefaultPluginBodyExecutorTest {
     private DynamicScopeContext context;
     private CorePluginRegistry registry;
     
+    @AfterMethod(alwaysRun = true)
+    public void clearInterruptFlagAfterTest() {
+        Thread.interrupted();
+    }
+
     @BeforeMethod
     public void setUp() {
         executor = new DefaultPluginBodyExecutor();
@@ -184,5 +192,306 @@ public class DefaultPluginBodyExecutorTest {
         Variable result2 = executor.executeBody(config, context);
         assertNotNull(result2);
     }
+    @Test
+    public void testExecuteBodyPropagatesInterruptionAndStopsFollowingSiblings() throws Exception {
+        Thread.interrupted();
+        InterruptingTestPlugin.cleanupCalled.set(false);
+        InterruptingTestPlugin.cleanupObservedInterrupt.set(true);
+        FollowingSiblingTestPlugin.executions.set(0);
+
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+        registry.registerMapping(null, FollowingSiblingTestPlugin.class, FOLLOWING_SIBLING_PLUGIN);
+
+        DefaultPluginConfiguration parent = new DefaultPluginConfiguration(
+            "parent", "http://org.webharvest/schema/2.1/core", "config");
+        List<PluginConfiguration> children = new ArrayList<>();
+        children.add(new DefaultPluginConfiguration(
+            "interrupting", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN));
+        children.add(new DefaultPluginConfiguration(
+            "following", "http://org.webharvest/schema/2.1/core", FOLLOWING_SIBLING_PLUGIN));
+        parent.setChildren(children);
+
+        try {
+            executor.executeBody(parent, context);
+            fail("An interrupted child must abort body execution");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(InterruptingTestPlugin.cleanupCalled.get(),
+                "The child plugin lifecycle must still perform cleanup");
+            assertFalse(InterruptingTestPlugin.cleanupObservedInterrupt.get(),
+                "The interrupt flag must be restored after child cleanup");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "The lifecycle must restore the interrupt flag after cleanup");
+        } finally {
+            Thread.interrupted();
+        }
+
+        assertEquals(FollowingSiblingTestPlugin.executions.get(), 0,
+            "Later sibling plugins must not execute after interruption");
+    }
+
+    private static final String INTERRUPTING_PLUGIN = "test-interrupting-plugin-issue105";
+    private static final String FOLLOWING_SIBLING_PLUGIN = "test-following-sibling-plugin-issue105";
+
+    public static class InterruptingTestPlugin extends AbstractPlugin {
+        private static final AtomicBoolean cleanupCalled = new AtomicBoolean();
+        private static final AtomicBoolean cleanupObservedInterrupt = new AtomicBoolean();
+
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) {
+            // No initialization required by this test plugin.
+        }
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext executionContext) throws InterruptedException {
+            throw new InterruptedException("child cancellation");
+        }
+
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No configuration constraints.
+        }
+
+        @Override
+        protected void doCleanup() {
+            cleanupObservedInterrupt.set(Thread.currentThread().isInterrupted());
+            cleanupCalled.set(true);
+        }
+
+        @Override
+        public PluginMetadata getMetadata() {
+            return null;
+        }
+    }
+
+    public static class FollowingSiblingTestPlugin extends AbstractPlugin {
+        private static final AtomicInteger executions = new AtomicInteger();
+
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) {
+            // No initialization required by this test plugin.
+        }
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext executionContext) {
+            executions.incrementAndGet();
+            return new NodeVariable("following sibling executed");
+        }
+
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No configuration constraints.
+        }
+
+        @Override
+        public PluginMetadata getMetadata() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testAbstractPluginBodyHelpersPropagateInterruption() throws Exception {
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+        DefaultPluginConfiguration parent = new DefaultPluginConfiguration(
+            "body-helper-parent", "http://org.webharvest/schema/2.1/core", "config");
+        parent.setChildren(java.util.Collections.<PluginConfiguration>singletonList(
+            new DefaultPluginConfiguration(
+                "interrupting", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN)));
+
+        BodyHelperTestPlugin helper = new BodyHelperTestPlugin();
+        helper.initialize(parent);
+
+        Thread.interrupted();
+        try {
+            helper.invokeExecuteBody(context);
+            fail("executeBody must propagate child interruption");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "executeBody must preserve the child lifecycle interrupt status");
+        } finally {
+            Thread.interrupted();
+        }
+
+        Thread.interrupted();
+        try {
+            helper.invokeGetBodyTextContent(context);
+            fail("getBodyTextContent must propagate child interruption");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "getBodyTextContent must preserve the child lifecycle interrupt status");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    public static class BodyHelperTestPlugin extends AbstractPlugin {
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) {
+            // No initialization required by this test plugin.
+        }
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext executionContext) {
+            return EmptyVariable.INSTANCE;
+        }
+
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No configuration constraints.
+        }
+
+        public Variable invokeExecuteBody(DynamicScopeContext executionContext) throws InterruptedException {
+            return executeBody(executionContext);
+        }
+
+        public Variable invokeGetBodyTextContent(DynamicScopeContext executionContext) throws InterruptedException {
+            return getBodyTextContent(executionContext);
+        }
+
+        @Override
+        public PluginMetadata getMetadata() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testExecuteBodyContinuesAfterOrdinaryRuntimeFailure() throws Exception {
+        FollowingSiblingTestPlugin.executions.set(0);
+        registry.registerMapping(null, RuntimeFailingTestPlugin.class, RUNTIME_FAILING_PLUGIN);
+        registry.registerMapping(null, FollowingSiblingTestPlugin.class, FOLLOWING_SIBLING_PLUGIN);
+
+        DefaultPluginConfiguration parent = new DefaultPluginConfiguration(
+            "parent", "http://org.webharvest/schema/2.1/core", "config");
+        List<PluginConfiguration> children = new ArrayList<>();
+        children.add(new DefaultPluginConfiguration(
+            "failing", "http://org.webharvest/schema/2.1/core", RUNTIME_FAILING_PLUGIN));
+        children.add(new DefaultPluginConfiguration(
+            "following", "http://org.webharvest/schema/2.1/core", FOLLOWING_SIBLING_PLUGIN));
+        parent.setChildren(children);
+
+        Variable result = executor.executeBody(parent, context);
+
+        assertNotNull(result);
+        assertEquals(FollowingSiblingTestPlugin.executions.get(), 1,
+            "Ordinary runtime failures must retain continue-on-sibling behavior");
+    }
+
+    private static final String RUNTIME_FAILING_PLUGIN = "test-runtime-failing-plugin-issue105";
+
+    public static class RuntimeFailingTestPlugin extends AbstractPlugin {
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) {
+            // No initialization required by this test plugin.
+        }
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext executionContext) {
+            throw new IllegalStateException("ordinary plugin failure");
+        }
+
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No configuration constraints.
+        }
+
+        @Override
+        public PluginMetadata getMetadata() {
+            return null;
+        }
+    }
+
+    @Test(description = "Verify checked cancellation across Try, List, Def and XPath wrappers")
+    public void testCorePluginWrappersPropagateChildInterruption() throws Exception {
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+
+        FollowingSiblingTestPlugin.executions.set(0);
+        DefaultPluginConfiguration tryConfiguration =
+            wrapperConfiguration("try", new java.util.HashMap<String, String>());
+        tryConfiguration.setChildren(java.util.Arrays.<PluginConfiguration>asList(
+            new DefaultPluginConfiguration(
+                "interrupting-child", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN),
+            new DefaultPluginConfiguration(
+                "following-child", "http://org.webharvest/schema/2.1/core", FOLLOWING_SIBLING_PLUGIN)));
+        registry.registerMapping(null, FollowingSiblingTestPlugin.class, FOLLOWING_SIBLING_PLUGIN);
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.TryPlugin(),
+            tryConfiguration);
+        assertEquals(FollowingSiblingTestPlugin.executions.get(), 0,
+            "Try must not execute later siblings or catch handling after cancellation");
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.ListPlugin(),
+            wrapperConfiguration("list", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> defProperties = new java.util.HashMap<>();
+        defProperties.put("var", "result");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.DefPlugin(),
+            wrapperConfiguration("def", defProperties));
+
+        java.util.Map<String, String> xpathProperties = new java.util.HashMap<>();
+        xpathProperties.put("expression", "//root");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XPathPlugin(),
+            wrapperConfiguration("xpath", xpathProperties));
+    }
+
+    private DefaultPluginConfiguration wrapperConfiguration(
+            String elementName, java.util.Map<String, String> properties) {
+        DefaultPluginConfiguration wrapper = new DefaultPluginConfiguration(
+            elementName, "http://org.webharvest/schema/2.1/core", elementName, properties);
+        wrapper.setChildren(java.util.Collections.<PluginConfiguration>singletonList(
+            new DefaultPluginConfiguration(
+                "interrupting-child", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN)));
+        return wrapper;
+    }
+
+    private void assertWrapperPropagatesInterruption(
+            AbstractPlugin plugin, PluginConfiguration configuration) throws Exception {
+        InterruptingTestPlugin.cleanupCalled.set(false);
+        InterruptingTestPlugin.cleanupObservedInterrupt.set(true);
+        Thread.interrupted();
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail(plugin.getClass().getSimpleName()
+                + " must propagate child interruption instead of swallowing or wrapping it");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "child cancellation");
+            assertTrue(InterruptingTestPlugin.cleanupCalled.get(),
+                "The interrupted child must still complete its cleanup");
+            assertFalse(InterruptingTestPlugin.cleanupObservedInterrupt.get(),
+                "The child cleanup must run before interrupt restoration");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "The wrapper lifecycle must restore interrupt status after cleanup");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test(description = "Constant, Template, Var, XML, XQExpression and HttpHeader propagate cancellation")
+    public void testSecondaryCorePluginWrappersPropagateChildInterruption() throws Exception {
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.ConstantPlugin(),
+            wrapperConfiguration("constant", new java.util.HashMap<String, String>()));
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.TemplatePlugin(),
+            wrapperConfiguration("template", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> varProperties = new java.util.HashMap<>();
+        varProperties.put("name", "result");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.VarPlugin(),
+            wrapperConfiguration("var", varProperties));
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XMLPlugin(),
+            wrapperConfiguration("xml", new java.util.HashMap<String, String>()));
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XQExpressionPlugin(),
+            wrapperConfiguration("xq-expression", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> headerProperties = new java.util.HashMap<>();
+        headerProperties.put("name", "X-Test");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.HttpHeaderPlugin(),
+            wrapperConfiguration("http-header", headerProperties));
+    }
+
 }
 

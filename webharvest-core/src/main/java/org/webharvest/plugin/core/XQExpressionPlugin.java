@@ -388,6 +388,8 @@ public class XQExpressionPlugin extends AbstractPlugin {
             LOGGER.debug("XQExpressionPlugin.doExecute: No body content, returning EmptyVariable");
             return EmptyVariable.INSTANCE;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.debug("XQExpressionPlugin.doExecute: ERROR: " + e.getMessage());
             return EmptyVariable.INSTANCE;

@@ -37,15 +37,20 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -800,4 +805,52 @@ public class IfPluginTest {
         assertNotNull(result);
         assertTrue(result instanceof EmptyVariable);
     }
+    @Test
+    public void testUnsupportedComparisonWithoutScriptingLanguageDoesNotBecomeTruthy() throws Exception {
+        ScraperContext directContext = new ScraperContext();
+        assertNull(directContext.getScriptingLanguage(),
+            "This regression must exercise the no-engine compatibility path");
+        directContext.setLocalVar("count", new NodeVariable("11"));
+
+        IfPlugin directPlugin = new IfPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                return new NodeVariable("if-body-executed");
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("condition", "${count > 10}");
+        DefaultPluginConfiguration directConfiguration = new DefaultPluginConfiguration(
+            "if", "http://org.webharvest/schema/2.1/core", "if", properties);
+        directPlugin.initialize(directConfiguration);
+
+        Variable result = directPlugin.execute(directContext);
+
+        assertTrue(result instanceof EmptyVariable,
+            "An unsupported comparison without a configured expression engine must fail closed, not become truthy");
+    }
+
+    @Test
+    public void testPlainNonEmptyStringRemainsTruthyWithoutScriptingLanguage() throws Exception {
+        ScraperContext directContext = new ScraperContext();
+        IfPlugin directPlugin = new IfPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                return new NodeVariable("if-body-executed");
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("condition", "enabled");
+        directPlugin.initialize(new DefaultPluginConfiguration(
+            "if", "http://org.webharvest/schema/2.1/core", "if", properties));
+
+        Variable result = directPlugin.execute(directContext);
+
+        assertEquals(result.toString(), "if-body-executed",
+            "The documented non-empty string truthiness contract must remain intact");
+    }
+
+
 }

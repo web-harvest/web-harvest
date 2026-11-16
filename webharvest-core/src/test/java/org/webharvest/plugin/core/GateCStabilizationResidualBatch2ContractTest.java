@@ -80,6 +80,25 @@ public class GateCStabilizationResidualBatch2ContractTest extends XmlBasedIntegr
     }
 
     @Test
+    public void ifTemplateInequalitySupportsDoubleQuotedAndUnquotedLiterals() throws Exception {
+        ScraperContext context = new ScraperContext();
+        context.setLocalVar("status", new NodeVariable("active"));
+
+        for (String condition : new String[] {
+                "${status != \"inactive\"}",
+                "${status != inactive}"}) {
+            IfPlugin plugin = bodyCapturingIf();
+            DefaultPluginConfiguration configuration =
+                    new DefaultPluginConfiguration("if", NS, "if");
+            configuration.setProperty("condition", condition);
+            plugin.initialize(configuration);
+
+            assertEquals(plugin.execute(context).toString(), "yes",
+                    "Inequality must preserve historical quoted and unquoted literal support");
+        }
+    }
+
+    @Test
     public void ifTemplateEqualityAndSimpleVariableReference() throws Exception {
         ScraperContext context = new ScraperContext();
         context.setLocalVar("ready", new NodeVariable("true"));

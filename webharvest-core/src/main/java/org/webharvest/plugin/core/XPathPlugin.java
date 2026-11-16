@@ -632,7 +632,7 @@ public class XPathPlugin extends AbstractPlugin {
     /**
      * Get XML content from context - using the same logic as original XPathProcessor
      */
-    protected Variable getXmlContent(DynamicScopeContext context) {
+    protected Variable getXmlContent(DynamicScopeContext context) throws InterruptedException {
         try {
             // Execute body content to get XML
             Variable bodyContent = executeBody(context);
@@ -645,6 +645,8 @@ public class XPathPlugin extends AbstractPlugin {
             LOGGER.debug("Retrieved XML content for XPath evaluation");
             return bodyContent;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error getting body content for XPath evaluation", e);
             return EmptyVariable.INSTANCE;
