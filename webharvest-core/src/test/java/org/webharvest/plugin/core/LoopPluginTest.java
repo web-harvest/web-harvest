@@ -303,6 +303,31 @@ public class LoopPluginTest {
         assertNull(emptyContext.getVar("_item"));
     }
 
+    @Test(description = "An unresolved items variable keeps the historical literal-token behavior")
+    public void testLoopWithUnresolvedItemsVariableKeepsLiteralToken() throws Exception {
+        ScraperContext unresolvedContext = new ScraperContext();
+        List<String> observedItems = new ArrayList<>();
+
+        LoopPlugin unresolvedLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                observedItems.add(executionContext.getVar("_item").toString());
+                return EmptyVariable.INSTANCE;
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("items", "${missingItems}");
+        properties.put("maxloops", "3");
+        unresolvedLoop.initialize(new DefaultPluginConfiguration(
+            "loop", "http://org.webharvest/schema/2.1/core", "loop", properties));
+
+        unresolvedLoop.execute(unresolvedContext);
+
+        assertEquals(observedItems, java.util.Collections.singletonList("${missingItems}"),
+            "Unresolved references must not silently become source-less fallback loops");
+    }
+
     private void executeLoop(String maxloops, String items) throws Exception {
         Map<String, String> properties = new HashMap<>();
         properties.put("maxloops", maxloops);
