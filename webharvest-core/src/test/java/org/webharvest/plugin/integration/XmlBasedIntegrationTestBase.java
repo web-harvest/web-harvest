@@ -79,6 +79,7 @@ public abstract class XmlBasedIntegrationTestBase {
     protected Injector injector;
     protected Harvest harvest;
     protected DynamicScopeContext context;
+    protected HttpService httpService;
     protected List<String> outputFilesToCleanup = new ArrayList<>();
     
     // Base directory for examples - using test resources
@@ -95,14 +96,20 @@ public abstract class XmlBasedIntegrationTestBase {
         // This prevents polluting project root with test output files
         String targetDir = "target";
         new File(targetDir).mkdirs();
+        httpService = createHttpService();
         injector = Guice.createInjector(
-            Modules.override(new ScraperModule(targetDir)).with(new HttpStubModule())
+            Modules.override(new ScraperModule(targetDir)).with(new HttpStubModule(httpService))
         );
         
         harvest = injector.getInstance(Harvest.class);
         outputFilesToCleanup = new ArrayList<>();
     }
     
+    /** Factory hook for tests that need to observe outgoing HTTP requests. */
+    protected HttpService createHttpService() {
+        return new HttpStubModule.StubHttpService();
+    }
+
     @AfterMethod
     public void tearDown() {
         LOG.info("Tearing down XML-based integration test environment");
@@ -123,6 +130,7 @@ public abstract class XmlBasedIntegrationTestBase {
         harvest = null;
         injector = null;
         context = null;
+        httpService = null;
     }
     
     /**
@@ -315,10 +323,15 @@ public abstract class XmlBasedIntegrationTestBase {
         return resultContext[0];
     }
     private static final class HttpStubModule extends AbstractModule {
+        private final HttpService service;
+
+        private HttpStubModule(HttpService service) {
+            this.service = service;
+        }
 
         @Override
         protected void configure() {
-            bind(HttpService.class).toInstance(new StubHttpService());
+            bind(HttpService.class).toInstance(service);
         }
 
         private static final class StubHttpService implements HttpService {
