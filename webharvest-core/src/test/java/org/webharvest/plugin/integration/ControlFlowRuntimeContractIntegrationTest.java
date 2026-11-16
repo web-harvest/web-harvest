@@ -368,4 +368,36 @@ public class ControlFlowRuntimeContractIntegrationTest extends XmlBasedIntegrati
     }
 
 
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void nestedSiblingElsePairsRemainScopedForEveryConditionCombination() throws Exception {
+        String[][] cases = {
+            {"true", "true", "nested-if"},
+            {"true", "false", "nested-else"},
+            {"false", "true", "outer-else"},
+            {"false", "false", "outer-else"}
+        };
+
+        for (String[] testCase : cases) {
+            String xml = CONFIG_PREFIX
+                + "<def var=\"outerEnabled\" value=\"" + testCase[0] + "\"/>"
+                + "<def var=\"innerEnabled\" value=\"" + testCase[1] + "\"/>"
+                + "<if condition=\"${outerEnabled}\">"
+                + "  <if condition=\"${innerEnabled}\">"
+                + "    <def var=\"selectedBranch\" value=\"nested-if\"/>"
+                + "  </if>"
+                + "  <else><def var=\"selectedBranch\" value=\"nested-else\"/></else>"
+                + "</if>"
+                + "<else><def var=\"selectedBranch\" value=\"outer-else\"/></else>"
+                + CONFIG_SUFFIX;
+
+            DynamicScopeContext context = executeXmlString(xml);
+            Variable selectedBranch = context.getVar("selectedBranch");
+
+            assertEquals(selectedBranch == null ? null : selectedBranch.toString(), testCase[2],
+                "outer=" + testCase[0] + ", inner=" + testCase[1]
+                    + ": each sibling Else must remain paired with its own If");
+        }
+    }
+
+
 }
