@@ -402,7 +402,7 @@ public class DefaultPluginBodyExecutorTest {
         }
     }
 
-    @Test(description = "Try, List, Def and XPath propagate child cancellation after lifecycle cleanup")
+    @Test(description = "Try, List, Def and XPath preserve child cancellation, cleanup and sibling short-circuit")
     public void testCorePluginWrappersPropagateChildInterruption() throws Exception {
         registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
 
