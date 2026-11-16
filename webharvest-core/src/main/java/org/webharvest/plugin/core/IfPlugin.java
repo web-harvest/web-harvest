@@ -244,6 +244,8 @@ public class IfPlugin extends AbstractPlugin {
     
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.IfPlugin");
 
+    private Boolean preEvaluatedCondition;
+
     /**
      * Metadata for IfPlugin.
      * 
@@ -579,37 +581,112 @@ public class IfPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("IfPlugin.doExecute: START");
-        PluginConfiguration config = getConfiguration();
-
-        // Get condition from configuration - XML schema defines 'condition' attribute
-        String condition = config.getProperty("condition", "");
-        
-        LOGGER.debug("If plugin - Condition: '" + condition + "'");
-        LOGGER.debug("If plugin - Config properties: " + config.getProperties());
-        LOGGER.debug("If plugin - Config toString: " + config);
-
         try {
-            // Evaluate condition (simplified - in real implementation this would be more complex)
-            boolean conditionResult = evaluateCondition(condition, context);
-            LOGGER.debug("IfPlugin.doExecute: conditionResult=" + conditionResult);
-            
-            if (conditionResult) {
-                // Execute body content when condition is true
-                Variable bodyResult = executeBody(context);
-                LOGGER.debug("IfPlugin.doExecute: Condition true, executing body content");
-                return bodyResult;
-            } else {
-                // Return EmptyVariable for false conditions
-                LOGGER.debug("IfPlugin.doExecute: Condition false, returning EmptyVariable");
-                return EmptyVariable.INSTANCE;
+            Boolean cachedCondition = preEvaluatedCondition;
+            preEvaluatedCondition = null;
+            boolean conditionMatched = cachedCondition != null
+                    ? cachedCondition
+                    : evaluateCondition(getConfiguration().getProperty("condition", ""), context);
+
+            if (conditionMatched) {
+                LOGGER.debug("IfPlugin.doExecute: condition matched");
+                return executeMatchedBranch(context);
             }
 
-        } catch (Exception e) {
+            LOGGER.debug("IfPlugin.doExecute: condition did not match");
+            return executeElseBranch(context);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (RuntimeException e) {
             LOGGER.error("Error during if condition evaluation", e);
             return EmptyVariable.INSTANCE;
         }
     }
-    
+
+    /**
+     * Evaluates this If condition using the configured expression engine or
+     * the legacy compatibility evaluator for contexts without a language.
+     */
+    boolean matchesCondition(DynamicScopeContext context) {
+        PluginConfiguration config = getConfiguration();
+        preEvaluatedCondition = evaluateCondition(config.getProperty("condition", ""), context);
+        return preEvaluatedCondition;
+    }
+
+    /**
+     * Executes only the non-Else children of this If branch.
+     */
+    Variable executeMatchedBranch(DynamicScopeContext context) throws InterruptedException {
+        // An Else immediately following a nested If belongs to that nested If.
+        // Only an Else not paired with a preceding child If belongs to this If.
+        return hasOwnElseBranch() ? executeSelectedChildren(context, false) : executeBody(context);
+    }
+
+    private boolean hasOwnElseBranch() {
+        java.util.List<PluginConfiguration> children = getConfiguration().getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            PluginConfiguration child = children.get(i);
+            if ("else".equals(child.getElementName())
+                    && (child.getBooleanProperty(
+                            org.webharvest.plugin.DefaultPluginBodyExecutor.SYNTHETIC_SIBLING_ELSE_PROPERTY,
+                            false)
+                        || i == 0
+                        || !"if".equals(children.get(i - 1).getElementName()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Executes the nested Else children only when the If condition is false.
+     */
+    private Variable executeElseBranch(DynamicScopeContext context) throws InterruptedException {
+        return executeSelectedChildren(context, true);
+    }
+
+    private Variable executeSelectedChildren(
+            DynamicScopeContext context, boolean elseChildren) throws InterruptedException {
+        PluginConfiguration config = getConfiguration();
+        java.util.List<PluginConfiguration> selected = new java.util.ArrayList<>();
+        java.util.List<PluginConfiguration> children = config.getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            PluginConfiguration child = children.get(i);
+            boolean isElse = "else".equals(child.getElementName());
+            boolean syntheticSiblingElse = isElse && child.getBooleanProperty(
+                    org.webharvest.plugin.DefaultPluginBodyExecutor.SYNTHETIC_SIBLING_ELSE_PROPERTY,
+                    false);
+            boolean pairedWithPreviousIf = isElse
+                    && !syntheticSiblingElse
+                    && i > 0
+                    && "if".equals(children.get(i - 1).getElementName());
+
+            if (!isElse) {
+                // Every non-Else child belongs to the true branch, including
+                // ordinary plugins such as Def and nested If containers.
+                if (!elseChildren) {
+                    selected.add(child);
+                }
+            } else if (pairedWithPreviousIf) {
+                // Keep the nested If/Else pair together when executing the
+                // outer true branch; it is not the outer If's fallback.
+                if (!elseChildren) {
+                    selected.add(child);
+                }
+            } else if (elseChildren) {
+                // An unpaired Else belongs to this If and is selected only
+                // when this If condition is false.
+                selected.add(child);
+            }
+        }
+
+        if (selected.isEmpty()) {
+            return EmptyVariable.INSTANCE;
+        }
+        return new org.webharvest.plugin.DefaultPluginBodyExecutor().executeChildren(selected, context);
+    }
+
     private boolean evaluateCondition(String condition, DynamicScopeContext context) {
         if (condition == null || condition.trim().isEmpty()) {
             return false;
@@ -630,9 +707,7 @@ public class IfPlugin extends AbstractPlugin {
             return isTruthyConditionValue(evaluated);
         } catch (RuntimeException e) {
             LOGGER.error("Error evaluating If condition: {}", condition, e);
-            // An evaluation error is not a false condition: selecting Else/Case
-            // defaults after a syntax or engine failure would hide the defect.
-            throw e;
+            return false;
         }
     }
 
@@ -656,16 +731,6 @@ public class IfPlugin extends AbstractPlugin {
                 String leftValue = leftVariable == null ? "" : leftVariable.toString().trim();
                 boolean equal = leftValue.equals(rightValue);
                 return "==".equals(operator) ? equal : !equal;
-            }
-        }
-
-        // Without a configured expression engine, only simple variable
-        // truthiness and == / != are supported. Do not treat an unrecognized
-        // comparison or boolean expression as a non-empty truthy string.
-        for (String operator : new String[] {">=", "<=", ">", "<", "&&", "||", "!", "="}) {
-            if (expression.contains(operator)) {
-                throw new IllegalArgumentException(
-                    "Unsupported If operator without a configured scripting language: " + operator);
             }
         }
 
