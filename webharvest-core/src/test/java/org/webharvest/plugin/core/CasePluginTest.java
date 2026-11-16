@@ -12,14 +12,20 @@ import org.testng.annotations.Test;
 // import org.webharvest.definition.CorePluginDef;
 // import org.webharvest.definition.IElementDef;
 // import org.webharvest.definition.XmlNode;
+import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
@@ -330,4 +336,23 @@ public class CasePluginTest {
             assertNotNull(attr.getType());
         }
     }
+    @Test
+    public void testCaseBranchMatchingPropagatesUnsupportedExpressionWithoutLanguage() throws Exception {
+        ScraperContext directContext = new ScraperContext();
+        directContext.setLocalVar("count", new NodeVariable("11"));
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("condition", "${count > 10}");
+        IfPlugin branch = new IfPlugin();
+        branch.initialize(new DefaultPluginConfiguration(
+            "if", "http://org.webharvest/schema/2.1/core", "if", properties));
+
+        try {
+            branch.matchesCondition(directContext);
+            fail("Case must not treat an expression error as a non-matching branch and select its default");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("Unsupported If operator"));
+        }
+    }
+
 }
