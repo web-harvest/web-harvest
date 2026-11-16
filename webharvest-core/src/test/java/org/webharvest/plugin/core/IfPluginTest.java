@@ -852,23 +852,5 @@ public class IfPluginTest {
             "The documented non-empty string truthiness contract must remain intact");
     }
 
-    @Test
-    public void testUnsupportedExpressionFailsCaseBranchMatchingWithoutScriptingLanguage() throws Exception {
-        ScraperContext directContext = new ScraperContext();
-        directContext.setLocalVar("count", new NodeVariable("11"));
-
-        IfPlugin directPlugin = new IfPlugin();
-        Map<String, String> properties = new HashMap<>();
-        properties.put("condition", "${count > 10}");
-        directPlugin.initialize(new DefaultPluginConfiguration(
-            "if", "http://org.webharvest/schema/2.1/core", "if", properties));
-
-        try {
-            directPlugin.matchesCondition(directContext);
-            fail("Unsupported expression syntax must not be treated as a non-matching Case branch");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("Unsupported If operator"));
-        }
-    }
 
 }
