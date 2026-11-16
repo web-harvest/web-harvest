@@ -565,6 +565,8 @@ public class DefPlugin extends AbstractPlugin {
             LOGGER.info("DefPlugin.doExecute: Returning value: {}", value);
             return value;
 
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error defining variable '" + varName + "': " + e.getMessage(), e);
             throw new RuntimeException("Error defining variable '" + varName + "': " + e.getMessage(), e);
