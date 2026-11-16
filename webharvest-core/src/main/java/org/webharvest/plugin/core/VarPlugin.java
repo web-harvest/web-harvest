@@ -116,6 +116,8 @@ public class VarPlugin extends AbstractPlugin {
             
             LOGGER.warn("VarPlugin: Variable '{}' not found and no body content to set", varName);
             return EmptyVariable.INSTANCE;
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error in VarPlugin: {}", e.getMessage(), e);
             return EmptyVariable.INSTANCE;
