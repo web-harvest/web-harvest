@@ -630,7 +630,9 @@ public class IfPlugin extends AbstractPlugin {
             return isTruthyConditionValue(evaluated);
         } catch (RuntimeException e) {
             LOGGER.error("Error evaluating If condition: {}", condition, e);
-            return false;
+            // An evaluation error is not a false condition: selecting Else/Case
+            // defaults after a syntax or engine failure would hide the defect.
+            throw e;
         }
     }
 
@@ -654,6 +656,16 @@ public class IfPlugin extends AbstractPlugin {
                 String leftValue = leftVariable == null ? "" : leftVariable.toString().trim();
                 boolean equal = leftValue.equals(rightValue);
                 return "==".equals(operator) ? equal : !equal;
+            }
+        }
+
+        // Without a configured expression engine, only simple variable
+        // truthiness and == / != are supported. Do not treat an unrecognized
+        // comparison or boolean expression as a non-empty truthy string.
+        for (String operator : new String[] {">=", "<=", ">", "<", "&&", "||", "!", "="}) {
+            if (expression.contains(operator)) {
+                throw new IllegalArgumentException(
+                    "Unsupported If operator without a configured scripting language: " + operator);
             }
         }
 
