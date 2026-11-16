@@ -533,8 +533,7 @@ public class CasePlugin extends AbstractPlugin {
 
             org.webharvest.plugin.Plugin childPlugin = bodyExecutor.createChildPlugin(child);
             if (!(childPlugin instanceof IfPlugin)) {
-                LOGGER.warn("CasePlugin: registered 'if' element did not create an IfPlugin");
-                continue;
+                throw invalidBranchPlugin(childPlugin, "IfPlugin");
             }
 
             IfPlugin branch = (IfPlugin) childPlugin;
@@ -563,8 +562,8 @@ public class CasePlugin extends AbstractPlugin {
 
         if (defaultBranch != null) {
             org.webharvest.plugin.Plugin fallback = bodyExecutor.createChildPlugin(defaultBranch);
-            if (fallback == null) {
-                return EmptyVariable.INSTANCE;
+            if (!(fallback instanceof ElsePlugin)) {
+                throw invalidBranchPlugin(fallback, "ElsePlugin");
             }
             LOGGER.debug("CasePlugin: executing default Else branch");
             return fallback.execute(context);
@@ -573,6 +572,19 @@ public class CasePlugin extends AbstractPlugin {
         LOGGER.debug("CasePlugin: no matching branch and no default Else");
         return EmptyVariable.INSTANCE;
     }
+    private IllegalStateException invalidBranchPlugin(
+            org.webharvest.plugin.Plugin plugin, String expectedType) {
+        IllegalStateException failure = new IllegalStateException(
+                "Registered branch element must create " + expectedType + ", but created "
+                        + plugin.getClass().getName());
+        try {
+            plugin.cleanup();
+        } catch (RuntimeException | Error cleanupFailure) {
+            failure.addSuppressed(cleanupFailure);
+        }
+        return failure;
+    }
+
 }
 
 

@@ -9,6 +9,7 @@ import org.webharvest.definition.CorePluginRegistry;
 // REMOVED in v2.2.x - old architecture classes no longer exist
 // import org.webharvest.definition.DefinitionResolver;
 import org.webharvest.ioc.ScraperModule;
+import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.core.EmptyPlugin;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -492,6 +493,59 @@ public class DefaultPluginBodyExecutorTest {
         assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.HttpHeaderPlugin(),
             wrapperConfiguration("http-header", headerProperties));
     }
+
+    @Test
+    public void testCreateChildPluginRejectsUnknownElement() {
+        DefaultPluginConfiguration unknown = new DefaultPluginConfiguration(
+            "unknown", "http://org.webharvest/schema/2.1/core", "missing-plugin-for-regression");
+
+        try {
+            executor.createChildPlugin(unknown);
+            fail("Unknown plugin elements must not be represented as an empty result");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("missing-plugin-for-regression"));
+        }
+    }
+
+    @Test
+    public void testCreateChildPluginPropagatesInitializationFailure() {
+        final String elementName = "test-initialization-failing-plugin";
+        registry.registerMapping(null, InitializationFailingTestPlugin.class, elementName);
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "initialization-failure", "http://org.webharvest/schema/2.1/core", elementName);
+
+        try {
+            executor.createChildPlugin(configuration);
+            fail("Plugin initialization failures must not be converted into null");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getCause() instanceof PluginException,
+                "The original PluginException must remain available as the cause");
+            assertTrue(expected.getMessage().contains(elementName));
+        }
+    }
+
+    public static class InitializationFailingTestPlugin extends AbstractPlugin {
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) throws PluginException {
+            throw new PluginException("intentional initialization failure");
+        }
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext executionContext) {
+            return EmptyVariable.INSTANCE;
+        }
+
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No configuration constraints.
+        }
+
+        @Override
+        public PluginMetadata getMetadata() {
+            return null;
+        }
+    }
+
 
 }
 
