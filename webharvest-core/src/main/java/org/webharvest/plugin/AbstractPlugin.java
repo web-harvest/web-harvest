@@ -146,8 +146,17 @@ public abstract class AbstractPlugin implements Plugin {
                 }
             }
             
+            if (e instanceof InterruptedException) {
+                throw (InterruptedException) e;
+            }
             throw new RuntimeException("Plugin execution failed: " + e.getMessage(), e);
         } finally {
+            // A nested plugin may already have restored the interrupt flag.
+            // Clear it while this lifecycle performs its own cleanup, then restore it below.
+            if (executionError instanceof InterruptedException) {
+                Thread.interrupted();
+            }
+
             // Bug #24: Publish PluginExecutionCompletedEvent on success
             if (executionError == null && eventBus != null && session != null) {
                 try {
@@ -170,6 +179,10 @@ public abstract class AbstractPlugin implements Plugin {
                 LOGGER.warn("Cleanup failed for plugin {}: {}", 
                     getClass().getSimpleName(), cleanupEx.getMessage());
                 // Don't re-throw cleanup exceptions - original exception takes precedence
+            }
+
+            if (executionError instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -307,6 +320,8 @@ public abstract class AbstractPlugin implements Plugin {
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.executeBody(configuration, context);
+            } catch (InterruptedException e) {
+                throw e;
             } catch (Exception e) {
                 LOGGER.error("PluginBodyExecutor failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
@@ -358,6 +373,8 @@ public abstract class AbstractPlugin implements Plugin {
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.getBodyTextContent(configuration, context);
+            } catch (InterruptedException e) {
+                throw e;
             } catch (Exception e) {
                 LOGGER.error("PluginBodyExecutor.getBodyTextContent() failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
