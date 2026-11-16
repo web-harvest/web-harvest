@@ -468,5 +468,30 @@ public class DefaultPluginBodyExecutorTest {
         }
     }
 
+    @Test(description = "Secondary plugin wrappers preserve child cancellation and lifecycle cleanup ordering")
+    public void testSecondaryCorePluginWrappersPropagateChildInterruption() throws Exception {
+        registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.ConstantPlugin(),
+            wrapperConfiguration("constant", new java.util.HashMap<String, String>()));
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.TemplatePlugin(),
+            wrapperConfiguration("template", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> varProperties = new java.util.HashMap<>();
+        varProperties.put("name", "result");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.VarPlugin(),
+            wrapperConfiguration("var", varProperties));
+
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XMLPlugin(),
+            wrapperConfiguration("xml", new java.util.HashMap<String, String>()));
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.XQExpressionPlugin(),
+            wrapperConfiguration("xq-expression", new java.util.HashMap<String, String>()));
+
+        java.util.Map<String, String> headerProperties = new java.util.HashMap<>();
+        headerProperties.put("name", "X-Test");
+        assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.HttpHeaderPlugin(),
+            wrapperConfiguration("http-header", headerProperties));
+    }
+
 }
 
