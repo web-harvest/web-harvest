@@ -2,7 +2,11 @@
 <config xmlns="http://org.webharvest/schema/2.1/core">
     <def var="testVar" value="Hello World"/>
     <def var="numberVar" value="42"/>
-    
-    <get var="testVar"/>
-    <get var="numberVar"/>
+
+    <def var="retrievedText">
+        <get var="testVar"/>
+    </def>
+    <def var="retrievedNumber">
+        <get var="numberVar"/>
+    </def>
 </config>
