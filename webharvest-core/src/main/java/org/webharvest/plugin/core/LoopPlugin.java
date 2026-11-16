@@ -39,6 +39,8 @@ package org.webharvest.plugin.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.DefaultPluginBodyExecutor;
+import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -63,25 +65,37 @@ import org.webharvest.runtime.variables.Variable;
  * <p>
  * The {@code <loop>} processor is fundamental for iterating over collections of data,
  * such as product lists, search results, paginated APIs, or any repeating data structure.
- * It executes its body content once for each item, with optional index tracking and filtering.
+ * It executes its body content once for each item, with optional index tracking and empty-item handling.
  * </p>
  * 
- * <h3>Loop Data Sources</h3>
- * <p>The loop can iterate over:</p>
+ * <h3>Loop Input Sources</h3>
+ * <p>Input is normalized once before iteration. Supported forms are:</p>
  * <ul>
- *   <li><strong>Body content:</strong> Result from executing child processors (most common)</li>
- *   <li><strong>Variable:</strong> Previously defined ListVariable or collection</li>
- *   <li><strong>Delimited string:</strong> Text split by delimiter (default: newline)</li>
+ *   <li><strong>items attribute:</strong> A delimited string, or an exact ${variable} reference.
+ *       A ListVariable is iterated element-by-element with its Variable types preserved;
+ *       a scalar variable is split using the configured delimiter.</li>
+ *   <li><strong>Leading list/xpath child:</strong> The first direct {@code <list>} or {@code <xpath>}
+ *       child is evaluated once and its result becomes the input collection.</li>
+ *   <li><strong>Inline text:</strong> Direct text content is split by newline by default.
+ *       An exact ${variable} reference is resolved before splitting.</li>
+ *   <li><strong>No source:</strong> The loop retains count-only behavior and runs up to maxloops
+ *       with an empty item value.</li>
  * </ul>
- * 
+ * <p>An optional {@code <body>} wrapper is unwrapped. Without it, the remaining direct child
+ * processors form the body. If a source is present without body processors, the source items
+ * themselves are returned in order.</p>
+ *
  * <h3>Parameters</h3>
  * <ul>
- *   <li><strong>item:</strong> Variable name for current item in each iteration</li>
- *   <li><strong>index:</strong> Variable name for 0-based iteration index (optional)</li>
- *   <li><strong>maxloops:</strong> Maximum iterations (default: 100, prevents infinite loops)</li>
- *   <li><strong>delimiter:</strong> String separator for splitting (default: newline)</li>
- *   <li><strong>filter:</strong> XPath expression to filter items (optional)</li>
- *   <li><strong>empty:</strong> Skip empty items if true (default: false)</li>
+ *   <li><strong>items:</strong> Optional literal string or exact variable reference.</li>
+ *   <li><strong>item:</strong> Variable name for current item in each iteration (default: _item).</li>
+ *   <li><strong>index:</strong> Variable name for 0-based iteration index (default: _index).</li>
+ *   <li><strong>maxloops:</strong> Maximum body executions (default: 100, prevents runaway loops).
+ *       Items skipped by {@code empty="true"} do not consume this limit; the index retains the source position.</li>
+ *   <li><strong>delimiter:</strong> Literal string separator; comma by default for items and newline for inline text.</li>
+ *   <li><strong>empty:</strong> Skip values for which {@link Variable#isEmpty()} is true (default: false).
+ *       Literal tokens are trimmed before they become Variables; typed collection values are preserved.</li>
+ *   <li><strong>filter:</strong> Reserved but not implemented; non-empty values are logged and ignored.</li>
  * </ul>
  * 
  * <h3>Usage Examples</h3>
@@ -180,7 +194,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 5: Filtered loop (skip empty items)</h4>
+ * <h4>Example 5: Skip empty items</h4>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -265,16 +279,16 @@ import org.webharvest.runtime.variables.Variable;
  *   <li><strong>Set realistic maxloops:</strong> Prevents runaway loops if data is larger than expected</li>
  *   <li><strong>Reuse HTTP responses:</strong> Fetch once outside loop, extract inside</li>
  *   <li><strong>Batch file writes:</strong> Accumulate data, write once after loop</li>
- *   <li><strong>Filter early:</strong> Use XPath predicates to reduce loop iterations</li>
+ *   <li><strong>Filter data before passing it to Loop:</strong> Use XPath predicates in the source expression</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Variable scope:</strong> {@code item} and {@code index} variables are local to loop body</li>
+ *   <li><strong>Variable scope:</strong> Each body iteration gets an isolated scope; the final processed item/index remain visible after the loop</li>
  *   <li><strong>Index is 0-based:</strong> First iteration has index=0</li>
  *   <li><strong>Empty handling:</strong> By default, empty items are processed (set empty="true" to skip)</li>
- *   <li><strong>Delimiter:</strong> Newline by default, can be comma, semicolon, or any string</li>
- *   <li><strong>Type preservation:</strong> Item variable preserves original Variable type</li>
+ *   <li><strong>Delimiter:</strong> Delimiters are literal strings; items defaults to comma and inline text defaults to newline</li>
+ *   <li><strong>Type preservation:</strong> ListVariable elements retain their Variable type; delimited text becomes NodeVariable</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
@@ -286,7 +300,7 @@ import org.webharvest.runtime.variables.Variable;
  * </ul>
  * 
  * @author WebHarvest Team
- * @version 2.2.0
+ * @version 2.3.0
  * @since 1.0
  */
 @CorePlugin(
@@ -300,96 +314,98 @@ public class LoopPlugin extends AbstractPlugin {
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.LoopPlugin");
 
     @Override
-    protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        PluginConfiguration config = getConfiguration();
-        String item = config.getProperty("item", "");
-        String index = config.getProperty("index", "");
-        String maxloops = config.getProperty("maxloops", "100");
-        String filter = config.getProperty("filter", "");
-        String empty = config.getProperty("empty", "false");
-        
-        LOGGER.debug("LoopPlugin: item=" + item + ", index=" + index + ", maxloops=" + maxloops);
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    protected Variable doExecute(final DynamicScopeContext context) throws InterruptedException {
+        final PluginConfiguration config = getConfiguration();
+        final String item = config.getProperty("item", "");
+        final String index = config.getProperty("index", "");
+        final String maxloops = config.getProperty("maxloops", "100");
+        final String filter = config.getProperty("filter", "");
+        final boolean skipEmpty = Boolean.parseBoolean(config.getProperty("empty", "false"));
+
+        final String itemVarName = item == null || item.isBlank() ? "_item" : item.trim();
+        final String indexVarName = index == null || index.isBlank() ? "_index" : index.trim();
 
         try {
-            // Get items from configuration
-            String itemsStr = config.getProperty("items", "");
-            String delimiter = config.getProperty("delimiter", ",");
-            
-            LOGGER.debug("LoopPlugin: items=" + itemsStr + ", delimiter=" + delimiter);
-            
-            String itemVarName = item == null || item.trim().isEmpty() ? "_item" : item.trim();
-            String indexVarName = index == null || index.trim().isEmpty() ? "_index" : index.trim();
+            if (filter != null && !filter.isBlank()) {
+                LOGGER.warn("Loop filter is not yet supported and will be ignored: {}", filter);
+            }
 
-            int maxIterations = resolveMaxLoops(maxloops, context);
+            final int maxIterations = resolveMaxLoops(maxloops, context);
+            if (maxIterations == 0) {
+                return new NodeVariable("");
+            }
 
-            StringBuilder result = new StringBuilder();
+            final LoopInputSourceResolver.ResolvedInput input =
+                LoopInputSourceResolver.resolve(config, context);
+            final int availableItems = input.hasSource() ? input.getItems().size()
+                : (maxIterations < 0 ? 0 : maxIterations);
 
-            if (!itemsStr.isEmpty()) {
-                // Split items by delimiter when explicit collection provided
-                String[] items = itemsStr.split(delimiter);
-                LOGGER.debug("LoopPlugin: Found " + items.length + " items");
+            final DefaultPluginConfiguration bodyConfiguration = new DefaultPluginConfiguration(
+                "loop-body", config.getNamespace(), "loop-body", new java.util.Properties());
+            bodyConfiguration.setChildren(input.getBodyChildren());
+            final DefaultPluginBodyExecutor bodyExecutor = new DefaultPluginBodyExecutor();
+            final NodeVariable emptyItem = new NodeVariable("");
+            final StringBuilder result = new StringBuilder();
 
-                int iterations = items.length;
-                if (maxIterations >= 0) {
-                    iterations = Math.min(iterations, maxIterations);
+            int executedIterations = 0;
+            for (int i = 0; i < availableItems; i++) {
+                if (maxIterations >= 0 && executedIterations >= maxIterations) {
+                    break;
                 }
 
-                for (int i = 0; i < iterations; i++) {
-                    final String currentItem = items[i].trim();
-                    final String currentIndex = String.valueOf(i);
-                    LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
+                final int currentIndex = i;
+                final Variable currentItem = input.hasSource()
+                    ? input.getItems().get(i) : emptyItem;
+                final NodeVariable currentIndexVariable =
+                    new NodeVariable(String.valueOf(currentIndex));
 
-                    try {
-                        Variable bodyResult = context.executeWithinNewContext(() -> {
-                            context.setLocalVar(itemVarName, new NodeVariable(currentItem));
-                            context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
-                            return executeBody(context);
-                        });
-
-                        if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
-                            result.append(bodyResult.toString());
-                        }
-                    } finally {
-                        // Keep the historical final item/index visibility even
-                        // when a body fails, while body-local values are already
-                        // cleaned by executeWithinNewContext().
-                        context.setLocalVar(itemVarName, new NodeVariable(currentItem));
-                        context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
-                    }
+                if (skipEmpty && (currentItem == null || currentItem.isEmpty())) {
+                    continue;
                 }
-            } else {
-                // Fallback: iterate based on maxloops even without explicit items
-                int iterations = maxIterations < 0 ? 0 : maxIterations;
-                LOGGER.debug("LoopPlugin: No explicit items – running {} iterations based on maxloops", iterations);
 
-                for (int i = 0; i < iterations; i++) {
-                    final String currentIndex = String.valueOf(i);
-                    LOGGER.debug("LoopPlugin: executing iteration {} (fallback mode)", i);
-                    try {
-                        Variable bodyResult = context.executeWithinNewContext(() -> {
-                            context.setLocalVar(itemVarName, new NodeVariable(""));
-                            context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
-                            return executeBody(context);
-                        });
+                try {
+                    final Variable bodyResult = context.executeWithinNewContext(() -> {
+                        context.setLocalVar(itemVarName, currentItem);
+                        context.setLocalVar(indexVarName, currentIndexVariable);
 
-                        if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
-                            result.append(bodyResult.toString());
+                        if (input.requiresCustomBodyExecution()) {
+                            if (input.getBodyChildren().isEmpty()) {
+                                return input.hasSource() ? currentItem : EmptyVariable.INSTANCE;
+                            }
+                            return bodyExecutor.executeBody(bodyConfiguration, context);
                         }
-                    } finally {
-                        context.setLocalVar(itemVarName, new NodeVariable(""));
-                        context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
+
+                        final Variable iterationBodyResult = executeBody(context);
+                        if (input.hasSource() && input.getBodyChildren().isEmpty()
+                                && (iterationBodyResult == null
+                                    || iterationBodyResult instanceof EmptyVariable)) {
+                            return currentItem;
+                        }
+                        return iterationBodyResult;
+                    });
+
+                    if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
+                        result.append(bodyResult.toString());
                     }
+                    executedIterations++;
+                } finally {
+                    // Keep the historical final item/index visibility even
+                    // when a body fails, while body-local values are cleaned
+                    // by executeWithinNewContext().
+                    context.setLocalVar(itemVarName, currentItem);
+                    context.setLocalVar(indexVarName, currentIndexVariable);
                 }
             }
 
-            LOGGER.debug("LoopPlugin: Final result: " + result.toString());
+            LOGGER.debug("LoopPlugin: Final result: {}", result);
             return new NodeVariable(result.toString());
-            
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
         } catch (Exception e) {
-            LOGGER.debug("LoopPlugin: Error: " + e.getMessage());
+            LOGGER.debug("LoopPlugin: Error: {}", e.getMessage());
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
             return EmptyVariable.INSTANCE;
         }
@@ -638,7 +654,7 @@ public class LoopPlugin extends AbstractPlugin {
 
         @Override
         public String[] getOptionalAttributes() {
-            return new String[]{"item", "index", "maxloops", "filter", "empty", "delimiter"};
+            return new String[]{"items", "item", "index", "maxloops", "filter", "empty", "delimiter"};
         }
 
         @Override
