@@ -153,10 +153,15 @@ public class LoopPluginTest {
         );
         failingLoop.initialize(configuration);
 
-        Variable result = failingLoop.execute(isolatedContext);
+        try {
+            failingLoop.execute(isolatedContext);
+            fail("A Loop body failure must propagate instead of looking like an empty result");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof IllegalStateException,
+                "The original body failure must remain available as the cause");
+            assertEquals(expected.getCause().getMessage(), "simulated body failure");
+        }
 
-        assertTrue(result instanceof EmptyVariable,
-            "The current Loop failure contract returns EmptyVariable");
         assertEquals(isolatedContext.getVar("iterationScratch").toString(), "outer",
             "The outer value must be restored after a failed iteration");
         assertNull(isolatedContext.getVar("createdBeforeFailure"),
