@@ -406,8 +406,19 @@ public class DefaultPluginBodyExecutorTest {
     public void testCorePluginWrappersPropagateChildInterruption() throws Exception {
         registry.registerMapping(null, InterruptingTestPlugin.class, INTERRUPTING_PLUGIN);
 
+        FollowingSiblingTestPlugin.executions.set(0);
+        DefaultPluginConfiguration tryConfiguration =
+            wrapperConfiguration("try", new java.util.HashMap<String, String>());
+        tryConfiguration.setChildren(java.util.Arrays.<PluginConfiguration>asList(
+            new DefaultPluginConfiguration(
+                "interrupting-child", "http://org.webharvest/schema/2.1/core", INTERRUPTING_PLUGIN),
+            new DefaultPluginConfiguration(
+                "following-child", "http://org.webharvest/schema/2.1/core", FOLLOWING_SIBLING_PLUGIN)));
+        registry.registerMapping(null, FollowingSiblingTestPlugin.class, FOLLOWING_SIBLING_PLUGIN);
         assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.TryPlugin(),
-            wrapperConfiguration("try", new java.util.HashMap<String, String>()));
+            tryConfiguration);
+        assertEquals(FollowingSiblingTestPlugin.executions.get(), 0,
+            "Try must not execute later siblings or catch handling after cancellation");
         assertWrapperPropagatesInterruption(new org.webharvest.plugin.core.ListPlugin(),
             wrapperConfiguration("list", new java.util.HashMap<String, String>()));
 
