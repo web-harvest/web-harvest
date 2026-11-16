@@ -420,4 +420,35 @@ public class CasePluginTest {
     }
 
 
+    @Test
+    public void testCaseRejectsRegisteredIfElementWithWrongPluginType() throws Exception {
+        CorePluginsRegistrar.registerCorePlugins();
+        CorePluginRegistry registry = CorePluginRegistry.getInstance();
+        Class<? extends org.webharvest.plugin.Plugin> originalIfPlugin = registry.getPluginClass("if");
+        assertNotNull(originalIfPlugin);
+
+        registry.registerMapping(null, EmptyPlugin.class, "if");
+        try {
+            DefaultPluginConfiguration branch = new DefaultPluginConfiguration(
+                "wrong-if-type", "http://org.webharvest/schema/2.1/core", "if");
+            branch.setProperty("condition", "true");
+            DefaultPluginConfiguration caseConfiguration = new DefaultPluginConfiguration(
+                "case-wrong-if-type", "http://org.webharvest/schema/2.1/core", "case");
+            caseConfiguration.setChildren(Collections.singletonList(branch));
+
+            CasePlugin casePlugin = new CasePlugin();
+            casePlugin.initialize(caseConfiguration);
+            try {
+                casePlugin.execute(new ScraperContext());
+                fail("Case must reject a registry mapping that does not create an IfPlugin");
+            } catch (RuntimeException expected) {
+                assertTrue(expected.getCause() instanceof IllegalStateException);
+                assertTrue(expected.getCause().getMessage().contains("must create an IfPlugin"));
+            }
+        } finally {
+            registry.registerMapping(null, originalIfPlugin, "if");
+        }
+    }
+
+
 }
