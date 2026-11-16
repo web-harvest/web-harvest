@@ -37,8 +37,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.exceptions.PluginException;
@@ -808,6 +808,8 @@ public class IfPluginTest {
     @Test
     public void testUnsupportedComparisonWithoutScriptingLanguageDoesNotBecomeTruthy() throws Exception {
         ScraperContext directContext = new ScraperContext();
+        assertNull(directContext.getScriptingLanguage(),
+            "This regression must exercise the no-engine compatibility path");
         directContext.setLocalVar("count", new NodeVariable("11"));
 
         IfPlugin directPlugin = new IfPlugin() {
