@@ -6,6 +6,7 @@ import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.util.HashMap;
@@ -84,6 +85,121 @@ public class LoopPluginTest {
     public void testLoopPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
         assertEquals(plugin.getMetadata().getName(), "Loop");
+    }
+
+    @Test(description = "Loop iterations isolate body variables while preserving final item/index compatibility")
+    public void testLoopCleansIterationScopeAndRestoresOverriddenVariables() throws Exception {
+        ScraperContext isolatedContext = new ScraperContext();
+        isolatedContext.setLocalVar("iterationScratch", new NodeVariable("outer"));
+
+        LoopPlugin scopedLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                executionContext.setLocalVar("iterationScratch", new NodeVariable("inner"));
+                executionContext.setLocalVar("createdInsideIteration", new NodeVariable("temporary"));
+                return new NodeVariable(executionContext.getVar("_item").toString());
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("maxloops", "10");
+        properties.put("items", "first,second");
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "loop",
+            "http://org.webharvest/schema/2.1/core",
+            "loop",
+            properties
+        );
+        scopedLoop.initialize(configuration);
+
+        Variable result = scopedLoop.execute(isolatedContext);
+
+        assertEquals(result.toString(), "firstsecond");
+        assertEquals(isolatedContext.getVar("iterationScratch").toString(), "outer",
+            "A variable overridden inside an iteration must be restored afterwards");
+        assertNull(isolatedContext.getVar("createdInsideIteration"),
+            "Variables created in the loop body must not leak out of an iteration");
+        assertEquals(isolatedContext.getVar("_item").toString(), "second",
+            "Keep the current final-item visibility contract");
+        assertEquals(isolatedContext.getVar("_index").toString(), "1",
+            "Keep the current final-index visibility contract");
+    }
+
+    @Test(description = "Loop iteration scope is cleaned even when the body fails")
+    public void testLoopCleansIterationScopeWhenBodyThrows() throws Exception {
+        ScraperContext isolatedContext = new ScraperContext();
+        isolatedContext.setLocalVar("iterationScratch", new NodeVariable("outer"));
+
+        LoopPlugin failingLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) {
+                executionContext.setLocalVar("iterationScratch", new NodeVariable("inner"));
+                executionContext.setLocalVar("createdBeforeFailure", new NodeVariable("temporary"));
+                throw new IllegalStateException("simulated body failure");
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("maxloops", "10");
+        properties.put("items", "first,second");
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "loop",
+            "http://org.webharvest/schema/2.1/core",
+            "loop",
+            properties
+        );
+        failingLoop.initialize(configuration);
+
+        Variable result = failingLoop.execute(isolatedContext);
+
+        assertTrue(result instanceof EmptyVariable,
+            "The current Loop failure contract returns EmptyVariable");
+        assertEquals(isolatedContext.getVar("iterationScratch").toString(), "outer",
+            "The outer value must be restored after a failed iteration");
+        assertNull(isolatedContext.getVar("createdBeforeFailure"),
+            "Body-created variables must be removed even when the body fails");
+        assertEquals(isolatedContext.getVar("_item").toString(), "first",
+            "The current iteration item remains visible after a failed body");
+        assertEquals(isolatedContext.getVar("_index").toString(), "0",
+            "The current iteration index remains visible after a failed body");
+    }
+
+    @Test(description = "Loop propagates interruption after cleaning the current iteration scope")
+    public void testLoopPropagatesInterruptionAndCleansIterationScope() throws Exception {
+        ScraperContext isolatedContext = new ScraperContext();
+        LoopPlugin interruptedLoop = new LoopPlugin() {
+            @Override
+            protected Variable executeBody(DynamicScopeContext executionContext) throws InterruptedException {
+                executionContext.setLocalVar("createdBeforeInterrupt", new NodeVariable("temporary"));
+                throw new InterruptedException("simulated cancellation");
+            }
+        };
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("maxloops", "10");
+        properties.put("items", "first,second");
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+            "loop",
+            "http://org.webharvest/schema/2.1/core",
+            "loop",
+            properties
+        );
+        interruptedLoop.initialize(configuration);
+
+        try {
+            interruptedLoop.execute(isolatedContext);
+            fail("Loop interruption must abort plugin execution");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "simulated cancellation");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "The plugin lifecycle restores the interrupt flag after cleanup");
+            assertNull(isolatedContext.getVar("createdBeforeInterrupt"),
+                "Variables created before interruption must be cleaned up");
+            assertEquals(isolatedContext.getVar("_item").toString(), "first");
+            assertEquals(isolatedContext.getVar("_index").toString(), "0");
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     private void executeLoop(String maxloops, String items) throws Exception {
