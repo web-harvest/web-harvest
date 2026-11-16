@@ -49,7 +49,6 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
@@ -60,6 +59,8 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import javax.xml.XMLConstants;
+import java.util.List;
 import org.webharvest.exception.XsltException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -425,58 +426,48 @@ public class XsltPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // Get XML and stylesheet content from context - this would need to be implemented based on how context provides body content
-        String xmlContent = getXmlContent(context);
-        String stylesheetContent = getStylesheetContent(context);
-        
-        if (xmlContent == null || xmlContent.trim().isEmpty()) {
-            LOGGER.warn("No XML content provided for XSLT transformation");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        if (stylesheetContent == null || stylesheetContent.trim().isEmpty()) {
-            LOGGER.warn("No stylesheet content provided for XSLT transformation");
-            return EmptyVariable.INSTANCE;
-        }
-        
-        LOGGER.debug("Performing XSLT transformation on XML content with length: " + 
-                    xmlContent.length() + " using stylesheet with length: " + stylesheetContent.length());
-        
+        final String xmlContent = getRequiredChildContent("xml");
+        final String stylesheetContent = getRequiredChildContent("stylesheet");
+
         try {
-            TransformerFactory xformFactory = TransformerFactory.newInstance();
-            Source xsl = new StreamSource(new StringReader(stylesheetContent));
-            Transformer stylesheet = xformFactory.newTransformer(xsl);
-            Source request = new StreamSource(new StringReader(xmlContent));
+            TransformerFactory factory = TransformerFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+
+            Source stylesheetSource = new StreamSource(new StringReader(stylesheetContent));
+            Transformer transformer = factory.newTransformer(stylesheetSource);
+            Source xmlSource = new StreamSource(new StringReader(xmlContent));
             StringWriter writer = new StringWriter();
-            Result response = new StreamResult(writer);
-            stylesheet.transform(request, response);
+            Result result = new StreamResult(writer);
+            transformer.transform(xmlSource, result);
 
             return new NodeVariable(writer.toString());
-            
-        } catch (TransformerException e) {
+        } catch (TransformerException | IllegalArgumentException e) {
             LOGGER.error("Failed to perform XSLT transformation: {}", e.getMessage(), e);
-            throw new XsltException("Error during XSLT transforming!", e);
+            throw new XsltException("Error during XSLT transformation", e);
         }
     }
-    
+
     /**
-     * Get XML content from context - simplified implementation
+     * Reads the literal text content of a required child configuration.
+     *
+     * @param elementName child element name (xml or stylesheet)
+     * @return non-blank child text
+     * @throws XsltException when the child is missing or blank
      */
-    private String getXmlContent(DynamicScopeContext context) {
-        // This is a simplified implementation
-        // In a real scenario, this would get the XML content from sub-elements
-        // For now, return a sample XML for testing
-        return "<?xml version=\"1.0\"?><root><item>test</item></root>";
-    }
-    
-    /**
-     * Get stylesheet content from context - simplified implementation
-     */
-    private String getStylesheetContent(DynamicScopeContext context) {
-        // This is a simplified implementation
-        // In a real scenario, this would get the stylesheet content from sub-elements
-        // For now, return a sample XSLT for testing
-        return "<?xml version=\"1.0\"?><xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\"><xsl:template match=\"/\"><result><xsl:value-of select=\"//item\"/></result></xsl:template></xsl:stylesheet>";
+    private String getRequiredChildContent(String elementName) {
+        final List<PluginConfiguration> children = getConfiguration().getChildren();
+        for (PluginConfiguration child : children) {
+            if (elementName.equals(child.getElementName())) {
+                String content = child.getProperty("_textContent");
+                if (content != null && !content.trim().isEmpty()) {
+                    return content;
+                }
+                throw new XsltException("XSLT requires non-empty <" + elementName + "> content");
+            }
+        }
+        throw new XsltException("XSLT requires a <" + elementName + "> child");
     }
 }
 
