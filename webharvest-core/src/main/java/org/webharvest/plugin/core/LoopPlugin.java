@@ -336,16 +336,25 @@ public class LoopPlugin extends AbstractPlugin {
 
                 for (int i = 0; i < iterations; i++) {
                     final String currentItem = items[i].trim();
+                    final String currentIndex = String.valueOf(i);
                     LOGGER.debug("LoopPlugin: Processing item " + i + ": " + currentItem);
 
-                    // Persist iteration variables in shared context (legacy semantics)
-                    context.setLocalVar(itemVarName, new NodeVariable(currentItem));
-                    context.setLocalVar(indexVarName, new NodeVariable(String.valueOf(i)));
+                    try {
+                        Variable bodyResult = context.executeWithinNewContext(() -> {
+                            context.setLocalVar(itemVarName, new NodeVariable(currentItem));
+                            context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
+                            return executeBody(context);
+                        });
 
-                    Variable bodyResult = executeBody(context);
-
-                    if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
-                        result.append(bodyResult.toString());
+                        if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
+                            result.append(bodyResult.toString());
+                        }
+                    } finally {
+                        // Keep the historical final item/index visibility even
+                        // when a body fails, while body-local values are already
+                        // cleaned by executeWithinNewContext().
+                        context.setLocalVar(itemVarName, new NodeVariable(currentItem));
+                        context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
                     }
                 }
             } else {
@@ -354,21 +363,31 @@ public class LoopPlugin extends AbstractPlugin {
                 LOGGER.debug("LoopPlugin: No explicit items – running {} iterations based on maxloops", iterations);
 
                 for (int i = 0; i < iterations; i++) {
+                    final String currentIndex = String.valueOf(i);
                     LOGGER.debug("LoopPlugin: executing iteration {} (fallback mode)", i);
-                    context.setLocalVar(itemVarName, new NodeVariable(""));
-                    context.setLocalVar(indexVarName, new NodeVariable(String.valueOf(i)));
+                    try {
+                        Variable bodyResult = context.executeWithinNewContext(() -> {
+                            context.setLocalVar(itemVarName, new NodeVariable(""));
+                            context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
+                            return executeBody(context);
+                        });
 
-                    Variable bodyResult = executeBody(context);
-
-                    if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
-                        result.append(bodyResult.toString());
+                        if (bodyResult != null && !(bodyResult instanceof EmptyVariable)) {
+                            result.append(bodyResult.toString());
+                        }
+                    } finally {
+                        context.setLocalVar(itemVarName, new NodeVariable(""));
+                        context.setLocalVar(indexVarName, new NodeVariable(currentIndex));
                     }
                 }
             }
-            
+
             LOGGER.debug("LoopPlugin: Final result: " + result.toString());
             return new NodeVariable(result.toString());
             
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (Exception e) {
             LOGGER.debug("LoopPlugin: Error: " + e.getMessage());
             LOGGER.error("Error in LoopPlugin: {}", e.getMessage(), e);
