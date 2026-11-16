@@ -108,8 +108,9 @@ public class StructuralValidationTest {
                 .reliableSchema(true)
                 .canAppearAtRoot(true)
                 .allowsBody(false)
-                .allowedSubElements(List.of("child"))
-                .requiredSubElements(List.of("child"))
+                .allowedChildNames(List.of(new QualifiedName(NS, "child", "")))
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST)
+                .requiredChildNames(List.of(new QualifiedName(NS, "child", "")))
                 .build();
         Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
                 .id("child@" + NS)
@@ -119,8 +120,7 @@ public class StructuralValidationTest {
                 .reliableSchema(true)
                 .canAppearAtRoot(false)
                 .allowsBody(false)
-                .requiredParents(List.of("parent"))
-                .allowedSubElements(List.of())
+                .requiredParentNames(List.of(new QualifiedName(NS, "parent", "")))
                 .build();
         SemanticModel model = new SemanticModel(indexOf(parent, child));
 
@@ -202,8 +202,9 @@ public class StructuralValidationTest {
                 .reliableSchema(true)
                 .canAppearAtRoot(true)
                 .allowsBody(false)
-                .allowedSubElements(List.of("step"))
-                .requiredSubElements(List.of("step"))
+                .allowedChildNames(List.of(new QualifiedName(NS, "step", "")))
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST)
+                .requiredChildNames(List.of(new QualifiedName(NS, "step", "")))
                 .requiredAttributes(List.of("id"))
                 .optionalAttributes(List.of())
                 .build();
@@ -215,8 +216,7 @@ public class StructuralValidationTest {
                 .reliableSchema(true)
                 .canAppearAtRoot(false)
                 .allowsBody(false)
-                .requiredParents(List.of("config"))
-                .allowedSubElements(List.of())
+                .requiredParentNames(List.of(new QualifiedName(NS, "config", "")))
                 .build();
         SemanticModel model = new SemanticModel(indexOf(config, step));
         SemanticDocument document = load(model,
@@ -290,8 +290,7 @@ public class StructuralValidationTest {
         assertTrue(codes(result).stream().anyMatch(c -> "METADATA_LIMITATION".equals(c)));
         assertTrue(result.getDiagnostics().stream()
                 .filter(d -> "METADATA_LIMITATION".equals(d.getCode()))
-                .anyMatch(d -> d.getMessage().contains("allowedSubElements")
-                        || d.getMessage().contains("child-allow")));
+                .anyMatch(d -> d.getMessage().contains("child policy is UNKNOWN")));
     }
 
     @Test
@@ -536,5 +535,139 @@ public class StructuralValidationTest {
             parts.add(diagnostic.getSeverity() + ":" + diagnostic.getCode() + ":" + diagnostic.getMessage());
         }
         return parts.toString();
+    }
+
+    @Test
+    public void forbidChildrenRequiresExplicitClosedPolicyProvenance() {
+        try {
+            Stage1PluginDescriptor.builder()
+                    .id("closed@" + NS).namespaceUri(NS).localName("closed")
+                    .className("org.example.Closed")
+                    .childPolicy(ChildPolicy.FORBID_CHILDREN, ChildPolicyProvenance.MISSING_METADATA)
+                    .build();
+            fail("FORBID_CHILDREN must not be accepted without explicit closed-policy provenance");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("EXPLICIT_CLOSED_POLICY"));
+        }
+        Stage1PluginDescriptor valid = Stage1PluginDescriptor.builder()
+                .id("closed@" + NS).namespaceUri(NS).localName("closed")
+                .className("org.example.Closed")
+                .childPolicy(ChildPolicy.FORBID_CHILDREN, ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY)
+                .build();
+        assertEquals(valid.getChildPolicy(), ChildPolicy.FORBID_CHILDREN);
+
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false).build();
+        Stage1PluginDescriptor closed = Stage1PluginDescriptor.builder()
+                .id("closed@" + NS).namespaceUri(NS).localName("closed")
+                .className("org.example.Closed").reliableSchema(true).canAppearAtRoot(true)
+                .childPolicy(ChildPolicy.FORBID_CHILDREN,
+                        ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY).build();
+        SemanticModel model = new SemanticModel(indexOf(closed, child));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<closed xmlns=\"" + NS + "\"><child/></closed>"));
+        assertTrue(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+    }
+
+    @Test
+    public void explicitAnyChildPolicyAcceptsUnknownChildWithoutLegacyLimitation() {
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.builder()
+                .id("loop@" + NS).namespaceUri(NS).localName("loop")
+                .className("org.example.Loop").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true).allowedSubElements(List.of("legacy-child"))
+                .childPolicy(ChildPolicy.ANY_CHILD,
+                        ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA).build();
+        SemanticModel model = new SemanticModel(indexOf(loop));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<loop xmlns=\"" + NS + "\"><unknown/></loop>"));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+        assertFalse(result.getDiagnostics().stream()
+                .anyMatch(d -> d.getMessage().contains("allowedSubElements")), diagnosticText(result));
+    }
+
+    @Test
+    public void qualifiedChildAllowListRejectsSameLocalNameFromAnotherNamespace() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS).namespaceUri(NS).localName("parent")
+                .className("org.example.Parent").reliableSchema(true).canAppearAtRoot(true)
+                .allowedChildNames(List.of(new QualifiedName(NS, "child", "")))
+                .childPolicy(ChildPolicy.ALLOW_LIST, ChildPolicyProvenance.SCHEMA_ALLOW_LIST).build();
+        Stage1PluginDescriptor childA = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.ChildA").reliableSchema(true).canAppearAtRoot(true).build();
+        Stage1PluginDescriptor childB = Stage1PluginDescriptor.builder()
+                .id("child@" + NS_OTHER).namespaceUri(NS_OTHER).localName("child")
+                .className("org.example.ChildB").reliableSchema(true).canAppearAtRoot(true).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, childA, childB));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS + "\"><child xmlns=\"" + NS_OTHER + "\"/></parent>"));
+        assertTrue(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+    }
+
+    @Test
+    public void legacyUnqualifiedParentEdgeNeverBecomesQualifiedMatch() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS_OTHER).namespaceUri(NS_OTHER).localName("parent")
+                .className("org.example.Parent").reliableSchema(false).canAppearAtRoot(true).build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false)
+                .requiredParents(List.of("parent")).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS_OTHER + "\"><child xmlns=\"" + NS + "\"/></parent>"));
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
+    }
+
+    @Test
+    public void explicitAnyChildPolicyDoesNotInferFromBodyPermission() {
+        Stage1PluginDescriptor any = Stage1PluginDescriptor.builder()
+                .id("loop@" + NS).namespaceUri(NS).localName("loop")
+                .className("org.example.Loop").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true)
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA).build();
+        Stage1PluginDescriptor unknown = Stage1PluginDescriptor.builder()
+                .id("box@" + NS).namespaceUri(NS).localName("box")
+                .className("org.example.Box").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true)
+                .childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC).build();
+        assertEquals(any.getChildPolicy(), ChildPolicy.ANY_CHILD);
+        assertEquals(unknown.getChildPolicy(), ChildPolicy.UNKNOWN);
+        assertEquals(unknown.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+    }
+
+    @Test
+    public void bodyPermissionDoesNotAuthorizePluginChildren() {
+        Stage1PluginDescriptor box = Stage1PluginDescriptor.builder()
+                .id("box@" + NS).namespaceUri(NS).localName("box")
+                .className("org.example.Box").reliableSchema(true).canAppearAtRoot(true)
+                .allowsBody(true)
+                .childPolicy(ChildPolicy.UNKNOWN, ChildPolicyProvenance.LEGACY_BODY_HEURISTIC).build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("known@" + NS).namespaceUri(NS).localName("known")
+                .className("org.example.Known").reliableSchema(false).build();
+        SemanticModel model = new SemanticModel(indexOf(box, child));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<box xmlns=\"" + NS + "\">text<known/></box>"));
+        assertTrue(codes(result).contains("METADATA_LIMITATION"), diagnosticText(result));
+        assertFalse(codes(result).contains("DISALLOWED_CHILD"), diagnosticText(result));
+        assertFalse(codes(result).contains("DISALLOWED_TEXT"), diagnosticText(result));
+    }
+
+    @Test
+    public void qualifiedRequiredParentRejectsSameLocalNameFromAnotherNamespace() {
+        Stage1PluginDescriptor parent = Stage1PluginDescriptor.builder()
+                .id("parent@" + NS_OTHER).namespaceUri(NS_OTHER).localName("parent")
+                .className("org.example.OtherParent").reliableSchema(false).canAppearAtRoot(true).build();
+        Stage1PluginDescriptor child = Stage1PluginDescriptor.builder()
+                .id("child@" + NS).namespaceUri(NS).localName("child")
+                .className("org.example.Child").reliableSchema(false)
+                .requiredParentNames(List.of(new QualifiedName(NS, "parent", ""))).build();
+        SemanticModel model = new SemanticModel(indexOf(parent, child));
+        StructuralValidationResult result = model.validateStructural(load(model,
+                "<parent xmlns=\"" + NS_OTHER + "\"><child xmlns=\"" + NS + "\"/></parent>"));
+        assertTrue(codes(result).contains("INVALID_PARENT"), diagnosticText(result));
     }
 }

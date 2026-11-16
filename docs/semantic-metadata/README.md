@@ -7,6 +7,8 @@ startup by `PluginMetadataCatalog` and exposed via
 
 ## Schema
 
+For the Stage 1 consumer contract (child policy, qualified relationships, and runtime availability), see [STAGE1_CONTRACT.md](./STAGE1_CONTRACT.md).
+
 - **Version:** `1.1.0`
 - **Canonical file:** `webharvest-core/src/main/resources/metadata/plugin-metadata-schema.json`
 - **API contract:** `/api/plugins/metadata` now returns the `schemaVersion` and

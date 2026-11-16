@@ -13,6 +13,135 @@ public class PluginDescriptorIndexTest {
     private static final String NS_B = "http://example.org/ns-b";
 
     @Test
+    public void anyChildRequiresExplicitVisualMetadataProvenance() {
+        ChildPolicyProvenance[] invalidProvenance = {
+                ChildPolicyProvenance.CATALOG_SEMANTICS,
+                ChildPolicyProvenance.SCHEMA_ALLOW_LIST,
+                ChildPolicyProvenance.LEGACY_BODY_HEURISTIC,
+                ChildPolicyProvenance.MISSING_METADATA,
+                ChildPolicyProvenance.EXPLICIT_CLOSED_POLICY
+        };
+        for (ChildPolicyProvenance provenance : invalidProvenance) {
+            try {
+                Stage1PluginDescriptor.builder()
+                        .id("invalid-any@" + NS_A).namespaceUri(NS_A).localName("invalid-any")
+                        .className("org.example.InvalidAny")
+                        .childPolicy(ChildPolicy.ANY_CHILD, provenance)
+                        .build();
+                fail("ANY_CHILD must reject provenance " + provenance);
+            } catch (IllegalArgumentException expected) {
+                assertTrue(expected.getMessage().contains("EXPLICIT_VISUAL_METADATA"));
+            }
+        }
+
+        Stage1PluginDescriptor valid = Stage1PluginDescriptor.builder()
+                .id("valid-any@" + NS_A).namespaceUri(NS_A).localName("valid-any")
+                .className("org.example.ValidAny")
+                .childPolicy(ChildPolicy.ANY_CHILD, ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA)
+                .build();
+        assertEquals(valid.getChildPolicy(), ChildPolicy.ANY_CHILD);
+    }
+
+    @Test
+    public void catalogRootPlacementSurvivesMissingSchemaAndIsValidated() {
+        org.webharvest.plugin.metadata.PluginSemantics semantics =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.LEAF),
+                        false, false, false, false, false, List.of(), List.of(), false);
+        org.webharvest.plugin.metadata.PluginDescriptor catalog =
+                new org.webharvest.plugin.metadata.PluginDescriptor(
+                        "leaf@" + NS_A, "leaf", "Leaf", "test", "org.example.Leaf",
+                        "test", "test", null, semantics, null, List.of(),
+                        java.util.Map.of("namespace", NS_A));
+
+        Stage1PluginDescriptor descriptor = Stage1PluginDescriptor.fromCatalog(catalog);
+        assertFalse(descriptor.hasReliableSchema());
+        assertEquals(descriptor.getCanAppearAtRoot(), java.util.Optional.of(false));
+
+        SemanticModel model = new SemanticModel(indexOf(descriptor));
+        SemanticLoadResult loaded = model.load(
+                "<leaf xmlns=\"" + NS_A + "\"/>", new org.webharvest.semantic.SourceOrigin("test:root-placement"));
+        assertTrue(loaded.isSuccessful(), loaded.getDiagnostics().toString());
+        StructuralValidationResult result = model.validateStructural(loaded.getDocument().get());
+        assertTrue(result.getDiagnostics().stream()
+                .anyMatch(d -> "DISALLOWED_ROOT".equals(d.getCode())), result.getDiagnostics().toString());
+    }
+
+    @Test
+    public void catalogProjectionPreservesExplicitAndUnknownChildPolicies() {
+        org.webharvest.plugin.metadata.PluginDescriptor httpCatalog =
+                org.webharvest.plugin.metadata.PluginMetadataCatalog.getDescriptor("http");
+        org.webharvest.plugin.metadata.PluginDescriptor defCatalog =
+                org.webharvest.plugin.metadata.PluginMetadataCatalog.getDescriptor("def");
+        org.webharvest.plugin.metadata.PluginDescriptor loopCatalog =
+                org.webharvest.plugin.metadata.PluginMetadataCatalog.getDescriptor("loop");
+        assertNotNull(httpCatalog);
+        assertNotNull(defCatalog);
+        assertNotNull(loopCatalog);
+
+        Stage1PluginDescriptor http = Stage1PluginDescriptor.fromCatalog(httpCatalog);
+        Stage1PluginDescriptor def = Stage1PluginDescriptor.fromCatalog(defCatalog);
+        Stage1PluginDescriptor loop = Stage1PluginDescriptor.fromCatalog(loopCatalog);
+
+        assertEquals(http.getChildPolicy(), ChildPolicy.ALLOW_LIST);
+        assertTrue(http.getAllowedSubElements().containsAll(List.of("http-header", "http-param")));
+        assertTrue(http.getAllowedChildNames().isEmpty(),
+                "Catalog local-name relationships must not be promoted to qualified identities");
+        assertEquals(def.getChildPolicy(), ChildPolicy.UNKNOWN,
+                "Body evaluator inference is not structural authority");
+        assertEquals(def.getChildPolicyProvenance(), ChildPolicyProvenance.LEGACY_BODY_HEURISTIC);
+        assertEquals(loop.getChildPolicy(), ChildPolicy.ANY_CHILD);
+        assertEquals(loop.getChildPolicyProvenance(), ChildPolicyProvenance.EXPLICIT_VISUAL_METADATA);
+    }
+
+    @Test
+    public void catalogSemanticsArePreservedWithoutLegacySchemaExtension() {
+        org.webharvest.plugin.metadata.PluginSemantics semantics =
+                new org.webharvest.plugin.metadata.PluginSemantics(
+                        java.util.Set.of(org.webharvest.plugin.metadata.PluginSemanticRole.CONTEXT_CONTAINER),
+                        true, true, false, true, true, List.of("visual-child"), List.of("outer"), false);
+        org.webharvest.plugin.metadata.PluginDescriptor catalog =
+                new org.webharvest.plugin.metadata.PluginDescriptor(
+                        "container@" + NS_A, "container", "Container", "test", "org.example.Container",
+                        "test", "test", null, semantics, null, List.of(), java.util.Map.of("namespace", NS_A));
+        Stage1PluginDescriptor descriptor = Stage1PluginDescriptor.fromCatalog(catalog);
+
+        assertFalse(descriptor.hasReliableSchema());
+        assertEquals(descriptor.getAllowedSubElements(), List.of("visual-child"));
+        assertEquals(descriptor.getChildPolicy(), ChildPolicy.ALLOW_LIST);
+        assertEquals(descriptor.getChildPolicyProvenance(), ChildPolicyProvenance.CATALOG_SEMANTICS);
+        assertEquals(descriptor.getRequiredParents(), List.of("outer"),
+                "Visual/catalog parent relationships must survive even without extensions.schema");
+    }
+
+    @Test
+    public void runtimeProbeFailureProducesUnknownAvailability() {
+        Stage1PluginDescriptor descriptor = descriptor(NS_A, "http", "org.example.Http");
+        PluginDescriptorIndex index = PluginDescriptorIndex.builder()
+                .addDescriptor(descriptor)
+                .namespaceAliases(NamespaceAliasTable.empty())
+                .elementAliases(ElementAliasTable.empty())
+                .optionalProfile(OptionalPluginProfile.empty())
+                .runtimeAvailability(localName -> { throw new IllegalStateException("snapshot unavailable"); })
+                .build();
+        PluginResolution result = index.resolve(NS_A, "http");
+        assertEquals(result.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN);
+        assertTrue(result.getDetail().contains("not established"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void legacyRuntimeBooleanRemainsCompatibleButEnumPreservesUnknown() {
+        Stage1PluginDescriptor descriptor = descriptor(NS_A, "legacy", "org.example.Legacy");
+        PluginResolution legacy = PluginResolution.resolved(descriptor, true);
+        assertTrue(legacy.isRuntimeExecutable());
+        assertEquals(legacy.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
+        PluginResolution unknown = PluginResolution.resolved(descriptor, RuntimeAvailabilityStatus.UNKNOWN);
+        assertFalse(unknown.isRuntimeExecutable());
+        assertEquals(unknown.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.UNKNOWN);
+    }
+
+    @Test
     public void resolvesExactNamespaceAndLocalName() {
         Stage1PluginDescriptor http = descriptor(NS_A, "http", "org.example.Http");
         PluginDescriptorIndex index = indexOf(http);
@@ -21,7 +150,7 @@ public class PluginDescriptorIndexTest {
         assertEquals(resolution.getStatus(), PluginResolutionStatus.RESOLVED);
         assertTrue(resolution.getDescriptor().isPresent());
         assertEquals(resolution.getDescriptor().get(), http);
-        assertTrue(resolution.isRuntimeExecutable());
+        assertEquals(resolution.getRuntimeAvailabilityStatus(), RuntimeAvailabilityStatus.LEGACY_LOCAL_NAME_REGISTERED);
     }
 
     @Test

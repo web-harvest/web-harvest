@@ -22,6 +22,7 @@ public final class PluginSemantics {
     private final boolean providesExecutionContext;
     private final boolean executable;
     private final boolean allowsAnyChild;
+    private final boolean explicitlyAcceptsAnyChild;
     private final Set<String> allowedChildElements;
     private final Set<String> requiredParentElements;
 
@@ -32,6 +33,7 @@ public final class PluginSemantics {
         this.providesExecutionContext = builder.providesExecutionContext;
         this.executable = builder.executable;
         this.allowsAnyChild = builder.allowsAnyChild;
+        this.explicitlyAcceptsAnyChild = builder.explicitlyAcceptsAnyChild;
         this.allowedChildElements = Collections.unmodifiableSet(builder.allowedChildElements);
         this.requiredParentElements = Collections.unmodifiableSet(builder.requiredParentElements);
     }
@@ -79,6 +81,11 @@ public final class PluginSemantics {
         return allowsAnyChild;
     }
 
+    /** True only for an explicit VisualPluginMetadata declaration, not a body-role heuristic. */
+    public boolean explicitlyAcceptsAnyChild() {
+        return explicitlyAcceptsAnyChild;
+    }
+
     public Set<String> getAllowedChildElements() {
         return allowedChildElements;
     }
@@ -100,6 +107,7 @@ public final class PluginSemantics {
         map.put("providesExecutionContext", providesExecutionContext);
         map.put("executable", executable);
         map.put("allowsAnyChild", allowsAnyChild);
+        map.put("explicitlyAcceptsAnyChild", explicitlyAcceptsAnyChild);
         map.put("allowedChildElements", allowedChildElements);
         map.put("requiredParentElements", requiredParentElements);
         return map;
@@ -116,6 +124,7 @@ public final class PluginSemantics {
         private boolean providesExecutionContext = false;
         private boolean executable = true;
         private boolean allowsAnyChild = false;
+        private boolean explicitlyAcceptsAnyChild = false;
         private final Set<String> allowedChildElements = new LinkedHashSet<>();
         private final Set<String> requiredParentElements = new LinkedHashSet<>();
 
@@ -163,6 +172,11 @@ public final class PluginSemantics {
 
         public Builder executable(boolean executable) {
             this.executable = executable;
+            return this;
+        }
+
+        public Builder explicitlyAcceptsAnyChild(boolean explicitlyAcceptsAnyChild) {
+            this.explicitlyAcceptsAnyChild = explicitlyAcceptsAnyChild;
             return this;
         }
 
