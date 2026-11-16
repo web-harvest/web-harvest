@@ -801,7 +801,7 @@ public class IfPluginTest {
         // When: evaluation failures must not be converted into a false condition.
         plugin.execute(context);
     }
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test
     public void testUnsupportedComparisonWithoutScriptingLanguagePropagates() throws Exception {
         ScraperContext directContext = new ScraperContext();
         assertNull(directContext.getScriptingLanguage(),
@@ -815,8 +815,15 @@ public class IfPluginTest {
             "if", "http://org.webharvest/schema/2.1/core", "if", properties);
         directPlugin.initialize(directConfiguration);
 
-        // Unsupported operators must be reported, not interpreted as false.
-        directPlugin.execute(directContext);
+        try {
+            // The public plugin lifecycle wraps implementation exceptions.
+            directPlugin.execute(directContext);
+            fail("Unsupported operators must not be interpreted as false");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof IllegalArgumentException,
+                "The original unsupported-operator error must remain available as the cause");
+            assertTrue(expected.getCause().getMessage().contains("Unsupported If operator"));
+        }
     }
 
     @Test
