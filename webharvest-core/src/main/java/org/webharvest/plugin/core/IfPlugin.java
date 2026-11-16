@@ -595,9 +595,6 @@ public class IfPlugin extends AbstractPlugin {
 
             LOGGER.debug("IfPlugin.doExecute: condition did not match");
             return executeElseBranch(context);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
         } catch (RuntimeException e) {
             LOGGER.error("Error during if condition evaluation", e);
             return EmptyVariable.INSTANCE;
