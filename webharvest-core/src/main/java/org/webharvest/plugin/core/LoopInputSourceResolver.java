@@ -141,14 +141,37 @@ final class LoopInputSourceResolver {
         sourceContainer.setChildren(Collections.singletonList(sourceChild));
 
         try {
-            return context.executeWithinNewContext(
+            final Variable aggregatedResult = context.executeWithinNewContext(
                 () -> new DefaultPluginBodyExecutor().executeBody(sourceContainer, context));
+            return unwrapSingleChildResult(aggregatedResult);
         } catch (InterruptedException e) {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to evaluate Loop source element: "
                 + sourceChild.getElementName(), e);
         }
+    }
+
+    /**
+     * DefaultPluginBodyExecutor aggregates child results into a ListVariable.
+     * The source container has exactly one child, so remove only that aggregation
+     * layer. If the child itself returned a ListVariable, preserve it as the source.
+     */
+    private static Variable unwrapSingleChildResult(final Variable aggregatedResult) {
+        if (!(aggregatedResult instanceof ListVariable)) {
+            return aggregatedResult;
+        }
+
+        final Collection<Variable> childResults = ((ListVariable) aggregatedResult).getList();
+        if (childResults.isEmpty()) {
+            return EmptyVariable.INSTANCE;
+        }
+        if (childResults.size() != 1) {
+            throw new IllegalStateException("Expected one Loop source child result but received "
+                + childResults.size());
+        }
+        return childResults.iterator().next();
+    }
     }
 
     private static List<Variable> flatten(final Variable variable) {
