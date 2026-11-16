@@ -538,7 +538,21 @@ public class CasePlugin extends AbstractPlugin {
             }
 
             IfPlugin branch = (IfPlugin) childPlugin;
-            if (branch.matchesCondition(context)) {
+            final boolean matches;
+            try {
+                matches = branch.matchesCondition(context);
+            } catch (RuntimeException | Error evaluationFailure) {
+                // Condition matching happens before execute(), so the normal
+                // plugin lifecycle cannot release resources on this path.
+                try {
+                    branch.cleanup();
+                } catch (RuntimeException | Error cleanupFailure) {
+                    evaluationFailure.addSuppressed(cleanupFailure);
+                }
+                throw evaluationFailure;
+            }
+
+            if (matches) {
                 LOGGER.debug("CasePlugin: executing first matching If branch");
                 // Execute through the plugin lifecycle (events and cleanup) while
                 // reusing the condition already evaluated for branch selection.
