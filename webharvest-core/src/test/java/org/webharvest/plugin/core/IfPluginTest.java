@@ -790,20 +790,16 @@ public class IfPluginTest {
         assertTrue(result instanceof EmptyVariable);
     }
 
-    @Test
-    public void testExecuteWithTemplateExpressionException() throws PluginException, InterruptedException {
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testExecuteWithTemplateExpressionExceptionPropagates() throws PluginException, InterruptedException {
         // Given
         when(configuration.getProperty("condition", "")).thenReturn("${user.active == 'true'}");
         when(context.getVar("user.active")).thenThrow(new RuntimeException("Test exception"));
-        
+
         plugin.initialize(configuration);
-        
-        // When
-        Variable result = plugin.execute(context);
-        
-        // Then
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+
+        // When: evaluation failures must not be converted into a false condition.
+        plugin.execute(context);
     }
     @Test
     public void testUnsupportedComparisonWithoutScriptingLanguageDoesNotBecomeTruthy() throws Exception {
