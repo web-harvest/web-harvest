@@ -645,6 +645,8 @@ public class XPathPlugin extends AbstractPlugin {
             LOGGER.debug("Retrieved XML content for XPath evaluation");
             return bodyContent;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error getting body content for XPath evaluation", e);
             return EmptyVariable.INSTANCE;
