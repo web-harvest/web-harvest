@@ -536,6 +536,8 @@ public class XMLPlugin extends AbstractPlugin {
             // Return the XML content as NodeVariable
             return new NodeVariable(xmlContent);
 
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error during XML processing", e);
             LOGGER.debug("XMLPlugin.doExecute: ERROR: " + e.getMessage());

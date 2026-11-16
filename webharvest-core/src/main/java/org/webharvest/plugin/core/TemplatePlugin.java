@@ -742,6 +742,8 @@ public class TemplatePlugin extends AbstractPlugin {
             LOGGER.info("TemplatePlugin.doExecute: Returning result: {}", result);
             return result;
             
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Template plugin - error during execution", e);
             return EmptyVariable.INSTANCE;
