@@ -254,5 +254,50 @@ public class AbstractPluginExceptionBug5Test {
             return metricRecorded;
         }
     }
+
+    @Test
+    public void testInterruptedExecutionPropagatesAndStillCleansUp() throws Exception {
+        Thread.interrupted();
+        TestPluginThatInterrupts interruptedPlugin = new TestPluginThatInterrupts();
+        interruptedPlugin.initialize(mockConfig);
+
+        try {
+            interruptedPlugin.execute(context);
+            fail("InterruptedException must propagate through the plugin lifecycle");
+        } catch (InterruptedException expected) {
+            assertEquals(expected.getMessage(), "cancelled");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "The interrupt flag must be restored before propagation");
+            assertTrue(interruptedPlugin.wasCleanupCalled(),
+                "Plugin cleanup must still run when execution is interrupted");
+            assertFalse(interruptedPlugin.wasCleanupInterrupted(),
+                "Cleanup must run before the interrupt flag is restored");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    private static class TestPluginThatInterrupts extends TestPluginWithCleanup {
+        private boolean cleanupInterrupted;
+
+        @Override
+        protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
+            // Model a nested plugin that already restored the flag before propagating.
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("cancelled");
+        }
+
+        @Override
+        protected void doCleanup() {
+            cleanupInterrupted = Thread.currentThread().isInterrupted();
+            super.doCleanup();
+        }
+
+        private boolean wasCleanupInterrupted() {
+            return cleanupInterrupted;
+        }
+    }
+
+
 }
 
