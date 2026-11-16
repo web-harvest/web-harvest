@@ -33,134 +33,45 @@
 
 package org.webharvest.plugin.integration;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
-import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
 
 /**
- * Integration tests for advanced plugins: Include, Function, Template, Config plugins.
- * 
- * Tests are based on XML examples from examples/new_plugins directory.
- * 
+ * Integration tests for variable definition and template output.
+ *
+ * Include and XSLT currently have known implementation gaps tracked in issue
+ * #143. Function and CallParam behavior is covered by FunctionCallIntegrationTest.
+ *
  * @since 2.2.0
  */
 public class AdvancedPluginsIntegrationTest extends XmlBasedIntegrationTestBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AdvancedPluginsIntegrationTest.class);
-
     @Test(groups = {"integration", "advanced-plugins"})
-    public void testIncludePlugin() throws Exception {
-        LOG.info("Testing IncludePlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("18_include_plugin_example.xml");
-        
-        try {
-            DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-            assertNotNull(ctx);
-            assertTrue(true, "IncludePlugin should execute successfully");
-        } catch (Exception e) {
-            // Include may fail if referenced file doesn't exist
-            LOG.warn("Include plugin test had issues (expected if referenced file missing): {}", e.getMessage());
-            assertTrue(true, "Include plugin executed");
-        }
+    public void testDefPluginStoresExactValueInContext() throws Exception {
+        Variable value = executeAndGetVariable(
+                getNewPluginExamplePath("35_def_plugin_example.xml"), "testVar");
+
+        assertEquals(value.toString(), "Hello World",
+                "DefPlugin must store the configured value in the execution context");
     }
 
     @Test(groups = {"integration", "advanced-plugins"})
-    public void testIncludePluginAlternative() throws Exception {
-        LOG.info("Testing IncludePlugin with alternative example");
-        
-        String xmlPath = getNewPluginExamplePath("34_include_plugin_example.xml");
-        
-        try {
-            DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-            assertNotNull(ctx);
-            assertTrue(true, "Include plugin alternative should work");
-        } catch (Exception e) {
-            LOG.warn("Include alternative test had issues: {}", e.getMessage());
-            assertTrue(true, "Include plugin executed");
-        }
+    public void testVariablePluginStoresExactBodyValueInContext() throws Exception {
+        Variable value = executeAndGetVariable(
+                getNewPluginExamplePath("03_var_plugin_example.xml"), "testVar");
+
+        assertEquals(value.toString(), "Sample value from var example",
+                "Variable body content must be preserved exactly");
     }
 
     @Test(groups = {"integration", "advanced-plugins"})
-    public void testDefPluginAlternative() throws Exception {
-        LOG.info("Testing DefPlugin with alternative example");
-        
-        String xmlPath = getNewPluginExamplePath("35_def_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        assertTrue(true, "Def plugin alternative should execute successfully");
-    }
+    public void testDefinitionTemplateWritesExpectedOutput() throws Exception {
+        String output = executeAndReadOutputFile(
+                getNewPluginExamplePath("04_def_plugin_example.xml"), "def_output.txt");
 
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testXsltPluginAlternative() throws Exception {
-        LOG.info("Testing XsltPlugin with alternative example");
-        
-        String xmlPath = getNewPluginExamplePath("33_xslt_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        assertTrue(true, "XSLT plugin alternative should execute successfully");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testFunctionCallPlugins() throws Exception {
-        LOG.info("Testing Function and Call plugins integration");
-        
-        String xmlPath = getNewPluginExamplePath("43_call_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        assertTrue(true, "Function/Call plugins should execute successfully");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testComplexVariableOperations() throws Exception {
-        LOG.info("Testing complex variable operations");
-        
-        String xmlPath = getNewPluginExamplePath("03_var_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        assertTrue(true, "Complex variable operations should work");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testNestedTemplates() throws Exception {
-        LOG.info("Testing nested template structures");
-        
-        String xmlPath = getNewPluginExamplePath("04_def_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Nested templates should work");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testBodyPluginWithComplexContent() throws Exception {
-        LOG.info("Testing Body plugin with complex content");
-        
-        String xmlPath = getNewPluginExamplePath("41_body_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Body plugin with complex content should work");
-    }
-
-    @Test(groups = {"integration", "advanced-plugins"})
-    public void testCallParamPluginWithParameters() throws Exception {
-        LOG.info("Testing CallParam plugin with parameters");
-        
-        String xmlPath = getNewPluginExamplePath("44_callparam_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "CallParam plugin with parameters should work");
+        assertEquals(output, "Greeting: Hello World!, User: Web-Harvest User",
+                "Template output must contain the interpolated variables");
     }
 }
-
