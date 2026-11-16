@@ -86,6 +86,23 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     }
 
     /**
+     * Ensures each sibling Else belongs to exactly one immediately preceding If.
+     * This validation runs before any child executes, so malformed control-flow
+     * structures cannot partially mutate the execution context.
+     *
+     * @param children ordered child configurations
+     */
+    private void validateSiblingElsePairs(List<PluginConfiguration> children) {
+        for (int i = 0; i < children.size(); i++) {
+            if ("else".equals(children.get(i).getElementName())
+                    && (i == 0 || !"if".equals(children.get(i - 1).getElementName()))) {
+                throw new IllegalArgumentException(
+                        "Else must immediately follow exactly one sibling If (child index " + i + ")");
+            }
+        }
+    }
+
+    /**
      * Executes an ordered list of child configurations. An adjacent sibling
      * {@code <else>} is paired with its preceding {@code <if>} so both XML
      * representations share the same conditional execution path.
@@ -97,7 +114,27 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      */
     public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
             throws InterruptedException {
+        validateSiblingElsePairs(children);
+        return executeChildrenInternal(children, context);
+    }
 
+    /**
+     * Executes the already-selected contents of a conditional branch. A selected
+     * Else is intentionally passed without its owning If, so sibling validation
+     * must happen before selection, not on this reduced list.
+     *
+     * @param children selected branch configurations
+     * @param context execution context
+     * @return aggregated selected branch results
+     * @throws InterruptedException if child execution is interrupted
+     */
+    public Variable executeSelectedBranch(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+        return executeChildrenInternal(children, context);
+    }
+
+    private Variable executeChildrenInternal(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
         if (children == null || children.isEmpty()) {
             return EmptyVariable.INSTANCE;
         }
