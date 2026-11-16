@@ -446,14 +446,9 @@ public class ElsePlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // TODO: Implement proper body execution
-        Variable result = EmptyVariable.INSTANCE;
-        
-        // Set the result as a variable in the context
-        context.setLocalVar("elseResult", result);
-        LOGGER.debug("Else plugin - set variable 'elseResult' in context");
-        
-        return result;
+        // The parent If / Case executor decides whether this branch is selected.
+        // Else itself is only responsible for executing its body.
+        return executeBody(context);
     }
 }
 
