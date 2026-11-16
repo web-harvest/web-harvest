@@ -581,24 +581,19 @@ public class IfPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("IfPlugin.doExecute: START");
-        try {
-            Boolean cachedCondition = preEvaluatedCondition;
-            preEvaluatedCondition = null;
-            boolean conditionMatched = cachedCondition != null
-                    ? cachedCondition
-                    : evaluateCondition(getConfiguration().getProperty("condition", ""), context);
+        Boolean cachedCondition = preEvaluatedCondition;
+        preEvaluatedCondition = null;
+        boolean conditionMatched = cachedCondition != null
+                ? cachedCondition
+                : evaluateCondition(getConfiguration().getProperty("condition", ""), context);
 
-            if (conditionMatched) {
-                LOGGER.debug("IfPlugin.doExecute: condition matched");
-                return executeMatchedBranch(context);
-            }
-
-            LOGGER.debug("IfPlugin.doExecute: condition did not match");
-            return executeElseBranch(context);
-        } catch (RuntimeException e) {
-            LOGGER.error("Error during if condition evaluation", e);
-            return EmptyVariable.INSTANCE;
+        if (conditionMatched) {
+            LOGGER.debug("IfPlugin.doExecute: condition matched");
+            return executeMatchedBranch(context);
         }
+
+        LOGGER.debug("IfPlugin.doExecute: condition did not match");
+        return executeElseBranch(context);
     }
 
     /**
