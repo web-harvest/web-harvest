@@ -451,4 +451,65 @@ public class CasePluginTest {
     }
 
 
+    @Test
+    public void testCaseRejectsMultipleDefaultElseBranchesBeforeExecutingAnyIf() throws Exception {
+        CorePluginsRegistrar.registerCorePlugins();
+
+        Map<String, String> ifProperties = new HashMap<>();
+        ifProperties.put("condition", "true");
+        DefaultPluginConfiguration ifBranch = new DefaultPluginConfiguration(
+            "case-if", "http://org.webharvest/schema/2.1/core", "if", ifProperties);
+        Map<String, String> defProperties = new HashMap<>();
+        defProperties.put("var", "mustNotRun");
+        defProperties.put("value", "executed");
+        ifBranch.setChildren(Collections.<PluginConfiguration>singletonList(
+            new DefaultPluginConfiguration(
+                "case-if-body", "http://org.webharvest/schema/2.1/core", "def", defProperties)));
+
+        DefaultPluginConfiguration firstElse = new DefaultPluginConfiguration(
+            "case-else-one", "http://org.webharvest/schema/2.1/core", "else");
+        DefaultPluginConfiguration secondElse = new DefaultPluginConfiguration(
+            "case-else-two", "http://org.webharvest/schema/2.1/core", "else");
+        DefaultPluginConfiguration caseConfiguration = new DefaultPluginConfiguration(
+            "case-multiple-defaults", "http://org.webharvest/schema/2.1/core", "case");
+        caseConfiguration.setChildren(java.util.Arrays.<PluginConfiguration>asList(
+            ifBranch, firstElse, secondElse));
+
+        CasePlugin casePlugin = new CasePlugin();
+        casePlugin.initialize(caseConfiguration);
+        ScraperContext directContext = new ScraperContext();
+
+        try {
+            casePlugin.execute(directContext);
+            fail("Case must reject multiple default Else branches");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
+            assertTrue(expected.getCause().getMessage().contains("only one default Else"));
+        }
+
+        assertNull(directContext.getVar("mustNotRun"),
+            "Case must validate all branch structure before executing a matching If");
+    }
+
+    @Test
+    public void testCaseRejectsUnsupportedBranchElementsBeforeExecution() throws Exception {
+        DefaultPluginConfiguration unsupported = new DefaultPluginConfiguration(
+            "unsupported-case-branch", "http://org.webharvest/schema/2.1/core", "def");
+        DefaultPluginConfiguration caseConfiguration = new DefaultPluginConfiguration(
+            "case-unsupported-branch", "http://org.webharvest/schema/2.1/core", "case");
+        caseConfiguration.setChildren(Collections.singletonList(unsupported));
+
+        CasePlugin casePlugin = new CasePlugin();
+        casePlugin.initialize(caseConfiguration);
+
+        try {
+            casePlugin.execute(new ScraperContext());
+            fail("Case must reject branch elements other than If and Else");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
+            assertTrue(expected.getCause().getMessage().contains("Unsupported Case branch element"));
+        }
+    }
+
+
 }
