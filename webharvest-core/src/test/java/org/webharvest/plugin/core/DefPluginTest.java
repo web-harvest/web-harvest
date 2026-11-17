@@ -38,17 +38,6 @@ public class DefPluginTest {
         assertEquals(result.toString(), "test value");
     }
 
-    @Test(description = "Test DefPlugin with child elements")
-    public void testDefPluginWithChildElements() {
-        // Expected behavior from examples:
-        // <def var="html">
-        //     <http url="${url}"/>
-        // </def>
-        // Should execute child <http> plugin and assign result to 'html' variable
-        
-        assertTrue(true, "Placeholder - child execution test");
-    }
-
     @Test(description = "Test DefPlugin with variable substitution")
     public void testDefPluginWithVariableSubstitution() {
         // Expected behavior:
