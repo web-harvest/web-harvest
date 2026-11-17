@@ -387,7 +387,7 @@ metadata/schema smoke tests from observable runtime behavior.
 
 ## 14. Optional-module execution and dependency evidence (2026-11-17)
 
-A targeted source/POM/test audit covered FTP, Mail, WebBrowser and ZIP. This is
+A targeted source/POM/test audit covered Database, FTP, Mail, WebBrowser and ZIP. This is
 evidence for the module boundary review in Issue #93, not an approved Core
 membership decision.
 
@@ -397,12 +397,37 @@ membership decision.
 | `webharvest-mail` | `org.apache.commons:commons-email` | `MailPlugin` creates SimpleEmail/HtmlEmail and calls `email.send()`; this is an external SMTP/network side effect that can deliver real email. | `MailPluginIntegrationTest` only checks that the example XML resource exists. No deterministic SMTP execution contract was found in the inspected integration test. |
 | `webharvest-webbrowser` | `net.sourceforge.htmlunit:htmlunit:2.70.0` | `WebBrowserPlugin` loads remote URLs, executes JavaScript/AJAX and stores WebClients in static `namedPages` / `defaultPage` state. The explicit `close` action closes clients, but the inspected class has no automatic Harvester-run cleanup hook; the static default client also raises cross-run isolation/concurrency questions. | The integration test executes XML but asserts only a non-null context; it does not assert loaded page content or script results. |
 | `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a `ZipOutputStream` and closes it in `finally`. `ZipEntryPlugin.getParentZipPlugin(context)` unconditionally returns null, so every `<zip-entry>` currently fails before writing. | `ZipPluginIntegrationTest` only checks that the example XML resource exists; it does not execute the Harvester or inspect archive entries. Confirmed defect is tracked in Issue #97. |
-| `webharvest-database` | `commons-dbcp:commons-dbcp` | The module POM confirms the database-pooling dependency and Core dependency. Guessed source paths for `DatabasePlugin` and `ConnectionPlugin` did not resolve in this pass; no implementation or lifecycle claim is made here. | Exact implementation/test paths remain to be located and inspected. |
+| `webharvest-database` | `commons-dbcp:commons-dbcp`; no JDBC driver declared by the module | `DatabasePlugin` executes SQL via `PreparedStatement`, supports inline driver/url and a named `connection` path; `ConnectionPlugin` stores named connection factories in context. Named mode is currently blocked by unconditional driver/url schema requirements. Metadata/annotation names and namespaces also disagree. | 33 unit tests (12 DatabasePlugin, 10 ConnectionPlugin, 7 exception, 4 driver-manager); no successful SQL result assertion or executed XML integration fixture. Core CI excludes this optional module. Follow-up: Issue #185. |
 
-The inspected FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
-annotations despite being in optional Maven modules. FTP's unit test also
-asserts `metadata.isCorePlugin() == true`. Therefore the annotation and
+The inspected Database, FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
+annotations despite being in optional Maven modules. Database/FTP unit tests also
+assert `metadata.isCorePlugin() == true`. Therefore the annotation and
 `PluginMetadata.isCorePlugin()` flag are not reliable product-boundary signals.
+
+### Database extension: concrete support gaps (Issue #185)
+
+- `DatabasePlugin` is annotated with `elementName="database"`, but its metadata
+  reports `getElementName() == "db"`; its schema unconditionally requires
+  `driver` and `url`, even though `doExecute()` supports `connection="..."`.
+  The documented named-connection form therefore fails validation before SQL
+  execution.
+- `ConnectionPlugin` metadata declares the database namespace, while the checked-in
+  `database_plugin_example.xml` places `<connection>` under the Core namespace.
+- `DatabasePluginTest` has 12 methods and only two calls to `plugin.execute()`;
+  those exercise error paths, not successful SQL. `ConnectionPluginTest` has 10
+  methods and no `plugin.execute()` call. The remaining seven exception tests and
+  four driver-manager tests do not prove SQL behavior.
+- The `MockDBDriver.jar` fixture is only used to verify driver loading; its mock
+  `connect()` throws `UnsupportedOperationException`. The module POM declares no
+  H2 or other JDBC driver, and the XML example is not executed by a Java test.
+- The README claims 29 tests; the four test classes contain 33 `@Test` methods.
+- Standard Semantic Core CI uses `-pl webharvest-core -am`, so it does not build
+  or test this optional module.
+
+Keep the database module optional. Before claiming it supported, align the XML
+name/namespace/schema, make named-vs-inline validation conditional, add a
+successful deterministic create/insert/select integration test, verify pool
+lifecycle, and add an optional-module CI gate. See [Issue #185](https://github.com/web-harvest/web-harvest/issues/185).
 Keep source module ownership, Maven dependency direction, runtime registration,
 metadata discovery and future product classification as separate inventory
 columns.
@@ -422,6 +447,13 @@ Evidence links:
 - [ZipEntryPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipEntryPlugin.java)
 - [ZIP integration test](../webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
 - [Database module POM](../webharvest-database/pom.xml)
+- [DatabasePlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/DatabasePlugin.java)
+- [ConnectionPlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/ConnectionPlugin.java)
+- [DatabaseModule.java](../webharvest-database/src/main/java/org/webharvest/ioc/DatabaseModule.java)
+- [DatabasePluginTest.java](../webharvest-database/src/test/java/org/webharvest/plugin/db/DatabasePluginTest.java)
+- [ConnectionPluginTest.java](../webharvest-database/src/test/java/org/webharvest/plugin/db/ConnectionPluginTest.java)
+- [DefaultDriverManagerTest.java](../webharvest-database/src/test/java/org/webharvest/runtime/database/DefaultDriverManagerTest.java)
+- [Database module README](../webharvest-database/README.md)
 
 ### Remaining acceptance work
 
