@@ -69,7 +69,6 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
     @Test(groups = {"integration", "core-plugins"})
     public void falseConditionDoesNotPublishExitAndAllowsFollowingSiblings() throws Exception {
         ExitObserver observer = new ExitObserver();
-        injector.getInstance(EventBus.class).register(observer);
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
@@ -77,7 +76,7 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
             + "  <def var=\"afterExit\" value=\"continued\"/>"
             + "</config>";
 
-        DynamicScopeContext context = executeXmlString(xml);
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
 
         assertNull(observer.event.get(), "False Exit condition must not publish an event");
         assertEquals(context.getVar("afterExit").toString(), "continued");
