@@ -1,200 +1,63 @@
 # WebHarvest Documentation Index
 
-**Version**: 2.3.1  
-**Last Updated**: November 13, 2026
+This index distinguishes current project guidance from historical and version-specific material. Repository-facing documentation is maintained in English.
 
----
+**Canonical source of truth:** [GitHub repository](https://github.com/web-harvest/web-harvest)  
+**Current integration branch:** `main`  
+**Maven project version:** `2.3.1` (POM metadata only; not evidence of a published release)
 
-## 📚 Core Documentation
+## Start here
 
-### Quick Start
+1. [README](README.md) — project overview, module map, current direction and contributor quick start.
+2. [Contributing Guide](CONTRIBUTING.md) — development prerequisites, deterministic test commands, CI evidence and branch policy.
+3. [Project Direction and Architecture Roadmap](docs/PROJECT_DIRECTION.md) — accepted architecture direction, staged delivery and decision gates.
+4. [Monorepo and Module Boundary Policy](docs/MONOREPO.md) — current Maven modules and dependency boundaries.
+5. [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md) — target extension contract and explicit stability limitations.
+6. [Release Readiness](docs/RELEASE_READINESS.md) — evidence-based distribution status; do not infer publication from POM versions.
+7. [Semantic Metadata](docs/semantic-metadata/) — current semantic metadata and catalog material.
 
-1. **[README.md](README.md)** - Project overview
-   - What is WebHarvest
-   - Features and capabilities
-   - Installation and basic usage
+## Core engineering references
 
-2. **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user manual
-   - IDE usage guide (XML + Visual Designer)
-   - Getting started with WebHarvest
-   - Examples and best practices
-   - Troubleshooting
+- [Plugin Inventory](docs/PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery inventory. It is not an approved Core membership list; see [Issue #93](https://github.com/web-harvest/web-harvest/issues/93).
+- [Function Execution](docs/FUNCTION_EXECUTION.md) — execution behavior and current implementation notes; verify claims against source and tests.
+- [Validation Rules](docs/VALIDATION_RULES.md) — structural validation behavior and constraints.
+- [Documentation README](docs/README.md) — documentation structure, status and contribution standards.
+- Module-specific README and Markdown files — consult the owning module and verify version-specific claims before relying on them.
 
-3. **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Developer documentation
-   - Architecture overview
-   - Build instructions
-   - Testing guidelines
-   - API documentation
+## Historical and version-specific documents
 
-### Essential References
+The following root-level files are retained for historical, migration, compatibility or research purposes. Their presence does not imply that they describe the current supported product or runtime. Verify every operational claim against current source, tests and CI before use.
 
-4. **[CHANGELOG.md](CHANGELOG.md)** - Version history
-   - All notable changes by version
-   - Breaking changes and migration guides
+- [User Guide](USER_GUIDE.md) — legacy IDE and user workflows; contains version-specific material and requires a full technical/language review.
+- [Developer Guide](DEVELOPER_GUIDE.md) — older development and IDE guidance; use this index, README and CONTRIBUTING for current contributor workflow.
+- [Plugin Reference](PLUGINS.md) — historical plugin descriptions; current Core membership and extension boundaries are not defined by this file.
+- [Visual Editor Guide](VISUAL_EDITOR_GUIDE.md) — version-specific IDE behavior; verify against the current IDE before use.
+- [Plugin Metadata Guide](PLUGIN_METADATA_GUIDE.md) — historical metadata/API guidance; verify against current Core source.
+- [Plugin Documentation Generation](PLUGIN_DOCS_GENERATION.md) — historical generator instructions and plugin counts require revalidation.
+- [Working XML Syntax Reference](WORKING_XML_SYNTAX_REFERENCE.md) and [XPath Best Practices](XPATH_BEST_PRACTICES.md) — compatibility references; validate examples against current integration tests.
+- [HttpClient 5 Migration Guide](HTTPCLIENT5_MIGRATION_GUIDE.md), [Pause/Resume Guide](PAUSE_RESUME_GUIDE.md), and [Enhanced Metrics Guide](ENHANCED_METRICS_GUIDE.md) — version-specific migration/feature material; current availability must be verified.
+- [October 2025 Release Notes](OCTOBER_2025_RELEASE_NOTES.md) — historical release record.
+- [Changelog](CHANGELOG.md) — release history; distinguish released changes from unreleased work.
+- [Fixed Bugs Archive](BUGS_FIXED.md) — historical defect record, not a current defect/status tracker.
+- [Component Library](COMPONENT_LIBRARY.md) — design/component reference; confirm its current owner and consumers before changing related assets.
+- [Build and Test Notes](BUILD_AND_TEST.md) — legacy build notes. Use the commands in [CONTRIBUTING.md](CONTRIBUTING.md) for current CI-aligned validation.
 
-5. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guide
-   - Guidelines, code style, pull request process
+## Legacy publishing material
 
-6. **[PLUGINS.md](PLUGINS.md)** - Plugin reference
-   - Available plugins with examples
-   - Context-specific plugins
-   - Custom plugin development
+- [SourceForge Setup](SOURCEFORGE-SETUP.md) and [SFTP Upload Instructions](SFTP-UPLOAD-INSTRUCTIONS.md) are legacy operational documents. They are **not** current contribution, publishing or release instructions.
+- GitHub is the sole canonical source for code, issues, pull requests, reviews, CI and project documentation. Do not use SourceForge as an upstream, fetch source, synchronization target or authority.
+- These legacy files remain pending a separate preservation/removal decision tracked in [documentation audit Issue #152](https://github.com/web-harvest/web-harvest/issues/152).
 
-7. **[BUGS_FIXED.md](BUGS_FIXED.md)** - Bug database
-   - All fixed bugs with explanations
-   - Root cause analysis and TDD details
+## Documentation policy
 
----
+- Write current project documentation, source comments, Javadoc, issues and pull requests in English.
+- Label historical/versioned content clearly; do not silently rewrite historical records as current product guidance.
+- Separate verified current facts, accepted decisions and future proposals.
+- Verify commands against Maven configuration and CI workflows; verify XML examples against runtime tests where practical.
+- Record exact commit SHAs and test/CI evidence for claims that depend on implementation state.
+- Preserve copyright, license and third-party attribution notices.
+- Update this index when current entry points or documentation ownership changes.
 
-## 📖 Technical Guides
+## Audit tracking
 
-8. **[HTTPCLIENT5_MIGRATION_GUIDE.md](HTTPCLIENT5_MIGRATION_GUIDE.md)** - HttpClient 5.x migration
-9. **[PAUSE_RESUME_GUIDE.md](PAUSE_RESUME_GUIDE.md)** - Session management
-10. **[ENHANCED_METRICS_GUIDE.md](ENHANCED_METRICS_GUIDE.md)** - Metrics and monitoring
-11. **[WORKING_XML_SYNTAX_REFERENCE.md](WORKING_XML_SYNTAX_REFERENCE.md)** - XML syntax reference
-12. **[XPATH_BEST_PRACTICES.md](XPATH_BEST_PRACTICES.md)** - XPath best practices
-13. **[PLUGIN_DOCS_GENERATION.md](PLUGIN_DOCS_GENERATION.md)** - Plugin documentation generation
-
-## 🚀 Deployment & Operations
-
-14. **[OCTOBER_2025_RELEASE_NOTES.md](OCTOBER_2025_RELEASE_NOTES.md)** - Release notes
-15. **Canonical SCM**: [GitHub `web-harvest/web-harvest`](https://github.com/web-harvest/web-harvest)
-16. **Contribution flow**: [CONTRIBUTING.md](CONTRIBUTING.md) (GitHub Issues and Pull Requests only)
-17. **Cleanup inventory**: [docs/REPO_CLEANUP_INVENTORY.md](docs/REPO_CLEANUP_INVENTORY.md)
-18. Historical SourceForge upload scripts and guides remain in-tree until PR #70 retires them against `2.2.x`. Do not treat them as the current contribution or publish workflow.
-
----
-
-## 📂 Scripts & Automation
-
-19. **[docs/scripts/](docs/scripts/)** - Documentation generation scripts
-    - `generate_all_plugin_docs.py` - Master script (all plugins)
-    - `generate_core_plugin_docs.py` - 46 core plugins
-    - `generate_external_plugin_docs.py` - 8 external plugins
-    - `generate_plugins_index.py` - Plugin index page
-
----
-
-## 📖 Documentation Categories
-
-### For Users
-- **USER_GUIDE.md** - Complete user manual (IDE + Visual Designer)
-- **README.md** - Quick start
-- **PLUGINS.md** - Plugin reference
-- **WORKING_XML_SYNTAX_REFERENCE.md** - XML syntax guide
-- **XPATH_BEST_PRACTICES.md** - XPath patterns
-
-### For Contributors
-- **CONTRIBUTING.md** - Contribution guidelines
-- **DEVELOPER_GUIDE.md** - Development setup
-- **BUGS_FIXED.md** - Bug database
-
-### For Maintainers
-- **SFTP-UPLOAD-INSTRUCTIONS.md** - Deployment
-- **SOURCEFORGE-SETUP.md** - Infrastructure setup
-- **HTTPCLIENT5_MIGRATION_GUIDE.md** - Migration guides
-
----
-
-## 🗂️ Module-Specific Documentation
-
-### webharvest-core
-- Module contains additional technical documentation
-- See `webharvest-core/*.md` for details
-- **[Semantic Metadata](docs/semantic-metadata/)** - Plugin metadata catalog and schema
-
-### Other Modules
-- **webharvest-database/** - Database plugin README
-- **webharvest-ftp/** - FTP plugin README
-- **webharvest-mail/** - Mail plugin README
-- **webharvest-zip/** - Zip plugin README
-- **webharvest-webbrowser/** - Web browser plugin README
-
-### webharvest-ide
-- All IDE documentation consolidated into **[USER_GUIDE.md](USER_GUIDE.md)**
-- Includes IDE user guide, Visual Designer guide, troubleshooting
-
----
-
-## 📋 Quick Links
-
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| README | Project overview | Everyone |
-| USER_GUIDE | Complete user manual | Users |
-| CHANGELOG | Version history | Everyone |
-| CONTRIBUTING | Contribution guide | Contributors |
-| DEVELOPER_GUIDE | Development docs | Developers |
-| PLUGINS | Plugin reference | Everyone |
-| BUGS_FIXED | Bug database | QA, Developers |
-| HTTPCLIENT5_MIGRATION_GUIDE | HttpClient migration | Developers |
-| PAUSE_RESUME_GUIDE | Session management | Users |
-| ENHANCED_METRICS_GUIDE | Monitoring | Users, DevOps |
-| WORKING_XML_SYNTAX_REFERENCE | XML syntax | Users |
-| XPATH_BEST_PRACTICES | XPath guide | Users |
-| PLUGIN_DOCS_GENERATION | Doc generation | Contributors |
-| SFTP-UPLOAD-INSTRUCTIONS | Deployment guide | Maintainers |
-
----
-
-## 🔄 Documentation Maintenance
-
-### Latest Consolidation - November 3, 2025
-- **Reduced:** 61 .md files → 24 core files (61% reduction)
-- **Archived:** All SUMMARY, COMPLETE, PLAN, STATUS files (~30 files)
-- **Archived:** Session summaries and implementation status files from webharvest-ide/ (~20 files)
-- **Created:** DOCUMENTATION_STATUS.md (current status tracker)
-- **Result:** Clean, organized documentation structure
-
-### Core Files (24 total)
-- **Essential (6):** README, USER_GUIDE, DEVELOPER_GUIDE, CHANGELOG, CONTRIBUTING, PLUGINS
-- **Reference (3):** BUGS_FIXED, COMPONENT_LIBRARY, CONDUCTOR_ANALYSIS_AND_ROADMAP
-- **Guides (6):** HTTPCLIENT5_MIGRATION, PAUSE_RESUME, ENHANCED_METRICS, XML_SYNTAX, XPATH_BEST_PRACTICES, PLUGIN_DOCS_GENERATION
-- **Operations (4):** SFTP-UPLOAD, SOURCEFORGE-SETUP, RELEASE_NOTES, XQUERY_FIX
-- **Utilities (2):** BUILD_AND_TEST, DOCS_UPLOAD_SIMPLIFICATION
-- **Metadata (3):** DOCUMENTATION_INDEX, DOCUMENTATION_STATUS, RELEASE_SCRIPTS_ENHANCEMENT
-
----
-
-## 📝 Documentation Standards
-
-### Language
-- All documentation in **English** (project standard)
-- Code comments in English
-- SVN commit messages in English
-
-### Format
-- Markdown (.md) for all documentation
-- Clear headers and sections
-- Code examples where appropriate
-- Tables for comparisons
-
-### Updates
-- CHANGELOG.md updated with each release
-- README.md updated for major features
-- BUGS_FIXED.md updated when bugs are fixed
-- Module docs updated for module-specific changes
-- This index updated when documentation structure changes
-
----
-
-## 📂 Archive Policy
-
-Historical documentation is moved to `docs/archive/` when:
-- Implementation/migration is complete
-- Session work is finished
-- Document superseded by newer version
-- Content consolidated into main documentation
-
-Archive preserves historical context while keeping root clean and navigable.
-
----
-
-**Total Documentation Files**: 24 (streamlined and current)  
-**Python Scripts**: 4 (in docs/scripts/)  
-**Shell Scripts**: 2 (publish-release.sh, upload-docs.sh)  
-**Archived Files**: 170+ (historical reference in docs/archive/)  
-**Status**: Clean, organized, and up-to-date  
-**Last Review**: November 3, 2025
-
-
+The repository-wide Markdown review is tracked in [Issue #152](https://github.com/web-harvest/web-harvest/issues/152). At the audit baseline, the repository tree contained 21 root-level Markdown files and 211 Markdown files under `docs/`; these are inventory counts, not a claim that every document is current or authoritative.
