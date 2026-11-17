@@ -390,28 +390,34 @@ public class XMLPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("XMLPlugin.doExecute: START");
-        PluginConfiguration config = getConfiguration();
+        try {
+            // Preserve the execution-context/charset validation contract.
+            context.getCharset();
+            PluginConfiguration config = getConfiguration();
 
-        String xmlContent;
-        if (config.hasChildren()) {
-            // Child plugins (for example <template>) generate the XML text.
+            // A child plugin (for example <template>) may generate XML text.
             Variable bodyContent = executeBody(context);
-            if (bodyContent == null || bodyContent instanceof EmptyVariable) {
+            String xmlContent;
+            if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
+                xmlContent = bodyContent.toString();
+            } else {
+                // For literal markup, the streaming parser stores CDATA/text in
+                // _textContent; raw nested tags are parsed as child configurations.
+                xmlContent = config.getProperty("_textContent", "");
+            }
+
+            if (xmlContent == null || xmlContent.trim().isEmpty()) {
+                LOGGER.warn("No XML content provided for XML plugin");
                 return EmptyVariable.INSTANCE;
             }
-            xmlContent = bodyContent.toString();
-        } else {
-            // The streaming parser stores literal text/CDATA here. Raw nested
-            // elements are child configurations, not literal XML text.
-            xmlContent = config.getProperty("_textContent", "");
-        }
 
-        if (xmlContent == null || xmlContent.trim().isEmpty()) {
-            LOGGER.warn("No XML content provided for XML plugin");
-            return EmptyVariable.INSTANCE;
+            LOGGER.debug("Returning XML content with length: {}", xmlContent.length());
+            return new NodeVariable(xmlContent);
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("Error executing XML plugin", e);
+            throw new RuntimeException("Failed to execute XML plugin", e);
         }
-
-        LOGGER.debug("Returning XML content with length: {}", xmlContent.length());
-        return new NodeVariable(xmlContent);
     }
 }
