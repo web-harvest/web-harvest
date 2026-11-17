@@ -333,6 +333,11 @@ public class ZipEntryPlugin extends AbstractPlugin {
             }
 
             @Override
+            public boolean canAppearAtRoot() {
+                return false;
+            }
+
+            @Override
             public String getVersion() {
                 return "2.1.0";
             }
