@@ -212,8 +212,7 @@ public class CallPluginTest {
         
         plugin.addFunctionParam(paramName, paramValue);
         
-        // We can't directly verify the internal state, but we can test that the method doesn't throw
-        assertTrue(true);
+        // No exception is the observable contract; this legacy helper exposes no state accessor.
     }
 
     @Test
@@ -231,8 +230,7 @@ public class CallPluginTest {
         
         plugin.addFunctionParam(paramName, null);
         
-        // Should not throw exception
-        assertTrue(true);
+        // No exception is the observable contract for this legacy helper.
     }
 
     @Test
