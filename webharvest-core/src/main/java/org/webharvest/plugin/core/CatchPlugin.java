@@ -63,8 +63,9 @@ import java.util.List;
  * Exception catch block processor - handles exceptions from {@code <try>} block.
  * 
  * <p>
- * The {@code <catch>} processor must be a child of {@code <try>} and executes only when an
- * ordinary runtime exception occurs in that Try body. It provides the message through
+ * The {@code <catch>} processor must be paired with a {@code <try>}, either as its final child
+ * or as the immediately following sibling in the same parent body. It executes only when an
+ * ordinary runtime exception occurs in that Try body and provides the message through
  * {@code ${error}} and the backward-compatible {@code ${_error}} alias
  * and enables graceful error handling, logging, and recovery.
  * </p>
@@ -91,7 +92,7 @@ import java.util.List;
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Parent Element</strong>: Must be a child of {@code <try>}</li>
+ *   <li><strong>Parent Element</strong>: Must be the final child of Try or its immediately following sibling</li>
  *   <li><strong>Error Variable</strong>: ${error} and ${_error} are available within the catch body</li>
  *   <li><strong>Exception Handling</strong>: Handles ordinary runtime failures; Include failures, validation failures and interruption bypass Catch</li>
  *   <li><strong>Recovery</strong>: Can define fallback values or alternative processing</li>
