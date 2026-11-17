@@ -50,12 +50,8 @@ import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.annotations.MasterDetailConstraint;
 import org.webharvest.plugin.exceptions.PluginException;
-import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
-import org.webharvest.runtime.variables.ListVariable;
-import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.util.ArrayList;
@@ -467,52 +463,13 @@ public class TryPlugin extends AbstractPlugin {
         return true;
     }
 
-    private boolean isPluginValidationFailure(Throwable failure) {
-        Throwable current = failure;
-        while (current != null) {
-            if (current instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
-    }
-
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("TryPlugin.doExecute: START");
-        
-        try {
-            // Execute child elements directly in the same context (not using BodyProcessor)
-            LOGGER.debug("TryPlugin.doExecute: About to execute child elements directly");
-            Variable result = executeChildElementsDirectly(context);
-            LOGGER.debug("TryPlugin.doExecute: Child elements executed successfully, result=" + result);
-            
-            // Set the result as a variable in the context
-            context.setLocalVar("tryResult", result);
-            LOGGER.debug("TryPlugin.doExecute: Set variable 'tryResult' in context");
-            
-            return result;
-            
-        } catch (InterruptedException e) {
-            // Cancellation is not an application failure and must bypass <catch>.
-            throw e;
-        } catch (Exception e) {
-            IncludeExecutionException.rethrowIfIncludeFailure(e);
-            if (isPluginValidationFailure(e)) {
-                throw e;
-            }
-            LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
-            LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());
-            
-            // Set error information in context
-            context.setLocalVar("error", new NodeVariable(e.getMessage()));
-            context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
-            LOGGER.debug("TryPlugin.doExecute: Set error variables in context");
-            
-            // Return empty result - the catch block should handle the error
-            return EmptyVariable.INSTANCE;
-        }
+
+        Variable result = executeChildElementsDirectly(context);
+        context.setLocalVar("tryResult", result);
+        return result;
     }
 
     /**
