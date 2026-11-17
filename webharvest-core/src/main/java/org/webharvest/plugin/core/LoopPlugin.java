@@ -39,6 +39,7 @@ package org.webharvest.plugin.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfiguration;
@@ -401,6 +402,8 @@ public class LoopPlugin extends AbstractPlugin {
             LOGGER.debug("LoopPlugin: Final result: {}", result);
             return new NodeVariable(result.toString());
 
+        } catch (ScraperExecutionExitException e) {
+            throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
