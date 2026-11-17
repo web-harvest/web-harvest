@@ -111,6 +111,28 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
     }
 
     @Test(groups = {"integration", "core-plugins"})
+    public void trueConditionInsideWhileStopsRemainingIterationsAndRootSiblings() throws Exception {
+        ExitObserver observer = new ExitObserver();
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <while condition=\"true\" maxloops=\"3\">"
+            + "    <exit condition=\"true\" message=\"while-stop\"/>"
+            + "    <def var=\"afterWhileBody\" value=\"must-not-run\"/>"
+            + "  </while>"
+            + "  <def var=\"afterWhile\" value=\"must-not-run\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
+
+        assertNotNull(observer.event.get(), "Exit inside While must publish the exit event");
+        assertEquals(observer.event.get().getMessage(), "while-stop");
+        assertNull(context.getVar("afterWhileBody"),
+            "Siblings after Exit inside While must not execute");
+        assertNull(context.getVar("afterWhile"),
+            "Root siblings after a While containing Exit must not execute");
+    }
+
+    @Test(groups = {"integration", "core-plugins"})
     public void trueConditionInsideFunctionStopsCallAndRootSiblings() throws Exception {
         ExitObserver observer = new ExitObserver();
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
