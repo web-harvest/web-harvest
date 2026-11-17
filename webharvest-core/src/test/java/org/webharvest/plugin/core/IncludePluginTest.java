@@ -164,6 +164,45 @@ public class IncludePluginTest {
         }
     }
 
+    @Test
+    public void shouldNotLetTryPluginSwallowFatalIncludeFailure() throws Exception {
+        write("main.xml", config("<try><include path=\"missing.xml\"/></try>"
+                + "<def var=\"afterTryFailure\" value=\"incorrect\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A fatal Include failure must bypass the <try> recovery path");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("afterTryFailure"));
+        assertSame(context.getConfig(), main);
+    }
+
+    @Test
+    public void shouldNotLetFunctionCallSwallowFatalIncludeFailure() throws Exception {
+        write("main.xml", config("<function name=\"loadMissing\"><include path=\"missing.xml\"/>"
+                + "</function><call name=\"loadMissing\"/>"
+                + "<def var=\"afterCallFailure\" value=\"incorrect\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A fatal Include failure must bypass the function-call recovery path");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("afterCallFailure"));
+        assertSame(context.getConfig(), main);
+    }
+
     @Test(expectedExceptions = PluginValidationException.class)
     public void shouldValidateRequiredPath() throws Exception {
         IncludePlugin plugin = new IncludePlugin();
