@@ -39,7 +39,6 @@ import com.google.inject.Inject;
 import org.webharvest.definition.Config;
 import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
-import org.webharvest.definition.ConfigSourceFactory;
 import org.webharvest.definition.PluginConfigurationTree;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.DefaultPluginBodyExecutor;
@@ -142,9 +141,6 @@ public class IncludePlugin extends AbstractPlugin {
 
     @Inject
     private ConfigFactory configFactory;
-
-    @Inject
-    private ConfigSourceFactory configSourceFactory;
 
     /**
      * Metadata for IncludePlugin.
