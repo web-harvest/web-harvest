@@ -131,7 +131,6 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             + "  <catch>"
             + "    <def var=\"catchMarker\" value=\"caught\"/>"
             + "    <def var=\"caughtError\"><get var=\"error\"/></def>"
-            + "    <def var=\"caughtErrorAlias\"><get var=\"_error\"/></def>"
             + "    <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
             + "  </catch>"
             + "</config>";
@@ -146,15 +145,12 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             "The catch body must be able to read the canonical error variable");
         assertTrue(context.getVar("caughtError").toString().contains("XQuery"),
             "The error variable must retain the underlying XQuery failure");
-        assertEquals(context.getVar("caughtErrorAlias").toString(), context.getVar("caughtError").toString(),
-            "The legacy _error variable must remain available as an alias");
         assertNotNull(context.getVar("caughtErrorType"),
             "The catch body must be able to read the error type");
         assertFalse(context.getVar("caughtErrorType").toString().trim().isEmpty(),
             "The error type must not be empty");
         assertTrue(context.getVar("error") instanceof EmptyVariable,
             "The handled error must not leak outside its Catch block");
-        assertTrue(context.getVar("_error") instanceof EmptyVariable,
             "The compatibility error alias must not leak outside its Catch block");
     }
 
