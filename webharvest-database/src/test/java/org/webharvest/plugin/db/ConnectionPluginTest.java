@@ -37,6 +37,8 @@ public class ConnectionPluginTest {
         assertEquals("connection", plugin.getMetadata().getElementName());
         assertEquals("2.2.0", plugin.getMetadata().getVersion());
         assertEquals("database", plugin.getMetadata().getCategory());
+        assertEquals("http://org.webharvest/schema/2.1/core", plugin.getMetadata().getNamespace());
+        assertFalse(plugin.getMetadata().isCorePlugin());
     }
 
     @Test
@@ -48,7 +50,7 @@ public class ConnectionPluginTest {
     @Test
     public void testConnectionPluginInitialize() throws PluginException {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-            "http://org.webharvest/schema/2.1/database", "connection");
+            "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("id", "testDB");
         config.setProperty("driver", "org.h2.Driver");
         config.setProperty("url", "jdbc:h2:mem:test");
@@ -63,7 +65,7 @@ public class ConnectionPluginTest {
     @Test(expectedExceptions = PluginValidationException.class)
     public void testConnectionPluginWithoutId() throws PluginException {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-            "http://org.webharvest/schema/2.1/database", "connection");
+            "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("driver", "org.h2.Driver");
         config.setProperty("url", "jdbc:h2:mem:test");
         
@@ -73,7 +75,7 @@ public class ConnectionPluginTest {
     @Test(expectedExceptions = PluginValidationException.class)
     public void testConnectionPluginWithoutDriver() throws PluginException {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-            "http://org.webharvest/schema/2.1/database", "connection");
+            "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("id", "testDB");
         config.setProperty("url", "jdbc:h2:mem:test");
         
@@ -83,7 +85,7 @@ public class ConnectionPluginTest {
     @Test(expectedExceptions = PluginValidationException.class)
     public void testConnectionPluginWithoutUrl() throws PluginException {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-            "http://org.webharvest/schema/2.1/database", "connection");
+            "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("id", "testDB");
         config.setProperty("driver", "org.h2.Driver");
         
@@ -93,7 +95,7 @@ public class ConnectionPluginTest {
     @Test
     public void testConnectionPluginWithOptionalParams() throws PluginException {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-            "http://org.webharvest/schema/2.1/database", "connection");
+            "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("id", "testDB");
         config.setProperty("driver", "org.h2.Driver");
         config.setProperty("url", "jdbc:h2:mem:test");
@@ -124,7 +126,7 @@ public class ConnectionPluginTest {
         for (String driver : drivers) {
             ConnectionPlugin testPlugin = new ConnectionPlugin();
             DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-                "http://org.webharvest/schema/2.1/database", "connection");
+                "http://org.webharvest/schema/2.1/core", "connection");
             config.setProperty("id", "test_" + driver.hashCode());
             config.setProperty("driver", driver);
             config.setProperty("url", "jdbc:test://localhost/test");
@@ -141,7 +143,7 @@ public class ConnectionPluginTest {
         for (String id : connectionIds) {
             ConnectionPlugin testPlugin = new ConnectionPlugin();
             DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection", 
-                "http://org.webharvest/schema/2.1/database", "connection");
+                "http://org.webharvest/schema/2.1/core", "connection");
             config.setProperty("id", id);
             config.setProperty("driver", "org.h2.Driver");
             config.setProperty("url", "jdbc:h2:mem:" + id);

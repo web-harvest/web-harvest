@@ -80,7 +80,7 @@ import org.slf4j.LoggerFactory;
  * @author WebHarvest Team
  * @since 2.1.0
  */
-@CorePlugin(elementName = "database")
+@CorePlugin(elementName = "database", namespace = "http://org.webharvest/schema/2.1/core")
 public class DatabasePlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePlugin.class);
@@ -139,12 +139,12 @@ public class DatabasePlugin extends AbstractPlugin {
 
         @Override
         public boolean isCorePlugin() {
-            return true;
+            return false;
         }
 
         @Override
         public String getElementName() {
-            return "db";
+            return "database";
         }
 
         @Override
@@ -187,12 +187,13 @@ public class DatabasePlugin extends AbstractPlugin {
 
                 @Override
                 public String[] getRequiredAttributes() {
-                    return new String[] { URL_ATT_NAME, DRIVER_ATT_NAME };
+                    return new String[0];
                 }
 
                 @Override
                 public String[] getOptionalAttributes() {
-                    return new String[] { USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME };
+                    return new String[] { CONNECTION_ATT_NAME, URL_ATT_NAME, DRIVER_ATT_NAME,
+                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME };
                 }
 
                 @Override
@@ -226,11 +227,20 @@ public class DatabasePlugin extends AbstractPlugin {
                         throw new PluginValidationException("Configuration cannot be null");
                     }
                     
-                    String[] required = getRequiredAttributes();
-                    for (String attr : required) {
-                        if (configuration.getProperty(attr) == null || configuration.getProperty(attr).trim().isEmpty()) {
-                            throw new PluginValidationException("Required attribute '" + attr + "' is missing or empty");
+                    String connection = configuration.getProperty(CONNECTION_ATT_NAME, "").trim();
+                    String driver = configuration.getProperty(DRIVER_ATT_NAME, "").trim();
+                    String url = configuration.getProperty(URL_ATT_NAME, "").trim();
+                    String username = configuration.getProperty(USERNAME_ATT_NAME, "").trim();
+                    String password = configuration.getProperty(PASSWORD_ATT_NAME, "").trim();
+
+                    if (!connection.isEmpty()) {
+                        if (!driver.isEmpty() || !url.isEmpty() || !username.isEmpty() || !password.isEmpty()) {
+                            throw new PluginValidationException(
+                                    "Named connection mode ('connection') cannot be combined with inline JDBC attributes");
                         }
+                    } else if (driver.isEmpty() || url.isEmpty()) {
+                        throw new PluginValidationException(
+                                "Database requires either 'connection' or both 'driver' and 'url'");
                     }
                 }
             };
@@ -268,6 +278,9 @@ public class DatabasePlugin extends AbstractPlugin {
         
         // Evaluate SQL template
         sql = evaluateTemplate(sql, context);
+        if (sql == null) {
+            sql = "";
+        }
         
         // If no SQL in attribute, get from body
         if (sql.isEmpty()) {
@@ -305,6 +318,10 @@ public class DatabasePlugin extends AbstractPlugin {
                 connection = factory.getConnection(driver, url, username, password);
             }
             
+            if (sql.trim().isEmpty()) {
+                throw new RuntimeException("Database SQL is empty; provide the sql attribute or element body");
+            }
+
             // Execute SQL
             return executeSql(connection, sql);
             
@@ -342,10 +359,10 @@ public class DatabasePlugin extends AbstractPlugin {
                     result.append("<row>");
                     int columnCount = resultSet.getMetaData().getColumnCount();
                     for (int i = 1; i <= columnCount; i++) {
-                        String columnName = resultSet.getMetaData().getColumnName(i);
+                        String columnName = resultSet.getMetaData().getColumnLabel(i);
                         String value = resultSet.getString(i);
                         result.append("<").append(columnName).append(">")
-                              .append(value != null ? value : "")
+                              .append(escapeXml(value != null ? value : ""))
                               .append("</").append(columnName).append(">");
                     }
                     result.append("</row>");
@@ -376,6 +393,14 @@ public class DatabasePlugin extends AbstractPlugin {
                 }
             }
         }
+    }
+
+    private String escapeXml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replaceAll("\\\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     private String getBodyContent(DynamicScopeContext context) throws InterruptedException, PluginException {

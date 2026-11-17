@@ -55,8 +55,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Connection plugin for managing named database connections.
- * Allows defining multiple named connections with connection pooling.
+ * Connection plugin for defining named JDBC connection configurations.
+ * Each definition reuses a single connection through its session-scoped factory; it is not a configurable multi-connection pool.
  * 
  * Example usage:
  * <pre>
@@ -70,7 +70,7 @@ import java.util.Map;
  * @author WebHarvest Team
  * @since 2.2.0
  */
-@CorePlugin(elementName = "connection")
+@CorePlugin(elementName = "connection", namespace = "http://org.webharvest/schema/2.1/core")
 public class ConnectionPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPlugin.class);
@@ -100,7 +100,6 @@ public class ConnectionPlugin extends AbstractPlugin {
         String url = config.getProperty(URL_ATT_NAME, "");
         String username = config.getProperty(USERNAME_ATT_NAME, "");
         String password = config.getProperty(PASSWORD_ATT_NAME, "");
-        String poolSizeStr = config.getProperty(POOL_SIZE_ATT_NAME, "10");
         
         LOGGER.info("Creating connection: id=" + id + ", driver=" + driver + ", url=" + url);
         
@@ -152,7 +151,7 @@ public class ConnectionPlugin extends AbstractPlugin {
             
             @Override
             public String getDescription() { 
-                return "Plugin for managing named database connections with pooling support"; 
+                return "Plugin for defining named JDBC connections with per-session connection reuse"; 
             }
             
             @Override
@@ -177,13 +176,13 @@ public class ConnectionPlugin extends AbstractPlugin {
             public String getClassName() { return ConnectionPlugin.class.getName(); }
             
             @Override
-            public boolean isCorePlugin() { return true; }
+            public boolean isCorePlugin() { return false; }
             
             @Override
             public String getElementName() { return "connection"; }
             
             @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/database"; }
+            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
             
             @Override
             public PluginConfigurationSchema getConfigurationSchema() {

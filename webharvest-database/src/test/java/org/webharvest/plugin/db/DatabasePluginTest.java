@@ -33,211 +33,138 @@
 
 package org.webharvest.plugin.db;
 
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
-import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.database.ConnectionFactory;
 import org.webharvest.runtime.variables.Variable;
 
-import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
-/**
- * Test class for DatabasePlugin.
- * 
- * @author Robert Bala
- * @since 2.1.0
- */
+/** Contract and JDBC integration tests for DatabasePlugin. */
 public class DatabasePluginTest {
 
-    private DatabasePlugin plugin;
+    private static final String CORE_NAMESPACE = "http://org.webharvest/schema/2.1/core";
     private DynamicScopeContext context;
 
     @BeforeMethod
     public void setUp() {
-        plugin = new DatabasePlugin();
         context = new org.webharvest.runtime.ScraperContext();
     }
 
     @Test
-    public void testGetMetadata() {
-        assertNotNull(plugin.getMetadata());
-        assertEquals("Database Plugin", plugin.getMetadata().getName());
-        assertEquals("db", plugin.getMetadata().getElementName());
-        assertEquals("http://org.webharvest/schema/2.1/core", plugin.getMetadata().getNamespace());
+    public void testMetadataUsesCanonicalCoreElement() {
+        DatabasePlugin plugin = new DatabasePlugin();
+        assertEquals(plugin.getMetadata().getElementName(), "database");
+        assertEquals(plugin.getMetadata().getNamespace(), CORE_NAMESPACE);
+        assertFalse(plugin.getMetadata().isCorePlugin());
     }
 
     @Test
-    public void testGetConfigurationSchema() {
-        assertNotNull(plugin.getConfigurationSchema());
-        assertNotNull(plugin.getConfigurationSchema().getAttributeDefinitions());
-        assertTrue(plugin.getConfigurationSchema().getAttributeDefinitions().length >= 0);
+    public void testInlineConnectionConfigurationIsValid() throws Exception {
+        new DatabasePlugin().initialize(inlineConfig("jdbc:h2:mem:db_validation_inline"));
     }
 
     @Test
-    public void testConfigurationValidation() throws Exception {
-        // Test valid configuration
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        
-        plugin.initialize(config);
-        // Configuration is protected, so we can't access it directly
+    public void testNamedConnectionConfigurationIsValid() throws Exception {
+        DefaultPluginConfiguration config = config();
+        config.setProperty("connection", "main");
+        new DatabasePlugin().initialize(config);
     }
 
     @Test(expectedExceptions = PluginException.class)
-    public void testConfigurationValidationWithNullConfig() throws Exception {
-        plugin.initialize(null);
+    public void testMissingConnectionModeIsRejected() throws Exception {
+        new DatabasePlugin().initialize(config());
     }
 
     @Test(expectedExceptions = PluginException.class)
-    public void testConfigurationValidationWithMissingRequiredAttributes() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        // Missing required attributes
-        plugin.initialize(config);
+    public void testPartialInlineConnectionIsRejected() throws Exception {
+        DefaultPluginConfiguration config = config();
+        config.setProperty("driver", "org.h2.Driver");
+        new DatabasePlugin().initialize(config);
+    }
+
+    @Test(expectedExceptions = PluginException.class)
+    public void testMixedNamedAndInlineConnectionModesAreRejected() throws Exception {
+        DefaultPluginConfiguration config = inlineConfig("jdbc:h2:mem:db_mixed");
+        config.setProperty("connection", "main");
+        new DatabasePlugin().initialize(config);
     }
 
     @Test
-    public void testExecuteWithInvalidDriver() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "com.invalid.Driver");
-        config.setProperty("url", "jdbc:invalid:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        
-        plugin.initialize(config);
-        
-        // Should throw PluginException due to driver not found
-        try {
-            plugin.execute(context);
-            fail("Expected PluginException");
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Database driver not found") || e.getMessage().contains("Database operation failed") || e.getMessage().contains("operation failed") || e.getMessage().contains("Failed to initialize plugin") || e.getMessage().contains("ClassNotFoundException") || e.getMessage().contains("SQLException"));
+    public void testInlineSelectReturnsExactEscapedXml() throws Exception {
+        String url = "jdbc:h2:mem:db_inline_select;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELECT id AS id, name AS name FROM sample"));
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(),
+                "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+    }
+
+    @Test
+    public void testNamedConnectionExecutesSelect() throws Exception {
+        String url = "jdbc:h2:mem:db_named_select;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        ConnectionPlugin connection = new ConnectionPlugin();
+        DefaultPluginConfiguration connectionConfig = new DefaultPluginConfiguration(
+                "connection", CORE_NAMESPACE, "connection");
+        connectionConfig.setProperty("id", "main");
+        connectionConfig.setProperty("driver", "org.h2.Driver");
+        connectionConfig.setProperty("url", url);
+        connectionConfig.setProperty("username", "sa");
+        connectionConfig.setProperty("password", "");
+        connection.initialize(connectionConfig);
+        connection.execute(context);
+
+        DatabasePlugin plugin = new DatabasePlugin();
+        DefaultPluginConfiguration databaseConfig = config();
+        databaseConfig.setProperty("connection", "main");
+        databaseConfig.setProperty("sql", "SELECT id AS id, name AS name FROM sample");
+        plugin.initialize(databaseConfig);
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(),
+                "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+    }
+
+    @Test
+    public void testUpdateReturnsAffectedRowCount() throws Exception {
+        String url = "jdbc:h2:mem:db_update;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "UPDATE sample SET name = 'Updated' WHERE id = 7"));
+        assertEquals(plugin.execute(context).toString(), "Rows affected: 1");
+    }
+
+    private static void createFixture(String url) throws Exception {
+        Class.forName("org.h2.Driver");
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE sample (id INT PRIMARY KEY, name VARCHAR(100))");
+            statement.execute("INSERT INTO sample (id, name) VALUES (7, 'A&B <C>')");
         }
     }
 
-    @Test
-    public void testExecuteWithUnsupportedAction() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "unsupported");
-        config.setProperty("query", "SELECT * FROM test");
-        
-        plugin.initialize(config);
-        
-        // Should throw PluginException due to unsupported action
-        try {
-            plugin.execute(context);
-            fail("Expected PluginException");
-        } catch (Exception e) {
-            boolean containsExpectedMessage = e.getMessage().contains("Database operation failed") || 
-                e.getMessage().contains("operation failed") || 
-                e.getMessage().contains("Failed to initialize plugin") || 
-                e.getMessage().contains("ClassNotFoundException") || 
-                e.getMessage().contains("SQLException") ||
-                e.getMessage().contains("Unsupported action") ||
-                e.getMessage().contains("Database driver not found");
-            assertTrue(containsExpectedMessage, "Unexpected exception message: " + e.getMessage());
-        }
+    private static DefaultPluginConfiguration config() {
+        return new DefaultPluginConfiguration("database", CORE_NAMESPACE, "database");
     }
 
-    @Test
-    public void testGetBooleanProperty() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        config.setProperty("autocommit", "true");
-        
-        plugin.initialize(config);
-        
-        // Test getBooleanProperty method - this is protected, so we can't test it directly
-        // We can only test that the plugin initializes without errors
+    private static DefaultPluginConfiguration inlineConfig(String url) {
+        return inlineConfig(url, "SELECT 1 AS result");
     }
 
-    @Test
-    public void testExecuteWithValidConfiguration() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
+    private static DefaultPluginConfiguration inlineConfig(String url, String sql) {
+        DefaultPluginConfiguration config = config();
         config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        
-        plugin.initialize(config);
-        
-        // Test that plugin can be initialized without errors
-        // Note: executeAction is private, so we can't test it directly
-    }
-
-    @Test
-    public void testGetStringProperty() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        
-        plugin.initialize(config);
-        
-        // Test that plugin can be initialized without errors
-        // Note: getStringProperty is protected, so we can't test it directly
-    }
-
-    @Test
-    public void testGetIntProperty() throws Exception {
-        DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-        config.setProperty("driver", "org.h2.Driver");
-        config.setProperty("url", "jdbc:h2:mem:test");
-        config.setProperty("username", "test");
-        config.setProperty("password", "test");
-        config.setProperty("action", "select");
-        config.setProperty("query", "SELECT * FROM test");
-        config.setProperty("timeout", "30");
-        
-        plugin.initialize(config);
-        
-        // Test that plugin can be initialized without errors
-        // Note: getIntProperty is protected, so we can't test it directly
-    }
-
-    @Test
-    public void testExecuteWithDifferentActions() throws Exception {
-        String[] actions = {"select", "insert", "update", "delete", "execute"};
-        
-        for (String action : actions) {
-            DatabasePlugin testPlugin = new DatabasePlugin();
-            DefaultPluginConfiguration config = new DefaultPluginConfiguration("db", "http://org.webharvest/schema/2.1/core", "db");
-            config.setProperty("driver", "org.h2.Driver");
-            config.setProperty("url", "jdbc:h2:mem:test");
-            config.setProperty("username", "test");
-            config.setProperty("password", "test");
-            config.setProperty("action", action);
-            config.setProperty("query", "SELECT * FROM test");
-            
-            testPlugin.initialize(config);
-            
-            // Test that plugin can be initialized for each action
-        }
+        config.setProperty("url", url);
+        config.setProperty("username", "sa");
+        config.setProperty("password", "");
+        config.setProperty("sql", sql);
+        return config;
     }
 }
