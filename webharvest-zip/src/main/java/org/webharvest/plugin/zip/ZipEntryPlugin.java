@@ -101,7 +101,7 @@ public class ZipEntryPlugin extends AbstractPlugin {
         }
 
         Variable bodyResult = executeBody(context);
-        
+
         try {
             zipOutStream.putNextEntry(new ZipEntry(name));
             zipOutStream.write(bodyResult.toBinary(charset));
@@ -109,7 +109,7 @@ public class ZipEntryPlugin extends AbstractPlugin {
         } catch (IOException e) {
             throw new RuntimeException("Error writing ZIP entry: " + e.getMessage(), e);
         }
-        
+
         return EmptyVariable.INSTANCE;
     }
 
