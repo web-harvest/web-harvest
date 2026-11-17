@@ -1,12 +1,12 @@
-# WebHarvest XML Syntax Reference (VERIFIED WORKING)
+# WebHarvest XML Syntax Reference
 
-**Source**: webharvest-core/src/test/resources/integration-tests/new_plugins/  
-**Date**: October 8, 2025  
-**Status**: Extracted from PASSING integration tests
+**Source fixtures**: `webharvest-core/src/test/resources/integration-tests/new_plugins/`  
+**Reviewed against**: `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d` (2026-11-17)  
+**Evidence note**: Fixture presence is not proof that every example is exercised by a meaningful integration assertion. Coverage is being reconciled in [Issue #98](https://github.com/web-harvest/web-harvest/issues/98).
 
 ---
 
-## ✅ VERIFIED WORKING SYNTAX
+## Core syntax examples
 
 ### Variables
 
@@ -21,13 +21,16 @@
 <get var="greeting"/>
 ```
 
-**Set Variable** (`<set-var>`):
+**Update an existing variable** (`<set-var>`):
 ```xml
-<!-- Attribute: var, value -->
-<set-var var="testVar" value="Hello World"/>
-<set-var var="numberVar" value="42"/>
-<set-var var="expressionVar" value="${1 + 2}"/>
+<!-- Current spelling -->
+<set-var var="counter" value="${counter + 1}"/>
+
+<!-- Legacy WebHarvest 1.0 spelling remains supported -->
+<set-var name="counter" value="${counter + 1}"/>
 ```
+
+The `name` and `var` attributes are both accepted. If both are supplied, they must have the same value. The plugin also accepts a body value; see `SetVarPlugin.java` for the exact contract.
 
 ### HTTP
 
@@ -61,7 +64,7 @@
 **XPath** (`<xpath>`):
 ```xml
 <def var="title">
-    <xpath expression="//h1">
+    <xpath expression="//h1/text()">
         <get var="xmlContent"/>
     </xpath>
 </def>
@@ -95,7 +98,7 @@
 
 ---
 
-## 📋 COMPLETE EXAMPLE (VERIFIED WORKING)
+## Complete network example (manual use)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -133,7 +136,7 @@
 
 ---
 
-## ❌ COMMON MISTAKES
+## Legacy and unsupported syntax
 
 ### Wrong: `<var-def>` (old syntax)
 ```xml
@@ -141,16 +144,24 @@
 ✅ <def var="url">...</def>
 ```
 
-### Wrong: `<var>` (old syntax)
+### Legacy: `<var>`
+
+`<var>` remains registered for compatibility. It is not the preferred way to read or define variables in new configurations:
 ```xml
-❌ <var name="url"/>
-✅ <get var="url"/>
+<!-- Legacy lookup/definition form -->
+<var name="url">https://example.com</var>
+
+<!-- Preferred explicit forms -->
+<def var="url">https://example.com</def>
+<get var="url"/>
 ```
 
-### Wrong: `<set-var name="...">` (incorrect attribute)
+### Supported legacy attribute: `name` on `<set-var>`
+
 ```xml
-❌ <set-var name="test">value</set-var>
-✅ <set-var var="test" value="value"/>
+<!-- Both are supported; do not provide conflicting values -->
+<set-var name="test" value="value"/>
+<set-var var="test" value="value"/>
 ```
 
 ---
@@ -159,7 +170,7 @@
 
 **Location**: `webharvest-core/src/test/resources/integration-tests/new_plugins/`
 
-**Files** (43 examples):
+**Files** (43 current XML fixtures; coverage strength varies):
 - 01_constant_plugin_example.xml
 - 02_text_plugin_example.xml
 - 03_var_plugin_example.xml
@@ -181,12 +192,33 @@
 - 19_try_catch_plugin_example.xml
 - 20_setvar_plugin_example.xml
 - 21_getvar_plugin_example.xml
-- ... (and more)
+- 22_file_plugin_example.xml
+- 23_sleep_plugin_example.xml
+- 24_empty_plugin_example.xml
+- 25_exit_plugin_example.xml
+- 26_return_plugin_example.xml
+- 27_case_plugin_example.xml
+- 28_list_plugin_example.xml
+- 29_valueof_plugin_example.xml
+- 30_text_plugin_example.xml
+- 31_url_plugin_example.xml
+- 32_http_plugin_example.xml
+- 33_xslt_plugin_example.xml
+- 34_include_plugin_example.xml
+- 35_def_plugin_example.xml
+- 37_ftp_plugin_example.xml
+- 38_mail_plugin_example.xml
+- 39_webbrowser_plugin_example.xml
+- 40_zip_plugin_example.xml
+- 41_body_plugin_example.xml
+- 42_bodyprocessor_plugin_example.xml
+- 43_call_plugin_example.xml
+- 44_callparam_plugin_example.xml
 
-**These are VERIFIED to work in integration tests!**
+**Important:** These are available fixtures, not a claim that all 43 have meaningful runtime assertions. Consult Issue #98 for the current test-evidence matrix.
 
 ---
 
-**Status**: Reference complete  
-**Use this**: For IDE default config and documentation
+**Status**: Syntax reference; verify behavior against current tests and plugin source  
+**Use this**: As a starting point for XML authoring, not as a substitute for runtime contract tests
 
