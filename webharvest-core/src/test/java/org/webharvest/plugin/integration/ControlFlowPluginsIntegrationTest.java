@@ -122,9 +122,15 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
             + "  <try>"
-            + "    <regexp><regexp-pattern>[</regexp-pattern><regexp-source>value</regexp-source></regexp>"
+            + "    <xquery><xq-expression><![CDATA[for $item in $input/root/item "
+            + "return <result>{$item/text()}</result>]]></xq-expression></xquery>"
             + "    <def var=\"afterFailure\" value=\"must-not-run\"/>"
-            + "    <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
+            + "    <catch>"
+            + "      <def var=\"catchMarker\" value=\"caught\"/>"
+            + "      <def var=\"caughtError\"><get var=\"error\"/></def>"
+            + "      <def var=\"caughtErrorAlias\"><get var=\"_error\"/></def>"
+            + "      <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
+            + "    </catch>"
             + "  </try>"
             + "</config>";
 
@@ -134,14 +140,17 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             "Catch must execute after a runtime failure in the Try body");
         assertNull(context.getVar("afterFailure"),
             "Remaining Try body siblings must not execute after the first failure");
-        assertNotNull(context.getVar("error"),
-            "The caught failure must be exposed through the documented error context variable");
-        assertTrue(context.getVar("error").toString().contains("Unclosed character class"),
-            "The error variable must retain the underlying regular-expression failure");
-        assertTrue(context.getVar("caughtError").toString().contains("Unclosed character class"),
-            "The Catch body must be able to read the error variable");
+        assertNotNull(context.getVar("caughtError"),
+            "The catch body must be able to read the canonical error variable");
+        assertTrue(context.getVar("caughtError").toString().contains("XQuery"),
+            "The error variable must retain the underlying XQuery failure");
+        assertEquals(context.getVar("caughtErrorAlias").toString(), context.getVar("caughtError").toString(),
+            "The legacy _error variable must remain available as an alias");
+        assertNotNull(context.getVar("caughtErrorType"),
+            "The catch body must be able to read the error type");
+        assertFalse(context.getVar("caughtErrorType").toString().trim().isEmpty(),
+            "The error type must not be empty");
     }
-
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testOrdinaryBodyFailureOutsideTryKeepsBestEffortSiblingExecution() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
