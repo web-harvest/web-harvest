@@ -82,7 +82,7 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
         assertEquals(context.getVar("afterExit").toString(), "continued");
     }
 
-    private DynamicScopeContext executeXmlStringWithObserver(String xml, ExitObserver observer) {
+    private DynamicScopeContext executeXmlStringWithObserver(String xml, ExitObserver observer) throws Exception {
         ConfigSource configSource = new BufferConfigSource(xml);
         Harvester harvester = harvest.getHarvester(configSource, new org.webharvest.HarvestLoadCallback() {
             @Override
