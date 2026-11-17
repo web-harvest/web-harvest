@@ -16,6 +16,9 @@
             <zip-entry name="after.txt">
                 <template><![CDATA[after]]></template>
             </zip-entry>
+            <zip-entry name="latin1.txt" charset="ISO-8859-1">
+                <template><![CDATA[café]]></template>
+            </zip-entry>
         </zip>
     </def>
 </config>
