@@ -4,6 +4,7 @@
     <file action="write" path="xquery_output.xml">
         <xquery>
             <xq-expression><![CDATA[
+                declare variable $input external;
                 for $item in $input/root/item
                 return <result>{$item/text()}</result>
             ]]></xq-expression>
