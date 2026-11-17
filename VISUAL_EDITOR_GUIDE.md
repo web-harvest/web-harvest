@@ -6,7 +6,7 @@ The original guide is preserved verbatim at [docs/archive/VISUAL_EDITOR_GUIDE-2.
 
 ## What current source confirms
 
-At the current documentation review baseline (`main`, commit `52c9bcbf6103d24d2b1beed45e33df2bd168aadf)):
+At the current documentation review baseline (`main`, commit `52c9bcbf6103d24d2b1beed45e33df2bd168aadf`):
 
 - The IDE has a canvas-oriented `VisualDesigner` implementation in `webharvest-ide/frontend/src/visual/VisualDesigner.ts`, with node rendering, drag handling, zoom/pan state, grid snapping, minimap and connection-management components.
 - `PluginPalette` is implemented in `webharvest-ide/frontend/src/visual/PluginPalette.ts`; it requests `/api/plugins/metadata` and retains a local-template fallback when that request fails.
