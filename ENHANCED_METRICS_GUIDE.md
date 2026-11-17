@@ -2,7 +2,7 @@
 
 ## 📊 Overview
 
-Enhanced Metrics provide deep insight into scraper execution performance. Beyond basic timing, you get detailed breakdowns of HTTP activity, plugin execution times, and resource usage.
+The IDE exposes a session-metrics payload, but most resource fields are not currently backed by runtime instrumentation. This guide distinguishes measured session timing from synthetic HTTP/plugin estimates and unrecorded token fields.
 
 ---
 
@@ -15,21 +15,22 @@ Enhanced Metrics provide deep insight into scraper execution performance. Beyond
 | **Duration** | Measured from session start/end timestamps | Actual session duration |
 | **Elements processed** | Counts variables extracted into the execution result map | Not a count of source records, loop items or documents processed |
 | **Processing rate** | Derived from the result-variable count and duration | Inherits the same limitation |
-| **HTTP metrics** | Uses aggregated TokenTracker request/byte totals when available; otherwise inserts synthetic values when the XML contains an HTTP element | TokenTracker does not provide per-request response times here; its average response time is reported as zero |
+| **HTTP metrics** | TokenTracker is initialized but no runtime code records HTTP events; when XML contains an HTTP element, ExecutionManager inserts synthetic request/byte/latency values | Not observed HTTP telemetry |
 | **Plugin breakdown** | Synthetic estimates added by inspecting a small set of XML tag names | Not measured plugin execution time; only selected plugin types are represented |
 
 ### Why Simulated?
 
-The current code provides partial aggregate HTTP counters through TokenTracker, but it does not provide reliable per-request latency. The plugin breakdown is still synthetic: ExecutionManager inspects XML text and records fixed estimated durations for selected tags. No runtime plugin lifecycle event tracking is wired into SessionMetrics.
+ExecutionManager initializes an empty TokenTrackerImpl, but HttpPlugin and ScraperContext do not record HTTP events into it. ExecutionManager logs that TokenTracker is not collecting data and inserts synthetic HTTP values when the XML contains an HTTP element. The plugin breakdown is also synthetic: selected XML tags are inspected and fixed estimated durations are recorded. No runtime plugin lifecycle timing is wired into SessionMetrics.
 
 Do not treat the displayed plugin times, synthetic HTTP fallback values, or result-variable count as production telemetry.
 
 ### What This Means
 
-- The IDE can render session information, HTTP metrics and plugin-breakdown fields when present in the WebSocket payload.
+- The IDE can render session information, synthetic HTTP fields and synthetic plugin-breakdown fields when present in the WebSocket payload.
 - Session information is exposed through the IDE execution/session API servlets.
 - Synthetic metric values do not alter scraper execution, but they can mislead operational decisions.
-- No release or delivery date is committed for real per-plugin timing.
+- The token payload has CPU and memory fields, but no recording path was found; these values are zero/default rather than measured.
+- No release or delivery date is committed for real telemetry.
 
 ---
 
@@ -52,10 +53,10 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 - The current implementation detects selected tags in the XML text and records fixed estimates for http, xpath, def, html-to-xml, regexp and script.
 - These are not measured per-plugin execution times. Visual bars and sorting operate on estimates, not observed runtime.
 
-### 4. **Token Usage** ✅ (Already in v2.1)
-- **CPU Time**: Total CPU milliseconds
-- **Memory Peak**: Maximum heap usage
-- **HTTP Stats**: Request/byte counts
+### 4. Token usage model (not instrumented)
+- `TokenUsage` defines HTTP request/byte, CPU-time and memory-peak fields.
+- `TokenTrackerImpl` stores values only when a caller explicitly records them.
+- The current execution path initializes the tracker but does not record these resources; do not interpret zero/default values as measured consumption.
 
 ---
 
@@ -64,20 +65,19 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 ### View Metrics in IDE
 
 1. **Open IDE**: http://localhost:8080
-2. **Run configuration** (e.g., "01_http_xpath.xml")
-3. **Click Session tab** (right sidebar)
-4. **See 3 cards**:
-   - Current Session (basic metrics)
-   - HTTP Metrics (network activity)
-   - Plugin Breakdown (execution times)
+2. **Run a configuration**.
+3. **Inspect the session panel** (where enabled by the current IDE build).
+4. **Treat the displayed HTTP/plugin values as synthetic** until Issue #168 is resolved:
+   - Current Session (duration and result-variable proxy count)
+   - HTTP Metrics (synthetic fallback values)
+   - Plugin Breakdown (synthetic estimates)
 
 ### Access via API
 
 ```bash
-# Get session with metrics
-curl http://localhost:8080/api/execution/{executionId}/info
-
-# WebSocket delivers metrics in COMPLETED message
+## The GET /api/execution/{id}/info route returns status/progress only.
+## /api/sessions/history returns basic session fields only.
+## HTTP/plugin fields are attached to the completed-execution WebSocket payload.
 {
   "status": "COMPLETED",
   "sessionInfo": {
@@ -104,7 +104,7 @@ curl http://localhost:8080/api/execution/{executionId}/info
 
 ### Internal metrics model
 
-The following methods exist on `SessionMetrics`; this is an internal model API, not proof that runtime instrumentation calls them for each request. In the current IDE path, `ExecutionManager` copies aggregate TokenTracker totals at session completion and may add synthetic fallback values.
+The following methods exist on `SessionMetrics`; this is an internal model API, not proof that runtime instrumentation calls them for each request. No current HTTP request call site was found. `ExecutionManager` instead adds synthetic fallback values when the XML contains an HTTP element.
 
 ```java
 SessionMetrics metrics = session.getMetrics();
@@ -124,13 +124,13 @@ long avgTime = metrics.getAverageHttpResponseTime();
 
 ### Caveats for analysis
 
-The `/api/sessions/history` response currently contains only timestamp, duration, elementsProcessed, processingRate and status. It does not include `httpMetrics` or `pluginBreakdown`. Those optional fields are attached to the completed-execution WebSocket `sessionInfo` payload.
+The mapped `GET /api/execution/{id}/info` route returns execution status/progress, not metrics. The mapped `/api/sessions/history` route returns timestamp, duration, elementsProcessed, processingRate and status; it does not include `httpMetrics` or `pluginBreakdown`. Those optional fields are attached to the completed-execution WebSocket `sessionInfo` payload. The older `ExecutionInfoServlet` source file is not registered by `WebHarvestServer`.
 
 Do not use synthetic fallback values or zero response-time values for operational bandwidth/performance conclusions.
 
 ### Operational use
 
-The current payload is not suitable for automated bandwidth budgets or latency regression alerts. HTTP totals may be aggregated from TokenTracker or synthetic fallback values, and the history endpoint does not return these fields. Use the completed-execution WebSocket `sessionInfo` payload for inspection only, and verify that its source is TokenTracker before drawing conclusions.
+The current payload is not suitable for automated bandwidth budgets or latency regression alerts. HTTP fields are synthetic because no runtime recorder populates TokenTracker. Use the completed-execution WebSocket `sessionInfo` payload only to inspect the current UI behavior, not as operational telemetry.
 
 ---
 
@@ -275,7 +275,7 @@ interface SessionInfo {
 - **Result count:** the IDE currently counts final result variables as processed elements. It does not count source records or loop iterations.
 - **HTTP:** aggregate request/byte totals depend on TokenTracker data. Per-request response times are not measured in this path; the synthetic fallback must be clearly distinguished from observed data.
 - **Plugin timing:** current plugin breakdown values are fixed estimates based on XML tag presence. They are not suitable for performance regression analysis or bottleneck diagnosis.
-- **Memory:** the session metrics model does not expose a verified memory-snapshot tracking pipeline.
+- **CPU/memory:** fields exist in `TokenUsage`, but no runtime recording call site was found; they are not measured.
 - **Future work:** real HTTP request/response instrumentation, plugin lifecycle timing and memory measurements require separate implementation and tests. No release version or delivery date is committed.
 
 ---
@@ -301,7 +301,7 @@ interface SessionInfo {
 - Displaying a metric does not establish that its value is measured or operationally reliable.
 
 **Data Status:**
-- HTTP request/byte totals may be aggregated from TokenTracker or may be synthetic fallback values.
+- HTTP request/byte/latency values are synthetic because no runtime call site records TokenTracker HTTP usage.
 - Plugin breakdown values are synthetic estimates.
 - Result counts represent final result variables, not source records.
 
