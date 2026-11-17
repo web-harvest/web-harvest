@@ -39,7 +39,7 @@ This is an evidence map, not a claim that all mapped names are independent execu
 | `list` | List construction | `CorePluginsIntegrationTest.testListPlugin` | Direct XML runtime; ordered list values asserted. |
 | `log` | Logging side effect and return | `LogPluginRuntimeContractIntegrationTest.writesXmlBodyToConfiguredStreamsAndReturnsTheMessage` | Direct XML runtime; configured streams and return value asserted. |
 | `value-of` | Value extraction | `CorePluginsIntegrationTest.testValueOfPlugin` | Direct XML runtime; exact value asserted. |
-| `xml` | XML body wrapper | `XMLPlugin.doExecute`; direct runtime test proposed in PR #183 | Dual-use: standalone executable wrapper and declarative XSLT input. Existing unit test has no body; direct Failsafe evidence pending PR #183. |
+| `xml` | XML body wrapper | `XMLPlugin.doExecute`; `XmlTransformationPluginsIntegrationTest.testXmlPluginReadsLiteralCDataAndFeedsXPath` | Dual-use: literal CDATA becomes a runtime value consumed by downstream XPath; under XSLT, parent reads child content directly. PR #183 merged. |
 | `set-var` | Legacy variable assignment | `CorePluginsIntegrationTest.testSetVarPlugin`; `SetVarCompatibilityRegistrationContractTest` | Direct XML runtime plus explicit legacy registration contract; preserve for compatibility. |
 | `sleep` | Delay | `CorePluginsIntegrationTest.testSleepPlugin` | Direct XML runtime; monotonic elapsed-time lower bound asserted. |
 | `stylesheet` | XSLT stylesheet child | `XmlTransformationPluginsIntegrationTest.testXsltPluginAppliesStylesheet`; `StylesheetPlugin.doExecute` | Declarative XSLT configuration; parent reads child text; helper returns EmptyVariable and is not an independent execution capability. |
@@ -50,9 +50,9 @@ This is an evidence map, not a claim that all mapped names are independent execu
 | `while` | Conditional iteration | `ControlFlowPluginsIntegrationTest.testWhilePlugin` | Direct XML runtime; iteration order/count asserted. |
 | `xml-to-json` | XML conversion | `XmlTransformationPluginsIntegrationTest.testXmlToJsonPluginPreservesElementValues` | Direct XML runtime; converted values asserted. |
 | `xpath` | XPath selection | `XmlTransformationPluginsIntegrationTest.testXPathPluginExtractsBothItemValues`; `XPathWithGetVarIntegrationTest.testXPathTextNode` | Direct XML runtime; selected text values asserted. |
-| `xquery` | XQuery evaluation | `XmlTransformationPluginsIntegrationTest.testXQueryPluginReturnsBothSelectedItems`; `XQueryComplexTypesIntegrationTest`; `XQueryParameterTypesTest` | Direct XML runtime plus typed/sequence/node parameter contracts; empty sequence added by PR #181. |
-| `xq-expression` | XQuery expression child | `XQueryPlugin` reads child `_textContent`; XQuery integration and parameter-type suites | Declarative XQuery configuration node; parent consumes expression text, not an independently dispatched capability. |
-| `xq-param` | XQuery parameter child | `XQueryPlugin` reads name/type/value; `XQueryParameterTypesTest`; `XQueryComplexTypesIntegrationTest` | Declarative XQuery configuration node; parent consumes the parameter and executes nested value-producing children. |
+| `xquery` | XQuery evaluation | `XmlTransformationPluginsIntegrationTest.testXQueryPluginReturnsBothSelectedItems`; `testXQueryEmptySequenceProducesEmptyResultAndContinues`; `XQueryComplexTypesIntegrationTest` (3 methods); `XQueryParameterTypesTest` (8 methods) | Direct XML runtime plus typed scalar/sequence/node parameter contracts, arithmetic and empty-sequence continuation. |
+| `xq-expression` | XQuery expression child | `XQueryPlugin` reads child `_textContent`; `XQueryComplexTypesIntegrationTest` and `XQueryParameterTypesTest` | Declarative XQuery configuration node; parent consumes expression text; parent XML runtime tests prove evaluation with typed parameters. |
+| `xq-param` | XQuery parameter child | `XQueryPlugin` reads name/type/value; `XQueryParameterTypesTest` (8 methods); `XQueryComplexTypesIntegrationTest` (3 methods) | Declarative XQuery configuration node; parent consumes the parameter and executes nested value-producing children; typed scalar/sequence/node results are asserted. |
 | `xslt` | XSLT transformation | `XmlTransformationPluginsIntegrationTest.testXsltPluginAppliesStylesheet` | Direct XML runtime; transformed output asserted. |
 
 `var` is intentionally **not** one of the 44 default mappings. `CorePluginsRegistrar` explicitly comments `VarPlugin removed - use DefPlugin instead`. The class remains annotated/deprecated and may be visible to class/metadata scanning, but that is not proof of default XML runtime registration. By contrast, `set-var` remains an explicit legacy mapping in the 44-name set.
@@ -62,7 +62,7 @@ This is an evidence map, not a claim that all mapped names are independent execu
 - **Direct XML runtime:** configuration is loaded through the XML loader and executed through the Harvester/runtime path; assertions observe output, state, events, file content or request effects.
 - **Parent-consumed XML child:** a parent plugin reads or executes the child as part of its own configuration. This proves the parent-level XML contract, not independent dispatch of the child mapping.
 - **Dual-use:** the mapping has its own executable implementation and is also consumed declaratively by a parent in another XML shape.
-- **Unit-only evidence is not sufficient** for a public runtime mapping when an XML-level contract can reasonably be tested. The `xml` row is pending its direct Failsafe test in PR #183.
+- **Unit-only evidence is not sufficient** for a public runtime mapping when an XML-level contract can reasonably be tested. The `xml` row is dual-use and has direct Failsafe evidence through PR #183.
 
 ## Important configuration-node distinction
 
@@ -83,14 +83,14 @@ The six principal deterministic XML integration suites are:
 - `ControlFlowPluginsIntegrationTest` — 7 methods.
 - `AdvancedPluginsIntegrationTest` — 3 methods.
 - `HttpPluginsIntegrationTest` — 2 methods.
-- `XmlTransformationPluginsIntegrationTest` — 7 methods on current main before PR #183 is merged.
+- `XmlTransformationPluginsIntegrationTest` — 8 methods on current main after PR #183.
 - `TextProcessingPluginsIntegrationTest` — 3 methods.
 
 Additional focused runtime suites cover `empty`, `exit`, `include`, and `log`; request-contract tests cover `http-header` and `http-param`; function/call and XQuery parameter suites provide their own XML runtime coverage.
 
-Current main runtime baseline after PR #181: `d9a1466953a82afc8b6f68b86b4ddb04bde5fe37`. Main push Actions run #537 (`44158373034`) passed all three jobs: Semantic Core contracts, full Surefire/Failsafe, and unqualified Core verify with Checkstyle/JaCoCo validation. Documentation-only PR #182 followed; it did not change runtime source or tests.
+Current main runtime baseline after PR #183: `4a4dcc609f302decdb3fd9f1e3da49790f01fc18`. Main push run #537 (`44158373034`) after PR #181 and post-merge main push run #44161596727 after PR #183 both passed all three jobs: Semantic Core contracts, full Surefire/Failsafe, and unqualified Core verify with Checkstyle/JaCoCo validation. PR #182 and PR #184 changed documentation only.
 
-PR #183 adds the direct standalone `xml` wrapper test. Until its exact-head CI succeeds and it is merged, the `xml` row remains pending and this matrix is not a fully closed acceptance gate.
+Additional XQuery XML-loader/Harvester evidence is provided by `XQueryParameterTypesTest` (8 methods) and `XQueryComplexTypesIntegrationTest` (3 methods), covering typed scalar, sequence and node parameters. The `xml` row is complete; no pending direct-runtime row remains.
 
 ## Remaining audit boundary
 
