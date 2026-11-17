@@ -35,6 +35,7 @@ package org.webharvest.plugin;
 
 import com.google.common.eventbus.EventBus;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.events.PluginExecutionStartedEvent;
 import org.webharvest.runtime.session.events.PluginExecutionCompletedEvent;
@@ -129,6 +130,10 @@ public abstract class AbstractPlugin implements Plugin {
         try {
             result = doExecute(context);
             return result;
+        } catch (ScraperExecutionExitException e) {
+            // A requested scraper exit is control flow, not a plugin failure.
+            executionError = e;
+            throw e;
         } catch (Exception e) {
             executionError = e;
             
@@ -153,7 +158,8 @@ public abstract class AbstractPlugin implements Plugin {
         } finally {
             // A nested plugin may already have restored the interrupt flag.
             // Clear it while this lifecycle performs its own cleanup, then restore it below.
-            if (executionError instanceof InterruptedException) {
+            if (executionError instanceof InterruptedException
+                    && !(executionError instanceof ScraperExecutionExitException)) {
                 Thread.interrupted();
             }
 
