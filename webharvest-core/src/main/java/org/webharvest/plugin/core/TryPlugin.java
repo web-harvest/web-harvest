@@ -67,7 +67,7 @@ import java.util.List;
  * <p>
  * The {@code <try>} processor provides exception handling similar to Java try-catch.
  * It executes its body and if any exception occurs, the {@code <catch>} block is executed
- * with error details available in the {@code ${_error}} variable.
+ * with error details available in the {@code ${error}} variable.
  * </p>
  * 
  * <h3>Usage Examples</h3>
@@ -83,7 +83,7 @@ import java.util.List;
  * </try>
  * <catch>
  *   <file path="errors.log" action="append">
- *     HTTP request failed: ${_error}
+ *     HTTP request failed: ${error}
  *     Timestamp: ${_date}
  *   </file>
  *   <def var="data" value=""/>  <!-- Use empty default -->
@@ -137,12 +137,12 @@ import java.util.List;
  * }</pre>
  * 
  * <h3>Error Variable</h3>
- * <p>Inside {@code <catch>} block, the {@code ${_error}} variable contains error message.</p>
+ * <p>Inside {@code <catch>} block, the {@code ${error}} variable contains error message.</p>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
- *   <li><strong>Error variable:</strong> ${_error} available only inside catch block</li>
+ *   <li><strong>Error variable:</strong> ${error} available only inside catch block</li>
  *   <li><strong>No rethrow:</strong> Exceptions are caught and handled, not propagated</li>
  * </ul>
  * 
@@ -200,7 +200,7 @@ public class TryPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
         }
 
         @Override
@@ -295,7 +295,7 @@ public class TryPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
         }
         
         @Override
@@ -309,7 +309,7 @@ public class TryPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Try Plugin",
-                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable.",
+                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable.",
                 new String[]{"Tab", "Enter", "Escape"}
             );
         }
@@ -463,8 +463,23 @@ public class TryPlugin extends AbstractPlugin {
     }
 
     @Override
+    protected boolean shouldPropagateBodyExecutionFailures() {
+        return true;
+    }
+
+    private boolean isPluginValidationFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        LOGGER.debug("TryPlugin.doExecute: START");
         LOGGER.debug("TryPlugin.doExecute: START");
         
         try {
@@ -484,6 +499,9 @@ public class TryPlugin extends AbstractPlugin {
             throw e;
         } catch (Exception e) {
             IncludeExecutionException.rethrowIfIncludeFailure(e);
+            if (isPluginValidationFailure(e)) {
+                throw e;
+            }
             LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
             LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());
             
