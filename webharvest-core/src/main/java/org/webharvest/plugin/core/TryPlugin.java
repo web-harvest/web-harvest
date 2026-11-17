@@ -63,7 +63,7 @@ import java.util.List;
  * <p>
  * The {@code <try>} processor provides exception handling similar to Java try-catch.
  * It executes its body and if any exception occurs, the {@code <catch>} block is executed
- * with error details available in the {@code ${error}} variable.
+ * with error details available in the {@code ${error}} variable (the legacy alias {@code ${_error}} is also provided).
  * </p>
  * 
  * <h3>Usage Examples</h3>
@@ -133,12 +133,12 @@ import java.util.List;
  * }</pre>
  * 
  * <h3>Error Variable</h3>
- * <p>Inside {@code <catch>} block, the {@code ${error}} variable contains error message.</p>
+ * <p>Inside {@code <catch>} block, {@code ${error}} contains the error message; {@code ${_error}} is a compatibility alias.</p>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
- *   <li><strong>Error variable:</strong> ${error} available only inside catch block</li>
+ *   <li><strong>Error variable:</strong> ${error} is available inside the catch block (${_error} is a compatibility alias)</li>
  *   <li><strong>No rethrow:</strong> Exceptions are caught and handled, not propagated</li>
  * </ul>
  * 
@@ -196,7 +196,7 @@ public class TryPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable (${_error} is a compatibility alias). Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
         }
 
         @Override
@@ -291,7 +291,7 @@ public class TryPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable (${_error} is a compatibility alias). Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
         }
         
         @Override
@@ -305,7 +305,7 @@ public class TryPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Try Plugin",
-                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable.",
+                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable (${_error} is a compatibility alias).",
                 new String[]{"Tab", "Enter", "Escape"}
             );
         }
