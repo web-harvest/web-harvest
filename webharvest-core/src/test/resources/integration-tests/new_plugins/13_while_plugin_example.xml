@@ -4,11 +4,7 @@
     <file action="write" path="while_output.txt">
         <while test="${counter} &lt; 3">
             <template>Counter: ${counter}</template>
-            <def var="counter">${counter + 1}</def>
+            <set-var name="counter" value="${counter + 1}"/>
         </while>
     </file>
 </config>
-
-
-
-
