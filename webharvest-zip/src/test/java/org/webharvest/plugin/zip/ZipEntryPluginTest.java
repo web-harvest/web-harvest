@@ -4,9 +4,15 @@
 
 package org.webharvest.plugin.zip;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.zip.ZipOutputStream;
+
 import org.testng.annotations.Test;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.StringVariable;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -40,4 +46,62 @@ public class ZipEntryPluginTest {
                     "The failure should identify the missing active ZIP context");
         }
     }
+    @Test
+    public void testActiveZipContextRejectsWrongVariableType() {
+        DynamicScopeContext context = mock(DynamicScopeContext.class);
+        when(context.getVar(ZipPlugin.ZIP_OUTPUT_STREAM_CONTEXT_KEY))
+                .thenReturn(new NodeVariable("not a ZIP stream"));
+
+        try {
+            ZipPlugin.getActiveZipOutputStream(context);
+            fail("A non-stream context value must be rejected");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("no ZIP output stream"));
+        }
+    }
+
+    @Test
+    public void testZipEntryReportsArchiveWriteFailure() throws Exception {
+        PluginConfiguration configuration = mock(PluginConfiguration.class);
+        when(configuration.getProperty("name")).thenReturn("broken.txt");
+
+        ZipEntryPlugin plugin = new ZipEntryPlugin() {
+            @Override
+            protected org.webharvest.runtime.variables.Variable executeBody(DynamicScopeContext context) {
+                return new StringVariable("payload");
+            }
+        };
+        plugin.initialize(configuration);
+        plugin.validateConfiguration(configuration);
+
+        OutputStream failingOutput = new OutputStream() {
+            @Override
+            public void write(int value) throws IOException {
+                throw new IOException("simulated ZIP write failure");
+            }
+        };
+        ZipOutputStream zipOutputStream = new ZipOutputStream(failingOutput);
+        DynamicScopeContext context = mock(DynamicScopeContext.class);
+        when(context.getVar(ZipPlugin.ZIP_OUTPUT_STREAM_CONTEXT_KEY))
+                .thenReturn(new NodeVariable(zipOutputStream));
+        when(context.getCharset()).thenReturn("UTF-8");
+
+        try {
+            plugin.execute(context);
+            fail("A failed ZIP write must be reported");
+        } catch (RuntimeException exception) {
+            Throwable cause = exception;
+            while (cause != null && !(cause instanceof IOException)) {
+                cause = cause.getCause();
+            }
+            assertTrue(cause instanceof IOException, "The original I/O failure should remain in the cause chain");
+        } finally {
+            try {
+                zipOutputStream.close();
+            } catch (IOException ignored) {
+                // The test stream deliberately fails on every write.
+            }
+        }
+    }
+
 }
