@@ -417,9 +417,10 @@ assert `metadata.isCorePlugin() == true`. Therefore the annotation and
   those exercise error paths, not successful SQL. `ConnectionPluginTest` has 10
   methods and no `plugin.execute()` call. The remaining seven exception tests and
   four driver-manager tests do not prove SQL behavior.
-- The `MockDBDriver.jar` fixture is only used to verify driver loading; its mock
-  `connect()` throws `UnsupportedOperationException`. The module POM declares no
-  H2 or other JDBC driver, and the XML example is not executed by a Java test.
+- The `MockDBDriver.jar` fixture is used only by `DefaultDriverManagerTest` to verify
+  driver registration/loading; that test never calls `connect()` or executes SQL.
+  The module POM declares no H2 or other JDBC driver, and the XML example is not
+  executed by a Java test.
 - The README claims 29 tests; the four test classes contain 33 `@Test` methods.
 - Standard Semantic Core CI uses `-pl webharvest-core -am`, so it does not build
   or test this optional module.
