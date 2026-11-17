@@ -102,9 +102,8 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <try><template>completed</template>"
-            + "    <catch><def var=\"catchMarker\" value=\"caught\"/><def var=\"caughtError\"><get var=\"error\"/></def></catch>"
-            + "  </try>"
+            + "  <try><template>completed</template></try>"
+            + "  <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
             + "  <def var=\"afterTry\" value=\"completed\"/>"
             + "</config>";
 
@@ -130,8 +129,13 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             + "      <def var=\"caughtError\"><get var=\"error\"/></def>"
             + "      <def var=\"caughtErrorAlias\"><get var=\"_error\"/></def>"
             + "      <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
-            + "    </catch>"
             + "  </try>"
+            + "  <catch>"
+            + "    <def var=\"catchMarker\" value=\"caught\"/>"
+            + "    <def var=\"caughtError\"><get var=\"error\"/></def>"
+            + "    <def var=\"caughtErrorAlias\"><get var=\"_error\"/></def>"
+            + "    <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
+            + "  </catch>"
             + "</config>";
 
         DynamicScopeContext context = executeXmlString(xml);
