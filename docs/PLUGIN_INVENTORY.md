@@ -263,58 +263,126 @@ Evidence links:
 
 These findings refine the inventory only. No runtime code, module boundaries or dependency versions were changed.
 
-## 12. Runtime registry contract gaps
+## 12. Runtime registry contract status (refreshed 2026-11-17)
 
-A focused review of `CorePluginsRegistrar`, `CorePluginRegistry` and the test tree found these additional issues for the unified registration design (Issue #94):
+The exact registration inventory is now protected by
+[CorePluginsRegistrarContractTest.java](../webharvest-core/src/test/java/org/webharvest/definition/CorePluginsRegistrarContractTest.java),
+merged in PR #173. The test verifies the exact 44 XML element names, each expected
+implementation class, the legacy `set-var` alias, and the absence of unexpected
+mappings. It does not claim that all 44 mapped classes are independently executed
+plugin capabilities.
 
-- The test tree contains an explicit `SetVarCompatibilityRegistrationContractTest`, but no exhaustive contract test for all 44 current mappings. `DefaultPluginBodyExecutorTest` exercises only a small subset. The 44-entry count is source-confirmed, but the full set is not protected by one authoritative expected-mapping test.
-- `CorePluginRegistry.registerMapping(...)` uses `ConcurrentHashMap.put`, so duplicate element names silently overwrite earlier mappings. No explicit duplicate/override policy is enforced.
-- The `processorClass` argument to `registerMapping(Class processorClass, Class<? extends Plugin> pluginClass, String elementName)` is ignored; only element name to plugin class is stored. The signature therefore suggests a relationship the registry does not preserve.
-- `CorePluginsRegistrar` maintains a static `initialized` flag separately from the global singleton registry. Calling `CorePluginRegistry.clear()` without `CorePluginsRegistrar.reset()` can leave the registry empty while later `registerCorePlugins()` calls return early because the flag remains true.
+The following registry design gaps remain source-confirmed on the current
+`main` snapshot:
 
-These findings are not a recommendation to patch the current registry in isolation. They are requirements for the reviewed registration architecture: exhaustive mapping/alias contract tests, deterministic duplicate handling, accurate descriptor identity, and lifecycle-safe registry ownership/isolation.
+- `CorePluginRegistry.registerMapping(...)` uses `ConcurrentHashMap.put`, so
+  duplicate element names silently overwrite an earlier mapping. No explicit
+  duplicate/override policy is enforced.
+- The `processorClass` argument to `registerMapping(Class processorClass,
+  Class<? extends Plugin> pluginClass, String elementName)` is ignored; only
+  element name to plugin class is stored. The signature suggests a relationship
+  the registry does not preserve.
+- `CorePluginsRegistrar` keeps a static `initialized` flag separately from the
+  singleton registry. Calling `CorePluginRegistry.clear()` without
+  `CorePluginsRegistrar.reset()` can leave the registry empty while a later
+  `registerCorePlugins()` call returns early.
 
-Evidence:
-- [CorePluginsRegistrar.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginsRegistrar.java)
-- [CorePluginRegistry.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/definition/CorePluginRegistry.java)
-- [SetVarCompatibilityRegistrationContractTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/definition/SetVarCompatibilityRegistrationContractTest.java)
-- [DefaultPluginBodyExecutorTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/DefaultPluginBodyExecutorTest.java)
+These are design requirements for Issue #94, not permission to patch the registry
+in isolation. The target architecture needs deterministic duplicate handling,
+accurate descriptor identity, and lifecycle-safe registry ownership/isolation.
 
-## 13. Core integration-test evidence quality
+### Registration inventory versus executable behavior
 
-The source tree does contain Failsafe-owned XML integration suites. In particular, `XmlBasedIntegrationTestBase` creates a Guice-backed `Harvest`, loads a `ConfigSource`, and executes through `Harvester`. Its default HTTP test module supplies deterministic stubs. Therefore it would be incorrect to say that Core has no end-to-end XML execution tests.
+PR #173 establishes the 44-name registration contract. The source audit also
+identified four registered XML names whose role must not be confused with
+independent plugin dispatch:
 
-However, a source-level review of six major suites shows that test presence often overstates behavioral evidence:
+| XML name | Current source behavior | Evidence classification |
+|---|---|---|
+| `xml` | A standalone plugin mapping exists. Within `<xslt>`, the parent reads child `_textContent` directly rather than dispatching the mapped `XMLPlugin`. | Dual-use: standalone mapping plus declarative XSLT input node. |
+| `stylesheet` | `XsltPlugin` reads child `_textContent` directly. `StylesheetPlugin.doExecute()` currently returns `EmptyVariable.INSTANCE`. | Declarative XSLT configuration node; no independent executable capability demonstrated. |
+| `xq-expression` | `XQueryPlugin` reads child `_textContent` directly. | Declarative XQuery expression node. |
+| `xq-param` | `XQueryPlugin` parses the child name/type/text itself; nested value-producing children are executed by the parent. | Declarative XQuery parameter node. |
 
-| Test class | Test methods | Placeholder `assertTrue(true)` occurrences | Evidence qualification |
-|---|---:|---:|---|
-| `CorePluginsIntegrationTest` | 16 | 13 | XML execution exists; many cases only check non-null context or unconditional success |
-| `ControlFlowPluginsIntegrationTest` | 10 | 8 | XML execution exists; several cases lack assertions on branch/iteration outcomes |
-| `AdvancedPluginsIntegrationTest` | 9 | 8 | XML execution exists; broad catch-and-pass behavior can hide failures |
-| `HttpPluginsIntegrationTest` | 7 | 11 | Broad catch-and-pass; deterministic stub tests should fail on unexpected execution errors |
-| `XmlTransformationPluginsIntegrationTest` | 10 | 6 | Mixed; XPath includes an observable output assertion, several others only check context |
-| `TextProcessingPluginsIntegrationTest` | 10 | 4 | Mixed; some observable assertions, some smoke-only placeholders |
+Evidence: [XsltPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XsltPlugin.java),
+[XQueryPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XQueryPlugin.java),
+[StylesheetPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/StylesheetPlugin.java),
+and [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java).
+The existing XSLT/XQuery integration tests prove parent transformation and
+parameter semantics, not independent dispatch of all four mapped classes.
 
-These counts are static source inspection of the current files, not test-run results. A placeholder occurrence can coexist with a meaningful assertion in the same method; the table records occurrences, not a claim that every such method has no other assertion. The important defect pattern is broad exception handling and unconditional success assertions that can allow behavior regressions to pass.
+**Compatibility rule:** preserve the existing XML names and forms. The future
+descriptor/registry contract should distinguish executable plugin identities from
+declarative configuration-node identities. Do not remove or rename these nodes
+as part of the reliability work.
 
-Tracked as [Issue #98 — Strengthen Core XML integration tests with observable behavior assertions](https://github.com/web-harvest/web-harvest/issues/98).
+## 13. Core XML integration-test evidence quality (refreshed 2026-11-17)
 
-### Revised evidence policy for the 44-element matrix
+The six principal deterministic XML integration suites were re-read from current
+`main` at `8b4071da0ac04b91e048642c40157b0146ceffcf`. The earlier placeholder
+counts in this document are historical and no longer describe the current files.
 
-For each default-registered XML element, record the strongest evidence actually present:
+| Test class | Current test methods | `assertTrue(true)` | Broad catch of Exception / RuntimeException / Throwable | Observable behavior examples |
+|---|---:|---:|---:|---|
+| `CorePluginsIntegrationTest` | 9 | 0 | 0 | Exact text, definition, legacy set-var, get, file output, list contents and value-of results; Sleep duration lower bound. |
+| `ControlFlowPluginsIntegrationTest` | 7 | 0 | 0 | If/Else selected output; Loop/While ordering and counts; Try/Catch branch state and continuation; Case output. |
+| `AdvancedPluginsIntegrationTest` | 3 | 0 | 0 | Exact variable/body values and rendered template output. |
+| `HttpPluginsIntegrationTest` | 2 | 0 | 0 | Deterministic stub response URL/origin and stored response values. |
+| `XmlTransformationPluginsIntegrationTest` | 6 | 0 | 0 | XPath selection, HTML-to-XML, JSON-to-XML, XML-to-JSON, XSLT and XQuery output values/counts. |
+| `TextProcessingPluginsIntegrationTest` | 3 | 0 | 0 | Regexp match/capture list, ordered tokenization, JavaScript result. |
+| **Total** | **30** | **0** | **0** | Source-level assertion review; not a claim of exhaustive 44-class coverage. |
 
-- **Meaningful runtime behavior:** executes through XML and asserts an observable result, state change, output or precise expected exception.
-- **Execution smoke only:** XML is executed but the assertion is only non-null context / no exception, or success is unconditional.
-- **Metadata/unit only:** class construction, metadata, schema or isolated method tests without runtime XML execution.
-- **No evidence found:** no relevant test artifact located.
+The six source files were inspected individually. The counts above are static
+source observations, not test execution results. In particular, zero placeholder
+assertions and zero broad catch-and-pass blocks do not prove every edge case or
+every registered implementation is covered.
 
-Do not infer meaningful coverage from test filenames, class names, annotations, or a green aggregate test run alone. The target is one authoritative mapping/alias contract plus meaningful per-element behavioral evidence where appropriate. This is a prerequisite for reliable Core plugin membership decisions, not a reason to delay unrelated current work.
+The XML integration base uses a Guice-backed `Harvest` / `Harvester` execution
+path and deterministic HTTP stubs. These suites therefore provide meaningful
+runtime evidence for the behaviors named in the table; live-network behavior
+remains separately classified and is not inferred from stubbed tests.
+
+### Additional runtime contracts merged
+
+- **Log** — PR #170: inline body, stdout/stderr routing and return behavior.
+- **Exit** — PR #171: true/false conditions and propagation through Loop, While,
+  Call and Try.
+- **Empty** — PR #172: nested side effects, observable empty result and parent
+  continuation.
+- **44-name registrar** — PR #173: exact mapping names and implementation
+  classes, including legacy `set-var`.
+- **Include** — PR #174: relative include through XML loading and the standard
+  Harvester path; included state is visible and parent execution continues.
+
+Each of these PRs passed its exact-head three-job CI run, including the full
+Maven verify job, Checkstyle and JaCoCo report validation. Root JaCoCo minimums
+remain 0.80 instruction coverage and 0.80 branch coverage. These are exact-PR
+head results; a separately observed post-merge `push` workflow for the combined
+`main` SHA was not available through the current GitHub Actions read interface
+during this audit and is not claimed here.
+
+### Remaining acceptance work
+
+1. Complete the 44-row matrix with one strongest-evidence classification per
+   XML name: meaningful runtime behavior, execution smoke, metadata/unit only,
+   or absent. Keep registration evidence separate from execution evidence.
+2. Decide the descriptor role for the four declarative/dual-use nodes above
+   under Issues #93 and #94, preserving XML compatibility.
+3. Reconcile each remaining class-level gap before closing Issue #98; do not
+   treat the six-suite source scan or aggregate green CI as proof that all 44
+   mapped classes are independently executable.
+4. Confirm the current `main` push CI result through a workflow-run listing
+   capable of returning push-triggered runs, or run an equivalent exact-main
+   verification.
 
 Evidence links:
-- [XmlBasedIntegrationTestBase.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlBasedIntegrationTestBase.java)
-- [CorePluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/CorePluginsIntegrationTest.java)
-- [ControlFlowPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/ControlFlowPluginsIntegrationTest.java)
-- [AdvancedPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/AdvancedPluginsIntegrationTest.java)
-- [HttpPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/HttpPluginsIntegrationTest.java)
-- [XmlTransformationPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlTransformationPluginsIntegrationTest.java)
-- [TextProcessingPluginsIntegrationTest.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
+- [CorePluginsRegistrarContractTest.java](../webharvest-core/src/test/java/org/webharvest/definition/CorePluginsRegistrarContractTest.java)
+- [EmptyPluginRuntimeContractIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/EmptyPluginRuntimeContractIntegrationTest.java)
+- [IncludePluginRuntimeContractIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/IncludePluginRuntimeContractIntegrationTest.java)
+- [XmlBasedIntegrationTestBase.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlBasedIntegrationTestBase.java)
+- [CorePluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/CorePluginsIntegrationTest.java)
+- [ControlFlowPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/ControlFlowPluginsIntegrationTest.java)
+- [AdvancedPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/AdvancedPluginsIntegrationTest.java)
+- [HttpPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/HttpPluginsIntegrationTest.java)
+- [XmlTransformationPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlTransformationPluginsIntegrationTest.java)
+- [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
