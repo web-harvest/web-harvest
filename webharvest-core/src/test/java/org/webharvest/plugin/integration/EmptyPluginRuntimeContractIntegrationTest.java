@@ -31,8 +31,11 @@ package org.webharvest.plugin.integration;
 
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.EmptyVariable;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Runtime contracts for the Empty plugin.
@@ -40,19 +43,29 @@ import static org.testng.Assert.assertEquals;
 public class EmptyPluginRuntimeContractIntegrationTest extends XmlBasedIntegrationTestBase {
 
     @Test(groups = {"integration", "core-plugins"})
-    public void executesNestedPluginsForSideEffectsWithoutStoppingParentExecution() throws Exception {
+    public void executesNestedPluginsForSideEffectsAndReturnsEmptyWithoutStoppingParentExecution()
+            throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <empty>"
-            + "    <def var=\"emptySideEffect\" value=\"executed\"/>"
-            + "  </empty>"
+            + "  <def var=\"emptyResult\">"
+            + "    <empty>"
+            + "      <def var=\"firstInsideEmpty\" value=\"first-ran\"/>"
+            + "      <def var=\"secondInsideEmpty\" value=\"second-ran\"/>"
+            + "    </empty>"
+            + "  </def>"
             + "  <def var=\"afterEmpty\" value=\"continued\"/>"
             + "</config>";
 
         DynamicScopeContext context = executeXmlString(xml);
 
-        assertEquals(context.getVar("emptySideEffect").toString(), "executed",
-            "Empty must execute its child plugins for side effects");
+        assertEquals(context.getVar("firstInsideEmpty").toString(), "first-ran",
+            "Empty must execute its first child for side effects");
+        assertEquals(context.getVar("secondInsideEmpty").toString(), "second-ran",
+            "Empty must execute all child processors for side effects");
+        assertNotNull(context.getVar("emptyResult"),
+            "The enclosing Def must receive Empty's result");
+        assertTrue(context.getVar("emptyResult") instanceof EmptyVariable,
+            "Empty must discard the aggregate body result and return EmptyVariable");
         assertEquals(context.getVar("afterEmpty").toString(), "continued",
             "Parent execution must continue after Empty completes");
     }
