@@ -290,17 +290,15 @@ interface SessionInfo {
 
 ## 🎯 Summary
 
-**The current IDE session payload provides:**
-- ✅ HTTP activity monitoring
-- ✅ Plugin execution breakdown
-- ✅ Visual performance analysis
-- ✅ Complete API access
+**The current IDE session payload may include:**
+- Aggregate HTTP request/byte fields from TokenTracker, or synthetic fallback values
+- Synthetic plugin estimates based on selected XML tags
+- Basic session duration and result-variable count
+- Session details in the completed-execution WebSocket payload; the session-history endpoint omits HTTP/plugin fields
 
 **UI Status:**
-- ✅ All metric cards implemented
-- ✅ Visual bars for plugin breakdown
-- ✅ Professional design
-- ✅ Responsive layout
+- The IDE renders the session fields supplied by the execution payload.
+- Displaying a metric does not establish that its value is measured or operationally reliable.
 
 **Data Status:**
 - HTTP request/byte totals may be aggregated from TokenTracker or may be synthetic fallback values.
