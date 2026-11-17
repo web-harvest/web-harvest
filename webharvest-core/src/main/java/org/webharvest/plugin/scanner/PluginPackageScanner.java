@@ -59,7 +59,7 @@ public class PluginPackageScanner {
             if (packageName == null || packageName.trim().isEmpty()) {
                 continue;
             }
-            LOG.info("Scanning package for plugins: {}", packageName);
+            LOG.info("Scanning package for plugins: " + packageName);
             scanPackage(packageName.trim());
         }
     }
@@ -88,13 +88,13 @@ public class PluginPackageScanner {
                         registeredCount++;
                     }
                 } catch (ClassNotFoundException | LinkageError | SecurityException e) {
-                    LOG.warn("Skipping unloadable class {} while scanning {}: {}",
-                            candidate.getKey(), packageName, e.toString());
+                    LOG.warn("Skipping unloadable class " + candidate.getKey()
+                            + " while scanning " + packageName + ": " + e.toString());
                 }
             }
-            LOG.info("Registered {} plugins from package: {}", registeredCount, packageName);
+            LOG.info("Registered " + registeredCount + " plugins from package: " + packageName);
         } catch (IOException e) {
-            LOG.warn("Failed to enumerate package {}: {}", packageName, e.toString());
+            LOG.warn("Failed to enumerate package " + packageName + ": " + e.toString());
         }
     }
 
@@ -108,7 +108,7 @@ public class PluginPackageScanner {
                     && !java.lang.reflect.Modifier.isAbstract(modifiers)
                     && Plugin.class.isAssignableFrom(clazz);
         } catch (LinkageError | SecurityException e) {
-            LOG.warn("Cannot inspect potential plugin class {}: {}", clazz.getName(), e.toString());
+            LOG.warn("Cannot inspect potential plugin class " + clazz.getName() + ": " + e.toString());
             return false;
         }
     }
@@ -120,7 +120,7 @@ public class PluginPackageScanner {
             String elementName = annotation.elementName();
             Class<? extends Plugin> pluginClass = (Class<? extends Plugin>) clazz;
             registry.registerMapping(null, pluginClass, elementName);
-            LOG.debug("Registered plugin: {} -> {}", elementName, clazz.getName());
+            LOG.debug("Registered plugin: " + elementName + " -> " + clazz.getName());
             return true;
         } catch (RuntimeException | LinkageError e) {
             LOG.error("Failed to register plugin class " + clazz.getName(), e);
@@ -143,13 +143,13 @@ public class PluginPackageScanner {
                     try {
                         findClasses(new File(resource.toURI()), packageName, loader, classes);
                     } catch (java.net.URISyntaxException e) {
-                        LOG.warn("Invalid package resource URL {}: {}", resource, e.toString());
+                        LOG.warn("Invalid package resource URL " + resource + ": " + e.toString());
                     }
                 } else if ("jar".equals(resource.getProtocol())) {
                     findClassesInJar(resource, path, loader, classes);
                 } else {
-                    LOG.debug("Ignoring unsupported package resource protocol {} for {}",
-                            resource.getProtocol(), resource);
+                    LOG.debug("Ignoring unsupported package resource protocol " + resource.getProtocol()
+                            + " for " + resource);
                 }
             }
         }
