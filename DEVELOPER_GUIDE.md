@@ -1,7 +1,9 @@
 # WebHarvest Developer Guide
 
-**Version:** 2.3.1  
-**Last Updated:** November 7, 2025
+**Historical version context:** 2.3.1  
+**Original status date:** November 7, 2025
+
+> **Status: historical technical reference.** This guide contains implementation snapshots, plugin counts and IDE details recorded in November 2025. Those statements have not been revalidated as current architecture or API contracts. For current project direction, module boundaries and plugin-extension status, use [Project Direction](docs/PROJECT_DIRECTION.md), [Monorepo Policy](docs/MONOREPO.md) and the [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md). For current build and test commands, use [CONTRIBUTING.md](CONTRIBUTING.md) and [BUILD_AND_TEST.md](BUILD_AND_TEST.md).
 
 ## 🎉 **Recent Achievements**
 
@@ -406,7 +408,7 @@ The IDE ships 27 curated examples stored in `webharvest-ide/src/main/resources/w
        print(example.name, json.loads(resp.read())['valid'])
    PY
    ```
-3. **Execute through the IDE** (Visual Designer → Examples → Run) to ensure WebSocket streaming behaves correctly. Backend execution depends on the WebSocket handshake, więc testy HTTP `POST /api/execute` bez UI zwrócą 400 – korzystaj z interaktywnego IDE.
+3. **Execute through the IDE** (Visual Designer → Examples → Run) to ensure WebSocket streaming behaves correctly. Backend execution depends on the WebSocket handshake, so HTTP `POST /api/execute` tests without the UI return HTTP 400. Use the interactive IDE for this workflow.
 4. **Rebuild frontend + JAR after any example change** so the packaged static assets pick up the new XML:
    ```bash
    cd webharvest-ide/frontend && npm run build
