@@ -561,11 +561,11 @@ public class TextPluginTest {
     }
 
     @Test(enabled = false) // ULTRA-LEAN v2.2.x: Legacy test using xmlNode - needs rewrite
-    public void testSchemaGetAttribute() {
+    public void testSchemaGetAttributeDoesNotThrow() {
         PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
         // Just testing that it doesn't throw exception
         PluginConfigurationSchema.AttributeDefinition attr = schema.getAttribute("delimiter");
-        assertTrue(true);
+        // Successful lookup call confirms the schema accessor does not throw.
     }
 
     // ==================================================================================
