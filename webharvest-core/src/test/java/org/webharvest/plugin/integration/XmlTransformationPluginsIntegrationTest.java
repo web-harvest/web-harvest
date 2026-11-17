@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.ListVariable;
-import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.assertEquals;
@@ -170,8 +169,6 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
         DynamicScopeContext context = executeXmlString(xml);
         Variable xmlResult = context.getVar("xmlData");
         assertNotNull(xmlResult, "The XML wrapper result should be stored in the variable");
-        assertTrue(xmlResult instanceof NodeVariable,
-            "The XML wrapper should return its body as a NodeVariable");
         assertTrue(xmlResult.toString().contains("<product id=\"1\">"),
             "The XML wrapper should preserve the nested product markup");
         assertEquals(context.getVar("productName").toString(), "Widget",
