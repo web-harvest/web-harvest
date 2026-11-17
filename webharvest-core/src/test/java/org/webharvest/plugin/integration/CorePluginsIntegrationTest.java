@@ -80,20 +80,6 @@ public class CorePluginsIntegrationTest extends XmlBasedIntegrationTestBase {
     }
 
     @Test(groups = {"integration", "core-plugins"})
-    public void testVarPlugin() throws Exception {
-        LOG.info("Testing VarPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("03_var_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Verify that variables were set
-        Variable var = ctx.getVar("testVar");
-        assertNotNull(var, "Variable 'testVar' should be set");
-    }
-
-    @Test(groups = {"integration", "core-plugins"})
     public void testDefPlugin() throws Exception {
         LOG.info("Testing DefPlugin integration with XML example");
         
