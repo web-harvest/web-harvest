@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.EmptyVariable;
 
 import static org.testng.Assert.*;
 
@@ -111,6 +112,8 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
         assertNull(context.getVar("catchMarker"),
             "Catch body must not execute when the Try body completes without an error");
+        assertNull(context.getVar("caughtError"),
+            "The Catch body must not expose an error value after a successful Try");
         assertNotNull(context.getVar("afterTry"),
             "Execution should continue after a successful Try/Catch construct");
         assertEquals(context.getVar("afterTry").toString(), "completed");
@@ -149,13 +152,18 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             "The catch body must be able to read the error type");
         assertFalse(context.getVar("caughtErrorType").toString().trim().isEmpty(),
             "The error type must not be empty");
+        assertTrue(context.getVar("error") instanceof EmptyVariable,
+            "The handled error must not leak outside its Catch block");
+        assertTrue(context.getVar("_error") instanceof EmptyVariable,
+            "The compatibility error alias must not leak outside its Catch block");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testOrdinaryBodyFailureOutsideTryKeepsBestEffortSiblingExecution() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <regexp><regexp-pattern>[</regexp-pattern><regexp-source>value</regexp-source></regexp>"
+            + "  <xquery><xq-expression><![CDATA[for $item in $input/root/item "
+            + "return <result>{$item/text()}</result>]]></xq-expression></xquery>"
             + "  <def var=\"afterFailure\" value=\"continued\"/>"
             + "</config>";
 
