@@ -128,8 +128,7 @@ public class IfPluginTest {
     @Test
     public void testInitializeWithValidConfiguration() throws PluginException {
         plugin.initialize(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        assertTrue(plugin.isInitialized(), "Valid configuration should initialize the plugin");
     }
 
     @Test(expectedExceptions = PluginValidationException.class)
@@ -138,16 +137,15 @@ public class IfPluginTest {
     }
 
     @Test
-    public void testValidateConfigurationWithMissingCondition() throws PluginValidationException {
+    public void testValidateConfigurationAllowsMissingCondition() throws PluginValidationException {
         when(configuration.getProperty("condition")).thenReturn(null);
         // IfPlugin doesn't throw PluginValidationException for missing condition
         plugin.validateConfiguration(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        // Successful return confirms the current contract accepts this condition value.
     }
 
     @Test
-    public void testValidateConfigurationWithEmptyCondition() throws PluginValidationException {
+    public void testValidateConfigurationAllowsEmptyCondition() throws PluginValidationException {
         when(configuration.getProperty("condition")).thenReturn("");
         // IfPlugin doesn't throw PluginValidationException for empty condition
         plugin.validateConfiguration(configuration);
