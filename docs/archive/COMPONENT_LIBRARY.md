@@ -1,3 +1,5 @@
+> **Historical design reference — not an implementation contract.** This document records an earlier website/IDE component proposal. Confirm current frontend consumers and implementation before reusing its tokens or component specifications.
+
 # WebHarvest Component Library
 
 **Reusable components for Website + IDE**
