@@ -146,17 +146,20 @@ This example calls `https://httpbin.org/get` and therefore requires network acce
 ✅ <def var="url">...</def>
 ```
 
-### Legacy: `<var>`
+### Deprecated `<var>` class (not in the default XML mapping set)
 
-`<var>` remains registered for compatibility. It is not the preferred way to read or define variables in new configurations:
+`VarPlugin` remains in the source tree and carries a `@CorePlugin` annotation, but `CorePluginsRegistrar` explicitly omits it with the comment `VarPlugin removed - use DefPlugin instead`. It is **not** one of the 44 default Core XML mappings. Do not use `<var>` in standard configurations.
+
+Use the explicit forms instead:
 ```xml
-<!-- Legacy lookup/definition form -->
-<var name="url">https://example.com</var>
-
-<!-- Preferred explicit forms -->
+<!-- Define a variable -->
 <def var="url">https://example.com</def>
+
+<!-- Read a variable -->
 <get var="url"/>
 ```
+
+Annotation-based class discovery or IDE metadata visibility is not proof that an element is registered for default XML runtime dispatch. The `set-var` element is different: it remains an explicit legacy mapping in the 44-name registrar set, and both `name` and `var` attributes are supported.
 
 ### Supported legacy attribute: `name` on `<set-var>`
 
