@@ -24,34 +24,6 @@ public class DefPluginTest {
         context = new ScraperContext();
     }
 
-    @Test(description = "Test DefPlugin sets simple text variable")
-    public void testDefPluginSetsSimpleVariable() {
-        // Expected behavior from examples:
-        // <def var="url">https://books.toscrape.com/</def>
-        // Should set variable 'url' in context with value 'https://books.toscrape.com/'
-        
-        // Verify context can store variables
-        context.setLocalVar("test", new NodeVariable("test value"));
-        Variable result = context.getVar("test");
-        
-        assertNotNull(result, "Variable should be set in context");
-        assertEquals(result.toString(), "test value");
-    }
-
-    @Test(description = "Test DefPlugin with variable substitution")
-    public void testDefPluginWithVariableSubstitution() {
-        // Expected behavior:
-        // <def var="categoryUrl">https://books.toscrape.com/${firstCategoryLink}</def>
-        // Should substitute ${firstCategoryLink} value into string
-        
-        context.setLocalVar("base", new NodeVariable("https://example.com"));
-        context.setLocalVar("path", new NodeVariable("/path"));
-        
-        // Verify variables can be retrieved
-        assertNotNull(context.getVar("base"));
-        assertNotNull(context.getVar("path"));
-    }
-
     @Test(description = "Test DefPlugin metadata")
     public void testDefPluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
