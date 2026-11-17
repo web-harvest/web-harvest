@@ -161,6 +161,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                     results.add(childResult);
                 }
             } catch (IllegalArgumentException e) {
+                if (isIncludeExecutionFailure(e)) {
+                    throw e;
+                }
                 if (e.getCause() instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
                     // Invalid configuration is a hard failure.
                     throw e;
@@ -171,6 +174,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 // The enclosing AbstractPlugin lifecycle restores the flag after cleanup.
                 throw e;
             } catch (Exception e) {
+                if (isIncludeExecutionFailure(e)) {
+                    throw e;
+                }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
                 // Preserve historical body behavior for non-validation runtime failures:
                 // continue with remaining siblings.
@@ -178,6 +184,17 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
 
         return new ListVariable(results);
+    }
+
+    private boolean isIncludeExecutionFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof org.webharvest.plugin.exceptions.IncludeExecutionException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private PluginConfiguration withSiblingElse(
