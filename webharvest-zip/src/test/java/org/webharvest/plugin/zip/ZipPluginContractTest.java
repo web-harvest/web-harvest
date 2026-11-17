@@ -147,7 +147,7 @@ public class ZipPluginContractTest {
             plugin.getConfigurationSchema().validate(invalid);
             fail("Schema validation must reject an empty entry name");
         } catch (Exception expected) {
-            assertTrue(expected.getMessage().contains("name"));
+            assertTrue(expected.getMessage().contains("Name"));
         }
 
         plugin.initialize(invalid);
