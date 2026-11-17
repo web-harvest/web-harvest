@@ -6,17 +6,14 @@
  * conditions are met:
  *
  * * Redistributions of source code must retain the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer.
+ *   copyright notice, this list of conditions and the following disclaimer.
  *
  * * Redistributions in binary form must reproduce the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer in the documentation and/or other
- *   materials provided with the distribution.
+ *   copyright notice, this list of conditions and the following disclaimer
+ *   in the documentation and/or other materials provided with the distribution.
  *
  * * The name of Web-Harvest may not be used to endorse or promote
- *   products derived from this software without specific prior
- *   written permission.
+ *   products derived from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -27,8 +24,8 @@
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE POSSIBILITY
- * OF SUCH DAMAGE.
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 package org.webharvest.definition;
@@ -53,8 +50,8 @@ public final class CorePluginRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger(CorePluginRegistry.class);
 
     private static final CorePluginRegistry INSTANCE = new CorePluginRegistry();
-    
-    private final Map<String, Class<? extends Plugin>> elementNameToPluginMap = 
+
+    private final Map<String, Class<? extends Plugin>> elementNameToPluginMap =
         new ConcurrentHashMap<>();
 
     /**
@@ -80,7 +77,7 @@ public final class CorePluginRegistry {
      * @param pluginClass the plugin class
      * @param elementName the element name
      */
-    public void registerMapping(Class processorClass, 
+    public void registerMapping(Class processorClass,
                                Class<? extends Plugin> pluginClass,
                                String elementName) {
         LOGGER.debug("CorePluginRegistry.registerMapping: " + elementName + " -> " + pluginClass.getName());
@@ -105,6 +102,19 @@ public final class CorePluginRegistry {
      */
     public Class<? extends Plugin> getPluginClass(String elementName) {
         return elementNameToPluginMap.get(elementName);
+    }
+
+    /**
+     * Returns an immutable snapshot of the registered XML element names.
+     *
+     * <p>Package-private to keep registry enumeration out of the public API while
+     * allowing the registrar contract test to verify the complete mapping set.</p>
+     *
+     * @return an immutable snapshot of registered element names
+     */
+    java.util.Set<String> getRegisteredElementNames() {
+        return java.util.Collections.unmodifiableSet(
+                new java.util.HashSet<>(elementNameToPluginMap.keySet()));
     }
 
     /**
