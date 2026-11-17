@@ -82,7 +82,59 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return EmptyVariable.INSTANCE;
         }
 
+        if ("try".equals(config.getElementName())) {
+            return executeTryChildren(config.getChildren(), context);
+        }
+
         return executeChildren(config.getChildren(), context);
+    }
+
+    /**
+     * Executes a Try body with fail-fast semantics and dispatches an ordinary
+     * runtime failure to its optional Catch child. Other plugin bodies retain
+     * the historical best-effort sibling execution policy.
+     *
+     * @param children ordered Try children
+     * @param context execution context
+     * @return the Try body result or the Catch body result
+     * @throws InterruptedException if execution is interrupted
+     */
+    private Variable executeTryChildren(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+        final List<PluginConfiguration> tryBody = new ArrayList<>();
+        PluginConfiguration catchConfiguration = null;
+
+        if (children != null) {
+            for (PluginConfiguration child : children) {
+                if ("catch".equals(child.getElementName())) {
+                    catchConfiguration = child;
+                } else {
+                    tryBody.add(child);
+                }
+            }
+        }
+
+        try {
+            return executeChildrenInternal(tryBody, context, true);
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (Exception e) {
+            if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e)) {
+                throw e;
+            }
+
+            final String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            context.setLocalVar("error", new NodeVariable(message));
+            context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
+
+            if (catchConfiguration == null) {
+                return EmptyVariable.INSTANCE;
+            }
+
+            // Execute Catch outside the guarded Try body: a Catch failure is not
+            // another failure of the Try body and must not recursively re-enter Catch.
+            return executeChildPlugin(catchConfiguration, context);
+        }
     }
 
     /**
@@ -115,7 +167,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
             throws InterruptedException {
         validateSiblingElsePairs(children);
-        return executeChildrenInternal(children, context);
+        return executeChildrenInternal(children, context, false);
     }
 
     /**
@@ -130,11 +182,12 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      */
     public Variable executeSelectedBranch(
             List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
-        return executeChildrenInternal(children, context);
+        return executeChildrenInternal(children, context, false);
     }
 
     private Variable executeChildrenInternal(
-            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+            List<PluginConfiguration> children, DynamicScopeContext context, boolean failFast)
+            throws InterruptedException {
         if (children == null || children.isEmpty()) {
             return EmptyVariable.INSTANCE;
         }
@@ -164,8 +217,11 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 if (isIncludeExecutionFailure(e)) {
                     throw e;
                 }
-                if (e.getCause() instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
+                if (isPluginValidationFailure(e)) {
                     // Invalid configuration is a hard failure.
+                    throw e;
+                }
+                if (failFast) {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
@@ -174,7 +230,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 // The enclosing AbstractPlugin lifecycle restores the flag after cleanup.
                 throw e;
             } catch (Exception e) {
-                if (isIncludeExecutionFailure(e)) {
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e) || failFast) {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
@@ -184,6 +240,17 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
 
         return new ListVariable(results);
+    }
+
+    private boolean isPluginValidationFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private boolean isIncludeExecutionFailure(Throwable failure) {
