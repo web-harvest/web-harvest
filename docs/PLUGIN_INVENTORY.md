@@ -73,7 +73,7 @@ The current source tree contains these plugin-named implementation classes outsi
 | `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Optional-integration candidate; inspect connection/runtime support classes |
 | `webharvest-mail` | `MailPlugin` | Optional-integration candidate |
 | `webharvest-webbrowser` | `WebBrowserPlugin` | Optional-integration candidate |
-| `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 replaces parent-instance lookup with a scoped execution-context stream and adds nested-archive runtime evidence; remains outside default Core |
+| `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 adds an explicit `ZipPluginRegistrar`, scoped execution-context stream and nested-archive runtime evidence; remains outside default Core |
 
 The database module also contains the following runtime/support classes, which are part of the module boundary audit even though they are not plugin entry points by name:
 
