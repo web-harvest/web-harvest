@@ -361,6 +361,67 @@ head results; a separately observed post-merge `push` workflow for the combined
 `main` SHA was not available through the current GitHub Actions read interface
 during this audit and is not claimed here.
 
+### Unit-test false-green cleanup — PR #176 merged
+
+A source scan of the 43 conventional `*PluginTest.java` paths that resolved for
+the 44 Core registrar mappings (the expected `ScriptPluginTest` path did not
+resolve) found 35 unconditional `assertTrue(true)` placeholders in 15 files.
+The other 28 inspected files contained none.
+
+PR #176 was merged as
+[`5611642`](https://github.com/web-harvest/web-harvest/commit/5611642ddd76daae5e562bea5680fb87c973e6ca).
+It removed all 35 placeholders:
+- initialization tests now assert the plugin is initialized;
+- valid-configuration tests call validation directly, so an unexpected
+  exception fails the test naturally;
+- Case and Text schema tests assert that undeclared attributes are absent;
+- 11 non-executing/context-only or explicitly unimplemented Def, Template and
+  XQuery test methods were removed rather than counted as behavioral evidence.
+
+This is a test-honesty correction, not a claim that 35 new behaviors are covered.
+In particular, XQuery parameter binding, arithmetic aggregation and empty-result
+handling still need real runtime tests. The parent XQuery XML integration test
+does not cover those scenarios. The per-plugin matrix must continue to separate
+metadata/schema smoke tests from observable runtime behavior.
+
+## 14. Optional-module execution and dependency evidence (2026-11-17)
+
+A targeted source/POM/test audit covered FTP, Mail, WebBrowser and ZIP. This is
+evidence for the module boundary review in Issue #93, not an approved Core
+membership decision.
+
+| Module | Direct runtime dependency | Source-confirmed side effects / lifecycle | Current test evidence |
+|---|---|---|---|
+| `webharvest-ftp` | `commons-net:commons-net` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin` and `FtpListPlugin` connect to remote FTP servers, authenticate, and read/write/list remote files. The connection-oriented implementations disconnect in `finally`. Requires external network, credentials and remote filesystem access. | `FtpPluginIntegrationTest` only checks that the example XML resource exists. `FtpPluginTest` mostly covers metadata/schema/initialization; its execute and invalid-action tests accept a broad `Exception` without asserting the exact failure. No deterministic FTP server execution contract was found in the inspected tests. |
+| `webharvest-mail` | `org.apache.commons:commons-email` | `MailPlugin` creates SimpleEmail/HtmlEmail and calls `email.send()`; this is an external SMTP/network side effect that can deliver real email. | `MailPluginIntegrationTest` only checks that the example XML resource exists. No deterministic SMTP execution contract was found in the inspected integration test. |
+| `webharvest-webbrowser` | `net.sourceforge.htmlunit:htmlunit:2.70.0` | `WebBrowserPlugin` loads remote URLs, executes JavaScript/AJAX and stores WebClients in static `namedPages` / `defaultPage` state. The explicit `close` action closes clients, but the inspected class has no automatic Harvester-run cleanup hook; the static default client also raises cross-run isolation/concurrency questions. | The integration test executes XML but asserts only a non-null context; it does not assert loaded page content or script results. |
+| `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a `ZipOutputStream` and closes it in `finally`. `ZipEntryPlugin.getParentZipPlugin(context)` unconditionally returns null, so every `<zip-entry>` currently fails before writing. | `ZipPluginIntegrationTest` only checks that the example XML resource exists; it does not execute the Harvester or inspect archive entries. Confirmed defect is tracked in Issue #97. |
+| `webharvest-database` | `commons-dbcp:commons-dbcp` | The module POM confirms the database-pooling dependency and Core dependency. Guessed source paths for `DatabasePlugin` and `ConnectionPlugin` did not resolve in this pass; no implementation or lifecycle claim is made here. | Exact implementation/test paths remain to be located and inspected. |
+
+The inspected FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
+annotations despite being in optional Maven modules. FTP's unit test also
+asserts `metadata.isCorePlugin() == true`. Therefore the annotation and
+`PluginMetadata.isCorePlugin()` flag are not reliable product-boundary signals.
+Keep source module ownership, Maven dependency direction, runtime registration,
+metadata discovery and future product classification as separate inventory
+columns.
+
+Evidence links:
+- [FTP module POM](../webharvest-ftp/pom.xml)
+- [FtpPlugin.java](../webharvest-ftp/src/main/java/org/webharvest/plugin/ftp/FtpPlugin.java)
+- [FtpGetPlugin.java](../webharvest-ftp/src/main/java/org/webharvest/plugin/ftp/FtpGetPlugin.java)
+- [FtpPutPlugin.java](../webharvest-ftp/src/main/java/org/webharvest/plugin/ftp/FtpPutPlugin.java)
+- [FtpListPlugin.java](../webharvest-ftp/src/main/java/org/webharvest/plugin/ftp/FtpListPlugin.java)
+- [Mail module POM](../webharvest-mail/pom.xml)
+- [MailPlugin.java](../webharvest-mail/src/main/java/org/webharvest/plugin/mail/MailPlugin.java)
+- [WebBrowser module POM](../webharvest-webbrowser/pom.xml)
+- [WebBrowserPlugin.java](../webharvest-webbrowser/src/main/java/org/webharvest/plugin/webbrowser/WebBrowserPlugin.java)
+- [ZIP module POM](../webharvest-zip/pom.xml)
+- [ZipPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipPlugin.java)
+- [ZipEntryPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipEntryPlugin.java)
+- [ZIP integration test](../webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
+- [Database module POM](../webharvest-database/pom.xml)
+
 ### Remaining acceptance work
 
 1. Complete the 44-row matrix with one strongest-evidence classification per
