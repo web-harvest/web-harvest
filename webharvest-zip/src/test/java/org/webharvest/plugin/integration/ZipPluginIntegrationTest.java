@@ -27,7 +27,7 @@ import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.CorePluginRegistry;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.ioc.ScraperModule;
-import org.webharvest.plugin.scanner.PluginPackageScanner;
+import org.webharvest.plugin.zip.ZipPluginRegistrar;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
@@ -50,7 +50,9 @@ public class ZipPluginIntegrationTest {
     public void setUp() {
         CorePluginsRegistrar.reset();
         injector = Guice.createInjector(new ScraperModule(System.getProperty("user.dir")));
-        new PluginPackageScanner(CorePluginRegistry.getInstance()).scanPackages("org.webharvest.plugin.zip");
+        ZipPluginRegistrar.register(CorePluginRegistry.getInstance());
+        assertTrue(CorePluginRegistry.getInstance().isPluginRegistered("zip"));
+        assertTrue(CorePluginRegistry.getInstance().isPluginRegistered("zip-entry"));
         harvest = injector.getInstance(Harvest.class);
     }
 
