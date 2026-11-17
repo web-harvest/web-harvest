@@ -35,11 +35,11 @@ The following root-level files are retained for historical, migration, compatibi
 - [Plugin Metadata Guide](PLUGIN_METADATA_GUIDE.md) — historical metadata/API guidance; verify against current Core source.
 - [Plugin Documentation Generation](PLUGIN_DOCS_GENERATION.md) — historical generator instructions and plugin counts require revalidation.
 - [Working XML Syntax Reference](WORKING_XML_SYNTAX_REFERENCE.md) and [XPath Best Practices](XPATH_BEST_PRACTICES.md) — compatibility references; validate examples against current integration tests.
-- [HttpClient 5 Migration Guide](HTTPCLIENT5_MIGRATION_GUIDE.md), [Pause/Resume Guide](PAUSE_RESUME_GUIDE.md), and [Enhanced Metrics Guide](ENHANCED_METRICS_GUIDE.md) — version-specific migration/feature material; current availability must be verified.
+- [HttpClient 5 Migration Guide](HTTPCLIENT5_MIGRATION_GUIDE.md), [Pause/Resume Guide](PAUSE_RESUME_GUIDE.md), and [Enhanced Metrics Guide](ENHANCED_METRICS_GUIDE.md) — version-specific material. Pause/resume is not wired into the execution loop ([#167](https://github.com/web-harvest/web-harvest/issues/167)); HTTP/plugin metrics remain synthetic until runtime instrumentation is connected ([#168](https://github.com/web-harvest/web-harvest/issues/168)).
 - [October 2025 Release Notes](OCTOBER_2025_RELEASE_NOTES.md) — historical release record.
 - [Changelog](CHANGELOG.md) — release history; distinguish released changes from unreleased work.
 - [Fixed Bugs Archive](BUGS_FIXED.md) — historical defect record, not a current defect/status tracker.
-- [Component Library](COMPONENT_LIBRARY.md) — design/component reference; confirm its current owner and consumers before changing related assets.
+- [Component Library](COMPONENT_LIBRARY.md) — archived design reference; not a current frontend implementation contract. See `docs/archive/COMPONENT_LIBRARY.md`.
 - [Build and Test Guide](BUILD_AND_TEST.md) — current Core, reactor and opt-in network validation commands.
 
 ## Legacy publishing material
