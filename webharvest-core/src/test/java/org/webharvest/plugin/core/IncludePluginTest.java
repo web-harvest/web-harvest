@@ -93,13 +93,13 @@ public class IncludePluginTest {
         assertSame(context.getConfig(), main, "Parent config must be restored after include failure");
     }
 
-    @Test
+    @Test(expectedExceptions = PluginValidationException.class)
     public void shouldValidateRequiredPath() throws Exception {
         IncludePlugin plugin = new IncludePlugin();
         DefaultPluginConfiguration configuration =
                 new DefaultPluginConfiguration("include", NAMESPACE, "include", Collections.emptyMap());
 
-        assertThrows(PluginValidationException.class, () -> plugin.validateConfiguration(configuration));
+        plugin.validateConfiguration(configuration);
     }
 
     @Test
