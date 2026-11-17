@@ -118,6 +118,29 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
+    public void testTryCatchHandlesRuntimeFailureAndSkipsRemainingTryBody() throws Exception {
+        String xml = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>"
+            + "<config xmlns=\\"http://org.webharvest/schema/2.1/core\\">"
+            + "  <try>"
+            + "    <regexp><regexp-pattern>[</regexp-pattern><regexp-source>value</regexp-source></regexp>"
+            + "    <def var=\\"afterFailure\\" value=\\"must-not-run\\"/>"
+            + "    <catch><def var=\\"catchMarker\\" value=\\"caught\\"/></catch>"
+            + "  </try>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertEquals(context.getVar("catchMarker").toString(), "caught",
+            "Catch must execute after a runtime failure in the Try body");
+        assertNull(context.getVar("afterFailure"),
+            "Remaining Try body siblings must not execute after the first failure");
+        assertNotNull(context.getVar("error"),
+            "The caught failure must be exposed through the documented error context variable");
+        assertTrue(context.getVar("error").toString().contains("Unclosed character class"),
+            "The error variable must retain the underlying regular-expression failure");
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
     public void testCasePlugin() throws Exception {
         LOG.info("Testing CasePlugin integration with XML example");
 
