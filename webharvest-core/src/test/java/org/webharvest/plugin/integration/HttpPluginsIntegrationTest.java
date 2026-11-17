@@ -71,11 +71,19 @@ public class HttpPluginsIntegrationTest extends XmlBasedIntegrationTestBase {
     }
 
     @Test(groups = {"integration", "http-plugins"})
-    public void testHttpPluginConfigurationExecutesAgainstStub() throws Exception {
-        String xmlPath = getNewPluginExamplePath("32_http_plugin_example.xml");
+    public void testHttpPluginStoresStubbedResponseInContext() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <def var=\"response\"><http url=\"https://httpbin.org/get\"/></def>"
+            + "</config>";
 
-        DynamicScopeContext context = executeXmlConfig(xmlPath);
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable response = context.getVar("response");
 
-        assertNotNull(context, "HTTP configuration should produce an execution context");
+        assertNotNull(response, "The enclosing definition should store the HTTP response");
+        assertTrue(response.toString().contains("\"url\":\"https://httpbin.org/get\""),
+            "The response should contain the requested URL from the local stub");
+        assertTrue(response.toString().contains("\"origin\":\"127.0.0.1\""),
+            "The response should contain the deterministic local stub payload");
     }
 }
