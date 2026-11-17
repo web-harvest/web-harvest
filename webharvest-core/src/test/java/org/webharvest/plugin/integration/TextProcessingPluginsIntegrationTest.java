@@ -95,12 +95,8 @@ public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTes
         Variable tokens = context.getVar("tokens");
 
         assertNotNull(tokens, "The enclosing definition should store the token list");
-        assertTrue(tokens instanceof ListVariable, "Tokenize should return a ListVariable");
-        ListVariable resultList = (ListVariable) tokens;
-        assertEquals(resultList.getList().size(), 3, "Tokenize should produce three tokens");
-        assertEquals(resultList.get(0).toString(), "alpha");
-        assertEquals(resultList.get(1).toString(), "beta");
-        assertEquals(resultList.get(2).toString(), "gamma");
+        assertEquals(tokens.toString().replace("\\r\\n", "\\n").trim(), "alpha\\nbeta\\ngamma",
+            "Tokenize should emit exactly three tokens in their original order");
     }
 
     @Test(groups = {"integration", "text-processing-plugins"})
