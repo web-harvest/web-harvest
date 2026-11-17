@@ -226,7 +226,7 @@ public class IncludePluginTest {
     @Test
     public void shouldFailClearlyWhenConfigFactoryWasNotInjected() throws Exception {
         write("main.xml", config(""));
-        write("included.xml", config("<def var=\\"includedValue\\" value=\\"loaded\\"/>"));
+        write("included.xml", config("<def var=\"includedValue\" value=\"loaded\"/>"));
         Config main = load("main.xml");
         context.setConfig(main);
 
