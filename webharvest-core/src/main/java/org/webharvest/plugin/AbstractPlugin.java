@@ -325,7 +325,7 @@ public abstract class AbstractPlugin implements Plugin {
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {
-                if (isIncludeExecutionFailure(e)) {
+                if (isIncludeExecutionFailure(e) || shouldPropagateBodyExecutionFailures()) {
                     throw e;
                 }
                 LOGGER.error("PluginBodyExecutor failed: {}", e.getMessage(), e);
@@ -335,6 +335,16 @@ public abstract class AbstractPlugin implements Plugin {
         
         LOGGER.debug("No body content to execute (no children)");
         return EmptyVariable.INSTANCE;
+    }
+
+    /**
+     * Allows control-flow plugins to receive body execution failures instead of
+     * applying the default best-effort sibling execution policy.
+     *
+     * @return true when body execution failures must propagate to the plugin
+     */
+    protected boolean shouldPropagateBodyExecutionFailures() {
+        return false;
     }
 
     private boolean isIncludeExecutionFailure(Throwable failure) {
