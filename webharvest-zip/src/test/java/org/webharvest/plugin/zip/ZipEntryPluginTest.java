@@ -9,6 +9,7 @@ import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
@@ -19,8 +20,12 @@ public class ZipEntryPluginTest {
 
     @Test
     public void testZipEntryOutsideActiveZipContextIsRejected() throws Exception {
+        PluginConfiguration configuration = mock(PluginConfiguration.class);
+        when(configuration.getProperty("name")).thenReturn("orphan.txt");
+
         ZipEntryPlugin plugin = new ZipEntryPlugin();
-        plugin.initialize(mock(PluginConfiguration.class));
+        plugin.initialize(configuration);
+        plugin.validateConfiguration(configuration);
 
         DynamicScopeContext context = mock(DynamicScopeContext.class);
         try {
