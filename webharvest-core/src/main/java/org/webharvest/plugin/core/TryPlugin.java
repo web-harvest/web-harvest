@@ -98,13 +98,13 @@ import java.util.List;
  *   <try>
  *     <http url="https://api.example.com/data"/>
  *     <def var="success" value="true"/>
- *   </try>
- *   <catch>
+ *     <catch>
  *     <def var="retries">
  *       <script>parseInt(context.getVar("retries")) + 1</script>
  *     </def>
  *     <sleep milliseconds="2000"/>
- *   </catch>
+ *     </catch>
+ *   </try>
  * </while>
  * </config>
  * }</pre>
@@ -120,10 +120,10 @@ import java.util.List;
  *     <def var="price">
  *       <xpath expression=".//price/text()">${product}</xpath>
  *     </def>
- *   </try>
- *   <catch>
+ *     <catch>
  *     <def var="price" value="N/A"/>  <!-- Default if XPath fails -->
- *   </catch>
+ *     </catch>
+ *   </try>
  *   
  *   <file path="products.txt" action="append">
  *     Product price: ${price}
