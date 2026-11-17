@@ -6,13 +6,13 @@
  conditions are met:
 
  * Redistributions of source code must retain the above
-   copyright notice, this list of conditions and the
-   following disclaimer.
+   copyright notice, this list of conditions and the following
+   disclaimer.
 
  * Redistributions in binary form must reproduce the above
-   copyright notice, this list of conditions and the
-   following disclaimer in the documentation and/or other
-   materials provided with the distribution.
+   copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided
+   with the distribution.
 
  * The name of Web-Harvest may not be used to endorse or promote
    products derived from this software without specific prior
@@ -36,17 +36,17 @@ package org.webharvest.plugin.integration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.Variable;
 
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Integration tests for XML transformation and processing plugins:
- * XPath, XSLT, XQuery, HtmlToXml, JsonToXml, XmlToJson plugins.
- * 
- * Tests are based on XML examples from examples/new_plugins directory.
- * 
+ * XPath, XSLT, XQuery, HtmlToXml, JsonToXml and XmlToJson.
+ *
+ * Each test asserts data produced by the transformation, not merely that
+ * an execution context was returned.
+ *
  * @since 2.2.0
  */
 public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegrationTestBase {
@@ -54,127 +54,84 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
     private static final Logger LOG = LoggerFactory.getLogger(XmlTransformationPluginsIntegrationTest.class);
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testXPathPlugin() throws Exception {
-        LOG.info("Testing XPathPlugin integration with XML example");
-        
+    public void testXPathPluginExtractsBothItemValues() throws Exception {
+        LOG.info("Testing XPath extraction against the XML fixture");
+
         String xmlPath = getNewPluginExamplePath("07_xpath_plugin_example.xml");
-        String outputPath = "xpath_output.txt";
-        
-        String content = executeAndReadOutputFile(xmlPath, outputPath);
-        
-        assertNotNull(content);
-        assertTrue(content.contains("Test Item") || content.contains("Another Item"), 
-            "XPath should extract item text from XML");
+        String output = executeAndReadOutputFile(xmlPath, "xpath_output.txt");
+
+        assertTrue(output.contains("Test Item"), "XPath output should contain the first selected item");
+        assertTrue(output.contains("Another Item"), "XPath output should contain the second selected item");
+        assertEquals(countOccurrences(output, "Item"), 2,
+            "XPath should return exactly the two matching item text nodes");
     }
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testHtmlToXmlPlugin() throws Exception {
-        LOG.info("Testing HtmlToXmlPlugin integration with XML example");
-        
+    public void testHtmlToXmlPluginPreservesFixtureContent() throws Exception {
+        LOG.info("Testing HTML-to-XML conversion against the fixture");
+
         String xmlPath = getNewPluginExamplePath("06_html_to_xml_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // HtmlToXml should convert HTML to XML successfully
-        assertTrue(true, "HtmlToXmlPlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "html_to_xml_output.xml");
+
+        assertTrue(output.contains("Test HTML"), "Converted XML should contain the heading text");
+        assertTrue(output.contains("This is a test paragraph"),
+            "Converted XML should contain the paragraph text");
     }
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testJsonToXmlPlugin() throws Exception {
-        LOG.info("Testing JsonToXmlPlugin integration with XML example");
-        
+    public void testJsonToXmlPluginPreservesObjectValues() throws Exception {
+        LOG.info("Testing JSON-to-XML conversion against the fixture");
+
         String xmlPath = getNewPluginExamplePath("09_json_to_xml_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // JsonToXml should convert JSON to XML successfully
-        assertTrue(true, "JsonToXmlPlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "json_to_xml_output.xml");
+
+        assertTrue(output.contains("John"), "Converted XML should contain the name value");
+        assertTrue(output.contains("30"), "Converted XML should contain the age value");
+        assertTrue(output.contains("New York"), "Converted XML should contain the city value");
     }
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testXmlToJsonPlugin() throws Exception {
-        LOG.info("Testing XmlToJsonPlugin integration with XML example");
-        
+    public void testXmlToJsonPluginPreservesElementValues() throws Exception {
+        LOG.info("Testing XML-to-JSON conversion against the fixture");
+
         String xmlPath = getNewPluginExamplePath("10_xml_to_json_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // XmlToJson should convert XML to JSON successfully
-        assertTrue(true, "XmlToJsonPlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "xml_to_json_output.json");
+
+        assertTrue(output.contains("Test Item"), "Converted JSON should contain the first item value");
+        assertTrue(output.contains("Another Item"), "Converted JSON should contain the second item value");
     }
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testXsltPlugin() throws Exception {
-        LOG.info("Testing XsltPlugin integration with XML example");
-        
+    public void testXsltPluginAppliesStylesheet() throws Exception {
+        LOG.info("Testing XSLT transformation against the fixture");
+
         String xmlPath = getNewPluginExamplePath("16_xslt_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // XSLT transformation should execute successfully
-        assertTrue(true, "XsltPlugin should execute successfully");
+        String output = executeAndReadOutputFile(xmlPath, "xslt_output.xml");
+
+        assertTrue(output.contains("result"), "XSLT output should contain the result element");
+        assertTrue(output.contains("Test Item"), "XSLT should select and emit the source item text");
     }
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testXQueryPlugin() throws Exception {
-        LOG.info("Testing XQueryPlugin integration with XML example");
-        
+    public void testXQueryPluginReturnsBothSelectedItems() throws Exception {
+        LOG.info("Testing XQuery transformation against the fixture");
+
         String xmlPath = getNewPluginExamplePath("17_xquery_plugin_example.xml");
-        
-        try {
-            DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-            assertNotNull(ctx);
-            assertTrue(true, "XQueryPlugin should execute successfully");
-        } catch (Exception e) {
-            // XQuery plugin may have Saxon context issues - log but don't fail
-            LOG.warn("XQueryPlugin execution had issues (known limitation): {}", e.getMessage());
-            assertTrue(true, "XQueryPlugin executed with known limitations");
+        String output = executeAndReadOutputFile(xmlPath, "xquery_output.xml");
+
+        assertTrue(output.contains("Test Item"), "XQuery output should contain the first selected item");
+        assertTrue(output.contains("Another Item"), "XQuery output should contain the second selected item");
+        assertEquals(countOccurrences(output, "<result>"), 2,
+            "XQuery should emit one result element for each selected item");
+    }
+
+    private int countOccurrences(String text, String token) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(token, index)) >= 0) {
+            count++;
+            index += token.length();
         }
-    }
-
-    @Test(groups = {"integration", "xml-plugins"})
-    public void testXPathWithComplexExpression() throws Exception {
-        LOG.info("Testing XPathPlugin with complex expressions");
-        
-        // Re-use the working XPath example
-        String xmlPath = getNewPluginExamplePath("07_xpath_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "XPath with complex expressions should work");
-    }
-
-    @Test(groups = {"integration", "xml-plugins"})
-    public void testHtmlToXmlWithRealHtml() throws Exception {
-        LOG.info("Testing HtmlToXmlPlugin with real HTML content");
-        
-        String xmlPath = getNewPluginExamplePath("06_html_to_xml_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "HtmlToXml should handle real HTML content");
-    }
-
-    @Test(groups = {"integration", "xml-plugins"})
-    public void testJsonToXmlWithNestedStructure() throws Exception {
-        LOG.info("Testing JsonToXmlPlugin with nested JSON structure");
-        
-        String xmlPath = getNewPluginExamplePath("09_json_to_xml_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "JsonToXml should handle nested JSON");
-    }
-
-    @Test(groups = {"integration", "xml-plugins"})
-    public void testXmlToJsonWithAttributes() throws Exception {
-        LOG.info("Testing XmlToJsonPlugin with XML attributes");
-        
-        String xmlPath = getNewPluginExamplePath("10_xml_to_json_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "XmlToJson should handle XML attributes");
+        return count;
     }
 }
-

@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-    <!-- Test XQuery transformation -->
     <def var="xmlData">&lt;root&gt;&lt;item&gt;Test Item&lt;/item&gt;&lt;item&gt;Another Item&lt;/item&gt;&lt;/root&gt;</def>
-    <def var="xqueryExpression">for $item in //item return &lt;result&gt;{$item/text()}&lt;/result&gt;</def>
-    
     <file action="write" path="xquery_output.xml">
         <xquery>
-            <xq-expression>
-                <get var="xqueryExpression"/>
-            </xq-expression>
-            <xml>
+            <xq-expression><![CDATA[
+                declare variable $input external;
+                for $item in $input/root/item
+                return <result>{$item/text()}</result>
+            ]]></xq-expression>
+            <xq-param name="input" type="node()">
                 <get var="xmlData"/>
-            </xml>
+            </xq-param>
         </xquery>
     </file>
 </config>
-
-
