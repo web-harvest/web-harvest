@@ -82,9 +82,8 @@ public class ConnectionPlugin extends AbstractPlugin {
     private static final String PASSWORD_ATT_NAME = "password";
     private static final String POOL_SIZE_ATT_NAME = "poolSize";
     
-    // Key prefix for storing connections in context
-    private static final String CONNECTION_KEY_PREFIX = "__db_connection_";
-    private static final String CONNECTION_FACTORY_KEY_PREFIX = "__db_factory_";
+    // Internal context keys must obey VariableName rules (names cannot start with underscores).
+    private static final String CONNECTION_FACTORY_KEY_PREFIX = "webharvest_db_factory_";
 
     @Override
     protected void doInitialize(PluginConfiguration configuration) throws PluginException {
