@@ -55,31 +55,22 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.CommonUtil;
 
 /**
- * ZIP entry definition processor - defines single file entry in ZIP archive.
- * 
- * <p>
- * The {@code <zip-entry>} processor defines a single file entry inside ZIP archive.
- * Must be used as a child element of {@code <zip>}.
- * </p>
- * 
- * <h3>Usage</h3>
+ * Defines a single file entry inside an active {@code <zip>} processor.
+ *
+ * <p>The entry body is evaluated and written as bytes using the configured
+ * charset (UTF-8 by default). The active archive is supplied through the
+ * scoped execution context; an entry outside {@code <zip>} is rejected.</p>
+ *
  * <pre>{@code
- * <?xml version="1.0" encoding="UTF-8"?>
- * <config xmlns="http://org.webharvest/schema/2.1/core">
- * <zip path="archive.zip">
- *     <zip-entry name="products.xml">
- *         <http url="https://example.com/products"/>
+ * <def var="archive">
+ *   <zip>
+ *     <zip-entry name="products.txt">
+ *       <template><![CDATA[Product export]]></template>
  *     </zip-entry>
- *     
- *     <zip-entry name="images/logo.jpg" type="binary">
- *         <http url="https://example.com/logo.jpg"/>
- *     </zip-entry>
- * </zip>
- * </config>
+ *   </zip>
+ * </def>
  * }</pre>
- * 
- * <p>See {@link ZipPlugin} for complete ZIP examples.</p>
- * 
+ *
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 2.0
@@ -98,12 +89,7 @@ public class ZipEntryPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // Get parent ZIP plugin from context
-        ZipPlugin zipPlugin = getParentZipPlugin(context);
-        if (zipPlugin == null) {
-            throw new RuntimeException("Cannot use zip entry plugin out of zip plugin context!");
-        }
-
+        ZipOutputStream zipOutStream = ZipPlugin.getActiveZipOutputStream(context);
         String name = getConfiguration().getProperty(NAME_ATT_NAME);
         if (CommonUtil.isEmptyString(name)) {
             throw new RuntimeException("Name of zip entry cannot be empty!");
@@ -114,9 +100,8 @@ public class ZipEntryPlugin extends AbstractPlugin {
             charset = context.getCharset();
         }
 
-        ZipOutputStream zipOutStream = zipPlugin.getZipOutStream();
         Variable bodyResult = executeBody(context);
-        
+
         try {
             zipOutStream.putNextEntry(new ZipEntry(name));
             zipOutStream.write(bodyResult.toBinary(charset));
@@ -124,7 +109,7 @@ public class ZipEntryPlugin extends AbstractPlugin {
         } catch (IOException e) {
             throw new RuntimeException("Error writing ZIP entry: " + e.getMessage(), e);
         }
-        
+
         return EmptyVariable.INSTANCE;
     }
 
@@ -348,6 +333,11 @@ public class ZipEntryPlugin extends AbstractPlugin {
             }
 
             @Override
+            public boolean canAppearAtRoot() {
+                return false;
+            }
+
+            @Override
             public String getVersion() {
                 return "2.1.0";
             }
@@ -362,18 +352,4 @@ public class ZipEntryPlugin extends AbstractPlugin {
         };
     }
 
-    /**
-     * Gets the parent ZIP plugin from the execution context.
-     * This is a simplified approach - in a real implementation, you might need
-     * a more sophisticated way to find the parent plugin.
-     * 
-     * @param context the execution context
-     * @return the parent ZIP plugin or null if not found
-     */
-    private ZipPlugin getParentZipPlugin(DynamicScopeContext context) {
-        // This is a simplified implementation
-        // In a real scenario, you might need to traverse the processor hierarchy
-        // or use a different mechanism to find the parent ZIP plugin
-        return null; // TODO: Implement proper parent plugin resolution
-    }
 }
