@@ -1,35 +1,24 @@
 package org.webharvest.plugin.core;
 
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.ScraperContext;
-import org.webharvest.runtime.variables.NodeVariable;
-import org.webharvest.runtime.variables.Variable;
 
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 
 /**
- * Unit tests for XQueryPlugin to verify XQuery execution works correctly.
- * 
- * TDD: Write test first to define expected behavior, then fix plugin if needed.
+ * Metadata contract for XQueryPlugin.
+ *
+ * <p>Execution scenarios are covered by the XML runtime integration suite.
+ * Parameter, arithmetic and empty-result edge cases remain tracked in Issue #98
+ * and are deliberately not represented by placeholder unit tests.</p>
  */
 public class XQueryPluginTest {
 
-    private XQueryPlugin plugin;
-    private DynamicScopeContext context;
-
-    @BeforeMethod
-    public void setUp() {
-        plugin = new XQueryPlugin();
-        context = new ScraperContext();
-    }
-
     @Test(description = "Test XQuery plugin metadata")
     public void testXQueryPluginMetadata() {
+        XQueryPlugin plugin = new XQueryPlugin();
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
-        assertEquals(plugin.getMetadata().getName(), "XQuery", 
-                    "Plugin name should be 'XQuery Plugin'");
+        assertEquals(plugin.getMetadata().getName(), "XQuery",
+                "Plugin name should be 'XQuery Plugin'");
     }
-
 }
