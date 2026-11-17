@@ -167,7 +167,7 @@ public class ConnectionPlugin extends AbstractPlugin {
             public String getCategory() { return "database"; }
             
             @Override
-            public String[] getTags() { return new String[]{"database", "connection", "pool"}; }
+            public String[] getTags() { return new String[]{"database", "connection", "reuse"}; }
             
             @Override
             public String[] getDependencies() { return new String[0]; }
