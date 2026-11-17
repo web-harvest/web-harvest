@@ -12,73 +12,39 @@ import org.webharvest.plugin.annotations.CorePlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
- * Scanner for automatically discovering and registering plugins from specified packages.
- * 
- * <h3>Bug #40: Package Scanning for Plugins</h3>
- * <p>
- * This class implements the feature requested in Bug #40 to allow plugins from other
- * packages to be automatically scanned and registered. It uses reflection to find all
- * classes annotated with {@link CorePlugin} in the specified packages.
- * </p>
- * 
- * <h3>Usage</h3>
- * <pre>{@code
- * CorePluginRegistry registry = CorePluginRegistry.getInstance();
- * PluginPackageScanner scanner = new PluginPackageScanner(registry);
- * 
- * // Scan custom packages
- * scanner.scanPackages("com.example.plugins", "com.mycompany.webharvest");
- * 
- * // Or via system property
- * // java -Dwebharvest.plugin.packages=com.example.plugins,com.other.plugins
- * scanner.scanSystemPropertyPackages();
- * }</pre>
- * 
- * <h3>System Property Configuration</h3>
- * <p>
- * Packages can be configured via system property:
- * {@code webharvest.plugin.packages} - comma-separated list of package names
- * </p>
- * 
- * @author Robert Bala
- * @since 2.2.0
- * @see CorePlugin
- * @see CorePluginRegistry
+ * Scanner for explicitly configured packages. Scanning is opt-in and does not
+ * participate in the default Core plugin registration.
  */
 public class PluginPackageScanner {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(PluginPackageScanner.class);
-    
-    /**
-     * System property for configuring packages to scan.
-     */
+
+    /** System property for configuring packages to scan. */
     public static final String PLUGIN_PACKAGES_PROPERTY = "webharvest.plugin.packages";
-    
+
     private final CorePluginRegistry registry;
     private final List<String> packagesToScan;
-    
-    /**
-     * Creates a new scanner with the specified registry.
-     * 
-     * @param registry the plugin registry to register discovered plugins
-     */
+
+    /** Creates a scanner with the specified registry. */
     public PluginPackageScanner(CorePluginRegistry registry) {
         this.registry = registry;
         this.packagesToScan = new ArrayList<>();
     }
-    
-    /**
-     * Creates a new scanner with the specified registry and packages to scan.
-     * 
-     * @param registry the plugin registry to register discovered plugins
-     * @param packages the packages to scan for plugins
-     */
+
+    /** Creates a scanner with the specified registry and packages to scan. */
     public PluginPackageScanner(CorePluginRegistry registry, String... packages) {
         this.registry = registry;
         this.packagesToScan = new ArrayList<>();
@@ -86,27 +52,23 @@ public class PluginPackageScanner {
             this.packagesToScan.add(pkg);
         }
     }
-    
-    /**
-     * Scans the specified packages for plugins annotated with {@link CorePlugin}.
-     * 
-     * @param packages the packages to scan
-     */
+
+    /** Scans the explicitly supplied packages for annotated plugins. */
     public void scanPackages(String... packages) {
         for (String packageName : packages) {
+            if (packageName == null || packageName.trim().isEmpty()) {
+                continue;
+            }
             LOG.info("Scanning package for plugins: {}", packageName);
-            scanPackage(packageName);
+            scanPackage(packageName.trim());
         }
     }
-    
-    /**
-     * Scans packages specified in system property {@code webharvest.plugin.packages}.
-     */
+
+    /** Scans packages configured by the webharvest.plugin.packages system property. */
     public void scanSystemPropertyPackages() {
         String packagesProperty = System.getProperty(PLUGIN_PACKAGES_PROPERTY);
         if (packagesProperty != null && !packagesProperty.trim().isEmpty()) {
-            String[] packages = packagesProperty.split(",");
-            for (String pkg : packages) {
+            for (String pkg : packagesProperty.split(",")) {
                 String trimmed = pkg.trim();
                 if (!trimmed.isEmpty()) {
                     scanPackages(trimmed);
@@ -114,152 +76,139 @@ public class PluginPackageScanner {
             }
         }
     }
-    
-    /**
-     * Scans a single package for plugins.
-     * 
-     * @param packageName the package to scan
-     */
+
     private void scanPackage(String packageName) {
+        int registeredCount = 0;
         try {
-            List<Class<?>> classes = getClassesInPackage(packageName);
-            int registeredCount = 0;
-            
-            for (Class<?> clazz : classes) {
-                if (isPluginClass(clazz)) {
-                    registerPluginClass(clazz);
-                    registeredCount++;
+            Map<String, ClassLoader> classes = getClassesInPackage(packageName);
+            for (Map.Entry<String, ClassLoader> candidate : classes.entrySet()) {
+                try {
+                    Class<?> clazz = Class.forName(candidate.getKey(), false, candidate.getValue());
+                    if (isPluginClass(clazz) && registerPluginClass(clazz)) {
+                        registeredCount++;
+                    }
+                } catch (ClassNotFoundException | LinkageError | SecurityException e) {
+                    LOG.warn("Skipping unloadable class {} while scanning {}: {}",
+                            candidate.getKey(), packageName, e.toString());
                 }
             }
-            
             LOG.info("Registered {} plugins from package: {}", registeredCount, packageName);
-            
-        } catch (Exception e) {
-            LOG.warn("Failed to scan package: {} - {}", packageName, e.getMessage());
+        } catch (IOException e) {
+            LOG.warn("Failed to enumerate package {}: {}", packageName, e.toString());
         }
     }
-    
-    /**
-     * Checks if a class is a valid plugin class.
-     * 
-     * @param clazz the class to check
-     * @return true if it's a plugin class, false otherwise
-     */
+
     private boolean isPluginClass(Class<?> clazz) {
-        // Must have @CorePlugin annotation
-        if (!clazz.isAnnotationPresent(CorePlugin.class)) {
+        try {
+            if (!clazz.isAnnotationPresent(CorePlugin.class)) {
+                return false;
+            }
+            int modifiers = clazz.getModifiers();
+            return !clazz.isInterface()
+                    && !java.lang.reflect.Modifier.isAbstract(modifiers)
+                    && Plugin.class.isAssignableFrom(clazz);
+        } catch (LinkageError | SecurityException e) {
+            LOG.warn("Cannot inspect potential plugin class {}: {}", clazz.getName(), e.toString());
             return false;
         }
-        
-        // Must be a concrete class (not interface, not abstract)
-        if (clazz.isInterface() || java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
-            return false;
-        }
-        
-        // Must extend Plugin
-        if (!Plugin.class.isAssignableFrom(clazz)) {
-            LOG.warn("Class {} has @CorePlugin but doesn't extend Plugin", clazz.getName());
-            return false;
-        }
-        
-        return true;
     }
-    
-    /**
-     * Registers a plugin class in the registry.
-     * 
-     * @param clazz the plugin class
-     */
+
     @SuppressWarnings("unchecked")
-    private void registerPluginClass(Class<?> clazz) {
+    private boolean registerPluginClass(Class<?> clazz) {
         try {
             CorePlugin annotation = clazz.getAnnotation(CorePlugin.class);
             String elementName = annotation.elementName();
-            
-            // Cast to Class<? extends Plugin>
             Class<? extends Plugin> pluginClass = (Class<? extends Plugin>) clazz;
-            
-            // Register in CorePluginRegistry
             registry.registerMapping(null, pluginClass, elementName);
-            
             LOG.debug("Registered plugin: {} -> {}", elementName, clazz.getName());
-            
-        } catch (Exception e) {
-            LOG.error("Failed to register plugin class: {}", clazz.getName(), e);
+            return true;
+        } catch (RuntimeException | LinkageError e) {
+            LOG.error("Failed to register plugin class {}: {}", clazz.getName(), e.toString());
+            return false;
         }
     }
-    
+
     /**
-     * Gets all classes in the specified package.
-     * 
-     * @param packageName the package name
-     * @return list of classes
-     * @throws IOException if there's an error reading the package
-     * @throws ClassNotFoundException if a class can't be loaded
+     * Enumerates class names from both exploded directories and JAR package
+     * entries. Each class name is associated with the loader that exposed it.
      */
-    private List<Class<?>> getClassesInPackage(String packageName) 
-            throws IOException, ClassNotFoundException {
-        List<Class<?>> classes = new ArrayList<>();
+    private Map<String, ClassLoader> getClassesInPackage(String packageName) throws IOException {
         String path = packageName.replace('.', '/');
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        
-        Enumeration<URL> resources = classLoader.getResources(path);
-        
-        while (resources.hasMoreElements()) {
-            URL resource = resources.nextElement();
-            File directory = new File(resource.getFile());
-            
-            if (directory.exists()) {
-                classes.addAll(findClasses(directory, packageName));
-            }
-        }
-        
-        return classes;
-    }
-    
-    /**
-     * Recursively finds all classes in a directory.
-     * 
-     * @param directory the directory to search
-     * @param packageName the package name
-     * @return list of classes
-     * @throws ClassNotFoundException if a class can't be loaded
-     */
-    private List<Class<?>> findClasses(File directory, String packageName) 
-            throws ClassNotFoundException {
-        List<Class<?>> classes = new ArrayList<>();
-        
-        if (!directory.exists()) {
-            return classes;
-        }
-        
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return classes;
-        }
-        
-        for (File file : files) {
-            if (file.isDirectory()) {
-                // Recursive scan of subdirectories
-                classes.addAll(findClasses(file, packageName + "." + file.getName()));
-            } else if (file.getName().endsWith(".class")) {
-                // Load the class
-                String className = packageName + '.' + 
-                    file.getName().substring(0, file.getName().length() - 6);
-                
-                try {
-                    Class<?> clazz = Class.forName(className);
-                    classes.add(clazz);
-                } catch (ClassNotFoundException e) {
-                    LOG.warn("Could not load class: {}", className);
-                } catch (NoClassDefFoundError e) {
-                    // Ignore classes that can't be loaded (e.g., test classes in production)
-                    LOG.trace("Skipping class with missing dependencies: {}", className);
+        Map<String, ClassLoader> classes = new LinkedHashMap<>();
+        for (ClassLoader loader : getCandidateClassLoaders()) {
+            Enumeration<URL> resources = loader.getResources(path);
+            while (resources.hasMoreElements()) {
+                URL resource = resources.nextElement();
+                if ("file".equals(resource.getProtocol())) {
+                    try {
+                        findClasses(new File(resource.toURI()), packageName, loader, classes);
+                    } catch (java.net.URISyntaxException e) {
+                        LOG.warn("Invalid package resource URL {}: {}", resource, e.toString());
+                    }
+                } else if ("jar".equals(resource.getProtocol())) {
+                    findClassesInJar(resource, path, loader, classes);
+                } else {
+                    LOG.debug("Ignoring unsupported package resource protocol {} for {}",
+                            resource.getProtocol(), resource);
                 }
             }
         }
-        
         return classes;
     }
-}
 
+    private List<ClassLoader> getCandidateClassLoaders() {
+        Set<ClassLoader> loaders = new LinkedHashSet<>();
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        if (contextLoader != null) {
+            loaders.add(contextLoader);
+        }
+        ClassLoader definingLoader = PluginPackageScanner.class.getClassLoader();
+        if (definingLoader != null) {
+            loaders.add(definingLoader);
+        }
+        if (loaders.isEmpty()) {
+            loaders.add(ClassLoader.getSystemClassLoader());
+        }
+        return new ArrayList<>(loaders);
+    }
+
+    private void findClasses(File directory, String packageName, ClassLoader loader,
+                             Map<String, ClassLoader> classes) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File file : files) {
+            if (file.isDirectory()) {
+                findClasses(file, packageName + "." + file.getName(), loader, classes);
+            } else if (file.getName().endsWith(".class")) {
+                String simpleName = file.getName().substring(0, file.getName().length() - 6);
+                addClassName(packageName + "." + simpleName, loader, classes);
+            }
+        }
+    }
+
+    private void findClassesInJar(URL resource, String packagePath, ClassLoader loader,
+                                  Map<String, ClassLoader> classes) throws IOException {
+        JarURLConnection connection = (JarURLConnection) resource.openConnection();
+        connection.setUseCaches(false);
+        try (JarFile jar = connection.getJarFile()) {
+            Enumeration<JarEntry> entries = jar.entries();
+            String prefix = packagePath.endsWith("/") ? packagePath : packagePath + "/";
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (!entry.isDirectory() && name.startsWith(prefix) && name.endsWith(".class")) {
+                    String className = name.substring(0, name.length() - 6).replace('/', '.');
+                    addClassName(className, loader, classes);
+                }
+            }
+        }
+    }
+
+    private void addClassName(String className, ClassLoader loader, Map<String, ClassLoader> classes) {
+        if (!className.endsWith("module-info") && !className.endsWith("package-info")) {
+            classes.putIfAbsent(className, loader);
+        }
+    }
+}
