@@ -15,9 +15,13 @@ import static org.testng.Assert.fail;
 
 /**
  * Unit contracts for ZIP entry execution context.
+ *
+ * @author WebHarvest Team
+ * @since 2.2.0
  */
 public class ZipEntryPluginTest {
 
+    /** Rejects a ZIP entry when no parent archive is active. */
     @Test
     public void testZipEntryOutsideActiveZipContextIsRejected() throws Exception {
         PluginConfiguration configuration = mock(PluginConfiguration.class);
