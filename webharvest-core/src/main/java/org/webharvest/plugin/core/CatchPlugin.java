@@ -66,7 +66,7 @@ import java.util.List;
  * The {@code <catch>} processor must be paired with a {@code <try>}, either as its final child
  * or as the immediately following sibling in the same parent body. It executes only when an
  * ordinary runtime exception occurs in that Try body and provides the message through
- * {@code ${error}} and the backward-compatible {@code ${_error}} alias
+ * {@code ${error}}
  * and enables graceful error handling, logging, and recovery.
  * </p>
  * 
@@ -87,13 +87,13 @@ import java.util.List;
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>No parameters</strong>: Catch block executes when exception occurs</li>
- *   <li><strong>Error Variable</strong>: ${error} contains the exception message; ${_error} is a compatibility alias</li>
+ *   <li><strong>Error Variable</strong>: ${error} contains the exception message</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Parent Element</strong>: Must be the final child of Try or its immediately following sibling</li>
- *   <li><strong>Error Variable</strong>: ${error} and ${_error} are available within the catch body</li>
+ *   <li><strong>Error Variable</strong>: ${error}</li>
  *   <li><strong>Exception Handling</strong>: Handles ordinary runtime failures; Include failures, validation failures and interruption bypass Catch</li>
  *   <li><strong>Recovery</strong>: Can define fallback values or alternative processing</li>
  * </ul>
@@ -145,7 +145,7 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error} and the compatibility alias ${_error}. Include failures, validation failures and interruption bypass Catch.";
+            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}. Include failures, validation failures and interruption bypass Catch.";
         }
 
         @Override
@@ -223,7 +223,7 @@ public class CatchPlugin extends AbstractPlugin {
         @Override
         public InputPort[] getInputPorts() {
             return new InputPort[]{
-                new InputPort("error", "Error details from Try (${error}; compatibility alias ${_error})", PortType.STRING, false)
+                new InputPort("error", "Error details from Try (${error})", PortType.STRING, false)
             };
         }
         
@@ -241,7 +241,7 @@ public class CatchPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error} and the compatibility alias ${_error}. Include failures, validation failures and interruption bypass Catch.";
+            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}. Include failures, validation failures and interruption bypass Catch.";
         }
         
         @Override
@@ -253,7 +253,7 @@ public class CatchPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Catch Plugin",
-                "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error} and the compatibility alias ${_error}.",
+                "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}.",
                 new String[]{"Tab", "Enter"}
             );
         }
