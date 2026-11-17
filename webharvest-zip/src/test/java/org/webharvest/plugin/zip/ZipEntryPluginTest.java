@@ -12,7 +12,6 @@ import org.testng.annotations.Test;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.NodeVariable;
-import org.webharvest.runtime.variables.StringVariable;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -68,7 +67,7 @@ public class ZipEntryPluginTest {
         ZipEntryPlugin plugin = new ZipEntryPlugin() {
             @Override
             protected org.webharvest.runtime.variables.Variable executeBody(DynamicScopeContext context) {
-                return new StringVariable("payload");
+                return new NodeVariable("payload");
             }
         };
         plugin.initialize(configuration);
