@@ -37,15 +37,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
 
 /**
  * Integration tests for control flow plugins: If/Else, Loop, While, Try/Catch, Case plugins.
- * 
+ *
  * Tests are based on XML examples from examples/new_plugins directory.
- * 
+ *
  * @since 2.2.0
  */
 public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBase {
@@ -55,7 +54,7 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testIfElsePlugin() throws Exception {
         LOG.info("Testing If/Else plugins integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("11_if_else_plugin_example.xml");
         String output = executeAndReadOutputFile(xmlPath, "if_output.txt");
 
@@ -66,7 +65,7 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testLoopPlugin() throws Exception {
         LOG.info("Testing LoopPlugin integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("12_loop_plugin_example.xml");
         String output = executeAndReadOutputFile(xmlPath, "loop_output.txt");
 
@@ -82,42 +81,46 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testWhilePlugin() throws Exception {
-        LOG.info("Testing WhilePlugin integration with XML example");
-        
+        LOG.info("Testing WhilePlugin integration with observable iteration output");
+
         String xmlPath = getNewPluginExamplePath("13_while_plugin_example.xml");
-        
-        try {
-            DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-            assertNotNull(ctx);
-            assertTrue(true, "WhilePlugin should execute successfully");
-        } catch (Exception e) {
-            // While plugin may have iteration issues - log but accept as partial success
-            LOG.warn("WhilePlugin execution completed with issues (known limitation): {}", e.getMessage());
-            assertTrue(true, "WhilePlugin executed with known limitations");
-        }
+        String output = executeAndReadOutputFile(xmlPath, "while_output.txt");
+
+        int counter0 = output.indexOf("Counter: 0");
+        int counter1 = output.indexOf("Counter: 1");
+        int counter2 = output.indexOf("Counter: 2");
+        assertTrue(counter0 >= 0, "While output should contain the initial counter value");
+        assertTrue(counter1 > counter0, "While output should contain the incremented counter value");
+        assertTrue(counter2 > counter1, "While output should contain the final counter value");
+        assertEquals(countOccurrences(output, "Counter: "), 3,
+            "While should execute exactly three iterations before its condition becomes false");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
-    public void testTryCatchPlugin() throws Exception {
-        LOG.info("Testing Try/Catch plugins integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("19_try_catch_plugin_example.xml");
-        
-        try {
-            DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-            assertNotNull(ctx);
-            assertTrue(true, "Try/Catch plugins should execute successfully");
-        } catch (Exception e) {
-            // Try/Catch may have exception handling issues - log but accept
-            LOG.warn("Try/Catch execution completed with issues: {}", e.getMessage());
-            assertTrue(true, "Try/Catch plugins executed with known limitations");
-        }
+    public void testTryCatchSkipsCatchWhenTryBodySucceeds() throws Exception {
+        LOG.info("Testing that Catch is skipped when the Try body succeeds");
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <try><template>completed</template>"
+            + "    <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
+            + "  </try>"
+            + "  <def var=\"afterTry\" value=\"completed\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertNull(context.getVar("catchMarker"),
+            "Catch body must not execute when the Try body completes without an error");
+        assertNotNull(context.getVar("afterTry"),
+            "Execution should continue after a successful Try/Catch construct");
+        assertEquals(context.getVar("afterTry").toString(), "completed");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testCasePlugin() throws Exception {
         LOG.info("Testing CasePlugin integration with XML example");
-        
+
         String xmlPath = getNewPluginExamplePath("27_case_plugin_example.xml");
         String output = executeAndReadOutputFile(xmlPath, "case_output.txt");
 
@@ -134,61 +137,4 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         }
         return count;
     }
-
-    @Test(groups = {"integration", "control-flow-plugins"})
-    public void testIfPluginTrueCondition() throws Exception {
-        LOG.info("Testing If plugin with true condition");
-        
-        String xmlPath = getNewPluginExamplePath("11_if_else_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "If plugin should handle true condition");
-    }
-
-    @Test(groups = {"integration", "control-flow-plugins"})
-    public void testLoopPluginWithIndex() throws Exception {
-        LOG.info("Testing Loop plugin with index variable");
-        
-        String xmlPath = getNewPluginExamplePath("12_loop_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Loop plugin should handle index variables");
-    }
-
-    @Test(groups = {"integration", "control-flow-plugins"})
-    public void testWhilePluginWithCounter() throws Exception {
-        LOG.info("Testing While plugin with counter");
-        
-        String xmlPath = getNewPluginExamplePath("13_while_plugin_example.xml");
-        
-        try {
-            boolean success = executeAndVerifyNoException(xmlPath);
-            assertTrue(success, "While plugin should handle counters");
-        } catch (AssertionError e) {
-            // While has known issues, accept as partial success
-            LOG.warn("While plugin has known issues with counters");
-            assertTrue(true, "While plugin executed with known limitations");
-        }
-    }
-
-    @Test(groups = {"integration", "control-flow-plugins"})
-    public void testNestedIfElse() throws Exception {
-        LOG.info("Testing nested If/Else structures");
-        
-        String xmlPath = getNewPluginExamplePath("11_if_else_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Nested If/Else should work correctly");
-    }
-
-    @Test(groups = {"integration", "control-flow-plugins"})
-    public void testLoopWithBreak() throws Exception {
-        LOG.info("Testing Loop plugin with break condition");
-        
-        String xmlPath = getNewPluginExamplePath("12_loop_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Loop with break should work");
-    }
 }
-
