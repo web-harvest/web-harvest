@@ -41,8 +41,8 @@ import static org.testng.Assert.assertEquals;
 /**
  * Integration tests for variable definition and template output.
  *
- * Include and XSLT currently have known implementation gaps tracked in issue
- * #143. Function and CallParam behavior is covered by FunctionCallIntegrationTest.
+ * Function and CallParam behavior is covered by FunctionCallIntegrationTest.
+ * Include and XSLT runtime contracts are maintained by their dedicated plugin tests.
  *
  * @since 2.2.0
  */
