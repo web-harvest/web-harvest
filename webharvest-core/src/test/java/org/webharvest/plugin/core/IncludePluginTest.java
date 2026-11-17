@@ -165,6 +165,26 @@ public class IncludePluginTest {
     }
 
     @Test
+    public void shouldRejectMalformedIncludedConfigurationAndRestoreParent() throws Exception {
+        write("main.xml", config("<include path=\"malformed.xml\"/>"
+                + "<def var=\"mustNotRunAfterMalformedInclude\" value=\"incorrect\"/>"));
+        write("malformed.xml", "<config xmlns=\"" + NAMESPACE + "\"><def var=\"broken\"></config>");
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("Malformed included XML must fail the containing configuration");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("mustNotRunAfterMalformedInclude"));
+        assertSame(context.getConfig(), main, "Parent Config must be restored after parse failure");
+    }
+
+    @Test
     public void shouldNotLetTryPluginSwallowFatalIncludeFailure() throws Exception {
         write("main.xml", config("<try><include path=\"missing.xml\"/></try>"
                 + "<def var=\"afterTryFailure\" value=\"incorrect\"/>"));
