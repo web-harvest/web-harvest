@@ -1,184 +1,108 @@
-# XPath Best Practices in Web-Harvest
+# XPath and CSS Selector Best Practices
 
-## Common Issue: Element vs Text Content
+This guide documents a small set of behaviors supported by the current Core implementation and tests. It is not a complete XPath reference.
 
-### Problem
-When using XPath expressions like `//title` or `//h1`, Web-Harvest returns the **entire element** including tags:
-```
-Result: <h1>Herman Melville - Moby-Dick</h1>
-```
+**Verification baseline:** `main` at `52c9bcbf6103d24d2b1beed45e33df2bd168aadf` (2026-11-17).
 
-### Solution
-Use `/text()` or `string()` function to extract **text content only**:
-```
-Result: Herman Melville - Moby-Dick
-```
+## How the Core plugin receives input
 
----
+The Core `xpath` plugin evaluates its `expression` against content produced by its body. The current implementation compiles the expression with Saxon and converts the result through `XmlUtil.createListOfXmlNodes`. The optional `type="css"` path uses Jsoup CSS selectors.
 
-## XPath Expression Patterns
-
-### ✅ **Extracting Text Content**
-When you want text only (for display, templates, variables):
+A common variable-backed input is:
 
 ```xml
-<!-- INCORRECT (returns element with tags): -->
-<xpath expression="//title">
-    <get var="page"/>
-</xpath>
-<!-- Result: <title>My Page</title> -->
+<def var="page"><![CDATA[<html><body><h1>Test Title</h1></body></html>]]></def>
 
-<!-- CORRECT (returns text only): -->
-<xpath expression="//title/text()">
-    <get var="page"/>
-</xpath>
-<!-- Result: My Page -->
-
-<!-- ALTERNATIVE (using string function): -->
-<xpath expression="string(//title)">
-    <get var="page"/>
-</xpath>
-<!-- Result: My Page -->
-```
-
-### ✅ **Multiple Elements**
-```xml
-<!-- INCORRECT: -->
-<xpath expression="//h1 | //h2 | //h3">
-
-<!-- CORRECT: -->
-<xpath expression="//h1/text() | //h2/text() | //h3/text()">
-```
-
-### ✅ **Nested Paths**
-```xml
-<!-- INCORRECT: -->
-<xpath expression="//div[@id='content']//span">
-
-<!-- CORRECT: -->
-<xpath expression="//div[@id='content']//span/text()">
-```
-
-### ✅ **Extracting from Child Elements**
-```xml
-<loop item="row">
-    <xpath expression="//row">
-        <get var="dbResult"/>
-    </xpath>
-    <body>
-        <product>
-            <!-- INCORRECT: -->
-            <id><xpath expression="id"><get var="row"/></xpath></id>
-            
-            <!-- CORRECT: -->
-            <id><xpath expression="id/text()"><get var="row"/></xpath></id>
-        </product>
-    </body>
-</loop>
-```
-
----
-
-## When NOT to Use /text()
-
-### ℹ️ **Node Selection for Further Processing**
-```xml
-<!-- OK - selecting nodes for iteration: -->
-<loop item="row">
-    <xpath expression="//row">  <!-- Returns node objects -->
-        <get var="xmlData"/>
-    </xpath>
-    <body>
-        <!-- Process each row node -->
-    </body>
-</loop>
-
-<!-- OK - getting element for further XPath: -->
-<def var="contentDiv">
-    <xpath expression="//div[@id='content']">  <!-- Returns element -->
+<def var="heading">
+    <xpath expression="//h1/text()">
         <get var="page"/>
     </xpath>
 </def>
 ```
 
-### ℹ️ **Attribute Extraction**
+## Choose an expression for the value you need
+
+### Direct text child nodes
+
+Use `text()` when you specifically want direct text-node children of the selected element:
+
 ```xml
-<!-- Attributes don't need /text(): -->
+<xpath expression="//h1/text()">
+    <get var="page"/>
+</xpath>
+```
+
+This does not mean “all descendant text” for every possible markup shape. For example, with `<h1>Windy <em>Farm</em></h1>`, `text()` selects the direct text nodes, not the nested `em` element's text node.
+
+### XPath string value
+
+Use `string(...)` when you want the XPath string-value of the selected node:
+
+```xml
+<xpath expression="string(//h1)">
+    <get var="page"/>
+</xpath>
+```
+
+For the simple fixture above, both `//h1/text()` and `string(//h1)` are asserted to produce `Test Title` by the deterministic Core integration test.
+
+### Select elements for further processing
+
+Select elements without `text()` when the next step needs the node structure:
+
+```xml
+<xpath expression="//row">
+    <get var="xmlData"/>
+</xpath>
+```
+
+Do not assume that a selected node is always serialized as markup in the resulting variable. The exact result representation depends on the expression result and the runtime conversion; verify the behavior needed by the consuming step.
+
+### Select attributes
+
+Attribute expressions do not use `text()`:
+
+```xml
 <xpath expression="//a/@href">
     <get var="page"/>
 </xpath>
 ```
 
----
+### Select multiple paths
 
-## Quick Reference
-
-| Goal | XPath Expression | Example |
-|------|------------------|---------|
-| Get text content | `//element/text()` | `//h1/text()` → "Title" |
-| Get text (function) | `string(//element)` | `string(//h1)` → "Title" |
-| Get element | `//element` | `//h1` → `<h1>Title</h1>` |
-| Get attribute | `//element/@attr` | `//a/@href` → "url" |
-| Multiple text | `//e1/text() \| //e2/text()` | Multiple elements |
-
----
-
-## Examples
-
-### ✅ **Good Example: Text Extraction**
-```xml
-<def var="title">
-    <xpath expression="//title/text()">
-        <get var="page"/>
-    </xpath>
-</def>
-
-<template>Page Title: ${title}</template>
-<!-- Output: Page Title: My Page Title -->
-```
-
-### ❌ **Bad Example: Element Extraction**
-```xml
-<def var="title">
-    <xpath expression="//title">  <!-- Missing /text() -->
-        <get var="page"/>
-    </xpath>
-</def>
-
-<template>Page Title: ${title}</template>
-<!-- Output: Page Title: <title>My Page Title</title> -->
-```
-
----
-
-## Testing Your XPath
-
-You can test XPath expressions using the `<file>` plugin:
+XPath union can combine node selections:
 
 ```xml
-<def var="test">
-    <xpath expression="//h1/text()">
-        <get var="page"/>
-    </xpath>
-</def>
-
-<file action="write" path="test_output.txt">
-    Result: ${test}
-</file>
+<xpath expression="//h1/text() | //h2/text()">
+    <get var="page"/>
+</xpath>
 ```
 
-Check `test_output.txt` to verify the result matches your expectations.
+The result is a sequence of selected nodes; do not assume it is a single scalar string.
 
----
+## CSS selector mode
 
-## Summary
+The Core plugin also has a CSS selector path. Set `type="css"` and provide a Jsoup selector expression:
 
-**General Rule:** If you're extracting content for display, templates, or text processing, **always use `/text()`** or `string()` function.
+```xml
+<xpath type="css" expression="a.link">
+    <get var="page"/>
+</xpath>
+```
 
-**Exception:** Only use `//element` (without `/text()`) when you need the element node for further XPath processing or iteration.
+Do not mix CSS selector syntax with XPath expressions. The default mode is XPath; CSS is selected explicitly with `type="css"`.
 
----
+## Evidence and limits
 
-*Updated: October 10, 2025*  
-*Version: 2.2.1*
+The current integration test is:
+
+`webharvest-core/src/test/java/org/webharvest/plugin/core/integration/XPathWithGetVarIntegrationTest.java`
+
+- `testXPathTextNode` asserts that `//h1/text()` produces exactly `Test Title` for its fixture.
+- `testXPathStringFunction` asserts the same for `string(//h1)`.
+- `testXPathElementVsText` only checks that the result is non-empty and prints diagnostic output. It does **not** assert whether `//h1` includes markup, so this guide makes no claim about that representation.
+
+The unit tests in `XPathPluginTest` and `XPathPluginAdditionalTest` include configuration and mocked execution checks; non-null return assertions there are not substitutes for end-to-end result assertions.
+
+For additional behavior, inspect `webharvest-core/src/main/java/org/webharvest/plugin/core/XPathPlugin.java` and add a deterministic runtime assertion before documenting a new guarantee.
 
