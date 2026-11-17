@@ -95,7 +95,7 @@ public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTes
         Variable tokens = context.getVar("tokens");
 
         assertNotNull(tokens, "The enclosing definition should store the token list");
-        assertEquals(tokens.toString().replace("\\r\\n", "\\n").trim(), "alpha\\nbeta\\ngamma",
+        assertEquals(tokens.toString().replace("\r\n", "\n").trim(), "alpha\nbeta\ngamma",
             "Tokenize should emit exactly three tokens in their original order");
     }
 
