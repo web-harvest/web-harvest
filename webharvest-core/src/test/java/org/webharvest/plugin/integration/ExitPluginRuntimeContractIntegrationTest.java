@@ -29,10 +29,12 @@
  */
 package org.webharvest.plugin.integration;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import org.testng.annotations.Test;
 import org.webharvest.events.ScraperExecutionExitEvent;
+import org.webharvest.definition.BufferConfigSource;
+import org.webharvest.definition.ConfigSource;
+import org.webharvest.Harvester;
 import org.webharvest.runtime.DynamicScopeContext;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,7 +51,6 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
     @Test(groups = {"integration", "core-plugins"})
     public void trueConditionPublishesExitAndPreventsFollowingSiblings() throws Exception {
         ExitObserver observer = new ExitObserver();
-        injector.getInstance(EventBus.class).register(observer);
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
@@ -57,7 +58,7 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
             + "  <def var=\"afterExit\" value=\"must-not-run\"/>"
             + "</config>";
 
-        DynamicScopeContext context = executeXmlString(xml);
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
 
         assertNotNull(observer.event.get(), "Exit must publish ScraperExecutionExitEvent");
         assertEquals(observer.event.get().getMessage(), "stop-now");
@@ -80,6 +81,17 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
 
         assertNull(observer.event.get(), "False Exit condition must not publish an event");
         assertEquals(context.getVar("afterExit").toString(), "continued");
+    }
+
+    private DynamicScopeContext executeXmlStringWithObserver(String xml, ExitObserver observer) {
+        ConfigSource configSource = new BufferConfigSource(xml);
+        Harvester harvester = harvest.getHarvester(configSource, null);
+        return harvester.execute(new Harvester.ContextInitCallback() {
+            @Override
+            public void onSuccess(DynamicScopeContext context) {
+                context.getEventBus().register(observer);
+            }
+        });
     }
 
     private static final class ExitObserver {
