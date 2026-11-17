@@ -41,6 +41,7 @@ import org.webharvest.definition.ConfigFactory;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.PluginConfigurationTree;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -523,6 +524,8 @@ public class IncludePlugin extends AbstractPlugin {
             } finally {
                 context.setConfig(parentConfig);
             }
+        } catch (ScraperExecutionExitException e) {
+            throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
