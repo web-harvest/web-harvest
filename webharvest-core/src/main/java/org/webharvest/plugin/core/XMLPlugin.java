@@ -52,158 +52,47 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * XML content wrapper processor - explicit XML content declaration.
- * 
- * <p>
- * The {@code <xml>} processor wraps XML content for explicit declaration and processing.
- * Rarely needed in modern configurations - most XML is processed directly without this wrapper.
- * Useful when you need to ensure XML content is properly parsed and validated.
- * </p>
- * 
- * <h3>Usage Examples</h3>
- * 
- * <h4>Example 1: Explicit XML declaration</h4>
+ * XML content wrapper - returns XML text as a {@link NodeVariable}.
+ *
+ * <p>Literal XML must be supplied as text (normally CDATA). Raw nested element
+ * tags are parsed as child plugin configurations by the streaming XML parser;
+ * they are not treated as literal markup by this plugin. For variable
+ * interpolation, use a {@code <template>} child whose content is CDATA.</p>
+ *
+ * <h3>Example: literal XML</h3>
  * <pre>{@code
- * <?xml version="1.0" encoding="UTF-8"?>
- * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="xmlData">
- *   <xml>
+ *   <xml><![CDATA[
  *     <products>
- *       <product id="1">
- *         <name>Laptop</name>
- *         <price>999.99</price>
- *       </product>
- *       <product id="2">
- *         <name>Mouse</name>
- *         <price>29.99</price>
- *       </product>
+ *       <product id="1"><name>Laptop</name></product>
+ *       <product id="2"><name>Mouse</name></product>
  *     </products>
- *   </xml>
+ *   ]]></xml>
  * </def>
- * </config>
  * }</pre>
- * 
- * <h4>Example 2: Dynamic XML generation</h4>
+ *
+ * <h3>Example: generated XML with variables</h3>
  * <pre>{@code
- * <?xml version="1.0" encoding="UTF-8"?>
- * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <def var="productName">WebHarvest Pro</def>
- * <def var="productPrice">199.99</def>
- * 
  * <def var="productXml">
  *   <xml>
- *     <product>
- *       <name>${productName}</name>
- *       <price>${productPrice}</price>
- *       <timestamp>${new Date()}</timestamp>
- *     </product>
+ *     <template><![CDATA[
+ *       <product><name>${productName}</name></product>
+ *     ]]></template>
  *   </xml>
  * </def>
- * </config>
  * }</pre>
- * 
- * <h4>Example 3: XML template with processing</h4>
- * <pre>{@code
- * <?xml version="1.0" encoding="UTF-8"?>
- * <config xmlns="http://org.webharvest/schema/2.1/core">
- * <def var="userData">
- *   <xml>
- *     <user>
- *       <id>12345</id>
- *       <name>John Doe</name>
- *       <email>john@example.com</email>
- *       <preferences>
- *         <theme>dark</theme>
- *         <language>en</language>
- *       </preferences>
- *     </user>
- *   </xml>
- * </def>
- * 
- * <!-- Process the XML -->
- * <def var="userName">
- *   <xpath expression="//name/text()">
- *     <get var="userData"/>
- *   </xpath>
- * </def>
- * </config>
- * }</pre>
- * 
- * <h4>Example 4: When explicit XML is useful</h4>
- * <pre>{@code
- * <?xml version="1.0" encoding="UTF-8"?>
- * <config xmlns="http://org.webharvest/schema/2.1/core">
- * <!-- When you need to ensure XML is properly parsed -->
- * <def var="configTemplate">
- *   <xml>
- *     <configuration>
- *       <database>
- *         <host>localhost</host>
- *         <port>3306</port>
- *         <name>webharvest</name>
- *       </database>
- *       <api>
- *         <baseUrl>https://api.example.com</baseUrl>
- *         <timeout>30000</timeout>
- *       </api>
- *     </configuration>
- *   </xml>
- * </def>
- * 
- * <!-- Alternative: Direct XML (usually preferred) -->
- * <def var="configTemplate2">
- *   <configuration>
- *     <database>
- *       <host>localhost</host>
- *       <port>3306</port>
- *       <name>webharvest</name>
- *     </database>
- *   </configuration>
- * </def>
- * </config>
- * }</pre>
- * 
- * <h3>Parameters</h3>
- * <ul>
- *   <li><strong>Content (body)</strong>: XML content to wrap</li>
- * </ul>
- * 
- * <h3>Return Value</h3>
- * <p>Returns a NodeVariable containing the parsed XML content.</p>
- * 
- * <h3>When to Use</h3>
- * <ul>
- *   <li><strong>Explicit Declaration:</strong> When you want to explicitly mark XML content</li>
- *   <li><strong>Validation:</strong> When you need to ensure XML is properly parsed</li>
- *   <li><strong>Template Processing:</strong> When generating XML with variable substitution</li>
- *   <li><strong>Debugging:</strong> When you want to see exactly what XML is being processed</li>
- * </ul>
- * 
- * <h3>Important Notes</h3>
- * <ul>
- *   <li><strong>Rarely Needed:</strong> Most XML content works directly without this wrapper</li>
- *   <li><strong>XML Parsing:</strong> Ensures content is properly parsed as XML</li>
- *   <li><strong>Variable Substitution:</strong> Supports ${var} syntax within XML content</li>
- *   <li><strong>Validation:</strong> XML content must be well-formed</li>
- * </ul>
- * 
- * <h3>Related Processors</h3>
- * <ul>
- *   <li><strong>Direct XML content</strong> - Preferred for most cases</li>
- *   <li>{@code <xpath>} - Extract data from XML</li>
- *   <li>{@code <html-to-xml>} - Convert HTML to XML</li>
- *   <li>{@code <json-to-xml>} - Convert JSON to XML</li>
- * </ul>
- * 
- * <h3>Note</h3>
- * <p><strong>Usually unnecessary.</strong> Direct XML content works in most contexts.
- * Use {@code <xml>} only when you need explicit XML declaration or validation.</p>
- * 
+ *
+ * <h3>Return value and limitations</h3>
+ * <p>Returns a {@code NodeVariable} containing the supplied or generated XML
+ * text. This wrapper does not parse, schema-validate or otherwise validate the
+ * XML. Use an XML transformation/query plugin when actual XML parsing or
+ * validation is required.</p>
+ *
  * @author WebHarvest Team
  * @version 2.2.0
  * @since 1.0
@@ -501,47 +390,34 @@ public class XMLPlugin extends AbstractPlugin {
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("XMLPlugin.doExecute: START");
-        PluginConfiguration config = getConfiguration();
-
-        // Get XML configuration
-        String charset = config.getProperty("charset", context.getCharset());
-        boolean validate = CommonUtil.getBooleanValue(config.getProperty("validate", "false"), false);
-        String schema = config.getProperty("schema", "");
-
-        LOGGER.debug("XML plugin - Charset: " + charset + ", Validate: " + validate + ", Schema: " + schema);
-
         try {
-            // Execute body content to get XML content
+            // Preserve the execution-context/charset validation contract.
+            context.getCharset();
+            PluginConfiguration config = getConfiguration();
+
+            // A child plugin (for example <template>) may generate XML text.
             Variable bodyContent = executeBody(context);
-            LOGGER.debug("XMLPlugin.doExecute: bodyContent=" + bodyContent);
-            
-            String xmlContent = "";
+            String xmlContent;
             if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
                 xmlContent = bodyContent.toString();
-                LOGGER.debug("XMLPlugin.doExecute: Retrieved XML content: " + xmlContent);
             } else {
-                LOGGER.debug("XMLPlugin.doExecute: No body content available");
-                return EmptyVariable.INSTANCE;
+                // For literal markup, the streaming parser stores CDATA/text in
+                // _textContent; raw nested tags are parsed as child configurations.
+                xmlContent = config.getProperty("_textContent", "");
             }
 
-            // Process XML content
-            if (xmlContent == null || xmlContent.isEmpty()) {
+            if (xmlContent == null || xmlContent.trim().isEmpty()) {
                 LOGGER.warn("No XML content provided for XML plugin");
                 return EmptyVariable.INSTANCE;
             }
 
-            // Basic XML processing - in a real implementation this would parse and validate XML
-            LOGGER.debug("Processing XML content with length: " + xmlContent.length());
-            
-            // Return the XML content as NodeVariable
+            LOGGER.debug("Returning XML content with length: {}", xmlContent.length());
             return new NodeVariable(xmlContent);
-
         } catch (InterruptedException e) {
             throw e;
         } catch (Exception e) {
-            LOGGER.error("Error during XML processing", e);
-            LOGGER.debug("XMLPlugin.doExecute: ERROR: " + e.getMessage());
-            return EmptyVariable.INSTANCE;
+            LOGGER.error("Error executing XML plugin", e);
+            throw new RuntimeException("Failed to execute XML plugin", e);
         }
     }
 }
