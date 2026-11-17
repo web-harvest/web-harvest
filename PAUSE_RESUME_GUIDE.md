@@ -1,6 +1,5 @@
 # Pause/Resume Execution — Not Currently Supported
 
-<badge> </badge>
 
 **Current status:** The IDE exposes pause/resume REST endpoints and stores pause state, but the execution loop does not call the pause checkpoint. A `PAUSED` response therefore does not prove that scraper execution has stopped.
 
