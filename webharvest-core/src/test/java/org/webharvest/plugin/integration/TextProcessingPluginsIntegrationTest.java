@@ -6,13 +6,13 @@
  conditions are met:
 
  * Redistributions of source code must retain the above
-   copyright notice, this list of conditions and the
-   following disclaimer.
+   copyright notice, this list of conditions and the following
+   disclaimer.
 
  * Redistributions in binary form must reproduce the above
-   copyright notice, this list of conditions and the
-   following disclaimer in the documentation and/or other
-   materials provided with the distribution.
+   copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided
+   with the distribution.
 
  * The name of Web-Harvest may not be used to endorse or promote
    products derived from this software without specific prior
@@ -37,133 +37,87 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
 
-/**
- * Integration tests for text processing plugins: Regexp, Tokenize, Script plugins.
- * 
- * Tests are based on XML examples from examples/new_plugins directory.
- * 
- * @since 2.2.0
- */
+ /**
+  * Integration tests for Regexp, Tokenize and Script plugins.
+  *
+  * Each test asserts the values produced by the plugin in the execution context.
+  *
+  * @since 2.2.0
+  */
 public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TextProcessingPluginsIntegrationTest.class);
 
     @Test(groups = {"integration", "text-processing-plugins"})
-    public void testRegexpPlugin() throws Exception {
-        LOG.info("Testing RegexpPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("08_regexp_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Regexp should extract patterns successfully
-        assertTrue(true, "RegexpPlugin should execute successfully");
+    public void testRegexpPluginExposesMatchAndCaptureGroups() throws Exception {
+        LOG.info("Testing Regexp match output and capture-group variables");
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <def var=\"source\">Hello World!</def>"
+            + "  <def var=\"matches\">"
+            + "    <regexp pattern=\"Hello (.*?)!\"><get var=\"source\"/></regexp>"
+            + "  </def>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable matches = context.getVar("matches");
+
+        assertNotNull(matches, "The enclosing definition should store the regexp result");
+        assertTrue(matches instanceof ListVariable, "Regexp should return a ListVariable");
+        ListVariable resultList = (ListVariable) matches;
+        assertEquals(resultList.getList().size(), 1, "The expression should produce exactly one match");
+        assertEquals(resultList.get(0).toString(), "Hello World!");
+        assertEquals(context.getVar("group1").toString(), "World",
+            "Regexp should expose the first capture group in the execution context");
     }
 
     @Test(groups = {"integration", "text-processing-plugins"})
-    public void testTokenizePlugin() throws Exception {
-        LOG.info("Testing TokenizePlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("14_tokenize_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Tokenize should split text successfully
-        assertTrue(true, "TokenizePlugin should execute successfully");
+    public void testTokenizePluginSplitsTextIntoOrderedTokens() throws Exception {
+        LOG.info("Testing Tokenize output and token order");
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <def var=\"source\">alpha beta gamma</def>"
+            + "  <def var=\"tokens\">"
+            + "    <tokenize delimiters=\" \"><get var=\"source\"/></tokenize>"
+            + "  </def>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable tokens = context.getVar("tokens");
+
+        assertNotNull(tokens, "The enclosing definition should store the token list");
+        assertTrue(tokens instanceof ListVariable, "Tokenize should return a ListVariable");
+        ListVariable resultList = (ListVariable) tokens;
+        assertEquals(resultList.getList().size(), 3, "Tokenize should produce three tokens");
+        assertEquals(resultList.get(0).toString(), "alpha");
+        assertEquals(resultList.get(1).toString(), "beta");
+        assertEquals(resultList.get(2).toString(), "gamma");
     }
 
     @Test(groups = {"integration", "text-processing-plugins"})
-    public void testScriptPlugin() throws Exception {
-        LOG.info("Testing ScriptPlugin integration with XML example");
-        
-        String xmlPath = getNewPluginExamplePath("15_script_plugin_example.xml");
-        
-        DynamicScopeContext ctx = executeXmlConfig(xmlPath);
-        assertNotNull(ctx);
-        
-        // Script should execute successfully
-        assertTrue(true, "ScriptPlugin should execute successfully");
-    }
+    public void testScriptPluginEvaluatesJavaScriptAndReturnsValue() throws Exception {
+        LOG.info("Testing Script output using the JavaScript engine");
 
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testRegexpWithCapturingGroups() throws Exception {
-        LOG.info("Testing RegexpPlugin with capturing groups");
-        
-        String xmlPath = getNewPluginExamplePath("08_regexp_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Regexp with capturing groups should work");
-    }
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <def var=\"scriptCode\">var result = \"Hello from JavaScript!\"; result;</def>"
+            + "  <def var=\"scriptResult\">"
+            + "    <script language=\"javascript\"><get var=\"scriptCode\"/></script>"
+            + "  </def>"
+            + "</config>";
 
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testTokenizeWithDelimiter() throws Exception {
-        LOG.info("Testing TokenizePlugin with custom delimiter");
-        
-        String xmlPath = getNewPluginExamplePath("14_tokenize_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Tokenize with delimiter should work");
-    }
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable result = context.getVar("scriptResult");
 
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testScriptWithBeanshell() throws Exception {
-        LOG.info("Testing ScriptPlugin with Beanshell");
-        
-        String xmlPath = getNewPluginExamplePath("15_script_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Script with Beanshell should work");
-    }
-
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testScriptWithGroovy() throws Exception {
-        LOG.info("Testing ScriptPlugin with Groovy");
-        
-        String xmlPath = getNewPluginExamplePath("15_script_plugin_example.xml");
-        
-        try {
-            boolean success = executeAndVerifyNoException(xmlPath);
-            assertTrue(success, "Script with Groovy should work");
-        } catch (Exception e) {
-            LOG.debug("Script test with Groovy may use different language");
-            assertTrue(true, "Script plugin executed");
-        }
-    }
-
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testRegexpReplace() throws Exception {
-        LOG.info("Testing RegexpPlugin with replace functionality");
-        
-        String xmlPath = getNewPluginExamplePath("08_regexp_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Regexp replace should work");
-    }
-
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testRegexpMatch() throws Exception {
-        LOG.info("Testing RegexpPlugin with match functionality");
-        
-        String xmlPath = getNewPluginExamplePath("08_regexp_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Regexp match should work");
-    }
-
-    @Test(groups = {"integration", "text-processing-plugins"})
-    public void testTokenizeWithMultipleDelimiters() throws Exception {
-        LOG.info("Testing TokenizePlugin with multiple delimiters");
-        
-        String xmlPath = getNewPluginExamplePath("14_tokenize_plugin_example.xml");
-        
-        boolean success = executeAndVerifyNoException(xmlPath);
-        assertTrue(success, "Tokenize with multiple delimiters should work");
+        assertNotNull(result, "The enclosing definition should store the script result");
+        assertEquals(result.toString().trim(), "Hello from JavaScript!",
+            "Script should evaluate the configured JavaScript and return its final expression");
     }
 }
-
