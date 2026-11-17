@@ -289,7 +289,7 @@ This test enumerates Core plugins annotated with `@CorePlugin`, `systemComponent
 Visual metadata is converted to JSON during the `webharvest-ide` Maven module's `process-classes` phase (see `webharvest-ide/pom.xml`):
 
 1. `PluginMetadataJsonGenerator` discovers Core plugins explicitly eligible for the visual palette and requires their metadata to implement `VisualPluginMetadata`
-2. Generates `plugins.json` in `webharvest-ide/src/main/resources/webapp/static/metadata/`
+2. Writes `plugins.json` to `${project.build.outputDirectory}/webapp/static/metadata/` (normally `webharvest-ide/target/classes/webapp/static/metadata/`)
 3. Frontend TypeScript code consumes this JSON
 
 ## Best Practices
