@@ -131,12 +131,12 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
 
     @Test(groups = {"integration", "xml-plugins", "xquery"})
     public void testXQueryEmptySequenceProducesEmptyResultAndContinues() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n"
-            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\\n"
-            + "  <def var=\"emptyResult\">\\n"
-            + "    <xquery><xq-expression><![CDATA[()]]></xq-expression></xquery>\\n"
-            + "  </def>\\n"
-            + "  <def var=\"after\">continued</def>\\n"
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n"
+            + "  <def var=\"emptyResult\">\n"
+            + "    <xquery><xq-expression><![CDATA[()]]></xq-expression></xquery>\n"
+            + "  </def>\n"
+            + "  <def var=\"after\">continued</def>\n"
             + "</config>";
 
         DynamicScopeContext context = executeXmlString(xml);
