@@ -293,13 +293,11 @@ accurate descriptor identity, and lifecycle-safe registry ownership/isolation.
 
 ### Registration inventory versus executable behavior
 
-PR #173 establishes the 44-name registration contract. The source audit also
-identified four registered XML names whose role must not be confused with
-independent plugin dispatch:
+PR #173 establishes the 44-name registration contract. The source audit identifies three declarative child nodes and one dual-use XML mapping. See the [44-row Core XML Runtime Evidence Matrix](CORE_PLUGIN_RUNTIME_EVIDENCE.md) for mapping-by-mapping test evidence.
 
 | XML name | Current source behavior | Evidence classification |
 |---|---|---|
-| `xml` | A standalone plugin mapping exists. Within `<xslt>`, the parent reads child `_textContent` directly rather than dispatching the mapped `XMLPlugin`. | Dual-use: standalone mapping plus declarative XSLT input node. |
+| `xml` | `XMLPlugin.doExecute()` executes its body and returns a `NodeVariable`. Within `<xslt>`, the parent reads child `_textContent` directly rather than dispatching the mapped `XMLPlugin`. | Dual-use: standalone executable wrapper plus declarative XSLT input node; direct Failsafe test pending PR #183. |
 | `stylesheet` | `XsltPlugin` reads child `_textContent` directly. `StylesheetPlugin.doExecute()` currently returns `EmptyVariable.INSTANCE`. | Declarative XSLT configuration node; no independent executable capability demonstrated. |
 | `xq-expression` | `XQueryPlugin` reads child `_textContent` directly. | Declarative XQuery expression node. |
 | `xq-param` | `XQueryPlugin` parses the child name/type/text itself; nested value-producing children are executed by the parent. | Declarative XQuery parameter node. |
@@ -308,8 +306,7 @@ Evidence: [XsltPlugin.java](../webharvest-core/src/main/java/org/webharvest/plug
 [XQueryPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XQueryPlugin.java),
 [StylesheetPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/StylesheetPlugin.java),
 and [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java).
-The existing XSLT/XQuery integration tests prove parent transformation and
-parameter semantics, not independent dispatch of all four mapped classes.
+The XSLT/XQuery integration tests prove parent transformation and parameter semantics. The standalone `xml` wrapper has its own executable path; PR #183 adds its missing direct Failsafe contract.
 
 **Compatibility rule:** preserve the existing XML names and forms. The future
 descriptor/registry contract should distinguish executable plugin identities from
@@ -319,7 +316,7 @@ as part of the reliability work.
 ## 13. Core XML integration-test evidence quality (refreshed 2026-11-17)
 
 The six principal deterministic XML integration suites were re-read from current
-`main` at `8b4071da0ac04b91e048642c40157b0146ceffcf`. The earlier placeholder
+`main` after PR #181 at `d9a1466953a82afc8b6f68b86b4ddb04bde5fe37`. The earlier placeholder
 counts in this document are historical and no longer describe the current files.
 
 | Test class | Current test methods | `assertTrue(true)` | Broad catch of Exception / RuntimeException / Throwable | Observable behavior examples |
@@ -328,9 +325,9 @@ counts in this document are historical and no longer describe the current files.
 | `ControlFlowPluginsIntegrationTest` | 7 | 0 | 0 | If/Else selected output; Loop/While ordering and counts; Try/Catch branch state and continuation; Case output. |
 | `AdvancedPluginsIntegrationTest` | 3 | 0 | 0 | Exact variable/body values and rendered template output. |
 | `HttpPluginsIntegrationTest` | 2 | 0 | 0 | Deterministic stub response URL/origin and stored response values. |
-| `XmlTransformationPluginsIntegrationTest` | 6 | 0 | 0 | XPath selection, HTML-to-XML, JSON-to-XML, XML-to-JSON, XSLT and XQuery output values/counts. |
+| `XmlTransformationPluginsIntegrationTest` | 7 | 0 | 0 | XPath selection, HTML-to-XML, JSON-to-XML, XML-to-JSON, XSLT, XQuery output and empty-sequence behavior. |
 | `TextProcessingPluginsIntegrationTest` | 3 | 0 | 0 | Regexp match/capture list, ordered tokenization, JavaScript result. |
-| **Total** | **30** | **0** | **0** | Source-level assertion review; not a claim of exhaustive 44-class coverage. |
+| **Total** | **31** | **0** | **0** | Source-level assertion review; not a claim of exhaustive 44-class coverage. |
 
 The six source files were inspected individually. The counts above are static
 source observations, not test execution results. In particular, zero placeholder
@@ -353,13 +350,17 @@ remains separately classified and is not inferred from stubbed tests.
   classes, including legacy `set-var`.
 - **Include** — PR #174: relative include through XML loading and the standard
   Harvester path; included state is visible and parent execution continues.
+- **XQuery empty sequence** — PR #181: valid `()` expression returns an empty `ListVariable`; the parent configuration continues.
 
-Each of these PRs passed its exact-head three-job CI run, including the full
-Maven verify job, Checkstyle and JaCoCo report validation. Root JaCoCo minimums
-remain 0.80 instruction coverage and 0.80 branch coverage. These are exact-PR
-head results; a separately observed post-merge `push` workflow for the combined
-`main` SHA was not available through the current GitHub Actions read interface
-during this audit and is not claimed here.
+Each of PRs #170–#174 passed its exact-head three-job CI run, including the full
+Maven verify job, Checkstyle and JaCoCo report validation. The subsequent main
+push run #537 ([Actions run 44158373034](https://github.com/web-harvest/web-harvest/actions/runs/44158373034)) on
+`d9a1466953a82afc8b6f68b86b4ddb04bde5fe37` also passed all three jobs: Semantic
+Core contracts, full Surefire/Failsafe suites, and unqualified Core verify with
+JaCoCo report validation. PR #182 after that changed documentation only. Root
+JaCoCo minimums remain 0.80 instruction coverage and 0.80 branch coverage.
+PR #183 adds the standalone `xml` wrapper test; its exact-head CI is pending and
+must pass before the 44-mapping matrix is considered closed.
 
 ### Unit-test false-green cleanup — PR #176 merged
 
