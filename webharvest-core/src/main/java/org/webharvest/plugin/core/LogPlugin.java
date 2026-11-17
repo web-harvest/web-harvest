@@ -243,8 +243,8 @@ public class LogPlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // Get body content
-        Variable bodyContent = executeBody(context);
+        // Read inline XML text first, then execute nested body plugins if present.
+        Variable bodyContent = getBodyTextContent(context);
         
         if (bodyContent == null || bodyContent instanceof EmptyVariable) {
             return EmptyVariable.INSTANCE;
