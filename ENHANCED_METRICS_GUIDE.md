@@ -117,9 +117,9 @@ metrics.recordHttpRequest(
 );
 
 // Query metrics
-int requests = metrics.getHttpRequests();
-long downloaded = metrics.getBytesDownloaded();
-long avgTime = metrics.getAvgResponseTime();
+long requests = metrics.getHttpRequestCount();
+long downloaded = metrics.getHttpBytesDownloaded();
+long avgTime = metrics.getAverageHttpResponseTime();
 ```
 
 ### Caveats for analysis
@@ -128,18 +128,9 @@ The `/api/sessions/history` response currently contains only timestamp, duration
 
 Do not use synthetic fallback values or zero response-time values for operational bandwidth/performance conclusions.
 
-#### 1. **Bandwidth Monitoring**
-Track total data transfer:
-```javascript
-// Use completed WebSocket sessionInfo payloads only when the HTTP totals
-// came from TokenTracker. The current fallback values are synthetic.
-```
+### Operational use
 
-#### 2. Performance regression
-Not supported by current telemetry: TokenTracker does not provide per-request response times in this path, and the synthetic fallback is not measured latency. Do not build regression alerts from `avgResponseTime` until real request timing is implemented.
-
-#### 3. Request optimization
-Request/byte totals can be inspected in the completed WebSocket `sessionInfo` payload when populated from TokenTracker. `elementsProcessed` is the count of result variables, not source records, so ratios based on it are not record-level efficiency metrics.
+The current payload is not suitable for automated bandwidth budgets or latency regression alerts. HTTP totals may be aggregated from TokenTracker or synthetic fallback values, and the history endpoint does not return these fields. Use the completed-execution WebSocket `sessionInfo` payload for inspection only, and verify that its source is TokenTracker before drawing conclusions.
 
 ---
 
@@ -163,46 +154,9 @@ breakdown.forEach((plugin, timeMs) -> {
 });
 ```
 
-### Do not use for performance analysis
+### Operational use
 
-Because current values are estimates rather than measured execution time, sorting, percentage bars and comparisons are illustrative only. They cannot identify real bottlenecks or support performance regression decisions.
-
-#### 1. **Identify Bottlenecks**
-Find slowest plugins:
-```javascript
-const session = /* completed session */;
-if (session.pluginBreakdown) {
-    const sorted = Object.entries(session.pluginBreakdown)
-        .sort((a, b) => b[1] - a[1]);
-    
-    console.log('Slowest plugin:', sorted[0][0], sorted[0][1] + 'ms');
-}
-```
-
-#### 2. **Optimization Targets**
-Calculate percentage of time per plugin:
-```javascript
-const breakdown = session.pluginBreakdown;
-const total = session.duration;
-
-Object.entries(breakdown).forEach(([plugin, time]) => {
-    const percent = (time / total * 100).toFixed(1);
-    console.log(`${plugin}: ${percent}% of execution time`);
-});
-```
-
-#### 3. **Compare Configurations**
-See which scraper uses which plugins most:
-```javascript
-const sessions = await fetch('/api/sessions/history?limit=100')
-    .then(r => r.json());
-
-const httpHeavy = sessions.sessions
-    .filter(s => s.pluginBreakdown && s.pluginBreakdown.http > 100)
-    .map(s => s.configName);
-
-console.log('HTTP-heavy scrapers:', httpHeavy);
-```
+Do not use this breakdown to identify bottlenecks, compare configurations or create performance alerts. The current values are fixed estimates added after execution by XML tag inspection, not measured plugin durations.
 
 ---
 
@@ -306,57 +260,13 @@ interface SessionInfo {
 
 ---
 
-## 💡 Best Practices
+## Guidance
 
-### 1. **Monitor Expensive Operations**
-Track scrapers that make many HTTP requests:
-```javascript
-async function findHttpHeavy() {
-    const history = await fetch('/api/sessions/history?limit=100')
-        .then(r => r.json());
-    
-    return history.sessions
-        .filter(s => s.httpMetrics && s.httpMetrics.requests > 10)
-        .map(s => ({
-            config: s.configName,
-            requests: s.httpMetrics.requests,
-            mb: (s.httpMetrics.bytesDownloaded / 1024 / 1024).toFixed(2)
-        }));
-}
-```
-
-### 2. **Optimize Plugin Usage**
-Identify plugins that consume most time:
-```javascript
-function analyzePluginUsage(session) {
-    if (!session.pluginBreakdown) return;
-    
-    const total = Object.values(session.pluginBreakdown)
-        .reduce((sum, time) => sum + time, 0);
-    
-    Object.entries(session.pluginBreakdown).forEach(([plugin, time]) => {
-        const percent = (time / total * 100).toFixed(1);
-        if (percent > 50) {
-            console.warn(`${plugin} dominates: ${percent}% of execution`);
-        }
-    });
-}
-```
-
-### 3. **Bandwidth Budgets**
-Alert when download exceeds limit:
-```javascript
-const MAX_MB = 10;
-
-function checkBandwidth(session) {
-    if (!session.httpMetrics) return;
-    
-    const mb = session.httpMetrics.bytesDownloaded / 1024 / 1024;
-    if (mb > MAX_MB) {
-        console.warn(`Bandwidth exceeded: ${mb.toFixed(2)}MB > ${MAX_MB}MB`);
-    }
-}
-```
+- Treat duration as the measured session duration.
+- Treat `elementsProcessed` and `processingRate` as result-variable proxies, not source-record metrics.
+- Treat HTTP request/byte totals as unverified until the TokenTracker source is confirmed for the session.
+- Treat plugin breakdown values as synthetic estimates only.
+- Do not use the current plugin or HTTP metrics for production alerting, capacity planning or performance regression analysis.
 
 ---
 
