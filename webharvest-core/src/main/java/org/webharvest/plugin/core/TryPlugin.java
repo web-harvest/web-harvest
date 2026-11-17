@@ -76,14 +76,14 @@ import java.util.List;
  *   <def var="data">
  *     <http url="https://api.example.com/data"/>
  *   </def>
- * </try>
- * <catch>
+ *   <catch>
  *   <file path="errors.log" action="append">
  *     HTTP request failed: ${error}
  *     Timestamp: ${_date}
  *   </file>
  *   <def var="data" value=""/>  <!-- Use empty default -->
- * </catch>
+ *   </catch>
+ * </try>
  * </config>
  * }</pre>
  * 
@@ -138,8 +138,9 @@ import java.util.List;
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
- *   <li><strong>Error variable:</strong> ${error} is available inside the catch block (${_error} is a compatibility alias)</li>
- *   <li><strong>No rethrow:</strong> Exceptions are caught and handled, not propagated</li>
+ *   <li><strong>Error variables:</strong> ${error} and ${_error} are available inside Catch; ${errorType} contains the underlying exception type</li>
+ *   <li><strong>Catch placement:</strong> At most one Catch block may appear as the final child of Try</li>
+ *   <li><strong>Failure policy:</strong> Ordinary runtime failures are handled; Include failures, validation failures and interruption bypass Catch</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
