@@ -114,7 +114,7 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Path resolution:</strong> Paths are relative to working directory or absolute</li>
+ *   <li><strong>Path resolution:</strong> Relative paths are resolved against the active configuration source, including nested file and URL configurations</li>
  *   <li><strong>Shared context:</strong> Included config runs in same context, shares variables</li>
  *   <li><strong>Execution timing:</strong> Included config executes immediately at include point</li>
  *   <li><strong>Recursive includes:</strong> Can include files that include other files</li>
@@ -491,6 +491,11 @@ public class IncludePlugin extends AbstractPlugin {
         if (parentConfig == null || parentConfig.getConfigSource() == null) {
             throw new org.webharvest.plugin.exceptions.IncludeExecutionException(
                     "Cannot resolve include '" + path + "' because the active configuration source is unavailable");
+        }
+        if (configFactory == null) {
+            throw new org.webharvest.plugin.exceptions.IncludeExecutionException(
+                    "Cannot execute include '" + path
+                    + "' because ConfigFactory was not injected; IncludePlugin requires the configured Guice injector");
         }
 
         try {
