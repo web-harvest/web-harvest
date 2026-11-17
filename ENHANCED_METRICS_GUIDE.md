@@ -102,7 +102,9 @@ curl http://localhost:8080/api/execution/{executionId}/info
 
 ## 📈 HTTP Metrics
 
-### What's Tracked
+### Internal metrics model
+
+The following methods exist on `SessionMetrics`; this is an internal model API, not proof that runtime instrumentation calls them for each request. In the current IDE path, `ExecutionManager` copies aggregate TokenTracker totals at session completion and may add synthetic fallback values.
 
 ```java
 SessionMetrics metrics = session.getMetrics();
@@ -120,43 +122,24 @@ long downloaded = metrics.getBytesDownloaded();
 long avgTime = metrics.getAvgResponseTime();
 ```
 
-### Use Cases
+### Caveats for analysis
+
+The `/api/sessions/history` response currently contains only timestamp, duration, elementsProcessed, processingRate and status. It does not include `httpMetrics` or `pluginBreakdown`. Those optional fields are attached to the completed-execution WebSocket `sessionInfo` payload.
+
+Do not use synthetic fallback values or zero response-time values for operational bandwidth/performance conclusions.
 
 #### 1. **Bandwidth Monitoring**
 Track total data transfer:
 ```javascript
-const sessions = await fetch('/api/sessions/history?limit=100')
-    .then(r => r.json());
-
-const totalBytes = sessions.sessions
-    .filter(s => s.httpMetrics)
-    .reduce((sum, s) => sum + s.httpMetrics.bytesDownloaded, 0);
-
-console.log(`Total downloaded: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+// Use completed WebSocket sessionInfo payloads only when the HTTP totals
+// came from TokenTracker. The current fallback values are synthetic.
 ```
 
-#### 2. **Performance Regression**
-Detect slower responses:
-```javascript
-const history = await fetch('/api/sessions/history?limit=50')
-    .then(r => r.json());
+#### 2. Performance regression
+Not supported by current telemetry: TokenTracker does not provide per-request response times in this path, and the synthetic fallback is not measured latency. Do not build regression alerts from `avgResponseTime` until real request timing is implemented.
 
-history.sessions
-    .filter(s => s.httpMetrics && s.httpMetrics.avgResponseTime > 1000)
-    .forEach(s => {
-        console.warn(`Slow session: ${s.configName} - ${s.httpMetrics.avgResponseTime}ms`);
-    });
-```
-
-#### 3. **Request Optimization**
-Count requests per scraper:
-```javascript
-const session = /* current session */;
-if (session.httpMetrics) {
-    const reqPerElement = session.httpMetrics.requests / session.elementsProcessed;
-    console.log(`Efficiency: ${reqPerElement.toFixed(2)} requests per element`);
-}
-```
+#### 3. Request optimization
+Request/byte totals can be inspected in the completed WebSocket `sessionInfo` payload when populated from TokenTracker. `elementsProcessed` is the count of result variables, not source records, so ratios based on it are not record-level efficiency metrics.
 
 ---
 
@@ -164,7 +147,7 @@ if (session.httpMetrics) {
 
 ### What's Tracked
 
-Each plugin type's total execution time:
+The current IDE implementation does not measure each plugin type's total execution time. The code below demonstrates the `SessionMetrics` accumulator API only; the current `ExecutionManager` writes fixed estimates after execution based on XML tag presence.
 ```java
 SessionMetrics metrics = session.getMetrics();
 
@@ -180,7 +163,9 @@ breakdown.forEach((plugin, timeMs) -> {
 });
 ```
 
-### Use Cases
+### Do not use for performance analysis
+
+Because current values are estimates rather than measured execution time, sorting, percentage bars and comparisons are illustrative only. They cannot identify real bottlenecks or support performance regression decisions.
 
 #### 1. **Identify Bottlenecks**
 Find slowest plugins:
@@ -224,6 +209,8 @@ console.log('HTTP-heavy scrapers:', httpHeavy);
 ## 🎨 UI Features
 
 ### Session Panel Layout
+
+The following is an illustrative layout; the numbers are examples, not observed performance data.
 
 ```
 ┌─────────────────────────────┐
@@ -275,13 +262,13 @@ console.log('HTTP-heavy scrapers:', httpHeavy);
 │ └─────────────────────────────┘ │
 └─────────────────────────────────┘
          ▲
-         │ Updates during execution
+         │ Updated at session finalization
          │
 ┌─────────────────────────────────┐
 │ ExecutionManager.java           │
-│ - Tracks HTTP via TokenTracker  │
-│ - Simulates plugin times        │
-│ - Sends via WebSocket           │
+│ - Copies aggregate HTTP totals │
+│ - Adds synthetic plugin estimates │
+│ - Sends sessionInfo at completion │
 └─────────────────────────────────┘
          │
          │ JSON over WebSocket
@@ -303,7 +290,7 @@ interface SessionInfo {
   elementsProcessed: number;
   processingRate: number;
   
-  // Enhanced metrics (v2.2.0)
+  // Session metrics payload (current IDE implementation)
   httpMetrics?: {
     requests: number;
     bytesDownloaded: number;
