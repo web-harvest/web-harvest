@@ -88,6 +88,76 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
         assertEquals(context.getVar("afterExit").toString(), "continued");
     }
 
+    @Test(groups = {"integration", "core-plugins"})
+    public void trueConditionInsideLoopStopsRemainingIterationsAndRootSiblings() throws Exception {
+        ExitObserver observer = new ExitObserver();
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <loop item=\"item\" items=\"one,two\" delimiter=\",\">"
+            + "    <exit condition=\"true\" message=\"loop-stop\"/>"
+            + "    <def var=\"afterLoopBody\" value=\"must-not-run\"/>"
+            + "  </loop>"
+            + "  <def var=\"afterLoop\" value=\"must-not-run\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
+
+        assertNotNull(observer.event.get(), "Exit inside Loop must publish the exit event");
+        assertEquals(observer.event.get().getMessage(), "loop-stop");
+        assertNull(context.getVar("afterLoopBody"),
+            "Siblings after Exit inside Loop must not execute");
+        assertNull(context.getVar("afterLoop"),
+            "Root siblings after a Loop containing Exit must not execute");
+    }
+
+    @Test(groups = {"integration", "core-plugins"})
+    public void trueConditionInsideFunctionStopsCallAndRootSiblings() throws Exception {
+        ExitObserver observer = new ExitObserver();
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <function name=\"stopper\">"
+            + "    <exit condition=\"true\" message=\"function-stop\"/>"
+            + "    <def var=\"afterFunctionExit\" value=\"must-not-run\"/>"
+            + "  </function>"
+            + "  <call name=\"stopper\"/>"
+            + "  <def var=\"afterCallExit\" value=\"must-not-run\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
+
+        assertNotNull(observer.event.get(), "Exit inside a called function must publish the exit event");
+        assertEquals(observer.event.get().getMessage(), "function-stop");
+        assertNull(context.getVar("afterFunctionExit"),
+            "Siblings after Exit inside the function must not execute");
+        assertNull(context.getVar("afterCallExit"),
+            "Root siblings after a function call containing Exit must not execute");
+    }
+
+    @Test(groups = {"integration", "core-plugins"})
+    public void trueConditionInsideTryBypassesCatchAndStopsRootSiblings() throws Exception {
+        ExitObserver observer = new ExitObserver();
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <try>"
+            + "    <exit condition=\"true\" message=\"try-stop\"/>"
+            + "    <def var=\"afterTryExit\" value=\"must-not-run\"/>"
+            + "  </try>"
+            + "  <catch><def var=\"catchMarker\" value=\"must-not-run\"/></catch>"
+            + "  <def var=\"afterTryCatch\" value=\"must-not-run\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlStringWithObserver(xml, observer);
+
+        assertNotNull(observer.event.get(), "Exit inside Try must publish the exit event");
+        assertEquals(observer.event.get().getMessage(), "try-stop");
+        assertNull(context.getVar("afterTryExit"),
+            "Siblings after Exit inside Try must not execute");
+        assertNull(context.getVar("catchMarker"),
+            "Catch must not intercept a requested scraper exit");
+        assertNull(context.getVar("afterTryCatch"),
+            "Root siblings after a Try containing Exit must not execute");
+    }
+
     private DynamicScopeContext executeXmlStringWithObserver(String xml, ExitObserver observer) throws Exception {
         ConfigSource configSource = new BufferConfigSource(xml);
         Harvester harvester = harvest.getHarvester(configSource, new org.webharvest.HarvestLoadCallback() {
