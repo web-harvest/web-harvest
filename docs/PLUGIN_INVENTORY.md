@@ -73,7 +73,7 @@ The current source tree contains these plugin-named implementation classes outsi
 | `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Optional-integration candidate; inspect connection/runtime support classes |
 | `webharvest-mail` | `MailPlugin` | Optional-integration candidate |
 | `webharvest-webbrowser` | `WebBrowserPlugin` | Optional-integration candidate |
-| `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional-integration candidate; inspect parent-child execution contract |
+| `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 replaces parent-instance lookup with a scoped execution-context stream and adds nested-archive runtime evidence; remains outside default Core |
 
 The database module also contains the following runtime/support classes, which are part of the module boundary audit even though they are not plugin entry points by name:
 
@@ -109,7 +109,7 @@ The `@CorePlugin` annotation and `PluginMetadata.isCorePlugin()` are not reliabl
 - [ ] Compare declared configuration/schema and execution/variable semantics with implementation and runtime tests.
 - [ ] Map tests by plugin: unit, deterministic runtime integration and network/service dependent.
 - [ ] Verify compatibility obligations, especially `set-var`.
-- [ ] Investigate `ZipEntryPlugin.getParentZipPlugin(...)`: the current method returns `null` with a TODO while execution requires a parent `ZipPlugin`. Confirm whether this is a dead path, known defect or test gap before proposing migration.
+- [x] Replace the ZIP parent-instance lookup with a scoped `DynamicScopeContext` stream handoff; verify nested ZIP scope restoration and orphan-entry rejection in PR #187.
 - [ ] Produce a reviewed Core membership and extension migration table.
 
 ## 5. Evidence and limitations
@@ -150,15 +150,15 @@ The following module boundaries are confirmed by each module POM: every optional
 | `webharvest-database` | `database`, `connection` | Commons DBCP | Unit tests for both plugin classes and driver manager; XML example resource | Strong optional-integration candidate |
 | `webharvest-mail` | `mail` | Commons Email | Unit tests, exception tests, bug regression and integration test | Strong optional-integration candidate |
 | `webharvest-webbrowser` | `web-browser` | HtmlUnit | Unit, metadata, regression and integration tests | Strong optional-integration candidate |
-| `webharvest-zip` | `zip`, `zip-entry` | JDK ZIP APIs only | Only one integration-named test currently visible; see limitation below | Optional extension candidate, but classification and tests need review |
+| `webharvest-zip` | `zip`, `zip-entry` | JDK ZIP APIs only | One Failsafe integration test inspects outer/nested archive bytes; one unit test rejects an orphan entry; path-filtered optional-module CI | Optional extension; behavior is now tested, but it remains opt-in and outside default Core |
 
 The FTP child classes do not have separate test source files, but `FtpPluginTest` contains explicit `testFtpGetPlugin`, `testFtpPutPlugin` and `testFtpListPlugin` methods. Do not infer missing coverage solely from file-name matching.
 
-### ZIP test gap and parent contract
+### ZIP execution contract repaired in PR #187
 
-The current `ZipPluginIntegrationTest.testZipPluginExample()` only locates the XML example resource and asserts that the file exists. It does not load or execute the configuration, nor assert the generated archive contents. It is therefore not evidence of end-to-end ZIP runtime behavior.
+The former resource-exists placeholder has been replaced with a real XML-loader/Harvester integration test. It inspects the outer archive entries and a nested archive's contents, proving that the active stream is restored after the inner ZIP completes. A separate unit test verifies that an orphan `<zip-entry>` is rejected.
 
-`ZipEntryPlugin` requires a parent `ZipPlugin` in execution and throws if it cannot resolve one. The parent-resolution helper currently returns `null` with a TODO. This is a direct defect or unfinished path, not merely a test naming gap. The ZIP module must not be considered complete until the parent/child context contract and an actual archive-content integration test are repaired.
+`ZipPlugin` now owns its stream as a local variable and exposes it only through a scoped `DynamicScopeContext` value while its body executes. `ZipEntryPlugin` resolves that active stream from the context rather than looking up a parent plugin instance. Nested ZIP processors create nested scopes; the outer stream is restored when the inner scope exits. Try-with-resources closes the stream on success or failure. ZIP remains an optional extension and is not added to the 44 default Core mappings.
 
 ## 8. Core implementation inventory and test evidence
 
@@ -249,9 +249,7 @@ Current classification: legacy/internal metadata artifact, not a current default
 
 ### ZIP parent resolution is a confirmed blocker
 
-The current `ZipEntryPlugin.getParentZipPlugin(context)` implementation returns `null` unconditionally and contains an explicit TODO. `doExecute` immediately throws when the result is null, before it writes an entry. The existing `ZipPluginIntegrationTest.testZipPluginExample()` only checks that the XML resource exists; it does not load the configuration, execute it or inspect archive contents.
-
-This is now tracked as [Issue #97 — ZIP entry plugin cannot resolve its parent ZIP plugin](https://github.com/web-harvest/web-harvest/issues/97). The ZIP module remains an optional extension candidate but is not functionally validated and must not be described as production-ready until the parent/child execution contract, stream cleanup and archive-content tests are implemented.
+PR #187 addresses the defect tracked in [Issue #97 — ZIP entry plugin cannot resolve its parent ZIP plugin](https://github.com/web-harvest/web-harvest/issues/97). The active archive is now passed through a scoped execution context, the example is executable, the integration test inspects real archive contents (including nested ZIP), and the orphan-entry path has a direct negative test. The optional ZIP workflow runs `mvn -B -ntp -pl webharvest-zip -am verify` on relevant path changes. ZIP remains optional; this is not a Core membership change.
 
 Evidence links:
 - [AbstractPlugin.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/AbstractPlugin.java)
@@ -402,7 +400,7 @@ membership decision.
 | `webharvest-ftp` | `commons-net:commons-net` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin` and `FtpListPlugin` connect to remote FTP servers, authenticate, and read/write/list remote files. The connection-oriented implementations disconnect in `finally`. Requires external network, credentials and remote filesystem access. | `FtpPluginIntegrationTest` only checks that the example XML resource exists. `FtpPluginTest` mostly covers metadata/schema/initialization; its execute and invalid-action tests accept a broad `Exception` without asserting the exact failure. No deterministic FTP server execution contract was found in the inspected tests. |
 | `webharvest-mail` | `org.apache.commons:commons-email` | `MailPlugin` creates SimpleEmail/HtmlEmail and calls `email.send()`; this is an external SMTP/network side effect that can deliver real email. | `MailPluginIntegrationTest` only checks that the example XML resource exists. No deterministic SMTP execution contract was found in the inspected integration test. |
 | `webharvest-webbrowser` | `net.sourceforge.htmlunit:htmlunit:2.70.0` | `WebBrowserPlugin` loads remote URLs, executes JavaScript/AJAX and stores WebClients in static `namedPages` / `defaultPage` state. The explicit `close` action closes clients, but the inspected class has no automatic Harvester-run cleanup hook; the static default client also raises cross-run isolation/concurrency questions. | The integration test executes XML but asserts only a non-null context; it does not assert loaded page content or script results. |
-| `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a `ZipOutputStream` and closes it in `finally`. `ZipEntryPlugin.getParentZipPlugin(context)` unconditionally returns null, so every `<zip-entry>` currently fails before writing. | `ZipPluginIntegrationTest` only checks that the example XML resource exists; it does not execute the Harvester or inspect archive entries. Confirmed defect is tracked in Issue #97. |
+| `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a local `ZipOutputStream` and exposes it only in a scoped `DynamicScopeContext` value; `ZipEntryPlugin` reads it from that scope. Nested ZIP scopes restore the outer stream and try-with-resources closes it. | `ZipPluginIntegrationTest` executes the XML example and inspects outer and nested archive contents; `ZipEntryPluginTest` rejects an orphan entry. Optional ZIP CI runs Core+ZIP verify. See PR #187 / Issue #97. |
 | `webharvest-database` | `commons-dbcp:commons-dbcp`; no JDBC driver declared by the module | `DatabasePlugin` executes SQL via `PreparedStatement`, supports inline driver/url and a named `connection` path; `ConnectionPlugin` stores named connection factories in context. Named mode is currently blocked by unconditional driver/url schema requirements. Metadata/annotation names and namespaces also disagree. | 33 unit tests (12 DatabasePlugin, 10 ConnectionPlugin, 7 exception, 4 driver-manager); no successful SQL result assertion or executed XML integration fixture. Core CI excludes this optional module. Follow-up: Issue #185. |
 
 The inspected Database, FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
@@ -453,6 +451,9 @@ Evidence links:
 - [ZipPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipPlugin.java)
 - [ZipEntryPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipEntryPlugin.java)
 - [ZIP integration test](../webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
+- [ZIP orphan-entry unit test](../webharvest-zip/src/test/java/org/webharvest/plugin/zip/ZipEntryPluginTest.java)
+- [ZIP module README](../webharvest-zip/README.md)
+- [Optional ZIP CI workflow](../.github/workflows/optional-zip-ci.yml)
 - [Database module POM](../webharvest-database/pom.xml)
 - [DatabasePlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/DatabasePlugin.java)
 - [ConnectionPlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/ConnectionPlugin.java)
