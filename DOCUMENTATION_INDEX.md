@@ -40,7 +40,7 @@ The following root-level files are retained for historical, migration, compatibi
 - [Changelog](CHANGELOG.md) — release history; distinguish released changes from unreleased work.
 - [Fixed Bugs Archive](BUGS_FIXED.md) — historical defect record, not a current defect/status tracker.
 - [Component Library](COMPONENT_LIBRARY.md) — design/component reference; confirm its current owner and consumers before changing related assets.
-- [Build and Test Notes](BUILD_AND_TEST.md) — legacy build notes. Use the commands in [CONTRIBUTING.md](CONTRIBUTING.md) for current CI-aligned validation.
+- [Build and Test Guide](BUILD_AND_TEST.md) — current Core, reactor and opt-in network validation commands.
 
 ## Legacy publishing material
 

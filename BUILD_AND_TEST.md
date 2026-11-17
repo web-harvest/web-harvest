@@ -1,336 +1,76 @@
-# Build & Test Guide
+# Build and Test Guide
 
-## 📌 Najnowsze usprawnienia (aktualizacja 21.11.2025)
+This document describes the repository's current Maven validation paths. GitHub Actions is the authoritative CI gate; a local focused test run is not equivalent to the complete Core or reactor checks.
 
-- 🧱 **„Szybki rebuild” frontendu** – samo `npm run build` (w `webharvest-ide/frontend`) odświeża bundle bez odpalania całego Mavena.
-- 🧯 **Brak plików `checkstyle.xml`/`pmd.xml`/`spotbugs-include.xml`** – build IDE wymaga dodatkowych flag:  
-  `mvn -pl webharvest-ide -am clean install -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true`.
-- 🚀 **IDE w tle** – po udanym buildzie startujemy serwer Jetty poleceniem `java -jar webharvest-ide/target/webharvest-ide-2.3.1.jar`.
-- 🔁 (z 31.10.2025) **Usunięto zduplikowaną zależność `org.jsoup`**, czyścimy `dist/` przed buildem i pilnujemy portu 8080 (`pkill -f webharvest-ide-2.3.1.jar`).
+For branch, review, CI evidence and network-test policy, see the [Contributing Guide](CONTRIBUTING.md).
 
-### Szybka sekwencja poleceń
+## Prerequisites
 
-```bash
-cd /Users/robertbala/Documents/Git/web-harvest-git
+- JDK 11 for the current Core CI baseline.
+- Maven 3.6 or newer.
+- Node.js and npm only when working on IDE frontend assets.
 
-# 1. Upewnij się, że nic nie blokuje portu 8080
-pkill -f webharvest-ide-2.3.1.jar || true
+Run Maven commands from the repository root unless a command explicitly changes directory.
 
-# 2. Pełny build backendu (bez testów, domyślnie)
-mvn clean install -DskipTests
+## Core validation
 
-# 3. Ręczny rebuild frontendu (tylko gdy chcesz szybko przeładować JS/CSS)
-cd webharvest-ide/frontend
-npm install
-npm run build
-
-# 4. Uruchom IDE
-cd ../..
-java -jar webharvest-ide/target/webharvest-ide-2.3.1.jar
-```
-
-> 💡 Po starcie log Jetty potwierdzi adres `http://localhost:8080`. Jeśli port był zajęty, serwer spróbuje połączyć się z istniejącą instancją i wypisze błąd.
-
-## 🔧 Co zostało zmienione?
-
-### 1. PropertyPanel.ts
-- ✅ Dodano import SchemaEditor, ExpressionBuilder, XPathTester, RegexValidator
-- ✅ Zmieniono render() aby używać zaawansowanych edytorów
-- ✅ Dodano automatyczną detekcję typu pola (url, xpath, regex, expression)
-- ✅ Dodano przyciski do otwierania zaawansowanych edytorów w modalu
-- ✅ Dodano metody addAdvancedEditorButton() i openAdvancedEditor()
-
-### 2. advanced-editors.css (NOWY)
-- ✅ Style dla SchemaEditor
-- ✅ Style dla ExpressionBuilder  
-- ✅ Style dla XPathTester
-- ✅ Style dla RegexValidator
-- ✅ Style dla modalu
-
-### 3. index.html
-- ✅ Dodano link do advanced-editors.css
-
----
-
-## 🚀 Jak zbudować?
-
-### Metoda 1: Maven (Automatyczna)
+Run the focused Core unit-test path and required upstream modules:
 
 ```bash
-cd /Users/robertbala/Documents/Git/web-harvest-git
-mvn clean package -DskipTests -pl webharvest-ide -am
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am test
 ```
 
-> 💡 **Extra:** Jeśli brakuje konfiguracji statycznych analiz (checkstyle/PMD/SpotBugs), użyj powyższego polecenia z dodatkowymi flagami – to dokładnie ta komenda, którą wykorzystano przy ostatnim buildzie.
-
-Maven wykona automatycznie:
-1. `npm install` (zainstaluje zależności)
-2. `npm run build` (TypeScript → JavaScript przez Vite)
-3. Skopiuje `dist/` do `webapp/dist/`
-4. Zbuduje JAR
-
-**Czas budowania:** ~2-3 minuty
-
----
-
-## 🧪 Jak przetestować?
-
-### 1. Uruchom IDE
+Run the full Core lifecycle, including Surefire, Failsafe and configured quality gates:
 
 ```bash
-# Zatrzymaj poprzednią instancję
-pkill -f "webharvest-ide"
-
-# Uruchom nową
-java -jar webharvest-ide/target/webharvest-ide-2.3.1.jar
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
 ```
 
-### 2. Otwórz w przeglądarce
+The full Core verification is the required gate for Core changes. It includes the configured Checkstyle and JaCoCo checks; do not replace it with a focused test and describe the result as a complete pass.
 
-```
-http://localhost:8080
-```
+## Full reactor validation
 
-**WAŻNE:** Użyj **hard refresh** aby wyczyścić cache:
-- **Mac:** Cmd + Shift + R
-- **Windows:** Ctrl + Shift + F5
-- **Lub:** Otwórz w trybie incognito
+For changes that may affect multiple modules, run:
 
-### 3. Test manualny
-
-#### Test 1: PropertyPanel z SchemaEditor
-
-1. Przełącz na tryb **Visual** (przycisk w toolbarze)
-2. Przeciągnij plugin **HTTP** na canvas
-3. Kliknij w node HTTP
-4. **Oczekiwany rezultat:**
-   - Panel "Properties" pojawia się po prawej stronie
-   - Pole "url" ma typ URL (z walidacją)
-   - Pole "method" ma dropdown (jeśli jest enum)
-   - Pola są ładnie ostylowane (nie proste inputy)
-
-#### Test 2: XPath Tester Button
-
-1. Przeciągnij plugin **XPath** na canvas
-2. Kliknij w node
-3. Znajdź pole "expression"
-4. **Oczekiwany rezultat:**
-   - Pod polem "expression" pojawia się przycisk "🔧 XPath Tester"
-   - Kliknięcie przycisku otwiera modal
-   - Modal zawiera:
-     - Pole "XPath Expression"
-     - Pole "Sample XML"
-     - Sekcję "Results"
-     - Przycisk "Apply & Close"
-
-#### Test 3: Expression Builder
-
-1. Przeciągnij plugin **Def** na canvas
-2. W body wpisz: `${myVar}`
-3. **Oczekiwany rezultat:**
-   - Pod textarea pojawia się przycisk "🔧 Expression Builder"
-   - Kliknięcie otwiera modal z:
-     - Textarea dla wyrażenia
-     - Lista dostępnych zmiennych
-     - Lista funkcji (concat, replace, etc.)
-     - Live preview
-     - Przycisk "Apply & Close"
-
-#### Test 4: Regex Validator
-
-1. Przeciągnij plugin **Regexp** na canvas
-2. Kliknij w node
-3. Znajdź pole "pattern"
-4. **Oczekiwany rezultat:**
-   - Pod polem "pattern" pojawia się przycisk "🔧 Regex Validator"
-   - Kliknięcie otwiera modal z:
-     - Pole "Test Text"
-     - Pole "Regex Pattern"
-     - Checkboxy dla flag (g, i, m)
-     - Sekcję "Matches" z highlighted results
-     - Pattern library (Email, URL, Phone, etc.)
-
----
-
-## 🐛 Troubleshooting
-
-### Problem: Nie widzę zmian
-
-**Rozwiązanie:**
 ```bash
-# 1. Wyczyść cache npm
-cd webharvest-ide/frontend
-npm cache clean --force
-
-# 2. Przebuduj
-cd ../..
-mvn clean package -DskipTests -pl webharvest-ide -am
-
-# 3. Hard refresh w przeglądarce
-# Mac: Cmd+Shift+R
-# Windows: Ctrl+Shift+F5
+mvn --batch-mode --no-transfer-progress verify
 ```
 
-### Problem: Brak przycisków "🔧 XPath Tester"
+A full reactor run is broader and more expensive than the Core gate. Select it when the changed modules or dependency boundaries require it.
 
-**Możliwe przyczyny:**
-1. Frontend nie został zbudowany
-2. Cache przeglądarki
-3. Błąd w TypeScript (sprawdź browser console)
+## Network-tagged Core tests
 
-**Sprawdź:**
+The default Core CI gate is deterministic and excludes network-tagged tests. Run the opt-in network suites separately when the change requires them and network access is available.
+
+Network-tagged unit tests:
+
 ```bash
-# Czy dist/ istnieje?
-ls -la webharvest-ide/frontend/dist/
-
-# Czy main.js jest aktualny?
-stat webharvest-ide/frontend/dist/assets/main-*.js
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile surefire:test
 ```
 
-### Problem: Modal się nie otwiera
+Network-tagged integration tests:
 
-**Sprawdź console:**
-```
-F12 → Console
-```
-
-**Szukaj błędów:**
-- `Uncaught TypeError...` - Problem z importem
-- `Cannot read property...` - Null pointer
-- `Module not found...` - Missing dependency
-
-**Rozwiązanie:**
 ```bash
-# Sprawdź czy wszystkie pliki istnieją
-ls -la webharvest-ide/frontend/src/visual/SchemaEditor.ts
-ls -la webharvest-ide/frontend/src/visual/ExpressionBuilder.ts
-ls -la webharvest-ide/frontend/src/visual/XPathTester.ts
-ls -la webharvest-ide/frontend/src/visual/RegexValidator.ts
-
-# Sprawdź czy nie ma błędów TypeScript
-cd webharvest-ide/frontend
-npm run type-check
+mvn --batch-mode --no-transfer-progress -pl webharvest-core -am -Pnetwork-tests test-compile failsafe:integration-test failsafe:verify
 ```
 
-### Problem: Style nie działają
+These commands are diagnostics for explicitly network-dependent tests. They do not replace the deterministic CI gate and should not be combined into a single invocation that could hide later diagnostics after an earlier failure.
 
-**Sprawdź czy CSS załadowany:**
-```
-F12 → Network → Filter: CSS
-```
+## Reporting validation evidence
 
-**Szukaj:**
-- `advanced-editors.css` - status 200 OK
+For a pull request, record:
 
-**Jeśli 404:**
-```bash
-# Sprawdź czy plik istnieje
-ls -la webharvest-ide/src/main/resources/webapp/static/css/advanced-editors.css
+- the exact commit SHA tested;
+- the exact Maven command or GitHub Actions workflow/run;
+- Surefire and Failsafe test counts, failures, errors and skipped tests;
+- Checkstyle and JaCoCo results when applicable;
+- whether validation was focused, Core-wide or full-reactor;
+- network dependencies, environment limitations and untested behavior.
 
-# Sprawdź czy jest w JARze
-unzip -l webharvest-ide/target/webharvest-ide-2.3.1.jar | grep advanced-editors.css
-```
+Do not weaken a gate to obtain a green result. Do not delete tests, add broad exclusions, use `continue-on-error`, or lower coverage thresholds to conceal a regression.
 
----
+## IDE frontend work
 
-## 📊 Checklist dla developerów
+The IDE frontend has its own Node.js/npm toolchain. Do not rely on the historical commands, paths, generated bundle names or manual Jetty startup instructions that previously appeared in this file. Verify the current frontend package scripts and Maven module lifecycle before running or documenting an IDE-specific build.
 
-### Pre-Build:
-- [ ] Wszystkie pliki TypeScript istnieją
-- [ ] Brak błędów w `npm run type-check`
-- [ ] PropertyPanel.ts importuje wszystkie advanced editors
-- [ ] index.html ma link do advanced-editors.css
-
-### Build:
-- [ ] `mvn clean package` kończy się SUCCESS
-- [ ] `dist/` folder istnieje
-- [ ] `main-*.js` jest w dist/assets/
-- [ ] JAR zawiera wszystkie pliki CSS
-
-### Post-Build:
-- [ ] IDE startuje bez błędów
-- [ ] http://localhost:8080 otwiera się
-- [ ] Browser console nie pokazuje błędów
-- [ ] Przyciski "🔧" są widoczne
-- [ ] Modals otwierają się i zamykają
-- [ ] Zmiany są zapisywane
-
----
-
-## 🎯 Expected Output
-
-### Console (No errors):
-```
-🚀 WebHarvest IDE v2.2.0 - TypeScript Edition
-✅ PluginPalette initialized with 27 plugins
-✅ VisualDesigner initialized
-✅ PropertyPanel initialized
-✅ SchemaEditor ready
-```
-
-### Browser Network (All 200 OK):
-```
-main-*.js          200 OK  (JS bundle)
-advanced-editors.css  200 OK  (CSS styles)
-node-states.css    200 OK  (Node styles)
-enterprise.css     200 OK  (Brand colors)
-```
-
-### Visual Test:
-```
-1. Przeciągnij HTTP → Canvas
-2. Kliknij node
-3. PropertyPanel pojawia się ✓
-4. Pole URL z walidacją ✓
-5. Przycisk "🔧 XPath Tester" (jeśli xpath) ✓
-6. Modal otwiera się ✓
-7. Apply & Close działa ✓
-```
-
----
-
-## 🏁 Success Criteria
-
-Integracja jest **kompletna** gdy:
-
-✅ PropertyPanel używa SchemaEditor  
-✅ Przyciski "🔧" pojawiają się dla xpath/regex/expression  
-✅ Modals otwierają się i działają  
-✅ XPathTester waliduje XPath wyrażenia  
-✅ RegexValidator testuje regex  
-✅ ExpressionBuilder pokazuje autocomplete  
-✅ Apply & Close aktualizuje wartości  
-✅ Zmiany są widoczne po re-kliknięciu w node  
-
----
-
-## 📞 Support
-
-Jeśli nadal nie działa po wykonaniu wszystkich kroków:
-
-1. **Sprawdź Maven output:**
-   ```bash
-   mvn clean package -DskipTests -pl webharvest-ide -am -X > build.log 2>&1
-   tail -100 build.log
-   ```
-
-2. **Sprawdź Browser Console:**
-   ```
-   F12 → Console → Copy all errors
-   ```
-
-3. **Sprawdź Network Tab:**
-   ```
-   F12 → Network → Filter failed requests (status != 200)
-   ```
-
-4. **Sprawdź czy frontend buildnął się:**
-   ```bash
-   cat webharvest-ide/frontend/dist/index.html | grep "main"
-   # Powinno pokazać: <script type="module" src="/dist/assets/main-*.js">
-   ```
-
----
-
-**Powodzenia! 🚀**
-
+For current contributor workflow and review requirements, return to the [Contributing Guide](CONTRIBUTING.md).
