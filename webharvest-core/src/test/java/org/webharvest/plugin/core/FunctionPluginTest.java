@@ -130,8 +130,7 @@ public class FunctionPluginTest {
         
         plugin.initialize(mockConfiguration);
         
-        // Should not throw exception as dashes are allowed in function names
-        assertTrue(true);
+        assertTrue(plugin.isInitialized(), "Function names containing dashes are accepted");
     }
 
     @Test
@@ -291,7 +290,7 @@ public class FunctionPluginTest {
             
             try {
                 schema.validate(config);
-                assertTrue(true); // Should not throw exception
+                // Successful return confirms this function name is accepted.
             } catch (PluginValidationException e) {
                 fail("Valid name '" + name + "' should not throw exception");
             }
