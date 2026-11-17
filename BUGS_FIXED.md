@@ -1831,7 +1831,7 @@ Both reported charset problems in CLI mode. Single fix resolves both issues.
 Configuration files loaded in CLI mode were read using platform default charset instead of UTF-8, causing encoding problems for non-ASCII characters. On Windows, this meant files were read as WIN1250/ANSI instead of UTF-8.
 
 **Problem Example** (Windows):
-- Config file saved as UTF-8 with Polish characters: `ąćęłńóśźż`
+- Config file saved as UTF-8 with Polish characters (test data): `ąćęłńóśźż`
 - CLI reads with platform default: WIN1250
 - Result: Garbled characters or parsing errors
 
@@ -1892,7 +1892,7 @@ return new InputStreamReader(url.openStream(), StandardCharsets.UTF-8);
 **Comprehensive test suite with 4 tests (all PASS):**
 
 1. ✅ `testConfigFileReadAsUtf8_NotPlatformDefault()`
-   - Tests UTF-8 characters: Polish ąćęłńóśźż, Chinese 中文, Russian Русский
+   - Tests UTF-8 characters: Polish `ąćęłńóśźż`, Chinese `中文`, and Russian `Русский`
    - Verifies all chars preserved correctly
    - Confirms platform default not used
 
@@ -3931,7 +3931,7 @@ User requested ability to control which exception types the `<try>` processor ca
 > 2. runtime - runtime exceptions
 > 3. all - all exceptions
 > 
-> Może to już mamy :)" (Maybe we already have this :))
+> “Maybe we already have this :)” (original Polish: “Może to już mamy :)”)
 
 #### Analysis
 
@@ -3977,7 +3977,7 @@ The user's level 3 ("all - all exceptions") is ALREADY implemented. TryPlugin ca
 2. All RuntimeException instances (Java runtime errors)
 3. All checked exceptions (IOException, SQLException, etc.)
 
-**User's intuition was correct**: "Może to już mamy :)" → YES, YOU DO!
+**User's intuition was correct**: “Maybe we already have this :)” → YES, YOU DO! (Original Polish: “Może to już mamy :)”.)
 
 #### Verification Tests
 
@@ -6533,9 +6533,9 @@ document.querySelectorAll('a.link').forEach(link => {
 });
 ```
 
-#### User's Question: "A może stan wiedzy się na tyle zmienił?"
+#### User's Question: “Has the state of knowledge changed enough?” (Original Polish: “A może stan wiedzy się na tyle zmienił?”)
 
-**Odpowiedź: TAK! Stan wiedzy się DRAMATYCZNIE zmienił!**
+**Answer: YES! The state of knowledge has changed DRAMATICALLY!**
 
 **2010 (when Bug #13 was filed):**
 - HTMLSQL seemed promising
