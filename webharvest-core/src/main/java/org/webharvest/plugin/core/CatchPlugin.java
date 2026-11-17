@@ -240,7 +240,7 @@ public class CatchPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable. Essential for graceful error handling, logging, and fallback processing. Must be used within try element.";
+            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error} and the compatibility alias ${_error}. Include failures, validation failures and interruption bypass Catch.";
         }
         
         @Override
@@ -252,7 +252,7 @@ public class CatchPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Catch Plugin",
-                "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable.",
+                "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error} and the compatibility alias ${_error}.",
                 new String[]{"Tab", "Enter"}
             );
         }
