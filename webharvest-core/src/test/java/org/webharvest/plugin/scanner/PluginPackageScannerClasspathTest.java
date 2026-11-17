@@ -61,7 +61,7 @@ public class PluginPackageScannerClasspathTest {
         try {
             writePluginClassJar(jarPath);
             URL jarUrl = jarPath.toUri().toURL();
-            URL packageResource = new URL("jar:" + jarUrl.toExternalForm() + "!/" + PACKAGE_PATH);
+            URL packageResource = new URL("jar:" + jarUrl.toExternalForm() + "!/" + PACKAGE_PATH + "/");
             try (URLClassLoader jarLoader = new URLClassLoader(
                     new URL[] {jarUrl}, PluginPackageScanner.class.getClassLoader()) {
                 @Override
@@ -91,6 +91,8 @@ public class PluginPackageScannerClasspathTest {
             if (classBytes == null) {
                 throw new IOException("Missing test fixture class resource " + PLUGIN_CLASS_RESOURCE);
             }
+            output.putNextEntry(new JarEntry(PACKAGE_PATH + "/"));
+            output.closeEntry();
             output.putNextEntry(new JarEntry(PACKAGE_PATH + "/HttpPlugin.class"));
             byte[] buffer = new byte[4096];
             int read;
