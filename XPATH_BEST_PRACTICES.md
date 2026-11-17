@@ -1,4 +1,4 @@
-# XPath Best Practices in Web-Harvest
+# XPath Best Practices
 
 ## Common Issue: Element vs Text Content
 
@@ -179,6 +179,7 @@ Check `test_output.txt` to verify the result matches your expectations.
 
 ---
 
-*Updated: October 10, 2025*  
-*Version: 2.2.1*
+**Reviewed against:** `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d`  
+**Review date:** 2026-11-17  
+**Related implementation/tests:** `XPathPlugin.java`, `XPathPluginTest`, `XPathPluginAdditionalTest`, `XPathWithGetVarIntegrationTest`.
 
