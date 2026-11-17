@@ -32,6 +32,8 @@
 */
 package org.webharvest.plugin;
 
+import org.webharvest.exception.ScraperExecutionExitException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.CorePluginRegistry;
