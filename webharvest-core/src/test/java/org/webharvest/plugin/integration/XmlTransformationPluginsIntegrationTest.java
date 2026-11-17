@@ -157,14 +157,14 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
 
     @Test(groups = {"integration", "xml-plugins"})
     public void testXmlPluginWrapsNestedXmlAndFeedsXPath() throws Exception {
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n"
-            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\\n"
-            + "  <def var=\"xmlData\">\\n"
-            + "    <xml><products><product id=\"1\"><name>Widget</name></product></products></xml>\\n"
-            + "  </def>\\n"
-            + "  <def var=\"productName\">\\n"
-            + "    <xpath expression=\"//name/text()\"><get var=\"xmlData\"/></xpath>\\n"
-            + "  </def>\\n"
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n"
+            + "  <def var=\"xmlData\">\n"
+            + "    <xml><products><product id=\"1\"><name>Widget</name></product></products></xml>\n"
+            + "  </def>\n"
+            + "  <def var=\"productName\">\n"
+            + "    <xpath expression=\"//name/text()\"><get var=\"xmlData\"/></xpath>\n"
+            + "  </def>\n"
             + "</config>";
 
         DynamicScopeContext context = executeXmlString(xml);
