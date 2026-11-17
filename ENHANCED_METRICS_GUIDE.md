@@ -8,7 +8,7 @@ The IDE exposes a session-metrics payload, but most resource fields are not curr
 
 ## Verified implementation status
 
-**Source baseline:** `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d` (2026-11-17).
+**Source baseline:** `main` at `a63a614daedfb86ae173c524a96c511ac577af89` (2026-11-17).
 
 | Metric | Current implementation | Important limitation |
 |---|---|---|
