@@ -36,6 +36,7 @@ package org.webharvest.plugin.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -657,6 +658,8 @@ public class CallPlugin extends AbstractPlugin {
                         params.put(paramName, paramValue);
                         LOGGER.debug("CallPlugin: Collected parameter '{}' = {} chars", 
                             paramName, paramValue != null ? paramValue.toString().length() : 0);
+                    } catch (ScraperExecutionExitException e) {
+                        throw e;
                     } catch (Exception e) {
                         IncludeExecutionException.rethrowIfIncludeFailure(e);
                         LOGGER.warn("CallPlugin: Failed to execute call-param '{}': {}", paramName, e.getMessage());
@@ -796,6 +799,8 @@ public class CallPlugin extends AbstractPlugin {
             Variable normalizedResult = normalizeReturnValue(functionResult);
             return normalizedResult != null ? normalizedResult : EmptyVariable.INSTANCE;
             
+        } catch (ScraperExecutionExitException e) {
+            throw e;
         } catch (Exception e) {
             IncludeExecutionException.rethrowIfIncludeFailure(e);
             LOGGER.error("CallPlugin.doExecute: Error executing function call '{}': {}", 
