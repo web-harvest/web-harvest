@@ -51,6 +51,7 @@ import org.webharvest.plugin.annotations.UiField;
 import org.webharvest.plugin.annotations.UiFieldKind;
 import org.webharvest.plugin.annotations.UiTool;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.metadata.CatalogUiToolMarkers;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -568,6 +569,7 @@ public class DefPlugin extends AbstractPlugin {
         } catch (InterruptedException e) {
             throw e;
         } catch (Exception e) {
+            IncludeExecutionException.rethrowIfIncludeFailure(e);
             LOGGER.error("Error defining variable '" + varName + "': " + e.getMessage(), e);
             throw new RuntimeException("Error defining variable '" + varName + "': " + e.getMessage(), e);
         }

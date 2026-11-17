@@ -49,6 +49,7 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.templaters.BaseTemplater;
@@ -657,6 +658,7 @@ public class CallPlugin extends AbstractPlugin {
                         LOGGER.debug("CallPlugin: Collected parameter '{}' = {} chars", 
                             paramName, paramValue != null ? paramValue.toString().length() : 0);
                     } catch (Exception e) {
+                        IncludeExecutionException.rethrowIfIncludeFailure(e);
                         LOGGER.warn("CallPlugin: Failed to execute call-param '{}': {}", paramName, e.getMessage());
                         params.put(paramName, EmptyVariable.INSTANCE);
                     }
@@ -795,6 +797,7 @@ public class CallPlugin extends AbstractPlugin {
             return normalizedResult != null ? normalizedResult : EmptyVariable.INSTANCE;
             
         } catch (Exception e) {
+            IncludeExecutionException.rethrowIfIncludeFailure(e);
             LOGGER.error("CallPlugin.doExecute: Error executing function call '{}': {}", 
                 functionName, e.getMessage());
             LOGGER.error("CallPlugin.doExecute: Exception details", e);

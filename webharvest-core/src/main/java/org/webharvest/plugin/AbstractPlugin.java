@@ -325,6 +325,9 @@ public abstract class AbstractPlugin implements Plugin {
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {
+                if (isIncludeExecutionFailure(e)) {
+                    throw e;
+                }
                 LOGGER.error("PluginBodyExecutor failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
             }
@@ -332,6 +335,17 @@ public abstract class AbstractPlugin implements Plugin {
         
         LOGGER.debug("No body content to execute (no children)");
         return EmptyVariable.INSTANCE;
+    }
+
+    private boolean isIncludeExecutionFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof org.webharvest.plugin.exceptions.IncludeExecutionException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**
@@ -378,6 +392,9 @@ public abstract class AbstractPlugin implements Plugin {
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {
+                if (isIncludeExecutionFailure(e)) {
+                    throw e;
+                }
                 LOGGER.error("PluginBodyExecutor.getBodyTextContent() failed: {}", e.getMessage(), e);
                 return EmptyVariable.INSTANCE;
             }

@@ -1,509 +1,392 @@
-/*
- * Copyright (c) 2006-2025 the original author or authors.
- *
- * Redistribution and use of this software in source and binary forms,
- * with or without modification, are permitted provided that the following
- * conditions are met:
- *
- * * Redistributions of source code must retain the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer.
- *
- * * Redistributions in binary form must reproduce the above
- *   copyright notice, this list of conditions and the
- *   following disclaimer in the documentation and/or other
- *   materials provided with the distribution.
- *
- * * The name of Web-Harvest may not be used to endorse or promote
- *   products derived from this software without specific prior
- *   written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
 package org.webharvest.plugin.core;
 
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-// REMOVED in v2.2.x - old architecture classes no longer exist
-// import org.webharvest.definition.CorePluginDef;
-// import org.webharvest.definition.IElementDef;
-// import org.webharvest.definition.XmlNode;
+import org.webharvest.definition.Config;
+import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.definition.ConfigFactory;
+import org.webharvest.definition.ConfigSourceFactory;
+import org.webharvest.ioc.ScraperModule;
+import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
-import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
+import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.Variable;
 
-import java.util.ArrayList;
-
-import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
-import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
-/**
- * Unit tests for {@link IncludePlugin}.
- * 
- * @author Robert Bala
- * @since 2.2.0
- */
 public class IncludePluginTest {
-    
-    private IncludePlugin plugin;
-    
-    @Mock
-    private DynamicScopeContext context;
-    
-    // REMOVED in v2.2.x - old architecture mocks no longer needed
-    // @Mock
-    // private CorePluginDef elementDef;
-    // @Mock
-    // private XmlNode xmlNode;
-    
-    @Mock
-    private PluginConfiguration configuration;
-    
+
+    private static final String NAMESPACE = "http://org.webharvest/schema/2.1/core";
+
+    private Injector injector;
+    private ConfigFactory configFactory;
+    private ConfigSourceFactory configSourceFactory;
+    private ScraperContext context;
+    private Path directory;
+
     @BeforeMethod
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        plugin = new IncludePlugin();
-    }
-    
-    @Test
-    public void testIncludePluginReturnsEmptyVariable() throws Exception {
-        // Given
-        when(configuration.getProperty("path")).thenReturn("test.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        // When
-        Variable result = plugin.execute(context);
-        
-        // Then
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
-    
-    @Test(expectedExceptions = org.webharvest.plugin.exceptions.PluginException.class)
-    public void testIncludePluginThrowsExceptionWhenPathIsNull() throws Exception {
-        // Given
-        when(configuration.getProperty("path")).thenReturn(null);
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        
-        // When/Then
-        plugin.initialize(configuration);
-    }
-    
-    @Test(expectedExceptions = org.webharvest.plugin.exceptions.PluginException.class)
-    public void testIncludePluginThrowsExceptionWhenPathIsEmpty() throws Exception {
-        // Given
-        when(configuration.getProperty("path")).thenReturn("");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        
-        // When/Then
-        plugin.initialize(configuration);
-    }
-    
-    @Test
-    public void testGetMetadata() {
-        assertNotNull(plugin.getMetadata());
-        assertEquals(plugin.getMetadata().getId(), "include");
-        assertEquals(plugin.getMetadata().getName(), "Include");
-        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
-        assertNotNull(plugin.getMetadata().getDescription()); assertTrue(plugin.getMetadata().getDescription().contains("include") || plugin.getMetadata().getDescription().contains("Include"));
-        assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
-        assertEquals(plugin.getMetadata().getCategory(), expectedCategory(IncludePlugin.class));
-        assertEquals(plugin.getMetadata().getElementName(), "include");
-        assertTrue(plugin.getMetadata().isCorePlugin());
+    public void setUp() throws IOException {
+        directory = Files.createTempDirectory("webharvest-include-test");
+        injector = Guice.createInjector(new ScraperModule(directory.toString()));
+        configFactory = injector.getInstance(ConfigFactory.class);
+        configSourceFactory = injector.getInstance(ConfigSourceFactory.class);
+        context = injector.getInstance(ScraperContext.class);
     }
 
     @Test
-    public void testGetConfigurationSchema() {
+    public void shouldExecuteIncludedConfigurationAndShareVariables() throws Exception {
+        write("main.xml", config("<include path=\"included.xml\"/>"
+                + "<def var=\"afterInclude\" value=\"done\"/>"));
+        write("included.xml", config("<def var=\"fromInclude\" value=\"loaded\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        Variable result = execute(main);
+
+        assertNotNull(result);
+        assertEquals(context.getVar("fromInclude").toString(), "loaded");
+        assertEquals(context.getVar("afterInclude").toString(), "done");
+        assertSame(context.getConfig(), main, "The parent config must be restored after include");
+    }
+
+    @Test
+    public void shouldResolveNestedIncludesRelativeToEachIncludingFile() throws Exception {
+        write("main.xml", config("<include path=\"sub/first.xml\"/>"));
+        write("sub/first.xml", config("<include path=\"nested/second.xml\"/>"));
+        write("sub/nested/second.xml", config("<def var=\"nestedValue\" value=\"resolved\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        execute(main);
+
+        assertEquals(context.getVar("nestedValue").toString(), "resolved");
+        assertSame(context.getConfig(), main, "Nested includes must restore each parent config");
+    }
+
+    @Test
+    public void shouldAbortContainingConfigurationAndRestoreParentOnMissingInclude() throws Exception {
+        write("main.xml", config("<include path=\"missing.xml\"/>"
+                + "<def var=\"mustNotRun\" value=\"incorrect\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A missing include must fail the containing configuration");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure), "Failure must retain the IncludeExecutionException marker");
+        }
+
+        assertNull(context.getVar("mustNotRun"), "Later siblings must not execute after a fatal include");
+        assertSame(context.getConfig(), main, "Parent config must be restored after include failure");
+    }
+
+    @Test
+    public void shouldResolveNestedIncludesRelativeToHttpConfigurationUrls() throws Exception {
+        Map<String, String> resources = new HashMap<>();
+        resources.put("/main.xml", config("<include path=\"parts/first.xml\"/>"));
+        resources.put("/parts/first.xml", config("<include path=\"nested/second.xml\"/>"));
+        resources.put("/parts/nested/second.xml", config("<def var=\"httpNestedValue\" value=\"resolved\"/>"));
+
+        try (LocalHttpFixture fixture = new LocalHttpFixture(resources)) {
+            Config main = load(fixture.url("/main.xml"));
+            context.setConfig(main);
+
+            execute(main);
+
+            assertEquals(context.getVar("httpNestedValue").toString(), "resolved");
+            assertSame(context.getConfig(), main, "HTTP include must restore the original parent config");
+        }
+    }
+
+    @Test
+    public void shouldRestoreParentConfigWhenNestedIncludeFails() throws Exception {
+        write("main.xml", config("<include path=\"sub/first.xml\"/>"
+                + "<def var=\"mustNotRunAfterNestedFailure\" value=\"incorrect\"/>"));
+        write("sub/first.xml", config("<include path=\"missing.xml\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A nested missing include must abort the containing configuration");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("mustNotRunAfterNestedFailure"));
+        assertSame(context.getConfig(), main, "Every include frame must restore its parent Config");
+    }
+
+    @Test
+    public void shouldRestoreParentConfigWhenIncludedExecutionIsInterrupted() throws Exception {
+        CorePluginRegistry.getInstance().registerMapping(null, InterruptingPlugin.class, "interrupt-test");
+        write("main.xml", config("<include path=\"included.xml\"/>"));
+        write("included.xml", config("<interrupt-test/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("The included child must propagate interruption");
+        } catch (InterruptedException expected) {
+            assertSame(context.getConfig(), main, "Parent Config must be restored before interruption escapes");
+            assertTrue(Thread.currentThread().isInterrupted(), "Interruption status must be preserved");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    public void shouldRejectMalformedIncludedConfigurationAndRestoreParent() throws Exception {
+        write("main.xml", config("<include path=\"malformed.xml\"/>"
+                + "<def var=\"mustNotRunAfterMalformedInclude\" value=\"incorrect\"/>"));
+        write("malformed.xml", "<config xmlns=\"" + NAMESPACE + "\"><def var=\"broken\"></config>");
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("Malformed included XML must fail the containing configuration");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("mustNotRunAfterMalformedInclude"));
+        assertSame(context.getConfig(), main, "Parent Config must be restored after parse failure");
+    }
+
+    @Test
+    public void shouldNotLetTryPluginSwallowFatalIncludeFailure() throws Exception {
+        write("main.xml", config("<try><include path=\"missing.xml\"/></try>"
+                + "<def var=\"afterTryFailure\" value=\"incorrect\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A fatal Include failure must bypass the <try> recovery path");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("afterTryFailure"));
+        assertSame(context.getConfig(), main);
+    }
+
+    @Test
+    public void shouldNotLetFunctionCallSwallowFatalIncludeFailure() throws Exception {
+        write("main.xml", config("<function name=\"loadMissing\"><include path=\"missing.xml\"/>"
+                + "</function><call name=\"loadMissing\"/>"
+                + "<def var=\"afterCallFailure\" value=\"incorrect\"/>"));
+
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        try {
+            execute(main);
+            fail("A fatal Include failure must bypass the function-call recovery path");
+        } catch (RuntimeException failure) {
+            assertTrue(hasIncludeFailure(failure));
+        }
+
+        assertNull(context.getVar("afterCallFailure"));
+        assertSame(context.getConfig(), main);
+    }
+
+    @Test
+    public void shouldFailClearlyWhenConfigFactoryWasNotInjected() throws Exception {
+        write("main.xml", config(""));
+        write("included.xml", config("<def var=\"includedValue\" value=\"loaded\"/>"));
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        IncludePlugin plugin = new IncludePlugin();
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+                "include", NAMESPACE, "include", Collections.singletonMap("path", "included.xml"));
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail("An Include plugin without Guice injection must fail explicitly");
+        } catch (RuntimeException failure) {
+            assertTrue(hasMessageContaining(failure, "ConfigFactory was not injected"),
+                    "Failure must explain the missing dependency instead of exposing a NullPointerException");
+        }
+        assertSame(context.getConfig(), main, "The parent config must remain active");
+    }
+
+    @Test(expectedExceptions = PluginValidationException.class)
+    public void shouldValidateRequiredPath() throws Exception {
+        IncludePlugin plugin = new IncludePlugin();
+        DefaultPluginConfiguration configuration =
+                new DefaultPluginConfiguration("include", NAMESPACE, "include", Collections.emptyMap());
+
+        plugin.validateConfiguration(configuration);
+    }
+
+    @Test
+    public void shouldExposeIncludeMetadataAndSchema() {
+        IncludePlugin plugin = new IncludePlugin();
+        assertEquals(plugin.getMetadata().getId(), "include");
+        assertEquals(plugin.getMetadata().getElementName(), "include");
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
         assertNotNull(schema);
-        assertEquals(schema.getVersion(), "2.3.0");
-        assertFalse(schema.allowsBody());
-        assertEquals(schema.getRequiredSubElements().length, 0);
-        assertEquals(schema.getAllowedSubElements().length, 0);
-        assertEquals(schema.getRequiredAttributes().length, 1);
-        assertEquals(schema.getOptionalAttributes().length, 1);
-
-        // Check attribute definitions
-        PluginConfigurationSchema.AttributeDefinition[] attributes = schema.getAttributeDefinitions();
-        assertEquals(attributes.length, 2);
-
-        // Check path attribute (required)
-        PluginConfigurationSchema.AttributeDefinition pathAttr = schema.getAttribute("path");
-        assertNotNull(pathAttr);
-        assertEquals(pathAttr.getName(), "path");
-        assertEquals(pathAttr.getType(), PluginConfigurationSchema.AttributeType.FILE_PATH);
-        assertTrue(pathAttr.isRequired());
-        assertNull(pathAttr.getDefaultValue());
-
-        // Check id attribute (optional)
-        PluginConfigurationSchema.AttributeDefinition idAttr = schema.getAttribute("id");
-        assertNotNull(idAttr);
-        assertEquals(idAttr.getName(), "id");
-        assertEquals(idAttr.getType(), PluginConfigurationSchema.AttributeType.STRING);
-        assertFalse(idAttr.isRequired());
-        assertNull(idAttr.getDefaultValue());
+        assertEquals(schema.getRequiredAttributes(), new String[]{"path"});
     }
 
-    @Test
-    public void testInitializeWithValidConfiguration() throws PluginException {
-        when(configuration.getProperty("path")).thenReturn("test.xml");
-        plugin.initialize(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+    private Config load(String name) {
+        Config config = configFactory.create(configSourceFactory.create(directory.resolve(name).toFile()));
+        config.reload();
+        return config;
     }
 
-    @Test(expectedExceptions = PluginValidationException.class)
-    public void testValidateConfigurationWithNullConfiguration() throws PluginValidationException {
-        plugin.validateConfiguration(null);
+    private Config load(URL url) {
+        Config config = configFactory.create(configSourceFactory.create(url));
+        config.reload();
+        return config;
     }
 
-    @Test(expectedExceptions = PluginValidationException.class)
-    public void testValidateConfigurationWithMissingPath() throws PluginValidationException {
-        when(configuration.getProperty("path")).thenReturn(null);
-        plugin.validateConfiguration(configuration);
+    private Variable execute(Config config) throws InterruptedException {
+        return new DefaultPluginBodyExecutor().executeChildren(
+                config.getConfigurationTree().getConfiguration().getChildren(), context);
     }
 
-    @Test(expectedExceptions = PluginValidationException.class)
-    public void testValidateConfigurationWithEmptyPath() throws PluginValidationException {
-        when(configuration.getProperty("path")).thenReturn("");
-        plugin.validateConfiguration(configuration);
+    private void write(String name, String xml) throws IOException {
+        Path file = directory.resolve(name);
+        Files.createDirectories(file.getParent());
+        Files.write(file, xml.getBytes(StandardCharsets.UTF_8));
     }
 
-    @Test
-    public void testExecuteWithIdAttribute() throws Exception {
-        when(configuration.getProperty("id")).thenReturn("test-include");
-        when(configuration.getProperty("path")).thenReturn("test.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+    private String config(String children) {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<config xmlns=\"" + NAMESPACE + "\">" + children + "</config>";
     }
 
-    @Test
-    public void testExecuteMultipleTimes() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("test.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        // Execute multiple times
-        Variable result1 = plugin.execute(context);
-        Variable result2 = plugin.execute(context);
-        
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertTrue(result1 instanceof EmptyVariable);
-        assertTrue(result2 instanceof EmptyVariable);
-    }
+    public static final class InterruptingPlugin extends AbstractPlugin {
+        @Override
+        public PluginMetadata getMetadata() {
+            return new EmptyPlugin().getMetadata();
+        }
 
-    @Test
-    public void testExecuteWithDifferentPaths() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("different/path.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
+        @Override
+        protected void doInitialize(PluginConfiguration configuration) {
+            // No initialization required by this test plugin.
+        }
 
-    @Test
-    public void testExecuteWithComplexPath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("examples/complex/path/test.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
+        @Override
+        protected Variable doExecute(org.webharvest.runtime.DynamicScopeContext executionContext)
+                throws InterruptedException {
+            throw new InterruptedException("intentional Include interruption test");
+        }
 
-    @Test
-    public void testExecuteWithAbsolutePath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("/absolute/path/test.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
-
-    @Test
-    public void testExecuteWithSpecialCharactersInPath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("test-file_2024.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
-
-    @Test
-    public void testExecuteWithUnicodeInPath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("测试文件.xml");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
-
-    @Test(expectedExceptions = PluginException.class)
-    public void testExecuteWithNullPath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn(null);
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-    }
-
-    @Test(expectedExceptions = PluginException.class)
-    public void testExecuteWithEmptyPath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-    }
-
-    @Test(expectedExceptions = PluginException.class)
-    public void testExecuteWithWhitespacePath() throws Exception {
-        when(configuration.getProperty("path")).thenReturn("   ");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        plugin.initialize(configuration);
-        
-        Variable result = plugin.execute(context);
-    }
-
-    @Test
-    public void testMetadataGetters() {
-        PluginMetadata metadata = plugin.getMetadata();
-        
-        assertNotNull(metadata.getAuthor());
-        assertEquals(metadata.getAuthor(), "Web-Harvest Team");
-        assertNotNull(metadata.getCategory());
-        assertEquals(metadata.getCategory(), expectedCategory(IncludePlugin.class));
-        assertNotNull(metadata.getVersion());
-        
-        String[] tags = metadata.getTags();
-        assertNotNull(tags);
-        assertTrue(tags.length > 0);
-        
-        String[] dependencies = metadata.getDependencies();
-        assertNotNull(dependencies);
-    }
-
-    @Test
-    public void testSchemaAttributeDefinitions() {
-        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
-        PluginConfigurationSchema.AttributeDefinition[] attrs = schema.getAttributeDefinitions();
-        
-        assertNotNull(attrs);
-        assertTrue(attrs.length >= 1);
-        
-        for (PluginConfigurationSchema.AttributeDefinition attr : attrs) {
-            assertNotNull(attr.getName());
-            assertNotNull(attr.getType());
+        @Override
+        protected void doValidateConfiguration(PluginConfiguration configuration) {
+            // No additional configuration required by this test plugin.
         }
     }
 
-    @Test
-    public void testSchemaOptionalAttributes() {
-        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
-        String[] optionalAttrs = schema.getOptionalAttributes();
-        
-        assertNotNull(optionalAttrs);
-    }
+    private static final class LocalHttpFixture implements AutoCloseable {
+        private final ServerSocket server;
+        private final Map<String, String> resources;
+        private final Thread worker;
 
-    @Test
-    public void testSchemaRequiredAttributes() {
-        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
-        String[] requiredAttrs = schema.getRequiredAttributes();
-        
-        assertNotNull(requiredAttrs);
-        assertTrue(requiredAttrs.length >= 1);
-    }
+        private LocalHttpFixture(Map<String, String> resources) throws IOException {
+            this.resources = new HashMap<>(resources);
+            server = new ServerSocket(0, 10, InetAddress.getLoopbackAddress());
+            worker = new Thread(this::serve, "include-http-fixture");
+            worker.setDaemon(true);
+            worker.start();
+        }
 
-    @Test
-    public void testSchemaAllowsBody() {
-        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
-        assertFalse(schema.allowsBody());
-    }
+        private URL url(String path) throws IOException {
+            return new URL("http://127.0.0.1:" + server.getLocalPort() + path);
+        }
 
-    @Test
-    public void testExecuteWithValidPathFormat() throws Exception {
-        IncludePlugin newPlugin = new IncludePlugin();
-        
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getProperty("path")).thenReturn("config/test.xml");
-        
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        newPlugin.initialize(config);
-        
-        Variable result = newPlugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
-    }
-
-    @Test
-    public void testAttributeDefinitionProperties() {
-        PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
-        PluginConfigurationSchema.AttributeDefinition[] attrs = schema.getAttributeDefinitions();
-        
-        boolean hasPathAttr = false;
-        for (PluginConfigurationSchema.AttributeDefinition attr : attrs) {
-            if ("path".equals(attr.getName())) {
-                hasPathAttr = true;
-                assertTrue(attr.isRequired());
-                // Path attribute can be FILE_PATH or STRING type
-                assertNotNull(attr.getType());
+        private void serve() {
+            while (!server.isClosed()) {
+                try (Socket socket = server.accept()) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+                    String requestLine = reader.readLine();
+                    String requestPath = requestLine == null ? "/" : requestLine.split(" ")[1];
+                    String header;
+                    while ((header = reader.readLine()) != null && !header.isEmpty()) {
+                        // Consume request headers before writing the response.
+                    }
+                    String body = resources.get(requestPath);
+                    byte[] payload = (body == null ? "Not found" : body).getBytes(StandardCharsets.UTF_8);
+                    String status = body == null ? "404 Not Found" : "200 OK";
+                    OutputStream output = socket.getOutputStream();
+                    output.write(("HTTP/1.1 " + status + "\r\n"
+                            + "Content-Type: application/xml; charset=UTF-8\r\n"
+                            + "Content-Length: " + payload.length + "\r\n"
+                            + "Connection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+                    output.write(payload);
+                    output.flush();
+                } catch (IOException e) {
+                    if (!server.isClosed()) {
+                        throw new IllegalStateException("Local Include HTTP fixture failed", e);
+                    }
+                }
             }
         }
-        assertTrue(hasPathAttr);
+
+        @Override
+        public void close() throws Exception {
+            server.close();
+            worker.join(1000L);
+        }
     }
 
-    @Test
-    public void testExecuteWithRelativePath() throws Exception {
-        IncludePlugin newPlugin = new IncludePlugin();
-        
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getProperty("path")).thenReturn("./relative/path/file.xml");
-        when(config.getProperty("id")).thenReturn(null);
-        
-        when(context.getCharset()).thenReturn("UTF-8");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        newPlugin.initialize(config);
-        
-        Variable result = newPlugin.execute(context);
-        
-        assertNotNull(result);
+    private boolean hasMessageContaining(Throwable failure, String expected) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current.getMessage() != null && current.getMessage().contains(expected)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
-    @Test
-    public void testExecuteWithFullAbsolutePath() throws Exception {
-        IncludePlugin newPlugin = new IncludePlugin();
-        
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getProperty("path")).thenReturn("/absolute/path/file.xml");
-        when(config.getProperty("id")).thenReturn(null);
-        
-        when(context.getCharset()).thenReturn("UTF-8");
-        // v2.2.x: elementDef/xmlNode removed - no longer needed
-        // when(xmlNode.getText()).thenReturn("");
-        // when(xmlNode.getElementList()).thenReturn(new ArrayList());
-        // when(elementDef.getNode()).thenReturn(xmlNode);
-        // when(elementDef.hasOperations()).thenReturn(false);
-        
-        newPlugin.initialize(config);
-        
-        Variable result = newPlugin.execute(context);
-        
-        assertNotNull(result);
+    private boolean hasIncludeFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof IncludeExecutionException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }

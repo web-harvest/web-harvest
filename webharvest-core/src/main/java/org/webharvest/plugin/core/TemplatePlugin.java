@@ -47,6 +47,7 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
@@ -745,6 +746,7 @@ public class TemplatePlugin extends AbstractPlugin {
         } catch (InterruptedException e) {
             throw e;
         } catch (Exception e) {
+            IncludeExecutionException.rethrowIfIncludeFailure(e);
             LOGGER.error("Template plugin - error during execution", e);
             return EmptyVariable.INSTANCE;
         }

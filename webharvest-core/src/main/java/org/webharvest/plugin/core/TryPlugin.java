@@ -50,6 +50,7 @@ import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.annotations.MasterDetailConstraint;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
@@ -482,6 +483,7 @@ public class TryPlugin extends AbstractPlugin {
             // Cancellation is not an application failure and must bypass <catch>.
             throw e;
         } catch (Exception e) {
+            IncludeExecutionException.rethrowIfIncludeFailure(e);
             LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
             LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());
             

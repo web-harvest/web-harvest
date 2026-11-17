@@ -27,15 +27,14 @@ public class StabilizationCallWhileResidualBranchContractTest extends XmlBasedIn
         plugin.initialize(configuration);
     }
 
-    @Test
-    public void includeExecuteReturnsEmptyForValidPathStub() throws Exception {
+    @Test(expectedExceptions = RuntimeException.class)
+    public void includeWithoutActiveConfigFailsExplicitly() throws Exception {
         IncludePlugin plugin = new IncludePlugin();
         DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
                 "include", NS, "include");
         configuration.setProperty("path", "missing-but-accepted.xml");
         plugin.initialize(configuration);
-        Variable result = plugin.execute(new ScraperContext());
-        assertTrue(result instanceof EmptyVariable || result.isEmpty(), String.valueOf(result));
+        plugin.execute(new ScraperContext());
     }
 
     @Test
