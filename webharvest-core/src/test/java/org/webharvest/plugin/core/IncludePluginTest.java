@@ -223,6 +223,28 @@ public class IncludePluginTest {
         assertSame(context.getConfig(), main);
     }
 
+    @Test
+    public void shouldFailClearlyWhenConfigFactoryWasNotInjected() throws Exception {
+        write("main.xml", config(""));
+        write("included.xml", config("<def var=\\"includedValue\\" value=\\"loaded\\"/>"));
+        Config main = load("main.xml");
+        context.setConfig(main);
+
+        IncludePlugin plugin = new IncludePlugin();
+        DefaultPluginConfiguration configuration = new DefaultPluginConfiguration(
+                "include", NAMESPACE, "include", Collections.singletonMap("path", "included.xml"));
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail("An Include plugin without Guice injection must fail explicitly");
+        } catch (RuntimeException failure) {
+            assertTrue(hasMessageContaining(failure, "ConfigFactory was not injected"),
+                    "Failure must explain the missing dependency instead of exposing a NullPointerException");
+        }
+        assertSame(context.getConfig(), main, "The parent config must remain active");
+    }
+
     @Test(expectedExceptions = PluginValidationException.class)
     public void shouldValidateRequiredPath() throws Exception {
         IncludePlugin plugin = new IncludePlugin();
@@ -344,6 +366,17 @@ public class IncludePluginTest {
             server.close();
             worker.join(1000L);
         }
+    }
+
+    private boolean hasMessageContaining(Throwable failure, String expected) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current.getMessage() != null && current.getMessage().contains(expected)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private boolean hasIncludeFailure(Throwable failure) {
