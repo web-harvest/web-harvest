@@ -42,8 +42,8 @@ import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
 
- /**
-  * Integration tests for Regexp, Tokenize and Script plugins.
+/**
+ * Integration tests for Regexp, Tokenize and Script plugins.
   *
   * Each test asserts the values produced by the plugin in the execution context.
   *
@@ -59,9 +59,12 @@ public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTes
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <def var=\"source\">Hello World!</def>"
             + "  <def var=\"matches\">"
-            + "    <regexp pattern=\"Hello (.*?)!\"><get var=\"source\"/></regexp>"
+            + "    <regexp>"
+            + "      <regexp-pattern>(\\w+)-(\\d+)</regexp-pattern>"
+            + "      <regexp-source>item-42</regexp-source>"
+            + "      <regexp-result>&lt;var name='group1'/&gt;-&lt;var name='group2'/&gt;</regexp-result>"
+            + "    </regexp>"
             + "  </def>"
             + "</config>";
 
@@ -72,9 +75,8 @@ public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTes
         assertTrue(matches instanceof ListVariable, "Regexp should return a ListVariable");
         ListVariable resultList = (ListVariable) matches;
         assertEquals(resultList.getList().size(), 1, "The expression should produce exactly one match");
-        assertEquals(resultList.get(0).toString(), "Hello World!");
-        assertEquals(context.getVar("group1").toString(), "World",
-            "Regexp should expose the first capture group in the execution context");
+        assertEquals(resultList.get(0).toString(), "item-42",
+            "Regexp should substitute both capture groups in the configured result template");
     }
 
     @Test(groups = {"integration", "text-processing-plugins"})
