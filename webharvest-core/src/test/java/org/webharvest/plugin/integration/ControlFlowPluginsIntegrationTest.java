@@ -119,12 +119,12 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testTryCatchHandlesRuntimeFailureAndSkipsRemainingTryBody() throws Exception {
-        String xml = "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>"
-            + "<config xmlns=\\"http://org.webharvest/schema/2.1/core\\">"
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
             + "  <try>"
             + "    <regexp><regexp-pattern>[</regexp-pattern><regexp-source>value</regexp-source></regexp>"
-            + "    <def var=\\"afterFailure\\" value=\\"must-not-run\\"/>"
-            + "    <catch><def var=\\"catchMarker\\" value=\\"caught\\"/></catch>"
+            + "    <def var=\"afterFailure\" value=\"must-not-run\"/>"
+            + "    <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
             + "  </try>"
             + "</config>";
 
