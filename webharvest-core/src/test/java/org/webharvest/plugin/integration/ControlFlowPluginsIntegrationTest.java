@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.EmptyVariable;
 
 import static org.testng.Assert.*;
 
@@ -102,9 +103,8 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <try><template>completed</template>"
-            + "    <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
-            + "  </try>"
+            + "  <try><template>completed</template></try>"
+            + "  <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
             + "  <def var=\"afterTry\" value=\"completed\"/>"
             + "</config>";
 
@@ -112,9 +112,60 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
 
         assertNull(context.getVar("catchMarker"),
             "Catch body must not execute when the Try body completes without an error");
+        assertNull(context.getVar("caughtError"),
+            "The Catch body must not expose an error value after a successful Try");
         assertNotNull(context.getVar("afterTry"),
             "Execution should continue after a successful Try/Catch construct");
         assertEquals(context.getVar("afterTry").toString(), "completed");
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void testTryCatchHandlesRuntimeFailureAndSkipsRemainingTryBody() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <try>"
+            + "    <xquery><xq-expression><![CDATA[for $item in $input/root/item "
+            + "return <result>{$item/text()}</result>]]></xq-expression></xquery>"
+            + "    <def var=\"afterFailure\" value=\"must-not-run\"/>"
+            + "  </try>"
+            + "  <catch>"
+            + "    <def var=\"catchMarker\" value=\"caught\"/>"
+            + "    <def var=\"caughtError\"><get var=\"error\"/></def>"
+            + "    <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
+            + "  </catch>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertEquals(context.getVar("catchMarker").toString(), "caught",
+            "Catch must execute after a runtime failure in the Try body");
+        assertNull(context.getVar("afterFailure"),
+            "Remaining Try body siblings must not execute after the first failure");
+        assertNotNull(context.getVar("caughtError"),
+            "The catch body must be able to read the canonical error variable");
+        assertTrue(context.getVar("caughtError").toString().contains("XQuery"),
+            "The error variable must retain the underlying XQuery failure");
+        assertNotNull(context.getVar("caughtErrorType"),
+            "The catch body must be able to read the error type");
+        assertFalse(context.getVar("caughtErrorType").toString().trim().isEmpty(),
+            "The error type must not be empty");
+        assertTrue(context.getVar("error") instanceof EmptyVariable,
+            "The handled error must not leak outside its Catch block");
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void testOrdinaryBodyFailureOutsideTryKeepsBestEffortSiblingExecution() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <xquery><xq-expression><![CDATA[for $item in $input/root/item "
+            + "return <result>{$item/text()}</result>]]></xq-expression></xquery>"
+            + "  <def var=\"afterFailure\" value=\"continued\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertEquals(context.getVar("afterFailure").toString(), "continued",
+            "Ordinary failures outside Try must preserve best-effort sibling execution");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})

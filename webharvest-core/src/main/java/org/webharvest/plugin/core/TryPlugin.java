@@ -50,12 +50,8 @@ import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.annotations.MasterDetailConstraint;
 import org.webharvest.plugin.exceptions.PluginException;
-import org.webharvest.plugin.exceptions.IncludeExecutionException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
-import org.webharvest.runtime.variables.ListVariable;
-import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.util.ArrayList;
@@ -67,7 +63,7 @@ import java.util.List;
  * <p>
  * The {@code <try>} processor provides exception handling similar to Java try-catch.
  * It executes its body and if any exception occurs, the {@code <catch>} block is executed
- * with error details available in the {@code ${_error}} variable.
+ * with error details available in the {@code ${error}} variable.
  * </p>
  * 
  * <h3>Usage Examples</h3>
@@ -80,14 +76,14 @@ import java.util.List;
  *   <def var="data">
  *     <http url="https://api.example.com/data"/>
  *   </def>
- * </try>
- * <catch>
+ *   <catch>
  *   <file path="errors.log" action="append">
- *     HTTP request failed: ${_error}
+ *     HTTP request failed: ${error}
  *     Timestamp: ${_date}
  *   </file>
  *   <def var="data" value=""/>  <!-- Use empty default -->
- * </catch>
+ *   </catch>
+ * </try>
  * </config>
  * }</pre>
  * 
@@ -102,13 +98,13 @@ import java.util.List;
  *   <try>
  *     <http url="https://api.example.com/data"/>
  *     <def var="success" value="true"/>
- *   </try>
- *   <catch>
+ *     <catch>
  *     <def var="retries">
  *       <script>parseInt(context.getVar("retries")) + 1</script>
  *     </def>
  *     <sleep milliseconds="2000"/>
- *   </catch>
+ *     </catch>
+ *   </try>
  * </while>
  * </config>
  * }</pre>
@@ -124,10 +120,10 @@ import java.util.List;
  *     <def var="price">
  *       <xpath expression=".//price/text()">${product}</xpath>
  *     </def>
- *   </try>
- *   <catch>
+ *     <catch>
  *     <def var="price" value="N/A"/>  <!-- Default if XPath fails -->
- *   </catch>
+ *     </catch>
+ *   </try>
  *   
  *   <file path="products.txt" action="append">
  *     Product price: ${price}
@@ -137,13 +133,14 @@ import java.util.List;
  * }</pre>
  * 
  * <h3>Error Variable</h3>
- * <p>Inside {@code <catch>} block, the {@code ${_error}} variable contains error message.</p>
+ * <p>Inside {@code <catch>} block, {@code ${error}} contains the error message.</p>
  * 
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
- *   <li><strong>Error variable:</strong> ${_error} available only inside catch block</li>
- *   <li><strong>No rethrow:</strong> Exceptions are caught and handled, not propagated</li>
+ *   <li><strong>Error variables:</strong> ${error} contains the exception message; ${errorType} contains the underlying exception type</li>
+ *   <li><strong>Catch placement:</strong> At most one Catch may be the final Try child or the immediately following sibling in the same parent body</li>
+ *   <li><strong>Failure policy:</strong> Ordinary runtime failures are handled; Include failures, validation failures and interruption bypass Catch</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
@@ -200,7 +197,7 @@ public class TryPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping.";
         }
 
         @Override
@@ -295,7 +292,7 @@ public class TryPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
+            return "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable. Essential for robust error handling, graceful degradation, and fault-tolerant scraping. Allows catch as child.";
         }
         
         @Override
@@ -309,7 +306,7 @@ public class TryPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Try Plugin",
-                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${_error} variable.",
+                "Executes body content with exception handling. If an exception occurs, the catch block is executed with error details available in ${error} variable.",
                 new String[]{"Tab", "Enter", "Escape"}
             );
         }
@@ -463,38 +460,17 @@ public class TryPlugin extends AbstractPlugin {
     }
 
     @Override
+    protected boolean shouldPropagateBodyExecutionFailures() {
+        return true;
+    }
+
+    @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("TryPlugin.doExecute: START");
-        LOGGER.debug("TryPlugin.doExecute: START");
-        
-        try {
-            // Execute child elements directly in the same context (not using BodyProcessor)
-            LOGGER.debug("TryPlugin.doExecute: About to execute child elements directly");
-            Variable result = executeChildElementsDirectly(context);
-            LOGGER.debug("TryPlugin.doExecute: Child elements executed successfully, result=" + result);
-            
-            // Set the result as a variable in the context
-            context.setLocalVar("tryResult", result);
-            LOGGER.debug("TryPlugin.doExecute: Set variable 'tryResult' in context");
-            
-            return result;
-            
-        } catch (InterruptedException e) {
-            // Cancellation is not an application failure and must bypass <catch>.
-            throw e;
-        } catch (Exception e) {
-            IncludeExecutionException.rethrowIfIncludeFailure(e);
-            LOGGER.debug("TryPlugin.doExecute: Exception caught: " + e.getMessage());
-            LOGGER.warn("Exception caught with try plugin: {}", e.getMessage());
-            
-            // Set error information in context
-            context.setLocalVar("error", new NodeVariable(e.getMessage()));
-            context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
-            LOGGER.debug("TryPlugin.doExecute: Set error variables in context");
-            
-            // Return empty result - the catch block should handle the error
-            return EmptyVariable.INSTANCE;
-        }
+
+        Variable result = executeChildElementsDirectly(context);
+        context.setLocalVar("tryResult", result);
+        return result;
     }
 
     /**

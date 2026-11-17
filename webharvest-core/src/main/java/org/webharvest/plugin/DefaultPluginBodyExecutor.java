@@ -82,13 +82,104 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return EmptyVariable.INSTANCE;
         }
 
+        if ("try".equals(config.getElementName())) {
+            return executeTryChildren(config.getChildren(), context);
+        }
+
         return executeChildren(config.getChildren(), context);
     }
 
     /**
+     * Executes a Try body with fail-fast semantics and dispatches an ordinary
+     * runtime failure to its optional Catch child. Other plugin bodies retain
+     * the historical best-effort sibling execution policy.
+     *
+     * @param children ordered Try children
+     * @param context execution context
+     * @return the Try body result or the Catch body result
+     * @throws InterruptedException if execution is interrupted
+     */
+    private Variable executeTryChildren(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+        final List<PluginConfiguration> tryBody = new ArrayList<>();
+        PluginConfiguration catchConfiguration = null;
+
+        if (children != null) {
+            for (int i = 0; i < children.size(); i++) {
+                PluginConfiguration child = children.get(i);
+                if ("catch".equals(child.getElementName())) {
+                    if (catchConfiguration != null) {
+                        throw new IllegalArgumentException("A Try block can contain at most one Catch block");
+                    }
+                    if (i != children.size() - 1) {
+                        throw new IllegalArgumentException("The Catch block must be the final child of Try");
+                    }
+                    catchConfiguration = child;
+                } else {
+                    tryBody.add(child);
+                }
+            }
+        }
+
+        // Validate sibling If/Else pairs before executing any Try body child.
+        validateSiblingElsePairs(tryBody);
+
+        // Preserve an enclosing Try's error context when Try blocks are nested.
+        final Variable previousError = context.getVar("error");
+        final Variable previousErrorType = context.getVar("errorType");
+
+        context.setLocalVar("error", EmptyVariable.INSTANCE);
+        context.setLocalVar("errorType", EmptyVariable.INSTANCE);
+
+        boolean bodyFailed = false;
+        try {
+            try {
+                return executeChildrenInternal(tryBody, context, true);
+            } catch (InterruptedException e) {
+                // Cancellation is not an application failure and must bypass Catch.
+                throw e;
+            } catch (Exception e) {
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e)) {
+                    throw e;
+                }
+
+                bodyFailed = true;
+                Throwable rootCause = getRootCause(e);
+                String message = e.getMessage();
+                if (message == null || message.trim().isEmpty()) {
+                    message = rootCause.getMessage();
+                }
+                if (message == null || message.trim().isEmpty()) {
+                    message = rootCause.getClass().getSimpleName();
+                }
+
+                NodeVariable errorValue = new NodeVariable(message);
+                NodeVariable errorTypeValue = new NodeVariable(rootCause.getClass().getSimpleName());
+                context.setLocalVar("error", errorValue);
+                context.setLocalVar("errorType", errorTypeValue);
+
+                if (catchConfiguration == null) {
+                    // Preserve the historical optional-Catch behavior: record the
+                    // failure and return an empty result when no handler is present.
+                    return EmptyVariable.INSTANCE;
+                }
+
+                // Catch runs outside the guarded Try body. A failure in the handler
+                // must propagate and must not recursively re-enter the same Catch.
+                return executeChildPlugin(catchConfiguration, context);
+            }
+        } finally {
+            // Keep an unhandled error available when no Catch was configured.
+            // Otherwise restore the enclosing Try's error state after the handler.
+            if (!bodyFailed || catchConfiguration != null) {
+                restoreVariable(context, "error", previousError);
+                restoreVariable(context, "errorType", previousErrorType);
+            }
+        }
+    }
+
+    /**
      * Ensures each sibling Else belongs to exactly one immediately preceding If.
-     * This validation runs before any child executes, so malformed control-flow
-     * structures cannot partially mutate the execution context.
      *
      * @param children ordered child configurations
      */
@@ -103,9 +194,8 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     }
 
     /**
-     * Executes an ordered list of child configurations. An adjacent sibling
-     * {@code <else>} is paired with its preceding {@code <if>} so both XML
-     * representations share the same conditional execution path.
+     * Executes an ordered list of child configurations using the historical
+     * best-effort policy for ordinary runtime failures.
      *
      * @param children ordered child configurations
      * @param context execution context
@@ -115,13 +205,11 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
     public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
             throws InterruptedException {
         validateSiblingElsePairs(children);
-        return executeChildrenInternal(children, context);
+        return executeChildrenInternal(children, context, false);
     }
 
     /**
-     * Executes the already-selected contents of a conditional branch. A selected
-     * Else is intentionally passed without its owning If, so sibling validation
-     * must happen before selection, not on this reduced list.
+     * Executes the already-selected contents of a conditional branch.
      *
      * @param children selected branch configurations
      * @param context execution context
@@ -130,11 +218,12 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
      */
     public Variable executeSelectedBranch(
             List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
-        return executeChildrenInternal(children, context);
+        return executeChildrenInternal(children, context, false);
     }
 
     private Variable executeChildrenInternal(
-            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+            List<PluginConfiguration> children, DynamicScopeContext context, boolean failFast)
+            throws InterruptedException {
         if (children == null || children.isEmpty()) {
             return EmptyVariable.INSTANCE;
         }
@@ -145,9 +234,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         for (int i = 0; i < children.size(); i++) {
             PluginConfiguration childConfig = children.get(i);
 
-            // XML permits Else either as an If child or as the immediately
-            // following sibling. Normalize the sibling form at execution time
-            // without mutating the parsed configuration tree.
+            // Normalize adjacent sibling If/Else pairs without mutating the parsed tree.
             if ("if".equals(childConfig.getElementName())
                     && i + 1 < children.size()
                     && "else".equals(children.get(i + 1).getElementName())) {
@@ -156,34 +243,88 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             }
 
             try {
-                Variable childResult = executeChildPlugin(childConfig, context);
+                Variable childResult;
+                // A sibling Catch belongs to the immediately preceding Try. Keep
+                // the pair inside this policy boundary so outer best-effort bodies
+                // and enclosing fail-fast Try bodies retain their own behavior.
+                if ("try".equals(childConfig.getElementName())
+                        && i + 1 < children.size()
+                        && "catch".equals(children.get(i + 1).getElementName())) {
+                    childResult = executeTryCatchPair(childConfig, children.get(i + 1), context);
+                    i++;
+                } else {
+                    childResult = executeChildPlugin(childConfig, context);
+                }
                 if (childResult != null && !(childResult instanceof EmptyVariable)) {
                     results.add(childResult);
                 }
             } catch (IllegalArgumentException e) {
-                if (isIncludeExecutionFailure(e)) {
-                    throw e;
-                }
-                if (e.getCause() instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
-                    // Invalid configuration is a hard failure.
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e) || failFast) {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
             } catch (InterruptedException e) {
                 // Cancellation aborts the current body; later siblings must not run.
-                // The enclosing AbstractPlugin lifecycle restores the flag after cleanup.
                 throw e;
             } catch (Exception e) {
-                if (isIncludeExecutionFailure(e)) {
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e) || failFast) {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
-                // Preserve historical body behavior for non-validation runtime failures:
-                // continue with remaining siblings.
             }
         }
 
         return new ListVariable(results);
+    }
+
+    private Variable executeTryCatchPair(
+            PluginConfiguration tryConfiguration,
+            PluginConfiguration catchConfiguration,
+            DynamicScopeContext context) throws InterruptedException {
+        final Variable previousError = context.getVar("error");
+        final Variable previousErrorType = context.getVar("errorType");
+
+        context.setLocalVar("error", EmptyVariable.INSTANCE);
+        context.setLocalVar("errorType", EmptyVariable.INSTANCE);
+
+        try {
+            Variable tryResult = executeChildPlugin(tryConfiguration, context);
+            Variable error = context.getVar("error");
+            if (error == null || error instanceof EmptyVariable) {
+                return tryResult;
+            }
+
+            // Run the sibling Catch outside the Try body. Handler failures must
+            // propagate rather than being mistaken for failures in the Try body.
+            return executeChildPlugin(catchConfiguration, context);
+        } finally {
+            restoreVariable(context, "error", previousError);
+            restoreVariable(context, "errorType", previousErrorType);
+        }
+    }
+
+    private Throwable getRootCause(Throwable failure) {
+        Throwable current = failure;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private void restoreVariable(DynamicScopeContext context, String name, Variable previousValue) {
+        Variable restoredValue = previousValue == null ? EmptyVariable.INSTANCE : previousValue;
+        context.replaceExistingVar(name, restoredValue);
+    }
+
+    private boolean isPluginValidationFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof org.webharvest.plugin.exceptions.PluginValidationException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private boolean isIncludeExecutionFailure(Throwable failure) {

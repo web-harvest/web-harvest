@@ -63,8 +63,10 @@ import java.util.List;
  * Exception catch block processor - handles exceptions from {@code <try>} block.
  * 
  * <p>
- * The {@code <catch>} processor executes only when an exception occurs in the preceding
- * {@code <try>} block. It provides access to error details via {@code ${_error}} variable
+ * The {@code <catch>} processor must be paired with a {@code <try>}, either as its final child
+ * or as the immediately following sibling in the same parent body. It executes only when an
+ * ordinary runtime exception occurs in that Try body and provides the message through
+ * {@code ${error}}
  * and enables graceful error handling, logging, and recovery.
  * </p>
  * 
@@ -76,7 +78,7 @@ import java.util.List;
  *   <http url="https://unreliable-api.com/data"/>
  * </try>
  * <catch>
- *   <log message="API request failed: ${_error}"/>
+ *   <log message="API request failed: ${error}"/>
  *   <var name="fallback_data">Default data</var>
  * </catch>
  * </config>
@@ -85,14 +87,14 @@ import java.util.List;
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>No parameters</strong>: Catch block executes when exception occurs</li>
- *   <li><strong>Error Variable</strong>: ${_error} contains exception message</li>
+ *   <li><strong>Error Variable</strong>: ${error} contains the exception message</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Parent Element</strong>: Must be used after {@code <try>} block</li>
- *   <li><strong>Error Variable</strong>: ${_error} is available only within catch block</li>
- *   <li><strong>Exception Handling</strong>: Catches all exceptions from try block</li>
+ *   <li><strong>Parent Element</strong>: Must be the final child of Try or its immediately following sibling</li>
+ *   <li><strong>Error Variable</strong>: ${error}</li>
+ *   <li><strong>Exception Handling</strong>: Handles ordinary runtime failures; Include failures, validation failures and interruption bypass Catch</li>
  *   <li><strong>Recovery</strong>: Can define fallback values or alternative processing</li>
  * </ul>
  * 
@@ -143,7 +145,7 @@ public class CatchPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable. Essential for graceful error handling, logging, and fallback processing. Must be used within try element.";
+            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}. Include failures, validation failures and interruption bypass Catch.";
         }
 
         @Override
@@ -221,7 +223,7 @@ public class CatchPlugin extends AbstractPlugin {
         @Override
         public InputPort[] getInputPorts() {
             return new InputPort[]{
-                new InputPort("error", "Error details from try block (${_error} variable)", PortType.STRING, false)
+                new InputPort("error", "Error details from Try (${error})", PortType.STRING, false)
             };
         }
         
@@ -239,7 +241,7 @@ public class CatchPlugin extends AbstractPlugin {
         
         @Override
         public String getTooltip() {
-            return "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable. Essential for graceful error handling, logging, and fallback processing. Must be used within try element.";
+            return "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}. Include failures, validation failures and interruption bypass Catch.";
         }
         
         @Override
@@ -251,7 +253,7 @@ public class CatchPlugin extends AbstractPlugin {
         public AccessibilityMetadata getAccessibility() {
             return new AccessibilityMetadata(
                 "Catch Plugin",
-                "Executes body content when an exception occurs in the preceding try block. Provides access to error details via ${_error} variable.",
+                "Executes the Catch child when an ordinary runtime failure occurs in Try. Provides the message through ${error}.",
                 new String[]{"Tab", "Enter"}
             );
         }
@@ -407,6 +409,12 @@ public class CatchPlugin extends AbstractPlugin {
             throw new PluginValidationException("Configuration cannot be null");
         }
         // Additional validation can be added here if needed
+    }
+
+    @Override
+    protected boolean shouldPropagateBodyExecutionFailures() {
+        // A failed recovery handler must not be silently swallowed by its own body executor.
+        return true;
     }
 
     @Override
