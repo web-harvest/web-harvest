@@ -209,6 +209,17 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             }
 
             try {
+                if ("try".equals(childConfig.getElementName())
+                        && i + 1 < children.size()
+                        && "catch".equals(children.get(i + 1).getElementName())) {
+                    Variable childResult = executeTryCatchPair(childConfig, children.get(i + 1), context);
+                    i++;
+                    if (childResult != null && !(childResult instanceof EmptyVariable)) {
+                        results.add(childResult);
+                    }
+                    continue;
+                }
+
                 Variable childResult = executeChildPlugin(childConfig, context);
                 if (childResult != null && !(childResult instanceof EmptyVariable)) {
                     results.add(childResult);
@@ -240,6 +251,22 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
 
         return new ListVariable(results);
+    }
+
+    private Variable executeTryCatchPair(
+            PluginConfiguration tryConfiguration,
+            PluginConfiguration catchConfiguration,
+            DynamicScopeContext context) throws InterruptedException {
+        context.setLocalVar("error", EmptyVariable.INSTANCE);
+        context.setLocalVar("errorType", EmptyVariable.INSTANCE);
+
+        Variable tryResult = executeChildPlugin(tryConfiguration, context);
+        Variable error = context.getVar("error");
+        if (error == null || error instanceof EmptyVariable) {
+            return tryResult;
+        }
+
+        return executeChildPlugin(catchConfiguration, context);
     }
 
     private boolean isPluginValidationFailure(Throwable failure) {
