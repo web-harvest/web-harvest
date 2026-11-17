@@ -565,7 +565,7 @@ public class TextPluginTest {
         PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
         // Just testing that it doesn't throw exception
         PluginConfigurationSchema.AttributeDefinition attr = schema.getAttribute("delimiter");
-        // Successful lookup call confirms the schema accessor does not throw.
+        assertNull(attr, "Text schema does not declare a delimiter attribute");
     }
 
     // ==================================================================================
