@@ -55,6 +55,7 @@ import org.webharvest.plugin.core.XsltPlugin;
 import org.webharvest.plugin.core.ValueOfPlugin;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Exhaustive contract for the XML element names registered by the default Core runtime.
@@ -82,7 +83,7 @@ public class CorePluginsRegistrarContractTest {
 
         assertEquals(expected.size(), 44, "The reviewed Core XML mapping baseline contains 44 entries");
         Set<String> registeredNames = registry.getRegisteredElementNames();
-        assertEquals(registeredNames, expected.keySet(),
+        assertTrue(registeredNames.equals(expected.keySet()),
                 "The default registrar must register exactly the reviewed XML element names");
 
         for (Map.Entry<String, Class<? extends Plugin>> mapping : expected.entrySet()) {
