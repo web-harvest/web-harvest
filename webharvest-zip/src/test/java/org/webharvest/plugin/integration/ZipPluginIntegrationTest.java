@@ -79,9 +79,13 @@ public class ZipPluginIntegrationTest {
         assertNotNull(archive, "ZIP plugin should return a binary archive value");
 
         Map<String, byte[]> outerEntries = readZip(archive.toBinary("UTF-8"));
-        assertEquals(outerEntries.size(), 3, "Outer archive should contain exactly three entries");
+        assertEquals(outerEntries.size(), 4, "Outer archive should contain exactly four entries");
         assertEquals(asUtf8(outerEntries.get("before.txt")), "before");
         assertEquals(asUtf8(outerEntries.get("after.txt")), "after");
+        byte[] latin1Content = outerEntries.get("latin1.txt");
+        assertNotNull(latin1Content, "Charset-specific entry should be present");
+        assertEquals(latin1Content.length, 4);
+        assertEquals(latin1Content[3] & 0xFF, 0xE9, "Entry charset attribute should control encoding");
         assertTrue(outerEntries.containsKey("inner.zip"), "Nested archive should be written as an outer entry");
 
         Map<String, byte[]> innerEntries = readZip(outerEntries.get("inner.zip"));
