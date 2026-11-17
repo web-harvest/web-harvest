@@ -27,7 +27,7 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 ### What This Means
 
 - The IDE can render session information, synthetic HTTP fields and synthetic plugin-breakdown fields when present in the WebSocket payload.
-- Session information is exposed through the IDE execution/session API servlets.
+- `GET /api/execution/{id}/info` returns execution status/progress only; `GET /api/sessions/history` returns basic session fields. The completed-execution WebSocket message carries the optional synthetic HTTP/plugin fields.
 - Synthetic metric values do not alter scraper execution, but they can mislead operational decisions.
 - The token payload has CPU and memory fields, but no recording path was found; these values are zero/default rather than measured.
 - No release or delivery date is committed for real telemetry.
@@ -45,9 +45,9 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 - **Status**: Session lifecycle status such as RUNNING, COMPLETED or FAILED.
 
 ### 2. HTTP Metrics
-- **Requests / bytes**: Aggregated from TokenTracker when request and byte totals are available.
-- **Fallback**: If TokenTracker has no usable HTTP totals and the XML contains <http, the IDE currently inserts a synthetic request (5 KB, 150 ms).
-- **Average response time**: TokenTracker does not measure individual response times in this path; the aggregate path reports zero. The 150 ms fallback is synthetic.
+- **Requests / bytes**: No real HTTP request/byte recording is currently wired to TokenTracker.
+- **Fallback**: If the XML contains `<http`, the IDE inserts a synthetic request (5 KB, 150 ms).
+- **Average response time**: No per-request latency is measured; the displayed 150 ms is synthetic.
 
 ### 3. Plugin Breakdown
 - The current implementation detects selected tags in the XML text and records fixed estimates for http, xpath, def, html-to-xml, regexp and script.
@@ -74,10 +74,14 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 
 ### Access via API
 
-```bash
-## The GET /api/execution/{id}/info route returns status/progress only.
-## /api/sessions/history returns basic session fields only.
-## HTTP/plugin fields are attached to the completed-execution WebSocket payload.
+```text
+GET /api/execution/{id}/info       -> execution status and progress
+GET /api/sessions/history          -> timestamp, duration, result-variable count, rate, status
+/ws/execution/* completed message  -> sessionInfo with synthetic HTTP/plugin fields
+```
+
+Example shape of the completed WebSocket message (illustrative values only):
+```json
 {
   "status": "COMPLETED",
   "sessionInfo": {
@@ -220,8 +224,8 @@ The following is an illustrative layout; the numbers are examples, not observed 
          │
 ┌─────────────────────────────────┐
 │ ExecutionManager.java           │
-│ - Copies aggregate HTTP totals │
-│ - Adds synthetic plugin estimates │
+│ - TokenTracker remains unpopulated │
+│ - Adds synthetic HTTP/plugin estimates │
 │ - Sends sessionInfo at completion │
 └─────────────────────────────────┘
          │
@@ -273,7 +277,7 @@ interface SessionInfo {
 ## Current limitations and follow-up work
 
 - **Result count:** the IDE currently counts final result variables as processed elements. It does not count source records or loop iterations.
-- **HTTP:** aggregate request/byte totals depend on TokenTracker data. Per-request response times are not measured in this path; the synthetic fallback must be clearly distinguished from observed data.
+- **HTTP:** no runtime recorder populates TokenTracker; request/byte/latency values are synthetic when an HTTP tag is detected.
 - **Plugin timing:** current plugin breakdown values are fixed estimates based on XML tag presence. They are not suitable for performance regression analysis or bottleneck diagnosis.
 - **CPU/memory:** fields exist in `TokenUsage`, but no runtime recording call site was found; they are not measured.
 - **Future work:** real HTTP request/response instrumentation, plugin lifecycle timing and memory measurements require separate implementation and tests. No release version or delivery date is committed.
