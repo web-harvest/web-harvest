@@ -1,6 +1,6 @@
 # SourceForge Setup — Legacy Notice
 
-<badge>Legacy — not supported</badge>
+**Legacy — not supported.**
 
 This file is retained as a navigation pointer only. WebHarvest uses GitHub as its sole source of truth for code, issues, pull requests, reviews, CI and current project documentation.
 
