@@ -100,6 +100,8 @@ The `name` and `var` attributes are both accepted. If both are supplied, they mu
 
 ## Complete network example (manual use)
 
+This example calls `https://httpbin.org/get` and therefore requires network access. It is not a deterministic offline integration-test contract.
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -122,7 +124,7 @@ The `name` and `var` attributes are both accepted. If both are supplied, they mu
     
     <!-- Extract with XPath -->
     <def var="title">
-        <xpath expression="//h1">
+        <xpath expression="//h1/text()">
             <get var="xmlContent"/>
         </xpath>
     </def>
