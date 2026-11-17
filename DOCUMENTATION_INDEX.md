@@ -28,7 +28,7 @@ This index distinguishes current project guidance from historical and version-sp
 
 The following root-level files are retained for historical, migration, compatibility or research purposes. Their presence does not imply that they describe the current supported product or runtime. Verify every operational claim against current source, tests and CI before use.
 
-- [User Guide](USER_GUIDE.md) — legacy IDE and user workflows; contains version-specific material and requires a full technical/language review.
+- [User Guide](USER_GUIDE.md) — current user-documentation status and links; the former mixed-language v2.3 manual is preserved as a labeled historical archive.
 - [Developer Guide](DEVELOPER_GUIDE.md) — older development and IDE guidance; use this index, README and CONTRIBUTING for current contributor workflow.
 - [Plugins and Extensions](PLUGINS.md) — current status, source-of-truth links and explicit extension stability boundaries.
 - [Visual Editor Guide](VISUAL_EDITOR_GUIDE.md) — version-specific IDE behavior; verify against the current IDE before use.
