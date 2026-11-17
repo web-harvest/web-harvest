@@ -124,11 +124,6 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             + "    <xquery><xq-expression><![CDATA[for $item in $input/root/item "
             + "return <result>{$item/text()}</result>]]></xq-expression></xquery>"
             + "    <def var=\"afterFailure\" value=\"must-not-run\"/>"
-            + "    <catch>"
-            + "      <def var=\"catchMarker\" value=\"caught\"/>"
-            + "      <def var=\"caughtError\"><get var=\"error\"/></def>"
-            + "      <def var=\"caughtErrorAlias\"><get var=\"_error\"/></def>"
-            + "      <def var=\"caughtErrorType\"><get var=\"errorType\"/></def>"
             + "  </try>"
             + "  <catch>"
             + "    <def var=\"catchMarker\" value=\"caught\"/>"
@@ -155,6 +150,7 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         assertFalse(context.getVar("caughtErrorType").toString().trim().isEmpty(),
             "The error type must not be empty");
     }
+
     @Test(groups = {"integration", "control-flow-plugins"})
     public void testOrdinaryBodyFailureOutsideTryKeepsBestEffortSiblingExecution() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
