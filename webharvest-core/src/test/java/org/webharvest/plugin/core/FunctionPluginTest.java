@@ -200,7 +200,7 @@ public class FunctionPluginTest {
         
         try {
             schema.validate(validConfig);
-            assertTrue(true); // Should not throw exception
+            // Successful return confirms the schema accepts this valid configuration.
         } catch (PluginValidationException e) {
             fail("Valid configuration should not throw exception");
         }
