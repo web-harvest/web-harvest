@@ -30,7 +30,7 @@ The following root-level files are retained for historical, migration, compatibi
 
 - [User Guide](USER_GUIDE.md) — legacy IDE and user workflows; contains version-specific material and requires a full technical/language review.
 - [Developer Guide](DEVELOPER_GUIDE.md) — older development and IDE guidance; use this index, README and CONTRIBUTING for current contributor workflow.
-- [Plugin Reference](PLUGINS.md) — historical plugin descriptions; current Core membership and extension boundaries are not defined by this file.
+- [Plugins and Extensions](PLUGINS.md) — current status, source-of-truth links and explicit extension stability boundaries.
 - [Visual Editor Guide](VISUAL_EDITOR_GUIDE.md) — version-specific IDE behavior; verify against the current IDE before use.
 - [Plugin Metadata Guide](PLUGIN_METADATA_GUIDE.md) — historical metadata/API guidance; verify against current Core source.
 - [Plugin Documentation Generation](PLUGIN_DOCS_GENERATION.md) — historical generator instructions and plugin counts require revalidation.
