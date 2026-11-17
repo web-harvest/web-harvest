@@ -54,7 +54,7 @@ public class AllExamplesValidationTest extends ScraperTestBase {
         return data;
     }
     
-    @Test(dataProvider = "exampleFiles", groups = {"integration", "examples", "validation"})
+    @Test(dataProvider = "exampleFiles", groups = {"integration", "examples", "validation", "network"})
     public void testExampleValidation(String filename, File exampleFile) throws Exception {
         System.out.println("\n### Testing example: " + filename + " ###");
         
@@ -92,7 +92,7 @@ public class AllExamplesValidationTest extends ScraperTestBase {
         }
     }
     
-    @Test(groups = {"integration", "examples", "summary"}, dependsOnMethods = {"testExampleValidation"})
+    @Test(groups = {"integration", "examples", "summary", "network"}, dependsOnMethods = {"testExampleValidation"})
     public void testSummary() {
         File examplesDir = new File(EXAMPLES_DIR);
         File[] files = examplesDir.listFiles((dir, name) -> name.endsWith(".xml"));
