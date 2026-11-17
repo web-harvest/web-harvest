@@ -126,14 +126,10 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
 
         // Preserve an enclosing Try's error context when Try blocks are nested.
         final Variable previousError = context.getVar("error");
-        final Variable previousErrorAlias = context.getVar("_error");
         final Variable previousErrorType = context.getVar("errorType");
-        final Variable previousErrorTypeAlias = context.getVar("_errorType");
 
         context.setLocalVar("error", EmptyVariable.INSTANCE);
-        context.setLocalVar("_error", EmptyVariable.INSTANCE);
         context.setLocalVar("errorType", EmptyVariable.INSTANCE);
-        context.setLocalVar("_errorType", EmptyVariable.INSTANCE);
 
         boolean bodyFailed = false;
         try {
@@ -160,9 +156,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                 NodeVariable errorValue = new NodeVariable(message);
                 NodeVariable errorTypeValue = new NodeVariable(rootCause.getClass().getSimpleName());
                 context.setLocalVar("error", errorValue);
-                context.setLocalVar("_error", errorValue);
                 context.setLocalVar("errorType", errorTypeValue);
-                context.setLocalVar("_errorType", errorTypeValue);
 
                 if (catchConfiguration == null) {
                     // Preserve the historical optional-Catch behavior: record the
@@ -179,9 +173,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             // Otherwise restore the enclosing Try's error state after the handler.
             if (!bodyFailed || catchConfiguration != null) {
                 restoreVariable(context, "error", previousError);
-                restoreVariable(context, "_error", previousErrorAlias);
                 restoreVariable(context, "errorType", previousErrorType);
-                restoreVariable(context, "_errorType", previousErrorTypeAlias);
             }
         }
     }
@@ -292,14 +284,10 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             PluginConfiguration catchConfiguration,
             DynamicScopeContext context) throws InterruptedException {
         final Variable previousError = context.getVar("error");
-        final Variable previousErrorAlias = context.getVar("_error");
         final Variable previousErrorType = context.getVar("errorType");
-        final Variable previousErrorTypeAlias = context.getVar("_errorType");
 
         context.setLocalVar("error", EmptyVariable.INSTANCE);
-        context.setLocalVar("_error", EmptyVariable.INSTANCE);
         context.setLocalVar("errorType", EmptyVariable.INSTANCE);
-        context.setLocalVar("_errorType", EmptyVariable.INSTANCE);
 
         try {
             Variable tryResult = executeChildPlugin(tryConfiguration, context);
@@ -313,9 +301,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             return executeChildPlugin(catchConfiguration, context);
         } finally {
             restoreVariable(context, "error", previousError);
-            restoreVariable(context, "_error", previousErrorAlias);
             restoreVariable(context, "errorType", previousErrorType);
-            restoreVariable(context, "_errorType", previousErrorTypeAlias);
         }
     }
 
