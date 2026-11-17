@@ -85,9 +85,9 @@ public class TextProcessingPluginsIntegrationTest extends XmlBasedIntegrationTes
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
-            + "  <def var=\"source\">alpha beta gamma</def>"
+            + "  <def var=\"source\">alpha,beta,gamma</def>"
             + "  <def var=\"tokens\">"
-            + "    <tokenize delimiters=\" \"><get var=\"source\"/></tokenize>"
+            + "    <tokenize delimiters=\",\"><get var=\"source\"/></tokenize>"
             + "  </def>"
             + "</config>";
 
