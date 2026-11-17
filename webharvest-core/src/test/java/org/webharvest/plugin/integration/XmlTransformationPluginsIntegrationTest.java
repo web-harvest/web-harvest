@@ -156,7 +156,7 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
 
 
     @Test(groups = {"integration", "xml-plugins"})
-    public void testXmlPluginWrapsNestedXmlAndFeedsXPath() throws Exception {
+    public void testXmlPluginReadsLiteralCDataAndFeedsXPath() throws Exception {
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\n"
             + "  <def var=\"xmlData\">\n"
