@@ -1,7 +1,7 @@
 # Plugin Metadata Guide
 
-**Version:** 2.3.0  
-**Last Updated:** November 2025
+**Verified against:** `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d`  
+**Review date:** 2026-11-17
 
 ## Overview
 
@@ -11,7 +11,7 @@ This guide explains how to add visual metadata to WebHarvest plugins for integra
 
 To add visual metadata to a plugin:
 
-1. Ensure your plugin class implements `VisualPluginMetadata` (via static inner class)
+1. Mark the plugin as palette-eligible with `@CorePlugin(paletteComponent = true)` and provide a `VisualPluginMetadata` implementation from `getMetadata()`
 2. Implement all required methods from `VisualPluginMetadata`
 3. Run tests to validate metadata completeness
 4. Rebuild to generate JSON metadata for frontend
@@ -54,7 +54,7 @@ The `VisualPluginMetadata` interface extends `PluginMetadata` with the following
 
 ## Implementation Pattern
 
-All plugins use a static inner class pattern for metadata:
+Current Core examples use a static inner metadata class returned by `getMetadata()`. The metadata class implements `VisualPluginMetadata` (which already extends `PluginMetadata`):
 
 ```java
 @CorePlugin(
@@ -69,7 +69,7 @@ public class HttpPlugin extends AbstractPlugin {
     /**
      * Metadata for HttpPlugin.
      */
-    public static class HttpPluginMetadata implements PluginMetadata, VisualPluginMetadata {
+    public static class HttpPluginMetadata implements VisualPluginMetadata {
         
         // PluginMetadata implementation
         @Override
@@ -255,7 +255,7 @@ Follow Apple HIG guidelines:
 
 ## Accessibility
 
-All plugins must provide accessibility metadata:
+Every palette-eligible Core plugin must provide accessibility metadata. The completeness test does not assert that every registered or system plugin belongs in the visual palette:
 
 ```java
 @Override
@@ -273,10 +273,10 @@ public AccessibilityMetadata getAccessibility() {
 After implementing `VisualPluginMetadata`, run:
 
 ```bash
-mvn test -Dtest=VisualPluginMetadataCompletenessTest
+mvn -pl webharvest-core -Dtest=VisualPluginMetadataCompletenessTest test
 ```
 
-This test validates:
+This test enumerates Core plugins annotated with `@CorePlugin`, `systemComponent = false` and `paletteComponent = true`. It validates:
 - All required fields are populated
 - Field formats are correct (colors, icons, dimensions)
 - Input/output ports are valid
@@ -285,7 +285,7 @@ This test validates:
 
 ## JSON Metadata Generation
 
-Visual metadata is automatically converted to JSON during Maven build:
+Visual metadata is converted to JSON during the `webharvest-ide` Maven module's `process-classes` phase (see `webharvest-ide/pom.xml`):
 
 1. `PluginMetadataJsonGenerator` discovers all plugins with `VisualPluginMetadata`
 2. Generates `plugins.json` in `webharvest-ide/src/main/resources/webapp/static/metadata/`
@@ -306,7 +306,7 @@ Visual metadata is automatically converted to JSON during Maven build:
 1. Check that plugin implements `VisualPluginMetadata`
 2. Verify `@CorePlugin` annotation is present
 3. Ensure `systemComponent = false` (system components are excluded)
-4. Rebuild project: `mvn clean compile`
+4. Rebuild the IDE module: `mvn -pl webharvest-ide -am process-classes`
 5. Check JSON generation: `target/classes/webapp/static/metadata/plugins.json`
 
 ### Validation test failures
