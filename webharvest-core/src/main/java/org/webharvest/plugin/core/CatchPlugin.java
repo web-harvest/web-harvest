@@ -63,8 +63,9 @@ import java.util.List;
  * Exception catch block processor - handles exceptions from {@code <try>} block.
  * 
  * <p>
- * The {@code <catch>} processor executes only when an exception occurs in the preceding
- * {@code <try>} block. It provides access to error details via {@code ${_error}} variable
+ * The {@code <catch>} processor must be a child of {@code <try>} and executes only when an
+ * ordinary runtime exception occurs in that Try body. It provides the message through
+ * {@code ${error}} and the backward-compatible {@code ${_error}} alias
  * and enables graceful error handling, logging, and recovery.
  * </p>
  * 
@@ -85,14 +86,14 @@ import java.util.List;
  * <h3>Parameters</h3>
  * <ul>
  *   <li><strong>No parameters</strong>: Catch block executes when exception occurs</li>
- *   <li><strong>Error Variable</strong>: ${_error} contains exception message</li>
+ *   <li><strong>Error Variable</strong>: ${error} contains the exception message; ${_error} is a compatibility alias</li>
  * </ul>
  * 
  * <h3>Important Notes</h3>
  * <ul>
- *   <li><strong>Parent Element</strong>: Must be used after {@code <try>} block</li>
- *   <li><strong>Error Variable</strong>: ${_error} is available only within catch block</li>
- *   <li><strong>Exception Handling</strong>: Catches all exceptions from try block</li>
+ *   <li><strong>Parent Element</strong>: Must be a child of {@code <try>}</li>
+ *   <li><strong>Error Variable</strong>: ${error} and ${_error} are available within the catch body</li>
+ *   <li><strong>Exception Handling</strong>: Handles ordinary runtime failures; Include failures, validation failures and interruption bypass Catch</li>
  *   <li><strong>Recovery</strong>: Can define fallback values or alternative processing</li>
  * </ul>
  * 
@@ -407,6 +408,12 @@ public class CatchPlugin extends AbstractPlugin {
             throw new PluginValidationException("Configuration cannot be null");
         }
         // Additional validation can be added here if needed
+    }
+
+    @Override
+    protected boolean shouldPropagateBodyExecutionFailures() {
+        // A failed recovery handler must not be silently swallowed by its own body executor.
+        return true;
     }
 
     @Override
