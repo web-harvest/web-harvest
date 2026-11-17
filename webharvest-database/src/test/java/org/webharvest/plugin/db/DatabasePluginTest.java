@@ -104,7 +104,7 @@ public class DatabasePluginTest {
         plugin.initialize(inlineConfig(url, "SELECT id AS id, name AS name FROM sample"));
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
-                "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+                "<results><row><ID>7</ID><NAME>A&amp;B &lt;C&gt;</NAME></row></results>");
     }
 
     @Test
