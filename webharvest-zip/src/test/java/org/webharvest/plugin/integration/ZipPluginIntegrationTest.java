@@ -40,6 +40,10 @@ import static org.testng.Assert.assertTrue;
  *
  * @since 2.2.0
  */
+/**
+ * @author WebHarvest Team
+ * @since 2.2.0
+ */
 public class ZipPluginIntegrationTest {
 
     private Injector injector;
@@ -61,6 +65,7 @@ public class ZipPluginIntegrationTest {
         harvest = null;
     }
 
+    /** Verifies real archive contents and nested ZIP scope restoration. */
     @Test(groups = {"integration", "zip"})
     public void testZipPluginExampleCreatesEntriesAndNestedArchive() throws Exception {
         String xml;
