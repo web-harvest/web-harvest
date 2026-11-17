@@ -186,6 +186,94 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
     }
 
+    /**
+     * Ensures each sibling Else belongs to exactly one immediately preceding If.
+     *
+     * @param children ordered child configurations
+     */
+    private void validateSiblingElsePairs(List<PluginConfiguration> children) {
+        for (int i = 0; i < children.size(); i++) {
+            if ("else".equals(children.get(i).getElementName())
+                    && (i == 0 || !"if".equals(children.get(i - 1).getElementName()))) {
+                throw new IllegalArgumentException(
+                        "Else must immediately follow exactly one sibling If (child index " + i + ")");
+            }
+        }
+    }
+
+    /**
+     * Executes an ordered list of child configurations using the historical
+     * best-effort policy for ordinary runtime failures.
+     *
+     * @param children ordered child configurations
+     * @param context execution context
+     * @return aggregated child results
+     * @throws InterruptedException if child execution is interrupted
+     */
+    public Variable executeChildren(List<PluginConfiguration> children, DynamicScopeContext context)
+            throws InterruptedException {
+        validateSiblingElsePairs(children);
+        return executeChildrenInternal(children, context, false);
+    }
+
+    /**
+     * Executes the already-selected contents of a conditional branch.
+     *
+     * @param children selected branch configurations
+     * @param context execution context
+     * @return aggregated selected branch results
+     * @throws InterruptedException if child execution is interrupted
+     */
+    public Variable executeSelectedBranch(
+            List<PluginConfiguration> children, DynamicScopeContext context) throws InterruptedException {
+        return executeChildrenInternal(children, context, false);
+    }
+
+    private Variable executeChildrenInternal(
+            List<PluginConfiguration> children, DynamicScopeContext context, boolean failFast)
+            throws InterruptedException {
+        if (children == null || children.isEmpty()) {
+            return EmptyVariable.INSTANCE;
+        }
+
+        LOGGER.debug("Executing body with {} children", children.size());
+        final List<Object> results = new ArrayList<>();
+
+        for (int i = 0; i < children.size(); i++) {
+            PluginConfiguration childConfig = children.get(i);
+
+            // Normalize adjacent sibling If/Else pairs without mutating the parsed tree.
+            if ("if".equals(childConfig.getElementName())
+                    && i + 1 < children.size()
+                    && "else".equals(children.get(i + 1).getElementName())) {
+                childConfig = withSiblingElse(childConfig, children.get(i + 1));
+                i++;
+            }
+
+            try {
+                Variable childResult = executeChildPlugin(childConfig, context);
+                if (childResult != null && !(childResult instanceof EmptyVariable)) {
+                    results.add(childResult);
+                }
+            } catch (IllegalArgumentException e) {
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e) || failFast) {
+                    throw e;
+                }
+                LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
+            } catch (InterruptedException e) {
+                // Cancellation aborts the current body; later siblings must not run.
+                throw e;
+            } catch (Exception e) {
+                if (isIncludeExecutionFailure(e) || isPluginValidationFailure(e) || failFast) {
+                    throw e;
+                }
+                LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
+            }
+        }
+
+        return new ListVariable(results);
+    }
+
     private Throwable getRootCause(Throwable failure) {
         Throwable current = failure;
         while (current.getCause() != null && current.getCause() != current) {
