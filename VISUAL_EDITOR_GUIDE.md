@@ -1,9 +1,11 @@
 # Visual Editor User Guide
 
-**Version:** 2.3.0  
-**Last Updated:** November 2025
+**Verified against:** `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d`  
+**Review date:** 2026-11-17
 
 ## Overview
+
+> **Architecture boundary:** The Visual Editor is an optional IDE authoring adapter. It is not the canonical semantic runtime or a format-independent execution model; the exported XML and Core plugin contracts remain authoritative. The palette includes only plugins explicitly eligible for visual presentation through `@CorePlugin(paletteComponent = true)` and `VisualPluginMetadata`. Verify generated XML before relying on a visual arrangement.
 
 The WebHarvest Visual Editor provides a drag-and-drop canvas interface for creating WebHarvest configurations visually. It follows Apple Human Interface Guidelines (HIG) and patterns inspired by Azure Data Factory and Apache NiFi.
 
@@ -27,7 +29,7 @@ The WebHarvest Visual Editor provides a drag-and-drop canvas interface for creat
 
 ### Plugin Palette
 
-The left sidebar contains all available plugins, organized by visual groups:
+The left sidebar contains palette-eligible plugins with visual metadata, organized by visual groups:
 
 - **HTTP & Network** - HTTP requests, FTP, web browser
 - **XML Processing** - XPath, XQuery, XSLT
@@ -86,7 +88,7 @@ Right sidebar shows configuration for selected plugin:
 
 ### Creating Connections
 
-Connections show data flow between plugins (NiFi-style):
+Connections show visual relationships between plugins (NiFi-style). They are editor relationships, not an independent runtime dataflow contract:
 
 1. **Output port:** Bottom of source plugin (output port)
 2. **Input port:** Top of target plugin (input port)
@@ -94,9 +96,9 @@ Connections show data flow between plugins (NiFi-style):
 4. **Visual feedback:** Port highlights when hovering during drag
 
 **Connection types:**
-- **Sequential (solid line):** Standard data flow
-- **Conditional (dashed line):** Conditional connections (if-else)
-- **Error (red line):** Error handling connections
+- **Sequential (solid line):** Visual ordering/relationship
+- **Conditional (dashed line):** Conditional visual relationship (inspect exported XML for actual If/Else semantics)
+- **Error (red line):** Error-handling visual relationship (inspect exported XML and Try/Catch structure)
 
 ### Nested Containers
 
@@ -225,11 +227,11 @@ Validation errors appear:
 
 ### Screen Reader Support
 
-The visual editor is fully accessible:
+The visual editor exposes accessibility metadata and keyboard-oriented controls; end-to-end assistive-technology coverage must be verified separately:
 
 - **ARIA labels:** All interactive elements have labels
 - **Keyboard navigation:** Full keyboard support
-- **High contrast:** Color-coded but accessible to colorblind users
+- **Color:** Category colors are supplemented by text labels and port metadata; this guide does not claim a completed WCAG or screen-reader audit
 
 ### Keyboard Navigation
 
@@ -251,7 +253,7 @@ The visual editor is fully accessible:
 
 1. **Limit node count:** Keep workflows under 50 nodes for best performance
 2. **Use containers:** Group related operations in containers
-3. **Reuse:** Save common patterns as templates
+3. **Reuse:** Reuse patterns by copying or exporting their XML; a separate template catalog is not guaranteed
 
 ### Organization
 
@@ -264,7 +266,7 @@ The visual editor is fully accessible:
 ### Plugin not appearing in palette
 
 1. Check if plugin has `VisualPluginMetadata` implemented
-2. Verify plugin is not a system component (excluded from palette)
+2. Verify the plugin is explicitly palette-eligible and provides `VisualPluginMetadata`
 3. Refresh page or rebuild project
 
 ### Connection not working
@@ -291,9 +293,9 @@ The visual editor is fully accessible:
 
 1. Drag `http` plugin to canvas
 2. Configure URL in property panel
-3. Add `xpath` plugin as child
-4. Connect `http` output to `xpath` input
-5. Configure XPath expression
+3. Add a separate `def`/XPath operation after the HTTP result
+4. Pass the response variable to the XPath expression
+5. Configure the XPath expression; do not nest XPath as an HTTP detail child
 
 ### Example 2: Loop with HTTP
 
