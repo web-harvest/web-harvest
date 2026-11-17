@@ -245,9 +245,7 @@ public class CasePluginTest {
         PluginConfigurationSchema schema = plugin.getMetadata().getConfigurationSchema();
         PluginConfigurationSchema.AttributeDefinition attr = schema.getAttribute("value");
         
-        // May return null depending on implementation
-        // Just testing that it doesn't throw exception
-        assertTrue(true);
+        assertNull(attr, "Case schema does not declare a value attribute");
     }
 
     @Test
