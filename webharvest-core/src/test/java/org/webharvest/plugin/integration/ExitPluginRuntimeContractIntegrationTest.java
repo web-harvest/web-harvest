@@ -40,6 +40,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
@@ -64,6 +66,10 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
         assertEquals(observer.event.get().getMessage(), "stop-now");
         assertNull(context.getVar("afterExit"),
             "No sibling after a true Exit condition may execute");
+        assertTrue(context.getVar("configResult") instanceof org.webharvest.runtime.variables.EmptyVariable,
+            "A clean exit must leave an empty root result");
+        assertFalse(Thread.currentThread().isInterrupted(),
+            "A requested exit must not leave the worker thread interrupted");
     }
 
     @Test(groups = {"integration", "core-plugins"})
