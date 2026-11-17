@@ -85,7 +85,12 @@ public class ExitPluginRuntimeContractIntegrationTest extends XmlBasedIntegratio
 
     private DynamicScopeContext executeXmlStringWithObserver(String xml, ExitObserver observer) {
         ConfigSource configSource = new BufferConfigSource(xml);
-        Harvester harvester = harvest.getHarvester(configSource, null);
+        Harvester harvester = harvest.getHarvester(configSource, new org.webharvest.HarvestLoadCallback() {
+            @Override
+            public void onSuccess(org.webharvest.definition.PluginConfigurationTree configTree) {
+                // Configuration is loaded before the context callback registers the observer.
+            }
+        });
         return harvester.execute(new Harvester.ContextInitCallback() {
             @Override
             public void onSuccess(DynamicScopeContext context) {
