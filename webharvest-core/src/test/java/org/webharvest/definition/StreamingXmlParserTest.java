@@ -187,5 +187,42 @@ public class StreamingXmlParserTest {
         System.out.println("");
         System.out.println("✅ NEW parser: Fewer objects = Better performance!");
     }
-}
+    /**
+     * Characterizes the exact XML tree used by the documented Loop source/body form.
+     * The parser must preserve these as ordinary child configurations; Loop runtime
+     * interpretation is tested separately from XML parsing.
+     */
+    @Test(groups = {"unit", "v3", "parser", "loop-contract"})
+    public void testParseLoopListSourceAndBodyAsDistinctChildren() throws Exception {
+        String xml = "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "<def var=\"items\">one,two</def>"
+            + "<loop items=\"${items}\" delimiter=\",\">"
+            + "  <list><get var=\"items\"/></list>"
+            + "  <body><template>Item: ${item}</template></body>"
+            + "</loop>"
+            + "</config>";
 
+        PluginConfigurationTree tree = parser.parseToTree(new BufferConfigSource(xml));
+
+        assertEquals(tree.getChildCount(), 2);
+        PluginConfiguration loop = tree.getChildren().get(1).getConfiguration();
+
+        assertEquals(loop.getProperty("items"), "${items}",
+            "XML attribute values must remain raw at the parser/configuration boundary");
+        assertEquals(loop.getProperty("delimiter"), ",");
+        assertEquals(loop.getChildren().size(), 2,
+            "The list source and body wrapper must remain separate direct children");
+
+        PluginConfiguration source = loop.getChildren().get(0);
+        PluginConfiguration body = loop.getChildren().get(1);
+
+        assertEquals(source.getElementName(), "list");
+        assertEquals(source.getChildren().size(), 1);
+        assertEquals(source.getChildren().get(0).getElementName(), "get");
+
+        assertEquals(body.getElementName(), "body");
+        assertEquals(body.getChildren().size(), 1);
+        assertEquals(body.getChildren().get(0).getElementName(), "template");
+    }
+
+}
