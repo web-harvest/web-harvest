@@ -38,9 +38,6 @@ import static org.testng.Assert.assertTrue;
 /**
  * Runtime contracts for the optional ZIP extension.
  *
- * @since 2.2.0
- */
-/**
  * @author WebHarvest Team
  * @since 2.2.0
  */
