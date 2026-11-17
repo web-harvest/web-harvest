@@ -242,6 +242,19 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         for (int i = 0; i < children.size(); i++) {
             PluginConfiguration childConfig = children.get(i);
 
+            // A sibling Catch belongs to the immediately preceding Try. Execute
+            // the pair as one scoped unit so handled error variables do not leak.
+            if ("try".equals(childConfig.getElementName())
+                    && i + 1 < children.size()
+                    && "catch".equals(children.get(i + 1).getElementName())) {
+                Variable childResult = executeTryCatchPair(childConfig, children.get(i + 1), context);
+                i++;
+                if (childResult != null && !(childResult instanceof EmptyVariable)) {
+                    results.add(childResult);
+                }
+                continue;
+            }
+
             // Normalize adjacent sibling If/Else pairs without mutating the parsed tree.
             if ("if".equals(childConfig.getElementName())
                     && i + 1 < children.size()
@@ -272,6 +285,38 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         }
 
         return new ListVariable(results);
+    }
+
+    private Variable executeTryCatchPair(
+            PluginConfiguration tryConfiguration,
+            PluginConfiguration catchConfiguration,
+            DynamicScopeContext context) throws InterruptedException {
+        final Variable previousError = context.getVar("error");
+        final Variable previousErrorAlias = context.getVar("_error");
+        final Variable previousErrorType = context.getVar("errorType");
+        final Variable previousErrorTypeAlias = context.getVar("_errorType");
+
+        context.setLocalVar("error", EmptyVariable.INSTANCE);
+        context.setLocalVar("_error", EmptyVariable.INSTANCE);
+        context.setLocalVar("errorType", EmptyVariable.INSTANCE);
+        context.setLocalVar("_errorType", EmptyVariable.INSTANCE);
+
+        try {
+            Variable tryResult = executeChildPlugin(tryConfiguration, context);
+            Variable error = context.getVar("error");
+            if (error == null || error instanceof EmptyVariable) {
+                return tryResult;
+            }
+
+            // Run the sibling Catch outside the Try body. Handler failures must
+            // propagate rather than being mistaken for failures in the Try body.
+            return executeChildPlugin(catchConfiguration, context);
+        } finally {
+            restoreVariable(context, "error", previousError);
+            restoreVariable(context, "_error", previousErrorAlias);
+            restoreVariable(context, "errorType", previousErrorType);
+            restoreVariable(context, "_errorType", previousErrorTypeAlias);
+        }
     }
 
     private Throwable getRootCause(Throwable failure) {
