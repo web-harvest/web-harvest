@@ -124,7 +124,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             }
 
             final String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            context.setLocalVar("error", new NodeVariable(message));
+            NodeVariable error = new NodeVariable(message);
+            context.setLocalVar("error", error);
+            context.setLocalVar("_error", error);
             context.setLocalVar("errorType", new NodeVariable(e.getClass().getSimpleName()));
 
             if (catchConfiguration == null) {
@@ -258,6 +260,7 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
             PluginConfiguration catchConfiguration,
             DynamicScopeContext context) throws InterruptedException {
         context.setLocalVar("error", EmptyVariable.INSTANCE);
+        context.setLocalVar("_error", EmptyVariable.INSTANCE);
         context.setLocalVar("errorType", EmptyVariable.INSTANCE);
 
         Variable tryResult = executeChildPlugin(tryConfiguration, context);
