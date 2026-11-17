@@ -17,10 +17,9 @@ itself.
 ## Optional registration
 
 ZIP is an optional extension, not one of the 44 default Core XML mappings.
-Add the `webharvest-zip` module to the runtime and explicitly register the
-`org.webharvest.plugin.zip` package, for example with
-`PluginPackageScanner`. The default Core registry does not register
-`zip` or `zip-entry`.
+Add the `webharvest-zip` module to the runtime and explicitly register its
+plugins with `ZipPluginRegistrar.register(CorePluginRegistry.getInstance())`.
+The default Core registry does not register `zip` or `zip-entry`.
 
 ## Plugins
 
