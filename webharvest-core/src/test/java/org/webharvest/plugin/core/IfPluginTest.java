@@ -149,8 +149,7 @@ public class IfPluginTest {
         when(configuration.getProperty("condition")).thenReturn("");
         // IfPlugin doesn't throw PluginValidationException for empty condition
         plugin.validateConfiguration(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        // Successful return confirms the current contract accepts an empty condition.
     }
 
     @Test
