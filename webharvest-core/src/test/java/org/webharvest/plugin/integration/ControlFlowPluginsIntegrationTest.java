@@ -103,7 +103,7 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
             + "  <try><template>completed</template>"
-            + "    <catch><def var=\"catchMarker\" value=\"caught\"/></catch>"
+            + "    <catch><def var=\"catchMarker\" value=\"caught\"/><def var=\"caughtError\"><get var=\"error\"/></def></catch>"
             + "  </try>"
             + "  <def var=\"afterTry\" value=\"completed\"/>"
             + "</config>";
@@ -138,6 +138,22 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             "The caught failure must be exposed through the documented error context variable");
         assertTrue(context.getVar("error").toString().contains("Unclosed character class"),
             "The error variable must retain the underlying regular-expression failure");
+        assertTrue(context.getVar("caughtError").toString().contains("Unclosed character class"),
+            "The Catch body must be able to read the error variable");
+    }
+
+    @Test(groups = {"integration", "control-flow-plugins"})
+    public void testOrdinaryBodyFailureOutsideTryKeepsBestEffortSiblingExecution() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">"
+            + "  <regexp><regexp-pattern>[</regexp-pattern><regexp-source>value</regexp-source></regexp>"
+            + "  <def var=\"afterFailure\" value=\"continued\"/>"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+
+        assertEquals(context.getVar("afterFailure").toString(), "continued",
+            "Ordinary failures outside Try must preserve best-effort sibling execution");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
