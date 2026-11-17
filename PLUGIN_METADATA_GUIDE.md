@@ -60,7 +60,8 @@ Current Core examples use a static inner metadata class returned by `getMetadata
 @CorePlugin(
     name = "http",
     category = "Network",
-    description = "HTTP request plugin"
+    description = "HTTP request plugin",
+    paletteComponent = true
 )
 public class HttpPlugin extends AbstractPlugin {
     
@@ -287,7 +288,7 @@ This test enumerates Core plugins annotated with `@CorePlugin`, `systemComponent
 
 Visual metadata is converted to JSON during the `webharvest-ide` Maven module's `process-classes` phase (see `webharvest-ide/pom.xml`):
 
-1. `PluginMetadataJsonGenerator` discovers all plugins with `VisualPluginMetadata`
+1. `PluginMetadataJsonGenerator` discovers Core plugins explicitly eligible for the visual palette and requires their metadata to implement `VisualPluginMetadata`
 2. Generates `plugins.json` in `webharvest-ide/src/main/resources/webapp/static/metadata/`
 3. Frontend TypeScript code consumes this JSON
 
