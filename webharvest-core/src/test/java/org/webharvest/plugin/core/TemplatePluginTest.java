@@ -41,32 +41,6 @@ public class TemplatePluginTest {
         assertNotNull(context.getVar("count"));
     }
 
-    @Test(description = "Test template with CDATA section")
-    public void testTemplateWithCDATA() {
-        // Expected behavior from examples:
-        // <template><![CDATA[<products>...]]></template>
-        // Should preserve XML content without escaping
-        
-        assertTrue(true, "Placeholder - CDATA handling test");
-    }
-
-    @Test(description = "Test template generates valid JSON")
-    public void testTemplateGeneratesJSON() {
-        // Expected behavior from books_price_monitoring.xml:
-        // <template>{
-        //   "monitoring_date": "${sys.fullDateTime}",
-        //   "total_products": ${totalProducts}
-        // }</template>
-        // Should generate valid JSON string
-        
-        context.setLocalVar("totalProducts", new NodeVariable("20"));
-        
-        String expectedJson = "{\n  \"total_products\": 20\n}";
-        // Template should produce JSON-like output
-        
-        assertTrue(true, "Placeholder - JSON generation test");
-    }
-
     @Test(description = "Test template plugin metadata")
     public void testTemplatePluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
