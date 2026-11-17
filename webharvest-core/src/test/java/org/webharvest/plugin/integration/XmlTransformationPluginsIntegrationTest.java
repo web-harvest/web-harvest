@@ -38,9 +38,11 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.ListVariable;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -150,6 +152,30 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
             "An empty XQuery sequence should have an empty string representation");
         assertEquals(context.getVar("after").toString(), "continued",
             "The parent configuration should continue after an empty XQuery result");
+    }
+
+
+    @Test(groups = {"integration", "xml-plugins"})
+    public void testXmlPluginWrapsNestedXmlAndFeedsXPath() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\\n"
+            + "  <def var=\"xmlData\">\\n"
+            + "    <xml><products><product id=\"1\"><name>Widget</name></product></products></xml>\\n"
+            + "  </def>\\n"
+            + "  <def var=\"productName\">\\n"
+            + "    <xpath expression=\"//name/text()\"><get var=\"xmlData\"/></xpath>\\n"
+            + "  </def>\\n"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable xmlResult = context.getVar("xmlData");
+        assertNotNull(xmlResult, "The XML wrapper result should be stored in the variable");
+        assertTrue(xmlResult instanceof NodeVariable,
+            "The XML wrapper should return its body as a NodeVariable");
+        assertTrue(xmlResult.toString().contains("<product id=\"1\">"),
+            "The XML wrapper should preserve the nested product markup");
+        assertEquals(context.getVar("productName").toString(), "Widget",
+            "The wrapped XML should be consumable by a downstream XPath plugin");
     }
 
     private int countOccurrences(String text, String token) {
