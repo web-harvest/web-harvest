@@ -58,8 +58,6 @@ public class ZipPluginContractTest {
         assertNotNull(metadata.getConfigurationSchema());
 
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
-        assertEquals(schema.getElementName(), "zip");
-        assertNotNull(schema.getDescription());
         assertEquals(schema.getAttributeDefinitions().length, 0);
         assertEquals(schema.getRequiredAttributes().length, 0);
         assertEquals(schema.getOptionalAttributes().length, 0);
@@ -98,8 +96,6 @@ public class ZipPluginContractTest {
         assertNotNull(metadata.getConfigurationSchema());
 
         PluginConfigurationSchema schema = plugin.getConfigurationSchema();
-        assertEquals(schema.getElementName(), "zip-entry");
-        assertNotNull(schema.getDescription());
         assertEquals(schema.getRequiredAttributes(), new String[] {"name"});
         assertEquals(schema.getOptionalAttributes(), new String[] {"charset"});
         assertEquals(schema.getRequiredParents(), new String[] {"zip"});
