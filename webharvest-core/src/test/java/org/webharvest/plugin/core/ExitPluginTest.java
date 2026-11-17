@@ -6,6 +6,7 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.events.ScraperExecutionExitEvent;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -136,6 +137,15 @@ public class ExitPluginTest {
         plugin.validateConfiguration(null);
     }
 
+    private void assertExitSignal(String expectedMessage) throws InterruptedException, PluginException {
+        try {
+            plugin.execute(context);
+            fail("Expected ScraperExecutionExitException");
+        } catch (ScraperExecutionExitException expected) {
+            assertEquals(expected.getMessage(), expectedMessage);
+        }
+    }
+
     @Test
     public void testExecuteWithTrueCondition() throws InterruptedException, PluginException {
         when(configuration.getProperty("condition")).thenReturn("true");
@@ -143,10 +153,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("Test exit message");
         
         // Verify that exit event was posted
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -173,10 +180,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("");
         
         // Verify that exit event was posted (empty condition defaults to "true")
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -188,10 +192,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("");
         
         // Verify that exit event was posted (null condition defaults to "true")
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -204,10 +205,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("");
         
         // Verify that exit event was posted with empty message
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -220,10 +218,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("");
         
         // Verify that exit event was posted with empty message
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -237,10 +232,7 @@ public class ExitPluginTest {
         
         plugin.initialize(configuration);
         
-        Variable result = plugin.execute(context);
-        
-        assertNotNull(result);
-        assertTrue(result instanceof EmptyVariable);
+        assertExitSignal("Exit with ID");
         
         // Verify that exit event was posted
         verify(eventBus).post(any(ScraperExecutionExitEvent.class));
@@ -254,13 +246,8 @@ public class ExitPluginTest {
         plugin.initialize(configuration);
         
         // Execute multiple times
-        Variable result1 = plugin.execute(context);
-        Variable result2 = plugin.execute(context);
-        
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertTrue(result1 instanceof EmptyVariable);
-        assertTrue(result2 instanceof EmptyVariable);
+        assertExitSignal("Multiple executions");
+        assertExitSignal("Multiple executions");
         
         // Verify that exit event was posted for each execution
         verify(eventBus, times(2)).post(any(ScraperExecutionExitEvent.class));
