@@ -19,6 +19,7 @@ This index distinguishes current project guidance from historical and version-sp
 ## Core engineering references
 
 - [Plugin Inventory](docs/PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery inventory. It is not an approved Core membership list; see [Issue #93](https://github.com/web-harvest/web-harvest/issues/93).
+- [Core XML Runtime Evidence Matrix](docs/CORE_PLUGIN_RUNTIME_EVIDENCE.md) — exact 44 registrar mappings, test evidence and parent-consumed configuration-node distinctions.
 - [Function Execution](docs/FUNCTION_EXECUTION.md) — execution behavior and current implementation notes; verify claims against source and tests.
 - [Validation Rules](docs/VALIDATION_RULES.md) — structural validation behavior and constraints.
 - [Documentation README](docs/README.md) — documentation structure, status and contribution standards.
