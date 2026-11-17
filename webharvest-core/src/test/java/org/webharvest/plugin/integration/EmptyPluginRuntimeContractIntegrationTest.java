@@ -31,11 +31,9 @@ package org.webharvest.plugin.integration;
 
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertTrue;
 
 /**
  * Runtime contracts for the Empty plugin.
@@ -64,8 +62,8 @@ public class EmptyPluginRuntimeContractIntegrationTest extends XmlBasedIntegrati
             "Empty must execute all child processors for side effects");
         assertNotNull(context.getVar("emptyResult"),
             "The enclosing Def must receive Empty's result");
-        assertTrue(context.getVar("emptyResult") instanceof EmptyVariable,
-            "Empty must discard the aggregate body result and return EmptyVariable");
+        assertEquals(context.getVar("emptyResult").toString(), "",
+            "Empty must discard the aggregate body result and expose an empty value");
         assertEquals(context.getVar("afterEmpty").toString(), "continued",
             "Parent execution must continue after Empty completes");
     }
