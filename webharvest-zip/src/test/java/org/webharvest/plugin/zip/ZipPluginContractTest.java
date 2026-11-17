@@ -45,8 +45,8 @@ public class ZipPluginContractTest {
         assertEquals(metadata.getVersion(), "2.1.0");
         assertNotNull(metadata.getAuthor());
         assertNotNull(metadata.getCategory());
-        assertFalse(metadata.getTags().isEmpty());
-        assertTrue(metadata.getDependencies().isEmpty());
+        assertTrue(metadata.getTags().length > 0);
+        assertEquals(metadata.getDependencies().length, 0);
         assertEquals(metadata.getElementName(), "zip");
         assertEquals(metadata.getClassName(), ZipPlugin.class.getName());
         assertNotNull(metadata.getNamespace());
@@ -85,8 +85,8 @@ public class ZipPluginContractTest {
         assertEquals(metadata.getVersion(), "2.1.0");
         assertNotNull(metadata.getAuthor());
         assertNotNull(metadata.getCategory());
-        assertFalse(metadata.getTags().isEmpty());
-        assertTrue(metadata.getDependencies().contains("zip"));
+        assertTrue(metadata.getTags().length > 0);
+        assertTrue(Arrays.asList(metadata.getDependencies()).contains("zip"));
         assertEquals(metadata.getElementName(), "zip-entry");
         assertEquals(metadata.getClassName(), ZipEntryPlugin.class.getName());
         assertNotNull(metadata.getNamespace());
