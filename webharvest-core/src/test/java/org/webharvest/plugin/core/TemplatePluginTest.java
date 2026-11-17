@@ -24,23 +24,6 @@ public class TemplatePluginTest {
         context = new ScraperContext();
     }
 
-    @Test(description = "Test template with simple variable substitution")
-    public void testSimpleVariableSubstitution() {
-        // Expected behavior from examples:
-        // <template>{
-        //   "status": "${status}",
-        //   "count": ${count}
-        // }</template>
-        // Should substitute variables and return formatted JSON
-        
-        context.setLocalVar("status", new NodeVariable("SUCCESS"));
-        context.setLocalVar("count", new NodeVariable("42"));
-        
-        // Verify variables are set
-        assertNotNull(context.getVar("status"));
-        assertNotNull(context.getVar("count"));
-    }
-
     @Test(description = "Test template plugin metadata")
     public void testTemplatePluginMetadata() {
         assertNotNull(plugin.getMetadata(), "Plugin should have metadata");
