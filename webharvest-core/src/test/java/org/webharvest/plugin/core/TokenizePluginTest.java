@@ -103,8 +103,7 @@ public class TokenizePluginTest {
     public void testInitializeWithValidConfiguration() throws PluginException {
         plugin.initialize(configuration);
         
-        // Should not throw any exception
-        assertTrue(true);
+        assertTrue(plugin.isInitialized(), "Valid configuration should initialize the plugin");
     }
 
     @Test(expectedExceptions = PluginException.class)
@@ -116,8 +115,7 @@ public class TokenizePluginTest {
     public void testValidateConfigurationWithValidConfiguration() throws PluginValidationException {
         plugin.validateConfiguration(configuration);
         
-        // Should not throw any exception
-        assertTrue(true);
+        // Successful return confirms the valid configuration is accepted.
     }
 
     @Test(expectedExceptions = PluginValidationException.class)
