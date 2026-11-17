@@ -35,7 +35,14 @@ package org.webharvest.plugin.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.inject.Inject;
+import org.webharvest.definition.Config;
+import org.webharvest.definition.ConfigFactory;
+import org.webharvest.definition.ConfigSource;
+import org.webharvest.definition.ConfigSourceFactory;
+import org.webharvest.definition.PluginConfigurationTree;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.DefaultPluginBodyExecutor;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -51,8 +58,8 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.Variable;
+import org.webharvest.runtime.templaters.BaseTemplater;
 
 /**
  * Include external configuration processor - imports other XML config files.
@@ -132,6 +139,12 @@ import org.webharvest.runtime.variables.Variable;
 public class IncludePlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("org.webharvest.plugin.core.IncludePlugin");
+
+    @Inject
+    private ConfigFactory configFactory;
+
+    @Inject
+    private ConfigSourceFactory configSourceFactory;
 
     /**
      * Metadata for IncludePlugin.
@@ -470,26 +483,53 @@ public class IncludePlugin extends AbstractPlugin {
 
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // Get path from configuration (like original IncludeProcessor)
-        String path = getConfiguration().getProperty("path");
+        final String configuredPath = getConfiguration().getProperty("path");
+        final String path = BaseTemplater.evaluateToString(
+                configuredPath, context.getScriptingLanguage(), context);
         if (path == null || path.trim().isEmpty()) {
-            throw new RuntimeException("IncludePlugin requires 'path' attribute");
+            throw new org.webharvest.plugin.exceptions.IncludeExecutionException(
+                    "IncludePlugin requires a non-empty 'path' attribute");
         }
-        
+
+        final Config parentConfig = context.getConfig();
+        if (parentConfig == null || parentConfig.getConfigSource() == null) {
+            throw new org.webharvest.plugin.exceptions.IncludeExecutionException(
+                    "Cannot resolve include '" + path + "' because the active configuration source is unavailable");
+        }
+
         try {
-            // Include the external configuration file (like original IncludeProcessor)
-            // This is a simplified implementation - the actual file inclusion 
-            // is handled by the framework in the original implementation
-            LOGGER.debug("IncludePlugin: Including file: {}", path);
-            
-            // For now, just return empty variable - the actual inclusion
-            // would require ConfigFactory and ConfigSource which are not available
-            // in the new @CorePlugin architecture
-            return EmptyVariable.INSTANCE;
-            
+            final ConfigSource.Location location = new ConfigSource.Location() {
+                @Override
+                public String toString() {
+                    return path;
+                }
+            };
+            final ConfigSource includedSource =
+                    parentConfig.getConfigSource().include(location);
+            final Config includedConfig = configFactory.create(includedSource);
+            includedConfig.reload();
+
+            final PluginConfigurationTree tree = includedConfig.getConfigurationTree();
+            if (tree == null || tree.getConfiguration() == null) {
+                throw new IllegalStateException("Included configuration has no root element: " + path);
+            }
+
+            context.setConfig(includedConfig);
+            try {
+                LOGGER.debug("Executing included configuration: {}", includedSource.getLocation());
+                return new DefaultPluginBodyExecutor().executeChildren(
+                        tree.getConfiguration().getChildren(), context);
+            } finally {
+                context.setConfig(parentConfig);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (org.webharvest.plugin.exceptions.IncludeExecutionException e) {
+            throw e;
         } catch (Exception e) {
-            LOGGER.error("IncludePlugin.doExecute: Exception during execution: {}", e.getMessage(), e);
-            throw new RuntimeException("IncludePlugin execution failed: " + e.getMessage(), e);
+            throw new org.webharvest.plugin.exceptions.IncludeExecutionException(
+                    "Failed to include configuration '" + path + "'", e);
         }
     }
 }
