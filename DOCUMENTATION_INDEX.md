@@ -26,20 +26,22 @@ This index distinguishes current project guidance from historical and version-sp
 
 ## Historical and version-specific documents
 
-The following root-level files are retained for historical, migration, compatibility or research purposes. Their presence does not imply that they describe the current supported product or runtime. Verify every operational claim against current source, tests and CI before use.
+The following root-level files are retained for historical, migration, compatibility or research purposes, or provide a status notice linking to an archive. Their presence does not imply that they describe the current supported product or runtime. Verify every operational claim against current source, tests and CI before use.
 
 - [User Guide](USER_GUIDE.md) — current user-documentation status and links; the former mixed-language v2.3 manual is preserved as a labeled historical archive.
 - [Developer Guide](DEVELOPER_GUIDE.md) — older development and IDE guidance; use this index, README and CONTRIBUTING for current contributor workflow.
 - [Plugins and Extensions](PLUGINS.md) — current status, source-of-truth links and explicit extension stability boundaries.
-- [Visual Editor Guide](VISUAL_EDITOR_GUIDE.md) — version-specific IDE behavior; verify against the current IDE before use.
-- [Plugin Metadata Guide](PLUGIN_METADATA_GUIDE.md) — historical metadata/API guidance; verify against current Core source.
-- [Plugin Documentation Generation](PLUGIN_DOCS_GENERATION.md) — historical generator instructions and plugin counts require revalidation.
-- [Working XML Syntax Reference](WORKING_XML_SYNTAX_REFERENCE.md) and [XPath Best Practices](XPATH_BEST_PRACTICES.md) — compatibility references; validate examples against current integration tests.
-- [HttpClient 5 Migration Guide](HTTPCLIENT5_MIGRATION_GUIDE.md), [Pause/Resume Guide](PAUSE_RESUME_GUIDE.md), and [Enhanced Metrics Guide](ENHANCED_METRICS_GUIDE.md) — version-specific migration/feature material; current availability must be verified.
+- [Visual Editor Guide](VISUAL_EDITOR_GUIDE.md) — current optional IDE authoring adapter; exported XML and Core plugin contracts remain authoritative.
+- [Plugin Metadata Guide](PLUGIN_METADATA_GUIDE.md) — current visual-palette metadata contract for palette-eligible Core plugins.
+- [Plugin Documentation Generation](PLUGIN_DOCS_GENERATION.md) — notice linking to the archived v2.2.0 generator guide; historical plugin counts are not current inventory.
+- [Working XML Syntax Reference](WORKING_XML_SYNTAX_REFERENCE.md) and [XPath Best Practices](XPATH_BEST_PRACTICES.md) — refreshed syntax/compatibility references; fixture presence does not imply meaningful integration coverage.
+- [HttpClient 5 Migration Guide](HTTPCLIENT5_MIGRATION_GUIDE.md) — historical migration record.
+- [Pause/Resume Guide](PAUSE_RESUME_GUIDE.md) — explicit unsupported-status notice; pause checkpoints are not wired into the execution loop. See [Issue #167](https://github.com/web-harvest/web-harvest/issues/167).
+- [Enhanced Metrics Guide](ENHANCED_METRICS_GUIDE.md) — current IDE metrics payload with documented proxy counts and synthetic HTTP/plugin values.
 - [October 2025 Release Notes](OCTOBER_2025_RELEASE_NOTES.md) — historical release record.
 - [Changelog](CHANGELOG.md) — release history; distinguish released changes from unreleased work.
 - [Fixed Bugs Archive](BUGS_FIXED.md) — historical defect record, not a current defect/status tracker.
-- [Component Library](COMPONENT_LIBRARY.md) — design/component reference; confirm its current owner and consumers before changing related assets.
+- [Component Library](COMPONENT_LIBRARY.md) — notice linking to the archived historical design specification; inspect current frontend consumers before changing UI assets.
 - [Build and Test Guide](BUILD_AND_TEST.md) — current Core, reactor and opt-in network validation commands.
 
 ## Legacy publishing material
