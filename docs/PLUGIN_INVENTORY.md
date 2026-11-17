@@ -297,7 +297,7 @@ PR #173 establishes the 44-name registration contract. The source audit identifi
 
 | XML name | Current source behavior | Evidence classification |
 |---|---|---|
-| `xml` | `XMLPlugin.doExecute()` executes its body and returns a `NodeVariable`. Within `<xslt>`, the parent reads child `_textContent` directly rather than dispatching the mapped `XMLPlugin`. | Dual-use: standalone executable wrapper plus declarative XSLT input node; direct Failsafe test pending PR #183. |
+| `xml` | `XMLPlugin.doExecute()` executes child body or reads literal `_textContent`, returning a `NodeVariable`. The direct Failsafe test loads CDATA markup through the XML loader, stores it, then consumes it through XPath. Within `<xslt>`, the parent reads child `_textContent` directly. | Dual-use: standalone executable wrapper plus declarative XSLT input node; PR #183 merged and its runtime test/main CI are green. |
 | `stylesheet` | `XsltPlugin` reads child `_textContent` directly. `StylesheetPlugin.doExecute()` currently returns `EmptyVariable.INSTANCE`. | Declarative XSLT configuration node; no independent executable capability demonstrated. |
 | `xq-expression` | `XQueryPlugin` reads child `_textContent` directly. | Declarative XQuery expression node. |
 | `xq-param` | `XQueryPlugin` parses the child name/type/text itself; nested value-producing children are executed by the parent. | Declarative XQuery parameter node. |
@@ -306,7 +306,7 @@ Evidence: [XsltPlugin.java](../webharvest-core/src/main/java/org/webharvest/plug
 [XQueryPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XQueryPlugin.java),
 [StylesheetPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/StylesheetPlugin.java),
 and [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java).
-The XSLT/XQuery integration tests prove parent transformation and parameter semantics. The standalone `xml` wrapper has its own executable path; PR #183 adds its missing direct Failsafe contract.
+The XSLT/XQuery integration tests prove parent transformation and parameter semantics. PR #183 now also proves the standalone `xml` wrapper path: literal CDATA becomes a runtime value consumable by downstream XPath.
 
 **Compatibility rule:** preserve the existing XML names and forms. The future
 descriptor/registry contract should distinguish executable plugin identities from
@@ -316,7 +316,7 @@ as part of the reliability work.
 ## 13. Core XML integration-test evidence quality (refreshed 2026-11-17)
 
 The six principal deterministic XML integration suites were re-read from current
-`main` after PR #181 at `d9a1466953a82afc8b6f68b86b4ddb04bde5fe37`. The earlier placeholder
+`main` after PR #183 at `4a4dcc609f302decdb3fd9f1e3da49790f01fc18`. The earlier placeholder
 counts in this document are historical and no longer describe the current files.
 
 | Test class | Current test methods | `assertTrue(true)` | Broad catch of Exception / RuntimeException / Throwable | Observable behavior examples |
@@ -325,14 +325,17 @@ counts in this document are historical and no longer describe the current files.
 | `ControlFlowPluginsIntegrationTest` | 7 | 0 | 0 | If/Else selected output; Loop/While ordering and counts; Try/Catch branch state and continuation; Case output. |
 | `AdvancedPluginsIntegrationTest` | 3 | 0 | 0 | Exact variable/body values and rendered template output. |
 | `HttpPluginsIntegrationTest` | 2 | 0 | 0 | Deterministic stub response URL/origin and stored response values. |
-| `XmlTransformationPluginsIntegrationTest` | 7 | 0 | 0 | XPath selection, HTML-to-XML, JSON-to-XML, XML-to-JSON, XSLT, XQuery output and empty-sequence behavior. |
+| `XmlTransformationPluginsIntegrationTest` | 8 | 0 | 0 | XPath selection, HTML-to-XML, JSON-to-XML, XML-to-JSON, XSLT, XQuery output, empty-sequence behavior and standalone XML wrapper/CDATA. |
 | `TextProcessingPluginsIntegrationTest` | 3 | 0 | 0 | Regexp match/capture list, ordered tokenization, JavaScript result. |
-| **Total** | **31** | **0** | **0** | Source-level assertion review; not a claim of exhaustive 44-class coverage. |
+| **Total** | **32** | **0** | **0** | Source-level assertion review; not a claim of exhaustive 44-class coverage. |
 
 The six source files were inspected individually. The counts above are static
 source observations, not test execution results. In particular, zero placeholder
 assertions and zero broad catch-and-pass blocks do not prove every edge case or
-every registered implementation is covered.
+every registered implementation is covered. Two additional XML-loader/Harvester
+suites cover XQuery parameters: `XQueryParameterTypesTest` (8 methods) and
+`XQueryComplexTypesIntegrationTest` (3 methods), including typed scalars,
+integer/double sequences and `node()*` parameters with arithmetic/output assertions.
 
 The XML integration base uses a Guice-backed `Harvest` / `Harvester` execution
 path and deterministic HTTP stubs. These suites therefore provide meaningful
@@ -351,16 +354,17 @@ remains separately classified and is not inferred from stubbed tests.
 - **Include** — PR #174: relative include through XML loading and the standard
   Harvester path; included state is visible and parent execution continues.
 - **XQuery empty sequence** — PR #181: valid `()` expression returns an empty `ListVariable`; the parent configuration continues.
+- **XML wrapper** — PR #183: literal CDATA is returned through the XML loader and consumed by downstream XPath; raw nested tags are explicitly documented as child plugin configurations.
 
 Each of PRs #170–#174 passed its exact-head three-job CI run, including the full
-Maven verify job, Checkstyle and JaCoCo report validation. The subsequent main
-push run #537 ([Actions run 44158373034](https://github.com/web-harvest/web-harvest/actions/runs/44158373034)) on
-`d9a1466953a82afc8b6f68b86b4ddb04bde5fe37` also passed all three jobs: Semantic
-Core contracts, full Surefire/Failsafe suites, and unqualified Core verify with
-JaCoCo report validation. PR #182 after that changed documentation only. Root
-JaCoCo minimums remain 0.80 instruction coverage and 0.80 branch coverage.
-PR #183 adds the standalone `xml` wrapper test; its exact-head CI is pending and
-must pass before the 44-mapping matrix is considered closed.
+Maven verify job, Checkstyle and JaCoCo report validation. Main push run #537
+([Actions run 44158373034](https://github.com/web-harvest/web-harvest/actions/runs/44158373034))
+on `d9a1466953a82afc8b6f68b86b4ddb04bde5fe37` passed all three jobs after PR #181.
+PR #183 exact-head run [44160973377](https://github.com/web-harvest/web-harvest/actions/runs/44160973377)
+and post-merge main push run [44161596727](https://github.com/web-harvest/web-harvest/actions/runs/44161596727)
+on `4a4dcc609f302decdb3fd9f1e3da49790f01fc18` also passed all three jobs. PRs #182
+and #184 changed documentation only. Root JaCoCo minimums remain 0.80 instruction
+coverage and 0.80 branch coverage.
 
 ### Unit-test false-green cleanup — PR #176 merged
 
@@ -380,14 +384,16 @@ It removed all 35 placeholders:
   XQuery test methods were removed rather than counted as behavioral evidence.
 
 This is a test-honesty correction, not a claim that 35 new behaviors are covered.
-In particular, XQuery parameter binding, arithmetic aggregation and empty-result
-handling still need real runtime tests. The parent XQuery XML integration test
-does not cover those scenarios. The per-plugin matrix must continue to separate
-metadata/schema smoke tests from observable runtime behavior.
+XQuery typed parameter binding and arithmetic are covered by `XQueryParameterTypesTest`
+(8 XML-loader/Harvester integration methods) and `XQueryComplexTypesIntegrationTest`
+(3 methods covering typed scalar, sequence and node parameters); PR #181 covers
+empty-sequence behavior. These suites sit outside the six principal suite count.
+The per-plugin matrix continues to separate metadata/schema smoke tests from
+observable runtime behavior.
 
 ## 14. Optional-module execution and dependency evidence (2026-11-17)
 
-A targeted source/POM/test audit covered FTP, Mail, WebBrowser and ZIP. This is
+A targeted source/POM/test audit covered Database, FTP, Mail, WebBrowser and ZIP. This is
 evidence for the module boundary review in Issue #93, not an approved Core
 membership decision.
 
@@ -397,12 +403,38 @@ membership decision.
 | `webharvest-mail` | `org.apache.commons:commons-email` | `MailPlugin` creates SimpleEmail/HtmlEmail and calls `email.send()`; this is an external SMTP/network side effect that can deliver real email. | `MailPluginIntegrationTest` only checks that the example XML resource exists. No deterministic SMTP execution contract was found in the inspected integration test. |
 | `webharvest-webbrowser` | `net.sourceforge.htmlunit:htmlunit:2.70.0` | `WebBrowserPlugin` loads remote URLs, executes JavaScript/AJAX and stores WebClients in static `namedPages` / `defaultPage` state. The explicit `close` action closes clients, but the inspected class has no automatic Harvester-run cleanup hook; the static default client also raises cross-run isolation/concurrency questions. | The integration test executes XML but asserts only a non-null context; it does not assert loaded page content or script results. |
 | `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a `ZipOutputStream` and closes it in `finally`. `ZipEntryPlugin.getParentZipPlugin(context)` unconditionally returns null, so every `<zip-entry>` currently fails before writing. | `ZipPluginIntegrationTest` only checks that the example XML resource exists; it does not execute the Harvester or inspect archive entries. Confirmed defect is tracked in Issue #97. |
-| `webharvest-database` | `commons-dbcp:commons-dbcp` | The module POM confirms the database-pooling dependency and Core dependency. Guessed source paths for `DatabasePlugin` and `ConnectionPlugin` did not resolve in this pass; no implementation or lifecycle claim is made here. | Exact implementation/test paths remain to be located and inspected. |
+| `webharvest-database` | `commons-dbcp:commons-dbcp`; no JDBC driver declared by the module | `DatabasePlugin` executes SQL via `PreparedStatement`, supports inline driver/url and a named `connection` path; `ConnectionPlugin` stores named connection factories in context. Named mode is currently blocked by unconditional driver/url schema requirements. Metadata/annotation names and namespaces also disagree. | 33 unit tests (12 DatabasePlugin, 10 ConnectionPlugin, 7 exception, 4 driver-manager); no successful SQL result assertion or executed XML integration fixture. Core CI excludes this optional module. Follow-up: Issue #185. |
 
-The inspected FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
-annotations despite being in optional Maven modules. FTP's unit test also
-asserts `metadata.isCorePlugin() == true`. Therefore the annotation and
+The inspected Database, FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin`
+annotations despite being in optional Maven modules. Database/FTP unit tests also
+assert `metadata.isCorePlugin() == true`. Therefore the annotation and
 `PluginMetadata.isCorePlugin()` flag are not reliable product-boundary signals.
+
+### Database extension: concrete support gaps (Issue #185)
+
+- `DatabasePlugin` is annotated with `elementName="database"`, but its metadata
+  reports `getElementName() == "db"`; its schema unconditionally requires
+  `driver` and `url`, even though `doExecute()` supports `connection="..."`.
+  The documented named-connection form therefore fails validation before SQL
+  execution.
+- `ConnectionPlugin` metadata declares the database namespace, while the checked-in
+  `database_plugin_example.xml` places `<connection>` under the Core namespace.
+- `DatabasePluginTest` has 12 methods and only two calls to `plugin.execute()`;
+  those exercise error paths, not successful SQL. `ConnectionPluginTest` has 10
+  methods and no `plugin.execute()` call. The remaining seven exception tests and
+  four driver-manager tests do not prove SQL behavior.
+- The `MockDBDriver.jar` fixture is used only by `DefaultDriverManagerTest` to verify
+  driver registration/loading; that test never calls `connect()` or executes SQL.
+  The module POM declares no H2 or other JDBC driver, and the XML example is not
+  executed by a Java test.
+- The README claims 29 tests; the four test classes contain 33 `@Test` methods.
+- Standard Semantic Core CI uses `-pl webharvest-core -am`, so it does not build
+  or test this optional module.
+
+Keep the database module optional. Before claiming it supported, align the XML
+name/namespace/schema, make named-vs-inline validation conditional, add a
+successful deterministic create/insert/select integration test, verify pool
+lifecycle, and add an optional-module CI gate. See [Issue #185](https://github.com/web-harvest/web-harvest/issues/185).
 Keep source module ownership, Maven dependency direction, runtime registration,
 metadata discovery and future product classification as separate inventory
 columns.
@@ -422,20 +454,28 @@ Evidence links:
 - [ZipEntryPlugin.java](../webharvest-zip/src/main/java/org/webharvest/plugin/zip/ZipEntryPlugin.java)
 - [ZIP integration test](../webharvest-zip/src/test/java/org/webharvest/plugin/integration/ZipPluginIntegrationTest.java)
 - [Database module POM](../webharvest-database/pom.xml)
+- [DatabasePlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/DatabasePlugin.java)
+- [ConnectionPlugin.java](../webharvest-database/src/main/java/org/webharvest/plugin/db/ConnectionPlugin.java)
+- [DatabaseModule.java](../webharvest-database/src/main/java/org/webharvest/ioc/DatabaseModule.java)
+- [DatabasePluginTest.java](../webharvest-database/src/test/java/org/webharvest/plugin/db/DatabasePluginTest.java)
+- [ConnectionPluginTest.java](../webharvest-database/src/test/java/org/webharvest/plugin/db/ConnectionPluginTest.java)
+- [DefaultDriverManagerTest.java](../webharvest-database/src/test/java/org/webharvest/runtime/database/DefaultDriverManagerTest.java)
+- [Database module README](../webharvest-database/README.md)
 
 ### Remaining acceptance work
 
-1. Complete the 44-row matrix with one strongest-evidence classification per
-   XML name: meaningful runtime behavior, execution smoke, metadata/unit only,
-   or absent. Keep registration evidence separate from execution evidence.
-2. Decide the descriptor role for the four declarative/dual-use nodes above
-   under Issues #93 and #94, preserving XML compatibility.
-3. Reconcile each remaining class-level gap before closing Issue #98; do not
-   treat the six-suite source scan or aggregate green CI as proof that all 44
-   mapped classes are independently executable.
-4. Confirm the current `main` push CI result through a workflow-run listing
-   capable of returning push-triggered runs, or run an equivalent exact-main
-   verification.
+1. **Complete:** the 44-row matrix matches `CorePluginsRegistrar` exactly (44/44;
+   no missing, extra or duplicate names). Registration and execution evidence are
+   separated in `CORE_PLUGIN_RUNTIME_EVIDENCE.md`.
+2. **Classified:** `xml` is dual-use; `stylesheet`, `xq-expression` and `xq-param`
+   are parent-consumed declarative nodes. Descriptor/registry semantics remain a
+   product/architecture decision under Issues #93 and #94, with XML compatibility
+   preserved.
+3. **Complete:** no remaining direct runtime evidence gap was identified among
+   the 44 default mappings. Parent-consumed configuration nodes are not claimed
+   to be independent execution capabilities.
+4. **Complete:** exact post-merge main push run #44161596727 on
+   `4a4dcc609f302decdb3fd9f1e3da49790f01fc18` passed all three jobs.
 
 Evidence links:
 - [CorePluginsRegistrarContractTest.java](../webharvest-core/src/test/java/org/webharvest/definition/CorePluginsRegistrarContractTest.java)
@@ -447,4 +487,7 @@ Evidence links:
 - [AdvancedPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/AdvancedPluginsIntegrationTest.java)
 - [HttpPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/HttpPluginsIntegrationTest.java)
 - [XmlTransformationPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/XmlTransformationPluginsIntegrationTest.java)
+- [XQueryParameterTypesTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/core/XQueryParameterTypesTest.java)
+- [XQueryComplexTypesIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/examples/XQueryComplexTypesIntegrationTest.java)
+- [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java)
 - [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
