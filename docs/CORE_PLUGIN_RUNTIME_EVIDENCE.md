@@ -55,6 +55,8 @@ This is an evidence map, not a claim that all mapped names are independent execu
 | `xq-param` | XQuery parameter child | `XQueryPlugin` reads name/type/value; `XQueryParameterTypesTest`; `XQueryComplexTypesIntegrationTest` | Declarative XQuery configuration node; parent consumes the parameter and executes nested value-producing children. |
 | `xslt` | XSLT transformation | `XmlTransformationPluginsIntegrationTest.testXsltPluginAppliesStylesheet` | Direct XML runtime; transformed output asserted. |
 
+`var` is intentionally **not** one of the 44 default mappings. `CorePluginsRegistrar` explicitly comments `VarPlugin removed - use DefPlugin instead`. The class remains annotated/deprecated and may be visible to class/metadata scanning, but that is not proof of default XML runtime registration. By contrast, `set-var` remains an explicit legacy mapping in the 44-name set.
+
 ## Classification rules
 
 - **Direct XML runtime:** configuration is loaded through the XML loader and executed through the Harvester/runtime path; assertions observe output, state, events, file content or request effects.
