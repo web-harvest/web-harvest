@@ -44,7 +44,7 @@ The following root-level files are retained for historical, migration, compatibi
 
 ## Legacy publishing material
 
-- [SourceForge Setup](SOURCEFORGE-SETUP.md) and [SFTP Upload Instructions](SFTP-UPLOAD-INSTRUCTIONS.md) are legacy operational documents. They are **not** current contribution, publishing or release instructions.
+- [SourceForge Setup](SOURCEFORGE-SETUP.md) and [SFTP Upload Instructions](SFTP-UPLOAD-INSTRUCTIONS.md) are legacy notices linking to archived historical instructions. They are **not** current contribution, publishing or release instructions.
 - GitHub is the sole canonical source for code, issues, pull requests, reviews, CI and project documentation. Do not use SourceForge as an upstream, fetch source, synchronization target or authority.
 - These legacy files remain pending a separate preservation/removal decision tracked in [documentation audit Issue #152](https://github.com/web-harvest/web-harvest/issues/152).
 
