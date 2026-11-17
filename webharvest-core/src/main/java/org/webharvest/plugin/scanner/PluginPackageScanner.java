@@ -123,7 +123,7 @@ public class PluginPackageScanner {
             LOG.debug("Registered plugin: {} -> {}", elementName, clazz.getName());
             return true;
         } catch (RuntimeException | LinkageError e) {
-            LOG.error("Failed to register plugin class {}: {}", clazz.getName(), e.toString());
+            LOG.error("Failed to register plugin class " + clazz.getName(), e);
             return false;
         }
     }
