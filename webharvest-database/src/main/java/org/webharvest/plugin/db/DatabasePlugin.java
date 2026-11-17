@@ -273,7 +273,7 @@ public class DatabasePlugin extends AbstractPlugin {
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         PluginConfiguration config = getConfiguration();
         
-        String connectionId = config.getProperty(CONNECTION_ATT_NAME, "");
+        String connectionId = config.getProperty(CONNECTION_ATT_NAME, "").trim();
         String sql = config.getProperty(SQL_ATT_NAME, "");
         
         // Evaluate SQL template
@@ -283,7 +283,7 @@ public class DatabasePlugin extends AbstractPlugin {
         }
         
         // If no SQL in attribute, get from body
-        if (sql.isEmpty()) {
+        if (sql.trim().isEmpty()) {
             try {
                 sql = getBodyContent(context);
             } catch (PluginException e) {
@@ -399,7 +399,7 @@ public class DatabasePlugin extends AbstractPlugin {
         return value.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
-                .replaceAll("\\\"", "&quot;")
+                .replace("\"", "&quot;")
                 .replace("'", "&apos;");
     }
 
