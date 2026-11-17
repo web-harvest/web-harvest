@@ -21,6 +21,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.Harvest;
 import org.webharvest.Harvester;
+import org.webharvest.HarvestLoadCallback;
 import org.webharvest.definition.BufferConfigSource;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.CorePluginRegistry;
@@ -86,8 +87,19 @@ public class ZipPluginIntegrationTest {
 
     private DynamicScopeContext executeXml(String xml) throws Exception {
         ConfigSource configSource = new BufferConfigSource(xml);
-        Harvester harvester = harvest.getHarvester(configSource, configTree -> { });
-        return harvester.execute(context -> { });
+        HarvestLoadCallback loadCallback = new HarvestLoadCallback() { };
+        Harvester harvester = harvest.getHarvester(configSource, loadCallback);
+
+        final DynamicScopeContext[] resultContext = new DynamicScopeContext[1];
+        harvester.execute(new Harvester.ContextInitCallback() {
+            @Override
+            public void onSuccess(DynamicScopeContext context) {
+                resultContext[0] = context;
+            }
+        });
+
+        assertNotNull(resultContext[0], "Execution context should be available after harvesting");
+        return resultContext[0];
     }
 
     private Map<String, byte[]> readZip(byte[] archiveBytes) throws IOException {
