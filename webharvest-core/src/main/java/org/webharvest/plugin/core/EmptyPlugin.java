@@ -381,10 +381,9 @@ public class EmptyPlugin extends AbstractPlugin {
      */
     @Override
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
-        // TODO: Implement body execution
-        // This would need to be implemented to execute child plugins
-        // For now, we just return an empty variable
-        
+        // Execute nested plugins for their side effects, but intentionally
+        // discard the aggregated body result: <empty> always returns empty.
+        executeBody(context);
         return EmptyVariable.INSTANCE;
     }
 

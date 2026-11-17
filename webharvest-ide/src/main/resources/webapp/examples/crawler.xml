@@ -21,10 +21,7 @@
 
     <!-- loop while there are any unvisited links -->
     <while condition="${unvisited.toString().length() > 0}">
-        <loop item="currUrl">
-            <list>
-                <get var="unvisited"/>
-            </list>
+        <loop item="currUrl" items="${unvisited}">
             <empty>
                 <def var="content">
                     <html-to-xml>
@@ -37,7 +34,7 @@
                 </def>
 
                 <!--  saves downloaded page -->
-                <file action="write" path='spider/${currentFullUrl.replaceAll("http://|https://|file://", "")}.html'>
+                <file action="write" path='spider/${currentFullUrl.toString().replaceAll("http://|https://|file://", "")}.html'>
                     <get var="content"/>
                 </file>
 
@@ -77,9 +74,9 @@
         </loop>
 
         <!-- unvisited link are now all the collected new links from downloaded pages  -->
-        <def var="unvisited">
+        <set-var name="unvisited">
             <list></list>
-        </def>
+        </set-var>
     </while>
 
 </config>
