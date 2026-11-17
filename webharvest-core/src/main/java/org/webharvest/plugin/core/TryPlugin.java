@@ -139,7 +139,7 @@ import java.util.List;
  * <ul>
  *   <li><strong>Catch is optional:</strong> Can use {@code <try>} without {@code <catch>} (errors swallowed)</li>
  *   <li><strong>Error variables:</strong> ${error} and ${_error} are available inside Catch; ${errorType} contains the underlying exception type</li>
- *   <li><strong>Catch placement:</strong> At most one Catch block may appear as the final child of Try</li>
+ *   <li><strong>Catch placement:</strong> At most one Catch may be the final Try child or the immediately following sibling in the same parent body</li>
  *   <li><strong>Failure policy:</strong> Ordinary runtime failures are handled; Include failures, validation failures and interruption bypass Catch</li>
  * </ul>
  * 
