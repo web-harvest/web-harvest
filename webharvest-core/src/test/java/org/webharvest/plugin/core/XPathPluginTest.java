@@ -91,8 +91,7 @@ public class XPathPluginTest {
     @Test
     public void testInitializeWithValidConfiguration() throws PluginException {
         plugin.initialize(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        assertTrue(plugin.isInitialized(), "Valid configuration should initialize the plugin");
     }
 
     @Test(expectedExceptions = PluginValidationException.class)

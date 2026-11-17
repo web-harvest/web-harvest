@@ -101,8 +101,7 @@ public class HttpParamPluginTest {
     @Test
     public void testInitializeWithValidConfiguration() throws PluginException {
         plugin.initialize(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        assertTrue(plugin.isInitialized(), "Valid configuration should initialize the plugin");
     }
 
     @Test(expectedExceptions = PluginValidationException.class)
@@ -127,8 +126,7 @@ public class HttpParamPluginTest {
         when(configuration.getProperty("isfile")).thenReturn(null);
         // HttpParamPlugin doesn't throw PluginValidationException for missing isfile
         plugin.validateConfiguration(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        // Successful return confirms the current contract accepts a missing isfile value.
     }
 
     @Test
@@ -136,8 +134,7 @@ public class HttpParamPluginTest {
         when(configuration.getProperty("isfile")).thenReturn("");
         // HttpParamPlugin doesn't throw PluginValidationException for empty isfile
         plugin.validateConfiguration(configuration);
-        // Should not throw any exception
-        assertTrue(true);
+        // Successful return confirms the current contract accepts an empty isfile value.
     }
 
     @Test(expectedExceptions = RuntimeException.class)

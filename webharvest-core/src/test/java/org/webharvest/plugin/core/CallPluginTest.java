@@ -197,44 +197,40 @@ public class CallPluginTest {
     }
 
     @Test
-    public void testSetFunctionResult() {
+    public void testSetFunctionResultDoesNotThrow() {
         Variable testResult = new NodeVariable("test result");
         
         plugin.setFunctionResult(testResult);
         
-        // We can't directly verify the internal state, but we can test that the method doesn't throw
-        assertTrue(true);
+        // No exception is the observable contract; this legacy helper exposes no state accessor.
     }
 
     @Test
-    public void testAddFunctionParam() {
+    public void testAddFunctionParamDoesNotThrow() {
         String paramName = "testParam";
         Variable paramValue = new NodeVariable("test value");
         
         plugin.addFunctionParam(paramName, paramValue);
         
-        // We can't directly verify the internal state, but we can test that the method doesn't throw
-        assertTrue(true);
+        // No exception is the observable contract; this legacy helper exposes no state accessor.
     }
 
     @Test
-    public void testAddFunctionParamWithNullName() {
+    public void testAddFunctionParamWithNullNameDoesNotThrow() {
         Variable paramValue = new NodeVariable("test value");
         
         plugin.addFunctionParam(null, paramValue);
         
-        // Should not throw exception
-        assertTrue(true);
+        // No exception is the observable contract for this legacy helper.
     }
 
     @Test
-    public void testAddFunctionParamWithNullValue() {
+    public void testAddFunctionParamWithNullValueDoesNotThrow() {
         String paramName = "testParam";
         
         plugin.addFunctionParam(paramName, null);
         
-        // Should not throw exception
-        assertTrue(true);
+        // No exception is the observable contract for this legacy helper.
     }
 
     @Test
@@ -247,7 +243,7 @@ public class CallPluginTest {
         
         try {
             schema.validate(validConfig);
-            assertTrue(true); // Should not throw exception
+            // Successful return is the validation contract for this valid configuration.
         } catch (PluginValidationException e) {
             fail("Valid configuration should not throw exception");
         }
