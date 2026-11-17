@@ -151,7 +151,6 @@ public class ControlFlowPluginsIntegrationTest extends XmlBasedIntegrationTestBa
             "The error type must not be empty");
         assertTrue(context.getVar("error") instanceof EmptyVariable,
             "The handled error must not leak outside its Catch block");
-            "The compatibility error alias must not leak outside its Catch block");
     }
 
     @Test(groups = {"integration", "control-flow-plugins"})
