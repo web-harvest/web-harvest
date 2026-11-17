@@ -135,6 +135,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
         try {
             try {
                 return executeChildrenInternal(tryBody, context, true);
+            } catch (ScraperExecutionExitException e) {
+                // Requested exit is control flow and must bypass Catch.
+                throw e;
             } catch (InterruptedException e) {
                 // Cancellation is not an application failure and must bypass Catch.
                 throw e;
@@ -263,6 +266,9 @@ public class DefaultPluginBodyExecutor implements PluginBodyExecutor {
                     throw e;
                 }
                 LOGGER.error("Failed to execute child plugin: {}", childConfig.getElementName(), e);
+            } catch (ScraperExecutionExitException e) {
+                // Requested exit aborts the current body; later siblings must not run.
+                throw e;
             } catch (InterruptedException e) {
                 // Cancellation aborts the current body; later siblings must not run.
                 throw e;

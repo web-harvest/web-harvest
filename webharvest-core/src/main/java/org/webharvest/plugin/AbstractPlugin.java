@@ -329,6 +329,8 @@ public abstract class AbstractPlugin implements Plugin {
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.executeBody(configuration, context);
+            } catch (ScraperExecutionExitException e) {
+                throw e;
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {
@@ -406,6 +408,8 @@ public abstract class AbstractPlugin implements Plugin {
             try {
                 PluginBodyExecutor executor = new DefaultPluginBodyExecutor();
                 return executor.getBodyTextContent(configuration, context);
+            } catch (ScraperExecutionExitException e) {
+                throw e;
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {

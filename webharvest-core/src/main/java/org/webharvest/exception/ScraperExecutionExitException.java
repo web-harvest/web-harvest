@@ -32,11 +32,11 @@ package org.webharvest.exception;
 /**
  * Internal control-flow signal used to terminate scraper execution cleanly.
  *
- * <p>This is distinct from thread cancellation/interruption. It propagates through
- * plugin bodies using the existing interruption channel, then is consumed by
+ * <p>This is distinct from thread cancellation/interruption. It propagates as an
+ * unchecked control-flow signal through plugin bodies, then is consumed by
  * {@code Scraper} as a normal, requested exit rather than a failed session.</p>
  */
-public final class ScraperExecutionExitException extends InterruptedException {
+public final class ScraperExecutionExitException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
