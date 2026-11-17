@@ -39,6 +39,8 @@ package org.webharvest.runtime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.events.ScraperExecutionStoppedEvent;
+import org.webharvest.exception.ScraperExecutionExitException;
+import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.definition.CorePluginRegistry;
@@ -111,6 +113,9 @@ public class Scraper implements WebScraper {
                     }
                 }
             }
+        } catch (ScraperExecutionExitException e) {
+            context.setLocalVar("configResult", EmptyVariable.INSTANCE);
+            LOG.info("Configuration exited: {}", e.getMessage());
         } catch (InterruptedException e) {
             informListenersAboutError(e);
             Thread.currentThread().interrupt();

@@ -36,6 +36,7 @@ package org.webharvest.plugin.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
 import org.webharvest.plugin.PluginMetadata;
@@ -876,6 +877,8 @@ public class WhilePlugin extends AbstractPlugin {
                 if (!isEmpty) {
                     resultList.addAll(loopResult.toList());
                 }
+            } catch (ScraperExecutionExitException e) {
+                throw e;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw e;

@@ -36,6 +36,7 @@ package org.webharvest.plugin.core;
 import com.google.common.eventbus.EventBus;
 import com.google.inject.Inject;
 import org.webharvest.events.ScraperExecutionExitEvent;
+import org.webharvest.exception.ScraperExecutionExitException;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -546,6 +547,7 @@ public class ExitPlugin extends AbstractPlugin {
             
             // Post exit event
             eventBus.post(new ScraperExecutionExitEvent(evaluatedMessage));
+            throw new ScraperExecutionExitException(evaluatedMessage);
         }
 
         return EmptyVariable.INSTANCE;
