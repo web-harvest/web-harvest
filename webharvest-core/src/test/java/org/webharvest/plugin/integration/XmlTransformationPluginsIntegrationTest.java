@@ -36,6 +36,9 @@ package org.webharvest.plugin.integration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.ListVariable;
+import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -123,6 +126,30 @@ public class XmlTransformationPluginsIntegrationTest extends XmlBasedIntegration
         assertTrue(output.contains("Another Item"), "XQuery output should contain the second selected item");
         assertEquals(countOccurrences(output, "<result>"), 2,
             "XQuery should emit one result element for each selected item");
+    }
+
+
+    @Test(groups = {"integration", "xml-plugins", "xquery"})
+    public void testXQueryEmptySequenceProducesEmptyResultAndContinues() throws Exception {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n"
+            + "<config xmlns=\"http://org.webharvest/schema/2.1/core\">\\n"
+            + "  <def var=\"emptyResult\">\\n"
+            + "    <xquery><xq-expression><![CDATA[()]]></xq-expression></xquery>\\n"
+            + "  </def>\\n"
+            + "  <def var=\"after\">continued</def>\\n"
+            + "</config>";
+
+        DynamicScopeContext context = executeXmlString(xml);
+        Variable result = context.getVar("emptyResult");
+
+        assertTrue(result instanceof ListVariable,
+            "A valid empty XQuery sequence should remain an empty ListVariable");
+        assertTrue(((ListVariable) result).getList().isEmpty(),
+            "An empty XQuery sequence should contain no result items");
+        assertEquals(result.toString(), "",
+            "An empty XQuery sequence should have an empty string representation");
+        assertEquals(context.getVar("after").toString(), "continued",
+            "The parent configuration should continue after an empty XQuery result");
     }
 
     private int countOccurrences(String text, String token) {
