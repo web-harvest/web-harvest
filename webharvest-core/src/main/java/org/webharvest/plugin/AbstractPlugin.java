@@ -189,7 +189,8 @@ public abstract class AbstractPlugin implements Plugin {
 
             // Restore only after cleanup: nested plugin cancellation must not
             // make this plugin's cleanup run with the interrupt flag already set.
-            if (executionError instanceof InterruptedException) {
+            if (executionError instanceof InterruptedException
+                    && !(executionError instanceof ScraperExecutionExitException)) {
                 Thread.currentThread().interrupt();
             }
         }
