@@ -5,13 +5,18 @@
 package org.webharvest.plugin.db;
 
 import org.testng.annotations.BeforeMethod;
+import com.google.common.eventbus.EventBus;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.database.ConnectionProxy;
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
 
 import static org.testng.Assert.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Unit tests for ConnectionPlugin.
@@ -183,6 +188,28 @@ public class ConnectionPluginTest {
         } catch (PluginValidationException expected) {
             assertTrue(expected.getMessage().contains("id"));
         }
+    }
+
+    @Test
+    public void registersNamedPoolWithSessionEventBusAndReleasesPhysicalConnection() throws Exception {
+        EventBus eventBus = new EventBus();
+        context.setEventBus(eventBus);
+        DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection",
+                "http://org.webharvest/schema/2.1/core", "connection");
+        config.setProperty("id", "sessionDB");
+        config.setProperty("driver", "org.h2.Driver");
+        config.setProperty("url", "jdbc:h2:mem:session_db;DB_CLOSE_DELAY=-1");
+
+        ConnectionPlugin sessionPlugin = new ConnectionPlugin();
+        sessionPlugin.initialize(config);
+        sessionPlugin.execute(context);
+
+        java.sql.Connection proxy = ConnectionPlugin.getNamedConnection(context, "sessionDB");
+        java.sql.Connection physical = ((ConnectionProxy) proxy).getTargetConnection();
+        eventBus.post(new SessionCompletedEvent(mock(ScraperSession.class)));
+
+        assertTrue(physical.isClosed(),
+                "The session event bus must release the named pool's physical connection");
     }
 
 }
