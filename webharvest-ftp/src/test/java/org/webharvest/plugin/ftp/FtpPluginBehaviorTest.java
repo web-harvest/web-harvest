@@ -142,6 +142,32 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void containerListReturnsEmptyListForEmptyDirectory() throws Exception {
+        Variable result = executeContainer("list", "/empty", PASSWORD, true, null);
+
+        assertTrue(result instanceof ListVariable);
+        assertTrue(((ListVariable) result).isEmpty());
+    }
+
+    @Test
+    public void containerPutRejectsNullBody() throws Exception {
+        FtpPlugin plugin = new BodyFtpPlugin(null);
+        plugin.initialize(configuration(containerProperties("put", "/data/null-body.txt", PASSWORD, true), "ftp"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("Body content is required"));
+    }
+
+    @Test
+    public void containerFallsBackWhenTemplateEvaluationFails() throws Exception {
+        when(context.getScriptingLanguage()).thenThrow(new IllegalStateException("scripting engine unavailable"));
+        Variable result = executeContainer("get", "/data/download.txt", PASSWORD, true, null);
+
+        assertEquals(result.toString(), FILE_CONTENT);
+    }
+
+    @Test
     public void containerCanUseActiveMode() throws Exception {
         Variable result = executeContainer("get", "/data/download.txt", PASSWORD, false, null);
 
@@ -285,6 +311,26 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void standaloneListUsesBodyPathWhenDefaultIsRoot() throws Exception {
+        BodyFtpListPlugin plugin = new BodyFtpListPlugin("/data");
+        plugin.initialize(configuration(standaloneProperties("/", PASSWORD), "ftp-list"));
+
+        Variable result = plugin.execute(context);
+
+        assertTrue(result.toString().contains("<name>download.txt</name>"));
+    }
+
+    @Test
+    public void standaloneListRejectsInvalidCredentials() throws Exception {
+        FtpListPlugin plugin = new FtpListPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data", "wrong-password"), "ftp-list"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP login failed"));
+    }
+
+    @Test
     public void standaloneListRejectsMissingDirectory() throws Exception {
         FtpListPlugin plugin = new FtpListPlugin();
         plugin.initialize(configuration(standaloneProperties("/missing", PASSWORD), "ftp-list"));
@@ -315,6 +361,17 @@ public class FtpPluginBehaviorTest {
 
         assertTrue(result.toString().contains("File uploaded successfully"));
         assertEquals(readFile("/data/standalone-upload.txt"), UPLOAD_CONTENT);
+    }
+
+    @Test
+    public void standalonePutUploadsEmptyBody() throws Exception {
+        BodyFtpPutPlugin plugin = new BodyFtpPutPlugin("");
+        plugin.initialize(configuration(standaloneProperties("/data/empty-upload.txt", PASSWORD), "ftp-put"));
+
+        Variable result = plugin.execute(context);
+
+        assertTrue(result.toString().contains("File uploaded successfully"));
+        assertEquals(readFile("/data/empty-upload.txt"), "");
     }
 
     @Test
@@ -475,6 +532,19 @@ public class FtpPluginBehaviorTest {
 
         private BodyFtpPlugin(Variable body) {
             this.body = body;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return body;
+        }
+    }
+
+    private static final class BodyFtpListPlugin extends FtpListPlugin {
+        private final Variable body;
+
+        private BodyFtpListPlugin(String path) {
+            this.body = new NodeVariable(path);
         }
 
         @Override
