@@ -74,6 +74,50 @@ jobs:
             exit 1
           fi
           grep -q "Java 17 packaged CLI smoke" "$smoke_dir/smoke-result.txt"
+      - name: Smoke-test packaged IDE on Java 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          ide_jar="webharvest-ide/target/webharvest-ide-2.3.1.jar"
+          test -s "$ide_jar"
+
+          smoke_dir="$(mktemp -d)"
+          port=18765
+          pid=""
+          cleanup() {
+            if [ -n "$pid" ]; then
+              kill "$pid" 2>/dev/null || true
+              wait "$pid" 2>/dev/null || true
+            fi
+            rm -rf "$smoke_dir"
+          }
+          trap cleanup EXIT
+
+          java -jar "$ide_jar" "port=$port" > "$smoke_dir/ide.log" 2>&1 &
+          pid=$!
+
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail "http://127.0.0.1:$port/" -o "$smoke_dir/index.html" 2>/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$smoke_dir/ide.log"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != true ]; then
+            cat "$smoke_dir/ide.log"
+            echo "Packaged IDE did not become ready on port $port"
+            exit 1
+          fi
+
+          grep -q "WebHarvest IDE" "$smoke_dir/index.html"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/static/version.json" -o "$smoke_dir/version.json"
+          grep -q '"version": "2.3.1"' "$smoke_dir/version.json"
       - name: Upload Maven diagnostics
         if: always()
         uses: actions/upload-artifact@v4
