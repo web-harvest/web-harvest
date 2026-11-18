@@ -121,16 +121,16 @@ jobs:
           import sys
           from pathlib import Path
 
-          pattern = re.compile(r"\\bassertTrue\\s*\\(\\s*true\\s*(?:,\\s*[^)]*)?\\)", re.DOTALL)
+          pattern = re.compile(r"\bassertTrue\s*\(\s*true\s*(?:,\s*[^)]*)?\)", re.DOTALL)
           failures = []
           for source in Path("webharvest-core/src/test/java").rglob("*.java"):
               content = source.read_text(encoding="utf-8")
               for match in pattern.finditer(content):
-                  line = content.count("\\n", 0, match.start()) + 1
+                  line = content.count("\n", 0, match.start()) + 1
                   failures.append(f"{source}:{line}: unconditional assertTrue(true)")
 
           if failures:
-              print("\\n".join(failures), file=sys.stderr)
+              print("\n".join(failures), file=sys.stderr)
               print("::error::Unconditional assertTrue(true) is forbidden in Core tests.", file=sys.stderr)
               sys.exit(1)
           PY
