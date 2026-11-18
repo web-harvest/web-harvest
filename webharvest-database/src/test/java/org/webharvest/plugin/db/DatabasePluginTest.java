@@ -109,7 +109,7 @@ public class DatabasePluginTest {
         plugin.initialize(inlineConfig(url, "SELECT id AS \"id\", name AS \"name\" FROM sample"));
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
-                "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+                "<results><row><column name="id">7</column><column name="name">A&amp;B &lt;C&gt;</column></row></results>");
     }
 
     @Test
@@ -136,7 +136,7 @@ public class DatabasePluginTest {
         plugin.initialize(databaseConfig);
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
-                "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+                "<results><row><column name="id">7</column><column name="name">A&amp;B &lt;C&gt;</column></row></results>");
         assertTrue(physicalConnection.isClosed(),
                 "Legacy contexts without a session EventBus must still release the physical connection");
     }
@@ -157,7 +157,21 @@ public class DatabasePluginTest {
         DatabasePlugin plugin = new DatabasePlugin();
         plugin.initialize(inlineConfig(url, "SELECT NULL AS \"empty\""));
         assertEquals(plugin.execute(context).toString(),
-                "<results><row><empty></empty></row></results>");
+                "<results><row><column name="empty"></column></row></results>");
+    }
+
+    @Test
+    public void testSelectWithNonXmlColumnLabelsReturnsWellFormedXml() throws Exception {
+        String url = "jdbc:h2:mem:db_invalid_column_labels;DB_CLOSE_DELAY=-1";
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url,
+                "SELECT 1 AS \"bad label\", 2 AS \"a:b\", 3 AS \"x/y\""));
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(),
+                "<results><row><column name=\"bad label\">1</column>"
+                + "<column name=\"a:b\">2</column><column name=\"x/y\">3</column></row></results>");
+        javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new org.xml.sax.InputSource(new java.io.StringReader(result.toString())));
     }
 
     @Test
@@ -239,7 +253,7 @@ public class DatabasePluginTest {
 
         DatabasePlugin plugin = new DatabasePlugin();
         plugin.initialize(inlineConfig(url, "SELECT id AS \"id\" FROM sample"));
-        assertEquals(plugin.execute(context).toString(), "<results><row><id>7</id></row></results>");
+        assertEquals(plugin.execute(context).toString(), "<results><row><column name="id">7</column></row></results>");
 
         session.markCompleted();
         assertEquals(session.getStatus().name(), "COMPLETED");
