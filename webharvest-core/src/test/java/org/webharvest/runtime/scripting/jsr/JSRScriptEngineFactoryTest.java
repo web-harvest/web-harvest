@@ -74,16 +74,9 @@ public class JSRScriptEngineFactoryTest {
 
     @Test
     public void getJavascriptEngine() {
-        try {
-            final ScriptEngine engine = factory.getEngine(new ScriptSource(
-                    "var x = 123", ScriptingLanguage.JAVASCRIPT));
-            assertNotNull(engine, "Null script engine");
-        } catch (org.webharvest.exception.ConfigurationException e) {
-            // JavaScript engine may not be available in all environments
-            // This is acceptable - skip test if engine is not available
-            org.testng.SkipException skip = new org.testng.SkipException(
-                    "JavaScript engine not available: " + e.getMessage());
-            throw skip;
-        }
-    }
-}
+        // JavaScript is a declared runtime capability. Missing its JSR-223
+        // provider must fail the build rather than silently skip this test.
+        final ScriptEngine engine = factory.getEngine(new ScriptSource(
+                "var x = 123", ScriptingLanguage.JAVASCRIPT));
+        assertNotNull(engine, "JavaScript JSR-223 engine provider must be available");
+    }}
