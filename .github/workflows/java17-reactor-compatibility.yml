@@ -62,8 +62,9 @@ jobs:
           cat > "$smoke_dir/smoke.xml" <<'XML'
           <?xml version="1.0" encoding="UTF-8"?>
           <config xmlns="http://org.webharvest/schema/2.1/core">
+            <def var="greeting">Java 17 packaged CLI smoke</def>
             <file path="smoke-result.txt" action="write">
-              Java 17 packaged CLI smoke
+              <get-var var="greeting"/>
             </file>
           </config>
           XML
