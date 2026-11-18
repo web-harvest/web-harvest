@@ -18,7 +18,7 @@ Read the [Project Direction and Architecture Roadmap](docs/PROJECT_DIRECTION.md)
 
 ## 2. Development prerequisites
 
-- JDK 11 baseline (use the version required by the module being changed).
+- JDK 17+ baseline for `main` (use the documented runtime for older maintenance branches).
 - Maven 3.6 or newer.
 - Node.js and npm only for relevant IDE frontend packages.
 

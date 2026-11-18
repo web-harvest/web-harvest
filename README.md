@@ -20,7 +20,7 @@ Historical guides and generated plugin counts may describe earlier versions. For
 
 ## Quick start for contributors
 
-Requirements: JDK 11 baseline, Maven 3.6+ recommended. Node.js/npm are needed only for relevant IDE frontend work.
+Requirements: JDK 17+ for the current main branch and next supported release line; previously published v2.2.0 artifacts retain their original Java 11+ runtime requirement. Maven 3.6+ recommended. Node.js/npm are needed only for relevant IDE frontend work.
 
 ```bash
 git clone https://github.com/web-harvest/web-harvest.git
