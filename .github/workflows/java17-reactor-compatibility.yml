@@ -52,8 +52,9 @@ jobs:
             if mvn "${mvn_args[@]}" >"$log_file" 2>&1; then
               cat "$log_file"
               exit 0
+            else
+              status=$?
             fi
-            status=$?
             cat "$log_file"
             if ! grep -Eqi 'status code: 429|Too Many Requests' "$log_file" || [ "$attempt" -eq 3 ]; then
               exit "$status"
