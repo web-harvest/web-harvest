@@ -1,31 +1,20 @@
 name: Optional ZIP Module CI
 
+# The Java 17 full-reactor workflow already verifies ZIP and Core on every relevant PR.
+# Keep this focused module workflow available for deliberate manual diagnostics only.
 on:
-  pull_request:
-    paths:
-      - "webharvest-zip/**"
-      - "webharvest-core/**"
-      - "pom.xml"
-      - ".github/workflows/optional-zip-ci.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "webharvest-zip/**"
-      - "webharvest-core/**"
-      - "pom.xml"
-      - ".github/workflows/optional-zip-ci.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: optional-zip-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: optional-zip-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   zip-module-verify:
+    name: Manual ZIP module verify (Java 17)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
