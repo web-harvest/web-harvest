@@ -3,6 +3,7 @@ package org.webharvest.plugin.scanner;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.core.HttpPlugin;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertTrue;
 
@@ -25,6 +27,7 @@ public class PluginPackageScannerClasspathTest {
 
     private static final String PACKAGE_NAME = "org.webharvest.plugin.core";
     private static final String PACKAGE_PATH = "org/webharvest/plugin/core";
+    private static final String PLUGIN_CLASS_NAME = HttpPlugin.class.getName();
     private static final String PLUGIN_CLASS_RESOURCE =
             "/" + PACKAGE_PATH + "/HttpPlugin.class";
 
@@ -65,6 +68,23 @@ public class PluginPackageScannerClasspathTest {
             try (URLClassLoader jarLoader = new URLClassLoader(
                     new URL[] {jarUrl}, PluginPackageScanner.class.getClassLoader()) {
                 @Override
+                public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+                    if (!PLUGIN_CLASS_NAME.equals(name)) {
+                        return super.loadClass(name, resolve);
+                    }
+                    synchronized (getClassLoadingLock(name)) {
+                        Class<?> loaded = findLoadedClass(name);
+                        if (loaded == null) {
+                            loaded = findClass(name);
+                        }
+                        if (resolve) {
+                            resolveClass(loaded);
+                        }
+                        return loaded;
+                    }
+                }
+
+                @Override
                 public Enumeration<URL> getResources(String name) throws IOException {
                     if (PACKAGE_PATH.equals(name)) {
                         // Repeat the same root to verify class-name deduplication.
@@ -75,11 +95,16 @@ public class PluginPackageScannerClasspathTest {
             }) {
                 Thread.currentThread().setContextClassLoader(jarLoader);
                 new PluginPackageScanner(registry).scanPackages(PACKAGE_NAME);
-            }
 
-            assertTrue(registry.isPluginRegistered("http"),
-                    "The scanner should enumerate .class entries inside a JAR");
-            assertSame(registry.getPluginClass("http"), HttpPlugin.class);
+                assertTrue(registry.isPluginRegistered("http"),
+                        "The scanner should enumerate .class entries inside a JAR");
+                Class<? extends Plugin> discovered = registry.getPluginClass("http");
+                assertEquals(discovered.getName(), PLUGIN_CLASS_NAME);
+                assertSame(discovered.getClassLoader(), jarLoader,
+                        "The plugin implementation must be loaded from the JAR that exposed it");
+                assertTrue(Plugin.class.isAssignableFrom(discovered),
+                        "The JAR-loaded implementation must remain compatible with the parent Plugin API");
+            }
         } finally {
             Files.deleteIfExists(jarPath);
         }
