@@ -5,11 +5,10 @@ package org.webharvest.runtime.database;
 
 import java.sql.Connection;
 
-import org.testng.annotations.Test;
 import com.google.common.eventbus.EventBus;
+import org.testng.annotations.Test;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionMetrics;
-import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
 
@@ -99,6 +98,37 @@ public class StandaloneConnectionPoolTest {
                 new IllegalStateException("expected test failure")));
 
         assertTrue(physical.isClosed());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void rejectsNullSessionEventBus() {
+        new StandaloneConnectionPool().registerForSession(null);
+    }
+
+    @Test
+    public void repeatedRegistrationWithSameEventBusIsIdempotent() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        EventBus eventBus = new EventBus();
+        pool.registerForSession(eventBus);
+        pool.registerForSession(eventBus);
+        pool.closeAllConnections();
+        pool.closeAllConnections();
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void rejectsRegistrationWithDifferentEventBus() {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        pool.registerForSession(new EventBus());
+        try {
+            pool.registerForSession(new EventBus());
+        } finally {
+            pool.closeAllConnections();
+        }
+    }
+
+    @Test
+    public void closesEmptyPoolWithoutSessionEventBus() {
+        new StandaloneConnectionPool().closeAllConnections();
     }
 
 }
