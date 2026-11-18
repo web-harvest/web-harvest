@@ -152,4 +152,37 @@ public class ConnectionPluginTest {
             assertNotNull(testPlugin);
         }
     }
+
+    @Test
+    public void testConfigurationSchemaExposesAndValidatesItsContract() throws Exception {
+        org.webharvest.plugin.PluginConfigurationSchema schema = plugin.getConfigurationSchema();
+
+        assertEquals(schema.getAttributeDefinitions().length, 0);
+        assertEquals(schema.getVersion(), "2.2.0");
+        assertFalse(schema.allowsBody());
+        assertEquals(schema.getRequiredSubElements().length, 0);
+        assertEquals(schema.getAllowedSubElements().length, 0);
+        assertEquals(schema.getOptionalAttributes(),
+                new String[]{"username", "password", "poolSize"});
+        assertEquals(schema.getRequiredAttributes(),
+                new String[]{"id", "driver", "url"});
+        assertNull(schema.getAttribute("id"));
+
+        DefaultPluginConfiguration valid = new DefaultPluginConfiguration("connection",
+                "http://org.webharvest/schema/2.1/core", "connection");
+        valid.setProperty("id", "schema_test");
+        valid.setProperty("driver", "org.h2.Driver");
+        valid.setProperty("url", "jdbc:h2:mem:schema_test");
+        schema.validate(valid);
+
+        DefaultPluginConfiguration invalid = new DefaultPluginConfiguration("connection",
+                "http://org.webharvest/schema/2.1/core", "connection");
+        try {
+            schema.validate(invalid);
+            fail("Expected validation to reject a missing id");
+        } catch (PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("id"));
+        }
+    }
+
 }
