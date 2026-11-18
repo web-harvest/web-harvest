@@ -6,6 +6,13 @@ package org.webharvest.runtime.database;
 import java.sql.Connection;
 
 import org.testng.annotations.Test;
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.SessionMetrics;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
+import org.webharvest.runtime.session.events.SessionFailedEvent;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.webharvest.exception.DatabaseException;
 
 import static org.testng.Assert.*;
