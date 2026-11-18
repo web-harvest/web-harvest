@@ -109,7 +109,7 @@ public class DatabasePluginTest {
         plugin.initialize(inlineConfig(url, "SELECT id AS \"id\", name AS \"name\" FROM sample"));
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
-                "<results><row><column name="id">7</column><column name="name">A&amp;B &lt;C&gt;</column></row></results>");
+                "<results><row><column name=\"id\">7</column><column name=\"name\">A&amp;B &lt;C&gt;</column></row></results>");
     }
 
     @Test
@@ -136,7 +136,7 @@ public class DatabasePluginTest {
         plugin.initialize(databaseConfig);
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
-                "<results><row><column name="id">7</column><column name="name">A&amp;B &lt;C&gt;</column></row></results>");
+                "<results><row><column name=\"id\">7</column><column name=\"name\">A&amp;B &lt;C&gt;</column></row></results>");
         assertTrue(physicalConnection.isClosed(),
                 "Legacy contexts without a session EventBus must still release the physical connection");
     }
@@ -157,7 +157,7 @@ public class DatabasePluginTest {
         DatabasePlugin plugin = new DatabasePlugin();
         plugin.initialize(inlineConfig(url, "SELECT NULL AS \"empty\""));
         assertEquals(plugin.execute(context).toString(),
-                "<results><row><column name="empty"></column></row></results>");
+                "<results><row><column name=\"empty\"></column></row></results>");
     }
 
     @Test
@@ -253,7 +253,7 @@ public class DatabasePluginTest {
 
         DatabasePlugin plugin = new DatabasePlugin();
         plugin.initialize(inlineConfig(url, "SELECT id AS \"id\" FROM sample"));
-        assertEquals(plugin.execute(context).toString(), "<results><row><column name="id">7</column></row></results>");
+        assertEquals(plugin.execute(context).toString(), "<results><row><column name=\"id\">7</column></row></results>");
 
         session.markCompleted();
         assertEquals(session.getStatus().name(), "COMPLETED");
