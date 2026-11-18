@@ -1,4 +1,4 @@
-name: Dependency Inventory (Java 11)
+name: Dependency Inventory (Java 17)
 
 on:
   pull_request:
@@ -26,11 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
           cache: maven
       - name: Capture module dependency trees
         shell: bash
