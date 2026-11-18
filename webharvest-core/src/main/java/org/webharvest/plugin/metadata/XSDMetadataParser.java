@@ -159,16 +159,9 @@ public final class XSDMetadataParser {
                 "true".equals(complexType.getAttribute("mixed"));
         }
         
-        // Check for attributes directly in element
-        NodeList attrNodes = elementNode.getElementsByTagNameNS(XS_NAMESPACE, "attribute");
-        for (int i = 0; i < attrNodes.getLength(); i++) {
-            Element attrNode = (Element) attrNodes.item(i);
-            XSDAttributeMetadata attr = parseAttribute(attrNode);
-            if (attr != null) {
-                attributes.add(attr);
-            }
-        }
-        
+        // Attributes nested in an inline complexType were already collected by parseComplexType.
+        // Do not traverse the element subtree again: that would append every attribute twice.
+
         // Check for mixed content (allows text)
         if (mixedContent || hasMixedContent(elementNode)) {
             allowsBody = true;

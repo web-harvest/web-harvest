@@ -1,307 +1,193 @@
-/*
- * Copyright (c) 2006-2025 the original author or authors.
- */
-
 package org.webharvest.plugin.core;
 
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-// REMOVED in v2.2.x - old architecture classes no longer exist
-// import org.webharvest.definition.CorePluginDef;
-// import org.webharvest.definition.IElementDef;
-// import org.webharvest.definition.XmlNode;
 import org.webharvest.plugin.PluginConfiguration;
-import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
-import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
-import java.util.ArrayList;
 import java.util.Collections;
 
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 /**
- * Enhanced comprehensive unit tests for {@link JsonToXmlPlugin}.
- * Target: 70%+ code coverage
- * 
- * @author Web-Harvest Team
- * @since 2.2.0
+ * Behavior tests for JsonToXmlPlugin using deterministic in-memory JSON inputs.
  */
 public class JsonToXmlPluginEnhancedTest {
 
     private JsonToXmlPlugin plugin;
-    
-    // REMOVED in v2.2.x - old architecture mocks no longer needed
-    // @Mock
-    // private CorePluginDef elementDef;
-    // @Mock
-    // private XmlNode xmlNode;
-    
+
     @Mock
     private PluginConfiguration configuration;
 
     @BeforeMethod
     public void setUp() throws org.webharvest.plugin.exceptions.PluginException {
         MockitoAnnotations.openMocks(this);
-        // v2.2.x ULTRA-LEAN: Use spy to mock executeBody() method
         plugin = new JsonToXmlPlugin();
-        
-        // v2.2.x ULTRA-LEAN: Setup configuration mocks for new architecture
+
         when(configuration.hasChildren()).thenReturn(false);
         when(configuration.getChildren()).thenReturn(Collections.emptyList());
-        when(configuration.getProperty("roottagname")).thenReturn("json");
-        
-        plugin.initialize(configuration);        
+        when(configuration.getProperty("tag")).thenReturn("json");
+
+        plugin.initialize(configuration);
     }
-    
-    // ==================== Metadata Tests ====================
-    
+
+    private void stubJsonBody(String json) {
+        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
+        when(jsonChild.getProperty("_textContent")).thenReturn(json);
+        when(jsonChild.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(Collections.singletonList(jsonChild));
+    }
+
     @Test
     public void testMetadata() {
-        assertNotNull(plugin.getMetadata());
-        assertNotNull(plugin.getMetadata().getName());
+        assertEquals(plugin.getMetadata().getId(), "json-to-xml");
+        assertEquals(plugin.getMetadata().getElementName(), "json-to-xml");
         assertTrue(plugin.getMetadata().isCorePlugin());
     }
-    
+
     @Test
     public void testConfigurationSchema() {
-        assertNotNull(plugin.getMetadata().getConfigurationSchema());
+        assertTrue(plugin.getMetadata().getConfigurationSchema().allowsBody());
+        assertEquals(plugin.getMetadata().getConfigurationSchema().getAttribute("tag").getDefaultValue(), "data");
     }
-    
-    // ==================== Simple JSON Tests ====================
-    
+
     @Test
     public void testSimpleJsonObject() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"name\":\"John\",\"age\":30}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON content
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"name\":\"John\",\"age\":30}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.startsWith("<json>"));
+        assertTrue(xml.contains("<name>John</name>"));
+        assertTrue(xml.contains("<age>30</age>"));
+        assertTrue(xml.endsWith("</json>"));
     }
-    
+
     @Test
     public void testJsonArray() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "[\"item1\",\"item2\",\"item3\"]";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON array
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("[\"item1\",\"item2\",\"item3\"]");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("<json>item1</json>"));
+        assertTrue(xml.contains("<json>item2</json>"));
+        assertTrue(xml.contains("<json>item3</json>"));
     }
-    
+
     @Test
     public void testNestedJsonObject() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"person\":{\"name\":\"John\",\"address\":{\"city\":\"Warsaw\"}}}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return nested JSON
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"person\":{\"name\":\"John\",\"address\":{\"city\":\"Warsaw\"}}}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("<person>"));
+        assertTrue(xml.contains("<name>John</name>"));
+        assertTrue(xml.contains("<city>Warsaw</city>"));
+        assertTrue(xml.contains("</person>"));
     }
-    
+
     @Test
     public void testJsonWithArray() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"items\":[{\"id\":1},{\"id\":2},{\"id\":3}]}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with array
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"items\":[{\"id\":1},{\"id\":2},{\"id\":3}]}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("<items>"));
+        assertTrue(xml.contains("<item><id>1</id></item>"));
+        assertTrue(xml.contains("<item><id>2</id></item>"));
+        assertTrue(xml.contains("<item><id>3</id></item>"));
     }
-    
-    // ==================== Special Values Tests ====================
-    
+
     @Test
     public void testJsonWithNull() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"value\":null}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with null
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"value\":null}");
+
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(), "<json><value></value></json>");
     }
-    
+
     @Test
     public void testJsonWithBoolean() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"active\":true,\"deleted\":false}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with booleans
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"active\":true,\"deleted\":false}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("<active>true</active>"));
+        assertTrue(xml.contains("<deleted>false</deleted>"));
     }
-    
+
     @Test
     public void testJsonWithNumbers() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"integer\":42,\"float\":3.14,\"negative\":-10}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with numbers
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"integer\":42,\"float\":3.14,\"negative\":-10}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("<integer>42</integer>"));
+        assertTrue(xml.contains("<float>3.14</float>"));
+        assertTrue(xml.contains("<negative>-10</negative>"));
     }
-    
-    // ==================== Edge Cases ====================
-    
+
     @Test
     public void testEmptyJsonObject() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return empty JSON object
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{}");
+
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(), "<json></json>");
     }
-    
+
     @Test
     public void testEmptyJsonArray() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "[]";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return empty JSON array
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("[]");
+
+        Variable result = plugin.execute(context);
+        assertEquals(result.toString(), "");
     }
-    
+
     @Test
     public void testJsonWithSpecialCharacters() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"text\":\"Special: <>&\\\"\"}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with special characters
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"text\":\"Special: <>&\"}");
+
+        Variable result = plugin.execute(context);
+        String xml = result.toString();
+
+        assertTrue(xml.contains("Special: &lt;&gt;&amp;"));
+        assertFalse(xml.contains("Special: <>&"));
     }
-    
+
     @Test
     public void testJsonWithUnicode() throws Exception {
-        ScraperContext realContext = new ScraperContext();
-        
-        when(configuration.getProperty("id")).thenReturn(null);
-        
-        String json = "{\"text\":\"Unicode: \\u0105\\u0107\\u0119\"}";
-        // v2.2.x ULTRA-LEAN: Mock executeBody() to return JSON with Unicode
-        PluginConfiguration jsonChild = mock(PluginConfiguration.class);
-        when(jsonChild.getProperty("_textContent")).thenReturn(json);
-        when(jsonChild.getElementName()).thenReturn("constant");
-        when(configuration.hasChildren()).thenReturn(true);
-        when(configuration.getChildren()).thenReturn(java.util.Collections.singletonList(jsonChild));
-        
-        Variable result = plugin.execute(realContext);
-        
-        assertNotNull(result);
+        ScraperContext context = new ScraperContext();
+        stubJsonBody("{\"text\":\"Unicode: \\u0105\\u0107\\u0119\"}");
+
+        Variable result = plugin.execute(context);
+        assertTrue(result.toString().contains("Unicode: ąćę"));
     }
-    
-    // ==================== Configuration Tests ====================
-    
-    @Test
-    public void testInitializeWithConfiguration() throws Exception {
-        when(configuration.getProperty("id")).thenReturn("jsonId");
-        
-        
-        assertTrue(true);
-    }
-    
+
     @Test
     public void testMetadataProperties() {
-        assertNotNull(plugin.getMetadata().getAuthor());
-        assertNotNull(plugin.getMetadata().getDescription());
-        assertNotNull(plugin.getMetadata().getVersion());
+        assertEquals(plugin.getMetadata().getAuthor(), "Web-Harvest Team");
+        assertEquals(plugin.getMetadata().getVersion(), "2.3.0");
+        assertTrue(plugin.getMetadata().getDescription().contains("JSON"));
     }
 }
-
