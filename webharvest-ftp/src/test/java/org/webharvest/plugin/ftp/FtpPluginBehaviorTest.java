@@ -1,0 +1,367 @@
+/*
+ * Copyright (c) 2006-2026 the WebHarvest contributors.
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+package org.webharvest.plugin.ftp;
+
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.mockftpserver.fake.FakeFtpServer;
+import org.mockftpserver.fake.UserAccount;
+import org.mockftpserver.fake.filesystem.DirectoryEntry;
+import org.mockftpserver.fake.filesystem.FileEntry;
+import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+import org.webharvest.plugin.AbstractPlugin;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.ListVariable;
+import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.Variable;
+
+/**
+ * Behavioral tests for the FTP plugins against an in-process FTP server.
+ *
+ * <p>The server binds to a dynamically allocated loopback port and uses an
+ * in-memory filesystem. No public FTP service or external test fixture is used.</p>
+ */
+public class FtpPluginBehaviorTest {
+
+    private static final String USER = "webharvest";
+    private static final String PASSWORD = "secret";
+    private static final String HOST = "127.0.0.1";
+    private static final String FILE_CONTENT = "download-payload";
+    private static final String UPLOAD_CONTENT = "upload-payload";
+
+    private FakeFtpServer server;
+    private UnixFakeFileSystem fileSystem;
+    private DynamicScopeContext context;
+
+    @BeforeMethod
+    public void startFtpServer() {
+        server = new FakeFtpServer();
+        server.setServerControlPort(0);
+        fileSystem = new UnixFakeFileSystem();
+        fileSystem.add(new DirectoryEntry("/data"));
+        fileSystem.add(new FileEntry("/data/download.txt", FILE_CONTENT));
+        fileSystem.add(new FileEntry("/data/delete.txt", "delete-me"));
+        fileSystem.add(new DirectoryEntry("/empty"));
+        server.setFileSystem(fileSystem);
+        server.addUserAccount(new UserAccount(USER, PASSWORD, "/"));
+        server.start();
+        context = mock(DynamicScopeContext.class);
+    }
+
+    @AfterMethod
+    public void stopFtpServer() {
+        if (server != null) {
+            server.stop();
+        }
+    }
+
+    @Test
+    public void containerGetDownloadsFileContents() throws Exception {
+        Variable result = executeContainer("get", "/data/download.txt", PASSWORD, true, null);
+
+        assertNotNull(result);
+        assertEquals(result.toString(), FILE_CONTENT);
+    }
+
+    @Test
+    public void containerPutUploadsBodyContents() throws Exception {
+        executeContainer("put", "/data/upload.txt", PASSWORD, true, new NodeVariable(UPLOAD_CONTENT));
+
+        assertEquals(readFile("/data/upload.txt"), UPLOAD_CONTENT);
+    }
+
+    @Test
+    public void containerListReturnsRemoteNames() throws Exception {
+        Variable result = executeContainer("list", "/data", PASSWORD, true, null);
+
+        assertTrue(result instanceof ListVariable);
+        assertTrue(((ListVariable) result).contains("download.txt"));
+        assertTrue(((ListVariable) result).contains("delete.txt"));
+    }
+
+    @Test
+    public void containerSupportsDirectoryAndDeleteActions() throws Exception {
+        executeContainer("mkdir", "/created", PASSWORD, true, null);
+        assertNotNull(fileSystem.getEntry("/created"));
+
+        executeContainer("rmdir", "/created", PASSWORD, true, null);
+        assertNull(fileSystem.getEntry("/created"));
+
+        executeContainer("del", "/data/delete.txt", PASSWORD, true, null);
+        assertNull(fileSystem.getEntry("/data/delete.txt"));
+    }
+
+    @Test
+    public void containerCanUseActiveMode() throws Exception {
+        Variable result = executeContainer("get", "/data/download.txt", PASSWORD, false, null);
+
+        assertEquals(result.toString(), FILE_CONTENT);
+    }
+
+    @Test
+    public void containerRejectsMissingRemotePath() throws Exception {
+        RuntimeException failure = executeContainerExpectingFailure("get", "", PASSWORD);
+
+        assertTrue(causeMessages(failure).contains("Remote path is required"));
+    }
+
+    @Test
+    public void containerRejectsMissingRemoteFile() throws Exception {
+        RuntimeException failure = executeContainerExpectingFailure("get", "/data/missing.txt", PASSWORD);
+
+        assertTrue(causeMessages(failure).contains("Cannot retrieve file"));
+    }
+
+    @Test
+    public void containerRejectsInvalidAction() throws Exception {
+        RuntimeException failure = executeContainerExpectingFailure("unknown", "/data/download.txt", PASSWORD);
+
+        assertTrue(causeMessages(failure).contains("Unknown FTP action"));
+    }
+
+    @Test
+    public void containerRejectsInvalidCredentials() throws Exception {
+        RuntimeException failure = executeContainerExpectingFailure("list", "/data", "wrong-password");
+
+        assertTrue(causeMessages(failure).contains("FTP login failed"));
+    }
+
+    @Test
+    public void containerReportsConnectionFailure() throws Exception {
+        Map<String, String> properties = containerProperties("get", "/data/download.txt", PASSWORD, true);
+        properties.put("port", "0");
+        FtpPlugin plugin = new FtpPlugin();
+        RuntimeException failure = executeExpectingFailure(plugin, configuration(properties, "ftp"));
+
+        assertTrue(causeMessages(failure).contains("FTP operation failed"));
+    }
+
+    @Test
+    public void containerRejectsUploadWithoutBody() throws Exception {
+        RuntimeException failure = executeContainerExpectingFailure("put", "/data/empty.txt", PASSWORD);
+
+        assertTrue(causeMessages(failure).contains("Body content is required"));
+    }
+
+    @Test
+    public void standaloneGetDownloadsFileContents() throws Exception {
+        FtpGetPlugin plugin = new FtpGetPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data/download.txt", PASSWORD), "ftp-get"));
+
+        Variable result = plugin.execute(context);
+
+        assertEquals(result.toString(), FILE_CONTENT);
+    }
+
+    @Test
+    public void standaloneGetRejectsMissingFile() throws Exception {
+        FtpGetPlugin plugin = new FtpGetPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data/missing.txt", PASSWORD), "ftp-get"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("Failed to download file"));
+    }
+
+    @Test
+    public void standaloneGetRejectsInvalidCredentials() throws Exception {
+        FtpGetPlugin plugin = new FtpGetPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data/download.txt", "wrong-password"), "ftp-get"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP login failed"));
+    }
+
+    @Test
+    public void standaloneListReturnsDirectoryEntries() throws Exception {
+        FtpListPlugin plugin = new FtpListPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data", PASSWORD), "ftp-list"));
+
+        Variable result = plugin.execute(context);
+
+        assertTrue(result.toString().contains("<name>download.txt</name>"));
+        assertTrue(result.toString().contains("<name>delete.txt</name>"));
+    }
+
+    @Test
+    public void standaloneListRejectsMissingDirectory() throws Exception {
+        FtpListPlugin plugin = new FtpListPlugin();
+        plugin.initialize(configuration(standaloneProperties("/missing", PASSWORD), "ftp-list"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("Failed to change to directory"));
+    }
+
+    @Test
+    public void standalonePutUploadsBodyContents() throws Exception {
+        BodyFtpPutPlugin plugin = new BodyFtpPutPlugin(UPLOAD_CONTENT);
+        plugin.initialize(configuration(standaloneProperties("/data/standalone-upload.txt", PASSWORD), "ftp-put"));
+
+        Variable result = plugin.execute(context);
+
+        assertTrue(result.toString().contains("File uploaded successfully"));
+        assertEquals(readFile("/data/standalone-upload.txt"), UPLOAD_CONTENT);
+    }
+
+    @Test
+    public void standalonePutRejectsInvalidCredentials() throws Exception {
+        BodyFtpPutPlugin plugin = new BodyFtpPutPlugin(UPLOAD_CONTENT);
+        plugin.initialize(configuration(standaloneProperties("/data/standalone-upload.txt", "wrong-password"), "ftp-put"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP login failed"));
+    }
+
+    @Test
+    public void standalonePutRejectsMissingDestinationDirectory() throws Exception {
+        BodyFtpPutPlugin plugin = new BodyFtpPutPlugin(UPLOAD_CONTENT);
+        plugin.initialize(configuration(standaloneProperties("/missing/upload.txt", PASSWORD), "ftp-put"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("Failed to upload file"));
+    }
+
+    private Variable executeContainer(String action, String remotePath, String password,
+                                      boolean passive, Variable body) throws Exception {
+        FtpPlugin plugin = body == null ? new FtpPlugin() : new BodyFtpPlugin(body);
+        plugin.initialize(configuration(containerProperties(action, remotePath, password, passive), "ftp"));
+        return plugin.execute(context);
+    }
+
+    private RuntimeException executeContainerExpectingFailure(String action, String remotePath,
+                                                               String password) throws Exception {
+        FtpPlugin plugin = new FtpPlugin();
+        plugin.initialize(configuration(containerProperties(action, remotePath, password, true), "ftp"));
+        return executeExpectingFailureAfterInitialization(plugin);
+    }
+
+    private RuntimeException executeExpectingFailure(AbstractPlugin plugin,
+                                                      PluginConfiguration configuration) throws Exception {
+        plugin.initialize(configuration);
+        return executeExpectingFailureAfterInitialization(plugin);
+    }
+
+    private RuntimeException executeExpectingFailureAfterInitialization(AbstractPlugin plugin)
+            throws InterruptedException {
+        try {
+            plugin.execute(context);
+        } catch (RuntimeException expected) {
+            return expected;
+        }
+        fail("Expected FTP plugin execution to fail");
+        return null;
+    }
+
+    private PluginConfiguration configuration(Map<String, String> properties, String elementName) {
+        PluginConfiguration configuration = mock(PluginConfiguration.class);
+        when(configuration.getProperty(anyString())).thenAnswer(invocation ->
+                properties.get(invocation.getArgument(0)));
+        when(configuration.getProperty(anyString(), anyString())).thenAnswer(invocation -> {
+            String name = invocation.getArgument(0);
+            String defaultValue = invocation.getArgument(1);
+            return properties.containsKey(name) ? properties.get(name) : defaultValue;
+        });
+        when(configuration.getBooleanProperty(anyString(), anyBoolean())).thenAnswer(invocation -> {
+            String name = invocation.getArgument(0);
+            boolean defaultValue = invocation.getArgument(1);
+            return properties.containsKey(name) ? Boolean.parseBoolean(properties.get(name)) : defaultValue;
+        });
+        when(configuration.hasChildren()).thenReturn(false);
+        when(configuration.getChildren()).thenReturn(Collections.<PluginConfiguration>emptyList());
+        when(configuration.getElementName()).thenReturn(elementName);
+        return configuration;
+    }
+
+    private Map<String, String> containerProperties(String action, String remotePath,
+                                                    String password, boolean passive) {
+        Map<String, String> properties = new HashMap<String, String>();
+        properties.put("host", HOST);
+        properties.put("port", Integer.toString(server.getServerControlPort()));
+        properties.put("username", USER);
+        properties.put("password", password);
+        properties.put("action", action);
+        properties.put("remotePath", remotePath);
+        properties.put("passive", Boolean.toString(passive));
+        return properties;
+    }
+
+    private Map<String, String> standaloneProperties(String path, String password) {
+        Map<String, String> properties = new HashMap<String, String>();
+        properties.put("host", HOST);
+        properties.put("port", Integer.toString(server.getServerControlPort()));
+        properties.put("user", USER);
+        properties.put("password", password);
+        properties.put("path", path);
+        return properties;
+    }
+
+    private String readFile(String path) throws Exception {
+        FileEntry entry = (FileEntry) fileSystem.getEntry(path);
+        assertNotNull(entry);
+        try (InputStream input = entry.createInputStream()) {
+            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private String causeMessages(Throwable failure) {
+        StringBuilder messages = new StringBuilder();
+        Throwable current = failure;
+        while (current != null) {
+            messages.append(current.getMessage()).append('\n');
+            current = current.getCause();
+        }
+        return messages.toString();
+    }
+
+    private static final class BodyFtpPlugin extends FtpPlugin {
+        private final Variable body;
+
+        private BodyFtpPlugin(Variable body) {
+            this.body = body;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return body;
+        }
+    }
+
+    private static final class BodyFtpPutPlugin extends FtpPutPlugin {
+        private final Variable body;
+
+        private BodyFtpPutPlugin(String body) {
+            this.body = new NodeVariable(body);
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return body;
+        }
+    }
+}
