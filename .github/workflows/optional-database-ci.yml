@@ -5,6 +5,7 @@ on:
     paths:
       - "webharvest-database/**"
       - "webharvest-core/**"
+      - "webharvest-ide/**"
       - "pom.xml"
       - ".github/workflows/optional-database-ci.yml"
   push:
@@ -34,6 +35,8 @@ jobs:
           cache: maven
       - name: Verify Database extension and Core dependencies
         run: mvn -B -ntp -pl webharvest-database -am verify
+      - name: Verify IDE session EventBus wiring used by Database cleanup
+        run: mvn -B -ntp -pl webharvest-ide -am -Dtest=EmbeddedExamplesExecutionTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Report class-level JaCoCo gaps
         if: always()
         shell: bash
