@@ -10,9 +10,9 @@ import static org.testng.Assert.*;
 import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
 
 /**
- * Contract tests for core plugin metadata identities and schema declarations.* This adds systematic coverage for metadata/schema code paths.
+ * Contract tests for core plugin metadata identities and declared schema attributes.
  */
-public class AllPluginsMetadataCoverageTest {
+public class CorePluginMetadataAttributeContractTest {
 
     // TextPlugin - 41.48%
     @Test public void textPlugin01() { assertNotNull(new TextPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }

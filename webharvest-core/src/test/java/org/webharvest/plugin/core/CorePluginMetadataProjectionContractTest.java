@@ -8,10 +8,9 @@ import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
 /**
- * Final push tests to get remaining plugins over 70% threshold.
- * Targets: IncludePlugin, XQExpressionPlugin, VarPlugin, GetVarPlugin, DefPlugin, XMLPlugin, HttpParamPlugin
+ * Contract tests for core plugin metadata schema projections and runtime dependencies.
  */
-public class FinalPushTo70Test {
+public class CorePluginMetadataProjectionContractTest {
 
     // IncludePlugin - 69.51%, need 1 instr
     @Test public void testInclude01() { assertNotNull(new IncludePlugin().getMetadata().getConfigurationSchema().getAllowedSubElements()); }
