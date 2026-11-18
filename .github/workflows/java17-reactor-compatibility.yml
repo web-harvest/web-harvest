@@ -287,6 +287,10 @@ jobs:
             **/target/pmd.xml
             **/target/spotbugsXml.xml
             **/target/checkstyle-result.xml
+            **/target/jacoco-report/jacoco.xml
+            **/target/site/jacoco/jacoco.xml
+            **/target/jacoco-report/jacoco.csv
+            **/target/site/jacoco/jacoco.csv
             **/target/*.dump
             **/target/*.dumpstream
           if-no-files-found: warn

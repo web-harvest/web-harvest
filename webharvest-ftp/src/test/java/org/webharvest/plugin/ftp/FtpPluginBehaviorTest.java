@@ -10,7 +10,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -207,6 +206,39 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void standaloneGetWithMissingPathFailsDeterministically() throws Exception {
+        FtpGetPlugin plugin = new FtpGetPlugin();
+        plugin.initialize(configuration(standaloneProperties("", PASSWORD), "ftp-get"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("Failed to download file"));
+    }
+
+    @Test
+    public void standaloneGetReportsConnectionFailure() throws Exception {
+        Map<String, String> properties = standaloneProperties("/data/download.txt", PASSWORD);
+        properties.put("port", Integer.toString(stopServerAndGetClosedPort()));
+        FtpGetPlugin plugin = new FtpGetPlugin();
+        plugin.initialize(configuration(properties, "ftp-get"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP Get failed"));
+    }
+
+    @Test
+    public void standaloneListDefaultsToRootWhenBodyIsEmpty() throws Exception {
+        FtpListPlugin plugin = new FtpListPlugin();
+        plugin.initialize(configuration(standaloneProperties("/", PASSWORD), "ftp-list"));
+
+        Variable result = plugin.execute(context);
+
+        assertTrue(result.toString().contains("<name>data</name>"));
+        assertTrue(result.toString().contains("<name>empty</name>"));
+    }
+
+    @Test
     public void standaloneListRejectsMissingDirectory() throws Exception {
         FtpListPlugin plugin = new FtpListPlugin();
         plugin.initialize(configuration(standaloneProperties("/missing", PASSWORD), "ftp-list"));
@@ -214,6 +246,18 @@ public class FtpPluginBehaviorTest {
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
         assertTrue(causeMessages(failure).contains("Failed to change to directory"));
+    }
+
+    @Test
+    public void standaloneListReportsConnectionFailure() throws Exception {
+        Map<String, String> properties = standaloneProperties("/data", PASSWORD);
+        properties.put("port", Integer.toString(stopServerAndGetClosedPort()));
+        FtpListPlugin plugin = new FtpListPlugin();
+        plugin.initialize(configuration(properties, "ftp-list"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP List failed"));
     }
 
     @Test
@@ -225,6 +269,29 @@ public class FtpPluginBehaviorTest {
 
         assertTrue(result.toString().contains("File uploaded successfully"));
         assertEquals(readFile("/data/standalone-upload.txt"), UPLOAD_CONTENT);
+    }
+
+    @Test
+    public void standalonePutUsesBodyForMissingPath() throws Exception {
+        SequenceBodyFtpPutPlugin plugin = new SequenceBodyFtpPutPlugin(
+                "/data/body-path-upload.txt", "body-path-content");
+        plugin.initialize(configuration(standaloneProperties("", PASSWORD), "ftp-put"));
+
+        plugin.execute(context);
+
+        assertEquals(readFile("/data/body-path-upload.txt"), "body-path-content");
+    }
+
+    @Test
+    public void standalonePutReportsConnectionFailure() throws Exception {
+        Map<String, String> properties = standaloneProperties("/data/connection-failure.txt", PASSWORD);
+        properties.put("port", Integer.toString(stopServerAndGetClosedPort()));
+        BodyFtpPutPlugin plugin = new BodyFtpPutPlugin(UPLOAD_CONTENT);
+        plugin.initialize(configuration(properties, "ftp-put"));
+
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+
+        assertTrue(causeMessages(failure).contains("FTP Put failed"));
     }
 
     @Test
@@ -321,6 +388,13 @@ public class FtpPluginBehaviorTest {
         return properties;
     }
 
+    private int stopServerAndGetClosedPort() {
+        int port = server.getServerControlPort();
+        server.stop();
+        server = null;
+        return port;
+    }
+
     private String readFile(String path) throws Exception {
         FileEntry entry = (FileEntry) fileSystem.getEntry(path);
         assertNotNull(entry);
@@ -349,6 +423,20 @@ public class FtpPluginBehaviorTest {
         @Override
         protected Variable executeBody(DynamicScopeContext context) {
             return body;
+        }
+    }
+
+    private static final class SequenceBodyFtpPutPlugin extends FtpPutPlugin {
+        private final Variable[] bodies;
+        private int nextBody;
+
+        private SequenceBodyFtpPutPlugin(String path, String content) {
+            this.bodies = new Variable[] { new NodeVariable(path), new NodeVariable(content) };
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return bodies[nextBody++];
         }
     }
 
