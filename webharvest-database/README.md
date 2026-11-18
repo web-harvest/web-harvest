@@ -36,6 +36,19 @@ SQL may be supplied using the `sql` attribute or as the element body. Exactly on
 
 Do not combine named and inline connection attributes.
 
+## Runtime registration
+
+The module is optional and is not registered by the default Core bootstrap. Applications must explicitly register its XML processors before executing configurations that use `<connection>` or `<database>`:
+
+```java
+import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.plugin.db.DatabasePluginRegistrar;
+
+DatabasePluginRegistrar.register(CorePluginRegistry.getInstance());
+```
+
+This does not change the default 44 Core mappings. The registration API is deliberately separate from `DatabaseModule`, which provides Guice `ConnectionFactory` bindings for applications that consume those services directly.
+
 ## Attributes
 
 | Element | Attribute | Requirement | Meaning |
@@ -53,7 +66,7 @@ Do not combine named and inline connection attributes.
 ## Runtime behavior and limits
 
 - The module supports JDBC drivers supplied by the application; it does not bundle vendor database drivers.
-- `StandaloneConnectionPool` reuses a single connection for a given driver/URL/username within its factory and releases it at session completion/failure. It is not a configurable multi-connection pool and is not thread-safe.
+- `StandaloneConnectionPool` reuses a single connection for a given driver/URL/username within its factory and releases it at session completion, failure, or cancellation. It is not a configurable multi-connection pool and is not thread-safe.
 - The legacy `poolSize` attribute is accepted but has no effect. Do not rely on it for concurrency or throughput control.
 - SELECT results are returned as `<results><row>...</row></results>`; text values are XML-escaped. Non-query statements return `Rows affected: N`.
 - This module's tests use H2 only as a test-scoped embedded JDBC fixture. H2 is not a runtime dependency.
