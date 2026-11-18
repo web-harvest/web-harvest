@@ -3,6 +3,7 @@ package org.webharvest.plugin.scanner;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.Plugin;
 import org.webharvest.plugin.core.HttpPlugin;
 
@@ -40,7 +41,8 @@ public class PluginPackageScannerClasspathTest {
             Thread.currentThread().setContextClassLoader(originalContextLoader);
             originalContextLoader = null;
         }
-        registry.clear();
+        CorePluginsRegistrar.reset();
+        CorePluginsRegistrar.registerCorePlugins();
     }
 
     @Test
