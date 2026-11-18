@@ -77,10 +77,24 @@ jobs:
               }
           }
           JAVA
-          javac "$smoke_dir/VerifyJavaScriptProvider.java"
+          echo "Compiling packaged CLI provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
           echo "Packaged CLI JSR-223 service descriptor:"
-          jar tf "$cli_jar" | grep 'META-INF/services/javax.script.ScriptEngineFactory' || true
-          unzip -p "$cli_jar" META-INF/services/javax.script.ScriptEngineFactory || true
+          if jar tf "$cli_jar" > "$smoke_dir/cli-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/cli-jar-entries.txt" || echo "No JSR-223 service descriptor in CLI JAR"
+          else
+            echo "Could not list CLI JAR entries"
+          fi
+          if unzip -p "$cli_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/cli-services.txt"; then
+            cat "$smoke_dir/cli-services.txt"
+          else
+            echo "Could not read CLI JSR-223 service descriptor"
+          fi
           if ! java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
             echo "Packaged CLI JavaScript provider probe failed:"
             cat "$smoke_dir/provider.log"
@@ -144,10 +158,24 @@ jobs:
               }
           }
           JAVA
-          javac "$smoke_dir/VerifyJavaScriptProvider.java"
+          echo "Compiling packaged IDE provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
           echo "Packaged IDE JSR-223 service descriptor:"
-          jar tf "$ide_jar" | grep 'META-INF/services/javax.script.ScriptEngineFactory' || true
-          unzip -p "$ide_jar" META-INF/services/javax.script.ScriptEngineFactory || true
+          if jar tf "$ide_jar" > "$smoke_dir/ide-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/ide-jar-entries.txt" || echo "No JSR-223 service descriptor in IDE JAR"
+          else
+            echo "Could not list IDE JAR entries"
+          fi
+          if unzip -p "$ide_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/ide-services.txt"; then
+            cat "$smoke_dir/ide-services.txt"
+          else
+            echo "Could not read IDE JSR-223 service descriptor"
+          fi
           if ! java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
             echo "Packaged IDE JavaScript provider probe failed:"
             cat "$smoke_dir/provider.log"
