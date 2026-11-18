@@ -151,7 +151,7 @@ jobs:
           <config xmlns="http://org.webharvest/schema/2.1/core">
             <def var="greeting">Java 17 packaged CLI smoke</def>
             <file path="smoke-result.txt" action="write">
-              <get-var var="greeting"/>
+              <get var="greeting"/>
             </file>
           </config>
           XML
