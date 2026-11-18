@@ -85,7 +85,10 @@ public class JSRScriptEngineFactoryTest {
                 new javax.script.ScriptEngineManager().getEngineByName("javascript");
         assertNotNull(jsEngine, "The standard JavaScript engine alias must be registered");
         try {
-            assertEquals(String.valueOf(jsEngine.eval("var x = 123; x + 1;")), "124",
+            final Object result = jsEngine.eval("var x = 123; x + 1;");
+            assertTrue(result instanceof Number,
+                    "JavaScript arithmetic must return a numeric result");
+            assertEquals(((Number) result).intValue(), 124,
                     "The restored JavaScript provider must evaluate scripts");
         } catch (javax.script.ScriptException e) {
             throw new AssertionError("JavaScript provider failed to evaluate a basic expression", e);
