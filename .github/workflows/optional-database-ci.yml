@@ -34,3 +34,44 @@ jobs:
           cache: maven
       - name: Verify Database extension and Core dependencies
         run: mvn -B -ntp -pl webharvest-database -am verify
+      - name: Report class-level JaCoCo gaps
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          report = Path("webharvest-database/target/site/jacoco/jacoco.csv")
+          if not report.is_file():
+              print(f"JaCoCo CSV not found: {report}")
+              raise SystemExit(0)
+
+          with report.open(newline="", encoding="utf-8") as stream:
+              rows = list(csv.DictReader(stream))
+
+          classes = [row for row in rows if row.get("CLASS") != "Total"]
+          classes.sort(
+              key=lambda row: (
+                  int(row["INSTRUCTION_MISSED"]),
+                  int(row["BRANCH_MISSED"]),
+              ),
+              reverse=True,
+          )
+          print("JaCoCo class coverage (largest instruction/branch gaps first):")
+          for row in classes:
+              missed_i = int(row["INSTRUCTION_MISSED"])
+              covered_i = int(row["INSTRUCTION_COVERED"])
+              missed_b = int(row["BRANCH_MISSED"])
+              covered_b = int(row["BRANCH_COVERED"])
+              total_i = missed_i + covered_i
+              total_b = missed_b + covered_b
+              instruction_pct = 100 * covered_i / total_i if total_i else 100
+              branch_pct = 100 * covered_b / total_b if total_b else 100
+              print(
+                  f'{row["PACKAGE"]}.{row["CLASS"]}: '
+                  f'instructions={instruction_pct:.1f}% '
+                  f'({covered_i}/{total_i}), '
+                  f'branches={branch_pct:.1f}% ({covered_b}/{total_b})'
+              )
+          PY
