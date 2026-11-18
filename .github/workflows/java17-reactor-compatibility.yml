@@ -59,6 +59,27 @@ jobs:
 
           smoke_dir="$(mktemp -d)"
           trap 'rm -rf "$smoke_dir"' EXIT
+
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged distribution did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged JavaScript evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac "$smoke_dir/VerifyJavaScriptProvider.java"
+          java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider
+
           cat > "$smoke_dir/smoke.xml" <<'XML'
           <?xml version="1.0" encoding="UTF-8"?>
           <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -99,6 +120,26 @@ jobs:
           test -s "$ide_jar"
 
           smoke_dir="$(mktemp -d)"
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged IDE did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged IDE JavaScript result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac "$smoke_dir/VerifyJavaScriptProvider.java"
+          java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider
+
           port=18765
           pid=""
           cleanup() {
