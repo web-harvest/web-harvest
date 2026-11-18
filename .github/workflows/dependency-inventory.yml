@@ -74,7 +74,7 @@ jobs:
             mvn --batch-mode --no-transfer-progress \
               -f "${module}/pom.xml" \
               org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom \
-              -Doutput="${module}/target/effective-pom.xml"
+              -Doutput=target/effective-pom.xml
             test -s "${module}/target/effective-pom.xml"
             echo "::endgroup::"
           done
