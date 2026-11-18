@@ -16,7 +16,6 @@ on:
       - "pom.xml"
       - "checkstyle.xml"
       - "spotbugs-include.xml"
-      - ".github/workflows/semantic-core-ci.yml"
   pull_request:
     branches:
       - main
