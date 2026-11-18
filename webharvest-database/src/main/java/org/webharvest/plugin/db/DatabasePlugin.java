@@ -372,9 +372,11 @@ public class DatabasePlugin extends AbstractPlugin {
                     for (int i = 1; i <= columnCount; i++) {
                         String columnName = resultSet.getMetaData().getColumnLabel(i);
                         String value = resultSet.getString(i);
-                        result.append("<").append(columnName).append(">")
+                        result.append("<column name=\"")
+                              .append(escapeXml(columnName != null ? columnName : ""))
+                              .append("\">")
                               .append(escapeXml(value != null ? value : ""))
-                              .append("</").append(columnName).append(">");
+                              .append("</column>");
                     }
                     result.append("</row>");
                 }
