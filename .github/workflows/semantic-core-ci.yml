@@ -34,7 +34,6 @@ on:
       - "pom.xml"
       - "checkstyle.xml"
       - "spotbugs-include.xml"
-      - ".github/workflows/semantic-core-ci.yml"
   workflow_dispatch:
 
 concurrency:
