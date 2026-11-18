@@ -38,6 +38,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
@@ -55,7 +56,6 @@ import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.webharvest.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -389,7 +389,7 @@ public class FtpPlugin extends AbstractPlugin {
     }
 
     private Variable executeAction(FTPClient ftpClient, String action, String remotePath, String localPath, DynamicScopeContext context) throws IOException, InterruptedException, PluginException {
-        switch (action.toLowerCase()) {
+        switch (action.toLowerCase(Locale.ROOT)) {
             case "get":
                 return handleFtpGet(ftpClient, remotePath, localPath, context);
             case "put":
