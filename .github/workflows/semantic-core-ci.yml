@@ -116,10 +116,24 @@ jobs:
           cache: maven
       - name: Reject unconditional success assertions in Core tests
         run: |
-          if grep -RInE --include='*.java' 'assertTrue[[:space:]]*[(][[:space:]]*true([[:space:]]*,[^)]*)?[[:space:]]*[)]' webharvest-core/src/test/java; then
-            echo "::error::Unconditional assertTrue(true) is forbidden in Core tests."
-            exit 1
-          fi
+          python3 - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          pattern = re.compile(r"\\bassertTrue\\s*\\(\\s*true\\s*(?:,\\s*[^)]*)?\\)", re.DOTALL)
+          failures = []
+          for source in Path("webharvest-core/src/test/java").rglob("*.java"):
+              content = source.read_text(encoding="utf-8")
+              for match in pattern.finditer(content):
+                  line = content.count("\\n", 0, match.start()) + 1
+                  failures.append(f"{source}:{line}: unconditional assertTrue(true)")
+
+          if failures:
+              print("\\n".join(failures), file=sys.stderr)
+              print("::error::Unconditional assertTrue(true) is forbidden in Core tests.", file=sys.stderr)
+              sys.exit(1)
+          PY
       - name: Run unqualified Core verify
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
       - name: Run Checkstyle independently if full verify is blocked
