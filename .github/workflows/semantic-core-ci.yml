@@ -57,6 +57,40 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+      - name: Reject unconditional or tautological success assertions in Core tests
+        run: |
+          python3 - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          forbidden_assertions = (
+              (
+                  "unconditional assertTrue(true)",
+                  re.compile(r"\bassertTrue\s*\(\s*true\s*(?:,\s*[^)]*)?\)", re.DOTALL),
+              ),
+              (
+                  "tautological assertTrue(expression || !expression)",
+                  re.compile(
+                      r"\bassertTrue\s*\(\s*(?P<expression>[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*\s*\(\s*\))*)\s*\|\|\s*!\s*(?P=expression)\s*\)",
+                      re.DOTALL,
+                  ),
+              ),
+          )
+
+          failures = []
+          for source in Path("webharvest-core/src/test/java").rglob("*.java"):
+              content = source.read_text(encoding="utf-8")
+              for description, pattern in forbidden_assertions:
+                  for match in pattern.finditer(content):
+                      line = content.count("\n", 0, match.start()) + 1
+                      failures.append(f"{source}:{line}: {description}")
+
+          if failures:
+              print("\n".join(failures), file=sys.stderr)
+              print("::error::False-green Core assertions are forbidden.", file=sys.stderr)
+              sys.exit(1)
+          PY
       - name: Run unqualified Core verify
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
       - name: Run Checkstyle independently if full verify is blocked

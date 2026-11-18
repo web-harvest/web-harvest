@@ -209,26 +209,6 @@ public class FilePluginBug41Test {
     /**
      * Documentation test: Bug #41 fix summary.
      */
-    @Test(groups = {"documentation", "file"})
-    public void testBug41_DocumentationAndFix() {
-        // Bug #41: RAR/ZIP files corrupted when downloaded
-        
-        // Old code (WRONG):
-        //   content = bodyContent.toString();  // byte[] → String (CORRUPTION!)
-        //   bytes = content.getBytes(charset); // String → byte[] (already corrupted)
-        
-        // New code (CORRECT):
-        //   bytes = bodyContent.toBinary();    // Direct byte[] access (NO corruption)
-        
-        // This fix applies to:
-        // - RAR files
-        // - ZIP files
-        // - PDF files
-        // - Images (JPEG, PNG, GIF)
-        // - Any binary format
-        
-        assertTrue(true, "Bug #41 fixed by using toBinary() in FilePlugin");
-    }
     
     /**
      * Helper method to delete directory recursively.

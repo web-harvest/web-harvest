@@ -54,7 +54,7 @@ public class XPathCssSelectorBug13Test {
         // This should not throw exception - type="css" should be valid
         try {
             plugin.initialize(config);
-            assertTrue(true, "Plugin accepts type='css' without throwing exception");
+            assertTrue(plugin.isInitialized(), "XPath plugin should initialize for CSS selector type");
         } catch (Exception e) {
             fail("Plugin should accept type='css' but threw: " + e.getMessage());
         }

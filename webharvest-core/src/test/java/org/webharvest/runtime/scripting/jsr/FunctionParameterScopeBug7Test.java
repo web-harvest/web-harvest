@@ -279,14 +279,10 @@ public class FunctionParameterScopeBug7Test {
         DynamicScopeContext ctx2 = new ScraperContext();
         ctx2.setLocalVar("cleanVar", new NodeVariable("clean"));
         
-        // Lenient mode (default) - should NOT throw exception
-        try {
-            scriptEngine.evaluate(ctx2, new ScriptSource("cleanVar", ScriptingLanguage.BEANSHELL));
-            // If we get here, detection worked and allowed execution (lenient mode)
-            assertTrue(true, "Bug #7: Lenient mode allows execution despite pollution");
-        } catch (Exception e) {
-            fail("Bug #7: Lenient mode should NOT throw exception! Got: " + e.getMessage());
-        }
+        // Lenient mode (default) - execution continues and returns the current context value.
+        Object result = scriptEngine.evaluate(ctx2, new ScriptSource("cleanVar", ScriptingLanguage.BEANSHELL));
+        assertEquals(result, "clean",
+            "Bug #7: Lenient mode must continue with the current context after detecting pollution");
     }
     
     /**

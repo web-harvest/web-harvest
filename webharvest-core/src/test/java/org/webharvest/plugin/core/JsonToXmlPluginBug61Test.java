@@ -102,7 +102,7 @@ public class JsonToXmlPluginBug61Test {
         
         if (xmlOutput.contains("<content>")) {
             System.out.println("  ✅ FIXED");
-            assertTrue(true);
+            
         } else {
             System.out.println("  ❌ BUG: 'content' treated as text node");
             fail("Bug #61: 'content' key with string value is not preserved");
@@ -129,7 +129,7 @@ public class JsonToXmlPluginBug61Test {
         
         if (contentCount >= 2) {
             System.out.println("  ✅ FIXED: Both 'content' keys preserved");
-            assertTrue(true);
+            
         } else {
             System.out.println("  ❌ BUG: Nested 'content' keys not preserved");
             fail("Bug #61: Nested 'content' keys should both be preserved");
@@ -160,7 +160,7 @@ public class JsonToXmlPluginBug61Test {
         
         if (hasContentElement == hasDataElement) {
             System.out.println("  ✅ FIXED: Both keys treated equally");
-            assertTrue(true);
+            
         } else {
             System.out.println("  ❌ BUG: 'content' treated differently than 'data'");
             fail("Bug #61: 'content' key should behave like any other JSON key");

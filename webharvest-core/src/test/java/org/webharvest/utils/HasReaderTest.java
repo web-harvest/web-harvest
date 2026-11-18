@@ -98,15 +98,10 @@ public class HasReaderTest {
         reader2.close();
     }
 
-    @Test
-    public void testReaderCanBeClosed() throws IOException {
-        HasReader hasReader = new TestHasReader("Test content");
-        Reader reader = hasReader.getReader();
-        
-        assertNotNull(reader);
+    @Test(expectedExceptions = IOException.class)
+    public void testReaderRejectsReadsAfterClose() throws IOException {
+        Reader reader = new TestHasReader("Test content").getReader();
         reader.close();
-        
-        // Should not throw exception when closed
-        assertTrue(true);
+        reader.read();
     }
 }
