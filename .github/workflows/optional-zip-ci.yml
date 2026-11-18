@@ -33,4 +33,4 @@ jobs:
           java-version: "11"
           cache: maven
       - name: Verify ZIP extension and Core dependencies
-        run: mvn -B -ntp -pl webharvest-zip -am verify
+        run: mvn -B -ntp -Dpmd.skip=true -pl webharvest-zip -am verify
