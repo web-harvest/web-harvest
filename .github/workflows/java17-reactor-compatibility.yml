@@ -78,7 +78,14 @@ jobs:
           }
           JAVA
           javac "$smoke_dir/VerifyJavaScriptProvider.java"
-          java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider
+          echo "Packaged CLI JSR-223 service descriptor:"
+          jar tf "$cli_jar" | grep 'META-INF/services/javax.script.ScriptEngineFactory' || true
+          unzip -p "$cli_jar" META-INF/services/javax.script.ScriptEngineFactory || true
+          if ! java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged CLI JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
 
           cat > "$smoke_dir/smoke.xml" <<'XML'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -138,7 +145,14 @@ jobs:
           }
           JAVA
           javac "$smoke_dir/VerifyJavaScriptProvider.java"
-          java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider
+          echo "Packaged IDE JSR-223 service descriptor:"
+          jar tf "$ide_jar" | grep 'META-INF/services/javax.script.ScriptEngineFactory' || true
+          unzip -p "$ide_jar" META-INF/services/javax.script.ScriptEngineFactory || true
+          if ! java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged IDE JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
 
           port=18765
           pid=""
