@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
  * @since 2.2.0
  * @version 2.2.0
  */
-public class HttpServiceImpl implements HttpService {
+public class HttpServiceImpl implements HttpService, AutoCloseable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpServiceImpl.class);
     
@@ -250,6 +250,16 @@ public class HttpServiceImpl implements HttpService {
         }
     }
     
+    /**
+     * Closes the underlying HTTP client and releases its connection resources.
+     *
+     * @throws IOException if the client cannot be closed
+     */
+    @Override
+    public void close() throws IOException {
+        httpClient.close();
+    }
+
     /**
      * Simple implementation of {@link HttpResponse}.
      * 
