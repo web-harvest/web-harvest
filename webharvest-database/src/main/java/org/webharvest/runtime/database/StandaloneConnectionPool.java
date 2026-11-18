@@ -48,6 +48,9 @@ import org.webharvest.runtime.session.events.SessionFailedEvent;
 import org.webharvest.exception.DatabaseException;
 
 import com.google.common.eventbus.Subscribe;
+import com.google.common.eventbus.EventBus;
+
+import java.util.ArrayList;
 
 /**
  * Default, standalone {@link ConnectionFactory} interface implementation. It
@@ -76,6 +79,40 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
     private final ConnectionsRegistry registry = new ConnectionsRegistry();
 
     private final DriverManager driverManager = DefaultDriverManager.INSTANCE;
+    private EventBus registeredEventBus;
+
+    /**
+     * Registers this pool with the execution context's session event bus so its
+     * physical connections are released when the session completes or fails.
+     *
+     * @param eventBus the event bus owned by the current execution session
+     */
+    public synchronized void registerForSession(final EventBus eventBus) {
+        if (eventBus == null) {
+            throw new IllegalArgumentException("EventBus cannot be null");
+        }
+        if (registeredEventBus == eventBus) {
+            return;
+        }
+        if (registeredEventBus != null) {
+            throw new IllegalStateException("Connection pool is already registered with another EventBus");
+        }
+        eventBus.register(this);
+        registeredEventBus = eventBus;
+    }
+
+    /**
+     * Closes all physical connections and detaches this pool from its session
+     * event bus. Safe to call more than once.
+     */
+    public synchronized void closeAllConnections() {
+        releaseAllConnections();
+        EventBus eventBus = registeredEventBus;
+        registeredEventBus = null;
+        if (eventBus != null) {
+            eventBus.unregister(this);
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -117,7 +154,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
     @Subscribe
     public void onExecutionEnd(final SessionCompletedEvent event) {
         LOG.debug("POOL: " + this);
-        releaseAllConnections();
+        closeAllConnections();
     }
 
     /**
@@ -128,7 +165,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      */
     @Subscribe
     public void onExecutionError(final SessionFailedEvent event) {
-        releaseAllConnections();
+        closeAllConnections();
     }
 
     private Connection createNewConnection(final String driver,
@@ -155,12 +192,14 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
 
     private void releaseAllConnections() {
         LOG.info("Releasing all database connections...");
-        for (String key : registry.listBound()) {
+        for (String key : new ArrayList<String>(registry.listBound())) {
             try {
                 registry.lookup(key).getTargetConnection().close();
             } catch (SQLException e) {
                 LOG.warn("Exception occurred during database connection "
                         + "closing", e);
+            } finally {
+                registry.unbind(key);
             }
         }
         LOG.info("Connections released.");
