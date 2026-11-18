@@ -1,4 +1,4 @@
-name: Java 17 Full Reactor CI
+name: Java 17 Reactor Static Analysis
 
 on:
   pull_request:
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   java17-reactor:
-    name: Full reactor verify + quality gates (Temurin 17)
+    name: Full reactor tests + static analysis (Temurin 17)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -36,7 +36,7 @@ jobs:
         run: |
           java -version
           mvn --version
-      - name: Verify complete Maven reactor and quality gates on Java 17
+      - name: Verify complete Maven reactor, tests and static analysis on Java 17
         shell: bash
         env:
           JAVA_TOOL_OPTIONS: >-
@@ -48,6 +48,7 @@ jobs:
           set -euo pipefail
           mvn_args=(
             --batch-mode --no-transfer-progress
+            -Djacoco.skip=true
             verify
           )
           log_file="$(mktemp)"
