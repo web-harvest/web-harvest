@@ -240,13 +240,17 @@ public class ExecutionManager {
             DynamicScopeContext context = new ScraperContext();
             context.setConfig(config);
             
-            // Create session for tracking
+            // Create one EventBus shared by the context and its session. Session
+            // lifecycle events (completed/failed/cancelled) must reach subscribers
+            // registered by plugins through context.getEventBus().
             sendLog(job.getId(), "INFO", "Creating session...");
-            ScraperSessionImpl session = new ScraperSessionImpl(job.getId(), "ide-client", config);
+            EventBus eventBus = new EventBus();
+            ScraperSessionImpl session = new ScraperSessionImpl(
+                    job.getId(), "ide-client", config, eventBus);
             job.setSession(session);
-            
-            // Set session in context for event publishing
-            context.setEventBus(new EventBus());
+
+            // The context and session must publish/observe on the same bus.
+            context.setEventBus(eventBus);
             context.setSession(session);
             
             // Mark session as running
