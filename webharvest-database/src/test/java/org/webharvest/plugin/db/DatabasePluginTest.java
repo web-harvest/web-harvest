@@ -37,15 +37,19 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
+import com.google.common.eventbus.EventBus;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
+import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.database.ConnectionProxy;
+import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
+import static org.mockito.Mockito.mock;
 
 /** Contract and JDBC integration tests for DatabasePlugin. */
 public class DatabasePluginTest {
@@ -220,6 +224,35 @@ public class DatabasePluginTest {
         }
 
         schema.validate(inlineConfig("jdbc:h2:mem:schema_valid"));
+    }
+
+    @Test
+    public void testInlineQueryRegistersPoolForActualSessionCompletion() throws Exception {
+        String url = "jdbc:h2:mem:db_event_bus_inline;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        EventBus eventBus = new EventBus();
+        context.setEventBus(eventBus);
+        ScraperSessionImpl session = new ScraperSessionImpl(
+                "database-inline-session", "test-client", mock(Config.class), eventBus);
+        context.setSession(session);
+        session.markRunning(context);
+
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELECT id AS \"id\" FROM sample"));
+        assertEquals(plugin.execute(context).toString(), "<results><row><id>7</id></row></results>");
+
+        session.markCompleted();
+        assertEquals(session.getStatus().name(), "COMPLETED");
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testMissingNamedConnectionFailsAndRunsLegacyCleanupBranch() throws Exception {
+        DatabasePlugin plugin = new DatabasePlugin();
+        DefaultPluginConfiguration config = config();
+        config.setProperty("connection", "missing");
+        config.setProperty("sql", "SELECT 1");
+        plugin.initialize(config);
+        plugin.execute(context);
     }
 
     private static void createFixture(String url) throws Exception {
