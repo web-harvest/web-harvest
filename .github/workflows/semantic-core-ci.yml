@@ -114,6 +114,12 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
+      - name: Reject unconditional success assertions in Core tests
+        run: |
+          if grep -RInE --include='*.java' 'assertTrue[[:space:]]*\\([[:space:]]*true([[:space:]]*,[^)]*)?[[:space:]]*\\)' webharvest-core/src/test/java; then
+            echo "::error::Unconditional assertTrue(true) is forbidden in Core tests."
+            exit 1
+          fi
       - name: Run unqualified Core verify
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
       - name: Run Checkstyle independently if full verify is blocked

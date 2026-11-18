@@ -79,7 +79,7 @@ public class XSDMetadataParserTest {
             assertTrue(hasPath, "File should have required 'path' attribute if attributes are parsed");
         } else {
             // If attributes not parsed, that's acceptable - they're in the schema type
-            assertTrue(true, "File attributes may be in type definition, not directly in element");
+            assertNotNull(file.getAttributes(), "Parsed XSD elements must expose an attribute collection");
         }
     }
 

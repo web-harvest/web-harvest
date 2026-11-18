@@ -54,18 +54,6 @@ public class HttpPluginWithDependencyInjectionTest {
         httpPlugin = injector.getInstance(HttpPlugin.class);
     }
 
-    @Test
-    public void testHttpPluginHasHttpServiceInjected() {
-        // GIVEN: HttpPlugin created via Guice
-        assertNotNull(httpPlugin, "HttpPlugin should be created");
-        
-        // WHEN: Check if HttpService is injected
-        // (we can't directly access private field, but execute() will throw if null)
-        
-        // THEN: Should not throw IllegalStateException
-        // (test passes if no exception)
-        assertTrue(true, "HttpPlugin created successfully with dependencies");
-    }
     
     @Test
     public void testHttpPluginSimpleGet() throws Exception {

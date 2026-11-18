@@ -122,17 +122,6 @@ public class PluginInterfacesTest {
         assertEquals(testConfig.getProperty("test.key", "default"), "default");
     }
     
-    @Test
-    public void testBodyContentProvider() {
-        // v2.2.x: BodyContentProvider removed - test no longer applicable
-        // IElementDef elementDef = mock(IElementDef.class);
-        // BodyContentProvider provider = new SimpleBodyContentProvider(elementDef);
-        // assertNotNull(provider);
-        // assertTrue(provider instanceof BodyContentProvider);
-        
-        // Test is now no-op - BodyContentProvider removed in v2.2.x
-        assertTrue(true);
-    }
     
     // v2.2.x: Rewritten to use PluginBodyExecutor instead of deleted BodyContentProvider
     @Test

@@ -289,13 +289,6 @@ public class JsonToXmlPluginEnhancedTest {
     
     // ==================== Configuration Tests ====================
     
-    @Test
-    public void testInitializeWithConfiguration() throws Exception {
-        when(configuration.getProperty("id")).thenReturn("jsonId");
-        
-        
-        assertTrue(true);
-    }
     
     @Test
     public void testMetadataProperties() {

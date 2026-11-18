@@ -524,43 +524,8 @@ public class ScriptPluginEnhancedTest {
     
     // ==================== Configuration Tests ====================
     
-    @Test
-    public void testInitializeWithValidConfiguration() throws Exception {
-        // Given
-        when(configuration.getProperty("language")).thenReturn("beanshell");
-        when(configuration.getProperty("id")).thenReturn("myScript");
-        when(configuration.getProperty("return")).thenReturn("result");
-        
-        // When
-        
-        // Then - should not throw exception
-        assertTrue(true);
-    }
     
-    @Test
-    public void testInitializeWithMinimalConfiguration() throws Exception {
-        // Given - only required fields (none in this case)
-        when(configuration.getProperty("language")).thenReturn(null);
-        when(configuration.getProperty("id")).thenReturn(null);
-        when(configuration.getProperty("return")).thenReturn(null);
-        
-        // When
-        
-        // Then - should not throw exception
-        assertTrue(true);
-    }
     
-    @Test
-    public void testConfigurationWithId() throws Exception {
-        // Given
-        when(configuration.getProperty("id")).thenReturn("uniqueScriptId");
-        when(configuration.getProperty("language")).thenReturn("beanshell");
-        
-        // When
-        
-        // Then
-        assertTrue(true);
-    }
     
     // ==================== Edge Cases ====================
     
@@ -674,7 +639,7 @@ public class ScriptPluginEnhancedTest {
         var schema = plugin.getMetadata().getConfigurationSchema();
         // Should not throw exception
         var attr = schema.getAttribute("language");
-        assertTrue(true);
+        assertNotNull(attr, "ScriptPlugin must declare the language attribute");
     }
     
     // ==================== Metadata Tests ====================
