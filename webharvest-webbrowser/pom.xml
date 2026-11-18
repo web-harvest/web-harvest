@@ -52,9 +52,9 @@
         </dependency>
         <!-- HtmlUnit for JavaScript/AJAX support (Bug #33 fix) -->
         <dependency>
-            <groupId>net.sourceforge.htmlunit</groupId>
+            <groupId>org.htmlunit</groupId>
             <artifactId>htmlunit</artifactId>
-            <version>2.70.0</version>
+            <version>4.21.0</version>
         </dependency>
         <!-- Test dependencies -->
         <dependency>
