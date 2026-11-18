@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - maintenance/osv-dependency-scanning
     paths:
       - "pom.xml"
       - "webharvest-*/pom.xml"
