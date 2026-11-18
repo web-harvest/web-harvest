@@ -51,11 +51,27 @@ jobs:
         run: |
           set -euo pipefail
           cli_jar="target/webharvest-cli-2.3.1.jar"
-          test -s "$cli_jar"
+          if [ ! -s "$cli_jar" ]; then
+            echo "Packaged CLI JAR is missing or empty:"
+            ls -la target
+            exit 1
+          fi
 
-          java -jar "$cli_jar" -h > target/cli-help.log 2>&1
-          grep -q "WebHarvest Command Line Interface" target/cli-help.log
-          grep -q "Usage:" target/cli-help.log
+          if ! java -jar "$cli_jar" -h > target/cli-help.log 2>&1; then
+            echo "Packaged CLI help command failed:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "WebHarvest Command Line Interface" target/cli-help.log; then
+            echo "CLI help banner missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "Usage:" target/cli-help.log; then
+            echo "CLI usage text missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
 
           smoke_dir="$(mktemp -d)"
           trap 'rm -rf "$smoke_dir"' EXIT
@@ -138,7 +154,11 @@ jobs:
         run: |
           set -euo pipefail
           ide_jar="webharvest-ide/target/webharvest-ide-2.3.1.jar"
-          test -s "$ide_jar"
+          if [ ! -s "$ide_jar" ]; then
+            echo "Packaged IDE JAR is missing or empty:"
+            ls -la webharvest-ide/target
+            exit 1
+          fi
 
           smoke_dir="$(mktemp -d)"
           cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
