@@ -79,4 +79,5 @@ public class JSRScriptEngineFactoryTest {
         final ScriptEngine engine = factory.getEngine(new ScriptSource(
                 "var x = 123", ScriptingLanguage.JAVASCRIPT));
         assertNotNull(engine, "JavaScript JSR-223 engine provider must be available");
-    }}
+    }
+}
