@@ -49,6 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Locale;
 
 import org.mockftpserver.fake.FakeFtpServer;
 import org.mockftpserver.fake.UserAccount;
@@ -127,6 +128,20 @@ public class FtpPluginBehaviorTest {
         assertTrue(result instanceof ListVariable);
         assertTrue(((ListVariable) result).contains("download.txt"));
         assertTrue(((ListVariable) result).contains("delete.txt"));
+    }
+
+    @Test
+    public void containerActionDispatchIsIndependentOfDefaultLocale() throws Exception {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(new Locale("tr", "TR"));
+            Variable result = executeContainer("LIST", "/data", PASSWORD, true, null);
+
+            assertTrue(result instanceof ListVariable);
+            assertTrue(((ListVariable) result).contains("download.txt"));
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     @Test
