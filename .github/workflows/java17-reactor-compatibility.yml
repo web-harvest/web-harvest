@@ -57,7 +57,21 @@ jobs:
             exit 1
           fi
 
-          if ! java -jar "$cli_jar" -h > target/cli-help.log 2>&1; then
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+
+          # The CLI writes its help text through SLF4J/Log4j, so give the
+          # packaged process an explicit console appender instead of relying
+          # on a developer-local Log4j configuration.
+          cat > "$smoke_dir/log4j.properties" <<'PROPERTIES'
+          log4j.rootLogger=INFO, console
+          log4j.appender.console=org.apache.log4j.ConsoleAppender
+          log4j.appender.console.Target=System.out
+          log4j.appender.console.layout=org.apache.log4j.PatternLayout
+          log4j.appender.console.layout.ConversionPattern=%p %c - %m%n
+          PROPERTIES
+
+          if ! java "-Dlog4j.configuration=file:$smoke_dir/log4j.properties" -jar "$cli_jar" -h > target/cli-help.log 2>&1; then
             echo "Packaged CLI help command failed:"
             cat target/cli-help.log
             exit 1
@@ -72,9 +86,6 @@ jobs:
             cat target/cli-help.log
             exit 1
           fi
-
-          smoke_dir="$(mktemp -d)"
-          trap 'rm -rf "$smoke_dir"' EXIT
 
           cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
           import javax.script.ScriptEngine;
