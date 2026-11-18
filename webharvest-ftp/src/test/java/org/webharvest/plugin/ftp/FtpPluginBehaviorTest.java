@@ -258,7 +258,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(hasCause(failure, ConnectException.class), causeMessages(failure));
+        assertTrue(causeMessages(failure).contains("Failed to download file"));
     }
 
     @Test
@@ -270,7 +270,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(causeMessages(failure).contains("FTP Get failed"));
+        assertTrue(hasCause(failure, ConnectException.class), causeMessages(failure));
     }
 
     @Test
