@@ -12,8 +12,8 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.database.ConnectionProxy;
-import org.webharvest.runtime.session.ScraperSession;
-import org.webharvest.runtime.session.events.SessionCompletedEvent;
+import org.webharvest.runtime.session.ScraperSessionImpl;
+import org.webharvest.definition.Config;
 
 import static org.testng.Assert.*;
 import static org.mockito.Mockito.mock;
@@ -194,6 +194,10 @@ public class ConnectionPluginTest {
     public void registersNamedPoolWithSessionEventBusAndReleasesPhysicalConnection() throws Exception {
         EventBus eventBus = new EventBus();
         context.setEventBus(eventBus);
+        ScraperSessionImpl session = new ScraperSessionImpl(
+                "session-db-test", "test-client", mock(Config.class), eventBus);
+        context.setSession(session);
+        session.markRunning(context);
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("connection",
                 "http://org.webharvest/schema/2.1/core", "connection");
         config.setProperty("id", "sessionDB");
@@ -206,7 +210,7 @@ public class ConnectionPluginTest {
 
         java.sql.Connection proxy = ConnectionPlugin.getNamedConnection(context, "sessionDB");
         java.sql.Connection physical = ((ConnectionProxy) proxy).getTargetConnection();
-        eventBus.post(new SessionCompletedEvent(mock(ScraperSession.class)));
+        session.markCompleted();
 
         assertTrue(physical.isClosed(),
                 "The session event bus must release the named pool's physical connection");
