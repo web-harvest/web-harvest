@@ -18,9 +18,6 @@ on:
       - "spotbugs-include.xml"
       - ".github/workflows/semantic-core-ci.yml"
   pull_request:
-    # branches filter matches the PR base (target) branch, not the head branch.
-    # PRs from project/** heads into main are covered by `main` below.
-    # Campaign branch tips still run via the push.project/** trigger above.
     branches:
       - main
       - recovery/uncommitted-development
@@ -31,8 +28,6 @@ on:
       - "stabilization/**"
       - "quality/**"
       - "maintenance/**"
-      # Stacked implementation PRs target active fix/** and test/** branches.
-      # Include those base branches so every current PR head receives exact-SHA CI.
       - "fix/**"
       - "test/**"
     paths:
@@ -44,8 +39,6 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Use the same key for push and pull_request events from the same head branch.
-  # The PR run supersedes the duplicate push run when a branch has an open PR.
   group: semantic-core-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
@@ -53,56 +46,8 @@ permissions:
   contents: read
 
 jobs:
-  core-tests:
-    name: Core tests (Java 17)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-      - name: Run Semantic Core contract tests
-        run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
-
-  core-regression:
-    name: Full Core test suites (Java 17; Surefire/Failsafe diagnostics)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-      - name: Run Core unit tests (Surefire)
-        # Keep this as a separate Maven invocation so a Surefire failure cannot prevent Failsafe diagnostics.
-        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test
-      - name: Run Core integration tests (Failsafe)
-        if: always()
-        # Invoke test-compile plus Failsafe goals directly. This still runs after Surefire fails,
-        # while avoiding a second Surefire execution. The unqualified verify job owns the Checkstyle gate.
-        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
-      - name: Upload Surefire and Failsafe reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: core-regression-surefire-failsafe
-          path: |
-            **/target/surefire-reports/**
-            **/target/failsafe-reports/**
-          if-no-files-found: warn
-          retention-days: 14
-
   core-final-verify:
-    name: Unqualified Core verify (Checkstyle + full tests)
+    name: Core verify (Checkstyle + full tests + JaCoCo)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -119,6 +64,9 @@ jobs:
       - name: Run Checkstyle independently if full verify is blocked
         if: failure()
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am checkstyle:check
+      - name: Run Failsafe diagnostics if full verify fails
+        if: failure()
+        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
       - name: Verify and inventory JaCoCo report output
         if: always()
         shell: bash
