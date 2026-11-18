@@ -79,5 +79,15 @@ public class JSRScriptEngineFactoryTest {
         final ScriptEngine engine = factory.getEngine(new ScriptSource(
                 "var x = 123", ScriptingLanguage.JAVASCRIPT));
         assertNotNull(engine, "JavaScript JSR-223 engine provider must be available");
+
+        final javax.script.ScriptEngine jsEngine =
+                new javax.script.ScriptEngineManager().getEngineByName("javascript");
+        assertNotNull(jsEngine, "The standard JavaScript engine alias must be registered");
+        try {
+            assertEquals(String.valueOf(jsEngine.eval("var x = 123; x + 1;")), "124",
+                    "The restored JavaScript provider must evaluate scripts");
+        } catch (javax.script.ScriptException e) {
+            throw new AssertionError("JavaScript provider failed to evaluate a basic expression", e);
+        }
     }
 }
