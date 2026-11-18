@@ -46,7 +46,6 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.database.ConnectionFactory;
 import org.webharvest.runtime.database.StandaloneConnectionPool;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
