@@ -221,14 +221,16 @@ public class EmbeddedExamplesExecutionTest {
         context.setConfig(config);
         
         String sessionId = UUID.randomUUID().toString();
-        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, "test-client", config);
-        context.setEventBus(new EventBus());
+        EventBus eventBus = new EventBus();
+        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, "test-client", config, eventBus);
+        context.setEventBus(eventBus);
         context.setSession(session);
         session.markRunning(context);
-        
-        Scraper scraper = new Scraper(context.getEventBus());
+
+        Scraper scraper = new Scraper(eventBus);
         scraper.execute(context);
-        
+        session.markCompleted();
+
         return context;
     }
 
