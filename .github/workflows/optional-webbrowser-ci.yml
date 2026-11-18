@@ -62,6 +62,7 @@ jobs:
             **/target/failsafe-reports/**
             webharvest-webbrowser/target/dependency-tree.txt
             webharvest-webbrowser/target/jacoco-report/**
+            webharvest-webbrowser/target/site/jacoco/**
             webharvest-webbrowser/target/jacoco.exec
             webharvest-core/target/jacoco-report/**
             webharvest-core/target/jacoco.exec
