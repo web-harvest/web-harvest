@@ -59,11 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed: All test classes updated to use `workingDir = "target"` (previously some used `"."` causing files in project root)
 
 ### Fixed
-- **IDE Java Version Requirement**: IDE now requires Java 11 (not Java 17/21)
+- **Java Runtime Baseline**: The current main branch uses `maven.compiler.release=17`; the next supported release line requires JDK 17+. Packaged CLI and IDE smoke tests pass on Temurin 17. Previously published v2.2.0 JARs retain their original Java 11+ runtime requirement.
 - **Documentation**: Developer guide updated with a "Master/Detail Relationship Coverage" section explaining how palette validation is derived from curated XML examples.
-  - Java 17 and 21 have stricter module access restrictions requiring `--add-opens` flags
-  - Java 11 works without these restrictions and is the recommended version for IDE
-  - Updated documentation to specify Java 11 requirement
   - Fixed: All test classes updated to use `workingDir = "target"` instead of `"."`
     - `SessionManagementIntegrationTest`, `HttpPluginWithDependencyInjectionTest`, `DefaultPluginBodyExecutorTest`, `HandlerHolderIntegrationTest`, `HttpClient5MigrationTest`, `BaseTemplaterStaticInjectionTest`, `JSRScriptEngineAdapterVariableConversionTest`
   - Fixed: IDE `ConfigServlet` uses `workingDir = "target"` (previously used `"."` causing files in project root)
