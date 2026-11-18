@@ -292,6 +292,7 @@ public class DatabasePlugin extends AbstractPlugin {
         }
         
         Connection connection = null;
+        StandaloneConnectionPool inlineFactory = null;
         try {
             // Option 1: Use named connection from ConnectionPlugin
             if (!connectionId.isEmpty()) {
@@ -314,8 +315,11 @@ public class DatabasePlugin extends AbstractPlugin {
                 LOGGER.info("Creating inline connection: driver={}, url={}", driver, url);
                 
                 // Use StandaloneConnectionPool for inline connections
-                ConnectionFactory factory = new StandaloneConnectionPool();
-                connection = factory.getConnection(driver, url, username, password);
+                inlineFactory = new StandaloneConnectionPool();
+                if (context.getEventBus() != null) {
+                    inlineFactory.registerForSession(context.getEventBus());
+                }
+                connection = inlineFactory.getConnection(driver, url, username, password);
             }
             
             if (sql.trim().isEmpty()) {
@@ -332,11 +336,19 @@ public class DatabasePlugin extends AbstractPlugin {
             LOGGER.error("Unexpected error in database plugin", e);
             throw new RuntimeException("Unexpected error in database plugin: " + e.getMessage(), e);
         } finally {
-            if (connection != null) {
+            if (context.getEventBus() == null) {
+                if (!connectionId.isEmpty()) {
+                    ConnectionPlugin.closeNamedConnection(context, connectionId);
+                } else if (inlineFactory != null) {
+                    inlineFactory.closeAllConnections();
+                }
+            } else if (connection != null) {
                 try {
+                    // The pool proxy intentionally suppresses close; the session
+                    // event handler owns physical connection cleanup.
                     connection.close();
                 } catch (SQLException e) {
-                    LOGGER.warn("Failed to close database connection", e);
+                    LOGGER.warn("Failed to close database connection proxy", e);
                 }
             }
         }
