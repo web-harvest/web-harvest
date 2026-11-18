@@ -4,11 +4,9 @@ import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.AfterClass;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.testng.Assert.*;
 
@@ -19,20 +17,20 @@ import static org.testng.Assert.*;
  */
 public class TabManagementTest {
 
-    private static final String JAR_PATH = "target/webharvest-ide-2.3.1.jar";
     private String appJsContent;
     
     @BeforeClass
-    public void setUp() throws IOException {
-        // Read compiled main.js from JAR (Vite output)
-        try (JarFile jarFile = new JarFile(JAR_PATH)) {
-            ZipEntry entry = jarFile.getEntry("webapp/dist/assets/main.js");
-            assertNotNull(entry, "webapp/dist/assets/main.js not found in JAR - TypeScript frontend not built");
-            
-            try (InputStream is = jarFile.getInputStream(entry)) {
-                appJsContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            }
-        }
+    public void setUp() throws Exception {
+        // The Vite build runs in the compile phase, before the Surefire test phase.
+        // Read its generated source resource directly; the IDE JAR is not created
+        // until the later package phase.
+        Path testClasses = Path.of(
+            TabManagementTest.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        Path moduleRoot = testClasses.getParent().getParent();
+        Path asset = moduleRoot.resolve("src/main/resources/webapp/dist/assets/main.js");
+        assertTrue(Files.isRegularFile(asset),
+            "webapp/dist/assets/main.js not found at " + asset + " - TypeScript frontend not built");
+        appJsContent = Files.readString(asset, StandardCharsets.UTF_8);
     }
     
     @Test(groups = {"integration", "frontend", "tab-management"})
