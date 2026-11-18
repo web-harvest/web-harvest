@@ -59,16 +59,24 @@ jobs:
 
           smoke_dir="$(mktemp -d)"
           trap 'rm -rf "$smoke_dir"' EXIT
-          cat > "$smoke_dir/smoke.xml" <<'XML'
+          cat > "$smoke_dir/smoke.xml" <<XML
           <?xml version="1.0" encoding="UTF-8"?>
           <config xmlns="http://org.webharvest/schema/2.1/core">
-            <file path="smoke-result.txt" action="write">
+            <file path="$smoke_dir/smoke-result.txt" action="write">
               Java 17 packaged CLI smoke
             </file>
           </config>
           XML
 
           if ! java -jar "$cli_jar" "config=$smoke_dir/smoke.xml" "workdir=$smoke_dir" loglevel=debug > "$smoke_dir/cli.log" 2>&1; then
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+          if [ ! -s "$smoke_dir/smoke-result.txt" ]; then
+            echo "CLI exited successfully but did not create the expected absolute output path."
+            echo "Smoke directory contents:"
+            find "$smoke_dir" -maxdepth 2 -type f -print
+            echo "CLI log:"
             cat "$smoke_dir/cli.log"
             exit 1
           fi
