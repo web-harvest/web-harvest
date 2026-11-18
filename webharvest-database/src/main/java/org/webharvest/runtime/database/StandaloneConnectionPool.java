@@ -46,6 +46,7 @@ import org.webharvest.AbstractRegistry;
 import org.webharvest.AlreadyBoundException;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
+import org.webharvest.runtime.session.events.SessionCancelledEvent;
 import org.webharvest.exception.DatabaseException;
 
 import com.google.common.eventbus.EventBus;
@@ -164,6 +165,17 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      */
     @Subscribe
     public void onExecutionError(final SessionFailedEvent event) {
+        closeAllConnections();
+    }
+
+    /**
+     * Reacts on explicit session cancellation and releases all pooled
+     * database connections.
+     *
+     * @param event the cancellation event
+     */
+    @Subscribe
+    public void onExecutionCancelled(final SessionCancelledEvent event) {
         closeAllConnections();
     }
 
