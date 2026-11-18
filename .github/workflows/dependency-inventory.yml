@@ -31,7 +31,7 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: Capture module dependency trees and effective POMs
+      - name: Capture module dependency trees
         shell: bash
         run: |
           set -euo pipefail
@@ -52,26 +52,67 @@ jobs:
               org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree \
               -Dscope=test -Dverbose \
               -DoutputFile=target/dependency-tree.txt
-            echo "::endgroup::"
-            echo "::group::Effective POM: ${module}"
-            mvn --batch-mode --no-transfer-progress \
-              -pl "${module}" -am -DskipTests \
-              org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom \
-              -Doutput=target/effective-pom.xml
+            test -s "${module}/target/dependency-tree.txt"
             echo "::endgroup::"
           done
-      - name: Verify inventory artifacts exist
-        if: always()
+      - name: Capture effective POM for each module
         shell: bash
         run: |
-          find . -path '*/target/dependency-tree.txt' -o -path '*/target/effective-pom.xml' | sort
+          set -euo pipefail
+          modules=(
+            webharvest-core
+            webharvest-cli
+            webharvest-ide
+            webharvest-database
+            webharvest-ftp
+            webharvest-mail
+            webharvest-webbrowser
+            webharvest-zip
+          )
+          for module in "${modules[@]}"; do
+            echo "::group::Effective POM: ${module}"
+            mvn --batch-mode --no-transfer-progress \
+              -f "${module}/pom.xml" \
+              org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom \
+              -Doutput="${module}/target/effective-pom.xml"
+            test -s "${module}/target/effective-pom.xml"
+            echo "::endgroup::"
+          done
+      - name: Verify complete module inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          modules=(
+            webharvest-core
+            webharvest-cli
+            webharvest-ide
+            webharvest-database
+            webharvest-ftp
+            webharvest-mail
+            webharvest-webbrowser
+            webharvest-zip
+          )
+          for module in "${modules[@]}"; do
+            for report in dependency-tree.txt effective-pom.xml; do
+              path="${module}/target/${report}"
+              if [[ ! -s "${path}" ]]; then
+                echo "::error::Missing or empty inventory report: ${path}"
+                exit 1
+              fi
+            done
+          done
+          count=$(find webharvest-* -path '*/target/dependency-tree.txt' -type f | wc -l | tr -d ' ')
+          effective_count=$(find webharvest-* -path '*/target/effective-pom.xml' -type f | wc -l | tr -d ' ')
+          test "${count}" -eq 8
+          test "${effective_count}" -eq 8
+          echo "Verified 8 module dependency trees and 8 module effective POMs."
+          find webharvest-* \( -path '*/target/dependency-tree.txt' -o -path '*/target/effective-pom.xml' \) -type f -printf '%p %s bytes\\n' | sort
       - name: Upload dependency inventory
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: maven-dependency-inventory-java11
           path: |
-            **/target/dependency-tree.txt
-            **/target/effective-pom.xml
+            webharvest-*/target/dependency-tree.txt
+            webharvest-*/target/effective-pom.xml
           if-no-files-found: error
           retention-days: 30
