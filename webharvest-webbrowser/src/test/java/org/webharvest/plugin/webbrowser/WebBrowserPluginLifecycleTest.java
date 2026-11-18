@@ -1,0 +1,194 @@
+package org.webharvest.plugin.webbrowser;
+
+import com.sun.net.httpserver.HttpServer;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+import org.webharvest.definition.CorePluginsRegistrar;
+import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.variables.Variable;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.testng.Assert.*;
+
+/**
+ * End-to-end lifecycle tests for the HtmlUnit-backed WebBrowser plugin.
+ * All requests target an in-process HTTP server; the suite does not use the public Internet.
+ */
+public class WebBrowserPluginLifecycleTest {
+
+    private static final String NAMESPACE = "http://org.webharvest/schema/2.1/core";
+    private static final String PAGE =
+            "<!doctype html><html><head><title>before</title></head>"
+                    + "<body><div id='result'>initial</div>"
+                    + "<script>document.body.setAttribute('data-script', 'ran');</script>"
+                    + "</body></html>";
+
+    private static HttpServer server;
+    private static String baseUrl;
+
+    private DynamicScopeContext context;
+
+    @BeforeClass
+    public void startServer() throws IOException {
+        CorePluginsRegistrar.registerCorePlugins();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/page", exchange -> respond(exchange, 200, PAGE));
+        server.createContext("/redirect", exchange -> {
+            exchange.getResponseHeaders().add("Location", "/page");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+        });
+        server.createContext("/missing", exchange -> respond(exchange, 404, "missing"));
+        server.start();
+        baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+    }
+
+    @AfterClass(alwaysRun = true)
+    public void stopServer() {
+        WebBrowserPlugin.closeAllPages();
+        if (server != null) {
+            server.stop(0);
+        }
+    }
+
+    @BeforeMethod
+    public void setUp() {
+        WebBrowserPlugin.closeAllPages();
+        context = new ScraperContext();
+    }
+
+    @AfterMethod(alwaysRun = true)
+    public void tearDown() {
+        WebBrowserPlugin.closeAllPages();
+    }
+
+    @Test
+    public void loadExecuteScriptGetContentAndCloseNamedPage() throws Exception {
+        Variable loaded = execute("load", "main", baseUrl + "/page", true, 1, null);
+        assertNotNull(loaded);
+        assertTrue(loaded.toString().contains("before"));
+
+        Variable scriptResult = execute(
+                "execute-script", "main", null, true, 1,
+                "document.getElementById('result').textContent = 'executed';"
+                        + "document.title = 'after'; document.title");
+        assertEquals(scriptResult.toString(), "after");
+
+        Variable content = execute("get-content", "main", null, true, 0, null);
+        assertTrue(content.toString().contains("executed"));
+        assertTrue(content.toString().contains("<title>after</title>"));
+
+        execute("close", "main", null, true, 0, null);
+        assertThrows(RuntimeException.class,
+                () -> execute("get-content", "main", null, true, 0, null));
+    }
+
+    @Test
+    public void loadDefaultPageWithJavaScriptDisabledAndCloseAll() throws Exception {
+        execute("load", null, baseUrl + "/page", false, 0, null);
+
+        Variable content = execute("get-content", null, null, false, 0, null);
+        assertTrue(content.toString().contains("<title>before</title>"));
+        assertFalse(content.toString().contains("data-script=\"ran\""));
+
+        WebBrowserPlugin.closeAllPages();
+        assertThrows(RuntimeException.class,
+                () -> execute("get-content", null, null, false, 0, null));
+    }
+
+    @Test
+    public void loadFollowsRedirectAndReportsHttpFailure() throws Exception {
+        Variable redirected = execute("load", "redirect", baseUrl + "/redirect", false, 0, null);
+        assertTrue(redirected.toString().contains("<title>before</title>"));
+        assertTrue(execute("get-content", "redirect", null, false, 0, null)
+                .toString().contains("<title>before</title>"));
+
+        RuntimeException failure = expectThrows(RuntimeException.class,
+                () -> execute("load", "missing", baseUrl + "/missing", false, 0, null));
+        assertTrue(failure.getMessage().contains("Error in webbrowser plugin"));
+        assertTrue(failure.getCause().getMessage().contains("Failed to load page"));
+    }
+
+    @Test
+    public void executeScriptRequiresExistingPageAndNonEmptyBody() throws Exception {
+        RuntimeException missingPage = expectThrows(RuntimeException.class,
+                () -> execute("execute-script", "absent", null, true, 0, "1 + 1"));
+        assertTrue(missingPage.getCause().getMessage().contains("not found"));
+
+        execute("load", "script", baseUrl + "/page", true, 0, null);
+        RuntimeException emptyBody = expectThrows(RuntimeException.class,
+                () -> execute("execute-script", "script", null, true, 0, ""));
+        assertTrue(emptyBody.getCause().getMessage().contains("JavaScript code is required"));
+    }
+
+    @Test
+    public void executeScriptErrorsAreReported() throws Exception {
+        execute("load", "script-error", baseUrl + "/page", true, 0, null);
+        RuntimeException failure = expectThrows(RuntimeException.class,
+                () -> execute("execute-script", "script-error", null, true, 0,
+                        "throw new Error('script failure')"));
+        assertTrue(failure.getCause().getMessage().contains("Failed to execute JavaScript"));
+    }
+
+    @Test
+    public void replacingNamedAndDefaultPagesClosesPreviousClients() throws Exception {
+        execute("load", "replace", baseUrl + "/page", false, 0, null);
+        execute("load", "replace", baseUrl + "/page", true, 0, null);
+        execute("close", "replace", null, true, 0, null);
+
+        execute("load", null, baseUrl + "/page", false, 0, null);
+        execute("load", null, baseUrl + "/page", true, 0, null);
+        execute("close", null, null, true, 0, null);
+    }
+
+    private Variable execute(
+            String action,
+            String page,
+            String url,
+            boolean javascriptEnabled,
+            int wait,
+            String script) throws Exception {
+        Map<String, String> properties = new HashMap<>();
+        properties.put("action", action);
+        properties.put("javascript-enabled", Boolean.toString(javascriptEnabled));
+        properties.put("wait", Integer.toString(wait));
+        if (page != null) {
+            properties.put("page", page);
+        }
+        if (url != null) {
+            properties.put("url", url);
+        }
+
+        DefaultPluginConfiguration configuration =
+                new DefaultPluginConfiguration("web-browser", NAMESPACE, "web-browser", properties);
+        if (script != null) {
+            DefaultPluginConfiguration text = new DefaultPluginConfiguration("text", NAMESPACE, "text");
+            text.setProperty("_textContent", script);
+            configuration.setChildren(Collections.singletonList(text));
+        }
+
+        WebBrowserPlugin plugin = new WebBrowserPlugin();
+        plugin.initialize(configuration);
+        return plugin.execute(context);
+    }
+
+    private static void respond(
+            com.sun.net.httpserver.HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "text/html; charset=UTF-8");
+        exchange.sendResponseHeaders(status, bytes.length);
+        exchange.getResponseBody().write(bytes);
+        exchange.close();
+    }
+}
