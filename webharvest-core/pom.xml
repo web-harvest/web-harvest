@@ -91,6 +91,28 @@
                 <core.test.excludedGroups>__webharvest_no_matching_test_group__</core.test.excludedGroups>
             </properties>
         </profile>
+        <profile>
+            <id>skip-core-tests-in-reactor</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Core has its own full test + JaCoCo gate; avoid executing it twice on PRs. -->
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
     <dependencies>
         <!--

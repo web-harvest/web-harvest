@@ -47,6 +47,7 @@ jobs:
           set -euo pipefail
           mvn_args=(
             --batch-mode --no-transfer-progress
+            -Pskip-core-tests-in-reactor
             -Djacoco.skip=true
             verify
           )
