@@ -37,7 +37,9 @@ jobs:
           java -version
           mvn --version
       - name: Verify complete Maven reactor on Java 17
-        run: >-
+        shell: bash
+        run: |
+          set -euo pipefail
           mvn_args=(
             --batch-mode --no-transfer-progress
             -Dcheckstyle.skip=true
@@ -79,9 +81,6 @@ jobs:
           smoke_dir="$(mktemp -d)"
           trap 'rm -rf "$smoke_dir"' EXIT
 
-          # The CLI writes its help text through SLF4J/Log4j, so give the
-          # packaged process an explicit console appender instead of relying
-          # on a developer-local Log4j configuration.
           cat > "$smoke_dir/log4j.properties" <<'PROPERTIES'
           log4j.rootLogger=INFO, console
           log4j.appender.console=org.apache.log4j.ConsoleAppender
