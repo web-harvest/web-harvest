@@ -8,6 +8,13 @@ on:
       - "pom.xml"
       - "webharvest-*/**"
       - "docs/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "webharvest-*/**"
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
