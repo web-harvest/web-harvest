@@ -80,6 +80,9 @@ public class HtmlToXmlPluginTest {
         assertTrue(metadata.isCorePlugin());
         assertEquals(metadata.getElementName(), "html-to-xml");
         assertEquals(metadata.getNamespace(), "http://org.webharvest/schema/2.1/core");
+        assertEquals(metadata.getDependencies().length, 2);
+        assertEquals(metadata.getDependencies()[0], "Jsoup");
+        assertEquals(metadata.getDependencies()[1], "TagSoup");
     }
 
     @Test
