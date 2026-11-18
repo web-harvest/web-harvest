@@ -54,33 +54,33 @@ permissions:
 
 jobs:
   core-tests:
-    name: Core tests (Java 11)
+    name: Core tests (Java 17)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
           cache: maven
       - name: Run Semantic Core contract tests
         run: mvn -B -ntp -pl webharvest-core -am -Dtest=SemanticModelTest,SemanticModelLimitsAndInspectionTest,SemanticXmlAnalyzerLexicalHandlerTest,PluginDescriptorIndexTest,StructuralValidationTest,StructuralValidationAdversarialTest -Dsurefire.failIfNoSpecifiedTests=false test
 
   core-regression:
-    name: Full Core test suites (Java 11; Surefire/Failsafe diagnostics)
+    name: Full Core test suites (Java 17; Surefire/Failsafe diagnostics)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
           cache: maven
       - name: Run Core unit tests (Surefire)
         # Keep this as a separate Maven invocation so a Surefire failure cannot prevent Failsafe diagnostics.
@@ -108,11 +108,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
           cache: maven
       - name: Run unqualified Core verify
         run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
