@@ -82,7 +82,14 @@ jobs:
             cat "$smoke_dir/cli.log"
             exit 1
           fi
-          grep -q "Java 17 packaged CLI smoke" "$smoke_dir/smoke-result.txt"
+          if ! grep -q "Java 17 packaged CLI smoke" "$smoke_dir/smoke-result.txt"; then
+            echo "CLI output file exists but does not contain the expected payload."
+            echo "Output file:"
+            cat -A "$smoke_dir/smoke-result.txt"
+            echo "CLI log:"
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
       - name: Smoke-test packaged IDE on Java 17
         shell: bash
         run: |
