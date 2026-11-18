@@ -121,9 +121,11 @@ public class FtpPluginBehaviorTest {
 
     @Test
     public void containerRejectsMissingRemotePath() throws Exception {
-        RuntimeException failure = executeContainerExpectingFailure("get", "", PASSWORD);
-
-        assertTrue(causeMessages(failure).contains("Remote path is required"));
+        String[] actions = { "get", "put", "mkdir", "rmdir", "del" };
+        for (String action : actions) {
+            RuntimeException failure = executeContainerExpectingFailure(action, "", PASSWORD);
+            assertTrue(causeMessages(failure).contains("Remote path is required"), action);
+        }
     }
 
     @Test
@@ -131,6 +133,21 @@ public class FtpPluginBehaviorTest {
         RuntimeException failure = executeContainerExpectingFailure("get", "/data/missing.txt", PASSWORD);
 
         assertTrue(causeMessages(failure).contains("Cannot retrieve file"));
+    }
+
+    @Test
+    public void containerRejectsFailedServerOperations() throws Exception {
+        assertTrue(causeMessages(executeContainerExpectingFailure("mkdir", "/data", PASSWORD))
+                .contains("Cannot create directory"));
+        assertTrue(causeMessages(executeContainerExpectingFailure("rmdir", "/data", PASSWORD))
+                .contains("Cannot remove directory"));
+        assertTrue(causeMessages(executeContainerExpectingFailure("del", "/data/missing.txt", PASSWORD))
+                .contains("Cannot delete file"));
+
+        FtpPlugin plugin = new BodyFtpPlugin(new NodeVariable(UPLOAD_CONTENT));
+        plugin.initialize(configuration(containerProperties("put", "/missing/upload.txt", PASSWORD, true), "ftp"));
+        RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
+        assertTrue(causeMessages(failure).contains("Cannot store file"));
     }
 
     @Test
@@ -150,7 +167,7 @@ public class FtpPluginBehaviorTest {
     @Test
     public void containerReportsConnectionFailure() throws Exception {
         Map<String, String> properties = containerProperties("get", "/data/download.txt", PASSWORD, true);
-        properties.put("port", "0");
+        properties.put("port", Integer.toString(stopServerAndGetClosedPort()));
         FtpPlugin plugin = new FtpPlugin();
         RuntimeException failure = executeExpectingFailure(plugin, configuration(properties, "ftp"));
 
@@ -212,7 +229,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(causeMessages(failure).contains("Failed to download file"));
+        assertTrue(causeMessages(failure).contains("FTP Get failed"));
     }
 
     @Test
