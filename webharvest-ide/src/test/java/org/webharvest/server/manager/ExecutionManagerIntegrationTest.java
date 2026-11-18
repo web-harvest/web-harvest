@@ -9,6 +9,8 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.webharvest.server.support.TestEnvironment;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
@@ -329,25 +331,26 @@ public class ExecutionManagerIntegrationTest {
             );
         }
         
-        public boolean hasVariable(String varName) {
-            if (finalMessage == null) return false;
-            return finalMessage.contains("\"" + varName + "\"");
-        }
-        
-        public String getVariable(String varName) {
+        private JsonObject resultVariables() {
             if (finalMessage == null) return null;
-            
-            // Simple JSON parsing (good enough for tests)
-            int start = finalMessage.indexOf("\"" + varName + "\":");
-            if (start == -1) return null;
-            
-            start = finalMessage.indexOf("\"", start + varName.length() + 3);
-            if (start == -1) return null;
-            
-            int end = finalMessage.indexOf("\"", start + 1);
-            if (end == -1) return null;
-            
-            return finalMessage.substring(start + 1, end);
+            try {
+                JsonObject message = JsonParser.parseString(finalMessage).getAsJsonObject();
+                if (!message.has("results") || !message.get("results").isJsonObject()) return null;
+                return message.getAsJsonObject("results");
+            } catch (RuntimeException malformedMessage) {
+                return null;
+            }
+        }
+
+        public boolean hasVariable(String varName) {
+            JsonObject variables = resultVariables();
+            return variables != null && variables.has(varName) && !variables.get(varName).isJsonNull();
+        }
+
+        public String getVariable(String varName) {
+            JsonObject variables = resultVariables();
+            if (variables == null || !variables.has(varName) || variables.get(varName).isJsonNull()) return null;
+            return variables.get(varName).getAsString();
         }
     }
 }
