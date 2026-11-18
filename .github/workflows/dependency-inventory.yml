@@ -105,12 +105,12 @@ jobs:
               fi
             done
           done
-          count=$(find webharvest-* -path '*/target/dependency-tree.txt' -type f | wc -l | tr -d ' ')
-          effective_count=$(find webharvest-* -path '*/target/effective-pom.xml' -type f | wc -l | tr -d ' ')
-          test "${count}" -eq 8
-          test "${effective_count}" -eq 8
-          echo "Verified 8 module dependency trees and 8 module effective POMs."
-          find webharvest-* \( -path '*/target/dependency-tree.txt' -o -path '*/target/effective-pom.xml' \) -type f -printf '%p %s bytes\\n' | sort
+          count=$(find . -mindepth 3 -maxdepth 4 -path '*/target/dependency-tree.txt' -type f | wc -l | tr -d ' ')
+          effective_count=$(find . -mindepth 3 -maxdepth 4 -path '*/target/effective-pom.xml' -type f | wc -l | tr -d ' ')
+          test "${count}" -eq 9
+          test "${effective_count}" -eq 9
+          echo "Verified 9 module dependency trees and 9 module effective POMs."
+          find . -mindepth 3 -maxdepth 4 \( -path '*/target/dependency-tree.txt' -o -path '*/target/effective-pom.xml' \) -type f -printf '%p %s bytes\\n' | sort
       - name: Upload dependency inventory
         uses: actions/upload-artifact@v4
         with:
