@@ -141,6 +141,33 @@ public class DatabasePluginTest {
         assertEquals(plugin.execute(context).toString(), "Rows affected: 1");
     }
 
+    @Test
+    public void testSelectWithNullValueReturnsEmptyElement() throws Exception {
+        String url = "jdbc:h2:mem:db_null_value;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELECT NULL AS \\"empty\\""));
+        assertEquals(plugin.execute(context).toString(),
+                "<results><row><empty></empty></row></results>");
+    }
+
+    @Test
+    public void testSelectWithoutRowsReturnsEmptyResults() throws Exception {
+        String url = "jdbc:h2:mem:db_no_rows;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELECT id AS \\"id\\" FROM sample WHERE id = -1"));
+        assertEquals(plugin.execute(context).toString(), "<results></results>");
+    }
+
+    @Test(expectedExceptions = RuntimeException.class)
+    public void testEmptySqlIsRejectedAfterConnectionSetup() throws Exception {
+        String url = "jdbc:h2:mem:db_empty_sql;DB_CLOSE_DELAY=-1";
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, ""));
+        plugin.execute(context);
+    }
+
     private static void createFixture(String url) throws Exception {
         Class.forName("org.h2.Driver");
         try (Connection connection = DriverManager.getConnection(url, "sa", "");
