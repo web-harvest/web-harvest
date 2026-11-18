@@ -298,7 +298,7 @@ public class FtpPutPlugin extends AbstractPlugin {
             LOGGER.error("FTP Put Plugin - Unexpected error", e);
             throw new RuntimeException("FTP Put failed: " + e.getMessage(), e);
         } finally {
-            if (ftpClient != null) {
+            if (ftpClient != null && ftpClient.isConnected()) {
                 try {
                     ftpClient.logout();
                     ftpClient.disconnect();

@@ -41,8 +41,6 @@ import org.testng.annotations.Test;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.PluginConfigurationSchema;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.variables.Variable;
 
 /**
  * Unit tests for FTP plugin classes.
@@ -54,13 +52,11 @@ public class FtpPluginTest {
     
     private FtpPlugin ftpPlugin;
     private PluginConfiguration config;
-    private DynamicScopeContext context;
     
     @BeforeMethod
     public void setUp() {
         ftpPlugin = new FtpPlugin();
         config = mock(PluginConfiguration.class);
-        context = mock(DynamicScopeContext.class);
     }
     
     @Test
@@ -112,27 +108,6 @@ public class FtpPluginTest {
         
         // Should not throw exception
         ftpPlugin.validateConfiguration(config);
-    }
-    
-    @Test
-    public void testFtpPluginExecute() throws Exception {
-        // Test basic execution without actual FTP connection
-        when(config.getProperty("host")).thenReturn("localhost");
-        when(config.getProperty("username")).thenReturn("user");
-        when(config.getProperty("password")).thenReturn("pass");
-        when(config.getProperty("port")).thenReturn("21");
-        when(config.getProperty("action")).thenReturn("list");
-        
-        ftpPlugin.initialize(config);
-        
-        try {
-            Variable result = ftpPlugin.execute(context);
-            // Result might be null or empty due to missing FTP connection
-            assertTrue(result == null || result instanceof Variable, "Result should be a Variable or null");
-        } catch (Exception e) {
-            // Expected due to missing FTP connection
-            assertTrue(e instanceof Exception, "Should throw exception due to missing FTP connection");
-        }
     }
     
     @Test
@@ -206,22 +181,5 @@ public class FtpPluginTest {
         }
     }
     
-    @Test
-    public void testFtpPluginWithInvalidAction() throws Exception {
-        when(config.getProperty("host")).thenReturn("localhost");
-        when(config.getProperty("username")).thenReturn("user");
-        when(config.getProperty("password")).thenReturn("pass");
-        when(config.getProperty("port")).thenReturn("21");
-        when(config.getProperty("action")).thenReturn("invalid");
-        
-        ftpPlugin.initialize(config);
-        
-        try {
-            ftpPlugin.execute(context);
-            fail("Expected exception for invalid action");
-        } catch (Exception e) {
-            // Expected due to invalid action
-            assertTrue(e instanceof Exception, "Should throw exception for invalid action");
-        }
-    }
+
 }

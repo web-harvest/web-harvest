@@ -309,7 +309,7 @@ public class FtpListPlugin extends AbstractPlugin {
             LOGGER.error("FTP List Plugin - Unexpected error", e);
             throw new RuntimeException("FTP List failed: " + e.getMessage(), e);
         } finally {
-            if (ftpClient != null) {
+            if (ftpClient != null && ftpClient.isConnected()) {
                 try {
                     ftpClient.logout();
                     ftpClient.disconnect();

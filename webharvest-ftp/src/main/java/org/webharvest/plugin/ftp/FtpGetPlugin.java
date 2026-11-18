@@ -295,7 +295,7 @@ public class FtpGetPlugin extends AbstractPlugin {
             LOGGER.error("FTP Get Plugin - Unexpected error", e);
             throw new RuntimeException("FTP Get failed: " + e.getMessage(), e);
         } finally {
-            if (ftpClient != null) {
+            if (ftpClient != null && ftpClient.isConnected()) {
                 try {
                     ftpClient.logout();
                     ftpClient.disconnect();
