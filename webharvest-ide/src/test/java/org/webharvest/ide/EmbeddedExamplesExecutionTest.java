@@ -229,7 +229,6 @@ public class EmbeddedExamplesExecutionTest {
 
         Scraper scraper = new Scraper(eventBus);
         scraper.execute(context);
-        session.markCompleted();
 
         return context;
     }
