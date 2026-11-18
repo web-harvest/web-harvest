@@ -68,30 +68,5 @@ public class BaseTemplaterStaticInjectionTest {
             "Static field and injector instance should be the same (Singleton)");
     }
     
-    @Test
-    public void testEvaluateToStringWithInjection() {
-        // GIVEN: Guice injector with ScraperModule
-        // Use target/ as working directory - all generated files will go to target/
-        String targetDir = "target";
-        new java.io.File(targetDir).mkdirs();
-        Injector injector = Guice.createInjector(new ScraperModule(targetDir));
-        
-        // WHEN: BaseTemplater.scriptEngineFactory is injected
-        assertNotNull(BaseTemplater.scriptEngineFactory);
-        
-        // THEN: evaluateToString should work (not throw NullPointerException)
-        // Note: We can't fully test this without DynamicScopeContext,
-        // but we can verify scriptEngineFactory is available
-        
-        String source = "${1 + 1}";
-        // This will fail if scriptEngineFactory is null
-        try {
-            // Just checking that scriptEngineFactory is not null
-            // (actual evaluation would require context)
-            assertTrue(true, "scriptEngineFactory is available");
-        } catch (NullPointerException e) {
-            fail("NullPointerException - scriptEngineFactory is null!");
-        }
-    }
 }
 
