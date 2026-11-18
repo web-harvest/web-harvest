@@ -1,0 +1,81 @@
+name: Optional Database Module CI
+
+on:
+  pull_request:
+    paths:
+      - "webharvest-database/**"
+      - "webharvest-core/**"
+      - "webharvest-ide/**"
+      - "pom.xml"
+      - ".github/workflows/optional-database-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "webharvest-database/**"
+      - "webharvest-core/**"
+      - "webharvest-ide/**"
+      - "pom.xml"
+      - ".github/workflows/optional-database-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database-module-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+      - name: Verify Database extension and Core dependencies
+        run: mvn -B -ntp -pl webharvest-database -am verify
+      - name: Verify IDE session EventBus wiring used by Database cleanup
+        run: mvn -B -ntp -pl webharvest-ide -am -Dtest=ExecutionManagerSessionLifecycleTest,ScrapingHarvesterTest -Dsurefire.failIfNoSpecifiedTests=false test
+      - name: Report class-level JaCoCo gaps
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          report = Path("webharvest-database/target/site/jacoco/jacoco.csv")
+          if not report.is_file():
+              print(f"JaCoCo CSV not found: {report}")
+              raise SystemExit(0)
+
+          with report.open(newline="", encoding="utf-8") as stream:
+              rows = list(csv.DictReader(stream))
+
+          classes = [row for row in rows if row.get("CLASS") != "Total"]
+          classes.sort(
+              key=lambda row: (
+                  int(row["INSTRUCTION_MISSED"]),
+                  int(row["BRANCH_MISSED"]),
+              ),
+              reverse=True,
+          )
+          print("JaCoCo class coverage (largest instruction/branch gaps first):")
+          for row in classes:
+              missed_i = int(row["INSTRUCTION_MISSED"])
+              covered_i = int(row["INSTRUCTION_COVERED"])
+              missed_b = int(row["BRANCH_MISSED"])
+              covered_b = int(row["BRANCH_COVERED"])
+              total_i = missed_i + covered_i
+              total_b = missed_b + covered_b
+              instruction_pct = 100 * covered_i / total_i if total_i else 100
+              branch_pct = 100 * covered_b / total_b if total_b else 100
+              print(
+                  f'{row["PACKAGE"]}.{row["CLASS"]}: '
+                  f'instructions={instruction_pct:.1f}% '
+                  f'({covered_i}/{total_i}), '
+                  f'branches={branch_pct:.1f}% ({covered_b}/{total_b})'
+              )
+          PY

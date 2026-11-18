@@ -1,214 +1,87 @@
-# Web-Harvest Database Module
+# WebHarvest Database Module
 
-Database support for Web-Harvest scraping framework with connection pooling and named connections.
+Optional JDBC integration module for WebHarvest. It is not part of the default Core runtime and must be added explicitly by applications that need database access.
 
-## Features
+## XML contract
 
-- **Named Connections**: Define multiple database connections with unique identifiers
-- **Connection Pooling**: Automatic connection pooling for better performance
-- **Multiple Databases**: Support for multiple concurrent database connections
-- **Backward Compatible**: Supports both named and inline connection configurations
+Both plugin elements use the Core namespace: `http://org.webharvest/schema/2.1/core`.
 
-## Plugins
+### Named connection
 
-### 1. ConnectionPlugin (`<connection>`)
-
-Defines a named database connection with connection pooling.
-
-#### Attributes:
-
-| Attribute | Required | Description | Example |
-|-----------|----------|-------------|---------|
-| `id` | Yes | Connection identifier | `mainDB` |
-| `driver` | Yes | JDBC driver class name | `org.postgresql.Driver` |
-| `url` | Yes | JDBC connection URL | `jdbc:postgresql://localhost/mydb` |
-| `username` | No | Database username | `dbuser` |
-| `password` | No | Database password | `secret` |
-| `poolSize` | No | Connection pool size (default: 10) | `20` |
-
-#### Example:
+Define a connection once, then reference it by its `id`:
 
 ```xml
-<connection id="mainDB" 
-            driver="org.postgresql.Driver"
-            url="jdbc:postgresql://localhost:5432/mydb"
-            username="dbuser"
-            password="secret"
-            poolSize="10"/>
-```
-
-### 2. DatabasePlugin (`<database>`)
-
-Executes SQL queries using named or inline connections.
-
-#### Attributes:
-
-| Attribute | Required | Description | Example |
-|-----------|----------|-------------|---------|
-| `connection` | No* | Named connection ID | `mainDB` |
-| `driver` | No* | JDBC driver (inline mode) | `org.h2.Driver` |
-| `url` | No* | JDBC URL (inline mode) | `jdbc:h2:mem:test` |
-| `username` | No | Database username | `sa` |
-| `password` | No | Database password | `` |
-| `sql` | No** | SQL query | `SELECT * FROM users` |
-
-\* Either `connection` OR (`driver` + `url`) is required  
-\*\* SQL can be in attribute or element body
-
-## Usage Examples
-
-### Example 1: Named Connection (Recommended)
-
-```xml
-<config>
-    <!-- Define connection once -->
-    <connection id="mainDB" 
-                driver="org.postgresql.Driver"
-                url="jdbc:postgresql://localhost/mydb"
-                username="user"
-                password="pass"/>
-    
-    <!-- Use it multiple times -->
-    <database connection="mainDB" 
-              sql="SELECT * FROM users"/>
-    
-    <database connection="mainDB" 
-              sql="INSERT INTO logs VALUES ('action', NOW())"/>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <connection id="main" driver="org.postgresql.Driver"
+              url="jdbc:postgresql://localhost/mydb"
+              username="dbuser" password="secret"/>
+  <database connection="main" sql="SELECT id, name FROM users"/>
 </config>
 ```
 
-### Example 2: Multiple Named Connections
+### Inline connection
+
+For a single operation, provide both `driver` and `url` directly:
 
 ```xml
-<config>
-    <!-- Production database -->
-    <connection id="prodDB" 
-                driver="org.postgresql.Driver"
-                url="jdbc:postgresql://prod-server/production"
-                username="prod_user"
-                password="prod_pass"
-                poolSize="20"/>
-    
-    <!-- Reporting database -->
-    <connection id="reportDB"
-                driver="com.mysql.jdbc.Driver"
-                url="jdbc:mysql://report-server/reports"
-                username="report_user"
-                password="report_pass"
-                poolSize="5"/>
-    
-    <!-- Query production -->
-    <database connection="prodDB" 
-              sql="SELECT * FROM orders WHERE date = CURRENT_DATE"/>
-    
-    <!-- Insert into reports -->
-    <database connection="reportDB" 
-              sql="INSERT INTO daily_stats SELECT ..."/>
-</config>
+<database xmlns="http://org.webharvest/schema/2.1/core"
+          driver="org.h2.Driver" url="jdbc:h2:mem:example"
+          username="sa" password="" sql="SELECT 1 AS result"/>
 ```
 
-### Example 3: Inline Connection (Backward Compatibility)
+SQL may be supplied using the `sql` attribute or as the element body. Exactly one connection mode is allowed:
 
-```xml
-<config>
-    <!-- Old style - direct connection parameters -->
-    <database driver="org.h2.Driver"
-              url="jdbc:h2:mem:testdb"
-              username="sa"
-              password=""
-              sql="SELECT * FROM table"/>
-</config>
+- named mode: `connection` only;
+- inline mode: both `driver` and `url`.
+
+Do not combine named and inline connection attributes.
+
+## Runtime registration
+
+The module is optional and is not registered by the default Core bootstrap. Applications must explicitly register its XML processors before executing configurations that use `<connection>` or `<database>`:
+
+```java
+import org.webharvest.definition.CorePluginRegistry;
+import org.webharvest.plugin.db.DatabasePluginRegistrar;
+
+DatabasePluginRegistrar.register(CorePluginRegistry.getInstance());
 ```
 
-### Example 4: SQL in Body
+This does not change the default 44 Core mappings. The registration API is deliberately separate from `DatabaseModule`, which provides Guice `ConnectionFactory` bindings for applications that consume those services directly.
 
-```xml
-<config>
-    <connection id="myDB" driver="org.h2.Driver" url="jdbc:h2:mem:test"/>
-    
-    <database connection="myDB">
-        SELECT u.name, u.email, o.total
-        FROM users u
-        JOIN orders o ON u.id = o.user_id
-        WHERE o.date &gt;= '2025-01-01'
-        ORDER BY o.total DESC
-        LIMIT 100
-    </database>
-</config>
-```
+## Attributes
 
-## Supported Databases
+| Element | Attribute | Requirement | Meaning |
+|---|---|---|---|
+| `connection` | `id` | required | Name used by `database connection="..."` |
+| `connection` | `driver` | required | JDBC driver class |
+| `connection` | `url` | required | JDBC URL |
+| `connection` | `username`, `password` | optional | JDBC credentials |
+| `connection` | `poolSize` | legacy, ignored | Retained temporarily for configuration compatibility; no configurable pool is implemented |
+| `database` | `connection` | named mode | Previously defined connection ID |
+| `database` | `driver`, `url` | inline mode | JDBC driver class and URL; both required together |
+| `database` | `username`, `password` | inline mode | Optional JDBC credentials |
+| `database` | `sql` | optional | SQL statement; alternatively provide element body |
 
-The module supports any JDBC-compliant database:
+## Runtime behavior and limits
 
-- **PostgreSQL**: `org.postgresql.Driver`
-- **MySQL**: `com.mysql.jdbc.Driver` or `com.mysql.cj.jdbc.Driver`
-- **H2**: `org.h2.Driver`
-- **Oracle**: `oracle.jdbc.driver.OracleDriver`
-- **SQL Server**: `com.microsoft.sqlserver.jdbc.SQLServerDriver`
-- **SQLite**: `org.sqlite.JDBC`
+- The module supports JDBC drivers supplied by the application; it does not bundle vendor database drivers.
+- `StandaloneConnectionPool` reuses a single connection for a given driver/URL/username within its factory and releases it at session completion, failure, or cancellation. It is not a configurable multi-connection pool and is not thread-safe.
+- The legacy `poolSize` attribute is accepted but has no effect. Do not rely on it for concurrency or throughput control.
+- SELECT results are returned as `<results><row>...</row></results>`; text values are XML-escaped. Non-query statements return `Rows affected: N`.
+- This module's tests use H2 only as a test-scoped embedded JDBC fixture. H2 is not a runtime dependency.
 
-## Architecture
+## Build and test
 
-```
-webharvest-database/
-├─ org.webharvest.runtime.database/
-│  ├─ ConnectionFactory (interface)
-│  ├─ StandaloneConnectionPool (connection pooling)
-│  ├─ JNDIConnectionFactory (Java EE support)
-│  ├─ ConnectionProxy
-│  ├─ DriverManager (driver management)
-│  └─ DefaultDriverManager
-└─ org.webharvest.plugin.db/
-   ├─ ConnectionPlugin (named connections)
-   └─ DatabasePlugin (SQL execution)
-```
+From the repository root:
 
-## Benefits
-
-1. **Connection Pooling**: Automatic connection reuse for better performance
-2. **Named Connections**: Define once, use many times
-3. **Multiple Databases**: Support for multiple concurrent connections
-4. **Clean Configuration**: Separate connection definition from usage
-5. **Backward Compatible**: Works with existing inline connection syntax
-
-## Migration Guide
-
-### From Inline to Named Connections:
-
-**Before:**
-```xml
-<database driver="org.h2.Driver" url="jdbc:h2:mem:db" sql="SELECT * FROM t1"/>
-<database driver="org.h2.Driver" url="jdbc:h2:mem:db" sql="SELECT * FROM t2"/>
-<database driver="org.h2.Driver" url="jdbc:h2:mem:db" sql="SELECT * FROM t3"/>
-```
-
-**After:**
-```xml
-<connection id="myDB" driver="org.h2.Driver" url="jdbc:h2:mem:db"/>
-
-<database connection="myDB" sql="SELECT * FROM t1"/>
-<database connection="myDB" sql="SELECT * FROM t2"/>
-<database connection="myDB" sql="SELECT * FROM t3"/>
-```
-
-**Benefits:**
-- Connection pooling (reuses connections)
-- DRY principle (define connection once)
-- Easier maintenance (change connection in one place)
-- Better performance (connection reuse)
-
-## Testing
-
-Run tests:
 ```bash
-cd webharvest-database
-mvn test
+mvn --batch-mode --no-transfer-progress -pl webharvest-database -am test
+mvn --batch-mode --no-transfer-progress -pl webharvest-database -am verify
 ```
 
-Current test coverage: **29 tests, 0 failures**
+The module remains optional; the normal Core build does not pull in this module or H2.
 
 ## License
 
-Copyright (c) 2006-2025 the original author or authors. See LICENSE file for details.
-
+See the repository root `LICENSE`, `NOTICE` and module licensing notices.

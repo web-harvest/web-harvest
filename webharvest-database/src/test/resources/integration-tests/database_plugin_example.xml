@@ -1,20 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config xmlns="http://org.webharvest/schema/2.1/core">
-  <!-- Test Database plugin -->
-  <def var="dbUrl">jdbc:h2:mem:testdb</def>
-  <def var="dbDriver">org.h2.Driver</def>
-  <database url="${dbUrl}" driver="${dbDriver}">
-    <!-- Create test table -->
-    <template>CREATE TABLE IF NOT EXISTS test_table (id INT, name VARCHAR(50))</template>
-    <!-- Insert test data -->
-    <template>INSERT INTO test_table (id, name) VALUES (1, 'Test User')</template>
-    <!-- Select data -->
-    <template>SELECT * FROM test_table WHERE id = 1</template>
-  </database>
-  <file action="write" path="target/test-output/database_output.txt">
-    <template>Database operations completed successfully</template>
-  </file>
-  <config>
-    <template>Database plugin test completed</template>
-  </config>
+  <connection id="sample" driver="org.h2.Driver"
+              url="jdbc:h2:mem:database_example;DB_CLOSE_DELAY=-1"
+              username="sa" password=""/>
+  <database connection="sample" sql="CREATE TABLE IF NOT EXISTS sample (id INT PRIMARY KEY, name VARCHAR(80))"/>
+  <database connection="sample" sql="INSERT INTO sample (id, name) VALUES (1, 'WebHarvest')"/>
+  <database connection="sample" sql="SELECT id, name FROM sample ORDER BY id"/>
 </config>

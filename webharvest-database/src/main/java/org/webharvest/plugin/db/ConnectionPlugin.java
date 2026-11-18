@@ -35,6 +35,9 @@ package org.webharvest.plugin.db;
 
 import java.sql.Connection;
 
+import com.google.common.eventbus.EventBus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -43,20 +46,14 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.database.ConnectionFactory;
 import org.webharvest.runtime.database.StandaloneConnectionPool;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Connection plugin for managing named database connections.
- * Allows defining multiple named connections with connection pooling.
+ * Connection plugin for defining named JDBC connection configurations.
+ * Each definition reuses a single connection through its session-scoped factory; it is not a configurable multi-connection pool.
  * 
  * Example usage:
  * <pre>
@@ -70,7 +67,7 @@ import java.util.Map;
  * @author WebHarvest Team
  * @since 2.2.0
  */
-@CorePlugin(elementName = "connection")
+@CorePlugin(elementName = "connection", namespace = "http://org.webharvest/schema/2.1/core")
 public class ConnectionPlugin extends AbstractPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPlugin.class);
@@ -82,9 +79,8 @@ public class ConnectionPlugin extends AbstractPlugin {
     private static final String PASSWORD_ATT_NAME = "password";
     private static final String POOL_SIZE_ATT_NAME = "poolSize";
     
-    // Key prefix for storing connections in context
-    private static final String CONNECTION_KEY_PREFIX = "__db_connection_";
-    private static final String CONNECTION_FACTORY_KEY_PREFIX = "__db_factory_";
+    // Internal context keys must obey VariableName rules (names cannot start with underscores).
+    private static final String CONNECTION_FACTORY_KEY_PREFIX = "webharvest_db_factory_";
 
     @Override
     protected void doInitialize(PluginConfiguration configuration) throws PluginException {
@@ -100,15 +96,18 @@ public class ConnectionPlugin extends AbstractPlugin {
         String url = config.getProperty(URL_ATT_NAME, "");
         String username = config.getProperty(USERNAME_ATT_NAME, "");
         String password = config.getProperty(PASSWORD_ATT_NAME, "");
-        String poolSizeStr = config.getProperty(POOL_SIZE_ATT_NAME, "10");
         
         LOGGER.info("Creating connection: id=" + id + ", driver=" + driver + ", url=" + url);
         
         try {
             // Create connection factory for this connection
-            ConnectionFactory connectionFactory = new StandaloneConnectionPool();
-            
-            // Store factory in context for later use
+            StandaloneConnectionPool connectionFactory = new StandaloneConnectionPool();
+            EventBus eventBus = context.getEventBus();
+            if (eventBus != null) {
+                connectionFactory.registerForSession(eventBus);
+            }
+
+            // Store the session-owned factory in context for later use.
             String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + id;
             context.setLocalVar(factoryKey, new ConnectionFactoryVariable(connectionFactory, driver, url, username, password));
             
@@ -152,7 +151,7 @@ public class ConnectionPlugin extends AbstractPlugin {
             
             @Override
             public String getDescription() { 
-                return "Plugin for managing named database connections with pooling support"; 
+                return "Plugin for defining named JDBC connections with per-session connection reuse"; 
             }
             
             @Override
@@ -168,7 +167,7 @@ public class ConnectionPlugin extends AbstractPlugin {
             public String getCategory() { return "database"; }
             
             @Override
-            public String[] getTags() { return new String[]{"database", "connection", "pool"}; }
+            public String[] getTags() { return new String[]{"database", "connection", "reuse"}; }
             
             @Override
             public String[] getDependencies() { return new String[0]; }
@@ -177,13 +176,13 @@ public class ConnectionPlugin extends AbstractPlugin {
             public String getClassName() { return ConnectionPlugin.class.getName(); }
             
             @Override
-            public boolean isCorePlugin() { return true; }
+            public boolean isCorePlugin() { return false; }
             
             @Override
             public String getElementName() { return "connection"; }
             
             @Override
-            public String getNamespace() { return "http://org.webharvest/schema/2.1/database"; }
+            public String getNamespace() { return "http://org.webharvest/schema/2.1/core"; }
             
             @Override
             public PluginConfigurationSchema getConfigurationSchema() {
@@ -242,13 +241,13 @@ public class ConnectionPlugin extends AbstractPlugin {
      * Variable wrapper for ConnectionFactory with connection parameters.
      */
     private static class ConnectionFactoryVariable extends NodeVariable {
-        private final ConnectionFactory factory;
+        private final StandaloneConnectionPool factory;
         private final String driver;
         private final String url;
         private final String username;
         private final String password;
         
-        public ConnectionFactoryVariable(ConnectionFactory factory, String driver, 
+        public ConnectionFactoryVariable(StandaloneConnectionPool factory, String driver, 
                                         String url, String username, String password) {
             super("Connection[" + url + "]");
             this.factory = factory;
@@ -260,6 +259,10 @@ public class ConnectionPlugin extends AbstractPlugin {
         
         public Connection getConnection() throws Exception {
             return factory.getConnection(driver, url, username, password);
+        }
+
+        public void close() {
+            factory.closeAllConnections();
         }
     }
     
@@ -280,6 +283,18 @@ public class ConnectionPlugin extends AbstractPlugin {
         
         ConnectionFactoryVariable factoryVar = (ConnectionFactoryVariable) var;
         return factoryVar.getConnection();
+    }
+
+    /**
+     * Releases a named connection pool when the context has no session EventBus
+     * to own its lifecycle (legacy standalone execution mode).
+     */
+    public static void closeNamedConnection(DynamicScopeContext context, String connectionId) {
+        String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + connectionId;
+        Variable var = context.getVar(factoryKey);
+        if (var instanceof ConnectionFactoryVariable) {
+            ((ConnectionFactoryVariable) var).close();
+        }
     }
 }
 

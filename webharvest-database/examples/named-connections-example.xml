@@ -1,112 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    Web-Harvest Database Module - Named Connections Example
-    
-    This example demonstrates the new ConnectionPlugin feature that allows
-    defining multiple named database connections with connection pooling.
-    
-    Benefits:
-    - Define connection once, use many times
-    - Automatic connection pooling
-    - Support for multiple databases simultaneously
-    - Clean and maintainable configuration
+  Optional Database module example.
+  Both <connection> and <database> use the Core namespace.
+  This example demonstrates named connections and inline connection mode.
 -->
-<config xmlns="http://org.webharvest/schema/2.1/core"
-        xmlns:db="http://org.webharvest/schema/2.1/database">
-    
-    <!-- ============================================ -->
-    <!-- PART 1: Define Named Connections             -->
-    <!-- ============================================ -->
-    
-    <!-- Main production database -->
-    <db:connection id="mainDB" 
-                   driver="org.postgresql.Driver"
-                   url="jdbc:postgresql://localhost:5432/production"
-                   username="prod_user"
-                   password="prod_password"
-                   poolSize="20"/>
-    
-    <!-- Analytics/Reporting database -->
-    <db:connection id="analyticsDB"
-                   driver="com.mysql.jdbc.Driver"
-                   url="jdbc:mysql://analytics-server:3306/analytics"
-                   username="analytics_user"
-                   password="analytics_pass"
-                   poolSize="10"/>
-    
-    <!-- Temporary/Scratch database -->
-    <db:connection id="scratchDB"
-                   driver="org.h2.Driver"
-                   url="jdbc:h2:mem:scratch"
-                   username="sa"
-                   password=""
-                   poolSize="5"/>
-    
-    
-    <!-- ============================================ -->
-    <!-- PART 2: Use Named Connections                -->
-    <!-- ============================================ -->
-    
-    <!-- Query from main database -->
-    <def var="users">
-        <db:database connection="mainDB" 
-                     sql="SELECT id, name, email FROM users WHERE active = true"/>
-    </def>
-    
-    <!-- Insert into analytics -->
-    <db:database connection="analyticsDB" 
-                 sql="INSERT INTO daily_stats (date, user_count, value) 
-                      VALUES (CURRENT_DATE, 1000, 5000)"/>
-    
-    <!-- Use scratch database for temporary calculations -->
-    <db:database connection="scratchDB" 
-                 sql="CREATE TABLE temp_data (id INT, value VARCHAR(100))"/>
-    
-    <db:database connection="scratchDB">
-        INSERT INTO temp_data (id, value)
-        VALUES (1, 'test'), (2, 'data'), (3, 'example')
-    </db:database>
-    
-    <def var="temp_results">
-        <db:database connection="scratchDB" 
-                     sql="SELECT * FROM temp_data ORDER BY id"/>
-    </def>
-    
-    <!-- ============================================ -->
-    <!-- PART 3: Backward Compatibility              -->
-    <!-- ============================================ -->
-    
-    <!-- Old style - inline connection (still works!) -->
-    <def var="simple_query">
-        <db:database driver="org.h2.Driver"
-                     url="jdbc:h2:mem:legacy"
-                     username="sa"
-                     password=""
-                     sql="SELECT 1 AS result"/>
-    </def>
-    
-    
-    <!-- ============================================ -->
-    <!-- PART 4: Complex Example with Variables      -->
-    <!-- ============================================ -->
-    
-    <!-- Loop through users and query details from different databases -->
-    <loop items="${users}" item="user">
-        <!-- Get user details from main DB -->
-        <def var="user_details">
-            <db:database connection="mainDB" 
-                         sql="SELECT * FROM user_profile WHERE user_id = ${user.id}"/>
-        </def>
-        
-        <!-- Record analytics -->
-        <db:database connection="analyticsDB" 
-                     sql="INSERT INTO user_access_log (user_id, timestamp) 
-                          VALUES (${user.id}, NOW())"/>
-    </loop>
-    
-    <!-- Output results -->
-    <var-debug name="users"/>
-    <var-debug name="temp_results"/>
-    
-</config>
+<config xmlns="http://org.webharvest/schema/2.1/core">
+  <connection id="mainDB"
+              driver="org.postgresql.Driver"
+              url="jdbc:postgresql://localhost:5432/production"
+              username="prod_user"
+              password="replace-me"/>
 
+  <database connection="mainDB" sql="SELECT id, name FROM users WHERE active = true"/>
+
+  <database driver="org.h2.Driver"
+            url="jdbc:h2:mem:scratch"
+            username="sa"
+            password=""
+            sql="SELECT 1 AS result"/>
+</config>

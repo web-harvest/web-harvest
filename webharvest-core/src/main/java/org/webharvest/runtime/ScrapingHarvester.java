@@ -138,19 +138,34 @@ public class ScrapingHarvester implements Harvester {
                 }
             }
 
+            ScraperSession session = null;
             if (eventBus != null) {
                 context.setEventBus(eventBus);
 
                 String sessionId = UUID.randomUUID().toString();
-                ScraperSession session = new ScraperSessionImpl(sessionId, "cli", config, eventBus);
+                session = new ScraperSessionImpl(sessionId, "cli", config, eventBus);
                 context.setSession(session);
+                session.markRunning(context);
             }
 
-            callback.onSuccess(context);
+            try {
+                callback.onSuccess(context);
+                scraper.execute(context);
 
-            scraper.execute(context);
-
-            return context;
+                if (session != null) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        session.markFailed(new InterruptedException("Scraper execution was interrupted"));
+                    } else {
+                        session.markCompleted();
+                    }
+                }
+                return context;
+            } catch (RuntimeException | Error e) {
+                if (session != null) {
+                    session.markFailed(e);
+                }
+                throw e;
+            }
         } finally {
             scraperScope.exit();
         }
