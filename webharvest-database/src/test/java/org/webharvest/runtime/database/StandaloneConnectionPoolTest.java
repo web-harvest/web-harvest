@@ -6,6 +6,7 @@ package org.webharvest.runtime.database;
 import java.sql.Connection;
 
 import org.testng.annotations.Test;
+import com.google.common.eventbus.EventBus;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionMetrics;
 import org.webharvest.runtime.session.ScraperSession;
@@ -77,8 +78,10 @@ public class StandaloneConnectionPoolTest {
         Connection physical = ((ConnectionProxy) connection).getTargetConnection();
         ScraperSession session = mock(ScraperSession.class);
         when(session.getMetrics()).thenReturn(mock(SessionMetrics.class));
+        EventBus eventBus = new EventBus();
+        pool.registerForSession(eventBus);
 
-        pool.onExecutionEnd(new SessionCompletedEvent(session));
+        eventBus.post(new SessionCompletedEvent(session));
 
         assertTrue(physical.isClosed());
     }
@@ -89,8 +92,10 @@ public class StandaloneConnectionPoolTest {
         Connection connection = pool.getConnection(DRIVER,
                 "jdbc:h2:mem:pool_failed;DB_CLOSE_DELAY=-1", "sa", "");
         Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+        EventBus eventBus = new EventBus();
+        pool.registerForSession(eventBus);
 
-        pool.onExecutionError(new SessionFailedEvent(mock(ScraperSession.class),
+        eventBus.post(new SessionFailedEvent(mock(ScraperSession.class),
                 new IllegalStateException("expected test failure")));
 
         assertTrue(physical.isClosed());
