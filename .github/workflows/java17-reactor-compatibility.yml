@@ -284,6 +284,9 @@ jobs:
           path: |
             **/target/surefire-reports/**
             **/target/failsafe-reports/**
+            **/target/pmd.xml
+            **/target/spotbugsXml.xml
+            **/target/checkstyle-result.xml
             **/target/*.dump
             **/target/*.dumpstream
           if-no-files-found: warn
