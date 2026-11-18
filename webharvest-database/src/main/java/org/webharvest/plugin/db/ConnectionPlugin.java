@@ -50,6 +50,7 @@ import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.common.eventbus.EventBus;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -104,9 +105,13 @@ public class ConnectionPlugin extends AbstractPlugin {
         
         try {
             // Create connection factory for this connection
-            ConnectionFactory connectionFactory = new StandaloneConnectionPool();
-            
-            // Store factory in context for later use
+            StandaloneConnectionPool connectionFactory = new StandaloneConnectionPool();
+            EventBus eventBus = context.getEventBus();
+            if (eventBus != null) {
+                connectionFactory.registerForSession(eventBus);
+            }
+
+            // Store the session-owned factory in context for later use.
             String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + id;
             context.setLocalVar(factoryKey, new ConnectionFactoryVariable(connectionFactory, driver, url, username, password));
             
@@ -240,13 +245,13 @@ public class ConnectionPlugin extends AbstractPlugin {
      * Variable wrapper for ConnectionFactory with connection parameters.
      */
     private static class ConnectionFactoryVariable extends NodeVariable {
-        private final ConnectionFactory factory;
+        private final StandaloneConnectionPool factory;
         private final String driver;
         private final String url;
         private final String username;
         private final String password;
         
-        public ConnectionFactoryVariable(ConnectionFactory factory, String driver, 
+        public ConnectionFactoryVariable(StandaloneConnectionPool factory, String driver, 
                                         String url, String username, String password) {
             super("Connection[" + url + "]");
             this.factory = factory;
@@ -258,6 +263,10 @@ public class ConnectionPlugin extends AbstractPlugin {
         
         public Connection getConnection() throws Exception {
             return factory.getConnection(driver, url, username, password);
+        }
+
+        public void close() {
+            factory.closeAllConnections();
         }
     }
     
@@ -278,6 +287,18 @@ public class ConnectionPlugin extends AbstractPlugin {
         
         ConnectionFactoryVariable factoryVar = (ConnectionFactoryVariable) var;
         return factoryVar.getConnection();
+    }
+
+    /**
+     * Releases a named connection pool when the context has no session EventBus
+     * to own its lifecycle (legacy standalone execution mode).
+     */
+    public static void closeNamedConnection(DynamicScopeContext context, String connectionId) {
+        String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + connectionId;
+        Variable var = context.getVar(factoryKey);
+        if (var instanceof ConnectionFactoryVariable) {
+            ((ConnectionFactoryVariable) var).close();
+        }
     }
 }
 
