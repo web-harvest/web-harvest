@@ -38,7 +38,6 @@ package org.webharvest.runtime.variables;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -106,20 +105,15 @@ public class ListVariable extends Variable implements Iterable {
     }
 
     public byte[] toBinary(String charset) {
-        try {
-            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            for (Variable currVar : list) {
-                byte[] curr = (charset == null ? currVar.toBinary() : currVar.toBinary(charset));
-                if (curr == null) {
-                    continue;
-                }
-                baos.write(curr);
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (Variable currVar : list) {
+            byte[] curr = (charset == null ? currVar.toBinary() : currVar.toBinary(charset));
+            if (curr == null) {
+                continue;
             }
-            return baos.toByteArray();
-        } catch (IOException e) {
-            throw new AssertionError("This should never happen");
+            baos.write(curr);
         }
-
+        return baos.toByteArray();
     }
 
     public byte[] toBinary() {
