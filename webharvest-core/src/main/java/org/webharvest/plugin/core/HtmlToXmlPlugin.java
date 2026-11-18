@@ -80,13 +80,10 @@ import java.util.Map;
 
 // Additional HTML parsing libraries
 // import net.htmlparser.jericho.Source; // Will use full class name to avoid conflict
-import org.apache.tika.Tika;
-import org.apache.tika.metadata.Metadata;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 
@@ -124,7 +121,6 @@ import java.io.StringReader;
  *   <li><strong>JSoup.parse():</strong> Primary parser - fast, handles most HTML correctly</li>
  *   <li><strong>JSoup.clean():</strong> Aggressive cleaning with Safelist - for broken structure</li>
  *   <li><strong>TagSoup:</strong> Streaming SAX parser - for low memory/large files</li>
- *   <li><strong>Apache Tika:</strong> Content extraction fallback - when structure doesn't matter</li>
  *   <li><strong>Basic cleaning:</strong> Last resort - regex-based cleaning</li>
  * </ol>
  * <p>
@@ -421,7 +417,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String getDescription() {
-            return "Converts potentially malformed HTML from web pages into well-formed XML that can be processed using XPath and XQuery. Essential for web scraping as most web pages contain invalid HTML that XML parsers reject. Uses multiple parsing strategies (JSoup, TagSoup, Apache Tika) for maximum compatibility.";
+            return "Converts potentially malformed HTML from web pages into well-formed XML that can be processed using XPath and XQuery. Essential for web scraping as most web pages contain invalid HTML that XML parsers reject. Uses multiple parsing strategies (JSoup and TagSoup) for maximum compatibility.";
         }
 
         @Override
@@ -442,7 +438,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
 
         @Override
         public String[] getDependencies() {
-            return new String[]{"Jsoup", "ApacheTika"};
+            return new String[]{"Jsoup", "TagSoup"};
         }
 
         @Override
@@ -763,8 +759,6 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
         // Strategy 3: TagSoup + SAX - for streaming/low memory
         strategies.add(new TagSoupStrategy());
         
-        // Strategy 4: Apache Tika - fallback for content extraction
-        strategies.add(new TikaStrategy());
         
         return strategies;
     }
@@ -906,41 +900,6 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
         @Override
         public String getName() {
             return "TagSoup + SAX";
-        }
-    }
-    
-    /**
-     * Strategy 4: Apache Tika
-     * Fallback for content extraction
-     */
-    private class TikaStrategy implements HtmlParsingStrategy {
-        @Override
-        public String parse(String html) throws Exception {
-            LOGGER.debug("Trying Apache Tika strategy");
-            
-            try {
-                Tika tika = new Tika();
-                String cleanedHtml = cleanCommonHtmlIssues(html);
-                
-                // Try to extract content
-                String content = tika.parseToString(new ByteArrayInputStream(cleanedHtml.getBytes("UTF-8")));
-                
-                if (content != null && !content.trim().isEmpty()) {
-                    // Wrap in a simple XML structure
-                    return "<content>" + content + "</content>";
-                }
-                
-                return null;
-                
-            } catch (Exception e) {
-                LOGGER.debug("Apache Tika strategy failed: {}", e.getMessage());
-                return null;
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "Apache Tika";
         }
     }
     
