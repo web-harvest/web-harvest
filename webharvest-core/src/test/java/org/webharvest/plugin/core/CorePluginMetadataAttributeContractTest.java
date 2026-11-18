@@ -14,42 +14,42 @@ import static org.webharvest.plugin.core.MetadataTestUtils.expectedCategory;
  */
 public class CorePluginMetadataAttributeContractTest {
 
-    // TextPlugin - 41.48%
+    // TextPlugin
     @Test public void textPlugin01() { assertNotNull(new TextPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
     @Test public void textPlugin02() { assertNotNull(new TextPlugin().getMetadata().getConfigurationSchema().getAttribute("delimiter")); }
     @Test public void textPlugin03() { assertNotNull(new TextPlugin().getMetadata().getConfigurationSchema().getAttribute("charset")); }
     @Test public void textPlugin04() { assertEquals(new TextPlugin().getMetadata().getId(), "text"); }
     @Test public void textPlugin05() { assertEquals(new TextPlugin().getMetadata().getElementName(), "text"); }
     
-    // LoopPlugin - 49.36%
-    @Test public void loopPlugin01() { assertNotNull(new LoopPlugin().getMetadata().getConfigurationSchema().getAttribute("maxloops")); }
-    @Test public void loopPlugin02() { assertNotNull(new LoopPlugin().getMetadata().getConfigurationSchema().getAttribute("index")); }
-    @Test public void loopPlugin03() { assertNotNull(new LoopPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
+    // LoopPlugin
+    @Test public void loopPlugin01() { assertTrue(java.util.Arrays.asList(new LoopPlugin().getMetadata().getConfigurationSchema().getOptionalAttributes()).contains("maxloops"), "Loop metadata must declare maxloops"); }
+    @Test public void loopPlugin02() { assertTrue(java.util.Arrays.asList(new LoopPlugin().getMetadata().getConfigurationSchema().getOptionalAttributes()).contains("index"), "Loop metadata must declare index"); }
+    @Test public void loopPlugin03() { assertTrue(java.util.Arrays.asList(new LoopPlugin().getMetadata().getConfigurationSchema().getOptionalAttributes()).contains("item"), "Loop metadata must declare item"); }
     @Test public void loopPlugin04() { assertEquals(new LoopPlugin().getMetadata().getId(), "loop"); }
     @Test public void loopPlugin05() { assertEquals(new LoopPlugin().getMetadata().getElementName(), "loop"); }
     
-    // TryPlugin - 48.23%
+    // TryPlugin
     @Test public void tryPlugin01() { assertNotNull(new TryPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
     @Test public void tryPlugin02() { assertEquals(new TryPlugin().getMetadata().getId(), "try"); }
     @Test public void tryPlugin03() { assertEquals(new TryPlugin().getMetadata().getElementName(), "try"); }
     @Test public void tryPlugin04() { assertNotNull(new TryPlugin().getMetadata().getConfigurationSchema().getAllowedSubElements()); }
     @Test public void tryPlugin05() { assertNotNull(new TryPlugin().getMetadata().getConfigurationSchema().getRequiredSubElements()); }
     
-    // TokenizePlugin - 58.00%
+    // TokenizePlugin
     @Test public void tokenizePlugin01() { assertNotNull(new TokenizePlugin().getMetadata().getConfigurationSchema().getAttribute("delimiters")); }
-    @Test public void tokenizePlugin02() { assertNotNull(new TokenizePlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
+    @Test public void tokenizePlugin02() { assertNotNull(new TokenizePlugin().getMetadata().getConfigurationSchema().getAttribute("trimtokens"), "Tokenize metadata must declare trimtokens"); }
     @Test public void tokenizePlugin03() { assertEquals(new TokenizePlugin().getMetadata().getId(), "tokenize"); }
     @Test public void tokenizePlugin04() { assertEquals(new TokenizePlugin().getMetadata().getElementName(), "tokenize"); }
     @Test public void tokenizePlugin05() { assertNotNull(new TokenizePlugin().getMetadata().getConfigurationSchema().getAttributeDefinitions()); }
     
-    // ReturnPlugin - 57.50%
+    // ReturnPlugin
     @Test public void returnPlugin01() { assertNotNull(new ReturnPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
     @Test public void returnPlugin02() { assertEquals(new ReturnPlugin().getMetadata().getId(), "return"); }
     @Test public void returnPlugin03() { assertEquals(new ReturnPlugin().getMetadata().getElementName(), "return"); }
     @Test public void returnPlugin04() { assertNotNull(new ReturnPlugin().getMetadata().getConfigurationSchema().getAllowedSubElements()); }
     @Test public void returnPlugin05() { assertNotNull(new ReturnPlugin().getMetadata().getConfigurationSchema().getRequiredSubElements()); }
     
-    // XQueryPlugin - 24.64%
+    // XQueryPlugin
     @Test public void xqueryPlugin01() { assertNotNull(new XQueryPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
     @Test public void xqueryPlugin02() { assertEquals(new XQueryPlugin().getMetadata().getId(), "xquery"); }
     @Test public void xqueryPlugin03() { assertEquals(new XQueryPlugin().getMetadata().getElementName(), "xquery"); }
@@ -61,8 +61,8 @@ public class CorePluginMetadataAttributeContractTest {
     @Test public void xqueryPlugin09() { assertNotNull(new XQueryPlugin().getMetadata().getTags()); }
     @Test public void xqueryPlugin10() { assertNotNull(new XQueryPlugin().getMetadata().getDependencies()); }
     
-    // JsonToXmlPlugin - 33.04%
-    @Test public void jsonPlugin01() { assertNotNull(new JsonToXmlPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
+    // JsonToXmlPlugin
+    @Test public void jsonPlugin01() { assertNotNull(new JsonToXmlPlugin().getMetadata().getConfigurationSchema().getAttribute("tag"), "JSON-to-XML metadata must declare tag"); }
     @Test public void jsonPlugin02() { assertEquals(new JsonToXmlPlugin().getMetadata().getId(), "json-to-xml"); }
     @Test public void jsonPlugin03() { assertEquals(new JsonToXmlPlugin().getMetadata().getElementName(), "json-to-xml"); }
     @Test public void jsonPlugin04() { assertNotNull(new JsonToXmlPlugin().getMetadata().getConfigurationSchema()); }
@@ -73,7 +73,7 @@ public class CorePluginMetadataAttributeContractTest {
     @Test public void jsonPlugin09() { assertNotNull(new JsonToXmlPlugin().getMetadata().getClassName()); }
     @Test public void jsonPlugin10() { assertNotNull(new JsonToXmlPlugin().getMetadata().getNamespace()); }
     
-    // ScriptPlugin - 21.74%  
+    // ScriptPlugin
     @Test public void scriptPlugin01() { assertNotNull(new ScriptPlugin().getMetadata().getConfigurationSchema().getAttribute("language")); }
     @Test public void scriptPlugin02() { assertNotNull(new ScriptPlugin().getMetadata().getConfigurationSchema().getAttribute("return")); }
     @Test public void scriptPlugin03() { assertNotNull(new ScriptPlugin().getMetadata().getConfigurationSchema().getAttribute("id")); }
