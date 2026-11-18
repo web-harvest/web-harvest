@@ -32,7 +32,7 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Capture module dependency trees
+      - name: Capture all module inventories in one Maven reactor invocation
         shell: bash
         run: |
           set -euo pipefail
@@ -47,40 +47,72 @@ jobs:
             webharvest-zip
             docs
           )
-          for module in "${modules[@]}"; do
-            echo "::group::Dependency tree: ${module}"
-            mvn --batch-mode --no-transfer-progress \
-              -pl "${module}" -am -DskipTests \
-              org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree \
-              -Dscope=test -Dverbose \
-              -DoutputFile=target/dependency-tree.txt
-            test -s "${module}/target/dependency-tree.txt"
-            echo "::endgroup::"
-          done
-      - name: Capture effective POM for each module
-        shell: bash
-        run: |
-          set -euo pipefail
-          modules=(
-            webharvest-core
-            webharvest-cli
-            webharvest-ide
-            webharvest-database
-            webharvest-ftp
-            webharvest-mail
-            webharvest-webbrowser
-            webharvest-zip
-            docs
-          )
-          for module in "${modules[@]}"; do
-            echo "::group::Effective POM: ${module}"
-            mvn --batch-mode --no-transfer-progress \
-              -f "${module}/pom.xml" \
-              org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom \
-              -Doutput=target/effective-pom.xml
-            test -s "${module}/target/effective-pom.xml"
-            echo "::endgroup::"
-          done
+          module_list=$(IFS=,; echo "${modules[*]}")
+          mkdir -p target
+          mvn --batch-mode --no-transfer-progress \
+            -pl "${module_list}" -am -DskipTests \
+            -Dscope=test -Dverbose=true \
+            -DoutputFile=target/dependency-tree.txt \
+            -Doutput=target/effective-poms.xml \
+            org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree \
+            org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          module_by_artifact = {
+              "webharvest-core": "webharvest-core",
+              "webharvest-cli": "webharvest-cli",
+              "webharvest-ide": "webharvest-ide",
+              "webharvest-database": "webharvest-database",
+              "webharvest-ftp": "webharvest-ftp",
+              "webharvest-mail": "webharvest-mail",
+              "webharvest-webbrowser": "webharvest-webbrowser",
+              "webharvest-zip": "webharvest-zip",
+              "webharvest-docs": "docs",
+          }
+
+          source = Path("target/effective-poms.xml")
+          if not source.is_file():
+              raise SystemExit(f"Missing reactor effective-POM report: {source}")
+
+          parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+          root = ET.parse(source, parser=parser).getroot()
+
+          def local_name(tag):
+              return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
+
+          if local_name(root.tag) == "projects":
+              projects = [node for node in root if local_name(node.tag) == "project"]
+          elif local_name(root.tag) == "project":
+              projects = [root]
+          else:
+              raise SystemExit(f"Unexpected effective-POM root element: {root.tag}")
+
+          ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
+          ET.register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
+          seen = set()
+          for project in projects:
+              artifact_id = next(
+                  (child.text.strip() for child in project
+                   if local_name(child.tag) == "artifactId" and child.text),
+                  None,
+              )
+              if artifact_id not in module_by_artifact:
+                  continue
+              if artifact_id in seen:
+                  raise SystemExit(f"Duplicate effective POM for module: {artifact_id}")
+              output = Path(module_by_artifact[artifact_id]) / "target/effective-pom.xml"
+              output.parent.mkdir(parents=True, exist_ok=True)
+              ET.indent(project, space="  ")
+              ET.ElementTree(project).write(output, encoding="utf-8", xml_declaration=True)
+              seen.add(artifact_id)
+
+          missing = set(module_by_artifact) - seen
+          if missing:
+              raise SystemExit(f"Missing effective POMs for modules: {sorted(missing)}")
+          print(f"Split {len(seen)} reactor effective POMs into their module target directories.")
+          PY
       - name: Verify complete module inventory
         shell: bash
         run: |
@@ -114,11 +146,12 @@ jobs:
       - name: Upload dependency inventory
         uses: actions/upload-artifact@v4
         with:
-          name: maven-dependency-inventory-java11
+          name: maven-dependency-inventory-java17
           path: |
             webharvest-*/target/dependency-tree.txt
             webharvest-*/target/effective-pom.xml
             docs/target/dependency-tree.txt
             docs/target/effective-pom.xml
+            target/effective-poms.xml
           if-no-files-found: error
           retention-days: 30
