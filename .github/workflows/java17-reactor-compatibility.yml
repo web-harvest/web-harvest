@@ -38,11 +38,16 @@ jobs:
           mvn --version
       - name: Verify complete Maven reactor and quality gates on Java 17
         shell: bash
+        env:
+          JAVA_TOOL_OPTIONS: >-
+            --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED
+            --add-opens=java.base/java.lang=ALL-UNNAMED
+            --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+            --add-opens=java.base/java.util=ALL-UNNAMED
         run: |
           set -euo pipefail
           mvn_args=(
             --batch-mode --no-transfer-progress
-            '-DargLine=--add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED'
             verify
           )
           log_file="$(mktemp)"
