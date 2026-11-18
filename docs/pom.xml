@@ -29,25 +29,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
                 <version>${maven.site.version}</version>
-                <configuration>
-                    <reportPlugins>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-project-info-reports-plugin</artifactId>
-                            <version>3.4.5</version>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-surefire-report-plugin</artifactId>
-                            <version>${maven.surefire.version}</version>
-                        </plugin>
-                        <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-jxr-plugin</artifactId>
-                            <version>3.3.0</version>
-                        </plugin>
-                    </reportPlugins>
-                </configuration>
             </plugin>
 
             <!-- Maven Resources Plugin for copying web documentation -->
@@ -254,7 +235,7 @@
                             <report>distribution-management</report>
                             <report>index</report>
                             <report>issue-management</report>
-                            <report>license</report>
+                            <report>licenses</report>
                             <report>modules</report>
                             <report>plugin-management</report>
                             <report>plugins</report>
