@@ -45,13 +45,13 @@ public class JNDIConnectionFactoryTest {
         DataSource containerSource = mock(DataSource.class);
         DataSource qualifiedSource = mock(DataSource.class);
         when(mockedContext.lookup("java:comp/env/reporting")).thenReturn(containerSource);
-        when(mockedContext.lookup("jdbc/reporting")).thenReturn(qualifiedSource);
+        when(mockedContext.lookup("jdbc:reporting")).thenReturn(qualifiedSource);
 
         factory.getConnection("java:comp/env/reporting");
-        factory.getConnection("jdbc/reporting");
+        factory.getConnection("jdbc:reporting");
 
         verify(mockedContext).lookup("java:comp/env/reporting");
-        verify(mockedContext).lookup("jdbc/reporting");
+        verify(mockedContext).lookup("jdbc:reporting");
     }
 
     @Test(expectedExceptions = DatabaseException.class)
