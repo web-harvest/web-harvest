@@ -90,7 +90,7 @@ public class WebBrowserPluginLifecycleTest {
         assertTrue(content.toString().contains("<title>after</title>"));
 
         execute("close", "main", null, true, 0, null);
-        assertThrows(RuntimeException.class,
+        expectRuntimeException(
                 () -> execute("get-content", "main", null, true, 0, null));
     }
 
@@ -103,7 +103,7 @@ public class WebBrowserPluginLifecycleTest {
         assertFalse(content.toString().contains("data-script=\"ran\""));
 
         WebBrowserPlugin.closeAllPages();
-        assertThrows(RuntimeException.class,
+        expectRuntimeException(
                 () -> execute("get-content", null, null, false, 0, null));
     }
 
@@ -114,7 +114,7 @@ public class WebBrowserPluginLifecycleTest {
         assertTrue(execute("get-content", "redirect", null, false, 0, null)
                 .toString().contains("<title>before</title>"));
 
-        RuntimeException failure = expectThrows(RuntimeException.class,
+        RuntimeException failure = expectRuntimeException(
                 () -> execute("load", "missing", baseUrl + "/missing", false, 0, null));
         assertTrue(failure.getMessage().contains("Error in webbrowser plugin"));
         assertTrue(failure.getCause().getMessage().contains("Failed to load page"));
@@ -122,12 +122,12 @@ public class WebBrowserPluginLifecycleTest {
 
     @Test
     public void executeScriptRequiresExistingPageAndNonEmptyBody() throws Exception {
-        RuntimeException missingPage = expectThrows(RuntimeException.class,
+        RuntimeException missingPage = expectRuntimeException(
                 () -> execute("execute-script", "absent", null, true, 0, "1 + 1"));
         assertTrue(missingPage.getCause().getMessage().contains("not found"));
 
         execute("load", "script", baseUrl + "/page", true, 0, null);
-        RuntimeException emptyBody = expectThrows(RuntimeException.class,
+        RuntimeException emptyBody = expectRuntimeException(
                 () -> execute("execute-script", "script", null, true, 0, ""));
         assertTrue(emptyBody.getCause().getMessage().contains("JavaScript code is required"));
     }
@@ -135,7 +135,7 @@ public class WebBrowserPluginLifecycleTest {
     @Test
     public void executeScriptErrorsAreReported() throws Exception {
         execute("load", "script-error", baseUrl + "/page", true, 0, null);
-        RuntimeException failure = expectThrows(RuntimeException.class,
+        RuntimeException failure = expectRuntimeException(
                 () -> execute("execute-script", "script-error", null, true, 0,
                         "throw new Error('script failure')"));
         assertTrue(failure.getCause().getMessage().contains("Failed to execute JavaScript"));
@@ -150,6 +150,22 @@ public class WebBrowserPluginLifecycleTest {
         execute("load", null, baseUrl + "/page", false, 0, null);
         execute("load", null, baseUrl + "/page", true, 0, null);
         execute("close", null, null, true, 0, null);
+    }
+
+    private RuntimeException expectRuntimeException(ThrowingRunnable action) {
+        try {
+            action.run();
+            fail("Expected RuntimeException");
+        } catch (RuntimeException expected) {
+            return expected;
+        } catch (Exception other) {
+            throw new AssertionError("Expected RuntimeException but got " + other, other);
+        }
+        throw new AssertionError("Expected RuntimeException");
+    }
+
+    private interface ThrowingRunnable {
+        void run() throws Exception;
     }
 
     private Variable execute(
