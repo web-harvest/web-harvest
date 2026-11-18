@@ -4,16 +4,16 @@
 
 package org.webharvest.plugin.db;
 
-import org.testng.annotations.BeforeMethod;
 import com.google.common.eventbus.EventBus;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.database.ConnectionProxy;
-import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.definition.Config;
+import org.webharvest.runtime.session.ScraperSessionImpl;
 
 import static org.testng.Assert.*;
 import static org.mockito.Mockito.mock;
