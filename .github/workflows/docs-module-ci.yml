@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "docs/**"
-      - ".github/workflows/docs-module-ci.yml"
   push:
     branches:
       - main
