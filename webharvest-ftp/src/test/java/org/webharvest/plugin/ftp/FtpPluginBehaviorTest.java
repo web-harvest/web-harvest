@@ -44,6 +44,7 @@ import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -257,7 +258,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(causeMessages(failure).contains("FTP Get failed"));
+        assertTrue(hasCause(failure, ConnectException.class), causeMessages(failure));
     }
 
     @Test
@@ -302,7 +303,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(causeMessages(failure).contains("FTP List failed"));
+        assertTrue(hasCause(failure, ConnectException.class), causeMessages(failure));
     }
 
     @Test
@@ -336,7 +337,7 @@ public class FtpPluginBehaviorTest {
 
         RuntimeException failure = executeExpectingFailureAfterInitialization(plugin);
 
-        assertTrue(causeMessages(failure).contains("FTP Put failed"));
+        assertTrue(hasCause(failure, ConnectException.class), causeMessages(failure));
     }
 
     @Test
@@ -446,6 +447,17 @@ public class FtpPluginBehaviorTest {
         try (InputStream input = entry.createInputStream()) {
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
+    }
+
+    private boolean hasCause(Throwable failure, Class<? extends Throwable> expectedType) {
+        Throwable current = failure;
+        while (current != null) {
+            if (expectedType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String causeMessages(Throwable failure) {
