@@ -8,7 +8,6 @@ on:
       - "pom.xml"
       - "webharvest-*/pom.xml"
       - "docs/pom.xml"
-      - ".github/workflows/dependency-inventory.yml"
   workflow_dispatch:
 
 permissions:
