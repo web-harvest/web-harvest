@@ -35,6 +35,9 @@ package org.webharvest.plugin.db;
 
 import java.sql.Connection;
 
+import com.google.common.eventbus.EventBus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -47,12 +50,6 @@ import org.webharvest.runtime.database.StandaloneConnectionPool;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.google.common.eventbus.EventBus;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Connection plugin for defining named JDBC connection configurations.
