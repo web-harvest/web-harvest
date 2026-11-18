@@ -8,6 +8,7 @@ import java.sql.Connection;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionMetrics;
+import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
 
@@ -67,4 +68,32 @@ public class StandaloneConnectionPoolTest {
                 "org.webharvest.test.MissingDriver",
                 "jdbc:missing:test", "sa", "");
     }
+
+    @Test
+    public void releasesConnectionsWhenSessionCompletes() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        Connection connection = pool.getConnection(DRIVER,
+                "jdbc:h2:mem:pool_completed;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+        ScraperSession session = mock(ScraperSession.class);
+        when(session.getMetrics()).thenReturn(mock(SessionMetrics.class));
+
+        pool.onExecutionEnd(new SessionCompletedEvent(session));
+
+        assertTrue(physical.isClosed());
+    }
+
+    @Test
+    public void releasesConnectionsWhenSessionFails() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        Connection connection = pool.getConnection(DRIVER,
+                "jdbc:h2:mem:pool_failed;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+
+        pool.onExecutionError(new SessionFailedEvent(mock(ScraperSession.class),
+                new IllegalStateException("expected test failure")));
+
+        assertTrue(physical.isClosed());
+    }
+
 }
