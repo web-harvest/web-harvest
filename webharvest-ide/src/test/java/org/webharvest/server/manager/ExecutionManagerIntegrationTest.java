@@ -237,7 +237,8 @@ public class ExecutionManagerIntegrationTest {
         assertTrue(capture.logs.size() > 0, "Should receive at least one log message");
         System.out.println("  Received " + capture.logs.size() + " log messages:");
         
-        for (String log : capture.logs) {
+        // Snapshot before iterating: WebSocket callbacks may still append logs concurrently.
+        for (String log : capture.logs.toArray(new String[0])) {
             System.out.println("    " + log);
         }
         
