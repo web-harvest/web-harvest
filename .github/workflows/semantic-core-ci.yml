@@ -19,7 +19,7 @@ on:
       - ".github/workflows/semantic-core-ci.yml"
   pull_request:
     # branches filter matches the PR base (target) branch, not the head branch.
-    # PRs from project/** heads into main are covered by `main` below.
+    # PRs from project/** heads into main are covered by main below.
     # Campaign branch tips still run via the push.project/** trigger above.
     branches:
       - main
@@ -46,7 +46,7 @@ on:
 concurrency:
   # Use the same key for push and pull_request events from the same head branch.
   # The PR run supersedes the duplicate push run when a branch has an open PR.
-  group: semantic-core-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: semantic-core-@@GITHUB_OPEN@@ github.workflow }}-@@GITHUB_OPEN@@ github.event.pull_request.head.repo.full_name || github.repository }}-@@GITHUB_OPEN@@ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -114,24 +114,38 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: Reject unconditional success assertions in Core tests
+      - name: Reject unconditional or tautological success assertions in Core tests
         run: |
           python3 - <<'PY'
           import re
           import sys
           from pathlib import Path
 
-          pattern = re.compile(r"\bassertTrue\s*\(\s*true\s*(?:,\s*[^)]*)?\)", re.DOTALL)
+          forbidden_assertions = (
+              (
+                  "unconditional assertTrue(true)",
+                  re.compile(r"\bassertTrue\s*\(\s*true\s*(?:,\s*[^)]*)?\)", re.DOTALL),
+              ),
+              (
+                  "tautological assertTrue(expression || !expression)",
+                  re.compile(
+                      r"\bassertTrue\s*\(\s*(?P<expression>[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*\s*\(\s*\))*)\s*\|\|\s*!\s*(?P=expression)\s*\)",
+                      re.DOTALL,
+                  ),
+              ),
+          )
+
           failures = []
           for source in Path("webharvest-core/src/test/java").rglob("*.java"):
               content = source.read_text(encoding="utf-8")
-              for match in pattern.finditer(content):
-                  line = content.count("\n", 0, match.start()) + 1
-                  failures.append(f"{source}:{line}: unconditional assertTrue(true)")
+              for description, pattern in forbidden_assertions:
+                  for match in pattern.finditer(content):
+                      line = content.count("\n", 0, match.start()) + 1
+                      failures.append(f"{source}:{line}: {description}")
 
           if failures:
               print("\n".join(failures), file=sys.stderr)
-              print("::error::Unconditional assertTrue(true) is forbidden in Core tests.", file=sys.stderr)
+              print("::error::False-green Core assertions are forbidden.", file=sys.stderr)
               sys.exit(1)
           PY
       - name: Run unqualified Core verify
