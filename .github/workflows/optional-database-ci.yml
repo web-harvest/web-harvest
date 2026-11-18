@@ -37,7 +37,7 @@ jobs:
       - name: Verify Database extension and Core dependencies
         run: mvn -B -ntp -pl webharvest-database -am verify
       - name: Verify IDE session EventBus wiring used by Database cleanup
-        run: mvn -B -ntp -pl webharvest-ide -am -Dtest=EmbeddedExamplesExecutionTest,ScrapingHarvesterTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -B -ntp -pl webharvest-ide -am -Dtest=ExecutionManagerSessionLifecycleTest,ScrapingHarvesterTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Report class-level JaCoCo gaps
         if: always()
         shell: bash
