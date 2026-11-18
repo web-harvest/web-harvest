@@ -7,6 +7,7 @@ on:
     paths:
       - "pom.xml"
       - "webharvest-*/pom.xml"
+      - "docs/pom.xml"
       - ".github/workflows/dependency-inventory.yml"
   workflow_dispatch:
 
@@ -44,6 +45,7 @@ jobs:
             webharvest-mail
             webharvest-webbrowser
             webharvest-zip
+            docs
           )
           for module in "${modules[@]}"; do
             echo "::group::Dependency tree: ${module}"
@@ -114,5 +116,7 @@ jobs:
           path: |
             webharvest-*/target/dependency-tree.txt
             webharvest-*/target/effective-pom.xml
+            docs/target/dependency-tree.txt
+            docs/target/effective-pom.xml
           if-no-files-found: error
           retention-days: 30
