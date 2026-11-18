@@ -38,6 +38,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +48,8 @@ import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
 import org.webharvest.exception.DatabaseException;
 
-import com.google.common.eventbus.Subscribe;
 import com.google.common.eventbus.EventBus;
-
-import java.util.ArrayList;
+import com.google.common.eventbus.Subscribe;
 
 /**
  * Default, standalone {@link ConnectionFactory} interface implementation. It
