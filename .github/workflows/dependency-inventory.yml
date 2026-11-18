@@ -70,6 +70,7 @@ jobs:
             webharvest-mail
             webharvest-webbrowser
             webharvest-zip
+            docs
           )
           for module in "${modules[@]}"; do
             echo "::group::Effective POM: ${module}"
@@ -93,6 +94,7 @@ jobs:
             webharvest-mail
             webharvest-webbrowser
             webharvest-zip
+            docs
           )
           for module in "${modules[@]}"; do
             for report in dependency-tree.txt effective-pom.xml; do
