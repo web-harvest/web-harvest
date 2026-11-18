@@ -209,6 +209,15 @@ public class ExecutionManager {
         return session != null && session.isOpen();
     }
     
+    static ScraperSessionImpl createSessionForContext(final String sessionId,
+            final String clientId, final Config config, final DynamicScopeContext context) {
+        EventBus eventBus = new EventBus();
+        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus);
+        context.setEventBus(eventBus);
+        context.setSession(session);
+        return session;
+    }
+
     private void executeJob(ExecutionJob job) {
         try {
             // v2.2: Set ThreadLocal for pause/resume access
@@ -244,14 +253,9 @@ public class ExecutionManager {
             // lifecycle events (completed/failed/cancelled) must reach subscribers
             // registered by plugins through context.getEventBus().
             sendLog(job.getId(), "INFO", "Creating session...");
-            EventBus eventBus = new EventBus();
-            ScraperSessionImpl session = new ScraperSessionImpl(
-                    job.getId(), "ide-client", config, eventBus);
+            ScraperSessionImpl session = createSessionForContext(
+                    job.getId(), "ide-client", config, context);
             job.setSession(session);
-
-            // The context and session must publish/observe on the same bus.
-            context.setEventBus(eventBus);
-            context.setSession(session);
             
             // Mark session as running
             session.markRunning(context);
