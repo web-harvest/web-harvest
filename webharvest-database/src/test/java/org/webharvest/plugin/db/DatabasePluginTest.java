@@ -101,7 +101,7 @@ public class DatabasePluginTest {
         String url = "jdbc:h2:mem:db_inline_select;DB_CLOSE_DELAY=-1";
         createFixture(url);
         DatabasePlugin plugin = new DatabasePlugin();
-        plugin.initialize(inlineConfig(url, "SELECT id AS \\"id\\", name AS \\"name\\" FROM sample"));
+        plugin.initialize(inlineConfig(url, "SELECT id AS \"id\", name AS \"name\" FROM sample"));
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
                 "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
@@ -125,7 +125,7 @@ public class DatabasePluginTest {
         DatabasePlugin plugin = new DatabasePlugin();
         DefaultPluginConfiguration databaseConfig = config();
         databaseConfig.setProperty("connection", "main");
-        databaseConfig.setProperty("sql", "SELECT id AS \\"id\\", name AS \\"name\\" FROM sample");
+        databaseConfig.setProperty("sql", "SELECT id AS \"id\", name AS \"name\" FROM sample");
         plugin.initialize(databaseConfig);
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
