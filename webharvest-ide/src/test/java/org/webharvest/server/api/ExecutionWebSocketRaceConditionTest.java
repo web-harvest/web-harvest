@@ -21,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -251,9 +252,9 @@ public class ExecutionWebSocketRaceConditionTest {
      * Captures and analyzes WebSocket messages
      */
     private static class MessageCapture {
-        public final List<String> allMessages = new ArrayList<>();
+        public final List<String> allMessages = new CopyOnWriteArrayList<>();
         public final CountDownLatch completionLatch = new CountDownLatch(1);
-        public String completionMessage = null;
+        public volatile String completionMessage = null;
         
         public synchronized void addMessage(String message) {
             allMessages.add(message);
