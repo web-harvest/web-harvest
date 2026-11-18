@@ -68,6 +68,7 @@
     </scm>
     <properties>
         <saxon.version>9.1.0.8</saxon.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <rhino.version>1.7.15.1</rhino.version>
         <slf4j.version>1.6.3</slf4j.version>
         <unitils.version>[3.3,)</unitils.version>
@@ -273,8 +274,7 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
+                    <release>${maven.compiler.release}</release>
                     <encoding>UTF-8</encoding>
                     <optimize>true</optimize>
                 </configuration>
@@ -311,7 +311,7 @@
                     <detectOfflineLinks>false</detectOfflineLinks>
                     <detectJavaApiLink>false</detectJavaApiLink>
                     <links>
-                        <link>https://docs.oracle.com/en/java/javase/11/docs/api/</link>
+                        <link>https://docs.oracle.com/en/java/javase/17/docs/api/</link>
                     </links>
                     <additionalparam>-Xdoclint:none</additionalparam>
                     <failOnError>false</failOnError>

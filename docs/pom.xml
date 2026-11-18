@@ -14,8 +14,6 @@
     <description>Complete documentation for WebHarvest 2.2.0</description>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.site.version>3.12.1</maven.site.version>
         <maven.surefire.version>3.0.0</maven.surefire.version>
@@ -101,17 +99,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Compiler Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
 
             <!-- Maven Assembly Plugin for creating documentation package -->
             <plugin>
