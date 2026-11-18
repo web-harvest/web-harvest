@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "docs/**"
-      - ".github/workflows/docs-module-ci.yml"
   push:
     branches:
       - main
@@ -30,9 +29,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: "17"
@@ -43,7 +42,7 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -f docs/pom.xml -Pfull-docs site
       - name: Upload documentation diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docs-module-diagnostics
           path: |
