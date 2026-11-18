@@ -42,6 +42,7 @@ import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.database.ConnectionProxy;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
@@ -121,6 +122,8 @@ public class DatabasePluginTest {
         connectionConfig.setProperty("password", "");
         connection.initialize(connectionConfig);
         connection.execute(context);
+        Connection trackedConnection = ConnectionPlugin.getNamedConnection(context, "main");
+        Connection physicalConnection = ((ConnectionProxy) trackedConnection).getTargetConnection();
 
         DatabasePlugin plugin = new DatabasePlugin();
         DefaultPluginConfiguration databaseConfig = config();
@@ -130,6 +133,8 @@ public class DatabasePluginTest {
         Variable result = plugin.execute(context);
         assertEquals(result.toString(),
                 "<results><row><id>7</id><name>A&amp;B &lt;C&gt;</name></row></results>");
+        assertTrue(physicalConnection.isClosed(),
+                "Legacy contexts without a session EventBus must still release the physical connection");
     }
 
     @Test
