@@ -1,0 +1,58 @@
+name: Java 17 Reactor Compatibility
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "webharvest-*/**"
+      - "docs/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: java17-reactor-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  java17-reactor:
+    name: Full reactor verify (Temurin 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Record toolchain
+        run: |
+          java -version
+          mvn --version
+      - name: Verify complete Maven reactor on Java 17
+        run: >-
+          mvn --batch-mode --no-transfer-progress
+          -Dcheckstyle.skip=true
+          -Dpmd.skip=true
+          -Dspotbugs.skip=true
+          -Djacoco.skip=true
+          verify
+      - name: Upload Maven diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: java17-reactor-diagnostics
+          path: |
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+            **/target/*.dump
+            **/target/*.dumpstream
+          if-no-files-found: warn
+          retention-days: 14
