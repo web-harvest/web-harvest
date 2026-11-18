@@ -1,0 +1,281 @@
+name: Java 17 Reactor Compatibility
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "webharvest-*/**"
+      - "docs/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: java17-reactor-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  java17-reactor:
+    name: Full reactor verify (Temurin 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Record toolchain
+        run: |
+          java -version
+          mvn --version
+      - name: Verify complete Maven reactor on Java 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn_args=(
+            --batch-mode --no-transfer-progress
+            -Dcheckstyle.skip=true
+            -Dpmd.skip=true
+            -Dspotbugs.skip=true
+            -Djacoco.skip=true
+            '-DargLine=--add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED'
+            verify
+          )
+          log_file="$(mktemp)"
+          for attempt in 1 2 3; do
+            if mvn "${mvn_args[@]}" >"$log_file" 2>&1; then
+              cat "$log_file"
+              exit 0
+            else
+              status=$?
+            fi
+            cat "$log_file"
+            if ! grep -Eqi 'status code: 429|Too Many Requests' "$log_file" || [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+            delay=$((attempt * 20))
+            echo "Maven Central rate-limited dependency resolution (HTTP 429); retrying in ${delay}s (attempt $((attempt + 1))/3)."
+            sleep "$delay"
+          done
+          exit 1
+      - name: Smoke-test packaged CLI on Java 17
+        working-directory: webharvest-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_jar="target/webharvest-cli-2.3.1.jar"
+          if [ ! -s "$cli_jar" ]; then
+            echo "Packaged CLI JAR is missing or empty:"
+            ls -la target
+            exit 1
+          fi
+
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+
+          cat > "$smoke_dir/log4j.properties" <<'PROPERTIES'
+          log4j.rootLogger=INFO, console
+          log4j.appender.console=org.apache.log4j.ConsoleAppender
+          log4j.appender.console.Target=System.out
+          log4j.appender.console.layout=org.apache.log4j.PatternLayout
+          log4j.appender.console.layout.ConversionPattern=%p %c - %m%n
+          PROPERTIES
+
+          if ! java "-Dlog4j.configuration=file:$smoke_dir/log4j.properties" -jar "$cli_jar" -h > target/cli-help.log 2>&1; then
+            echo "Packaged CLI help command failed:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "WebHarvest Command Line Interface" target/cli-help.log; then
+            echo "CLI help banner missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "Usage:" target/cli-help.log; then
+            echo "CLI usage text missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
+
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged distribution did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged JavaScript evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          echo "Compiling packaged CLI provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
+          echo "Packaged CLI JSR-223 service descriptor:"
+          if jar tf "$cli_jar" > "$smoke_dir/cli-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/cli-jar-entries.txt" || echo "No JSR-223 service descriptor in CLI JAR"
+          else
+            echo "Could not list CLI JAR entries"
+          fi
+          if unzip -p "$cli_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/cli-services.txt"; then
+            cat "$smoke_dir/cli-services.txt"
+          else
+            echo "Could not read CLI JSR-223 service descriptor"
+          fi
+          if ! java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged CLI JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
+
+          cat > "$smoke_dir/smoke.xml" <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <config xmlns="http://org.webharvest/schema/2.1/core">
+            <def var="greeting">Java 17 packaged CLI smoke</def>
+            <file path="smoke-result.txt" action="write">
+              <get var="greeting"/>
+            </file>
+          </config>
+          XML
+
+          if ! java -jar "$cli_jar" "config=$smoke_dir/smoke.xml" "workdir=$smoke_dir" loglevel=debug > "$smoke_dir/cli.log" 2>&1; then
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+          if [ ! -s "$smoke_dir/smoke-result.txt" ]; then
+            echo "CLI exited successfully but did not create the expected absolute output path."
+            echo "Smoke directory contents:"
+            find "$smoke_dir" -maxdepth 3 -type f -print
+            echo "Any smoke output under the checkout:"
+            find "$GITHUB_WORKSPACE" -maxdepth 6 -name smoke-result.txt -type f -print
+            echo "CLI log:"
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+          if ! grep -q "Java 17 packaged CLI smoke" "$smoke_dir/smoke-result.txt"; then
+            echo "CLI output file exists but does not contain the expected payload."
+            echo "Output file:"
+            cat -A "$smoke_dir/smoke-result.txt"
+            echo "CLI log:"
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+      - name: Smoke-test packaged IDE on Java 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          ide_jar="webharvest-ide/target/webharvest-ide-2.3.1.jar"
+          if [ ! -s "$ide_jar" ]; then
+            echo "Packaged IDE JAR is missing or empty:"
+            ls -la webharvest-ide/target
+            exit 1
+          fi
+
+          smoke_dir="$(mktemp -d)"
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged IDE did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged IDE JavaScript result: " + result);
+                  }
+              }
+          }
+          JAVA
+          echo "Compiling packaged IDE provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
+          echo "Packaged IDE JSR-223 service descriptor:"
+          if jar tf "$ide_jar" > "$smoke_dir/ide-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/ide-jar-entries.txt" || echo "No JSR-223 service descriptor in IDE JAR"
+          else
+            echo "Could not list IDE JAR entries"
+          fi
+          if unzip -p "$ide_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/ide-services.txt"; then
+            cat "$smoke_dir/ide-services.txt"
+          else
+            echo "Could not read IDE JSR-223 service descriptor"
+          fi
+          if ! java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged IDE JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
+
+          port=18765
+          pid=""
+          cleanup() {
+            if [ -n "$pid" ]; then
+              kill "$pid" 2>/dev/null || true
+              wait "$pid" 2>/dev/null || true
+            fi
+            rm -rf "$smoke_dir"
+          }
+          trap cleanup EXIT
+
+          java -jar "$ide_jar" "port=$port" > "$smoke_dir/ide.log" 2>&1 &
+          pid=$!
+
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail "http://127.0.0.1:$port/" -o "$smoke_dir/index.html" 2>/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$smoke_dir/ide.log"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != true ]; then
+            cat "$smoke_dir/ide.log"
+            echo "Packaged IDE did not become ready on port $port"
+            exit 1
+          fi
+
+          grep -q "WebHarvest IDE" "$smoke_dir/index.html"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/static/version.json" -o "$smoke_dir/version.json"
+          grep -q '"version": "2.3.1"' "$smoke_dir/version.json"
+      - name: Upload Maven diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: java17-reactor-diagnostics
+          path: |
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+            **/target/*.dump
+            **/target/*.dumpstream
+          if-no-files-found: warn
+          retention-days: 14

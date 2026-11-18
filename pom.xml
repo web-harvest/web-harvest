@@ -68,6 +68,7 @@
     </scm>
     <properties>
         <saxon.version>9.1.0.8</saxon.version>
+        <rhino.version>1.7.15.1</rhino.version>
         <slf4j.version>1.6.3</slf4j.version>
         <unitils.version>[3.3,)</unitils.version>
     </properties>
@@ -689,10 +690,9 @@
                 <scope>runtime</scope>
             </dependency>
             <dependency>
-                <groupId>rhino</groupId>
-                <artifactId>js</artifactId>
-                <version>1.7R2</version>
-                <scope>runtime</scope>
+                <groupId>org.mozilla</groupId>
+                <artifactId>rhino-engine</artifactId>
+                <version>${rhino.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.dbmaintain</groupId>
@@ -785,12 +785,7 @@
             <dependency>
                 <groupId>com.google.inject</groupId>
                 <artifactId>guice</artifactId>
-                <version>4.2.3</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.inject.extensions</groupId>
-                <artifactId>guice-multibindings</artifactId>
-                <version>4.2.3</version>
+                <version>5.1.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

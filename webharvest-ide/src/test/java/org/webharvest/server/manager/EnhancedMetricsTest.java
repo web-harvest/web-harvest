@@ -12,7 +12,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -86,7 +86,7 @@ public class EnhancedMetricsTest {
         WebSocketClient wsClient = new WebSocketClient();
         wsClient.start();
         
-        List<JsonObject> receivedMessages = new ArrayList<>();
+        List<JsonObject> receivedMessages = new CopyOnWriteArrayList<>();
         CountDownLatch connectLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(1);
         

@@ -9,11 +9,13 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.testng.annotations.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.webharvest.server.support.TestEnvironment;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.net.URI;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -235,7 +237,8 @@ public class ExecutionManagerIntegrationTest {
         assertTrue(capture.logs.size() > 0, "Should receive at least one log message");
         System.out.println("  Received " + capture.logs.size() + " log messages:");
         
-        for (String log : capture.logs) {
+        // Snapshot before iterating: WebSocket callbacks may still append logs concurrently.
+        for (String log : capture.logs.toArray(new String[0])) {
             System.out.println("    " + log);
         }
         
@@ -296,8 +299,8 @@ public class ExecutionManagerIntegrationTest {
      * Captures execution output for verification
      */
     private static class ExecutionCapture {
-        public final List<String> allMessages = new ArrayList<>();
-        public final List<String> logs = new ArrayList<>();
+        public final List<String> allMessages = new CopyOnWriteArrayList<>();
+        public final List<String> logs = new CopyOnWriteArrayList<>();
         public final CountDownLatch latch = new CountDownLatch(1);
         public boolean completed = false;
         public String status = null;
@@ -329,25 +332,26 @@ public class ExecutionManagerIntegrationTest {
             );
         }
         
-        public boolean hasVariable(String varName) {
-            if (finalMessage == null) return false;
-            return finalMessage.contains("\"" + varName + "\"");
-        }
-        
-        public String getVariable(String varName) {
+        private JsonObject resultVariables() {
             if (finalMessage == null) return null;
-            
-            // Simple JSON parsing (good enough for tests)
-            int start = finalMessage.indexOf("\"" + varName + "\":");
-            if (start == -1) return null;
-            
-            start = finalMessage.indexOf("\"", start + varName.length() + 3);
-            if (start == -1) return null;
-            
-            int end = finalMessage.indexOf("\"", start + 1);
-            if (end == -1) return null;
-            
-            return finalMessage.substring(start + 1, end);
+            try {
+                JsonObject message = JsonParser.parseString(finalMessage).getAsJsonObject();
+                if (!message.has("results") || !message.get("results").isJsonObject()) return null;
+                return message.getAsJsonObject("results");
+            } catch (RuntimeException malformedMessage) {
+                return null;
+            }
+        }
+
+        public boolean hasVariable(String varName) {
+            JsonObject variables = resultVariables();
+            return variables != null && variables.has(varName) && !variables.get(varName).isJsonNull();
+        }
+
+        public String getVariable(String varName) {
+            JsonObject variables = resultVariables();
+            if (variables == null || !variables.has(varName) || variables.get(varName).isJsonNull()) return null;
+            return variables.get(varName).getAsString();
         }
     }
 }

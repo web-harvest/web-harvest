@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.testng.Assert.*;
 
@@ -75,27 +76,36 @@ public class SessionHistoryTest {
             String executionId = result.get("executionId").getAsString();
             System.out.println("   ✓ Session " + i + " created: " + executionId.substring(0, 8) + "...");
             
-            // Wait for completion
-            Thread.sleep(500);
         }
         
         // Step 2: Query session history
         System.out.println("\n2️⃣  Querying session history...");
         
-        HttpRequest historyRequest = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/api/sessions/history?limit=10"))
-                .GET()
-                .build();
-        
-        HttpResponse<String> historyResponse = httpClient.send(historyRequest, 
-                HttpResponse.BodyHandlers.ofString());
-        
-        assertEquals(historyResponse.statusCode(), 200, "History endpoint should return 200");
-        
+        JsonObject historyJson = null;
+        long historyDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        do {
+            HttpRequest historyRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(BASE_URL + "/api/sessions/history?limit=10"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> historyResponse = httpClient.send(historyRequest,
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(historyResponse.statusCode(), 200, "History endpoint should return 200");
+            historyJson = JsonParser.parseString(historyResponse.body()).getAsJsonObject();
+
+            if (historyJson.get("total").getAsInt() >= 3
+                    && historyJson.getAsJsonArray("sessions").size() >= 3) {
+                break;
+            }
+            if (System.nanoTime() >= historyDeadline) {
+                break;
+            }
+            Thread.sleep(100);
+        } while (true);
+
         // Step 3: Verify response structure
         System.out.println("\n3️⃣  Verifying response structure...");
-        
-        JsonObject historyJson = JsonParser.parseString(historyResponse.body()).getAsJsonObject();
         
         assertTrue(historyJson.has("sessions"), "Response must have 'sessions' field");
         assertTrue(historyJson.has("total"), "Response must have 'total' count");

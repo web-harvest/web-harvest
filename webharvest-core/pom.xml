@@ -164,8 +164,8 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>rhino</groupId>
-            <artifactId>js</artifactId>
+            <groupId>org.mozilla</groupId>
+            <artifactId>rhino-engine</artifactId>
             <scope>runtime</scope>
         </dependency>
         <dependency>
