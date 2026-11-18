@@ -248,7 +248,7 @@ jobs:
           pid=$!
 
           ready=false
-          for attempt in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl --silent --show-error --fail "http://127.0.0.1:$port/" -o "$smoke_dir/index.html" 2>/dev/null; then
               ready=true
               break
