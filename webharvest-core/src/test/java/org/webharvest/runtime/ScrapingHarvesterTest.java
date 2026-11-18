@@ -9,7 +9,6 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import org.testng.annotations.Test;
 import org.webharvest.definition.Config;
-import org.webharvest.ioc.ContextFactory;
 import org.webharvest.ioc.ScraperScope;
 import org.webharvest.runtime.session.SessionStatus;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
