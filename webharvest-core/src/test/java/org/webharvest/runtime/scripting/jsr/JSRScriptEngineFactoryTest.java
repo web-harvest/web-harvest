@@ -87,8 +87,7 @@ public class JSRScriptEngineFactoryTest {
         assertNotNull(jsEngine, "The standard JavaScript engine alias must be registered");
         try {
             final Object result = jsEngine.eval("var x = 123; x + 1;");
-            assertTrue(result instanceof Number,
-                    "JavaScript arithmetic must return a numeric result");
+            assertTrue(result instanceof Number);
             assertEquals(((Number) result).intValue(), 124,
                     "The restored JavaScript provider must evaluate scripts");
         } catch (javax.script.ScriptException e) {
