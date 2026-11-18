@@ -146,7 +146,7 @@ public class DatabasePluginTest {
         String url = "jdbc:h2:mem:db_null_value;DB_CLOSE_DELAY=-1";
         createFixture(url);
         DatabasePlugin plugin = new DatabasePlugin();
-        plugin.initialize(inlineConfig(url, "SELECT NULL AS \\"empty\\""));
+        plugin.initialize(inlineConfig(url, "SELECT NULL AS \"empty\""));
         assertEquals(plugin.execute(context).toString(),
                 "<results><row><empty></empty></row></results>");
     }
@@ -156,7 +156,7 @@ public class DatabasePluginTest {
         String url = "jdbc:h2:mem:db_no_rows;DB_CLOSE_DELAY=-1";
         createFixture(url);
         DatabasePlugin plugin = new DatabasePlugin();
-        plugin.initialize(inlineConfig(url, "SELECT id AS \\"id\\" FROM sample WHERE id = -1"));
+        plugin.initialize(inlineConfig(url, "SELECT id AS \"id\" FROM sample WHERE id = -1"));
         assertEquals(plugin.execute(context).toString(), "<results></results>");
     }
 
