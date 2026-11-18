@@ -168,6 +168,55 @@ public class DatabasePluginTest {
         plugin.execute(context);
     }
 
+
+    @Test
+    public void testConfigurationSchemaContractAndValidationBranches() throws Exception {
+        DatabasePlugin plugin = new DatabasePlugin();
+        org.webharvest.plugin.PluginConfigurationSchema schema = plugin.getConfigurationSchema();
+
+        assertEquals(schema.getAttributeDefinitions().length, 0);
+        assertEquals(schema.getRequiredAttributes().length, 0);
+        assertEquals(schema.getOptionalAttributes(),
+                new String[]{"connection", "url", "driver", "username", "password", "sql"});
+        assertEquals(schema.getVersion(), "2.1.0");
+        assertTrue(schema.allowsBody());
+        assertEquals(schema.getRequiredSubElements().length, 0);
+        assertEquals(schema.getAllowedSubElements().length, 0);
+        assertNull(schema.getAttribute("connection"));
+
+        try {
+            schema.validate(null);
+            fail("Expected null configuration to be rejected");
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("cannot be null"));
+        }
+
+        DefaultPluginConfiguration named = config();
+        named.setProperty("connection", "main");
+        schema.validate(named);
+
+        DefaultPluginConfiguration namedWithUsername = config();
+        namedWithUsername.setProperty("connection", "main");
+        namedWithUsername.setProperty("username", "sa");
+        try {
+            schema.validate(namedWithUsername);
+            fail("Expected named and inline attributes to be rejected");
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("cannot be combined"));
+        }
+
+        DefaultPluginConfiguration incompleteInline = config();
+        incompleteInline.setProperty("driver", "org.h2.Driver");
+        try {
+            schema.validate(incompleteInline);
+            fail("Expected incomplete inline configuration to be rejected");
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("both 'driver' and 'url'"));
+        }
+
+        schema.validate(inlineConfig("jdbc:h2:mem:schema_valid"));
+    }
+
     private static void createFixture(String url) throws Exception {
         Class.forName("org.h2.Driver");
         try (Connection connection = DriverManager.getConnection(url, "sa", "");
