@@ -38,13 +38,31 @@ jobs:
           mvn --version
       - name: Verify complete Maven reactor on Java 17
         run: >-
-          mvn --batch-mode --no-transfer-progress
-          -Dcheckstyle.skip=true
-          -Dpmd.skip=true
-          -Dspotbugs.skip=true
-          -Djacoco.skip=true
-          '-DargLine=--add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED'
-          verify
+          mvn_args=(
+            --batch-mode --no-transfer-progress
+            -Dcheckstyle.skip=true
+            -Dpmd.skip=true
+            -Dspotbugs.skip=true
+            -Djacoco.skip=true
+            '-DargLine=--add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED'
+            verify
+          )
+          log_file="$(mktemp)"
+          for attempt in 1 2 3; do
+            if mvn "${mvn_args[@]}" >"$log_file" 2>&1; then
+              cat "$log_file"
+              exit 0
+            fi
+            status=$?
+            cat "$log_file"
+            if ! grep -Eqi 'status code: 429|Too Many Requests' "$log_file" || [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+            delay=$((attempt * 20))
+            echo "Maven Central rate-limited dependency resolution (HTTP 429); retrying in ${delay}s (attempt $((attempt + 1))/3)."
+            sleep "$delay"
+          done
+          exit 1
       - name: Smoke-test packaged CLI on Java 17
         working-directory: webharvest-cli
         shell: bash
