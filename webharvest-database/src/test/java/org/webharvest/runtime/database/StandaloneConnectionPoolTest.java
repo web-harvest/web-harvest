@@ -11,6 +11,7 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionMetrics;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
+import org.webharvest.runtime.session.events.SessionCancelledEvent;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -96,6 +97,20 @@ public class StandaloneConnectionPoolTest {
 
         eventBus.post(new SessionFailedEvent(mock(ScraperSession.class),
                 new IllegalStateException("expected test failure")));
+
+        assertTrue(physical.isClosed());
+    }
+
+    @Test
+    public void releasesConnectionsWhenSessionIsCancelled() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        Connection connection = pool.getConnection(DRIVER,
+                "jdbc:h2:mem:pool_cancelled;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+        EventBus eventBus = new EventBus();
+        pool.registerForSession(eventBus);
+
+        eventBus.post(new SessionCancelledEvent(mock(ScraperSession.class)));
 
         assertTrue(physical.isClosed());
     }
