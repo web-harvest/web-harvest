@@ -130,6 +130,27 @@ public class WebHarvestCLILoggingTest {
     }
 
     @Test
+    public void repeatedDebugSetupReplacesThePreviousFileAppender() throws Exception {
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("debug", "true");
+
+        invokeLoggingMethod("parseDebugModeSettings",
+                new Class<?>[]{Map.class, String.class},
+                params, workingDirectory.toAbsolutePath().toString());
+        invokeLoggingMethod("parseDebugModeSettings",
+                new Class<?>[]{Map.class, String.class},
+                params, workingDirectory.toAbsolutePath().toString());
+
+        LoggerFactory.getLogger(DebugFileLogger.NAME)
+                .trace("webharvest-single-debug-appender-marker");
+
+        String output = new String(Files.readAllBytes(workingDirectory.resolve("_DEBUG")),
+                StandardCharsets.UTF_8);
+        assertEquals(output.split("webharvest-single-debug-appender-marker", -1).length - 1, 1,
+                "Repeated debug setup must not leave duplicate file appenders");
+    }
+
+    @Test
     public void disabledDebugModeDoesNotCreateDebugFile() throws Exception {
         Map<String, String> params = new HashMap<String, String>();
         params.put("debug", "false");
