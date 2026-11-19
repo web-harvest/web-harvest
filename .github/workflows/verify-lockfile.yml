@@ -8,7 +8,6 @@ on:
       - main
 
 permissions:
-  actions: write
   contents: read
 
 jobs:
@@ -24,10 +23,3 @@ jobs:
         run: gh extension install github/gh-actions-lock --pin v0.5.0
       - name: Verify lockfile and upstream provenance
         run: gh actions-lock --verify --no-narrow
-      # Temporary one-time dispatch for the PR #232 FF diagnostic; remove before merge.
-      - name: Dispatch broad SpotBugs diagnostic
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 232
-        run: |
-          gh api --method POST repos/web-harvest/web-harvest/actions/workflows/java17-reactor-compatibility.yml/dispatches \
-            -f ref=main \
-            -f 'inputs[broad_spotbugs]=true'
