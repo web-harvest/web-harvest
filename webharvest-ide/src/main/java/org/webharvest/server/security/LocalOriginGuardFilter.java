@@ -24,7 +24,7 @@ import java.util.Set;
 public final class LocalOriginGuardFilter implements Filter {
 
     private static final Set<String> LOOPBACK_HOSTS =
-            Set.of("localhost", "127.0.0.1", "::1");
+            Set.of("localhost", "127.0.0.1");
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -62,6 +62,7 @@ public final class LocalOriginGuardFilter implements Filter {
     static boolean isLoopbackHost(String hostHeader, int serverPort) {
         URI host = parseAuthority(hostHeader);
         return host != null
+                && "http".equalsIgnoreCase(host.getScheme())
                 && host.getUserInfo() == null
                 && host.getHost() != null
                 && LOOPBACK_HOSTS.contains(normalizeHost(host.getHost()))
@@ -75,6 +76,7 @@ public final class LocalOriginGuardFilter implements Filter {
                 || origin.getUserInfo() != null
                 || origin.getHost() == null
                 || host.getHost() == null
+                || !"http".equalsIgnoreCase(host.getScheme())
                 || !"http".equalsIgnoreCase(origin.getScheme())
                 || !LOOPBACK_HOSTS.contains(normalizeHost(origin.getHost()))) {
             return false;
