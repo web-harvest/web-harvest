@@ -47,7 +47,7 @@ jobs:
           mvn --batch-mode --no-transfer-progress \
             -DskipTests \
             -Dverbose \
-            -Dincludes='org.slf4j:*,log4j:log4j,org.apache.logging.log4j:*' \
+            -Dincludes='org.slf4j:*,log4j:log4j,ch.qos.reload4j:*,org.apache.logging.log4j:*' \
             org.apache.maven.plugins:maven-dependency-plugin:3.11.0:tree \
             2>&1 | tee target/logging-dependency-tree.txt
 
