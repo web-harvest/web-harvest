@@ -69,30 +69,15 @@ public class EventBusTypeListenerTest {
         assertNotNull(listener, "Listener should handle non-subscriber class");
     }
 
-    @Test
+    @Test(expectedExceptions = NullPointerException.class)
     public void testHearWithNullTypeLiteral() {
-        // Arrange
-        TypeEncounter<Object> encounter = mock(TypeEncounter.class);
-
-        // Act & Assert - should not throw exception
-        try {
-            listener.hear(null, encounter);
-        } catch (Exception e) {
-            // Expected behavior - should handle null gracefully or throw appropriate exception
-        }
+        listener.hear(null, typeEncounter);
     }
 
-    @Test
-    public void testHearWithNullTypeEncounter() {
-        // Arrange
-        TypeLiteral<Object> type = TypeLiteral.get(Object.class);
-
-        // Act & Assert - should not throw exception
-        try {
-            listener.hear(type, null);
-        } catch (Exception e) {
-            // Expected behavior - should handle null gracefully or throw appropriate exception
-        }
+    @Test(expectedExceptions = NullPointerException.class)
+    public void testHearWithNullTypeEncounterForSubscriber() {
+        TypeLiteral<SubscriberClass> subscriberType = TypeLiteral.get(SubscriberClass.class);
+        listener.hear(subscriberType, null);
     }
 
     @Test
