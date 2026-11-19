@@ -1079,7 +1079,7 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     /**
      * Clean invalid XML characters from a string
      */
-    String cleanInvalidXmlChars(String text) {
+    private String cleanInvalidXmlChars(String text) {
         if (text == null) {
             return null;
         }
