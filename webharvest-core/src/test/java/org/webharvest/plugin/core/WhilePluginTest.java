@@ -56,6 +56,35 @@ public class WhilePluginTest {
     }
 
     @Test
+    public void testExecuteReadsConfigurationOnlyOnce() throws PluginException, InterruptedException {
+        when(configuration.getProperty("test", "")).thenReturn("false");
+        when(configuration.getProperty("condition", "")).thenReturn("false");
+
+        CountingWhilePlugin countingPlugin = new CountingWhilePlugin();
+        countingPlugin.initialize(configuration);
+
+        Variable result = countingPlugin.execute(context);
+
+        assertNotNull(result);
+        assertTrue(result instanceof EmptyVariable);
+        assertEquals(countingPlugin.getConfigurationReadCount(), 1);
+    }
+
+    private static class CountingWhilePlugin extends WhilePlugin {
+        private int configurationReadCount;
+
+        @Override
+        protected PluginConfiguration getConfiguration() {
+            configurationReadCount++;
+            return configurationReadCount == 1 ? super.getConfiguration() : null;
+        }
+
+        private int getConfigurationReadCount() {
+            return configurationReadCount;
+        }
+    }
+
+    @Test
     public void testGetMetadata() {
         assertNotNull(plugin.getMetadata());
         assertEquals(plugin.getMetadata().getId(), "while");
