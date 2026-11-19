@@ -16,6 +16,12 @@ on:
       - "webharvest-*/**"
       - "docs/**"
   workflow_dispatch:
+    inputs:
+      broad_spotbugs:
+        description: "Run SpotBugs without the legacy include filter (diagnostic only)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -45,6 +51,7 @@ jobs:
       - name: Verify complete Maven reactor, tests and static analysis on Java 17
         shell: bash
         env:
+          BROAD_SPOTBUGS: ${{ inputs.broad_spotbugs || 'false' }}
           JAVA_TOOL_OPTIONS: >-
             --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED
             --add-opens=java.base/java.lang=ALL-UNNAMED
@@ -58,6 +65,10 @@ jobs:
             -Djacoco.skip=true
             verify
           )
+          if [[ "$BROAD_SPOTBUGS" == "true" ]]; then
+            echo "Broad SpotBugs diagnostic enabled: bypassing the legacy include filter; findings remain non-blocking."
+            mvn_args+=("-Dspotbugs.includeFilterFile=")
+          fi
           log_file="$(mktemp)"
           for attempt in 1 2 3; do
             if mvn "${mvn_args[@]}" >"$log_file" 2>&1; then
