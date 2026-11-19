@@ -1,6 +1,7 @@
 package org.webharvest.server;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -143,7 +144,12 @@ public class WebHarvestServer {
      * The IDE execution API is intentionally not exposed to the network.
      */
     static Server createServer(int port) {
-        return new Server(new InetSocketAddress(LOOPBACK_HOST, port));
+        Server server = new Server();
+        ServerConnector connector = new ServerConnector(server);
+        connector.setHost(LOOPBACK_HOST);
+        connector.setPort(port);
+        server.addConnector(connector);
+        return server;
     }
 
     static ServletHolder createDefaultServlet() {
