@@ -46,9 +46,9 @@ import org.webharvest.plugin.registry.PluginRegistryHolder;
 import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;

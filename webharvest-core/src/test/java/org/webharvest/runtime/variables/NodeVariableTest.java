@@ -4,12 +4,12 @@ import org.testng.annotations.Test;
 import org.webharvest.exception.VariableException;
 import org.webharvest.utils.XmlNodeWrapper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Collections;
 import java.util.ArrayList;
-import java.nio.charset.StandardCharsets;
 
 import static org.testng.Assert.*;
 
