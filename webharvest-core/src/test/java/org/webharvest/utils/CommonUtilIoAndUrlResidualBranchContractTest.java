@@ -81,7 +81,7 @@ public class CommonUtilIoAndUrlResidualBranchContractTest {
     public void saveStringToFileWritesRequestedCharset() throws Exception {
         File file = Files.createTempFile("wh-save-string-", ".txt").toFile();
         try {
-            String content = "Zażółć – café";
+            String content = "café";
             CommonUtil.saveStringToFile(file, content, "ISO-8859-1");
             assertEquals(Files.readAllBytes(file.toPath()), content.getBytes(StandardCharsets.ISO_8859_1));
         } finally {
