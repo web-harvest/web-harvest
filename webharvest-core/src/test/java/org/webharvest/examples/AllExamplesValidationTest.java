@@ -6,6 +6,8 @@ package org.webharvest.examples;
 
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.webharvest.definition.BufferConfigSource;
+import org.webharvest.definition.Config;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -54,7 +56,7 @@ public class AllExamplesValidationTest extends ScraperTestBase {
         return data;
     }
     
-    @Test(dataProvider = "exampleFiles", groups = {"integration", "examples", "validation", "network"})
+    @Test(dataProvider = "exampleFiles", groups = {"integration", "examples", "validation"})
     public void testExampleValidation(String filename, File exampleFile) throws Exception {
         System.out.println("\n### Testing example: " + filename + " ###");
         
@@ -64,35 +66,15 @@ public class AllExamplesValidationTest extends ScraperTestBase {
         assertNotNull(configXml, "Config XML should not be null");
         assertFalse(configXml.trim().isEmpty(), "Config XML should not be empty");
         
-        try {
-            // Try to parse and execute the configuration
-            // This will catch syntax errors, unknown plugins, and structural issues
-            executeXmlString(configXml);
-            System.out.println("✅ " + filename + " - parsing and execution successful");
-        } catch (Exception e) {
-            // Some examples might fail due to network issues or missing resources
-            // Log the error but check if it's a validation issue or runtime issue
-            String errorMsg = e.getMessage();
-            
-            if (errorMsg != null && (
-                errorMsg.contains("Unknown plugin") ||
-                errorMsg.contains("Invalid plugin") ||
-                errorMsg.contains("Validation error") ||
-                errorMsg.contains("Schema validation") ||
-                errorMsg.contains("required attribute") ||
-                errorMsg.contains("SAXParseException"))) {
-                // This is a validation/structural error - FAIL the test
-                System.err.println("❌ VALIDATION ERROR in: " + filename);
-                System.err.println("Error: " + errorMsg);
-                fail(filename + " has validation/structural errors: " + errorMsg, e);
-            } else {
-                // This is likely a runtime error (network, missing file, etc.) - just log it
-                System.out.println("⚠️  " + filename + " - runtime error (expected): " + errorMsg);
-            }
-        }
+        // Validate the configuration without executing example actions. Execution can
+        // perform network or filesystem operations and is outside this test's contract.
+        Config config = configFactory.create(new BufferConfigSource(configXml));
+        config.reload();
+        assertNotNull(config.getConfigurationTree(),
+                filename + " should produce a loaded configuration tree");
     }
     
-    @Test(groups = {"integration", "examples", "summary", "network"}, dependsOnMethods = {"testExampleValidation"})
+    @Test(groups = {"integration", "examples", "summary"}, dependsOnMethods = {"testExampleValidation"})
     public void testSummary() {
         File examplesDir = new File(EXAMPLES_DIR);
         File[] files = examplesDir.listFiles((dir, name) -> name.endsWith(".xml"));
