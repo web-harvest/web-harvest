@@ -1079,33 +1079,34 @@ public class HtmlToXmlPlugin extends AbstractPlugin {
     /**
      * Clean invalid XML characters from a string
      */
-    private String cleanInvalidXmlChars(String text) {
+    String cleanInvalidXmlChars(String text) {
         if (text == null) {
             return null;
         }
-        
+
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (isValidXmlChar(c)) {
-                result.append(c);
+        for (int i = 0; i < text.length();) {
+            int codePoint = text.codePointAt(i);
+            if (isValidXmlChar(codePoint)) {
+                result.appendCodePoint(codePoint);
             } else {
-                // Replace invalid characters with space
+                // Replace invalid XML code points with space, preserving the existing policy.
                 result.append(' ');
             }
+            i += Character.charCount(codePoint);
         }
-        
+
         return result.toString().trim();
     }
-    
+
     /**
-     * Check if a character is valid in XML
+     * Check whether a Unicode code point is permitted by the XML 1.0 Char production.
      */
-    private boolean isValidXmlChar(char c) {
-        return (c == 0x09 || c == 0x0A || c == 0x0D || 
-                (c >= 0x20 && c <= 0xD7FF) || 
-                (c >= 0xE000 && c <= 0xFFFD) || 
-                (c >= 0x10000 && c <= 0x10FFFF));
+    private boolean isValidXmlChar(int codePoint) {
+        return codePoint == 0x09 || codePoint == 0x0A || codePoint == 0x0D
+                || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+                || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+                || (codePoint >= 0x10000 && codePoint <= 0x10FFFF);
     }
     
     /**
