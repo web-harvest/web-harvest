@@ -3,14 +3,17 @@
  */
 package org.webharvest.cli;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.ioc.DebugFileLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -31,12 +34,12 @@ import static org.testng.Assert.assertTrue;
  * <p>The current implementation keeps its logging setup methods private.
  * Reflection lets these tests exercise the real CLI configuration path
  * without widening the production API solely for tests.</p>
- *
- * <p>These assertions intentionally describe externally observable behavior.
- * The backend-specific logger inspection can be migrated alongside the
- * implementation when the logging provider changes.</p>
  */
 public class WebHarvestCLILoggingTest {
+
+    static {
+        System.setProperty("log4j1.compatibility", "true");
+    }
 
     private Path workingDirectory;
 
@@ -56,12 +59,12 @@ public class WebHarvestCLILoggingTest {
 
     @Test
     public void preservesConfiguredRootLevelWhenNoLoggingOptionIsProvided() throws Exception {
-        Logger.getRootLogger().setLevel(Level.WARN);
+        Configurator.setRootLevel(Level.WARN);
 
         invokeLoggingMethod("parseLoggingSettings", new Class<?>[]{Map.class},
                 Collections.<String, String>emptyMap());
 
-        assertEquals(Logger.getRootLogger().getLevel(), Level.WARN);
+        assertEquals(rootLoggerConfig().getLevel(), Level.WARN);
     }
 
     @Test
@@ -71,27 +74,38 @@ public class WebHarvestCLILoggingTest {
 
         invokeLoggingMethod("parseLoggingSettings", new Class<?>[]{Map.class}, params);
 
-        assertEquals(Logger.getRootLogger().getLevel(), Level.ERROR);
+        assertEquals(rootLoggerConfig().getLevel(), Level.ERROR);
     }
 
     @Test
-    public void loadsCustomPropertiesAndNamedCategoryLevel() throws Exception {
+    public void loadsCustomPropertiesAndTakesPrecedenceOverLogLevel() throws Exception {
+        Path outputFile = workingDirectory.resolve("custom-properties-output.log");
         Path propertiesFile = workingDirectory.resolve("custom-log4j.properties");
-        String properties = "log4j.rootLogger=ERROR, console\n"
-                + "log4j.appender.console=org.apache.log4j.ConsoleAppender\n"
-                + "log4j.appender.console.Target=System.err\n"
-                + "log4j.appender.console.layout=org.apache.log4j.PatternLayout\n"
-                + "log4j.appender.console.layout.ConversionPattern=%p %c - %m%n\n"
+        String outputPath = outputFile.toAbsolutePath().toString().replace("\\", "\\\\");
+        String properties = "log4j.rootLogger=ERROR, file\n"
+                + "log4j.appender.file=org.apache.log4j.FileAppender\n"
+                + "log4j.appender.file.File=" + outputPath + "\n"
+                + "log4j.appender.file.Append=false\n"
+                + "log4j.appender.file.layout=org.apache.log4j.PatternLayout\n"
+                + "log4j.appender.file.layout.ConversionPattern=%p %c - %m%n\n"
                 + "log4j.logger.org.webharvest.cli.loggingtest=DEBUG\n";
         Files.write(propertiesFile, properties.getBytes(StandardCharsets.UTF_8));
 
         Map<String, String> params = new HashMap<String, String>();
         params.put("logpropsfile", propertiesFile.toAbsolutePath().toString());
+        params.put("loglevel", "TRACE");
 
         invokeLoggingMethod("parseLoggingSettings", new Class<?>[]{Map.class}, params);
 
-        assertEquals(Logger.getRootLogger().getLevel(), Level.ERROR);
-        assertEquals(Logger.getLogger("org.webharvest.cli.loggingtest").getLevel(), Level.DEBUG);
+        assertEquals(rootLoggerConfig().getLevel(), Level.ERROR);
+        assertEquals(loggerConfig("org.webharvest.cli.loggingtest").getLevel(), Level.DEBUG);
+
+        Logger customLogger = LoggerFactory.getLogger("org.webharvest.cli.loggingtest");
+        customLogger.debug("webharvest-custom-properties-compatibility-marker");
+
+        String output = new String(Files.readAllBytes(outputFile), StandardCharsets.UTF_8);
+        assertTrue(output.contains("webharvest-custom-properties-compatibility-marker"),
+                "The legacy properties FileAppender should write SLF4J events");
     }
 
     @Test
@@ -106,8 +120,8 @@ public class WebHarvestCLILoggingTest {
         File debugFile = workingDirectory.resolve("_DEBUG").toFile();
         assertTrue(debugFile.isFile(), "Debug mode should create <workdir>/_DEBUG");
 
-        Logger debugLogger = Logger.getLogger(DebugFileLogger.NAME);
-        assertEquals(debugLogger.getLevel(), Level.TRACE);
+        assertEquals(loggerConfig(DebugFileLogger.NAME).getLevel(), Level.TRACE);
+        Logger debugLogger = LoggerFactory.getLogger(DebugFileLogger.NAME);
         debugLogger.trace("webharvest-debug-compatibility-marker");
 
         String output = new String(Files.readAllBytes(debugFile.toPath()), StandardCharsets.UTF_8);
@@ -127,6 +141,18 @@ public class WebHarvestCLILoggingTest {
         assertFalse(workingDirectory.resolve("_DEBUG").toFile().exists());
     }
 
+    private static LoggerConfig rootLoggerConfig() {
+        return loggerContext().getConfiguration().getRootLogger();
+    }
+
+    private static LoggerConfig loggerConfig(String name) {
+        return loggerContext().getConfiguration().getLoggerConfig(name);
+    }
+
+    private static LoggerContext loggerContext() {
+        return (LoggerContext) LogManager.getContext(false);
+    }
+
     private static void invokeLoggingMethod(String name, Class<?>[] parameterTypes,
             Object... arguments) throws Exception {
         Method method = WebHarvestCLI.class.getDeclaredMethod(name, parameterTypes);
@@ -135,8 +161,7 @@ public class WebHarvestCLILoggingTest {
     }
 
     private static void restoreDefaultConfiguration() {
-        LogManager.resetConfiguration();
-        PropertyConfigurator.configure(new File("log4j.properties").getAbsolutePath());
+        Configurator.reconfigure();
     }
 
     private static void deleteRecursively(File file) throws Exception {
