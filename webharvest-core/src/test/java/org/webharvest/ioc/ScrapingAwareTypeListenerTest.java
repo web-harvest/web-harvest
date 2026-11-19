@@ -96,30 +96,9 @@ public class ScrapingAwareTypeListenerTest {
         assertNotNull(listener, "Listener should handle non-ScrapingAware class");
     }
 
-    @Test
-    public void testHearWithNullTypeLiteral() {
-        // Arrange
-        TypeEncounter<Object> encounter = mock(TypeEncounter.class);
-
-        // Act & Assert - should not throw exception
-        try {
-            listener.hear(null, encounter);
-        } catch (Exception e) {
-            // Expected behavior - should handle null gracefully or throw appropriate exception
-        }
-    }
-
-    @Test
+    @Test(expectedExceptions = NullPointerException.class)
     public void testHearWithNullTypeEncounter() {
-        // Arrange
-        TypeLiteral<Object> type = TypeLiteral.get(Object.class);
-
-        // Act & Assert - should not throw exception
-        try {
-            listener.hear(type, null);
-        } catch (Exception e) {
-            // Expected behavior - should handle null gracefully or throw appropriate exception
-        }
+        listener.hear(TypeLiteral.get(Object.class), null);
     }
 
     @Test
