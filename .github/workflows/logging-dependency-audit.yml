@@ -51,7 +51,7 @@ jobs:
             org.apache.maven.plugins:maven-dependency-plugin:3.11.0:tree \
             2>&1 | tee target/logging-dependency-tree.txt
 
-          if grep -E 'org\.slf4j:slf4j-log4j12:|log4j:log4j:|ch\.qos\.reload4j:reload4j:|org\.slf4j:log4j-over-slf4j:' target/logging-dependency-tree.txt; then
+          if grep -E 'org\.slf4j:slf4j-log4j12:|log4j:log4j:|ch\.qos\.reload4j:reload4j:|org\.slf4j:log4j-over-slf4j:|org\.apache\.logging\.log4j:log4j-slf4j-impl:|org\.apache\.logging\.log4j:log4j-to-slf4j:' target/logging-dependency-tree.txt; then
             echo "Legacy Log4j 1 implementation/binding found in resolved dependencies."
             exit 1
           fi
