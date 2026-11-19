@@ -71,7 +71,7 @@ public class XmlNodeContractTest {
         child.flushText();
 
         // Keep text buffered across serialization; it must remain appendable afterwards.
-        root.addElement("before\\n");
+        root.addElement("before\n");
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
@@ -91,9 +91,9 @@ public class XmlNodeContractTest {
         restoredChild.flushText();
         assertEquals(restoredChild.getText(), "child text next");
 
-        restored.addElement("\\nafter");
+        restored.addElement("\nafter");
         restored.flushText();
-        assertEquals(restored.getText(), "before\\nafter");
+        assertEquals(restored.getText(), "before\nafter");
     }
 
     @Test
