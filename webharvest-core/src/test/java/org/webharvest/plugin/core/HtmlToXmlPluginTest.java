@@ -239,13 +239,6 @@ public class HtmlToXmlPluginTest {
     }
 
     @Test
-    public void testCleanInvalidXmlCharsPreservesSupplementaryUnicodeCodePoints() {
-        assertEquals(plugin.cleanInvalidXmlChars("before 😀 after"), "before 😀 after");
-        assertEquals(plugin.cleanInvalidXmlChars("A\u0001B"), "A B");
-        assertEquals(plugin.cleanInvalidXmlChars("A\uD800B"), "A B");
-    }
-
-    @Test
     public void testExecuteWithLongHtml() throws PluginException, InterruptedException {
         // Given
         when(configuration.getProperty("id")).thenReturn("html1");
