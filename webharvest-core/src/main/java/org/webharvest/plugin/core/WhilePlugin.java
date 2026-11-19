@@ -781,12 +781,11 @@ public class WhilePlugin extends AbstractPlugin {
     protected Variable doExecute(DynamicScopeContext context) throws InterruptedException {
         LOGGER.debug("WhilePlugin.doExecute: START");
         
-        // Validate plugin configuration
-        if (getConfiguration() == null) {
+        // Snapshot plugin configuration once so cleanup cannot invalidate a second read.
+        PluginConfiguration config = getConfiguration();
+        if (config == null) {
             throw new RuntimeException("WhilePlugin requires valid configuration - check XML structure");
         }
-        
-        PluginConfiguration config = getConfiguration();
         LOGGER.trace("WhilePlugin.doExecute: config=" + config);
         LOGGER.trace("WhilePlugin.doExecute: config.getClass()=" + (config != null ? config.getClass().getName() : "null"));
 
