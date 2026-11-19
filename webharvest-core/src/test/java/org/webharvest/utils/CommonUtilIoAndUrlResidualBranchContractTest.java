@@ -4,6 +4,7 @@ import static org.testng.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import org.testng.annotations.Test;
@@ -51,6 +52,50 @@ public class CommonUtilIoAndUrlResidualBranchContractTest {
             assertEquals(CommonUtil.readBytesFromFile(file), payload);
         } finally {
             file.delete();
+        }
+    }
+
+    @Test
+    public void readBytesFromFileRejectsOversizedFiles() throws Exception {
+        File actualFile = Files.createTempFile("wh-oversized-", ".bin").toFile();
+        try {
+            File oversizedFile = new File(actualFile.getAbsolutePath()) {
+                @Override
+                public long length() {
+                    return (long) Integer.MAX_VALUE + 1L;
+                }
+            };
+
+            try {
+                CommonUtil.readBytesFromFile(oversizedFile);
+                fail("Expected oversized file to be rejected");
+            } catch (IOException expected) {
+                assertEquals(expected.getMessage(), "File too big for loading into a byte array!");
+            }
+        } finally {
+            Files.deleteIfExists(actualFile.toPath());
+        }
+    }
+
+    @Test
+    public void saveStringToFileWritesRequestedCharset() throws Exception {
+        File file = Files.createTempFile("wh-save-string-", ".txt").toFile();
+        try {
+            String content = "Zażółć – café";
+            CommonUtil.saveStringToFile(file, content, "ISO-8859-1");
+            assertEquals(Files.readAllBytes(file.toPath()), content.getBytes(StandardCharsets.ISO_8859_1));
+        } finally {
+            Files.deleteIfExists(file.toPath());
+        }
+    }
+
+    @Test(expectedExceptions = UnsupportedEncodingException.class)
+    public void saveStringToFileRejectsUnsupportedCharset() throws Exception {
+        File file = Files.createTempFile("wh-save-string-invalid-", ".txt").toFile();
+        try {
+            CommonUtil.saveStringToFile(file, "content", "NOT_A_REAL_CHARSET");
+        } finally {
+            Files.deleteIfExists(file.toPath());
         }
     }
 
