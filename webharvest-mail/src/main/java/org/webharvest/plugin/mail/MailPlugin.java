@@ -409,7 +409,7 @@ public class MailPlugin extends AbstractPlugin {
         if (bodyContent == null || bodyContent instanceof EmptyVariable) {
             return "";
         }
-        return bodyContent.toString();
+        return bodyContent.toString(context.getCharset());
     }
 
     public static DataSource createDataSourceOfVariable(Variable variable, String charset, String mimeType) throws IOException {

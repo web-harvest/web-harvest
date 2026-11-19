@@ -44,6 +44,7 @@ import org.webharvest.utils.CommonUtil;
 import org.webharvest.utils.XmlNodeWrapper;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -64,7 +65,7 @@ public class NodeVariable extends Variable {
         if (data == null) {
             return "";
         } else if (data instanceof byte[]) {
-            return new String((byte[]) data);
+            return new String((byte[]) data, StandardCharsets.UTF_8);
         } else {
             return data.toString();
         }
@@ -75,7 +76,7 @@ public class NodeVariable extends Variable {
             return "";
         } else if (data instanceof byte[]) {
             try {
-                return new String((byte[]) data, charset);
+                return new String((byte[]) data, charset == null ? StandardCharsets.UTF_8.name() : charset);
             } catch (UnsupportedEncodingException e) {
                 throw new VariableException(e);
             }
@@ -90,16 +91,17 @@ public class NodeVariable extends Variable {
         } else if (data instanceof byte[]) {
             return (byte[]) data;
         } else {
-            return data.toString().getBytes();
+            return data.toString().getBytes(StandardCharsets.UTF_8);
         }
     }
 
     public byte[] toBinary(String charset) {
-        if (charset == null || data == null || data instanceof byte[]) {
+        if (data == null || data instanceof byte[]) {
             return toBinary();
         } else {
             try {
-                return data.toString().getBytes(charset);
+                String effectiveCharset = charset == null ? StandardCharsets.UTF_8.name() : charset;
+                return data.toString().getBytes(effectiveCharset);
             } catch (UnsupportedEncodingException e) {
                 throw new VariableException(e);
             }

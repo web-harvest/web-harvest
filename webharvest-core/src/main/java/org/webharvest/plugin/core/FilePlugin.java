@@ -1186,11 +1186,11 @@ public class FilePlugin extends AbstractPlugin {
                 byte[] bytes;
                 if (bodyContent != null && bodyContent instanceof NodeVariable) {
                     // Use toBinary() - preserves byte[] without String conversion
-                    bytes = ((NodeVariable) bodyContent).toBinary();
+                    bytes = ((NodeVariable) bodyContent).toBinary(charset);
                     LOGGER.info("FilePlugin: Writing binary data, {} bytes", bytes.length);
                 } else {
                     // Fallback for non-NodeVariable
-                    String content = bodyContent != null ? bodyContent.toString() : "";
+                    String content = bodyContent != null ? bodyContent.toString(charset) : "";
                     bytes = content.getBytes(charset);
                 }
                 
@@ -1201,7 +1201,7 @@ public class FilePlugin extends AbstractPlugin {
                 // For text files, convert to String first
                 String content = "";
                 if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
-                    content = bodyContent.toString();
+                    content = bodyContent.toString(charset);
                     LOGGER.info("FilePlugin: Content to write: [{}]", content);
                     LOGGER.debug("FilePlugin.handleFileWrite: content=" + content);
                 } else {
@@ -1216,7 +1216,7 @@ public class FilePlugin extends AbstractPlugin {
                 if (content.contains("${")) {
                     try {
                         Variable processedContent = BaseTemplater.evaluateToVariable(content, null, context);
-                        content = processedContent.toString();
+                        content = processedContent.toString(charset);
                         LOGGER.debug("FilePlugin.handleFileWrite: processed template content=" + content);
                     } catch (Exception e) {
                         LOGGER.debug("FilePlugin.handleFileWrite: Error processing template: " + e.getMessage());

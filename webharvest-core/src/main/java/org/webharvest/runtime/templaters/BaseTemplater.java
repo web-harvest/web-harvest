@@ -71,7 +71,7 @@ public class BaseTemplater {
         LOGGER.debug("evaluateToString: source='{}', language={}", source, language);
         LOGGER.trace("evaluateToString: scriptEngineFactory={}", scriptEngineFactory);
         final Variable result = evaluateToVariable(source, language, context);
-        String resultStr = result.isEmpty() ? null : result.toString();
+        String resultStr = result.isEmpty() ? null : result.toString(context.getCharset());
         LOGGER.debug("evaluateToString: result='{}'", resultStr);
         return resultStr;
     }

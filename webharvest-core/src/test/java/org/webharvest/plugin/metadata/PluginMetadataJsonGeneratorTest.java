@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -167,7 +168,7 @@ public class PluginMetadataJsonGeneratorTest {
             generateMethod.invoke(generator, outputPath);
             
             // Read generated JSON
-            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)));
+            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)), StandardCharsets.UTF_8);
             assertNotNull(jsonContent, "JSON content should not be null");
             assertFalse(jsonContent.trim().isEmpty(), "JSON content should not be empty");
             
@@ -216,7 +217,7 @@ public class PluginMetadataJsonGeneratorTest {
             generateMethod.invoke(generator, outputPath);
             
             // Read and validate JSON
-            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)));
+            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)), StandardCharsets.UTF_8);
             
             // Try to parse JSON using Gson (should not throw exception)
             com.google.gson.Gson gson = new com.google.gson.Gson();
@@ -250,7 +251,7 @@ public class PluginMetadataJsonGeneratorTest {
             
             generateMethod.invoke(generator, outputPath);
             
-            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)));
+            String jsonContent = new String(Files.readAllBytes(Paths.get(outputPath)), StandardCharsets.UTF_8);
             
             // Check for required VisualPluginMetadata fields
             assertTrue(jsonContent.contains("icon") || jsonContent.contains("\"icon\""), 

@@ -35,6 +35,7 @@ package org.webharvest.plugin.ftp;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.webharvest.plugin.AbstractPlugin;
@@ -277,7 +278,7 @@ public class FtpPutPlugin extends AbstractPlugin {
             
             // Get file content from body
             String content = getBodyContent(context);
-            byte[] fileData = content.getBytes("UTF-8");
+            byte[] fileData = content.getBytes(getRuntimeCharset(context));
             
             // Upload file
             ByteArrayInputStream inputStream = new ByteArrayInputStream(fileData);
@@ -309,12 +310,19 @@ public class FtpPutPlugin extends AbstractPlugin {
         }
     }
 
+    private String getRuntimeCharset(DynamicScopeContext context) {
+        String charset = context.getCharset();
+        return charset == null || charset.trim().isEmpty()
+                ? StandardCharsets.UTF_8.name()
+                : charset;
+    }
+
     private String getBodyContent(DynamicScopeContext context) throws InterruptedException, PluginException {
         Variable bodyContent = executeBody(context);
         if (bodyContent == null || bodyContent instanceof EmptyVariable) {
             return "";
         }
-        return bodyContent.toString();
+        return bodyContent.toString(getRuntimeCharset(context));
     }
 }
 

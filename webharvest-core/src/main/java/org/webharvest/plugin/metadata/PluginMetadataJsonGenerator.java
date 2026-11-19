@@ -46,9 +46,9 @@ import org.webharvest.plugin.registry.PluginRegistryHolder;
 import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -210,7 +210,7 @@ public class PluginMetadataJsonGenerator {
             Files.createDirectories(parentDir);
         }
         
-        try (Writer writer = new FileWriter(outputFile.toFile(), false)) {
+        try (Writer writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8)) {
             writer.write(json);
         }
         
