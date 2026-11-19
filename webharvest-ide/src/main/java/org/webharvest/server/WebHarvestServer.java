@@ -157,7 +157,7 @@ public class WebHarvestServer {
         return defaultServlet;
     }
 
-    private static String browserUrl(int port) {
+    static String browserUrl(int port) {
         return "http://" + LOOPBACK_HOST + ":" + port;
     }
 
