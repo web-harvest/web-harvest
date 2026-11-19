@@ -73,6 +73,8 @@
         <slf4j.version>2.0.20</slf4j.version>
         <log4j.version>2.25.5</log4j.version>
         <unitils.version>[3.3,)</unitils.version>
+        <!-- Default to the legacy SpotBugs allowlist; manual diagnostics may override with an empty value. -->
+        <spotbugs.includeFilterFile>spotbugs-include.xml</spotbugs.includeFilterFile>
     </properties>
     <modules>
         <module>webharvest-core</module>
@@ -361,7 +363,7 @@
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Low</threshold>
-                    <includeFilterFile>spotbugs-include.xml</includeFilterFile>
+                    <includeFilterFile>${spotbugs.includeFilterFile}</includeFilterFile>
                     <failOnError>false</failOnError>
                 </configuration>
             </plugin>
