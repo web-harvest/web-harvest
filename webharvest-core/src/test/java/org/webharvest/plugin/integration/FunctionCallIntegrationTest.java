@@ -293,18 +293,11 @@ public class FunctionCallIntegrationTest extends XmlBasedIntegrationTestBase {
             "  </def>\n" +
             "</config>";
         
-        try {
-            DynamicScopeContext ctx = executeXmlStringFromTest(xml);
-            // If execution succeeds, result should be empty
-            Variable result = ctx.getVar("result");
-            // Result should be EmptyVariable (CallPlugin returns EmptyVariable for non-existent functions)
-            assertTrue(result == null || result instanceof EmptyVariable || result.isEmpty(), 
-                "Result should be empty for non-existent function");
-        } catch (Exception e) {
-            // Exception is also acceptable
-            assertNotNull(e.getMessage(), "Exception should have a message");
-            LOG.info("Expected exception for non-existent function: {}", e.getMessage());
-        }
+        DynamicScopeContext ctx = executeXmlStringFromTest(xml);
+        Variable result = ctx.getVar("result");
+        assertNotNull(result, "CallPlugin should define the result variable");
+        assertTrue(result instanceof EmptyVariable || result.isEmpty(),
+            "A non-existent function should resolve to an empty result");
         
         LOG.info("✓ Call to non-existent function handled");
     }
