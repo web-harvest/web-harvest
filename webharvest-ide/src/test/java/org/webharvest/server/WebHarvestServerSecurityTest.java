@@ -32,6 +32,11 @@ public class WebHarvestServerSecurityTest {
     }
 
     @Test
+    public void browserUrlUsesTheExplicitLoopbackAddress() {
+        assertEquals(WebHarvestServer.browserUrl(8123), "http://127.0.0.1:8123");
+    }
+
+    @Test
     public void staticFileServletDoesNotExposeDirectoryListings() {
         ServletHolder servlet = WebHarvestServer.createDefaultServlet();
         assertFalse(Boolean.parseBoolean(servlet.getInitParameter("dirAllowed")),
