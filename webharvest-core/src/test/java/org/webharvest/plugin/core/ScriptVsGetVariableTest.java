@@ -163,27 +163,20 @@ public class ScriptVsGetVariableTest extends ScraperTestBase {
                 "    </def>\n" +
                 "</config>";
 
-        // This should either fail or return something unexpected (not "Test Value")
+        // Executing the variable name as script must never retrieve its stored value.
         try {
             Variable result = executeAndGetVariable(config, "wrong");
-            
-            // Script might succeed but won't return "Test Value"
-            // It will try to execute 'myData' as JavaScript variable
-            assertNotNull(result, "Script executes but doesn't retrieve variable value");
-            
-            // The result should NOT be our original "Test Value"
-            // (unless coincidentally JavaScript 'myData' resolves to same value)
-            String resultStr = result.toString();
-            
-            // Document the behavior: script executes code, doesn't retrieve variables
-            System.out.println("Script result: " + resultStr);
-            
+            assertNotNull(result, "A successful script evaluation must return a result");
+            assertFalse("Test Value".equals(result.toString()),
+                    "The script plugin must execute code, not retrieve the <def> variable");
         } catch (Exception e) {
-            // Expected: Script might fail with ReferenceError or similar
-            assertTrue(e.getMessage().contains("myData") || 
-                      e.getMessage().contains("undefined") ||
-                      e.getMessage().contains("not defined"),
-                      "Script should fail or error when trying to execute variable name as code");
+            // Providers may report an unresolved script identifier with different wording.
+            String message = e.getMessage();
+            assertNotNull(message, "A script evaluation failure must explain the unresolved identifier");
+            assertTrue(message.contains("myData") ||
+                       message.contains("undefined") ||
+                       message.contains("not defined"),
+                    "Script failure must identify the unresolved variable name");
         }
     }
 }
