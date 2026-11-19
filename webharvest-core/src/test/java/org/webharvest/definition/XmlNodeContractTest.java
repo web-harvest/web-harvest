@@ -87,6 +87,9 @@ public class XmlNodeContractTest {
         XmlNode restoredChild = restored.getFirstSubnode(new ElementName("child", "urn:test"));
         assertNotNull(restoredChild);
         assertEquals(restoredChild.getText(), "child text");
+        restoredChild.addElement(" next");
+        restoredChild.flushText();
+        assertEquals(restoredChild.getText(), "child text next");
 
         restored.addElement("\\nafter");
         restored.flushText();
