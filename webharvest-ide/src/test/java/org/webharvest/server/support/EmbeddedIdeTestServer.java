@@ -17,6 +17,8 @@ import org.webharvest.server.api.SessionHistoryServlet;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 /**
@@ -39,7 +41,7 @@ public final class EmbeddedIdeTestServer {
 
     private EmbeddedIdeTestServer() throws Exception {
         this.port = findFreePort();
-        this.server = new Server(port);
+        this.server = new Server(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
         configureServer();
         this.baseHttpUrl = "http://localhost:" + port;
         this.baseWsUrl = "ws://localhost:" + port;
@@ -95,7 +97,7 @@ public final class EmbeddedIdeTestServer {
         context.addServlet(new ServletHolder(new ExecutionWebSocketServlet()), "/ws/execution/*");
 
         ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-        defaultServlet.setInitParameter("dirAllowed", "true");
+        defaultServlet.setInitParameter("dirAllowed", "false");
         defaultServlet.setInitParameter("pathInfoOnly", "false");
         defaultServlet.setInitParameter("welcomeServlets", "true");
         defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
