@@ -27,7 +27,7 @@ public class HtmlToXmlHelperBranchContractTest {
         Class<?> type = HtmlToXmlPlugin.class;
         isValidXmlName = type.getDeclaredMethod("isValidXmlName", String.class);
         isValidXmlName.setAccessible(true);
-        isValidXmlChar = type.getDeclaredMethod("isValidXmlChar", char.class);
+        isValidXmlChar = type.getDeclaredMethod("isValidXmlChar", int.class);
         isValidXmlChar.setAccessible(true);
         getSafelist = type.getDeclaredMethod("getSafelist", String.class);
         getSafelist.setAccessible(true);
@@ -51,25 +51,29 @@ public class HtmlToXmlHelperBranchContractTest {
     @DataProvider(name = "xmlChars")
     public Object[][] xmlChars() {
         return new Object[][] {
-            {(char) 0x09, true},
-            {(char) 0x0A, true},
-            {(char) 0x0D, true},
-            {(char) 0x20, true},
-            {(char) 0x7F, true},
-            {(char) 0xD7FF, true},
-            {(char) 0xD800, false},
-            {(char) 0xDFFF, false},
-            {(char) 0xE000, true},
-            {(char) 0xFFFD, true},
-            {(char) 0xFFFE, false},
-            {(char) 0x08, false},
-            {(char) 0x1F, false}
+            {0x09, true},
+            {0x0A, true},
+            {0x0D, true},
+            {0x20, true},
+            {0x7F, true},
+            {0xD7FF, true},
+            {0xD800, false},
+            {0xDFFF, false},
+            {0xE000, true},
+            {0xFFFD, true},
+            {0xFFFE, false},
+            {0x08, false},
+            {0x1F, false},
+            {0x10000, true},
+            {0x1F600, true},
+            {0x10FFFF, true},
+            {0x110000, false}
         };
     }
 
     @Test(dataProvider = "xmlChars")
-    public void xmlCharClassMatchesXmlSpecBmpSubset(char value, boolean expected) throws Exception {
-        assertEquals(isValidXmlChar.invoke(plugin, value), expected, "char U+" + Integer.toHexString(value));
+    public void xmlCharClassMatchesXmlSpecCodePoints(int value, boolean expected) throws Exception {
+        assertEquals(isValidXmlChar.invoke(plugin, value), expected, "code point U+" + Integer.toHexString(value));
     }
 
     @Test
@@ -94,5 +98,11 @@ public class HtmlToXmlHelperBranchContractTest {
     public void cleanInvalidXmlCharsReturnsNullForNullInput() throws Exception {
         assertNull(cleanInvalidXmlChars.invoke(plugin, (Object) null));
         assertEquals(cleanInvalidXmlChars.invoke(plugin, "A" + ((char) 0x01) + "B"), "A B");
+    }
+
+    @Test
+    public void cleanInvalidXmlCharsPreservesSupplementaryCodePoints() throws Exception {
+        assertEquals(cleanInvalidXmlChars.invoke(plugin, "before 😀 after"), "before 😀 after");
+        assertEquals(cleanInvalidXmlChars.invoke(plugin, "A" + ((char) 0xD800) + "B"), "A B");
     }
 }
