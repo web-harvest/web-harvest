@@ -2,6 +2,10 @@ package org.webharvest.definition;
 
 import static org.testng.Assert.*;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Map;
 import org.testng.annotations.Test;
@@ -56,6 +60,40 @@ public class XmlNodeContractTest {
         assertNull(root.getFirstSubnode(new ElementName("missing", "http://example")));
         assertTrue(root.getSubnodes(new ElementName("missing", "http://example")).isEmpty());
         assertFalse(root.getElementList().isEmpty());
+    }
+
+    @Test
+    public void serializableTreeRoundTripsChildrenAndBufferedText() throws Exception {
+        XmlNode root = new XmlNode("root", "root", "urn:test", null);
+        root.addAttribute("id", "urn:test", "root-1");
+        XmlNode child = new XmlNode("child", "child", "urn:test", root);
+        child.addElement("child text");
+        child.flushText();
+
+        // Keep text buffered across serialization; it must remain appendable afterwards.
+        root.addElement("before\n");
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(root);
+        }
+
+        XmlNode restored;
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+            restored = (XmlNode) input.readObject();
+        }
+
+        assertEquals(restored.getAttribute("urn:test", "id"), "root-1");
+        XmlNode restoredChild = restored.getFirstSubnode(new ElementName("child", "urn:test"));
+        assertNotNull(restoredChild);
+        assertEquals(restoredChild.getText(), "child text");
+        restoredChild.addElement(" next");
+        restoredChild.flushText();
+        assertEquals(restoredChild.getText(), "child text\nnext");
+
+        restored.addElement("\nafter");
+        restored.flushText();
+        assertEquals(restored.getText(), "before\nafter");
     }
 
     @Test
