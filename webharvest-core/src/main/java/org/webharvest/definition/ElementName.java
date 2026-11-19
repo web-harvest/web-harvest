@@ -33,6 +33,8 @@
 
 package org.webharvest.definition;
 
+import java.io.Serializable;
+
 import org.webharvest.utils.Assert;
 import org.webharvest.utils.CommonUtil;
 
@@ -41,7 +43,9 @@ import org.webharvest.utils.CommonUtil;
  * pure name and xml namespace URI. Both values are required and names are equal
  * if and only if both names and URIs match.
  */
-public class ElementName implements Comparable {
+public class ElementName implements Comparable, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private String name;
     private String uri;
