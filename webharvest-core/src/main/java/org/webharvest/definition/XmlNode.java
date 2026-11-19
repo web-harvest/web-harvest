@@ -36,6 +36,9 @@
 */
 package org.webharvest.definition;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,8 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class XmlNode implements Serializable {
-
-    private static final long serialVersionUID = 1L;
 
     public static final XmlNode NULL = new XmlNode(null, "*", null, null);
 
@@ -79,7 +80,7 @@ public class XmlNode implements Serializable {
     private StringBuilder textBuff = new StringBuilder();
 
     // text buffer containing continuous text
-    private StringBuilder tmpBuf = new StringBuilder();
+    private transient StringBuilder tmpBuf = new StringBuilder();
 
     // location of element in the XML
     private int lineNumber;
@@ -241,6 +242,23 @@ public class XmlNode implements Serializable {
 
     public int getColumnNumber() {
         return columnNumber;
+    }
+
+    /**
+     * Flushes pending text before serialization so the serialized tree is complete.
+     * The private serialization hooks preserve the legacy computed serialVersionUID.
+     */
+    private void writeObject(ObjectOutputStream output) throws IOException {
+        flushText();
+        output.defaultWriteObject();
+    }
+
+    /**
+     * Restores the transient text buffer after deserialization.
+     */
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+        input.defaultReadObject();
+        tmpBuf = new StringBuilder();
     }
 
 }
