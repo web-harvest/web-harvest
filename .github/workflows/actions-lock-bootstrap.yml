@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           rm .github/workflows/actions-lock-bootstrap.yml
-          gh actions-lock
+          gh actions-lock --no-narrow
           test -s .github/workflows/actions.lock
           echo "Generated lockfile:"
           sed -n '1,240p' .github/workflows/actions.lock
