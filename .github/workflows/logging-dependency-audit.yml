@@ -1,0 +1,120 @@
+name: Logging Dependency Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "**/pom.xml"
+      - ".github/workflows/logging-dependency-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "**/pom.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logging-dependency-audit-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-tree:
+    name: Resolve and inspect logging dependencies and shaded packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Resolve and record logging dependency trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target
+          mvn --batch-mode --no-transfer-progress \
+            -DskipTests \
+            -Dverbose \
+            -Dincludes='org.slf4j:*,log4j:log4j,org.apache.logging.log4j:*' \
+            org.apache.maven.plugins:maven-dependency-plugin:3.11.0:tree \
+            2>&1 | tee target/logging-dependency-tree.txt
+
+      - name: Build shaded executable distributions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress -Dmaven.test.skip=true package
+
+      - name: Inspect shaded logging providers and Log4j metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="target/logging-package-inspection.txt"
+          : > "$report"
+
+          for jar in \
+            webharvest-cli/target/webharvest-cli-2.3.1.jar \
+            webharvest-ide/target/webharvest-ide-2.3.1.jar; do
+            if [ ! -s "$jar" ]; then
+              echo "Missing shaded distribution: $jar" | tee -a "$report"
+              exit 1
+            fi
+
+            entries="$(jar tf "$jar")"
+            slf4j1_binder="$(printf '%s\n' "$entries" | grep -cxF 'org/slf4j/impl/StaticLoggerBinder.class' || true)"
+            slf4j2_descriptor="$(printf '%s\n' "$entries" | grep -cxF 'META-INF/services/org.slf4j.spi.SLF4JServiceProvider' || true)"
+            slf4j2_providers=0
+            if [ "$slf4j2_descriptor" -eq 1 ]; then
+              slf4j2_providers="$(unzip -p "$jar" META-INF/services/org.slf4j.spi.SLF4JServiceProvider | sed '/^[[:space:]]*#/d;/^[[:space:]]*$/d' | wc -l)"
+              slf4j2_providers="$(printf '%s' "$slf4j2_providers" | tr -d ' ')"
+            fi
+            provider_count=$((slf4j1_binder + slf4j2_providers))
+            plugin_cache="$(printf '%s\n' "$entries" | grep -cxF 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat' || true)"
+            log4j1_logger="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Logger.class' || true)"
+            log4j2_core="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/logging/log4j/core/LoggerContext.class' || true)"
+            multi_release="false"
+            if unzip -p "$jar" META-INF/MANIFEST.MF | grep -Eiq '^Multi-Release:[[:space:]]*true'; then
+              multi_release="true"
+            fi
+
+            {
+              echo "## $jar"
+              echo "SLF4J 1 StaticLoggerBinder entries: $slf4j1_binder"
+              echo "SLF4J 2 provider implementations: $slf4j2_providers"
+              echo "Total SLF4J provider implementations: $provider_count"
+              echo "Log4j 2 plugin-cache entries: $plugin_cache"
+              echo "Log4j 1 Logger.class entries: $log4j1_logger"
+              echo "Log4j 2 LoggerContext.class entries: $log4j2_core"
+              echo "Multi-Release manifest: $multi_release"
+              echo "Relevant archive entries:"
+              printf '%s\n' "$entries" | grep -E '(^org/slf4j/impl/StaticLoggerBinder.class$|^META-INF/services/org.slf4j.spi.SLF4JServiceProvider$|^META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat$|^org/apache/log4j/Logger.class$|^org/apache/logging/log4j/core/LoggerContext.class$)' || true
+              echo
+            } | tee -a "$report"
+
+            if [ "$provider_count" -ne 1 ]; then
+              echo "Expected exactly one SLF4J provider in $jar, found $provider_count" | tee -a "$report"
+              exit 1
+            fi
+          done
+
+      - name: Upload resolved dependency and package inspection reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logging-dependency-and-package-audit
+          path: |
+            target/logging-dependency-tree.txt
+            target/logging-package-inspection.txt
+          if-no-files-found: error
+          retention-days: 30
