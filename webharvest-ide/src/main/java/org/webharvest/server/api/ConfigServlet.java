@@ -89,9 +89,15 @@ public class ConfigServlet extends HttpServlet {
         }
     }
     
-    private void validateConfig(HttpServletRequest req, HttpServletResponse resp) 
+    private void validateConfig(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
-        
+
+        if (!isSupportedValidationContentType(req.getContentType())) {
+            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
+                    "Content-Type must be application/xml, text/xml, or application/json");
+            return;
+        }
+
         try {
             String requestBody = req.getReader().lines().collect(Collectors.joining("\n"));
             String xmlContent;
@@ -220,7 +226,17 @@ public class ConfigServlet extends HttpServlet {
         sendJsonResponse(resp, HttpServletResponse.SC_NOT_IMPLEMENTED, response);
     }
     
-    private void sendJsonResponse(HttpServletResponse resp, int status, JsonObject data) 
+    private boolean isSupportedValidationContentType(String contentType) {
+        if (contentType == null) {
+            return false;
+        }
+        String mediaType = contentType.split(";", 2)[0].trim();
+        return "application/xml".equalsIgnoreCase(mediaType)
+                || "text/xml".equalsIgnoreCase(mediaType)
+                || "application/json".equalsIgnoreCase(mediaType);
+    }
+
+    private void sendJsonResponse(HttpServletResponse resp, int status, JsonObject data)
             throws IOException {
         
         resp.setStatus(status);
