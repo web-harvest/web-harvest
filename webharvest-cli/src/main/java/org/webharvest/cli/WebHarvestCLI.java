@@ -54,7 +54,6 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.log4j.PropertyConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.ConfigSource;
@@ -215,10 +214,20 @@ public class WebHarvestCLI {
         final String logPropsFile = params.get("logpropsfile");
         final String logLevel = params.get("loglevel");
         if (logPropsFile != null && !"".equals(logPropsFile)) {
-            PropertyConfigurator.configure(logPropsFile);
+            configureLegacyLogProperties(logPropsFile);
         } else if (logLevel != null && !"".equals(logLevel)) {
             Level level = Level.getLevel(logLevel.toUpperCase(Locale.ROOT));
             Configurator.setRootLevel(level == null ? Level.DEBUG : level);
+        }
+    }
+
+    private static void configureLegacyLogProperties(final String logPropsFile) {
+        try {
+            Class<?> configuratorClass = Class.forName("org.apache.log4j.PropertyConfigurator");
+            configuratorClass.getMethod("configure", String.class).invoke(null, logPropsFile);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to configure legacy Log4j properties file: "
+                    + logPropsFile, e);
         }
     }
 
