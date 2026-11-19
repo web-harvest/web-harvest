@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 
 import java.net.InetAddress;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
@@ -21,10 +22,10 @@ public class WebHarvestServerSecurityTest {
             assertTrue(server.getConnectors().length == 1, "Expected exactly one HTTP connector");
             NetworkConnector connector = (NetworkConnector) server.getConnectors()[0];
             assertNotNull(connector.getHost(), "The listener must have an explicit bind address");
-            assertTrue(
-                    InetAddress.getByName(connector.getHost()).isLoopbackAddress(),
-                    "The default IDE listener must not bind to a network interface"
-            );
+            assertEquals(connector.getHost(), "127.0.0.1",
+                    "The IDE must bind to the same deterministic IPv4 loopback URL it opens");
+            assertTrue(InetAddress.getByName(connector.getHost()).isLoopbackAddress(),
+                    "The default IDE listener must not bind to a network interface");
         } finally {
             server.stop();
         }
