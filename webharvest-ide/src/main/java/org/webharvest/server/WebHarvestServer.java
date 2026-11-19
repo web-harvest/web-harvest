@@ -38,6 +38,7 @@ public class WebHarvestServer {
     
     private static final Logger LOG = LoggerFactory.getLogger(WebHarvestServer.class);
     private static final int DEFAULT_PORT = 8080;
+    private static final String LOOPBACK_HOST = "127.0.0.1";
     
     private Server server;
     private final int port;
@@ -120,7 +121,7 @@ public class WebHarvestServer {
         // Start server
         server.start();
         LOG.info("WebHarvest IDE started successfully!");
-        LOG.info("Open in browser: http://localhost:{}", port);
+        LOG.info("Open in browser: {}", browserUrl(port));
         
         // Auto-open browser
         openBrowser();
@@ -142,7 +143,7 @@ public class WebHarvestServer {
      * The IDE execution API is intentionally not exposed to the network.
      */
     static Server createServer(int port) {
-        return new Server(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
+        return new Server(new InetSocketAddress(LOOPBACK_HOST, port));
     }
 
     static ServletHolder createDefaultServlet() {
@@ -156,22 +157,26 @@ public class WebHarvestServer {
         return defaultServlet;
     }
 
+    private static String browserUrl(int port) {
+        return "http://" + LOOPBACK_HOST + ":" + port;
+    }
+
     private void openBrowser() {
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI("http://localhost:" + port));
+                Desktop.getDesktop().browse(new URI(browserUrl(port)));
                 LOG.info("Browser opened automatically");
             } else {
-                LOG.info("Please open http://localhost:{} in your browser", port);
+                LOG.info("Please open {} in your browser", browserUrl(port));
             }
         } catch (Exception e) {
             LOG.warn("Could not auto-open browser: {}", e.getMessage());
-            LOG.info("Please open http://localhost:{} manually", port);
+            LOG.info("Please open {} manually", browserUrl(port));
         }
     }
     
     private static boolean isPortAvailable(int port) {
-        try (ServerSocket socket = new ServerSocket(port)) {
+        try (ServerSocket socket = new ServerSocket(port, 1, InetAddress.getByName(LOOPBACK_HOST))) {
             return true;
         } catch (IOException e) {
             return false;
