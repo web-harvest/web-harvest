@@ -308,7 +308,7 @@ jobs:
             echo "PRESENT: $jar_path" > "$report/status.txt"
             sha256sum "$jar_path" > "$report/sha256.txt"
             jar tf "$jar_path" > "$report/all-entries.txt"
-            grep -E '^(groovy/|org/apache/commons/collections/|META-INF/maven/(org\.codehaus\.groovy|commons-collections)/|META-INF/services/)' "$report/all-entries.txt" > "$report/relevant-entries.txt" || true
+            grep -E '^(groovy/|org/codehaus/groovy/|org/apache/commons/collections/|META-INF/groovy-release-info\.properties$|META-INF/maven/(org\.codehaus\.groovy|commons-collections)/|META-INF/services/)' "$report/all-entries.txt" > "$report/relevant-entries.txt" || true
             {
               echo "Archive: $jar_path"
               echo "SHA-256:"
