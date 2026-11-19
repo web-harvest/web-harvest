@@ -111,6 +111,14 @@ public class VisualSemanticModelServlet extends HttpServlet {
         resp.sendError(HttpServletResponse.SC_NOT_FOUND, "Invalid endpoint");
     }
     
+    private boolean isJsonContentType(String contentType) {
+        if (contentType == null) {
+            return false;
+        }
+        String mediaType = contentType.split(";", 2)[0].trim();
+        return "application/json".equalsIgnoreCase(mediaType);
+    }
+
     /**
      * GET /api/visual/model - zwróć cached model
      */
