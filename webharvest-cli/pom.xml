@@ -68,6 +68,7 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-1.2-api</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <!-- Apache Commons CLI for Bug #39 -->
         <dependency>
