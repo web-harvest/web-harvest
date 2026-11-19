@@ -41,7 +41,46 @@ package org.webharvest.utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
 public class CommonUtilTest {
+
+    @Test
+    public void testReadStringFromUrlUsesDeclaredCharsetAndUtf8Fallback() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/latin1", exchange -> {
+            byte[] body = "café".getBytes(StandardCharsets.ISO_8859_1);
+            exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=ISO-8859-1");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(body);
+            }
+        });
+        server.createContext("/utf8", exchange -> {
+            byte[] body = "Zażółć gęślą jaźń".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/plain");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream output = exchange.getResponseBody()) {
+                output.write(body);
+            }
+        });
+        server.start();
+
+        try {
+            String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+            Assert.assertEquals(
+                    CommonUtil.readStringFromUrl(new URL(baseUrl + "/latin1")), "café");
+            Assert.assertEquals(
+                    CommonUtil.readStringFromUrl(new URL(baseUrl + "/utf8")), "Zażółć gęślą jaźń");
+        } finally {
+            server.stop(0);
+        }
+    }
 
     @Test
     public void testIsFullUrl() throws Exception {

@@ -421,7 +421,7 @@ public class DatabasePlugin extends AbstractPlugin {
         if (bodyContent == null || bodyContent instanceof EmptyVariable) {
             return "";
         }
-        return bodyContent.toString();
+        return bodyContent.toString(context.getCharset());
     }
 }
 

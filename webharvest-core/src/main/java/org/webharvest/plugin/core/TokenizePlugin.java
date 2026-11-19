@@ -611,7 +611,7 @@ public class TokenizePlugin extends AbstractPlugin {
         String text = "";
         
         if (bodyContent != null && !(bodyContent instanceof EmptyVariable)) {
-            text = bodyContent.toString();
+            text = bodyContent.toString(context.getCharset());
             LOGGER.debug("TokenizePlugin: Retrieved text content: " + text);
         } else {
             LOGGER.debug("TokenizePlugin: No body content available");

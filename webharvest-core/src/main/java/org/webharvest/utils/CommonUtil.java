@@ -50,13 +50,20 @@ import javax.xml.transform.OutputKeys;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Basic evaluation utilities
  */
 public class CommonUtil {
+
+    private static final Pattern CHARSET_PARAMETER_PATTERN = Pattern.compile(
+            "(?i)(?:^|;)\\s*charset\\s*=\\s*(?:\"([^\"]+)\"|'([^']+)'|([^;\\s]+))");
 
     private static final Properties DEFAULT_OUTPUT_PROPERTIES = new Properties();
 
@@ -720,15 +727,41 @@ public class CommonUtil {
      * @throws IOException
      */
     public static String readStringFromUrl(URL url) throws IOException {
+        URLConnection connection = url.openConnection();
+        Charset charset = resolveCharset(connection.getContentType());
         StringBuilder buffer = new StringBuilder();
-        BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-        int ch;
-        while ((ch = in.read()) != -1) {
-            buffer.append((char) ch);
+
+        try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(connection.getInputStream(), charset))) {
+            char[] chars = new char[4096];
+            int count;
+            while ((count = in.read(chars)) != -1) {
+                buffer.append(chars, 0, count);
+            }
         }
-        in.close();
 
         return buffer.toString();
+    }
+
+    private static Charset resolveCharset(String contentType) {
+        if (contentType != null) {
+            Matcher matcher = CHARSET_PARAMETER_PATTERN.matcher(contentType);
+            if (matcher.find()) {
+                String charsetName = matcher.group(1);
+                if (charsetName == null) {
+                    charsetName = matcher.group(2);
+                }
+                if (charsetName == null) {
+                    charsetName = matcher.group(3);
+                }
+                try {
+                    return Charset.forName(charsetName.trim());
+                } catch (IllegalArgumentException ignored) {
+                    // An invalid or unsupported declaration uses the deterministic UTF-8 fallback.
+                }
+            }
+        }
+        return StandardCharsets.UTF_8;
     }
 
     /**

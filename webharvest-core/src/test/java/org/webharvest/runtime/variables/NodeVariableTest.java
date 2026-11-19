@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Collections;
 import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 
 import static org.testng.Assert.*;
 
@@ -33,7 +34,7 @@ public class NodeVariableTest {
 
     @Test
     public void testConstructorWithByteArray() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         assertNotNull(var);
         assertSame(var.getWrappedObject(), data);
@@ -54,9 +55,29 @@ public class NodeVariableTest {
 
     @Test
     public void testToStringWithByteArray() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         assertEquals(var.toString(), "test data");
+    }
+
+    @Test
+    public void testDefaultConversionsUseUtf8ForNonAsciiText() {
+        String text = "Zażółć gęślą jaźń – €";
+        byte[] utf8 = text.getBytes(StandardCharsets.UTF_8);
+
+        assertEquals(new NodeVariable(utf8).toString(), text);
+        assertEquals(new NodeVariable(text).toBinary(), utf8);
+        assertEquals(new NodeVariable(text).toBinary(null), utf8);
+        assertEquals(new NodeVariable(utf8).toString(null), text);
+    }
+
+    @Test
+    public void testExplicitLegacyCharsetRemainsSupported() {
+        String text = "café";
+        byte[] latin1 = text.getBytes(StandardCharsets.ISO_8859_1);
+
+        assertEquals(new NodeVariable(latin1).toString("ISO-8859-1"), text);
+        assertEquals(new NodeVariable(text).toBinary("ISO-8859-1"), latin1);
     }
 
     @Test
@@ -80,14 +101,14 @@ public class NodeVariableTest {
 
     @Test
     public void testToStringWithCharsetAndByteArray() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         assertEquals(var.toString("UTF-8"), "test data");
     }
 
     @Test(expectedExceptions = VariableException.class)
     public void testToStringWithInvalidCharset() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         var.toString("INVALID-CHARSET");
     }
@@ -103,7 +124,7 @@ public class NodeVariableTest {
         NodeVariable var = new NodeVariable("test data");
         byte[] result = var.toBinary();
         assertNotNull(result);
-        assertEquals(new String(result), "test data");
+        assertEquals(new String(result, StandardCharsets.UTF_8), "test data");
     }
 
     @Test
@@ -116,7 +137,7 @@ public class NodeVariableTest {
 
     @Test
     public void testToBinaryWithByteArray() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         byte[] result = var.toBinary();
         assertSame(result, data);
@@ -127,7 +148,7 @@ public class NodeVariableTest {
         NodeVariable var = new NodeVariable("test data");
         byte[] result = var.toBinary("UTF-8");
         assertNotNull(result);
-        assertEquals(new String(result), "test data");
+        assertEquals(new String(result, StandardCharsets.UTF_8), "test data");
     }
 
     @Test
@@ -140,7 +161,7 @@ public class NodeVariableTest {
 
     @Test
     public void testToBinaryWithCharsetAndByteArray() {
-        byte[] data = "test data".getBytes();
+        byte[] data = "test data".getBytes(StandardCharsets.UTF_8);
         NodeVariable var = new NodeVariable(data);
         byte[] result = var.toBinary("UTF-8");
         assertSame(result, data);

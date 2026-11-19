@@ -275,8 +275,8 @@ public class HttpPlugin extends AbstractPlugin {
             Variable urlVar = BaseTemplater.evaluateToVariable(urlTemplate, ScriptingLanguage.BEANSHELL, context);
             Variable methodVar = BaseTemplater.evaluateToVariable(methodTemplate, ScriptingLanguage.BEANSHELL, context);
 
-            String url = urlVar != null ? urlVar.toString() : urlTemplate;
-            String method = methodVar != null ? methodVar.toString() : methodTemplate;
+            String url = urlVar != null ? urlVar.toString(context.getCharset()) : urlTemplate;
+            String method = methodVar != null ? methodVar.toString(context.getCharset()) : methodTemplate;
 
             if (method == null) {
                 method = "GET";
@@ -293,7 +293,7 @@ public class HttpPlugin extends AbstractPlugin {
 
             String bodyTemplate = getConfiguration().getProperty("body", "");
             Variable bodyVar = BaseTemplater.evaluateToVariable(bodyTemplate, ScriptingLanguage.BEANSHELL, context);
-            String body = bodyVar != null ? bodyVar.toString() : bodyTemplate;
+            String body = bodyVar != null ? bodyVar.toString(context.getCharset()) : bodyTemplate;
 
             if (body == null) {
                 body = "";

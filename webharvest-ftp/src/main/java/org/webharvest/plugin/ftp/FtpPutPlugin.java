@@ -277,7 +277,7 @@ public class FtpPutPlugin extends AbstractPlugin {
             
             // Get file content from body
             String content = getBodyContent(context);
-            byte[] fileData = content.getBytes("UTF-8");
+            byte[] fileData = content.getBytes(context.getCharset());
             
             // Upload file
             ByteArrayInputStream inputStream = new ByteArrayInputStream(fileData);
@@ -314,7 +314,7 @@ public class FtpPutPlugin extends AbstractPlugin {
         if (bodyContent == null || bodyContent instanceof EmptyVariable) {
             return "";
         }
-        return bodyContent.toString();
+        return bodyContent.toString(context.getCharset());
     }
 }
 
