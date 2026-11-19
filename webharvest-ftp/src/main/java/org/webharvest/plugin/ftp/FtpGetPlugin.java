@@ -35,6 +35,7 @@ package org.webharvest.plugin.ftp;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.webharvest.plugin.AbstractPlugin;
@@ -286,7 +287,11 @@ public class FtpGetPlugin extends AbstractPlugin {
             byte[] fileData = outputStream.toByteArray();
             LOGGER.debug("FTP Get Plugin - Downloaded " + fileData.length + " bytes");
             
-            return new NodeVariable(new String(fileData));
+            String charset = context.getCharset();
+            if (charset == null || charset.trim().isEmpty()) {
+                charset = StandardCharsets.UTF_8.name();
+            }
+            return new NodeVariable(new String(fileData, charset));
             
         } catch (IOException e) {
             LOGGER.error("FTP Get Plugin - IOException", e);
