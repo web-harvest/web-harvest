@@ -37,6 +37,8 @@ import org.htmlunit.NicelyResynchronizingAjaxController;
 import org.htmlunit.WebClient;
 import org.htmlunit.html.HtmlPage;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -45,6 +47,10 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.events.SessionCancelledEvent;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
+import org.webharvest.runtime.session.events.SessionFailedEvent;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -52,7 +58,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -197,9 +205,131 @@ public class WebBrowserPlugin extends AbstractPlugin {
     private static final String WAIT_ATT_NAME = "wait";
     private static final String JAVASCRIPT_ENABLED_ATT_NAME = "javascript-enabled";
 
-    // Thread-safe storage for named pages (WebClient instances)
-    private static final Map<String, WebClient> namedPages = new ConcurrentHashMap<>();
-    private static WebClient defaultPage = null;
+    // Browser state belongs to one scraper session, never to the JVM globally.
+    private static final Map<String, BrowserSessionState> SESSION_PAGES = new ConcurrentHashMap<>();
+
+    // Compatibility for callers that construct a context without a ScraperSession.
+    // Weak keys avoid retaining those contexts after their execution is discarded.
+    private static final Map<DynamicScopeContext, BrowserSessionState> CONTEXT_PAGES =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    private static BrowserSessionState getBrowserSessionState(DynamicScopeContext context) {
+        if (context == null) {
+            throw new IllegalArgumentException("Execution context cannot be null");
+        }
+
+        ScraperSession session = context.getSession();
+        if (session == null || session.getSessionId() == null || session.getSessionId().trim().isEmpty()) {
+            synchronized (CONTEXT_PAGES) {
+                return CONTEXT_PAGES.computeIfAbsent(context, ignored -> new BrowserSessionState(null, null));
+            }
+        }
+
+        String sessionId = session.getSessionId();
+        BrowserSessionState state = SESSION_PAGES.computeIfAbsent(
+                sessionId, ignored -> new BrowserSessionState(sessionId, context.getEventBus()));
+        // Covers a terminal transition racing with state registration.
+        if (session.getStatus().isTerminal()) {
+            state.close();
+            // The terminal event may race with computeIfAbsent before its mapping is published.
+            SESSION_PAGES.remove(sessionId, state);
+        }
+        return state;
+    }
+
+    private static final class BrowserSessionState {
+        private final String sessionId;
+        private final EventBus eventBus;
+        private final Map<String, WebClient> namedPages = new ConcurrentHashMap<>();
+        private WebClient defaultPage;
+        private boolean closed;
+
+        private BrowserSessionState(String sessionId, EventBus eventBus) {
+            this.sessionId = sessionId;
+            this.eventBus = eventBus;
+            if (eventBus != null && sessionId != null) {
+                eventBus.register(this);
+            }
+        }
+
+        private synchronized WebClient get(String pageName) {
+            if (closed) {
+                return null;
+            }
+            return pageName != null && !pageName.isEmpty() ? namedPages.get(pageName) : defaultPage;
+        }
+
+        private synchronized void put(String pageName, WebClient client) {
+            if (closed) {
+                client.close();
+                return;
+            }
+            WebClient previous;
+            if (pageName != null && !pageName.isEmpty()) {
+                previous = namedPages.put(pageName, client);
+            } else {
+                previous = defaultPage;
+                defaultPage = client;
+            }
+            if (previous != null) {
+                previous.close();
+            }
+        }
+
+        private synchronized WebClient remove(String pageName) {
+            if (closed) {
+                return null;
+            }
+            if (pageName != null && !pageName.isEmpty()) {
+                return namedPages.remove(pageName);
+            }
+            WebClient previous = defaultPage;
+            defaultPage = null;
+            return previous;
+        }
+
+        private void close() {
+            synchronized (this) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+                if (defaultPage != null) {
+                    defaultPage.close();
+                    defaultPage = null;
+                }
+                for (WebClient client : namedPages.values()) {
+                    client.close();
+                }
+                namedPages.clear();
+            }
+            if (eventBus != null && sessionId != null) {
+                eventBus.unregister(this);
+                SESSION_PAGES.remove(sessionId, this);
+            }
+        }
+
+        @Subscribe
+        public void onSessionCompleted(SessionCompletedEvent event) {
+            if (sessionId != null && sessionId.equals(event.getSessionId())) {
+                close();
+            }
+        }
+
+        @Subscribe
+        public void onSessionFailed(SessionFailedEvent event) {
+            if (sessionId != null && sessionId.equals(event.getSessionId())) {
+                close();
+            }
+        }
+
+        @Subscribe
+        public void onSessionCancelled(SessionCancelledEvent event) {
+            if (sessionId != null && sessionId.equals(event.getSessionId())) {
+                close();
+            }
+        }
+    }
 
     private static final PluginMetadata METADATA = new PluginMetadata() {
         @Override
@@ -381,13 +511,13 @@ public class WebBrowserPlugin extends AbstractPlugin {
             throws PluginException, InterruptedException {
         
         if ("load".equalsIgnoreCase(action)) {
-            return handleLoad(url, pageName, waitTime, javascriptEnabled);
+            return handleLoad(url, pageName, waitTime, javascriptEnabled, context);
         } else if ("execute-script".equalsIgnoreCase(action)) {
             return handleExecuteScript(pageName, waitTime, context);
         } else if ("get-content".equalsIgnoreCase(action)) {
-            return handleGetContent(pageName);
+            return handleGetContent(pageName, context);
         } else if ("close".equalsIgnoreCase(action)) {
-            return handleClose(pageName);
+            return handleClose(pageName, context);
         } else {
             throw new PluginException("Unsupported WebBrowser action: " + action + 
                 ". Supported: load, execute-script, get-content, close");
@@ -399,8 +529,8 @@ public class WebBrowserPlugin extends AbstractPlugin {
      * 
      * <p>Bug #33 Fix: Uses HtmlUnit to fully execute JavaScript and wait for AJAX.</p>
      */
-    private Variable handleLoad(String url, String pageName, int waitTime, boolean javascriptEnabled) 
-            throws PluginException {
+    private Variable handleLoad(String url, String pageName, int waitTime, boolean javascriptEnabled,
+                                DynamicScopeContext context) throws PluginException {
         LOGGER.info("WebBrowser load: " + url + " (page: " + pageName + 
             ", wait: " + waitTime + "ms, js: " + javascriptEnabled + ")");
         
@@ -428,20 +558,10 @@ public class WebBrowserPlugin extends AbstractPlugin {
                 Thread.sleep(waitTime); // Additional wait for async operations
             }
             
-            // Store page for future reference
-            if (pageName != null && !pageName.isEmpty()) {
-                WebClient oldClient = namedPages.put(pageName, webClient);
-                if (oldClient != null) {
-                    oldClient.close();
-                }
-                LOGGER.debug("Stored page as: {}", pageName);
-            } else {
-                if (defaultPage != null) {
-                    defaultPage.close();
-                }
-                defaultPage = webClient;
-                LOGGER.debug("Stored as default page");
-            }
+            // Store page in the owning scraper session only.
+            getBrowserSessionState(context).put(pageName, webClient);
+            LOGGER.debug("Stored browser page in the current scraper session: {}",
+                    pageName != null && !pageName.isEmpty() ? pageName : "default");
             
             String content = page.asXml();
             LOGGER.debug("Page loaded successfully, content length: {} chars", content.length());
@@ -466,7 +586,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
         LOGGER.info("WebBrowser execute-script (page: {})", pageName);
         
         // Get WebClient
-        WebClient webClient = getWebClient(pageName);
+        WebClient webClient = getBrowserSessionState(context).get(pageName);
         if (webClient == null) {
             throw new PluginException("Page '" + (pageName != null ? pageName : "default") + 
                 "' not found. Use 'load' action first.");
@@ -511,10 +631,10 @@ public class WebBrowserPlugin extends AbstractPlugin {
      * 
      * <p>Bug #33 Fix: Returns fully rendered HTML after all dynamic content loaded.</p>
      */
-    private Variable handleGetContent(String pageName) throws PluginException {
+    private Variable handleGetContent(String pageName, DynamicScopeContext context) throws PluginException {
         LOGGER.info("WebBrowser get-content (page: {})", pageName);
         
-        WebClient webClient = getWebClient(pageName);
+        WebClient webClient = getBrowserSessionState(context).get(pageName);
         if (webClient == null) {
             throw new PluginException("Page '" + (pageName != null ? pageName : "default") + 
                 "' not found. Use 'load' action first.");
@@ -536,37 +656,21 @@ public class WebBrowserPlugin extends AbstractPlugin {
     /**
      * Close browser instance.
      */
-    private Variable handleClose(String pageName) throws PluginException {
+    private Variable handleClose(String pageName, DynamicScopeContext context) throws PluginException {
         LOGGER.info("WebBrowser close (page: {})", pageName);
         
-        WebClient webClient = getWebClient(pageName);
+        BrowserSessionState state = getBrowserSessionState(context);
+        WebClient webClient = state.remove(pageName);
         if (webClient != null) {
             webClient.close();
-            
-            if (pageName != null && !pageName.isEmpty()) {
-                namedPages.remove(pageName);
-                LOGGER.debug("Closed and removed page: {}", pageName);
-            } else {
-                defaultPage = null;
-                LOGGER.debug("Closed default page");
-            }
+            LOGGER.debug("Closed browser page in the current scraper session: {}",
+                    pageName != null && !pageName.isEmpty() ? pageName : "default");
         } else {
             LOGGER.warn("Page '{}' not found, nothing to close", 
                 pageName != null ? pageName : "default");
         }
         
         return EmptyVariable.INSTANCE;
-    }
-
-    /**
-     * Get WebClient for specified page name.
-     */
-    private WebClient getWebClient(String pageName) {
-        if (pageName != null && !pageName.isEmpty()) {
-            return namedPages.get(pageName);
-        } else {
-            return defaultPage;
-        }
     }
 
     /**
@@ -608,18 +712,18 @@ public class WebBrowserPlugin extends AbstractPlugin {
      * Cleanup method - close all open browsers.
      */
     public static void closeAllPages() {
-        LOGGER.info("Closing all WebBrowser pages");
-        
-        if (defaultPage != null) {
-            defaultPage.close();
-            defaultPage = null;
+        LOGGER.info("Closing all WebBrowser pages (explicit global shutdown)");
+        for (BrowserSessionState state : SESSION_PAGES.values()) {
+            state.close();
         }
-        
-        for (WebClient client : namedPages.values()) {
-            client.close();
+        SESSION_PAGES.clear();
+
+        synchronized (CONTEXT_PAGES) {
+            for (BrowserSessionState state : CONTEXT_PAGES.values()) {
+                state.close();
+            }
+            CONTEXT_PAGES.clear();
         }
-        namedPages.clear();
-        
         LOGGER.info("All WebBrowser pages closed");
     }
 }

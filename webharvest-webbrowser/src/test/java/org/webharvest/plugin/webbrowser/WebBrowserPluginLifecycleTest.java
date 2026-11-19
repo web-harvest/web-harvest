@@ -6,10 +6,13 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import com.google.common.eventbus.EventBus;
+import org.webharvest.definition.Config;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.variables.Variable;
 
 import java.io.IOException;
@@ -19,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
 
 /**
@@ -50,6 +54,10 @@ public class WebBrowserPluginLifecycleTest {
             exchange.close();
         });
         server.createContext("/missing", exchange -> respond(exchange, 404, "missing"));
+        server.createContext("/session-a", exchange -> respond(exchange, 200,
+                "<html><head><title>session-a</title></head><body>A</body></html>"));
+        server.createContext("/session-b", exchange -> respond(exchange, 200,
+                "<html><head><title>session-b</title></head><body>B</body></html>"));
         server.start();
         baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
     }
@@ -151,6 +159,71 @@ public class WebBrowserPluginLifecycleTest {
         execute("close", null, null, true, 0, null);
     }
 
+    @Test
+    public void browserPagesAreIsolatedAndCleanedUpPerSession() throws Exception {
+        EventBus eventBus = new EventBus();
+        ScraperSessionImpl sessionA =
+                new ScraperSessionImpl("webbrowser-session-a", null, mock(Config.class), eventBus);
+        ScraperSessionImpl sessionB =
+                new ScraperSessionImpl("webbrowser-session-b", null, mock(Config.class), eventBus);
+        DynamicScopeContext contextA = new ScraperContext();
+        DynamicScopeContext contextB = new ScraperContext();
+        contextA.setEventBus(eventBus);
+        contextA.setSession(sessionA);
+        contextB.setEventBus(eventBus);
+        contextB.setSession(sessionB);
+        sessionA.markRunning(contextA);
+        sessionB.markRunning(contextB);
+
+        try {
+            execute(contextA, "load", "main", baseUrl + "/session-a", false, 0, null);
+            execute(contextB, "load", "main", baseUrl + "/session-b", false, 0, null);
+            assertTrue(execute(contextA, "get-content", "main", null, false, 0, null)
+                    .toString().contains("<title>session-a</title>"));
+            assertTrue(execute(contextB, "get-content", "main", null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+
+            execute(contextA, "close", "main", null, false, 0, null);
+            expectRuntimeException(
+                    () -> execute(contextA, "get-content", "main", null, false, 0, null));
+            assertTrue(execute(contextB, "get-content", "main", null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+
+            // Default pages must be isolated by the same session boundary.
+            execute(contextA, "load", null, baseUrl + "/session-a", false, 0, null);
+            execute(contextB, "load", null, baseUrl + "/session-b", false, 0, null);
+            assertTrue(execute(contextA, "get-content", null, null, false, 0, null)
+                    .toString().contains("<title>session-a</title>"));
+            assertTrue(execute(contextB, "get-content", null, null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+
+            execute(contextA, "close", null, null, false, 0, null);
+            expectRuntimeException(
+                    () -> execute(contextA, "get-content", null, null, false, 0, null));
+            assertTrue(execute(contextB, "get-content", null, null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+
+            // A terminal event closes every browser owned by A, but leaves B untouched.
+            execute(contextA, "load", null, baseUrl + "/session-a", false, 0, null);
+            sessionA.markCompleted();
+            expectRuntimeException(
+                    () -> execute(contextA, "get-content", "main", null, false, 0, null));
+            expectRuntimeException(
+                    () -> execute(contextA, "get-content", null, null, false, 0, null));
+            assertTrue(execute(contextB, "get-content", "main", null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+            assertTrue(execute(contextB, "get-content", null, null, false, 0, null)
+                    .toString().contains("<title>session-b</title>"));
+        } finally {
+            if (!sessionA.getStatus().isTerminal()) {
+                sessionA.markFailed(new RuntimeException("Test cleanup"));
+            }
+            if (!sessionB.getStatus().isTerminal()) {
+                sessionB.markFailed(new RuntimeException("Test cleanup"));
+            }
+        }
+    }
+
     private RuntimeException expectRuntimeException(ThrowingRunnable action) {
         try {
             action.run();
@@ -168,6 +241,17 @@ public class WebBrowserPluginLifecycleTest {
     }
 
     private Variable execute(
+            String action,
+            String page,
+            String url,
+            boolean javascriptEnabled,
+            int wait,
+            String script) throws Exception {
+        return execute(context, action, page, url, javascriptEnabled, wait, script);
+    }
+
+    private Variable execute(
+            DynamicScopeContext executionContext,
             String action,
             String page,
             String url,
@@ -195,7 +279,7 @@ public class WebBrowserPluginLifecycleTest {
 
         WebBrowserPlugin plugin = new WebBrowserPlugin();
         plugin.initialize(configuration);
-        return plugin.execute(context);
+        return plugin.execute(executionContext);
     }
 
     private static void respond(
