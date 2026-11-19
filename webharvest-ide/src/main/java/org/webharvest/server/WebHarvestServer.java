@@ -1,9 +1,12 @@
 package org.webharvest.server;
 
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
+import jakarta.servlet.DispatcherType;
+import org.webharvest.server.security.LocalOriginGuardFilter;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
@@ -19,6 +22,9 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.URI;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.EnumSet;
 
 /**
  * WebHarvest IDE - Embedded Jetty Server
@@ -49,7 +55,7 @@ public class WebHarvestServer {
         LOG.info("Java version: {}", System.getProperty("java.version"));
         LOG.info("Working directory: {}", System.getProperty("user.dir"));
         
-        server = new Server(port);
+        server = createLoopbackServer(port);
         
         // Single ServletContextHandler for everything
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -75,6 +81,12 @@ public class WebHarvestServer {
         context.setBaseResource(webappResource);
         LOG.info("Base resource set to: {}", webappResource.toString());
         
+        // Only the local browser origin may reach privileged APIs and WebSockets.
+        context.addFilter(new FilterHolder(new LocalOriginGuardFilter()), "/api/*",
+                EnumSet.of(DispatcherType.REQUEST));
+        context.addFilter(new FilterHolder(new LocalOriginGuardFilter()), "/ws/*",
+                EnumSet.of(DispatcherType.REQUEST));
+
         // 1. REST API servlets
         context.addServlet(new ServletHolder(new ConfigServlet()), "/api/config/*");
         context.addServlet(new ServletHolder(new ExecutionServlet()), "/api/execute/*");
@@ -98,7 +110,7 @@ public class WebHarvestServer {
         
         // 3. Default servlet for static files (MUST BE LAST!)
         ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-        defaultServlet.setInitParameter("dirAllowed", "true");
+        defaultServlet.setInitParameter("dirAllowed", "false");
         defaultServlet.setInitParameter("pathInfoOnly", "false");
         defaultServlet.setInitParameter("welcomeServlets", "true");
         
@@ -127,7 +139,7 @@ public class WebHarvestServer {
         // Start server
         server.start();
         LOG.info("WebHarvest IDE started successfully!");
-        LOG.info("Open in browser: http://localhost:{}", port);
+        LOG.info("Open in browser: http://127.0.0.1:{}", port);
         
         // Auto-open browser
         openBrowser();
@@ -147,19 +159,29 @@ public class WebHarvestServer {
     private void openBrowser() {
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI("http://localhost:" + port));
+                Desktop.getDesktop().browse(new URI("http://127.0.0.1:" + port));
                 LOG.info("Browser opened automatically");
             } else {
-                LOG.info("Please open http://localhost:{} in your browser", port);
+                LOG.info("Please open http://127.0.0.1:{} in your browser", port);
             }
         } catch (Exception e) {
             LOG.warn("Could not auto-open browser: {}", e.getMessage());
-            LOG.info("Please open http://localhost:{} manually", port);
+            LOG.info("Please open http://127.0.0.1:{} manually", port);
         }
     }
     
+    static Server createLoopbackServer(int port) {
+        Server localServer = new Server();
+        ServerConnector connector = new ServerConnector(localServer);
+        connector.setHost("127.0.0.1");
+        connector.setPort(port);
+        localServer.addConnector(connector);
+        return localServer;
+    }
+
     private static boolean isPortAvailable(int port) {
-        try (ServerSocket socket = new ServerSocket(port)) {
+        try (ServerSocket socket = new ServerSocket()) {
+            socket.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
             return true;
         } catch (IOException e) {
             return false;
