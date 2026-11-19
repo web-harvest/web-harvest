@@ -17,6 +17,8 @@ import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 
 import java.awt.Desktop;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.URI;
 
@@ -49,7 +51,7 @@ public class WebHarvestServer {
         LOG.info("Java version: {}", System.getProperty("java.version"));
         LOG.info("Working directory: {}", System.getProperty("user.dir"));
         
-        server = new Server(port);
+        server = createServer(port);
         
         // Single ServletContextHandler for everything
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -97,16 +99,7 @@ public class WebHarvestServer {
         LOG.info("WebSocket servlets configured: /ws/execution/*, /ws/visual/model/*");
         
         // 3. Default servlet for static files (MUST BE LAST!)
-        ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-        defaultServlet.setInitParameter("dirAllowed", "true");
-        defaultServlet.setInitParameter("pathInfoOnly", "false");
-        defaultServlet.setInitParameter("welcomeServlets", "true");
-        
-        // DEVELOPMENT MODE: Disable browser caching for static files
-        defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
-        defaultServlet.setInitParameter("useFileMappedBuffer", "false");
-        defaultServlet.setInitParameter("etags", "false");
-        
+        ServletHolder defaultServlet = createDefaultServlet();
         context.addServlet(defaultServlet, "/");
         LOG.info("Default servlet configured for static files (cache DISABLED for development)");
         
@@ -144,6 +137,25 @@ public class WebHarvestServer {
         LOG.info("[DEBUG] After server.join()");
     }
     
+    /**
+     * Creates the IDE listener bound only to the local machine.
+     * The IDE execution API is intentionally not exposed to the network.
+     */
+    static Server createServer(int port) {
+        return new Server(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
+    }
+
+    static ServletHolder createDefaultServlet() {
+        ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
+        defaultServlet.setInitParameter("dirAllowed", "false");
+        defaultServlet.setInitParameter("pathInfoOnly", "false");
+        defaultServlet.setInitParameter("welcomeServlets", "true");
+        defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
+        defaultServlet.setInitParameter("useFileMappedBuffer", "false");
+        defaultServlet.setInitParameter("etags", "false");
+        return defaultServlet;
+    }
+
     private void openBrowser() {
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
