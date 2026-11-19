@@ -85,9 +85,15 @@ public class ExecutionServlet extends HttpServlet {
         }
     }
     
-    private void startExecution(HttpServletRequest req, HttpServletResponse resp) 
+    private void startExecution(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
-        
+
+        if (!isJsonContentType(req.getContentType())) {
+            resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
+                    "Content-Type must be application/json");
+            return;
+        }
+
         try {
             // Read request body
             String requestBody = req.getReader().lines()
@@ -210,7 +216,15 @@ public class ExecutionServlet extends HttpServlet {
         sendJsonResponse(resp, HttpServletResponse.SC_OK, response);
     }
     
-    private void sendJsonResponse(HttpServletResponse resp, int status, JsonObject data) 
+    private boolean isJsonContentType(String contentType) {
+        if (contentType == null) {
+            return false;
+        }
+        String mediaType = contentType.split(";", 2)[0].trim();
+        return "application/json".equalsIgnoreCase(mediaType);
+    }
+
+    private void sendJsonResponse(HttpServletResponse resp, int status, JsonObject data)
             throws IOException {
         
         resp.setStatus(status);
