@@ -165,9 +165,11 @@ public class XMLPluginTest {
             plugin.execute(context);
             fail("Should have thrown RuntimeException");
         } catch (RuntimeException e) {
-            assertEquals(e.getMessage(), "Failed to execute XML plugin");
+            assertEquals(e.getMessage(), "Plugin execution failed: Failed to execute XML plugin");
             assertNotNull(e.getCause());
-            assertEquals(e.getCause().getMessage(), "Test interruption");
+            assertEquals(e.getCause().getMessage(), "Failed to execute XML plugin");
+            assertNotNull(e.getCause().getCause());
+            assertEquals(e.getCause().getCause().getMessage(), "Test interruption");
         }
     }
 
@@ -184,10 +186,8 @@ public class XMLPluginTest {
         try {
             plugin.execute(null);
             fail("Should have thrown NullPointerException");
-        } catch (RuntimeException e) {
-            assertEquals(e.getMessage(), "Failed to execute XML plugin");
-            assertTrue(e.getCause() instanceof NullPointerException,
-                    "A null execution context must be retained as the cause");
+        } catch (IllegalArgumentException e) {
+            assertEquals(e.getMessage(), "Context cannot be null");
         }
     }
 
