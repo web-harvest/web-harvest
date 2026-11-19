@@ -167,7 +167,7 @@ public class ScriptVsGetVariableTest extends ScraperTestBase {
         try {
             Variable result = executeAndGetVariable(config, "wrong");
             assertNotNull(result, "A successful script evaluation must return a result");
-            assertNotEquals(result.toString(), "Test Value",
+            assertFalse("Test Value".equals(result.toString()),
                     "The script plugin must execute code, not retrieve the <def> variable");
         } catch (Exception e) {
             // Providers may report an unresolved script identifier with different wording.
