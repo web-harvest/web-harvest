@@ -27,12 +27,17 @@ import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.CorePluginRegistry;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.ioc.ScraperModule;
+import org.webharvest.plugin.scanner.PluginPackageScanner;
+import org.webharvest.plugin.zip.ZipEntryPlugin;
+import org.webharvest.plugin.zip.ZipPlugin;
 import org.webharvest.plugin.zip.ZipPluginRegistrar;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -62,6 +67,27 @@ public class ZipPluginIntegrationTest {
         CorePluginsRegistrar.registerCorePlugins();
         injector = null;
         harvest = null;
+    }
+
+    /**
+     * Verifies that the generic package scanner discovers the real optional ZIP module
+     * only when explicitly invoked, without adding it to the default Core registry.
+     */
+    @Test(groups = {"integration", "zip"})
+    public void discoversOptionalZipPluginsThroughGenericPackageScanner() {
+        CorePluginsRegistrar.reset();
+        CorePluginsRegistrar.registerCorePlugins();
+
+        assertFalse(CorePluginRegistry.getInstance().isPluginRegistered("zip"),
+                "Optional ZIP plugins must not be part of the default Core registry");
+        assertFalse(CorePluginRegistry.getInstance().isPluginRegistered("zip-entry"),
+                "Optional ZIP plugins must not be part of the default Core registry");
+
+        new PluginPackageScanner(CorePluginRegistry.getInstance())
+                .scanPackages("org.webharvest.plugin.zip");
+
+        assertSame(CorePluginRegistry.getInstance().getPluginClass("zip"), ZipPlugin.class);
+        assertSame(CorePluginRegistry.getInstance().getPluginClass("zip-entry"), ZipEntryPlugin.class);
     }
 
     /** Verifies real archive contents and nested ZIP scope restoration. */
