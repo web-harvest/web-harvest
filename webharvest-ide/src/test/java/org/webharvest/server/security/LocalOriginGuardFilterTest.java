@@ -32,6 +32,7 @@ public class LocalOriginGuardFilterTest {
         assertFalse(LocalOriginGuardFilter.isLoopbackHost("attacker.example:8080", 8080));
         assertFalse(LocalOriginGuardFilter.isLoopbackHost("localhost:8081", 8080));
         assertFalse(LocalOriginGuardFilter.isLoopbackHost("localhost.evil.example:8080", 8080));
+        assertFalse(LocalOriginGuardFilter.isLoopbackHost("https://localhost:8080", 8080));
         assertFalse(LocalOriginGuardFilter.isSameLocalOrigin(
                 "http://attacker.example:8080", "localhost:8080", 8080));
         assertFalse(LocalOriginGuardFilter.isSameLocalOrigin(
