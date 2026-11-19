@@ -1,0 +1,60 @@
+name: Logging Dependency Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "**/pom.xml"
+      - ".github/workflows/logging-dependency-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pom.xml"
+      - "**/pom.xml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: logging-dependency-audit-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-tree:
+    name: Resolve logging dependencies across Maven reactor
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Resolve and record logging dependency trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target
+          mvn --batch-mode --no-transfer-progress \
+            -DskipTests \
+            -Dverbose \
+            -Dincludes='org.slf4j:*,log4j:log4j,org.apache.logging.log4j:*' \
+            org.apache.maven.plugins:maven-dependency-plugin:3.11.0:tree \
+            2>&1 | tee target/logging-dependency-tree.txt
+
+      - name: Upload resolved dependency tree
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logging-dependency-tree
+          path: target/logging-dependency-tree.txt
+          if-no-files-found: error
+          retention-days: 30
