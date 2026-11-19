@@ -226,7 +226,6 @@ public class ConfigServlet extends HttpServlet {
         resp.setStatus(status);
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        resp.setHeader("Access-Control-Allow-Origin", "*");
         resp.getWriter().write(gson.toJson(data));
     }
 }
