@@ -48,6 +48,8 @@ import org.slf4j.LoggerFactory;
 
 public class XmlNode implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public static final XmlNode NULL = new XmlNode(null, "*", null, null);
 
     protected static final Logger log = LoggerFactory.getLogger(XmlNode.class);
@@ -77,7 +79,7 @@ public class XmlNode implements Serializable {
     private StringBuilder textBuff = new StringBuilder();
 
     // text buffer containing continuous text
-    private transient StringBuilder tmpBuf = new StringBuilder();
+    private StringBuilder tmpBuf = new StringBuilder();
 
     // location of element in the XML
     private int lineNumber;
