@@ -89,7 +89,7 @@ public class XmlNodeContractTest {
         assertEquals(restoredChild.getText(), "child text");
         restoredChild.addElement(" next");
         restoredChild.flushText();
-        assertEquals(restoredChild.getText(), "child text next");
+        assertEquals(restoredChild.getText(), "child text\\nnext");
 
         restored.addElement("\nafter");
         restored.flushText();
