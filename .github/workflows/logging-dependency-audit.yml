@@ -51,7 +51,7 @@ jobs:
             org.apache.maven.plugins:maven-dependency-plugin:3.11.0:tree \
             2>&1 | tee target/logging-dependency-tree.txt
 
-          if grep -E 'org\\.slf4j:slf4j-log4j12:|log4j:log4j:|ch\\.qos\\.reload4j:reload4j:|org\\.slf4j:log4j-over-slf4j:' target/logging-dependency-tree.txt; then
+          if grep -E 'org\.slf4j:slf4j-log4j12:|log4j:log4j:|ch\.qos\.reload4j:reload4j:|org\.slf4j:log4j-over-slf4j:' target/logging-dependency-tree.txt; then
             echo "Legacy Log4j 1 implementation/binding found in resolved dependencies."
             exit 1
           fi
@@ -94,13 +94,14 @@ jobs:
             provider_count=$((slf4j1_binder + slf4j2_providers))
             plugin_cache="$(printf '%s\n' "$entries" | grep -cxF 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat' || true)"
             log4j1_logger="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Logger.class' || true)"
+            legacy_hierarchy="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Hierarchy.class' || true)"
+            legacy_properties="$(printf '%s\n' "$entries" | grep -Ec '^log4j\.(properties|xml)$' || true)"
             log4j2_core="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/logging/log4j/core/LoggerContext.class' || true)"
+            log4j2_xml="$(printf '%s\n' "$entries" | grep -cxF 'log4j2.xml' || true)"
             multi_release="false"
             if unzip -p "$jar" META-INF/MANIFEST.MF | grep -Eiq '^Multi-Release:[[:space:]]*true'; then
               multi_release="true"
             fi
-            legacy_hierarchy="$(printf '%s\\n' "$entries" | grep -cxF 'org/apache/log4j/Hierarchy.class' || true)"
-            legacy_properties="$(printf '%s\\n' "$entries" | grep -Ec '^log4j\\.(properties|xml)
 
             {
               echo "## $jar"
@@ -115,7 +116,7 @@ jobs:
               echo "Log4j 2 XML configuration resources: $log4j2_xml"
               echo "Multi-Release manifest: $multi_release"
               echo "Relevant archive entries:"
-              printf '%s\n' "$entries" | grep -E '(^org/slf4j/impl/StaticLoggerBinder.class$|^META-INF/services/org.slf4j.spi.SLF4JServiceProvider$|^META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat$|^org/apache/log4j/Logger.class$|^org/apache/logging/log4j/core/LoggerContext.class$)' || true
+              printf '%s\n' "$entries" | grep -E '(^org/slf4j/impl/StaticLoggerBinder.class$|^META-INF/services/org.slf4j.spi.SLF4JServiceProvider$|^META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat$|^org/apache/log4j/(Logger|Hierarchy).class$|^org/apache/logging/log4j/core/LoggerContext.class$|^log4j2.xml$)' || true
               echo
             } | tee -a "$report"
 
@@ -125,38 +126,6 @@ jobs:
             fi
             if [ "$plugin_cache" -ne 1 ] || [ "$log4j2_core" -ne 1 ] || [ "$multi_release" != "true" ] || [ "$legacy_hierarchy" -ne 0 ] || [ "$legacy_properties" -ne 0 ]; then
               echo "Log4j 2 shaded package metadata checks failed for $jar" | tee -a "$report"
-              exit 1
-            fi
-          done
-
-      - name: Upload resolved dependency and package inspection reports
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: logging-dependency-and-package-audit
-          path: |
-            target/logging-dependency-tree.txt
-            target/logging-package-inspection.txt
-          if-no-files-found: error
-          retention-days: 30
- || true)"
-            log4j2_xml="$(printf '%s\\n' "$entries" | grep -cxF 'log4j2.xml' || true)"
-
-            {
-              echo "## $jar"
-              echo "SLF4J 1 StaticLoggerBinder entries: $slf4j1_binder"
-              echo "SLF4J 2 provider implementations: $slf4j2_providers"
-              echo "Total SLF4J provider implementations: $provider_count"
-              echo "Log4j 2 plugin-cache entries: $plugin_cache"
-              echo "Log4j 1 Logger.class entries: $log4j1_logger"
-              echo "Log4j 2 LoggerContext.class entries: $log4j2_core"
-              echo "Multi-Release manifest: $multi_release"
-              echo "Relevant archive entries:"
-              printf '%s\n' "$entries" | grep -E '(^org/slf4j/impl/StaticLoggerBinder.class$|^META-INF/services/org.slf4j.spi.SLF4JServiceProvider$|^META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat$|^org/apache/log4j/Logger.class$|^org/apache/logging/log4j/core/LoggerContext.class$)' || true
-              echo
-            } | tee -a "$report"
-
-            if [ "$provider_count" -ne 1 ]; then
-              echo "Expected exactly one SLF4J provider in $jar, found $provider_count" | tee -a "$report"
               exit 1
             fi
           done
