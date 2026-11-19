@@ -41,16 +41,21 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.FileAppender;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.PatternLayout;
-import org.apache.log4j.PropertyConfigurator;
 import org.webharvest.definition.ConfigSource;
 import org.webharvest.definition.ConfigSourceFactory;
 import org.webharvest.HarvestLoadCallback;
@@ -71,6 +76,12 @@ import com.google.inject.Injector;
  * Provides command line execution capabilities for WebHarvest scraping configurations.
  */
 public class WebHarvestCLI {
+
+    private static final String DEBUG_FILE_APPENDER_NAME = "webharvestDebugFileAppender";
+
+    static {
+        System.setProperty("log4j1.compatibility", "true");
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(WebHarvestCLI.class);
 
@@ -167,12 +178,35 @@ public class WebHarvestCLI {
     private static void parseDebugModeSettings(final Map<String, String> params,
             final String workingDir) throws IOException {
         if (CommonUtil.isBooleanTrue(params.get("debug"))) {
-            final org.apache.log4j.Logger logger = LogManager.getLogger(DebugFileLogger.NAME);
-            logger.setLevel(Level.TRACE);
-            logger.addAppender(new FileAppender(
-                    new PatternLayout(DebugFileLogger.LAYOUT),
-                    new File(workingDir, "_DEBUG").getPath(),
-                    false));
+            final LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+            final Configuration configuration = loggerContext.getConfiguration();
+            LoggerConfig loggerConfig = configuration.getLoggerConfig(DebugFileLogger.NAME);
+
+            if (!DebugFileLogger.NAME.equals(loggerConfig.getName())) {
+                loggerConfig = new LoggerConfig(DebugFileLogger.NAME, Level.TRACE, true);
+                configuration.addLogger(DebugFileLogger.NAME, loggerConfig);
+            } else {
+                loggerConfig.setLevel(Level.TRACE);
+            }
+
+            final Appender previousAppender = loggerConfig.getAppenders().get(DEBUG_FILE_APPENDER_NAME);
+            if (previousAppender != null) {
+                loggerConfig.removeAppender(DEBUG_FILE_APPENDER_NAME);
+                previousAppender.stop();
+            }
+
+            final FileAppender debugAppender = FileAppender.newBuilder()
+                    .setName(DEBUG_FILE_APPENDER_NAME)
+                    .withFileName(new File(workingDir, "_DEBUG").getPath())
+                    .withAppend(false)
+                    .setLayout(PatternLayout.newBuilder()
+                            .withPattern(DebugFileLogger.LAYOUT)
+                            .build())
+                    .setConfiguration(configuration)
+                    .build();
+            debugAppender.start();
+            loggerConfig.addAppender(debugAppender, Level.TRACE, null);
+            loggerContext.updateLoggers();
         }
     }
 
@@ -180,9 +214,20 @@ public class WebHarvestCLI {
         final String logPropsFile = params.get("logpropsfile");
         final String logLevel = params.get("loglevel");
         if (logPropsFile != null && !"".equals(logPropsFile)) {
-            PropertyConfigurator.configure(logPropsFile);
+            configureLegacyLogProperties(logPropsFile);
         } else if (logLevel != null && !"".equals(logLevel)) {
-            LogManager.getRootLogger().setLevel(Level.toLevel(logLevel));
+            Level level = Level.getLevel(logLevel.toUpperCase(Locale.ROOT));
+            Configurator.setRootLevel(level == null ? Level.DEBUG : level);
+        }
+    }
+
+    private static void configureLegacyLogProperties(final String logPropsFile) {
+        try {
+            Class<?> configuratorClass = Class.forName("org.apache.log4j.PropertyConfigurator");
+            configuratorClass.getMethod("configure", String.class).invoke(null, logPropsFile);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to configure legacy Log4j properties file: "
+                    + logPropsFile, e);
         }
     }
 

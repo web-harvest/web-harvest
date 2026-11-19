@@ -251,7 +251,7 @@ public class CommandLineParser {
         
         opts.addOption(Option.builder().longOpt("logpropsfile")
                 .hasArg().argName("FILE")
-                .desc("Custom Log4J properties file")
+                .desc("Legacy Log4j 1 properties file (compatibility mode; overrides --loglevel)")
                 .build());
         
         opts.addOption(Option.builder().longOpt("proxyhost")
