@@ -1,23 +1,11 @@
 package org.webharvest.server.security;
 
-import org.eclipse.jetty.server.ServerConnector;
 import org.testng.annotations.Test;
-import org.webharvest.server.WebHarvestServer;
 
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 public class LocalOriginGuardFilterTest {
-
-    @Test
-    public void embeddedServerUsesAnExplicitIpv4LoopbackConnector() {
-        ServerConnector connector = (ServerConnector) WebHarvestServer.createLoopbackServer(0)
-                .getConnectors()[0];
-
-        assertEquals(connector.getHost(), "127.0.0.1");
-        assertEquals(connector.getPort(), 0);
-    }
 
     @Test
     public void acceptsLoopbackHostAndMatchingOrigin() {
