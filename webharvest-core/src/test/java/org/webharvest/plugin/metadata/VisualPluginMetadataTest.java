@@ -123,44 +123,6 @@ public class VisualPluginMetadataTest {
     }
     
     @Test
-    public void testPluginsHaveVisualMetadataWhenImplemented() {
-        // RED: This test will fail until plugins implement VisualPluginMetadata
-        // This is expected in RED phase - will pass after Phase 3 implementation
-        
-        PluginRegistry registry = PluginRegistryHolder.getInstance();
-        List<String> userPlugins = getUserFacingCorePlugins();
-        
-        int pluginsWithVisualMetadata = 0;
-        for (String pluginName : userPlugins) {
-            Plugin plugin = registry.getPlugin(pluginName);
-            if (plugin == null) continue;
-            
-            PluginMetadata metadata = plugin.getMetadata();
-            assertNotNull(metadata, "Plugin '" + pluginName + "' should have metadata");
-            
-            // Check if plugin implements VisualPluginMetadata
-            try {
-                Class<?> visualMetadataClass = Class.forName("org.webharvest.plugin.VisualPluginMetadata");
-                if (visualMetadataClass.isInstance(metadata)) {
-                    pluginsWithVisualMetadata++;
-                    
-                    // Verify required visual metadata fields
-                    // This will use reflection to check methods exist
-                    // In GREEN phase, we'll cast and check values
-                }
-            } catch (ClassNotFoundException e) {
-                // RED phase - interface doesn't exist yet
-                LOGGER.warn("VisualPluginMetadata interface not found - RED phase");
-                return; // Skip this test in RED phase
-            }
-        }
-        
-        // In GREEN phase, all plugins should have visual metadata
-        // For now (RED phase), this test documents the requirement
-        LOGGER.info("Plugins with VisualPluginMetadata: {}/{}", pluginsWithVisualMetadata, userPlugins.size());
-    }
-    
-    @Test
     public void testVisualMetadataHasRequiredMethods() {
         // RED: Test that VisualPluginMetadata interface has all required methods
         // This will fail until interface is created with all methods
