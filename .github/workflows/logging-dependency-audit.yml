@@ -94,7 +94,7 @@ jobs:
             provider_count=$((slf4j1_binder + slf4j2_providers))
             plugin_cache="$(printf '%s\n' "$entries" | grep -cxF 'META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat' || true)"
             log4j1_logger="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Logger.class' || true)"
-            legacy_hierarchy="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Hierarchy.class' || true)"
+            bridge_hierarchy="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/log4j/Hierarchy.class' || true)"
             legacy_properties="$(printf '%s\n' "$entries" | grep -Ec '^log4j\.(properties|xml)$' || true)"
             log4j2_core="$(printf '%s\n' "$entries" | grep -cxF 'org/apache/logging/log4j/core/LoggerContext.class' || true)"
             log4j2_xml="$(printf '%s\n' "$entries" | grep -cxF 'log4j2.xml' || true)"
@@ -110,7 +110,7 @@ jobs:
               echo "Total SLF4J provider implementations: $provider_count"
               echo "Log4j 2 plugin-cache entries: $plugin_cache"
               echo "org.apache.log4j.Logger compatibility class entries: $log4j1_logger"
-              echo "Legacy Log4j 1 backend Hierarchy.class entries: $legacy_hierarchy"
+              echo "Log4j 1.2 API bridge Hierarchy.class entries: $bridge_hierarchy"
               echo "Legacy Log4j 1 configuration resources: $legacy_properties"
               echo "Log4j 2 LoggerContext.class entries: $log4j2_core"
               echo "Log4j 2 XML configuration resources: $log4j2_xml"
@@ -124,8 +124,17 @@ jobs:
               echo "Expected exactly one SLF4J 2 provider and no SLF4J 1 binder in $jar" | tee -a "$report"
               exit 1
             fi
-            if [ "$plugin_cache" -ne 1 ] || [ "$log4j2_core" -ne 1 ] || [ "$multi_release" != "true" ] || [ "$legacy_hierarchy" -ne 0 ] || [ "$legacy_properties" -ne 0 ]; then
+            if [ "$plugin_cache" -ne 1 ] || [ "$log4j2_core" -ne 1 ] || [ "$multi_release" != "true" ] || [ "$legacy_properties" -ne 0 ]; then
               echo "Log4j 2 shaded package metadata checks failed for $jar" | tee -a "$report"
+              exit 1
+            fi
+            if [[ "$jar" == *webharvest-cli* ]]; then
+              if [ "$log4j1_logger" -ne 1 ] || [ "$bridge_hierarchy" -ne 1 ]; then
+                echo "CLI must contain the Log4j 1.2 API bridge classes for legacy logpropsfile only" | tee -a "$report"
+                exit 1
+              fi
+            elif [ "$log4j1_logger" -ne 0 ] || [ "$bridge_hierarchy" -ne 0 ]; then
+              echo "IDE must not contain the CLI-only Log4j 1.2 API bridge" | tee -a "$report"
               exit 1
             fi
           done
