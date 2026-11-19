@@ -19,7 +19,6 @@ import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.URI;
 
