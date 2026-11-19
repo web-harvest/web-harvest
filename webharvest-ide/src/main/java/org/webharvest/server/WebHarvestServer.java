@@ -203,7 +203,7 @@ public class WebHarvestServer {
             LOG.error("Port {} is already in use!", port);
             LOG.info("Trying to open existing instance...");
             try {
-                Desktop.getDesktop().browse(new URI("http://localhost:" + port));
+                Desktop.getDesktop().browse(new URI(browserUrl(port)));
                 System.exit(0);
             } catch (Exception e) {
                 LOG.error("Port {} is in use but could not open browser", port);
