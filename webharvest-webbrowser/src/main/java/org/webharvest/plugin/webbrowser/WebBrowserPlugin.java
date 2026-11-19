@@ -37,6 +37,8 @@ import org.htmlunit.NicelyResynchronizingAjaxController;
 import org.htmlunit.WebClient;
 import org.htmlunit.html.HtmlPage;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -49,8 +51,6 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.events.SessionCancelledEvent;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionFailedEvent;
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -231,6 +231,8 @@ public class WebBrowserPlugin extends AbstractPlugin {
         // Covers a terminal transition racing with state registration.
         if (session.getStatus().isTerminal()) {
             state.close();
+            // The terminal event may race with computeIfAbsent before its mapping is published.
+            SESSION_PAGES.remove(sessionId, state);
         }
         return state;
     }
