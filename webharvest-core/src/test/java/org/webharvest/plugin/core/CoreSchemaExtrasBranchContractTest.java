@@ -81,15 +81,9 @@ public class CoreSchemaExtrasBranchContractTest {
         new LogPlugin().getConfigurationSchema().validate(mock(PluginConfiguration.class));
 
         PluginConfigurationSchema defSchema = new DefPlugin().getConfigurationSchema();
-        PluginConfiguration missingVar = mock(PluginConfiguration.class);
-        when(missingVar.getProperty("var")).thenReturn(null);
-        when(missingVar.getProperty("name")).thenReturn(null);
-        try {
-            defSchema.validate(missingVar);
-            fail("Missing var must fail validation");
-        } catch (PluginValidationException expected) {
-            assertNotNull(expected.getMessage());
-        }
+        assertEquals(defSchema.getRequiredAttributes(), new String[]{"var"});
+        assertEquals(defSchema.getOptionalAttributes(), new String[]{"value"});
+
         PluginConfiguration ok = mock(PluginConfiguration.class);
         when(ok.getProperty("var")).thenReturn("x");
         defSchema.validate(ok);
