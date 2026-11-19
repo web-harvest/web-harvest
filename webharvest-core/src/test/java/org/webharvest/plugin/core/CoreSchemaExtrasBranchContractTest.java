@@ -64,18 +64,13 @@ public class CoreSchemaExtrasBranchContractTest {
         assertNull(constant.getAttribute("missing"));
 
         PluginConfigurationSchema sleep = new SleepPlugin().getConfigurationSchema();
-        PluginConfiguration badSleep = mock(PluginConfiguration.class);
-        when(badSleep.getProperty("time")).thenReturn("not-a-number");
-        try {
-            sleep.validate(badSleep);
-        } catch (RuntimeException expected) {
-            // Some schemas reject non-numeric time; others coerce — both are acceptable contracts.
-            assertNotNull(expected);
-        }
+        PluginConfigurationSchema.AttributeDefinition milliseconds = sleep.getAttribute("milliseconds");
+        assertNotNull(milliseconds);
+        assertEquals(milliseconds.getType(), PluginConfigurationSchema.AttributeType.INTEGER);
+        assertTrue(milliseconds.isRequired());
 
         PluginConfiguration okSleep = mock(PluginConfiguration.class);
-        when(okSleep.getProperty("time")).thenReturn("10");
-        when(okSleep.getProperty("time", "0")).thenReturn("10");
+        when(okSleep.getProperty("milliseconds")).thenReturn("10");
         sleep.validate(okSleep);
     }
 
@@ -91,6 +86,7 @@ public class CoreSchemaExtrasBranchContractTest {
         when(missingVar.getProperty("name")).thenReturn(null);
         try {
             defSchema.validate(missingVar);
+            fail("Missing var must fail validation");
         } catch (PluginValidationException expected) {
             assertNotNull(expected.getMessage());
         }
