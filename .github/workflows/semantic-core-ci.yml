@@ -93,13 +93,13 @@ jobs:
               sys.exit(1)
           PY
       - name: Run unqualified Core verify
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
+        run: mvn --batch-mode --no-transfer-progress -U -pl webharvest-core -am verify
       - name: Run Checkstyle independently if full verify is blocked
         if: failure()
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am checkstyle:check
+        run: mvn --batch-mode --no-transfer-progress -U -pl webharvest-core -am checkstyle:check
       - name: Run Failsafe diagnostics if full verify fails
         if: failure()
-        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
+        run: mvn --batch-mode --no-transfer-progress -U -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
       - name: Verify and inventory JaCoCo report output
         if: always()
         shell: bash
@@ -201,7 +201,7 @@ jobs:
           grep -q 'Total tests run: 1, Failures: 0, Skips: 0' "$output_dir/testng-console.log"
       - name: Run full Core verify with Groovy 6
         run: |
-          mvn --batch-mode --no-transfer-progress \
+          mvn --batch-mode --no-transfer-progress -U \
             -pl webharvest-core \
             -Dgroovy6.compatibility=true \
             verify
