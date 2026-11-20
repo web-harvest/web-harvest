@@ -70,6 +70,7 @@ class ScanResultValidationTests(unittest.TestCase):
                 "results": [{
                     "source": {"type": "sbom", "path": "bom.json"},
                     "packages": [{
+                        "purl": "pkg:maven/example/example@1.0",
                         "package": {"name": "example", "version": "1.0", "ecosystem": "Maven"},
                         "vulnerabilities": vulnerabilities,
                     }],
@@ -104,6 +105,45 @@ class ScanResultValidationTests(unittest.TestCase):
             path = Path(temp) / "scan.json"
             path.write_text(json.dumps({"results": [{"packages": []}]}), encoding="utf-8")
             self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+    def test_rejects_missing_package_url(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_result(Path(temp), [])
+            result = json.loads(path.read_text(encoding="utf-8"))
+            result["results"][0]["packages"][0].pop("purl")
+            path.write_text(json.dumps(result), encoding="utf-8")
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+    def test_compare_detects_new_package_advisory_pair(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            base = self.write_result(directory, [])
+            head = directory / "head.json"
+            head.write_text(
+                json.dumps({
+                    "results": [{
+                        "source": {"type": "sbom", "path": "bom.json"},
+                        "packages": [{
+                            "purl": "pkg:maven/example/example@1.0",
+                            "package": {"name": "example", "version": "1.0", "ecosystem": "Maven"},
+                            "vulnerabilities": [{"id": "GHSA-new"}],
+                        }],
+                    }]
+                }),
+                encoding="utf-8",
+            )
+            output = directory / "new-findings.json"
+            self.assertEqual(run_validator("compare", base, head, "--output", output).returncode, 1)
+            self.assertIn("GHSA-new", output.read_text(encoding="utf-8"))
+
+    def test_compare_accepts_unchanged_clean_inventory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            base = self.write_result(directory, [])
+            head = directory / "head.json"
+            head.write_text(base.read_text(encoding="utf-8"), encoding="utf-8")
+            output = directory / "new-findings.json"
+            self.assertEqual(run_validator("compare", base, head, "--output", output).returncode, 0)
 
 
 if __name__ == "__main__":
