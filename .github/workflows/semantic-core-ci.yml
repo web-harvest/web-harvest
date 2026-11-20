@@ -205,6 +205,23 @@ jobs:
             -pl webharvest-core -am \
             -Dgroovy6.compatibility=true \
             verify
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          report = Path("webharvest-core/target/failsafe-reports/failsafe-summary.xml")
+          if not report.is_file():
+              raise SystemExit(f"Missing Failsafe summary: {report}")
+          root = ET.parse(report).getroot()
+          completed = int(root.findtext("completed", "0"))
+          errors = int(root.findtext("errors", "0"))
+          failures = int(root.findtext("failures", "0"))
+          if completed <= 0 or errors or failures:
+              raise SystemExit(
+                  f"Groovy 6 Failsafe gate failed: completed={completed}, "
+                  f"errors={errors}, failures={failures}"
+              )
+          print(f"Groovy 6 Failsafe passed: {completed} integration tests")
+          PY
       - name: Upload Groovy 6 compatibility diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
