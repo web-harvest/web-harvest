@@ -29,6 +29,7 @@ on:
       - "maintenance/**"
       - "fix/**"
       - "test/**"
+      - "spike/**"
     paths:
       - "webharvest-core/**"
       - "pom.xml"
@@ -122,5 +123,90 @@ jobs:
             **/target/pmd.xml
             **/target/surefire-reports/**
             **/target/failsafe-reports/**
+          if-no-files-found: warn
+          retention-days: 14
+  groovy6-compatibility:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'spike/groovy6-')
+    name: Groovy 6 JSR-223 runtime compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      JAVA_TOOL_OPTIONS: >-
+        --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED
+        --add-opens=java.base/java.lang=ALL-UNNAMED
+        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+        --add-opens=java.base/java.util=ALL-UNNAMED
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Java 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Record toolchain
+        run: |
+          java -version
+          mvn --version
+      - name: Verify isolated Groovy 6 dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p webharvest-core/target
+          mvn --batch-mode --no-transfer-progress -pl webharvest-core \
+            -Dgroovy6.compatibility=true \
+            dependency:tree \
+            -Dincludes=org.apache.groovy:*,org.codehaus.groovy:* \
+            -DoutputFile=target/groovy6-dependency-tree.txt
+          tree_file="webharvest-core/target/groovy6-dependency-tree.txt"
+          cat "$tree_file"
+          grep -q 'org.apache.groovy:groovy-all:pom:6.0.0' "$tree_file"
+          grep -q 'org.apache.groovy:groovy:jar:6.0.0' "$tree_file"
+          grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' "$tree_file"
+          if grep -q 'org.codehaus.groovy:groovy-all' "$tree_file"; then
+            echo "::error::Legacy Groovy 2.x remains in the Groovy 6 compatibility graph."
+            exit 1
+          fi
+      - name: Compile Core tests and build the isolated test classpath
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -pl webharvest-core \
+            -Dgroovy6.compatibility=true \
+            test-compile dependency:build-classpath \
+            -DincludeScope=test \
+            -Dmdep.outputFile=target/groovy6-test-classpath.txt
+      - name: Execute the real ScriptPlugin JSR-223 Groovy integration test with TestNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_classpath="webharvest-core/target/test-classes:webharvest-core/target/classes:$(cat webharvest-core/target/groovy6-test-classpath.txt)"
+          output_dir="webharvest-core/target/groovy6-testng-output"
+          mkdir -p "$output_dir"
+          java --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED \
+            --add-opens=java.base/java.lang=ALL-UNNAMED \
+            --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+            --add-opens=java.base/java.util=ALL-UNNAMED \
+            -cp "$test_classpath" \
+            org.testng.TestNG \
+            -testclass org.webharvest.plugin.integration.GroovyScriptRuntimeIntegrationTest \
+            -d "$output_dir" | tee "$output_dir/testng-console.log"
+          report="$output_dir/testng-results.xml"
+          test -s "$report"
+          grep -q 'name="executesGroovyThroughInjectedJsr223FactoryWithJavaInterop".*status="PASS"' "$report"
+          if grep -Eq 'status="FAIL"|status="SKIP"' "$report"; then
+            echo "::error::Groovy 6 TestNG compatibility test failed or was skipped."
+            exit 1
+          fi
+          grep -q 'Total tests run: 1, Failures: 0, Skips: 0' "$output_dir/testng-console.log"
+      - name: Upload Groovy 6 compatibility diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: groovy6-compatibility-diagnostics
+          path: |
+            webharvest-core/target/groovy6-dependency-tree.txt
+            webharvest-core/target/groovy6-testng-output/**
+            webharvest-core/target/surefire-reports/**
           if-no-files-found: warn
           retention-days: 14
