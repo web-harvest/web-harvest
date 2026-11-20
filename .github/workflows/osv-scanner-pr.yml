@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest tools/ci/test_osv_sbom.py -v
+          python3 -m unittest discover -s tools/ci -p 'test_osv_sbom.py' -v
           cp tools/ci/osv_sbom.py "${RUNNER_TEMP}/osv_sbom.py"
 
       - name: Resolve exact base and head commits
