@@ -167,8 +167,8 @@ class ScanResultValidationTests(unittest.TestCase):
             result = json.loads(path.read_text(encoding="utf-8"))
             result["results"][0]["packages"][0].pop("purl")
             path.write_text(json.dumps(result), encoding="utf-8")
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
-
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode, 0)
 
     def test_rejects_incomplete_scan_inventory(self):
         with tempfile.TemporaryDirectory() as temp:
