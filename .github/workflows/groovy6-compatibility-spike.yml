@@ -1,0 +1,85 @@
+name: Groovy 6 Compatibility Spike
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/groovy6-compatibility-spike.yml"
+      - "webharvest-core/pom.xml"
+      - "webharvest-core/src/main/java/org/webharvest/runtime/scripting/jsr/**"
+      - "webharvest-core/src/main/java/org/webharvest/plugin/core/ScriptPlugin.java"
+      - "webharvest-core/src/test/java/org/webharvest/plugin/integration/GroovyScriptRuntimeIntegrationTest.java"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: groovy6-spike-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  groovy6-jsr223:
+    name: Groovy 6 JSR-223 runtime compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      JAVA_TOOL_OPTIONS: >-
+        --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED
+        --add-opens=java.base/java.lang=ALL-UNNAMED
+        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+        --add-opens=java.base/java.util=ALL-UNNAMED
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Java 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Record toolchain
+        run: |
+          java -version
+          mvn --version
+      - name: Verify isolated Groovy 6 dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target
+          mvn --batch-mode --no-transfer-progress -pl webharvest-core \
+            -Dgroovy6.compatibility=true \
+            dependency:tree \
+            -Dincludes=org.apache.groovy:*,org.codehaus.groovy:* \
+            -DoutputFile=target/groovy6-dependency-tree.txt
+          cat target/groovy6-dependency-tree.txt
+          grep -q 'org.apache.groovy:groovy:jar:6.0.0' target/groovy6-dependency-tree.txt
+          grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' target/groovy6-dependency-tree.txt
+          if grep -q 'org.codehaus.groovy:groovy-all' target/groovy6-dependency-tree.txt; then
+            echo "::error::Legacy Groovy 2.x remains in the Groovy 6 compatibility graph."
+            exit 1
+          fi
+      - name: Execute the real ScriptPlugin JSR-223 Groovy integration test
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -pl webharvest-core -am \
+            -Dgroovy6.compatibility=true \
+            -Dit.test=GroovyScriptRuntimeIntegrationTest \
+            test-compile failsafe:integration-test failsafe:verify
+          report="webharvest-core/target/failsafe-reports/TEST-org.webharvest.plugin.integration.GroovyScriptRuntimeIntegrationTest.xml"
+          test -s "$report"
+          grep -q 'tests="1"' "$report"
+          grep -q 'failures="0"' "$report"
+          grep -q 'errors="0"' "$report"
+      - name: Upload Groovy 6 compatibility diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: groovy6-compatibility-diagnostics
+          path: |
+            target/groovy6-dependency-tree.txt
+            webharvest-core/target/failsafe-reports/**
+            webharvest-core/target/surefire-reports/**
+          if-no-files-found: warn
+          retention-days: 14
