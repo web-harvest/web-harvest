@@ -340,7 +340,7 @@ public class FtpPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP Plugin - Host: {}, Port: {}, Username: {}, Action: {}", host + ":" + port + " " + username + " " + action);
         
-        FTPClient ftpClient = new FTPClient();
+        FTPClient ftpClient = FtpClientFactory.create();
         
         try {
             // Connect to FTP server
