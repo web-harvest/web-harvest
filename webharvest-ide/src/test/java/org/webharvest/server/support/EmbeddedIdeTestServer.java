@@ -17,6 +17,8 @@ import org.webharvest.server.api.SessionHistoryServlet;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 /**
@@ -26,6 +28,7 @@ import java.net.ServerSocket;
 public final class EmbeddedIdeTestServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedIdeTestServer.class);
+    private static final String LOOPBACK_HOST = "127.0.0.1";
     private static EmbeddedIdeTestServer INSTANCE;
 
     static {
@@ -39,10 +42,10 @@ public final class EmbeddedIdeTestServer {
 
     private EmbeddedIdeTestServer() throws Exception {
         this.port = findFreePort();
-        this.server = new Server(port);
+        this.server = new Server(new InetSocketAddress(LOOPBACK_HOST, port));
         configureServer();
-        this.baseHttpUrl = "http://localhost:" + port;
-        this.baseWsUrl = "ws://localhost:" + port;
+        this.baseHttpUrl = "http://" + LOOPBACK_HOST + ":" + port;
+        this.baseWsUrl = "ws://" + LOOPBACK_HOST + ":" + port;
 
         Runtime.getRuntime().addShutdownHook(new Thread(this::safeStop, "embedded-ide-server-shutdown"));
     }
@@ -95,7 +98,7 @@ public final class EmbeddedIdeTestServer {
         context.addServlet(new ServletHolder(new ExecutionWebSocketServlet()), "/ws/execution/*");
 
         ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-        defaultServlet.setInitParameter("dirAllowed", "true");
+        defaultServlet.setInitParameter("dirAllowed", "false");
         defaultServlet.setInitParameter("pathInfoOnly", "false");
         defaultServlet.setInitParameter("welcomeServlets", "true");
         defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
@@ -118,7 +121,7 @@ public final class EmbeddedIdeTestServer {
     }
 
     private static int findFreePort() throws IOException {
-        try (ServerSocket socket = new ServerSocket(0)) {
+        try (ServerSocket socket = new ServerSocket(0, 1, InetAddress.getByName(LOOPBACK_HOST))) {
             socket.setReuseAddress(true);
             return socket.getLocalPort();
         }

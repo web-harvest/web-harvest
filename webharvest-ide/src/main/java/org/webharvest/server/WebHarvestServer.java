@@ -1,6 +1,7 @@
 package org.webharvest.server;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -17,6 +18,7 @@ import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 
 import java.awt.Desktop;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.URI;
 
@@ -36,6 +38,7 @@ public class WebHarvestServer {
     
     private static final Logger LOG = LoggerFactory.getLogger(WebHarvestServer.class);
     private static final int DEFAULT_PORT = 8080;
+    private static final String LOOPBACK_HOST = "127.0.0.1";
     
     private Server server;
     private final int port;
@@ -49,7 +52,7 @@ public class WebHarvestServer {
         LOG.info("Java version: {}", System.getProperty("java.version"));
         LOG.info("Working directory: {}", System.getProperty("user.dir"));
         
-        server = new Server(port);
+        server = createServer(port);
         
         // Single ServletContextHandler for everything
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -97,16 +100,7 @@ public class WebHarvestServer {
         LOG.info("WebSocket servlets configured: /ws/execution/*, /ws/visual/model/*");
         
         // 3. Default servlet for static files (MUST BE LAST!)
-        ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
-        defaultServlet.setInitParameter("dirAllowed", "true");
-        defaultServlet.setInitParameter("pathInfoOnly", "false");
-        defaultServlet.setInitParameter("welcomeServlets", "true");
-        
-        // DEVELOPMENT MODE: Disable browser caching for static files
-        defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
-        defaultServlet.setInitParameter("useFileMappedBuffer", "false");
-        defaultServlet.setInitParameter("etags", "false");
-        
+        ServletHolder defaultServlet = createDefaultServlet();
         context.addServlet(defaultServlet, "/");
         LOG.info("Default servlet configured for static files (cache DISABLED for development)");
         
@@ -127,7 +121,7 @@ public class WebHarvestServer {
         // Start server
         server.start();
         LOG.info("WebHarvest IDE started successfully!");
-        LOG.info("Open in browser: http://localhost:{}", port);
+        LOG.info("Open in browser: {}", browserUrl(port));
         
         // Auto-open browser
         openBrowser();
@@ -144,22 +138,50 @@ public class WebHarvestServer {
         LOG.info("[DEBUG] After server.join()");
     }
     
+    /**
+     * Creates the IDE listener bound only to the local machine.
+     * The IDE execution API is intentionally not exposed to the network.
+     */
+    static Server createServer(int port) {
+        Server server = new Server();
+        ServerConnector connector = new ServerConnector(server);
+        connector.setHost(LOOPBACK_HOST);
+        connector.setPort(port);
+        server.addConnector(connector);
+        return server;
+    }
+
+    static ServletHolder createDefaultServlet() {
+        ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
+        defaultServlet.setInitParameter("dirAllowed", "false");
+        defaultServlet.setInitParameter("pathInfoOnly", "false");
+        defaultServlet.setInitParameter("welcomeServlets", "true");
+        defaultServlet.setInitParameter("cacheControl", "no-store, no-cache, must-revalidate, max-age=0");
+        defaultServlet.setInitParameter("useFileMappedBuffer", "false");
+        defaultServlet.setInitParameter("etags", "false");
+        return defaultServlet;
+    }
+
+    static String browserUrl(int port) {
+        return "http://" + LOOPBACK_HOST + ":" + port;
+    }
+
     private void openBrowser() {
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI("http://localhost:" + port));
+                Desktop.getDesktop().browse(new URI(browserUrl(port)));
                 LOG.info("Browser opened automatically");
             } else {
-                LOG.info("Please open http://localhost:{} in your browser", port);
+                LOG.info("Please open {} in your browser", browserUrl(port));
             }
         } catch (Exception e) {
             LOG.warn("Could not auto-open browser: {}", e.getMessage());
-            LOG.info("Please open http://localhost:{} manually", port);
+            LOG.info("Please open {} manually", browserUrl(port));
         }
     }
     
     private static boolean isPortAvailable(int port) {
-        try (ServerSocket socket = new ServerSocket(port)) {
+        try (ServerSocket socket = new ServerSocket(port, 1, InetAddress.getByName(LOOPBACK_HOST))) {
             return true;
         } catch (IOException e) {
             return false;
@@ -186,7 +208,7 @@ public class WebHarvestServer {
             LOG.error("Port {} is already in use!", port);
             LOG.info("Trying to open existing instance...");
             try {
-                Desktop.getDesktop().browse(new URI("http://localhost:" + port));
+                Desktop.getDesktop().browse(new URI(browserUrl(port)));
                 System.exit(0);
             } catch (Exception e) {
                 LOG.error("Port {} is in use but could not open browser", port);

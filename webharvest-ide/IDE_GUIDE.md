@@ -18,6 +18,12 @@ java -jar target/webharvest-ide-2.2.0.jar
 # 3. Load 5 example configurations
 ```
 
+### Network security
+
+The embedded IDE is a **local desktop application**. Its HTTP and WebSocket listener binds only to the loopback interface, so the editor and execution API are not exposed to other machines on the network by default. The static-file servlet also disables directory listings.
+
+Do not expose the IDE port through a firewall, reverse proxy, container port mapping, or public tunnel. The IDE execution API accepts workflow XML and can execute scripts with the privileges of the local WebHarvest process; this release does not provide remote-user authentication or authorization. Remote/server deployment is therefore unsupported until an authenticated access model is implemented.
+
 ### Building from Source
 
 ```bash
