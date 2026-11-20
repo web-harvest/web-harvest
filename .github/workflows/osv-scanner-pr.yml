@@ -149,7 +149,7 @@ jobs:
             set -e
 
             printf '%s\n' "${status}" > "${output}.exit-code"
-            python3 "${RUNNER_TEMP}/osv_sbom.py" validate-scan "${output}" --exit-code "${status}"
+            python3 "${RUNNER_TEMP}/osv_sbom.py" validate-scan "${output}" --exit-code "${status}" --sbom "${sbom}"
           }
 
           scan_sbom base-production "${RUNNER_TEMP}/osv-sbom/base/production/bom.json"
