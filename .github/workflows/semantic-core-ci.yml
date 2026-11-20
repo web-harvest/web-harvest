@@ -161,6 +161,7 @@ jobs:
             -DoutputFile=target/groovy6-dependency-tree.txt
           tree_file="webharvest-core/target/groovy6-dependency-tree.txt"
           cat "$tree_file"
+          grep -q 'org.apache.groovy:groovy-all:pom:6.0.0' "$tree_file"
           grep -q 'org.apache.groovy:groovy:jar:6.0.0' "$tree_file"
           grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' "$tree_file"
           if grep -q 'org.codehaus.groovy:groovy-all' "$tree_file"; then
