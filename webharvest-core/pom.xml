@@ -115,6 +115,11 @@
                 </plugins>
             </build>
         </profile>
+        <!--
+            Isolated migration experiment only. The legacy runtime remains the default;
+            Groovy 6 must pass the full Core and packaged CLI/IDE gates before any
+            production dependency migration is considered.
+        -->
         <profile>
             <id>groovy-legacy-runtime</id>
             <activation>
