@@ -181,6 +181,8 @@ jobs:
         run: |
           set -euo pipefail
           test_classpath="webharvest-core/target/test-classes:webharvest-core/target/classes:$(cat webharvest-core/target/groovy6-test-classpath.txt)"
+          output_dir="webharvest-core/target/groovy6-testng-output"
+          mkdir -p "$output_dir"
           java --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED \
             --add-opens=java.base/java.lang=ALL-UNNAMED \
             --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
@@ -188,13 +190,15 @@ jobs:
             -cp "$test_classpath" \
             org.testng.TestNG \
             -testclass org.webharvest.plugin.integration.GroovyScriptRuntimeIntegrationTest \
-            -d webharvest-core/target/groovy6-testng-output
-          report="webharvest-core/target/groovy6-testng-output/testng-results.xml"
+            -d "$output_dir" | tee "$output_dir/testng-console.log"
+          report="$output_dir/testng-results.xml"
           test -s "$report"
-          grep -q 'total="1"' "$report"
-          grep -q 'passed="1"' "$report"
-          grep -q 'failed="0"' "$report"
-          grep -q 'skipped="0"' "$report"
+          grep -q 'name="executesGroovyThroughInjectedJsr223FactoryWithJavaInterop".*status="PASS"' "$report"
+          if grep -Eq 'status="FAIL"|status="SKIP"' "$report"; then
+            echo "::error::Groovy 6 TestNG compatibility test failed or was skipped."
+            exit 1
+          fi
+          grep -q 'Total tests run: 1, Failures: 0, Skips: 0' "$output_dir/testng-console.log"
       - name: Upload Groovy 6 compatibility diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
