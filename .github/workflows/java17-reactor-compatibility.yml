@@ -37,6 +37,8 @@ jobs:
     name: Full reactor tests + static analysis (Temurin 17)
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      GROOVY6_COMPATIBILITY: ${{ startsWith(github.head_ref, 'spike/groovy6-reactor') }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,6 +69,12 @@ jobs:
             -Djacoco.skip=true
             verify
           )
+          if [[ "$GROOVY6_COMPATIBILITY" == "true" ]]; then
+            echo "Running the full reactor and packaged launchers with opt-in Groovy 6.0.0."
+            mvn_args+=("-Dgroovy6.compatibility=true")
+          else
+            echo "Running the default production dependency profile."
+          fi
           if [[ "$BROAD_SPOTBUGS" == "true" ]]; then
             echo "Broad SpotBugs diagnostic enabled: bypassing the legacy include filter; findings remain non-blocking."
             mvn_args+=("-Dspotbugs.includeFilterFile=")
@@ -167,6 +175,36 @@ jobs:
             cat "$smoke_dir/provider.log"
             exit 1
           fi
+          cat > "$smoke_dir/VerifyGroovyProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyGroovyProvider {
+              public static void main(String[] args) throws Exception {
+                  if (!Boolean.getBoolean("webharvest.requireGroovy6")) {
+                      return;
+                  }
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("groovy");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged CLI did not expose the Groovy JSR-223 provider");
+                  }
+                  String version = engine.getFactory().getEngineVersion();
+                  if (version == null || !version.startsWith("6.0.0")) {
+                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got engine version: " + version);
+                  }
+                  Object result = engine.eval("def x = 123; x + 1");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged Groovy evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac -d "$smoke_dir" "$smoke_dir/VerifyGroovyProvider.java"
+          provider_args=()
+          if [[ "$GROOVY6_COMPATIBILITY" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovy6=true")
+          fi
+          java "${provider_args[@]}" -cp "$cli_jar:$smoke_dir" VerifyGroovyProvider
 
           cat > "$smoke_dir/smoke.xml" <<'XML'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -252,6 +290,36 @@ jobs:
             cat "$smoke_dir/provider.log"
             exit 1
           fi
+          cat > "$smoke_dir/VerifyGroovyProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyGroovyProvider {
+              public static void main(String[] args) throws Exception {
+                  if (!Boolean.getBoolean("webharvest.requireGroovy6")) {
+                      return;
+                  }
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("groovy");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged IDE did not expose the Groovy JSR-223 provider");
+                  }
+                  String version = engine.getFactory().getEngineVersion();
+                  if (version == null || !version.startsWith("6.0.0")) {
+                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got engine version: " + version);
+                  }
+                  Object result = engine.eval("def x = 123; x + 1");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged Groovy evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac -d "$smoke_dir" "$smoke_dir/VerifyGroovyProvider.java"
+          provider_args=()
+          if [[ "$GROOVY6_COMPATIBILITY" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovy6=true")
+          fi
+          java "${provider_args[@]}" -cp "$ide_jar:$smoke_dir" VerifyGroovyProvider
 
           port=18765
           pid=""
