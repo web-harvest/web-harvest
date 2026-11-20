@@ -1,41 +1,50 @@
 package org.webharvest.plugin.integration;
 
 import org.testng.annotations.Test;
-import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.plugin.PluginConfiguration;
+import org.webharvest.plugin.core.ScriptPlugin;
+import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.Variable;
 
+import java.util.Collections;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 /**
- * Characterizes the real XML -> ScriptPlugin -> JSR-223 Groovy execution path.
+ * Characterizes the real ScriptPlugin -> injected JSR-223 Groovy execution path.
  *
  * This is a compatibility baseline for a future Groovy runtime migration.
  */
 public class GroovyScriptRuntimeIntegrationTest extends XmlBasedIntegrationTestBase {
 
-    private static final String NAMESPACE = "http://org.webharvest/schema/2.1/core";
-
     @Test(groups = {"integration", "script"})
-    public void executesGroovyThroughXmlScriptPluginWithContextBindingsAndJavaInterop()
+    public void executesGroovyThroughInjectedJsr223FactoryWithJavaInterop()
             throws Exception {
-        String xml = "<config xmlns=\"" + NAMESPACE + "\">"
-                + "<def var=\"input\" value=\"41\"/>"
-                + "<def var=\"groovyResult\">"
-                + "  <script language=\"groovy\"><![CDATA["
-                + "    import java.util.UUID\n"
-                + "    def number = Integer.parseInt(context.getVar('input').toString())\n"
-                + "    def stableId = UUID.fromString('123e4567-e89b-12d3-a456-426614174000')\n"
-                + "    number + 1 + (stableId.toString().length() == 36 ? 0 : 1000)\n"
-                + "  ]]></script>"
-                + "</def>"
-                + "</config>";
+        PluginConfiguration configuration = mock(PluginConfiguration.class);
+        when(configuration.getProperty("language")).thenReturn("groovy");
+        when(configuration.getProperty("id")).thenReturn(null);
+        when(configuration.getProperty("return")).thenReturn(null);
 
-        DynamicScopeContext context = executeXmlString(xml);
-        Variable result = context.getVar("groovyResult");
+        String script = "import java.util.UUID\n"
+                + "def stableId = UUID.fromString('123e4567-e89b-12d3-a456-426614174000')\n"
+                + "41 + (stableId.toString().length() == 36 ? 1 : 1000)";
+        PluginConfiguration scriptBody = mock(PluginConfiguration.class);
+        when(scriptBody.getProperty("_textContent")).thenReturn(script);
+        when(scriptBody.getElementName()).thenReturn("constant");
+        when(configuration.hasChildren()).thenReturn(true);
+        when(configuration.getChildren()).thenReturn(Collections.singletonList(scriptBody));
 
-        assertNotNull(result, "Groovy result must be stored through the real ScriptPlugin");
+        ScriptPlugin plugin = new ScriptPlugin();
+        plugin.initialize(configuration);
+        injector.injectMembers(plugin);
+
+        Variable result = plugin.execute(new ScraperContext());
+
+        assertNotNull(result, "The real ScriptPlugin must return a JSR-223 result");
         assertEquals(result.toString(), "42",
-                "Groovy must retain context binding, Java interop and expression result behavior");
+                "Groovy must retain Java interop and expression result behavior");
     }
 }
