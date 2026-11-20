@@ -19,8 +19,185 @@ permissions:
 
 jobs:
   scan-pr:
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+    name: Aggregate Maven SBOM scan (base vs head)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run fail-closed validator regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest tools/ci/test_osv_sbom.py -v
+          cp tools/ci/osv_sbom.py "${RUNNER_TEMP}/osv_sbom.py"
+
+      - name: Resolve exact base and head commits
+        id: revisions
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          GROUP_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base_sha="${PR_BASE_SHA:-${GROUP_BASE_SHA:-}}"
+          head_sha="${PR_HEAD_SHA:-${GROUP_HEAD_SHA:-${EVENT_SHA}}}"
+          [[ "${base_sha}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Could not resolve a full base commit SHA for this event."
+            exit 1
+          }
+          [[ "${head_sha}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Could not resolve a full head commit SHA for this event."
+            exit 1
+          }
+          echo "base_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
+          echo "head_sha=${head_sha}" >> "${GITHUB_OUTPUT}"
+          echo "Base: ${base_sha}"
+          echo "Head: ${head_sha}"
+
+      - name: Pull pinned OSV-Scanner image
+        run: docker pull ghcr.io/google/osv-scanner:v2.7.1
+
+      - name: Generate and validate base production and test SBOMs
+        shell: bash
+        env:
+          REVISION: ${{ steps.revisions.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          git checkout --detach "${REVISION}"
+          git clean -ffdx
+          root="${RUNNER_TEMP}/osv-sbom/base"
+          mkdir -p "${root}/production" "${root}/test"
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeTestScope=false -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory="${root}/production" -DoutputReactorProjects=false \
+            -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeCompileScope=false -DincludeProvidedScope=false \
+            -DincludeRuntimeScope=false -DincludeSystemScope=false -DincludeTestScope=true \
+            -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory="${root}/test" -DoutputReactorProjects=false \
+            -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          python3 "${RUNNER_TEMP}/osv_sbom.py" validate-sbom "${root}/production/bom.json"
+          python3 "${RUNNER_TEMP}/osv_sbom.py" validate-sbom "${root}/test/bom.json"
+
+      - name: Generate and validate head production and test SBOMs
+        shell: bash
+        env:
+          REVISION: ${{ steps.revisions.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git checkout --detach "${REVISION}"
+          git clean -ffdx
+          root="${RUNNER_TEMP}/osv-sbom/head"
+          mkdir -p "${root}/production" "${root}/test"
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeTestScope=false -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory="${root}/production" -DoutputReactorProjects=false \
+            -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeCompileScope=false -DincludeProvidedScope=false \
+            -DincludeRuntimeScope=false -DincludeSystemScope=false -DincludeTestScope=true \
+            -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory="${root}/test" -DoutputReactorProjects=false \
+            -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          python3 "${RUNNER_TEMP}/osv_sbom.py" validate-sbom "${root}/production/bom.json"
+          python3 "${RUNNER_TEMP}/osv_sbom.py" validate-sbom "${root}/test/bom.json"
+
+      - name: Scan all four isolated SBOMs and validate raw outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/osv-results
+          scan_sbom() {
+            local label="$1"
+            local sbom="$2"
+            local output="target/osv-results/${label}.json"
+            local log="target/osv-results/${label}.stderr.log"
+            local status
+
+            set +e
+            docker run --rm \
+              --volume "$(dirname "${sbom}"):/sbom:ro" \
+              ghcr.io/google/osv-scanner:v2.7.1 \
+              scan source --format=json --all-packages --lockfile=/sbom/bom.json \
+              > "${output}" 2> "${log}"
+            status=$?
+            set -e
+
+            printf '%s\n' "${status}" > "${output}.exit-code"
+            python3 "${RUNNER_TEMP}/osv_sbom.py" validate-scan "${output}" --exit-code "${status}"
+          }
+
+          scan_sbom base-production "${RUNNER_TEMP}/osv-sbom/base/production/bom.json"
+          scan_sbom head-production "${RUNNER_TEMP}/osv-sbom/head/production/bom.json"
+          scan_sbom base-test "${RUNNER_TEMP}/osv-sbom/base/test/bom.json"
+          scan_sbom head-test "${RUNNER_TEMP}/osv-sbom/head/test/bom.json"
+
+      - name: Compare production dependency findings
+        uses: google/osv-scanner-action/osv-reporter-action@0e457b42d0120153c352875e9b758b1e5c58c7e5 # v2.7.1
+        with:
+          scan-args: |-
+            --output=target/osv-results/production.sarif
+            --old=target/osv-results/base-production.json
+            --new=target/osv-results/head-production.json
+            --gh-annotations=true
+            --fail-on-vuln=true
+
+      - name: Compare test-only dependency findings
+        uses: google/osv-scanner-action/osv-reporter-action@0e457b42d0120153c352875e9b758b1e5c58c7e5 # v2.7.1
+        with:
+          scan-args: |-
+            --output=target/osv-results/test-only.sarif
+            --old=target/osv-results/base-test.json
+            --new=target/osv-results/head-test.json
+            --gh-annotations=true
+            --fail-on-vuln=true
+
+      - name: Upload production findings to code scanning
+        if: ${{ always() && hashFiles('target/osv-results/production.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: target/osv-results/production.sarif
+          category: osv-scanner-production
+
+      - name: Upload test-only findings to code scanning
+        if: ${{ always() && hashFiles('target/osv-results/test-only.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: target/osv-results/test-only.sarif
+          category: osv-scanner-test-only
+
+      - name: Upload SBOMs, raw scanner outputs and logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: osv-cyclonedx-evidence
+          path: |
+            ${{ runner.temp }}/osv-sbom/
+            target/osv-results/
+          if-no-files-found: warn
+          retention-days: 30
