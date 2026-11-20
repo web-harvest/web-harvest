@@ -42,6 +42,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
+                    <!-- Match Surefire's Java 17 compatibility flags for the legacy test/runtime stack. -->
+                    <argLine>@{argLine} ${surefireArgLine} --add-opens java.xml/jdk.xml.internal=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
                     <!-- Match the existing offline-safe test policy: network-tagged tests are not part of the deterministic CI suite. -->
                     <groups>${core.test.groups}</groups>
                     <excludedGroups>${core.test.excludedGroups}</excludedGroups>
