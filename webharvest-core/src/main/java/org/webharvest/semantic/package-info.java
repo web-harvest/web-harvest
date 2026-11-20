@@ -102,12 +102,21 @@
  *
  * <h3>Documented limitations</h3>
  * <ul>
- *   <li>{@code acceptsAnyChild} / arbitrary-child semantics are <strong>not</strong>
- *       exposed on {@link Stage1PluginDescriptor}. When {@code allowedSubElements}
- *       is empty under a reliable schema, child-allow checks emit
- *       {@code METADATA_LIMITATION} rather than inventing “allow all”.</li>
- *   <li>Sub-element and parent names are local-name only (namespace-unaware) as
- *       stored in today's catalog schema snapshot.</li>
+ *   <li>The current catalog stores child/parent relationship metadata as local names.
+ *       Stage 1 preserves those legacy values, but does not promote them to qualified
+ *       identities or use them for hard namespace-aware relationship decisions.
+ *       Such checks emit {@code METADATA_LIMITATION} until an authoritative producer
+ *       supplies {@link QualifiedName} identities.</li>
+ *   <li>The {@link Stage1PluginDescriptor#getAllowedChildNames()},
+ *       {@link Stage1PluginDescriptor#getRequiredChildNames()}, and
+ *       {@link Stage1PluginDescriptor#getRequiredParentNames()} APIs carry qualified
+ *       identities when explicitly supplied; these checks are independent of legacy
+ *       schema presence.</li>
+ *   <li>Runtime availability is only a legacy local-name
+ *       {@code CorePluginRegistry} membership probe. It does not prove qualified
+ *       dispatch, plugin construction, or successful execution. Consumers should use
+ *       {@link PluginResolution#getRuntimeAvailabilityStatus()} rather than the
+ *       deprecated boolean compatibility bridge.</li>
  *   <li>Unknown-attribute checks require a closed name set from
  *       {@code attributeDefinitions} or the union of required+optional lists;
  *       otherwise {@code METADATA_LIMITATION}.</li>
