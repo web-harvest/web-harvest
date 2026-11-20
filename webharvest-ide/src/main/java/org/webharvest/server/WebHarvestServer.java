@@ -6,6 +6,7 @@ import org.eclipse.jetty.ee9.servlet.DefaultServlet;
 import org.eclipse.jetty.ee9.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee9.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
+import org.eclipse.jetty.util.resource.ResourceFactory;
 import org.eclipse.jetty.ee9.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public class WebHarvestServer {
         LOG.info("Webapp resource found: {}", webappPath);
         
         // Set base resource for static files
-        Resource webappResource = Resource.newResource(webappUrl);
+        Resource webappResource = ResourceFactory.root().newResource(webappUrl);
         context.setBaseResource(webappResource);
         LOG.info("Base resource set to: {}", webappResource.toString());
         
