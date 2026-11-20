@@ -44,6 +44,7 @@ import org.webharvest.plugin.PluginMetadata;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -844,6 +845,48 @@ public class IfPluginTest {
             "The documented non-empty string truthiness contract must remain intact");
     }
 
+
+    @Test
+    public void testNaNIsFalsyAndInfinitiesRemainTruthyWithoutScriptingLanguage() throws Exception {
+        ScraperContext context = new ScraperContext();
+        assertNull(context.getScriptingLanguage(), "This test must exercise the legacy no-engine path");
+        context.setLocalVar("doubleNaN", new NodeVariable(Double.NaN));
+        context.setLocalVar("floatNaN", new NodeVariable(Float.NaN));
+        context.setLocalVar("textNaN", new NodeVariable("NaN"));
+        context.setLocalVar("positiveInfinity", new NodeVariable(Double.POSITIVE_INFINITY));
+        context.setLocalVar("negativeInfinity", new NodeVariable(Float.NEGATIVE_INFINITY));
+        context.setLocalVar("negativeFinite", new NodeVariable(-12.5d));
+
+        assertFalse(createIfPlugin("NaN").matchesCondition(context), "NaN literal must be falsy");
+        assertFalse(createIfPlugin("doubleNaN").matchesCondition(context), "Wrapped Double.NaN must be falsy");
+        assertFalse(createIfPlugin("floatNaN").matchesCondition(context), "Wrapped Float.NaN must be falsy");
+        assertFalse(createIfPlugin("textNaN").matchesCondition(context), "Numeric text NaN must be falsy");
+        assertTrue(createIfPlugin("positiveInfinity").matchesCondition(context));
+        assertTrue(createIfPlugin("negativeInfinity").matchesCondition(context));
+        assertTrue(createIfPlugin("negativeFinite").matchesCondition(context));
+    }
+
+    @Test
+    public void testNaNIsFalsyAndInfinitiesRemainTruthyWithGroovy() throws Exception {
+        ScraperContext context = new ScraperContext();
+        context.setScriptingLanguage(ScriptingLanguage.GROOVY);
+
+        assertFalse(createIfPlugin("${Double.NaN}").matchesCondition(context));
+        assertFalse(createIfPlugin("${Float.NaN}").matchesCondition(context));
+        assertFalse(createIfPlugin("${'NaN'}").matchesCondition(context));
+        assertTrue(createIfPlugin("${Double.POSITIVE_INFINITY}").matchesCondition(context));
+        assertTrue(createIfPlugin("${Double.NEGATIVE_INFINITY}").matchesCondition(context));
+        assertTrue(createIfPlugin("${-12.5d}").matchesCondition(context));
+    }
+
+    private IfPlugin createIfPlugin(String condition) throws PluginException {
+        IfPlugin directPlugin = new IfPlugin();
+        Map<String, String> properties = new HashMap<>();
+        properties.put("condition", condition);
+        directPlugin.initialize(new DefaultPluginConfiguration(
+            "if", "http://org.webharvest/schema/2.1/core", "if", properties));
+        return directPlugin;
+    }
 
     @Test
     public void testIfRejectsMultipleUnpairedElseBranchesBeforeConditionEvaluation() throws Exception {
