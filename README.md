@@ -48,6 +48,10 @@ A focused test run is not equivalent to full reactor verification. See [CONTRIBU
 
 Core must not depend on IDE or optional integrations. The repository remains a monorepo while the Core boundary and independent plugin contract are stabilized.
 
+## Runtime compatibility
+
+The current production Groovy runtime is Apache Groovy 5.1.3 through the JSR-223 provider. WebHarvest retains Java 17 as its baseline and uses the separate `groovy` and `groovy-jsr223` artifacts rather than the `groovy-all` aggregator. See [Groovy runtime migration notes](docs/GROOVY_RUNTIME_MIGRATION.md) and the [workflow security model](docs/SECURITY.md).
+
 ## Plugin ecosystem
 
 Core includes built-in processors and preserves documented legacy compatibility such as the `<set-var>` alias alongside `<def>`. Optional integrations currently exist as Maven modules in this repository.
@@ -68,6 +72,7 @@ These are roadmap targets, not claims that the independent SPI, separate extensi
 - [Monorepo and module boundaries](docs/MONOREPO.md) — current modules, dependency direction and repository extraction gates.
 - [Contributing](CONTRIBUTING.md) — workflow, branches, CI and review expectations.
 - [Workflow security model](docs/SECURITY.md) — executable XML, scripts, nested includes and safe operation.
+- [Groovy runtime migration notes](docs/GROOVY_RUNTIME_MIGRATION.md) — production runtime baseline and downstream compatibility guidance.
 - [Release readiness](docs/RELEASE_READINESS.md) — verified distribution status.
 - [Semantic metadata](docs/semantic-metadata/) — current catalog/schema notes.
 - [XML examples](docs/web/examples/) — illustrative workflow configurations.
