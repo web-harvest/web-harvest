@@ -53,7 +53,7 @@ public class ExecutionManager {
     private final ExecutorService executorService;
     private final Map<String, ExecutionJob> activeExecutions;
     private final Map<String, ExecutionJob> completedExecutions;  // v2.2: Keep completed jobs
-    private final Map<String, org.eclipse.jetty.websocket.api.Session> webSocketSessions;
+    private final Map<String, org.eclipse.jetty.ee9.websocket.api.Session> webSocketSessions;
     private final Injector injector;
     
     private ExecutionManager() {
@@ -205,7 +205,7 @@ public class ExecutionManager {
     }
     
     public boolean hasWebSocket(String executionId) {
-        org.eclipse.jetty.websocket.api.Session session = webSocketSessions.get(executionId);
+        org.eclipse.jetty.ee9.websocket.api.Session session = webSocketSessions.get(executionId);
         return session != null && session.isOpen();
     }
     
@@ -502,7 +502,7 @@ public class ExecutionManager {
         }
         
         // Send via WebSocket for real-time display
-        org.eclipse.jetty.websocket.api.Session session = webSocketSessions.get(executionId);
+        org.eclipse.jetty.ee9.websocket.api.Session session = webSocketSessions.get(executionId);
         if (session != null && session.isOpen()) {
             try {
                 String json = String.format(
@@ -639,7 +639,7 @@ public class ExecutionManager {
         return true;
     }
     
-    public void registerWebSocket(String executionId, org.eclipse.jetty.websocket.api.Session session) {
+    public void registerWebSocket(String executionId, org.eclipse.jetty.ee9.websocket.api.Session session) {
         LOG.debug("Registering WebSocket for execution: {}", executionId);
         webSocketSessions.put(executionId, session);
     }
@@ -650,7 +650,7 @@ public class ExecutionManager {
     }
     
     private void sendUpdate(String executionId, String status, String message, int progress, Map<String, String> results) {
-        org.eclipse.jetty.websocket.api.Session session = webSocketSessions.get(executionId);
+        org.eclipse.jetty.ee9.websocket.api.Session session = webSocketSessions.get(executionId);
         if (session != null && session.isOpen()) {
             try {
                 StringBuilder json = new StringBuilder();
