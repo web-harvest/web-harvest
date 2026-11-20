@@ -157,39 +157,28 @@ jobs:
           scan_sbom base-test "${RUNNER_TEMP}/osv-sbom/base/test/bom.json"
           scan_sbom head-test "${RUNNER_TEMP}/osv-sbom/head/test/bom.json"
 
-      - name: Compare production dependency findings
-        uses: google/osv-scanner-action/osv-reporter-action@0e457b42d0120153c352875e9b758b1e5c58c7e5 # v2.7.1
-        with:
-          scan-args: |-
-            --output=target/osv-results/production.sarif
-            --old=target/osv-results/base-production.json
-            --new=target/osv-results/head-production.json
-            --gh-annotations=true
-            --fail-on-vuln=true
+      - name: Compare base/head production and test-only findings
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 "${RUNNER_TEMP}/osv_sbom.py" compare \
+            target/osv-results/base-production.json target/osv-results/head-production.json \
+            --output target/osv-results/production-new-findings.json
+          production_status=$?
+          python3 "${RUNNER_TEMP}/osv_sbom.py" compare \
+            target/osv-results/base-test.json target/osv-results/head-test.json \
+            --output target/osv-results/test-only-new-findings.json
+          test_status=$?
+          set -e
 
-      - name: Compare test-only dependency findings
-        uses: google/osv-scanner-action/osv-reporter-action@0e457b42d0120153c352875e9b758b1e5c58c7e5 # v2.7.1
-        with:
-          scan-args: |-
-            --output=target/osv-results/test-only.sarif
-            --old=target/osv-results/base-test.json
-            --new=target/osv-results/head-test.json
-            --gh-annotations=true
-            --fail-on-vuln=true
-
-      - name: Upload production findings to code scanning
-        if: ${{ always() && hashFiles('target/osv-results/production.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
-        with:
-          sarif_file: target/osv-results/production.sarif
-          category: osv-scanner-production
-
-      - name: Upload test-only findings to code scanning
-        if: ${{ always() && hashFiles('target/osv-results/test-only.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
-        with:
-          sarif_file: target/osv-results/test-only.sarif
-          category: osv-scanner-test-only
+          if [[ "${production_status}" -gt 1 || "${test_status}" -gt 1 ]]; then
+            echo "::error::Base/head comparison failed validation."
+            exit 1
+          fi
+          echo "production_new=${production_status}" >> "${GITHUB_OUTPUT}"
+          echo "test_new=${test_status}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload SBOMs, raw scanner outputs and logs
         if: ${{ always() }}
@@ -201,3 +190,20 @@ jobs:
             target/osv-results/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Fail on newly introduced vulnerabilities
+        if: ${{ always() }}
+        shell: bash
+        env:
+          PRODUCTION_NEW: ${{ steps.compare.outputs.production_new }}
+          TEST_NEW: ${{ steps.compare.outputs.test_new }}
+        run: |
+          set -euo pipefail
+          if [[ "${PRODUCTION_NEW:-}" == "1" || "${TEST_NEW:-}" == "1" ]]; then
+            echo "::error::New OSV vulnerabilities were introduced. See the production/test-only comparison artifacts."
+            exit 1
+          fi
+          if [[ "${PRODUCTION_NEW:-}" != "0" || "${TEST_NEW:-}" != "0" ]]; then
+            echo "::error::OSV base/head comparison did not complete."
+            exit 1
+          fi
