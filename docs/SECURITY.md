@@ -26,7 +26,7 @@ The repository audit did not identify an in-repository production entry point th
 
 ## Dependency status
 
-The current runtime still includes legacy Groovy 2.0.4 and Commons Collections 3.2.1. Their presence is tracked in [Issue #194](https://github.com/web-harvest/web-harvest/issues/194); migration is staged behind compatibility tests. The absence of an identified in-repository untrusted-deserialization path is not a claim that these libraries are generally safe or that arbitrary user scripts are safe to execute.
+The production Groovy runtime is Apache Groovy 5.1.3, using the separate `groovy` and `groovy-jsr223` artifacts. Commons Collections 3.2.1 remains in the runtime and is tracked separately under [Issue #194](https://github.com/web-harvest/web-harvest/issues/194). The Groovy migration does not make arbitrary scripts safe to execute and does not change the trust boundary described above. The absence of an identified in-repository untrusted-deserialization path is not a claim that Commons Collections is generally safe.
 
 ## Reporting
 
