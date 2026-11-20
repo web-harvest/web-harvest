@@ -41,6 +41,7 @@ import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
@@ -107,6 +108,7 @@ public class MailPluginTest {
     @Test
     public void emptyBodyRemainsSupportedForPlainAndHtmlMessages() throws Exception {
         SimpleEmail plainEmail = new SimpleEmail();
+        plainEmail.setHostName("localhost");
         plainEmail.setFrom("sender@example.com");
         plainEmail.addTo("recipient@example.com");
         plainEmail.setSubject("Empty body");
@@ -115,6 +117,7 @@ public class MailPluginTest {
         assertNotNull(plainEmail.getMimeMessage());
 
         HtmlEmail htmlEmail = new HtmlEmail();
+        htmlEmail.setHostName("localhost");
         htmlEmail.setFrom("sender@example.com");
         htmlEmail.addTo("recipient@example.com");
         htmlEmail.setSubject("Empty HTML body");
@@ -131,7 +134,7 @@ public class MailPluginTest {
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        addNonEmptyBody(config);
+        plugin = new TestMailPlugin("Test Body");
         plugin.initialize(config);
 
         // Should throw PluginException due to DNS/connection failure
@@ -139,7 +142,10 @@ public class MailPluginTest {
             plugin.execute(context);
             fail("Expected PluginException");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Mail operation failed") || e.getMessage().contains("operation failed") || e.getMessage().contains("Failed to initialize plugin") || e.getMessage().contains("Invalid message supplied"));
+            assertTrue(e.getMessage().contains("Mail operation failed")
+                    || e.getMessage().contains("operation failed")
+                    || e.getMessage().contains("Failed to initialize plugin")
+                    || e.getMessage().contains("Failed to send email"));
         }
     }
 
@@ -151,7 +157,7 @@ public class MailPluginTest {
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        addNonEmptyBody(config);
+        plugin = new TestMailPlugin("Test Body");
 
         plugin.initialize(config);
 
@@ -166,11 +172,17 @@ public class MailPluginTest {
         }
     }
 
-    private void addNonEmptyBody(DefaultPluginConfiguration config) {
-        DefaultPluginConfiguration text = new DefaultPluginConfiguration(
-                "text", "http://org.webharvest/schema/2.1/core", "text");
-        text.setProperty("_textContent", "Test Body");
-        config.setChildren(java.util.Collections.<org.webharvest.plugin.PluginConfiguration>singletonList(text));
+    private static class TestMailPlugin extends MailPlugin {
+        private final String body;
+
+        private TestMailPlugin(String body) {
+            this.body = body;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return new NodeVariable(body);
+        }
     }
 
     @Test
