@@ -79,12 +79,13 @@ def validate_sbom(path: Path) -> None:
     )
 
 
-def scan_findings(path: Path) -> tuple[int, set[tuple[str, str]]]:
+def scan_findings(path: Path) -> tuple[int, set[str], set[tuple[str, str]]]:
     result = load_json(path)
     results = result.get("results")
     if not isinstance(results, list) or not results:
         raise ValueError("OSV result JSON has no results array")
     package_count = 0
+    package_purls: set[str] = set()
     findings: set[tuple[str, str]] = set()
     for source in results:
         if not isinstance(source, dict):
@@ -98,8 +99,11 @@ def scan_findings(path: Path) -> tuple[int, set[tuple[str, str]]]:
                 raise ValueError("OSV result contains a malformed package entry")
             package = item["package"]
             purl = item.get("purl") or package.get("purl")
-            if not isinstance(purl, str) or not purl.startswith("pkg:"):
-                raise ValueError("OSV package result is missing its Package URL")
+            if not isinstance(purl, str) or not purl.startswith("pkg:maven/"):
+                raise ValueError("OSV package result is missing its Maven Package URL")
+            if purl in package_purls:
+                raise ValueError(f"OSV result contains duplicate package: {purl}")
+            package_purls.add(purl)
             vulnerabilities = item.get("vulnerabilities", [])
             if not isinstance(vulnerabilities, list):
                 raise ValueError("OSV package vulnerabilities must be an array")
@@ -109,29 +113,44 @@ def scan_findings(path: Path) -> tuple[int, set[tuple[str, str]]]:
                 findings.add((purl, vulnerability["id"]))
     if package_count == 0:
         raise ValueError("OSV result contains no scanned packages")
-    return package_count, findings
+    return package_count, package_purls, findings
 
 
-def validate_scan(path: Path, exit_code: int) -> None:
+def validate_scan(path: Path, exit_code: int, sbom_path: Path) -> None:
     if exit_code not in (0, 1):
         raise ValueError(
             f"OSV-Scanner exited {exit_code}; only 0 (clean) or 1 (findings) "
             "can represent a completed scan"
         )
-    package_count, findings = scan_findings(path)
+    package_count, scanned_purls, findings = scan_findings(path)
+    sbom = load_json(sbom_path)
+    expected_purls = {
+        component["purl"]
+        for component in sbom.get("components", [])
+        if isinstance(component, dict) and isinstance(component.get("purl"), str)
+    }
+    if not expected_purls:
+        raise ValueError("SBOM contains no expected package URLs for scan comparison")
+    if scanned_purls != expected_purls:
+        missing = sorted(expected_purls - scanned_purls)
+        unexpected = sorted(scanned_purls - expected_purls)
+        raise ValueError(
+            f"OSV inventory mismatch: {len(missing)} SBOM packages not scanned, "
+            f"{len(unexpected)} unexpected packages"
+        )
     if exit_code == 0 and findings:
         raise ValueError("OSV returned exit 0 but JSON contains vulnerabilities")
     if exit_code == 1 and not findings:
         raise ValueError("OSV returned exit 1 without any vulnerability findings")
     print(
-        f"Validated OSV scan: {package_count} packages, "
+        f"Validated OSV scan: {package_count} packages match SBOM, "
         f"{len(findings)} package/advisory findings, exit {exit_code}"
     )
 
 
 def compare_scans(base_path: Path, head_path: Path, output_path: Path) -> int:
-    base_count, base_findings = scan_findings(base_path)
-    head_count, head_findings = scan_findings(head_path)
+    base_count, _, base_findings = scan_findings(base_path)
+    head_count, _, head_findings = scan_findings(head_path)
     introduced = sorted(head_findings - base_findings)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -165,6 +184,7 @@ def main() -> int:
     scan = subparsers.add_parser("validate-scan")
     scan.add_argument("path", type=Path)
     scan.add_argument("--exit-code", required=True, type=int)
+    scan.add_argument("--sbom", required=True, type=Path)
     compare = subparsers.add_parser("compare")
     compare.add_argument("base", type=Path)
     compare.add_argument("head", type=Path)
@@ -175,7 +195,7 @@ def main() -> int:
             validate_sbom(args.path)
             return 0
         if args.command == "validate-scan":
-            validate_scan(args.path, args.exit_code)
+            validate_scan(args.path, args.exit_code, args.sbom)
             return 0
         return compare_scans(args.base, args.head, args.output)
     except ValueError as exc:
