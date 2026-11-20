@@ -67,6 +67,7 @@ These are roadmap targets, not claims that the independent SPI, separate extensi
 - [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md) — target third-party plugin contract and current limitations.
 - [Monorepo and module boundaries](docs/MONOREPO.md) — current modules, dependency direction and repository extraction gates.
 - [Contributing](CONTRIBUTING.md) — workflow, branches, CI and review expectations.
+- [Workflow security model](docs/SECURITY.md) — executable XML, scripts, nested includes and safe operation.
 - [Release readiness](docs/RELEASE_READINESS.md) — verified distribution status.
 - [Semantic metadata](docs/semantic-metadata/) — current catalog/schema notes.
 - [XML examples](docs/web/examples/) — illustrative workflow configurations.
