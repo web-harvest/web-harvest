@@ -125,12 +125,13 @@ jobs:
             **/target/failsafe-reports/**
           if-no-files-found: warn
           retention-days: 14
-  groovy6-compatibility:
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'spike/groovy6-')
-    name: Groovy 6 Core and JSR-223 compatibility
+  groovy-compatibility:
+    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'spike/groovy6-') || startsWith(github.head_ref, 'spike/groovy51-'))
+    name: Groovy runtime Core and JSR-223 compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      GROOVY_COMPATIBILITY_VERSION: ${{ startsWith(github.head_ref, 'spike/groovy51-') && '5.1.3' || '6.0.0' }}
       JAVA_TOOL_OPTIONS: >-
         --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED
         --add-opens=java.base/java.lang=ALL-UNNAMED
@@ -149,42 +150,44 @@ jobs:
         run: |
           java -version
           mvn --version
-      - name: Verify isolated Groovy 6 dependency graph
+      - name: Verify isolated Groovy runtime dependency graph
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p webharvest-core/target
           mvn --batch-mode --no-transfer-progress -pl webharvest-core \
-            -Dgroovy6.compatibility=true \
+            -Dgroovy.compatibility=true \
+            -Dgroovy.compatibility.version="$GROOVY_COMPATIBILITY_VERSION" \
             dependency:tree \
             -Dincludes=org.apache.groovy:*,org.codehaus.groovy:* \
-            -DoutputFile=target/groovy6-dependency-tree.txt
-          tree_file="webharvest-core/target/groovy6-dependency-tree.txt"
+            -DoutputFile=target/groovy-compatibility-dependency-tree.txt
+          tree_file="webharvest-core/target/groovy-compatibility-dependency-tree.txt"
           cat "$tree_file"
-          grep -q 'org.apache.groovy:groovy:jar:6.0.0' "$tree_file"
-          grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' "$tree_file"
-          if grep -q 'org.apache.groovy:groovy-test-junit6' "$tree_file"; then
-            echo "::error::Groovy's JUnit 6 test adapter must not alter the project's TestNG Failsafe provider."
+          grep -q "org.apache.groovy:groovy:jar:${GROOVY_COMPATIBILITY_VERSION}" "$tree_file"
+          grep -q "org.apache.groovy:groovy-jsr223:jar:${GROOVY_COMPATIBILITY_VERSION}" "$tree_file"
+          if grep -q 'org.apache.groovy:groovy-test-junit' "$tree_file"; then
+            echo "::error::Groovy's test-framework adapter must not alter the project's TestNG Failsafe provider."
             exit 1
           fi
           if grep -q 'org.codehaus.groovy:groovy-all' "$tree_file"; then
-            echo "::error::Legacy Groovy 2.x remains in the Groovy 6 compatibility graph."
+            echo "::error::Legacy Groovy 2.x remains in the Groovy runtime compatibility graph."
             exit 1
           fi
       - name: Compile Core tests and build the isolated test classpath
         run: |
           mvn --batch-mode --no-transfer-progress \
             -pl webharvest-core \
-            -Dgroovy6.compatibility=true \
+            -Dgroovy.compatibility=true \
+            -Dgroovy.compatibility.version="$GROOVY_COMPATIBILITY_VERSION" \
             test-compile dependency:build-classpath \
             -DincludeScope=test \
-            -Dmdep.outputFile=target/groovy6-test-classpath.txt
+            -Dmdep.outputFile=target/groovy-compatibility-test-classpath.txt
       - name: Execute the real ScriptPlugin JSR-223 Groovy integration test with TestNG
         shell: bash
         run: |
           set -euo pipefail
-          test_classpath="webharvest-core/target/test-classes:webharvest-core/target/classes:$(cat webharvest-core/target/groovy6-test-classpath.txt)"
-          output_dir="webharvest-core/target/groovy6-testng-output"
+          test_classpath="webharvest-core/target/test-classes:webharvest-core/target/classes:$(cat webharvest-core/target/groovy-compatibility-test-classpath.txt)"
+          output_dir="webharvest-core/target/groovy-compatibility-testng-output"
           mkdir -p "$output_dir"
           java --add-opens=java.xml/jdk.xml.internal=ALL-UNNAMED \
             --add-opens=java.base/java.lang=ALL-UNNAMED \
@@ -198,15 +201,16 @@ jobs:
           test -s "$report"
           grep -q 'name="executesGroovyThroughInjectedJsr223FactoryWithJavaInterop".*status="PASS"' "$report"
           if grep -Eq 'status="FAIL"|status="SKIP"' "$report"; then
-            echo "::error::Groovy 6 TestNG compatibility test failed or was skipped."
+            echo "::error::Groovy runtime TestNG compatibility test failed or was skipped."
             exit 1
           fi
           grep -q 'Total tests run: 1, Failures: 0, Skips: 0' "$output_dir/testng-console.log"
-      - name: Run full Core verify with Groovy 6
+      - name: Run full Core verify with Groovy runtime
         run: |
           mvn --batch-mode --no-transfer-progress -U \
             -pl webharvest-core -am \
-            -Dgroovy6.compatibility=true \
+            -Dgroovy.compatibility=true \
+            -Dgroovy.compatibility.version="$GROOVY_COMPATIBILITY_VERSION" \
             verify
           python - <<'PY'
           import xml.etree.ElementTree as ET
@@ -220,19 +224,19 @@ jobs:
           failures = int(root.findtext("failures", "0"))
           if completed <= 0 or errors or failures:
               raise SystemExit(
-                  f"Groovy 6 Failsafe gate failed: completed={completed}, "
+                  f"Groovy runtime Failsafe gate failed: completed={completed}, "
                   f"errors={errors}, failures={failures}"
               )
-          print(f"Groovy 6 Failsafe passed: {completed} integration tests")
+          print(f"Groovy runtime Failsafe passed: {completed} integration tests")
           PY
-      - name: Upload Groovy 6 compatibility diagnostics
+      - name: Upload Groovy runtime compatibility diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: groovy6-compatibility-diagnostics
+          name: groovy-compatibility-diagnostics
           path: |
-            webharvest-core/target/groovy6-dependency-tree.txt
-            webharvest-core/target/groovy6-testng-output/**
+            webharvest-core/target/groovy-compatibility-dependency-tree.txt
+            webharvest-core/target/groovy-compatibility-testng-output/**
             webharvest-core/target/jacoco-report/**
             webharvest-core/target/jacoco.exec
             webharvest-core/target/surefire-reports/**
