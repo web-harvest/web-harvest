@@ -16,7 +16,7 @@ import static org.testng.Assert.assertNotNull;
 /**
  * Characterizes the real ScriptPlugin -> injected JSR-223 Groovy execution path.
  *
- * This is a compatibility baseline for a future Groovy runtime migration.
+ * This is a production runtime contract for JSR-223 discovery, Java interop and script results.
  */
 public class GroovyScriptRuntimeIntegrationTest extends XmlBasedIntegrationTestBase {
 
