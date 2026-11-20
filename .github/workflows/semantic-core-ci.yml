@@ -202,7 +202,7 @@ jobs:
       - name: Run full Core verify with Groovy 6
         run: |
           mvn --batch-mode --no-transfer-progress -U \
-            -pl webharvest-core \
+            -pl webharvest-core -am \
             -Dgroovy6.compatibility=true \
             verify
       - name: Upload Groovy 6 compatibility diagnostics
@@ -216,6 +216,7 @@ jobs:
             webharvest-core/target/jacoco-report/**
             webharvest-core/target/jacoco.exec
             webharvest-core/target/surefire-reports/**
+            webharvest-core/target/failsafe-reports/**
             webharvest-core/target/failsafe-reports/**
           if-no-files-found: warn
           retention-days: 14
