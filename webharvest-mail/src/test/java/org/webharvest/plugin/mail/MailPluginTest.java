@@ -33,6 +33,8 @@
 
 package org.webharvest.plugin.mail;
 
+import org.apache.commons.mail.HtmlEmail;
+import org.apache.commons.mail.SimpleEmail;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
@@ -100,6 +102,25 @@ public class MailPluginTest {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("mail", "http://org.webharvest/schema/2.1/core", "mail");
         // Missing required attributes
         plugin.initialize(config);
+    }
+
+    @Test
+    public void emptyBodyRemainsSupportedForPlainAndHtmlMessages() throws Exception {
+        SimpleEmail plainEmail = new SimpleEmail();
+        plainEmail.setFrom("sender@example.com");
+        plainEmail.addTo("recipient@example.com");
+        plainEmail.setSubject("Empty body");
+        MailPlugin.setBodyContent(plainEmail, "", false);
+        plainEmail.buildMimeMessage();
+        assertNotNull(plainEmail.getMimeMessage());
+
+        HtmlEmail htmlEmail = new HtmlEmail();
+        htmlEmail.setFrom("sender@example.com");
+        htmlEmail.addTo("recipient@example.com");
+        htmlEmail.setSubject("Empty HTML body");
+        MailPlugin.setBodyContent(htmlEmail, "", true);
+        htmlEmail.buildMimeMessage();
+        assertNotNull(htmlEmail.getMimeMessage());
     }
 
     @Test
