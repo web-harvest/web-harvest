@@ -110,11 +110,10 @@ public class MailPluginTest {
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        config.setProperty("body", "Test Body");
-        
+        addNonEmptyBody(config);
         plugin.initialize(config);
-        
-        // Should throw PluginException due to connection failure
+
+        // Should throw PluginException due to DNS/connection failure
         try {
             plugin.execute(context);
             fail("Expected PluginException");
@@ -124,25 +123,33 @@ public class MailPluginTest {
     }
 
     @Test
-    public void testExecuteWithUnsupportedAction() throws Exception {
+    public void testExecuteWithUnavailableLocalSmtpServer() throws Exception {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("mail", "http://org.webharvest/schema/2.1/core", "mail");
-        config.setProperty("smtp-host", "localhost");
-        config.setProperty("smtp-port", "25");
+        config.setProperty("smtp-host", "127.0.0.1");
+        config.setProperty("smtp-port", "1");
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        config.setProperty("body", "Test Body");
-        config.setProperty("action", "unsupported");
-        
+        addNonEmptyBody(config);
+
         plugin.initialize(config);
-        
-        // Should throw PluginException due to unsupported action
+
+        // The plugin must reach SMTP delivery and report the unavailable server.
         try {
             plugin.execute(context);
             fail("Expected PluginException");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Unsupported mail action") || e.getMessage().contains("operation failed") || e.getMessage().contains("Failed to initialize plugin") || e.getMessage().contains("Invalid message supplied"));
+            assertTrue(e.getMessage().contains("Mail operation failed")
+                    || e.getMessage().contains("Failed to send email")
+                    || e.getMessage().contains("operation failed"));
         }
+    }
+
+    private void addNonEmptyBody(DefaultPluginConfiguration config) {
+        DefaultPluginConfiguration text = new DefaultPluginConfiguration(
+                "text", "http://org.webharvest/schema/2.1/core", "text");
+        text.setProperty("_textContent", "Test Body");
+        config.setChildren(java.util.Collections.<org.webharvest.plugin.PluginConfiguration>singletonList(text));
     }
 
     @Test
