@@ -117,14 +117,14 @@
         </profile>
         <!--
             Isolated migration experiment only. The legacy runtime remains the default;
-            Groovy 6 must pass full Core, reactor, and packaged CLI/IDE gates before
-            any production dependency migration is considered.
+            candidate Groovy runtimes must pass full Core, reactor, and packaged CLI/IDE
+            gates before any production dependency migration is considered.
         -->
         <profile>
             <id>groovy-legacy-runtime</id>
             <activation>
                 <property>
-                    <name>!groovy6.compatibility</name>
+                    <name>!groovy.compatibility</name>
                 </property>
             </activation>
             <dependencies>
@@ -136,24 +136,27 @@
             </dependencies>
         </profile>
         <profile>
-            <id>groovy6-compatibility</id>
+            <id>groovy-compatibility</id>
             <activation>
                 <property>
-                    <name>groovy6.compatibility</name>
+                    <name>groovy.compatibility</name>
                     <value>true</value>
                 </property>
             </activation>
+            <properties>
+                <groovy.compatibility.version>6.0.0</groovy.compatibility.version>
+            </properties>
             <dependencies>
                 <dependency>
                     <groupId>org.apache.groovy</groupId>
                     <artifactId>groovy</artifactId>
-                    <version>6.0.0</version>
+                    <version>${groovy.compatibility.version}</version>
                     <scope>runtime</scope>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.groovy</groupId>
                     <artifactId>groovy-jsr223</artifactId>
-                    <version>6.0.0</version>
+                    <version>${groovy.compatibility.version}</version>
                     <scope>runtime</scope>
                 </dependency>
             </dependencies>
