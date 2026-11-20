@@ -1,159 +1,164 @@
-# Agent Work Selection, Issue Triage and PR Workflow
+# Agent Work Selection, Release Gate and PR Workflow
 
 **Status:** Maintainer operating policy  
-**Scope:** All agents and contributors working in `web-harvest/web-harvest`  
-**Source of truth:** This repository, its GitHub Issues, PRs, commits and CI. The roadmap is Issue #1.  
-**Mandatory entry point:** Root `AGENTS.md`.
+**Scope:** All agents and contributors in `web-harvest/web-harvest`  
+**Source of truth:** GitHub repository, Issues, PRs, commits and CI  
+**Governing delivery objective:** [Roadmap Issue #1 — Release Stabilization Gate](https://github.com/web-harvest/web-harvest/issues/1)  
+**Mandatory entry point:** Root `AGENTS.md`
 
-## 1. Non-negotiable engineering sequence
+## 1. Governing objective: Release Stabilization Gate
+
+The objective is to prepare one stable, supportable WebHarvest release. Semantic Model work is one workstream, not the entire project objective. Agents must use the Gate scope and sequence in Issue #1 to select and order work.
+
+The Gate covers:
+1. **Implementation and compatibility:** reconcile unfinished in-scope functionality; close serious correctness defects; verify Core/runtime, plugins, XML compatibility, CLI and IDE; defer or retire out-of-scope work explicitly.
+2. **Tests and engineering quality:** meaningful unit/integration/compatibility/packaging tests; required CI, coverage and static analysis; report narrow versus broad diagnostics honestly.
+3. **Dependencies and security:** current direct/transitive dependency graph and shipped artifacts; reachability-based triage; compatibility-safe upgrades; document residual risks.
+4. **Release engineering:** reproducible build/versioning; GitHub tags/releases/assets/checksums; Maven publication and consumer resolution; inspect actual artifacts and POM metadata.
+5. **Documentation:** align installation, quick start, module/plugin/CLI/IDE, compatibility, changelog and migration docs with the exact candidate.
+6. **Website:** update only after release facts and docs are verified; align version, features and links with the actual release.
+
+Sequence: inventory/scope → implementation/compatibility stabilization → quality/security blockers → release build and GitHub/Maven distribution verification → documentation → website → final evidence-based GO/NO-GO.
+
+A green CI run or empty PR queue is not release readiness. GO requires evidence for the exact candidate: successful build and required tests/security checks, intended artifact contents, correct publication/resolution, and matching docs/site. Any release-critical unknown is NO-GO or requires an explicit, recorded maintainer exception.
+
+No agent may publish a release, push a release tag, deploy Maven artifacts, alter signing credentials/keys, deploy production website changes or change DNS without explicit maintainer authorization. Preparing and testing the process/artifacts is permitted.
+
+## 2. Non-negotiable engineering sequence
 
 > Inspect first. Decide second. Implement third. Verify last.
 
-No agent may begin implementation merely because an issue is open or a user said "continue". First establish current repository state, issue validity, dependencies, and acceptance criteria.
+GitHub is the only upstream and source of truth. SourceForge is legacy only: never fetch, sync, cite as upstream or use as fallback.
 
-GitHub is the only upstream and source of truth. SourceForge is legacy only: do not fetch, sync, cite as upstream, or use it as a fallback.
+At session start:
+1. Read `AGENTS.md` and this workflow.
+2. Read Issue #1 and its Release Stabilization Gate.
+3. Inspect current `main` SHA, open PRs and relevant CI.
+4. Read target issue and all material comments, linked PRs and dependencies.
+5. Revalidate issue scope and evidence against current `main`.
 
-## 2. Priority model
+## 3. Priority model
 
-Every actionable issue should have exactly one priority label:
+Every actionable issue should have exactly one priority label when repository labels support it:
 
-| Label | Meaning | Scheduling rule |
+| Label | Meaning | Scheduling |
 |---|---|---|
-| `priority:P0` | Critical security exposure, data loss/corruption, or severe production/release blocker with evidence | Triage immediately. Do not assume exploitability; establish reachability and impact before remediation. |
-| `priority:P1` | Core/runtime correctness, compatibility, security remediation after triage, or a verified blocker to the active roadmap stage | First implementation queue after P0 triage. |
-| `priority:P2` | Normal maintenance, CI, dependency hygiene, docs required for current work, and non-blocking quality improvements | Work after P0/P1. |
-| `priority:P3` | IDE/product capabilities, plugin ecosystem, or later roadmap functionality not blocking the active stage | Schedule when the relevant stage is active. |
-| `priority:P4` | Proposal, exploration, speculative direction, or work lacking an accepted implementation contract | Backlog only; never auto-implement. |
+| `priority:P0` | Critical security exposure, data loss/corruption, severe release blocker with evidence | Immediate triage |
+| `priority:P1` | Core/runtime correctness, compatibility, serious security remediation, verified active Gate blocker | First implementation queue |
+| `priority:P2` | Normal maintenance, CI, dependency hygiene, release/docs work not currently blocking | After P0/P1 |
+| `priority:P3` | Later product, IDE or plugin capabilities not blocking the release | Later |
+| `priority:P4` | Proposal/exploration without accepted contract | Backlog; never auto-implement |
 
-Priority describes impact/importance, not readiness, effort, age, or urgency inferred from wording. Security issues must be re-triaged against the current dependency graph and reachable code paths; historical scan findings are not proof of current exposure.
+Priority describes impact, not effort, age, readiness or wording. Gate dependency can order work within a priority and can elevate a verified release blocker after evidence-based triage. Never invent priority.
 
-## 3. Readiness model
+## 4. Readiness model
 
-Every actionable issue should have exactly one readiness label:
+Use exactly one readiness classification:
+- `status:ready`: bounded scope, current evidence, acceptance criteria, dependencies and verification plan exist.
+- `status:needs-analysis`: audit, reproduction, design comparison or maintainer decision is required.
+- `status:blocked`: concrete prerequisite prevents progress; name the unblock condition.
+- `status:deferred`: intentionally outside current delivery horizon; state reconsideration trigger.
 
-- `status:ready` — bounded implementation scope, current evidence, acceptance criteria, dependencies, and verification plan are present.
-- `status:needs-analysis` — a code audit, reproduction, design comparison, or maintainer decision is required before implementation.
-- `status:blocked` — a concrete external prerequisite or dependency prevents progress; explain what and who/what can unblock it.
-- `status:deferred` — intentionally outside the active delivery horizon; state the trigger for reconsideration.
+High priority does not imply ready. Never create implementation PRs for needs-analysis, blocked or deferred issues.
 
-An issue can be high priority and not ready. Never create an implementation PR from `needs-analysis`, `blocked`, or `deferred` work.
+## 5. Type and area metadata
 
-## 4. Type and area metadata
+Use applicable `type:bug`, `type:security`, `type:feature`, `type:maintenance`, `type:audit`, `type:docs`, `type:architecture` and existing `area:*` labels. Do not create labels ad hoc. If labels are unavailable, record a **provisional** priority/readiness classification in the issue body and report the missing label; body fields do not mean GitHub labels were applied. Issue forms collect triage metadata but do not automatically apply labels.
 
-Use one or more type labels where applicable:
-- `type:bug`, `type:security`, `type:feature`, `type:maintenance`, `type:audit`, `type:docs`, `type:architecture`.
+## 6. Issue quality and lifecycle
 
-Preserve and use the existing `area:*` labels (for example Core, IDE, CI, docs) where relevant. Do not replace useful existing taxonomy. Do not create labels ad hoc; if a required label does not exist, report it and use the issue body until repository labels are provisioned.
+Before marking ready, an issue must contain:
+1. Objective/problem and intended outcome.
+2. Evidence (paths, call sites, reproduction, CI); distinguish FACT/INFERENCE/UNKNOWN/PROPOSAL.
+3. Scope and explicit non-goals.
+4. Observable acceptance criteria.
+5. Dependencies and related issues/PRs.
+6. Verification plan, including manual checks.
+7. Compatibility/security risks or "none identified".
+8. Gate workstream and release impact/dependency.
 
-## 5. Issue quality contract
-
-Before an issue becomes `status:ready`, it must contain:
-
-1. **Objective / problem:** what user or engineering outcome is required.
-2. **Evidence:** reproducible behavior, source paths/call sites, CI run or concrete observation; distinguish FACT, INFERENCE, UNKNOWN and PROPOSAL.
-3. **Scope:** included work and explicit non-goals.
-4. **Acceptance criteria:** observable, testable outcomes.
-5. **Dependencies:** prerequisite issues, decisions, modules, or external services.
-6. **Verification plan:** exact relevant tests/workflows and any manual checks.
-7. **Compatibility and risk:** runtime/API/XML/plugin/security effects, or explicitly "none identified".
-8. **Relationship links:** related, duplicate, superseding, or fixing PRs/issues.
-
-If any required element is unknown, keep the issue at `status:needs-analysis` or `status:blocked`. Do not fabricate certainty to make it ready.
-
-## 6. Issue lifecycle and stale-work reconciliation
-
-For each open issue, inspect the body, comments, linked PRs, current `main`, and test evidence.
-
-- **Completed:** close as completed only when current code and evidence satisfy all acceptance criteria; link the fixing PR/commit and record what was verified.
-- **Duplicate:** close as duplicate and link the canonical issue.
-- **Obsolete / no longer planned:** close as not planned only with a concise reason and, where applicable, a replacement issue or roadmap decision.
-- **Superseded:** update the old issue with a link to the replacement and close only when no unique work remains.
-- **Historical audit / decision record:** retain open only if it still has an explicit unresolved deliverable; otherwise preserve the record and close with an evidence-backed explanation.
-- **Partially completed:** split or rewrite the remaining work; do not close merely because some related PR merged.
-
-Never mass-close or bulk-relabel issues without individual verification. Preserve history and avoid duplicate tracking.
+For every open issue, inspect body, comments, linked PRs, current `main` and evidence:
+- Close completed only when all acceptance criteria are satisfied; cite fixing PR/commit and verification.
+- Close duplicates/obsolete/superseded only with reason and canonical links.
+- Retain historical decision records only while they have a real unresolved deliverable.
+- Rewrite/split partially completed work; do not close because a related PR merged.
+- Never mass-close or bulk-relabel without individual verification.
 
 ## 7. Work selection algorithm
 
-At the start of each work cycle:
+1. Inspect current `main`, open PRs, applicable required checks and relevant issue activity.
+2. Build the queue from verified priority/readiness metadata. Until labels are fully provisioned, use explicitly provisional body-based triage.
+3. Exclude completed, duplicate, superseded, blocked, deferred and needs-analysis work from implementation selection.
+4. Select highest priority, then Gate dependency/release impact, then active roadmap stage, then oldest genuinely ready issue. Evidence-backed urgent security work may supersede this order.
+5. Choose one bounded issue and reconfirm it against current `main`.
+6. If no issue is ready, perform a bounded analysis/reconciliation task and update GitHub; do not invent implementation.
 
-1. Inspect current `main` SHA, open PRs, required checks and relevant issue activity.
-2. Identify issues with `status:ready` and a priority label. Until labels are fully provisioned, derive a provisional queue from verified issue content and explicitly mark it provisional.
-3. Exclude duplicates, completed, superseded, blocked, deferred, and needs-analysis issues.
-4. Select the highest priority (P0 before P1, then P2, P3; P4 is not auto-selected).
-5. Within a priority, honor dependency order first, then active roadmap stage, then oldest ready issue. A newer urgent security finding may supersede this order.
-6. Choose one bounded issue. Reconfirm it against current `main` before editing.
-7. If no issue is genuinely ready, perform a bounded analysis/reconciliation task and update GitHub; do not invent implementation work.
-
-An issue's age, label, title prefix, or placement in the roadmap does not alone establish priority.
+Do not select solely by age, convenience, title prefix, or Semantic Model stage.
 
 ## 8. Branch and PR workflow
 
-- Use a short-lived branch from the current `main` for each independent task.
-- Prefer one issue per PR. Combine issues only when the changes are inseparable and explain why.
-- Keep PR scope narrow; no drive-by refactors.
-- PR title should state the change. PR body must include:
-  - issue link and `Closes #N` only when fully complete;
-  - problem/evidence and implementation summary;
-  - scope and non-goals;
-  - compatibility/security risks;
-  - tests and commands actually run, with results;
-  - checks not run, skipped, pending, or environment-limited;
-  - exact head SHA at the time of verification.
-- Do not mark draft work ready until implementation and self-review are complete.
-- Update the issue with PR link and current state.
+- Use a short-lived branch from current `main`; one bounded issue per PR by default.
+- PR body states issue link, problem/evidence, scope/non-goals, implementation, compatibility/security risks, tests/commands actually run, skipped/pending/environment-limited checks and exact head SHA.
+- Use `Closes #N` only when the PR fully satisfies the issue.
+- Update the canonical issue with PR link, status, dependencies, evidence and next action.
 
-## 9. Verification and merge policy
+## 9. Technical self-review, verification and merge
 
-- Test at the narrowest relevant level first, then required module/reactor/security/static-analysis gates as specified by the issue and CI.
-- Verify checks against the exact current PR head SHA. A new commit invalidates the prior exact-head verification claim.
-- Preserve test coverage thresholds, integration tests, static analysis and security scanning. Never hide failures through broad exclusions, weakened assertions, or `continue-on-error`.
-- Passing CI does not equal independent review. Obtain an actual eligible reviewer; never claim self-review is independent.
-- Do not merge when required checks are failing/pending/missing, or review findings remain unresolved.
-- Branch protection is currently deferred by the repository owner. Agents must not enable or modify it without explicit authorization.
+For ordinary bounded FF work, a separate independent reviewer is **not required by default**. The implementing agent performs a documented technical self-review. This is not independent review and must never be represented as such.
+
+Self-review checklist, proportionate to risk:
+- Read the complete diff and inspect affected call sites/contracts.
+- Check error paths, resource lifecycle, concurrency and security implications where relevant.
+- Check API/XML/plugin/runtime compatibility and packaging effects where relevant.
+- Confirm tests exercise behavior rather than merely implementation details.
+- Inspect generated artifacts/configuration changes and ensure no secrets or unrelated files.
+- Record findings and their resolution in the PR or issue.
+
+Escalate to the maintainer when the change entails unresolved product/architecture choices, high-risk security judgment, release publication, production deployment, destructive actions or missing authorization. Do not require a second reviewer merely because one is unavailable.
+
+Before merge:
+- Verify all applicable required checks on the exact current PR head SHA. A new commit invalidates earlier verification.
+- Resolve substantive findings; no unresolved correctness/security blocker.
+- Do not merge with failing, pending or missing required checks.
+- Preserve coverage, tests, security scans and static-analysis gates. Never weaken them to get green CI.
+- Branch protection is deferred; do not enable/change it without explicit authorization.
 
 ## 10. Fire-and-forget CI cadence
 
-Do not make GitHub Actions polling the default activity.
-
-1. After a commit/PR, record the exact SHA and run links when available.
-2. Continue immediately with an independent inspection, analysis, documentation, or implementation task.
-3. Return to the run at natural decision points: before merge, before declaring a gate complete, and during closeout.
-4. Accurately classify runs as queued, in progress, success, failure, cancelled, or skipped.
-5. If the next action depends on a running gate, do independent work first and revisit it later.
-6. Never merge or declare a required gate satisfied without successful evidence.
+1. After a commit/PR, record exact SHA and run links when available.
+2. Continue independent work rather than polling/waiting on unrelated Actions.
+3. Revisit runs at merge, Gate-completion and closeout decision points.
+4. Classify queued/in-progress/success/failure/cancelled/skipped accurately.
+5. Never merge or declare a gate satisfied without successful evidence.
 
 ## 11. Dependency and security work
 
-- Do not perform blanket dependency upgrades.
-- Establish current direct/transitive/test-scope dependency trees and actual runtime packaging.
-- Map vulnerable dependency use sites and exploit preconditions; classify reachable, conditionally reachable, not reachable, or unknown.
-- Check maintained fixed versions and Java/runtime compatibility before proposing migration.
-- Separate library families into focused PRs; compare effective POMs and resolved trees before/after.
-- Keep findings visible until verified remediation. Tighten blocking gates only after an evidence-backed baseline and policy exist.
+- No blanket dependency upgrades.
+- Establish current direct/transitive/test dependency trees and actual shipped runtime packaging.
+- Map vulnerable dependency use sites and exploit preconditions; classify reachable, conditionally reachable, not reachable or unknown.
+- Check fixed versions and Java/runtime compatibility before migration.
+- Separate library families into focused PRs; compare effective POMs and resolved trees.
+- Keep residual findings visible until verified remediation.
 
-## 12. Communication and durable records
+## 12. Durable records and communication
 
-- Issues, PRs, commit messages and repository docs are in English. Maintainer conversation may be Polish.
-- Record decisions, evidence, blockers, commands and results in GitHub, not only in chat.
-- Use FACT / INFERENCE / UNKNOWN / PROPOSAL labels for material conclusions.
-- Be explicit about tool/permission limits. Never invent reviewers, approvals, checks, labels, milestones, test results or repository settings.
-- Do not publish releases, change repository settings, delete important branches, or perform other destructive actions without appropriate authorization.
+- Issues, PRs, commits and repository docs are English; maintainer coordination in chat may be Polish.
+- Record decisions, evidence, blockers, tests, status and next action in GitHub, not only in chat.
+- Never invent reviewers, approvals, CI results, labels, milestones, tests or capabilities.
+- If a tool/permission is unavailable, state the limitation and continue safe independent work.
 
-## 13. Required preflight checklist
+## 13. Required preflight and closeout
 
 Before implementation:
-- [ ] Read `AGENTS.md` and this document.
-- [ ] Read Issue #1 and the target issue including comments.
-- [ ] Inspect open PRs and linked/superseding work.
-- [ ] Confirm current `main` SHA and reproduce/locate source evidence.
-- [ ] Confirm issue is not already fixed or obsolete.
-- [ ] Confirm priority, readiness, dependencies, scope and acceptance criteria.
-- [ ] Record a verification plan.
+- [ ] Read `AGENTS.md`, this workflow and roadmap #1 Gate.
+- [ ] Inspect current `main`, open PRs, target issue/comments and linked work.
+- [ ] Confirm issue validity, priority, readiness, Gate workstream/dependency and release impact.
+- [ ] Confirm evidence, scope, non-goals, acceptance and verification plan.
 
-Before closing a PR/issue:
-- [ ] Verify exact PR head SHA.
-- [ ] Required checks succeeded on that SHA.
-- [ ] Independent review is complete and findings resolved.
-- [ ] Acceptance criteria are demonstrably satisfied.
-- [ ] Issue/PR contains durable evidence and correct closure reason.
+Before merge/closeout:
+- [ ] Exact current PR head SHA recorded.
+- [ ] Applicable required checks succeeded on that SHA.
+- [ ] Technical self-review performed and substantive findings resolved.
+- [ ] Acceptance criteria demonstrated with evidence.
+- [ ] Canonical issue updated with status, results, dependencies and next action.
+- [ ] Any release/production action has explicit maintainer authorization.
