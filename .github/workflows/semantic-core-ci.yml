@@ -153,16 +153,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p target
+          mkdir -p webharvest-core/target
           mvn --batch-mode --no-transfer-progress -pl webharvest-core \
             -Dgroovy6.compatibility=true \
             dependency:tree \
             -Dincludes=org.apache.groovy:*,org.codehaus.groovy:* \
             -DoutputFile=target/groovy6-dependency-tree.txt
-          cat target/groovy6-dependency-tree.txt
-          grep -q 'org.apache.groovy:groovy:jar:6.0.0' target/groovy6-dependency-tree.txt
-          grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' target/groovy6-dependency-tree.txt
-          if grep -q 'org.codehaus.groovy:groovy-all' target/groovy6-dependency-tree.txt; then
+          tree_file="webharvest-core/target/groovy6-dependency-tree.txt"
+          cat "$tree_file"
+          grep -q 'org.apache.groovy:groovy:jar:6.0.0' "$tree_file"
+          grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' "$tree_file"
+          if grep -q 'org.codehaus.groovy:groovy-all' "$tree_file"; then
             echo "::error::Legacy Groovy 2.x remains in the Groovy 6 compatibility graph."
             exit 1
           fi
@@ -184,7 +185,7 @@ jobs:
         with:
           name: groovy6-compatibility-diagnostics
           path: |
-            target/groovy6-dependency-tree.txt
+            webharvest-core/target/groovy6-dependency-tree.txt
             webharvest-core/target/failsafe-reports/**
             webharvest-core/target/surefire-reports/**
           if-no-files-found: warn
