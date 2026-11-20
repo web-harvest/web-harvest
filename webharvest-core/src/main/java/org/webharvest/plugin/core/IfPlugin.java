@@ -775,7 +775,7 @@ public class IfPlugin extends AbstractPlugin {
         }
         try {
             Double numericLiteral = Double.valueOf(expression);
-            return numericLiteral.doubleValue() != 0.0d;
+            return isTruthyConditionValue(new NodeVariable(numericLiteral));
         } catch (NumberFormatException notNumericLiteral) {
             // Continue with variable lookup for non-literal expressions.
         }
@@ -812,7 +812,8 @@ public class IfPlugin extends AbstractPlugin {
             return (Boolean) wrapped;
         }
         if (wrapped instanceof Number) {
-            return ((Number) wrapped).doubleValue() != 0.0d;
+            double number = ((Number) wrapped).doubleValue();
+            return !Double.isNaN(number) && number != 0.0d;
         }
 
         String text = value.toString().trim();
@@ -820,7 +821,8 @@ public class IfPlugin extends AbstractPlugin {
             return false;
         }
         try {
-            return Double.parseDouble(text) != 0.0d;
+            double number = Double.parseDouble(text);
+            return !Double.isNaN(number) && number != 0.0d;
         } catch (NumberFormatException ignored) {
             // Per the If contract, every non-empty non-falsy string is truthy.
             return true;
