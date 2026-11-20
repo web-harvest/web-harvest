@@ -9,6 +9,7 @@ For current project direction and contribution guidance, start here:
 - [Monorepo and Module Boundary Policy](MONOREPO.md) — current Maven modules, dependency direction and future repository extraction gates.
 - [Plugin Inventory](PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery baseline; not yet an approved Core membership list.
 - [Contributor Guide](../CONTRIBUTING.md) — branches, bug fixes, CI, review and evidence expectations.
+- [Workflow Security Model](SECURITY.md) — trust boundaries for executable XML, scripts, nested includes and the embedded IDE.
 - [Project roadmap on GitHub](https://github.com/web-harvest/web-harvest/issues/1).
 
 ## Documentation status
