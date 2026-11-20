@@ -40,6 +40,7 @@ jobs:
     env:
       GROOVY_COMPATIBILITY: ${{ startsWith(github.head_ref, 'spike/groovy6-reactor') || startsWith(github.head_ref, 'spike/groovy51-reactor') }}
       GROOVY_COMPATIBILITY_VERSION: ${{ startsWith(github.head_ref, 'spike/groovy51-reactor') && '5.1.3' || '6.0.0' }}
+      GROOVY_PRODUCTION_MIGRATION: ${{ startsWith(github.head_ref, 'security/groovy-5.1.3-production') || startsWith(github.ref_name, 'security/groovy-5.1.3-production') }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -208,6 +209,8 @@ jobs:
           provider_args=()
           if [[ "$GROOVY_COMPATIBILITY" == "true" ]]; then
             provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=$GROOVY_COMPATIBILITY_VERSION")
+          elif [[ "$GROOVY_PRODUCTION_MIGRATION" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=5.1.3")
           fi
           java "${provider_args[@]}" -cp "$cli_jar:$smoke_dir" VerifyGroovyProvider
 
@@ -327,6 +330,8 @@ jobs:
           provider_args=()
           if [[ "$GROOVY_COMPATIBILITY" == "true" ]]; then
             provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=$GROOVY_COMPATIBILITY_VERSION")
+          elif [[ "$GROOVY_PRODUCTION_MIGRATION" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=5.1.3")
           fi
           java "${provider_args[@]}" -cp "$ide_jar:$smoke_dir" VerifyGroovyProvider
 
