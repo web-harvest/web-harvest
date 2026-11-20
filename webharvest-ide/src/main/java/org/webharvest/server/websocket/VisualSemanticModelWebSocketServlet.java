@@ -1,6 +1,6 @@
 package org.webharvest.server.websocket;
 
-import org.eclipse.jetty.websocket.server.JettyWebSocketServlet;
+import org.eclipse.jetty.ee9.websocket.server.JettyWebSocketServlet;
 import org.eclipse.jetty.websocket.server.JettyWebSocketServletFactory;
 
 import java.time.Duration;
