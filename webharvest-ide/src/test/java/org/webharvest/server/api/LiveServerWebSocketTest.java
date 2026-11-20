@@ -2,10 +2,10 @@ package org.webharvest.server.api;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
-import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
-import org.eclipse.jetty.websocket.client.WebSocketClient;
+import org.eclipse.jetty.ee9.websocket.api.Session;
+import org.eclipse.jetty.ee9.websocket.api.WebSocketAdapter;
+import org.eclipse.jetty.ee9.websocket.client.ClientUpgradeRequest;
+import org.eclipse.jetty.ee9.websocket.client.WebSocketClient;
 import org.testng.annotations.Test;
 import org.webharvest.server.support.EmbeddedIdeTestServer;
 
