@@ -188,9 +188,12 @@ jobs:
                   if (engine == null) {
                       throw new IllegalStateException("Packaged CLI did not expose the Groovy JSR-223 provider");
                   }
-                  String version = engine.getFactory().getEngineVersion();
-                  if (version == null || !version.startsWith("6.0.0")) {
-                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got engine version: " + version);
+                  // JSR-223 engineVersion reports the engine's spec version (2.0), not Groovy's library version.
+                  // Read GroovySystem from the classloader that supplied the packaged JSR-223 engine.
+                  Class<?> groovySystem = Class.forName("groovy.lang.GroovySystem", true, engine.getClass().getClassLoader());
+                  String version = (String) groovySystem.getMethod("getVersion").invoke(null);
+                  if (!"6.0.0".equals(version)) {
+                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got GroovySystem version: " + version);
                   }
                   Object result = engine.eval("def x = 123; x + 1");
                   if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
@@ -303,9 +306,12 @@ jobs:
                   if (engine == null) {
                       throw new IllegalStateException("Packaged IDE did not expose the Groovy JSR-223 provider");
                   }
-                  String version = engine.getFactory().getEngineVersion();
-                  if (version == null || !version.startsWith("6.0.0")) {
-                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got engine version: " + version);
+                  // JSR-223 engineVersion reports the engine's spec version (2.0), not Groovy's library version.
+                  // Read GroovySystem from the classloader that supplied the packaged JSR-223 engine.
+                  Class<?> groovySystem = Class.forName("groovy.lang.GroovySystem", true, engine.getClass().getClassLoader());
+                  String version = (String) groovySystem.getMethod("getVersion").invoke(null);
+                  if (!"6.0.0".equals(version)) {
+                      throw new IllegalStateException("Expected packaged Groovy 6.0.0, got GroovySystem version: " + version);
                   }
                   Object result = engine.eval("def x = 123; x + 1");
                   if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
