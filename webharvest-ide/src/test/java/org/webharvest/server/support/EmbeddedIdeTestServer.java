@@ -1,6 +1,7 @@
 package org.webharvest.server.support;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -14,11 +15,12 @@ import org.webharvest.server.api.ExecutionControlServlet;
 import org.webharvest.server.api.ExecutionServlet;
 import org.webharvest.server.api.PluginMetadataServlet;
 import org.webharvest.server.api.SessionHistoryServlet;
+import org.webharvest.server.security.LoopbackRequestGuardFilter;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
+import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 /**
@@ -42,7 +44,11 @@ public final class EmbeddedIdeTestServer {
 
     private EmbeddedIdeTestServer() throws Exception {
         this.port = findFreePort();
-        this.server = new Server(new InetSocketAddress(LOOPBACK_HOST, port));
+        this.server = new Server();
+        ServerConnector connector = new ServerConnector(this.server);
+        connector.setHost(LOOPBACK_HOST);
+        connector.setPort(port);
+        this.server.addConnector(connector);
         configureServer();
         this.baseHttpUrl = "http://" + LOOPBACK_HOST + ":" + port;
         this.baseWsUrl = "ws://" + LOOPBACK_HOST + ":" + port;
@@ -77,6 +83,7 @@ public final class EmbeddedIdeTestServer {
     private void configureServer() throws Exception {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
+        LoopbackRequestGuardFilter.install(context);
 
         java.net.URL webappUrl = WebHarvestServer.class.getResource("/webapp");
         if (webappUrl == null) {
@@ -96,6 +103,7 @@ public final class EmbeddedIdeTestServer {
             wsContainer.setIdleTimeout(java.time.Duration.ofMinutes(10));
         });
         context.addServlet(new ServletHolder(new ExecutionWebSocketServlet()), "/ws/execution/*");
+        context.addServlet(new ServletHolder(new VisualSemanticModelWebSocketServlet()), "/ws/visual/model/*");
 
         ServletHolder defaultServlet = new ServletHolder("default", DefaultServlet.class);
         defaultServlet.setInitParameter("dirAllowed", "false");

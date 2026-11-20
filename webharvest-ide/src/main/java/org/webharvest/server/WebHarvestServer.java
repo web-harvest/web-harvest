@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.webharvest.server.api.ConfigServlet;
 import org.webharvest.server.api.ExecutionServlet;
 import org.webharvest.server.api.VisualSemanticModelServlet;
+import org.webharvest.server.security.LoopbackRequestGuardFilter;
 import org.webharvest.server.websocket.ExecutionWebSocketServlet;
 import org.webharvest.server.websocket.VisualSemanticModelWebSocketServlet;
 
@@ -57,6 +58,7 @@ public class WebHarvestServer {
         // Single ServletContextHandler for everything
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
+        LoopbackRequestGuardFilter.install(context);
         
         // Get webapp resource path
         java.net.URL webappUrl = getClass().getResource("/webapp");

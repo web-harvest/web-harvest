@@ -65,6 +65,7 @@ public class SessionHistoryTest {
             
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/api/execute"))
+                    .header("Origin", BASE_URL)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                     .build();
@@ -86,6 +87,7 @@ public class SessionHistoryTest {
         do {
             HttpRequest historyRequest = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "/api/sessions/history?limit=10"))
+                    .header("Origin", BASE_URL)
                     .GET()
                     .build();
 
@@ -162,6 +164,7 @@ public class SessionHistoryTest {
         
         HttpRequest limitRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/sessions/history?limit=2"))
+                .header("Origin", BASE_URL)
                 .GET()
                 .build();
         
@@ -179,6 +182,7 @@ public class SessionHistoryTest {
         
         HttpRequest filterRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/sessions/history?status=COMPLETED"))
+                .header("Origin", BASE_URL)
                 .GET()
                 .build();
         
@@ -217,6 +221,7 @@ public class SessionHistoryTest {
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/sessions/history?limit=5"))
+                .header("Origin", BASE_URL)
                 .GET()
                 .build();
         
