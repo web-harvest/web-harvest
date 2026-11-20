@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed validation for CycloneDX Maven SBOMs and OSV-Scanner results."""
+"""Fail-closed validation and base/head comparison for OSV SBOM scans."""
 
 from __future__ import annotations
 
@@ -50,18 +50,13 @@ def validate_sbom(path: Path) -> None:
     )
 
 
-def validate_scan(path: Path, exit_code: int) -> None:
-    if exit_code not in (0, 1):
-        raise ValueError(
-            f"OSV-Scanner exited {exit_code}; only 0 (clean) or 1 (findings) "
-            "can represent a completed scan"
-        )
+def scan_findings(path: Path) -> tuple[int, set[tuple[str, str]]]:
     result = load_json(path)
     results = result.get("results")
     if not isinstance(results, list) or not results:
         raise ValueError("OSV result JSON has no results array")
     package_count = 0
-    vulnerability_count = 0
+    findings: set[tuple[str, str]] = set()
     for source in results:
         if not isinstance(source, dict):
             raise ValueError("OSV result contains a malformed source entry")
@@ -69,23 +64,68 @@ def validate_scan(path: Path, exit_code: int) -> None:
         if not isinstance(packages, list):
             raise ValueError("OSV result source has no packages array")
         package_count += len(packages)
-        for package in packages:
-            if not isinstance(package, dict) or not isinstance(package.get("package"), dict):
+        for item in packages:
+            if not isinstance(item, dict) or not isinstance(item.get("package"), dict):
                 raise ValueError("OSV result contains a malformed package entry")
-            vulnerabilities = package.get("vulnerabilities", [])
+            package = item["package"]
+            purl = item.get("purl") or package.get("purl")
+            if not isinstance(purl, str) or not purl.startswith("pkg:"):
+                raise ValueError("OSV package result is missing its Package URL")
+            vulnerabilities = item.get("vulnerabilities", [])
             if not isinstance(vulnerabilities, list):
                 raise ValueError("OSV package vulnerabilities must be an array")
-            vulnerability_count += len(vulnerabilities)
+            for vulnerability in vulnerabilities:
+                if not isinstance(vulnerability, dict) or not isinstance(vulnerability.get("id"), str):
+                    raise ValueError("OSV result contains a vulnerability without an ID")
+                findings.add((purl, vulnerability["id"]))
     if package_count == 0:
         raise ValueError("OSV result contains no scanned packages")
-    if exit_code == 0 and vulnerability_count:
+    return package_count, findings
+
+
+def validate_scan(path: Path, exit_code: int) -> None:
+    if exit_code not in (0, 1):
+        raise ValueError(
+            f"OSV-Scanner exited {exit_code}; only 0 (clean) or 1 (findings) "
+            "can represent a completed scan"
+        )
+    package_count, findings = scan_findings(path)
+    if exit_code == 0 and findings:
         raise ValueError("OSV returned exit 0 but JSON contains vulnerabilities")
-    if exit_code == 1 and not vulnerability_count:
+    if exit_code == 1 and not findings:
         raise ValueError("OSV returned exit 1 without any vulnerability findings")
     print(
         f"Validated OSV scan: {package_count} packages, "
-        f"{vulnerability_count} vulnerabilities, exit {exit_code}"
+        f"{len(findings)} package/advisory findings, exit {exit_code}"
     )
+
+
+def compare_scans(base_path: Path, head_path: Path, output_path: Path) -> int:
+    base_count, base_findings = scan_findings(base_path)
+    head_count, head_findings = scan_findings(head_path)
+    introduced = sorted(head_findings - base_findings)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(
+            {
+                "base_packages": base_count,
+                "head_packages": head_count,
+                "new_findings": [
+                    {"purl": purl, "id": advisory_id}
+                    for purl, advisory_id in introduced
+                ],
+            },
+            indent=2,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        f"Compared base ({base_count} packages) with head ({head_count} packages): "
+        f"{len(introduced)} new package/advisory findings"
+    )
+    for purl, advisory_id in introduced:
+        print(f"::error title=New OSV finding::{advisory_id} affects {purl}")
+    return 1 if introduced else 0
 
 
 def main() -> int:
@@ -96,16 +136,22 @@ def main() -> int:
     scan = subparsers.add_parser("validate-scan")
     scan.add_argument("path", type=Path)
     scan.add_argument("--exit-code", required=True, type=int)
+    compare = subparsers.add_parser("compare")
+    compare.add_argument("base", type=Path)
+    compare.add_argument("head", type=Path)
+    compare.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.command == "validate-sbom":
             validate_sbom(args.path)
-        else:
+            return 0
+        if args.command == "validate-scan":
             validate_scan(args.path, args.exit_code)
+            return 0
+        return compare_scans(args.base, args.head, args.output)
     except ValueError as exc:
         print(f"::error::{exc}", file=sys.stderr)
-        return 1
-    return 0
+        return 2
 
 
 if __name__ == "__main__":
