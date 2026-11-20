@@ -23,29 +23,58 @@ def validate_sbom(path: Path) -> None:
     bom = load_json(path)
     if bom.get("bomFormat") != "CycloneDX":
         raise ValueError("SBOM bomFormat must be CycloneDX")
-    if not str(bom.get("specVersion", "")).startswith("1."):
-        raise ValueError("SBOM specVersion is missing or unsupported")
+    if bom.get("specVersion") != "1.6":
+        raise ValueError("SBOM specVersion must be 1.6 for pinned CycloneDX Maven plugin 2.9.3")
     metadata = bom.get("metadata")
     if not isinstance(metadata, dict) or not isinstance(metadata.get("component"), dict):
         raise ValueError("SBOM metadata.component is missing")
     components = bom.get("components")
     if not isinstance(components, list) or not components:
         raise ValueError("SBOM components must be a non-empty array")
-    purls = [
-        component.get("purl")
-        for component in components
-        if isinstance(component, dict) and isinstance(component.get("purl"), str)
-    ]
-    if not purls:
-        raise ValueError("SBOM contains no Package URLs")
-    if not any(purl.startswith("pkg:maven/") for purl in purls):
-        raise ValueError("SBOM contains no Maven Package URL")
+    purls = []
+    component_refs = set()
+    for index, component in enumerate(components):
+        if not isinstance(component, dict):
+            raise ValueError(f"SBOM component {index} is not an object")
+        purl = component.get("purl")
+        bom_ref = component.get("bom-ref")
+        if not isinstance(purl, str) or not purl.startswith("pkg:maven/"):
+            raise ValueError(f"SBOM component {index} is missing a Maven Package URL")
+        if not isinstance(bom_ref, str) or not bom_ref:
+            raise ValueError(f"SBOM component {index} is missing bom-ref")
+        if bom_ref in component_refs:
+            raise ValueError(f"SBOM contains duplicate component bom-ref: {bom_ref}")
+        purls.append(purl)
+        component_refs.add(bom_ref)
+    root_ref = metadata["component"].get("bom-ref")
+    if not isinstance(root_ref, str) or not root_ref:
+        raise ValueError("SBOM metadata.component bom-ref is missing")
+    known_refs = component_refs | {root_ref}
     dependencies = bom.get("dependencies")
     if not isinstance(dependencies, list) or not dependencies:
         raise ValueError("SBOM dependency graph is missing or empty")
+    dependency_refs = set()
+    for index, dependency in enumerate(dependencies):
+        if not isinstance(dependency, dict):
+            raise ValueError(f"SBOM dependency node {index} is not an object")
+        ref = dependency.get("ref")
+        targets = dependency.get("dependsOn")
+        if not isinstance(ref, str) or not isinstance(targets, list):
+            raise ValueError(f"SBOM dependency node {index} is malformed")
+        if ref not in known_refs:
+            raise ValueError(f"SBOM dependency graph references unknown component: {ref}")
+        if ref in dependency_refs:
+            raise ValueError(f"SBOM dependency graph contains duplicate node: {ref}")
+        dependency_refs.add(ref)
+        for target in targets:
+            if not isinstance(target, str) or target not in known_refs:
+                raise ValueError(f"SBOM dependency edge references unknown component: {target}")
+    if dependency_refs != known_refs:
+        missing = sorted(known_refs - dependency_refs)
+        raise ValueError(f"SBOM dependency graph omits {len(missing)} component/root nodes")
     print(
         f"Validated CycloneDX {bom['specVersion']} SBOM: "
-        f"{len(components)} components, {len(purls)} Package URLs, "
+        f"{len(components)} components, {len(purls)} Maven PURLs, "
         f"{len(dependencies)} dependency nodes"
     )
 
