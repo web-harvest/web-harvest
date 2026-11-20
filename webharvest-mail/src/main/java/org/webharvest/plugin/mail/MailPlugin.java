@@ -384,11 +384,7 @@ public class MailPlugin extends AbstractPlugin {
             
             // Get body content
             String bodyContent = getBodyContent(context);
-            if ("html".equalsIgnoreCase(type)) {
-                ((HtmlEmail) email).setHtmlMsg(bodyContent);
-            } else {
-                email.setMsg(bodyContent);
-            }
+            setBodyContent(email, bodyContent, "html".equalsIgnoreCase(type));
             
             String messageId = email.send();
             LOGGER.debug("Mail sent successfully with message ID: " + messageId);
@@ -401,6 +397,19 @@ public class MailPlugin extends AbstractPlugin {
         } catch (Exception e) {
             LOGGER.error("Unexpected error in mail plugin", e);
             throw new RuntimeException("Unexpected error in mail plugin: " + e.getMessage(), e);
+        }
+    }
+
+    static void setBodyContent(Email email, String bodyContent, boolean html) throws EmailException {
+        // Commons Email 1.6.0 rejects empty strings in setMsg/setHtmlMsg.
+        // Preserve WebHarvest's previous behavior: an omitted body is a valid empty message.
+        if (bodyContent == null || bodyContent.isEmpty()) {
+            return;
+        }
+        if (html) {
+            ((HtmlEmail) email).setHtmlMsg(bodyContent);
+        } else {
+            email.setMsg(bodyContent);
         }
     }
 
