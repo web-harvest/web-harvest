@@ -1,0 +1,110 @@
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+
+SCRIPT = Path(__file__).with_name("osv_sbom.py")
+
+
+def run_validator(*args):
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *map(str, args)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+class SbomValidationTests(unittest.TestCase):
+    def write_json(self, directory, name, value):
+        path = directory / name
+        path.write_text(json.dumps(value), encoding="utf-8")
+        return path
+
+    def valid_sbom(self):
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.6",
+            "metadata": {"component": {"name": "webharvest", "type": "application"}},
+            "components": [
+                {"type": "library", "name": "example", "version": "1.0", "purl": "pkg:maven/example/example@1.0"}
+            ],
+            "dependencies": [{"ref": "pkg:maven/example/example@1.0", "dependsOn": []}],
+        }
+
+    def test_accepts_complete_maven_sbom(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_json(Path(temp), "bom.json", self.valid_sbom())
+            self.assertEqual(run_validator("validate-sbom", path).returncode, 0)
+
+    def test_rejects_empty_components(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["components"] = []
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
+    def test_rejects_missing_package_urls(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["components"][0].pop("purl")
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
+    def test_rejects_missing_dependency_graph(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["dependencies"] = []
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
+
+class ScanResultValidationTests(unittest.TestCase):
+    def write_result(self, directory, vulnerabilities):
+        path = directory / "scan.json"
+        path.write_text(
+            json.dumps({
+                "results": [{
+                    "source": {"type": "sbom", "path": "bom.json"},
+                    "packages": [{
+                        "package": {"name": "example", "version": "1.0", "ecosystem": "Maven"},
+                        "vulnerabilities": vulnerabilities,
+                    }],
+                }]
+            }),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_accepts_clean_scan(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_result(Path(temp), [])
+            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+    def test_accepts_scan_with_findings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_result(Path(temp), [{"id": "GHSA-example"}])
+            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 1).returncode, 0)
+
+    def test_rejects_failure_without_findings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_result(Path(temp), [])
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 1).returncode, 0)
+
+    def test_rejects_scanner_execution_failure_even_with_json(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self.write_result(Path(temp), [])
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 127).returncode, 0)
+
+    def test_rejects_missing_packages(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "scan.json"
+            path.write_text(json.dumps({"results": [{"packages": []}]}), encoding="utf-8")
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
