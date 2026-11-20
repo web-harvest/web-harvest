@@ -87,6 +87,19 @@ class SbomValidationTests(unittest.TestCase):
 
 
 class ScanResultValidationTests(unittest.TestCase):
+    def write_sbom(self, directory, purls=None):
+        purls = purls or ["pkg:maven/example/example@1.0"]
+        path = directory / "bom.json"
+        path.write_text(
+            json.dumps({
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [{"purl": purl} for purl in purls],
+            }),
+            encoding="utf-8",
+        )
+        return path
+
     def write_result(self, directory, vulnerabilities):
         path = directory / "scan.json"
         path.write_text(
@@ -107,39 +120,46 @@ class ScanResultValidationTests(unittest.TestCase):
     def test_accepts_clean_scan(self):
         with tempfile.TemporaryDirectory() as temp:
             path = self.write_result(Path(temp), [])
-            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode, 0)
 
     def test_accepts_scan_with_findings(self):
         with tempfile.TemporaryDirectory() as temp:
             path = self.write_result(Path(temp), [{"id": "GHSA-example"}])
-            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 1).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertEqual(run_validator("validate-scan", path, "--exit-code", 1, "--sbom", sbom).returncode, 0)
 
     def test_rejects_failure_without_findings(self):
         with tempfile.TemporaryDirectory() as temp:
             path = self.write_result(Path(temp), [])
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 1).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 1, "--sbom", sbom).returncode, 0)
 
     def test_rejects_scanner_execution_failure_even_with_json(self):
         with tempfile.TemporaryDirectory() as temp:
             path = self.write_result(Path(temp), [])
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 127).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 127, "--sbom", sbom).returncode, 0)
 
     def test_rejects_missing_scan_output(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "missing.json"
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode, 0)
 
     def test_rejects_partial_scan_json(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "partial.json"
             path.write_text('{"results":[', encoding="utf-8")
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode, 0)
 
     def test_rejects_missing_packages(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "scan.json"
             path.write_text(json.dumps({"results": [{"packages": []}]}), encoding="utf-8")
-            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+            sbom = self.write_sbom(Path(temp))
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode, 0)
 
     def test_rejects_missing_package_url(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -148,6 +168,30 @@ class ScanResultValidationTests(unittest.TestCase):
             result["results"][0]["packages"][0].pop("purl")
             path.write_text(json.dumps(result), encoding="utf-8")
             self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+
+    def test_rejects_incomplete_scan_inventory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            path = self.write_result(directory, [])
+            sbom = self.write_sbom(directory, [
+                "pkg:maven/example/example@1.0",
+                "pkg:maven/example/second@2.0",
+            ])
+            self.assertNotEqual(
+                run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode,
+                0,
+            )
+
+    def test_rejects_unexpected_scan_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            path = self.write_result(directory, [])
+            sbom = self.write_sbom(directory, ["pkg:maven/example/other@9.9"])
+            self.assertNotEqual(
+                run_validator("validate-scan", path, "--exit-code", 0, "--sbom", sbom).returncode,
+                0,
+            )
 
     def test_compare_detects_new_package_advisory_pair(self):
         with tempfile.TemporaryDirectory() as temp:
