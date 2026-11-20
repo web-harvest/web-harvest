@@ -61,6 +61,27 @@ class SbomValidationTests(unittest.TestCase):
             path = self.write_json(Path(temp), "bom.json", bom)
             self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
 
+    def test_rejects_component_without_purl_even_when_other_components_have_one(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["components"].append({"type": "library", "name": "missing-purl"})
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
+    def test_rejects_dangling_dependency_reference(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["dependencies"][0]["dependsOn"] = ["pkg:maven/missing/missing@1.0"]
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
+    def test_rejects_missing_component_dependency_node(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bom = self.valid_sbom()
+            bom["dependencies"] = []
+            path = self.write_json(Path(temp), "bom.json", bom)
+            self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
+
 
 class ScanResultValidationTests(unittest.TestCase):
     def write_result(self, directory, vulnerabilities):
