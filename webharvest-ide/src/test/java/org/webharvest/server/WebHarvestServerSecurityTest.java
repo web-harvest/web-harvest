@@ -2,7 +2,7 @@ package org.webharvest.server;
 
 import org.eclipse.jetty.server.NetworkConnector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.ee9.servlet.ServletHolder;
 import org.testng.annotations.Test;
 
 import java.net.InetAddress;
