@@ -100,6 +100,17 @@ class ScanResultValidationTests(unittest.TestCase):
             path = self.write_result(Path(temp), [])
             self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 127).returncode, 0)
 
+    def test_rejects_missing_scan_output(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "missing.json"
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
+    def test_rejects_partial_scan_json(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "partial.json"
+            path.write_text('{"results":[', encoding="utf-8")
+            self.assertNotEqual(run_validator("validate-scan", path, "--exit-code", 0).returncode, 0)
+
     def test_rejects_missing_packages(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "scan.json"
