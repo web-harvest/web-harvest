@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketAdapter;
+import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.testng.annotations.Test;
 import org.webharvest.server.support.EmbeddedIdeTestServer;
@@ -51,6 +52,7 @@ public class LiveServerWebSocketTest {
         HttpClient httpClient = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/execute"))
+                .header("Origin", BASE_URL)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                 .build();
@@ -111,7 +113,9 @@ public class LiveServerWebSocketTest {
         };
         
         try {
-            wsClient.connect(socket, URI.create(wsUrl)).get(5, TimeUnit.SECONDS);
+            ClientUpgradeRequest upgradeRequest = new ClientUpgradeRequest();
+            upgradeRequest.setHeader("Origin", BASE_URL);
+            wsClient.connect(socket, URI.create(wsUrl), upgradeRequest).get(5, TimeUnit.SECONDS);
             System.out.println("   ✓ WebSocket connect() returned successfully");
             
             // Wait for onConnect

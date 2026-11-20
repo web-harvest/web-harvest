@@ -66,9 +66,6 @@ public class VisualSemanticModelServlet extends HttpServlet {
         String requestURI = req.getRequestURI();
         
         // Set CORS headers
-        resp.setHeader("Access-Control-Allow-Origin", "*");
-        resp.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         
@@ -93,9 +90,6 @@ public class VisualSemanticModelServlet extends HttpServlet {
             throws ServletException, IOException {
         
         // Set CORS headers
-        resp.setHeader("Access-Control-Allow-Origin", "*");
-        resp.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         

@@ -134,7 +134,6 @@ public class PluginMetadataServlet extends HttpServlet {
             resp.setContentType("application/json");
             resp.setCharacterEncoding("UTF-8");
             resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-            resp.setHeader("Access-Control-Allow-Origin", "*"); // For development with Vite
             
             // Write JSON response
             resp.getWriter().write(GSON.toJson(response));
@@ -173,7 +172,6 @@ public class PluginMetadataServlet extends HttpServlet {
             resp.setContentType("application/json");
             resp.setCharacterEncoding("UTF-8");
             resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-            resp.setHeader("Access-Control-Allow-Origin", "*");
             
             resp.getWriter().write(GSON.toJson(response));
             resp.setStatus(HttpServletResponse.SC_OK);
@@ -282,7 +280,6 @@ public class PluginMetadataServlet extends HttpServlet {
             resp.setContentType("application/json");
             resp.setCharacterEncoding("UTF-8");
             resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-            resp.setHeader("Access-Control-Allow-Origin", "*");
             
             resp.getWriter().write(GSON.toJson(ontology));
             resp.setStatus(HttpServletResponse.SC_OK);
@@ -337,7 +334,6 @@ public class PluginMetadataServlet extends HttpServlet {
             resp.setContentType("application/xml");
             resp.setCharacterEncoding("UTF-8");
             resp.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
-            resp.setHeader("Access-Control-Allow-Origin", "*");
             resp.setHeader("Content-Disposition", 
                 String.format("attachment; filename=\"webharvest-schema-%s.xsd\"", 
                     namespace.replaceAll("[^a-zA-Z0-9]", "-")));
@@ -1315,9 +1311,6 @@ public class PluginMetadataServlet extends HttpServlet {
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) 
             throws ServletException, IOException {
         // CORS preflight
-        resp.setHeader("Access-Control-Allow-Origin", "*");
-        resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-        resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 }

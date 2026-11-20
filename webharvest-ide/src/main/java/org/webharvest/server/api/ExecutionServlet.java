@@ -89,6 +89,15 @@ public class ExecutionServlet extends HttpServlet {
             throws IOException {
         
         try {
+            String contentType = req.getContentType();
+            String mediaType = contentType == null ? "" : contentType.split(";", 2)[0].trim();
+            if (!"application/json".equalsIgnoreCase(mediaType)) {
+                JsonObject error = new JsonObject();
+                error.addProperty("error", "Content-Type must be application/json");
+                sendJsonResponse(resp, HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, error);
+                return;
+            }
+
             // Read request body
             String requestBody = req.getReader().lines()
                     .reduce("", (acc, line) -> acc + line + "\n");
@@ -216,7 +225,6 @@ public class ExecutionServlet extends HttpServlet {
         resp.setStatus(status);
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        resp.setHeader("Access-Control-Allow-Origin", "*");
         resp.getWriter().write(gson.toJson(data));
     }
 }
