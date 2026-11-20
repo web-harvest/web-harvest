@@ -170,7 +170,7 @@ jobs:
       - name: Execute the real ScriptPlugin JSR-223 Groovy integration test
         run: |
           mvn --batch-mode --no-transfer-progress \
-            -pl webharvest-core -am \
+            -pl webharvest-core \
             -Dgroovy6.compatibility=true \
             -Dit.test=GroovyScriptRuntimeIntegrationTest \
             test-compile failsafe:integration-test failsafe:verify
