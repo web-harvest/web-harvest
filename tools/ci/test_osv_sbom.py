@@ -81,7 +81,9 @@ class SbomValidationTests(unittest.TestCase):
     def test_rejects_missing_component_dependency_node(self):
         with tempfile.TemporaryDirectory() as temp:
             bom = self.valid_sbom()
-            bom["dependencies"] = []
+            bom["dependencies"] = [
+                {"ref": "pkg:maven/example/root@1.0", "dependsOn": ["pkg:maven/example/example@1.0"]}
+            ]
             path = self.write_json(Path(temp), "bom.json", bom)
             self.assertNotEqual(run_validator("validate-sbom", path).returncode, 0)
 
