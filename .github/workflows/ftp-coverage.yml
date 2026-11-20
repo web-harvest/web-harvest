@@ -50,7 +50,7 @@ jobs:
             --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
             --add-opens=java.base/java.util=ALL-UNNAMED
         run: mvn --batch-mode --no-transfer-progress -Pskip-core-tests-in-reactor -pl webharvest-ftp -am clean verify
-      - name: Report FTP instruction and branch coverage
+      - name: Enforce FTP instruction and branch coverage >=80%
         if: always()
         shell: bash
         run: |
@@ -64,21 +64,30 @@ jobs:
           ]
           report = next((path for path in candidates if path.is_file()), None)
           if report is None:
-              print("FTP JaCoCo XML report not found.")
-              raise SystemExit(0)
+              raise SystemExit("FTP JaCoCo XML report missing: coverage gate cannot pass.")
 
           root = ET.parse(report).getroot()
           counters = {node.attrib["type"]: node.attrib for node in root.findall("counter")}
+          failures = []
           for kind in ("INSTRUCTION", "BRANCH"):
               counter = counters.get(kind)
               if counter is None:
-                  print(f"{kind}: no counter in {report}")
+                  failures.append(f"{kind}: counter missing")
                   continue
               covered = int(counter["covered"])
               missed = int(counter["missed"])
               total = covered + missed
-              ratio = covered / total if total else 1.0
+              if total == 0:
+                  failures.append(f"{kind}: counter has no executable items")
+                  continue
+              ratio = covered / total
               print(f"{kind}: {ratio:.1%} ({covered}/{total})")
+              if ratio < 0.80:
+                  failures.append(f"{kind}: {ratio:.1%} is below required 80.0%")
+
+          if failures:
+              raise SystemExit("FTP JaCoCo gate failed: " + "; ".join(failures))
+          print("FTP JaCoCo gate passed: instruction and branch coverage are both >=80%.")
           PY
       - name: Upload FTP coverage diagnostics
         if: always()
