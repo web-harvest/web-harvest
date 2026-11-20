@@ -167,7 +167,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Jetty 11 exposes JPMS descriptors, but this legacy IDE module is classpath-based. -->
+            <!-- Keep the legacy IDE shaded launcher on the classpath; Jetty 12 EE9 remains the embedded server. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -226,31 +226,31 @@
             <artifactId>webharvest-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- Embedded Jetty Server -->
+        <!-- Embedded Jetty 12 server with Jakarta EE 9 Servlet/WebSocket compatibility -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
-            <version>11.0.18</version>
+            <version>12.1.13</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlet</artifactId>
-            <version>11.0.18</version>
+            <groupId>org.eclipse.jetty.ee9</groupId>
+            <artifactId>jetty-ee9-servlet</artifactId>
+            <version>12.1.13</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty.websocket</groupId>
-            <artifactId>websocket-jetty-server</artifactId>
-            <version>11.0.18</version>
+            <groupId>org.eclipse.jetty.ee9.websocket</groupId>
+            <artifactId>jetty-ee9-websocket-jetty-server</artifactId>
+            <version>12.1.13</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty.websocket</groupId>
-            <artifactId>websocket-jetty-api</artifactId>
-            <version>11.0.18</version>
+            <groupId>org.eclipse.jetty.ee9.websocket</groupId>
+            <artifactId>jetty-ee9-websocket-jetty-api</artifactId>
+            <version>12.1.13</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty.websocket</groupId>
-            <artifactId>websocket-jetty-client</artifactId>
-            <version>11.0.18</version>
+            <groupId>org.eclipse.jetty.ee9.websocket</groupId>
+            <artifactId>jetty-ee9-websocket-jetty-client</artifactId>
+            <version>12.1.13</version>
             <scope>test</scope>
         </dependency>
         <!-- Testing -->
