@@ -495,35 +495,33 @@ public class CommonUtil {
      * @throws UnsupportedEncodingException
      */
     public static void saveStringToFile(File file, String content, String charset) throws IOException {
-        FileOutputStream out = new FileOutputStream(file);
-        byte[] data = content.getBytes(charset);
-
-        out.write(data);
-
-        out.flush();
-        out.close();
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            byte[] data = content.getBytes(charset);
+            out.write(data);
+            out.flush();
+        }
     }
 
     public static byte[] readBytesFromFile(File file) throws IOException {
-        FileInputStream fileinputstream = new FileInputStream(file);
-        long l = file.length();
+        try (FileInputStream fileinputstream = new FileInputStream(file)) {
+            long l = file.length();
 
-        if (l > Integer.MAX_VALUE) {
-            throw new IOException("File too big for loading into a byte array!");
+            if (l > Integer.MAX_VALUE) {
+                throw new IOException("File too big for loading into a byte array!");
+            }
+
+            byte byteArray[] = new byte[(int) l];
+
+            int i = 0;
+
+            for (int j; (i < byteArray.length) && (j = fileinputstream.read(byteArray, i, byteArray.length - i)) >= 0; i += j) {
+            }
+
+            if (i < byteArray.length) {
+                throw new IOException("Could not completely read the file " + file.getName());
+            }
+            return byteArray;
         }
-
-        byte byteArray[] = new byte[(int) l];
-
-        int i = 0;
-
-        for (int j; (i < byteArray.length) && (j = fileinputstream.read(byteArray, i, byteArray.length - i)) >= 0; i += j) {
-        }
-
-        if (i < byteArray.length) {
-            throw new IOException("Could not completely read the file " + file.getName());
-        }
-        fileinputstream.close();
-        return byteArray;
     }
 
     /**
