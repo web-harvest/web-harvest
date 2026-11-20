@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before marking this issue ready, read [AGENTS.md](https://github.com/web-harvest/web-harvest/blob/main/AGENTS.md) and [docs/AGENT_WORKFLOW.md](https://github.com/web-harvest/web-harvest/blob/main/docs/AGENT_WORKFLOW.md).
+        Before marking this issue ready, read [AGENTS.md](https://github.com/web-harvest/web-harvest/blob/main/AGENTS.md), [docs/AGENT_WORKFLOW.md](https://github.com/web-harvest/web-harvest/blob/main/docs/AGENT_WORKFLOW.md), and the [Release Stabilization Gate in roadmap #1](https://github.com/web-harvest/web-harvest/issues/1). Issue forms collect triage answers but do not automatically apply repository labels.
   - type: dropdown
     id: priority
     attributes:
@@ -29,6 +29,28 @@ body:
         - "ready"
         - "blocked"
         - "deferred"
+    validations:
+      required: true
+  - type: dropdown
+    id: gate_workstream
+    attributes:
+      label: Release Gate workstream
+      options:
+        - "Implementation and compatibility"
+        - "Tests and engineering quality"
+        - "Dependencies and security"
+        - "Release engineering (GitHub and Maven)"
+        - "Documentation"
+        - "Project website"
+        - "Cross-cutting"
+        - "Not release-scoped / later roadmap"
+    validations:
+      required: true
+  - type: textarea
+    id: release_impact
+    attributes:
+      label: Release impact and dependency
+      description: Explain whether this blocks the current release, what it depends on, or why it is explicitly later scope.
     validations:
       required: true
   - type: dropdown
