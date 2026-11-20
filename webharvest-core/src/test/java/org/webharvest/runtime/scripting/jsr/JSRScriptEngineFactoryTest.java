@@ -72,6 +72,18 @@ public class JSRScriptEngineFactoryTest {
         final ScriptEngine engine = factory.getEngine(new ScriptSource(
                 "def name = 'mashup'", ScriptingLanguage.GROOVY));
         assertNotNull(engine, "Null script engine");
+
+        final javax.script.ScriptEngine jsr223Engine =
+                new javax.script.ScriptEngineManager().getEngineByName("groovy");
+        assertNotNull(jsr223Engine, "The Groovy JSR-223 provider alias must be registered");
+        try {
+            final Object result = jsr223Engine.eval("def value = 41; value + 1");
+            assertTrue(result instanceof Number);
+            assertEquals(((Number) result).intValue(), 42,
+                    "The production Groovy provider must evaluate a basic expression");
+        } catch (javax.script.ScriptException e) {
+            throw new AssertionError("Groovy JSR-223 provider failed to evaluate a basic expression", e);
+        }
     }
 
     @Test
