@@ -2,11 +2,12 @@ package org.webharvest.server.support;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.ee9.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
-import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.util.resource.ResourceFactory;
+import org.eclipse.jetty.ee9.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.server.WebHarvestServer;
@@ -89,7 +90,7 @@ public final class EmbeddedIdeTestServer {
         if (webappUrl == null) {
             throw new IllegalStateException("Unable to locate /webapp resources");
         }
-        Resource webappResource = Resource.newResource(webappUrl);
+        Resource webappResource = ResourceFactory.root().newResource(webappUrl);
         context.setBaseResource(webappResource);
 
         context.addServlet(new ServletHolder(new ConfigServlet()), "/api/config/*");
