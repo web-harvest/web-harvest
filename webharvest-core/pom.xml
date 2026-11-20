@@ -117,8 +117,8 @@
         </profile>
         <!--
             Isolated migration experiment only. The legacy runtime remains the default;
-            Groovy 6 must pass the full Core and packaged CLI/IDE gates before any
-            production dependency migration is considered.
+            Groovy 6 must pass full Core, reactor, and packaged CLI/IDE gates before
+            any production dependency migration is considered.
         -->
         <profile>
             <id>groovy-legacy-runtime</id>
@@ -146,9 +146,8 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.groovy</groupId>
-                    <artifactId>groovy-all</artifactId>
+                    <artifactId>groovy</artifactId>
                     <version>6.0.0</version>
-                    <type>pom</type>
                     <scope>runtime</scope>
                 </dependency>
                 <dependency>

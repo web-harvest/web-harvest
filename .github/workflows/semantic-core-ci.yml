@@ -93,13 +93,13 @@ jobs:
               sys.exit(1)
           PY
       - name: Run unqualified Core verify
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am verify
+        run: mvn --batch-mode --no-transfer-progress -U -pl webharvest-core -am verify
       - name: Run Checkstyle independently if full verify is blocked
         if: failure()
-        run: mvn --batch-mode --no-transfer-progress -pl webharvest-core -am checkstyle:check
+        run: mvn --batch-mode --no-transfer-progress -U -pl webharvest-core -am checkstyle:check
       - name: Run Failsafe diagnostics if full verify fails
         if: failure()
-        run: mvn --batch-mode --no-transfer-progress -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
+        run: mvn --batch-mode --no-transfer-progress -U -Dcheckstyle.skip=true -pl webharvest-core -am test-compile failsafe:integration-test failsafe:verify
       - name: Verify and inventory JaCoCo report output
         if: always()
         shell: bash
@@ -127,7 +127,7 @@ jobs:
           retention-days: 14
   groovy6-compatibility:
     if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'spike/groovy6-')
-    name: Groovy 6 JSR-223 runtime compatibility
+    name: Groovy 6 Core and JSR-223 compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -161,9 +161,12 @@ jobs:
             -DoutputFile=target/groovy6-dependency-tree.txt
           tree_file="webharvest-core/target/groovy6-dependency-tree.txt"
           cat "$tree_file"
-          grep -q 'org.apache.groovy:groovy-all:pom:6.0.0' "$tree_file"
           grep -q 'org.apache.groovy:groovy:jar:6.0.0' "$tree_file"
           grep -q 'org.apache.groovy:groovy-jsr223:jar:6.0.0' "$tree_file"
+          if grep -q 'org.apache.groovy:groovy-test-junit6' "$tree_file"; then
+            echo "::error::Groovy's JUnit 6 test adapter must not alter the project's TestNG Failsafe provider."
+            exit 1
+          fi
           if grep -q 'org.codehaus.groovy:groovy-all' "$tree_file"; then
             echo "::error::Legacy Groovy 2.x remains in the Groovy 6 compatibility graph."
             exit 1
@@ -199,6 +202,29 @@ jobs:
             exit 1
           fi
           grep -q 'Total tests run: 1, Failures: 0, Skips: 0' "$output_dir/testng-console.log"
+      - name: Run full Core verify with Groovy 6
+        run: |
+          mvn --batch-mode --no-transfer-progress -U \
+            -pl webharvest-core -am \
+            -Dgroovy6.compatibility=true \
+            verify
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          report = Path("webharvest-core/target/failsafe-reports/failsafe-summary.xml")
+          if not report.is_file():
+              raise SystemExit(f"Missing Failsafe summary: {report}")
+          root = ET.parse(report).getroot()
+          completed = int(root.findtext("completed", "0"))
+          errors = int(root.findtext("errors", "0"))
+          failures = int(root.findtext("failures", "0"))
+          if completed <= 0 or errors or failures:
+              raise SystemExit(
+                  f"Groovy 6 Failsafe gate failed: completed={completed}, "
+                  f"errors={errors}, failures={failures}"
+              )
+          print(f"Groovy 6 Failsafe passed: {completed} integration tests")
+          PY
       - name: Upload Groovy 6 compatibility diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -207,6 +233,10 @@ jobs:
           path: |
             webharvest-core/target/groovy6-dependency-tree.txt
             webharvest-core/target/groovy6-testng-output/**
+            webharvest-core/target/jacoco-report/**
+            webharvest-core/target/jacoco.exec
             webharvest-core/target/surefire-reports/**
+            webharvest-core/target/failsafe-reports/**
+            webharvest-core/target/failsafe-reports/**
           if-no-files-found: warn
           retention-days: 14
