@@ -28,11 +28,14 @@ class SbomValidationTests(unittest.TestCase):
         return {
             "bomFormat": "CycloneDX",
             "specVersion": "1.6",
-            "metadata": {"component": {"name": "webharvest", "type": "application"}},
+            "metadata": {"component": {"name": "webharvest", "type": "application", "bom-ref": "pkg:maven/example/root@1.0"}},
             "components": [
-                {"type": "library", "name": "example", "version": "1.0", "purl": "pkg:maven/example/example@1.0"}
+                {"type": "library", "name": "example", "version": "1.0", "purl": "pkg:maven/example/example@1.0", "bom-ref": "pkg:maven/example/example@1.0"}
             ],
-            "dependencies": [{"ref": "pkg:maven/example/example@1.0", "dependsOn": []}],
+            "dependencies": [
+                {"ref": "pkg:maven/example/root@1.0", "dependsOn": ["pkg:maven/example/example@1.0"]},
+                {"ref": "pkg:maven/example/example@1.0", "dependsOn": []}
+            ],
         }
 
     def test_accepts_complete_maven_sbom(self):
