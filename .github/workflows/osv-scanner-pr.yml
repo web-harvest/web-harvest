@@ -15,7 +15,6 @@ concurrency:
 permissions:
   actions: read
   contents: read
-  security-events: write
 
 jobs:
   scan-pr:
@@ -69,7 +68,7 @@ jobs:
           echo "Head: ${head_sha}"
 
       - name: Pull pinned OSV-Scanner image
-        run: docker pull ghcr.io/google/osv-scanner:v2.7.1
+        run: docker pull ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde
 
       - name: Generate and validate base production and test SBOMs
         shell: bash
@@ -142,7 +141,7 @@ jobs:
             set +e
             docker run --rm \
               --volume "$(dirname "${sbom}"):/sbom:ro" \
-              ghcr.io/google/osv-scanner:v2.7.1 \
+              ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde \
               scan source --format=json --all-packages --lockfile=/sbom/bom.json \
               > "${output}" 2> "${log}"
             status=$?
