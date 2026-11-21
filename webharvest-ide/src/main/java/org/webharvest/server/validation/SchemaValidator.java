@@ -169,17 +169,15 @@ public class SchemaValidator {
                 
             } else if (node.getNodeType() == Node.TEXT_NODE) {
                 String text = node.getTextContent().trim();
-                if (!text.isEmpty() && !"config".equals(element.getLocalName())) {
-                    // Text content is allowed in most plugins (as body content)
-                    // Only flag if it's truly random text at config level
-                    if (element.getLocalName().equals("config")) {
-                        errors.add(new ValidationError(
-                            "Invalid text content outside plugin tags: " + text.substring(0, Math.min(50, text.length())),
-                            getLineNumber(element),
-                            element.getLocalName(),
-                            "INVALID_CONTENT"
-                        ));
-                    }
+                if (!text.isEmpty() && "config".equals(element.getLocalName())) {
+                    // Non-whitespace text is invalid directly under the config root.
+                    // Plugin body text remains allowed for body-content processors.
+                    errors.add(new ValidationError(
+                        "Invalid text content outside plugin tags: " + text.substring(0, Math.min(50, text.length())),
+                        getLineNumber(element),
+                        element.getLocalName(),
+                        "INVALID_CONTENT"
+                    ));
                 }
             }
         }
