@@ -8,7 +8,7 @@ The IDE exposes a session-metrics payload, but most resource fields are not curr
 
 ## Verified implementation status
 
-**Source baseline:** `main` at `bb66a088727fc92250dfeb37df4f410fcbde2d10` (2026-11-21).
+**Source baseline:** `main` at `0dda753673db68202cb95976fad87da8190d2af3` (2026-11-21).
 
 | Metric | Current implementation | Important limitation |
 |---|---|---|
@@ -40,7 +40,7 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 
 ### 1. Basic Session Metrics
 - **Duration**: Session start-to-end time in milliseconds.
-- **Elements Processed**: Number of variables copied into the final result map by ExecutionManager; this is not the number of input records or loop iterations.
+- **Elements Processed**: Number of variables copied into the final result map by ExecutionManager; this is not the number of input records or loop iterations. This is separate from Core `SessionMetrics.getProcessedElements()`, which the built-in service does not increment.
 - **Processing Rate**: Result variables per second, not source records per second.
 - **Status**: Session lifecycle status such as RUNNING, COMPLETED or FAILED.
 
@@ -56,7 +56,8 @@ Do not treat the displayed plugin times, synthetic HTTP fallback values, or resu
 ### 4. Token usage model (not instrumented)
 - `TokenUsage` defines HTTP request/byte, CPU-time and memory-peak fields.
 - `TokenTrackerImpl` stores values only when a caller explicitly records them.
-- The current execution path initializes the tracker but does not record these resources; do not interpret zero/default values as measured consumption.
+- The IDE execution path initializes the tracker but does not record these resources; do not interpret zero/default values as measured consumption.
+- Core `WebHarvestServiceImpl` also creates `TokenTrackerImpl` when `SessionOptions.trackTokens` is requested, but does not attach it to the execution context or record runtime events; see [Issue #168](https://github.com/web-harvest/web-harvest/issues/168).
 
 ---
 
@@ -276,7 +277,8 @@ interface SessionInfo {
 
 ## Current limitations and follow-up work
 
-- **Result count:** the IDE currently counts final result variables as processed elements. It does not count source records or loop iterations.
+- **Result count:** the IDE currently counts final result variables as processed elements. It does not count source records or loop iterations. Core `SessionMetrics.getProcessedElements()` is a separate accumulator and is not incremented by the built-in service.
+- **Element limit:** `SessionOptions.maxElements` is stored but not enforced by the built-in service; see [Issue #307](https://github.com/web-harvest/web-harvest/issues/307).
 - **HTTP:** no runtime recorder populates TokenTracker; request/byte/latency values are synthetic when an HTTP tag is detected.
 - **Plugin timing:** current plugin breakdown values are fixed estimates based on XML tag presence. They are not suitable for performance regression analysis or bottleneck diagnosis.
 - **CPU/memory:** fields exist in `TokenUsage`, but no runtime recording call site was found; they are not measured.
