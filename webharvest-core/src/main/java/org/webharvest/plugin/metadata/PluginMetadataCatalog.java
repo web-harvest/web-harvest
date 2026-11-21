@@ -31,10 +31,10 @@ import org.webharvest.plugin.semantic.PluginNodeRole;
 import org.webharvest.plugin.semantic.PluginSemanticsResolver;
 
 /**
- * Builds a unified plugin metadata catalog by combining curated overrides with
- * runtime metadata discovered from actual plugin classes. The resulting
- * descriptors power the IDE palette, property editors, and semantic
- * validations.
+ * Builds the plugin metadata catalog by discovering plugin classes at runtime
+ * and projecting their Java metadata, resolved semantics, and inferred UI hints
+ * into descriptors. The response-shape JSON schema is loaded separately from a
+ * classpath resource.
  */
 public final class PluginMetadataCatalog {
 
@@ -49,8 +49,9 @@ public final class PluginMetadataCatalog {
     private static final Map<String, Object> CATALOG_SCHEMA;
 
     static {
-        // All metadata generated dynamically from plugin classes - no static JSON files needed
-        // UI hints are auto-generated from plugin category and element names
+        // Catalog descriptors are generated dynamically from plugin classes.
+        // The JSON schema resource is loaded separately and defines the response shape.
+        // UI hints are inferred from plugin metadata and category.
         CatalogBundle bundle = buildRuntimeCatalog();
         DESCRIPTORS = bundle.descriptors();
         CATALOG_SCHEMA = loadSchemaDocument();
