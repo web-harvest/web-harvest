@@ -173,7 +173,7 @@ import java.util.regex.Pattern;
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="url">
  *   <regexp>
- *     <regexp-pattern>https?://([^/]+)(/.*)}</regexp-pattern>
+ *     <regexp-pattern>https?://([^/]+)(/.*)</regexp-pattern>
  *     <regexp-source>
  *       <http url="https://example.com/links"/>
  *     </regexp-source>
