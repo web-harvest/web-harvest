@@ -40,6 +40,12 @@ import java.time.Duration;
  * 
  * <p>Immutable configuration object created using builder pattern.</p>
  * 
+ * <p><strong>Current limitations:</strong> The built-in service enforces the timeout
+ * option. The token-tracking flag does not currently connect runtime events to
+ * {@code TokenTracker} (see <a href="https://github.com/web-harvest/web-harvest/issues/168">issue #168</a>),
+ * and {@code maxElements} is stored but not enforced (see
+ * <a href="https://github.com/web-harvest/web-harvest/issues/307">issue #307</a>).</p>
+ * 
  * <h3>Usage Example:</h3>
  * <pre>{@code
  * SessionOptions options = SessionOptions.builder()
@@ -91,18 +97,23 @@ public final class SessionOptions {
     }
     
     /**
-     * Returns whether token tracking is enabled.
+     * Returns whether token tracking was requested.
      * 
-     * @return true if tokens should be tracked
+     * <p>The built-in service currently does not record runtime resource events
+     * into the tracker; see issue #168.</p>
+     * 
+     * @return true if token tracking was requested
      */
     public boolean isTrackTokens() {
         return trackTokens;
     }
     
     /**
-     * Returns the maximum number of elements to process.
+     * Returns the configured element-limit request.
      * 
-     * @return max elements, or 0 for unlimited
+     * <p>The built-in service currently does not enforce this value; see issue #307.</p>
+     * 
+     * @return configured maximum, or 0 for unlimited
      */
     public long getMaxElements() {
         return maxElements;
@@ -161,9 +172,11 @@ public final class SessionOptions {
         }
         
         /**
-         * Sets whether to track token usage.
+         * Requests token tracker initialization.
          * 
-         * @param trackTokens true to enable tracking
+         * <p>Runtime resource-event recording is not yet connected; see issue #168.</p>
+         * 
+         * @param trackTokens true to request tracker initialization
          * @return this builder
          */
         public Builder trackTokens(boolean trackTokens) {
@@ -172,7 +185,10 @@ public final class SessionOptions {
         }
         
         /**
-         * Sets the maximum number of elements to process.
+         * Sets the requested maximum number of elements.
+         * 
+         * <p>The built-in service currently stores but does not enforce this value;
+         * see issue #307.</p>
          * 
          * @param maxElements maximum elements, or 0 for unlimited
          * @return this builder
