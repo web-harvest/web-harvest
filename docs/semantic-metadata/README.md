@@ -9,7 +9,7 @@ The catalog is built from plugin classes at runtime:
 1. `PluginClassScanner` scans the Core and optional extension packages for concrete classes annotated with `@CorePlugin`.
 2. Discovered classes are instantiated and their `PluginMetadata` is projected into `PluginDescriptor` entries by `PluginMetadataCatalog`.
 3. Structural semantics are resolved through `PluginSemanticsResolver`; UI hints are inferred from plugin metadata and category.
-4. If classpath scanning fails, the scanner uses its embedded compatibility fallback class list.
+4. The scanner contains an embedded compatibility fallback class list. A failure of an individual package scan is logged and that package is skipped; it does not activate the fallback list. The current implementation can therefore produce a partial or empty catalog after package-level scan failures.
 5. The JSON resource `webharvest-core/src/main/resources/metadata/plugin-metadata-schema.json` describes the response shape. It is not a curated plugin list or a source of per-plugin metadata.
 
 The active scanner packages are Core, FTP, Mail, Database, ZIP and WebBrowser. Optional extension classes are loaded reflectively and are included only when present on the runtime classpath.
