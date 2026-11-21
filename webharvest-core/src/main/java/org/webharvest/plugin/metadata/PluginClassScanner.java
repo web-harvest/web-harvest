@@ -60,7 +60,7 @@ public final class PluginClassScanner {
     
     /**
      * Gets all plugin class names by scanning the classpath.
-     * Results are cached after first scan.
+     * Successful discovery results are cached; fallback results are retried on the next call.
      * 
      * @return list of fully qualified class names
      */
@@ -68,6 +68,14 @@ public final class PluginClassScanner {
         return allPluginClassNames(PLUGIN_PACKAGES, PluginClassScanner::scanPackage, FALLBACK_CLASSES);
     }
 
+    /**
+     * Resolves plugin names with an injectable scanner and caches only successful discovery.
+     *
+     * @param packageNames configured packages to scan
+     * @param packageScanner function that scans one package
+     * @param fallback complete fallback list used after a scan failure
+     * @return discovered names or the fallback list
+     */
     static List<String> allPluginClassNames(
             String[] packageNames,
             Function<String, Set<Class<?>>> packageScanner,
