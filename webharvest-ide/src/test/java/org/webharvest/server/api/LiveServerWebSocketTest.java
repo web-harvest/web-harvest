@@ -2,10 +2,10 @@ package org.webharvest.server.api;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
-import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
-import org.eclipse.jetty.websocket.client.WebSocketClient;
+import org.eclipse.jetty.ee9.websocket.api.Session;
+import org.eclipse.jetty.ee9.websocket.api.WebSocketAdapter;
+import org.eclipse.jetty.ee9.websocket.client.ClientUpgradeRequest;
+import org.eclipse.jetty.ee9.websocket.client.WebSocketClient;
 import org.testng.annotations.Test;
 import org.webharvest.server.support.EmbeddedIdeTestServer;
 
@@ -81,6 +81,7 @@ public class LiveServerWebSocketTest {
         List<String> receivedMessages = new CopyOnWriteArrayList<>();
         CountDownLatch connectLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(1);
+        CountDownLatch closeLatch = new CountDownLatch(1);
         
         WebSocketAdapter socket = new WebSocketAdapter() {
             @Override
@@ -109,6 +110,7 @@ public class LiveServerWebSocketTest {
             @Override
             public void onWebSocketClose(int statusCode, String reason) {
                 System.out.println("   🔌 WebSocket closed: " + statusCode + " - " + reason);
+                closeLatch.countDown();
             }
         };
         
@@ -138,6 +140,11 @@ public class LiveServerWebSocketTest {
             System.out.println("\n✅ LIVE SERVER TEST PASSED!");
             
         } finally {
+            Session activeSession = socket.getSession();
+            if (activeSession != null && activeSession.isOpen()) {
+                activeSession.close();
+                closeLatch.await(2, TimeUnit.SECONDS);
+            }
             wsClient.stop();
         }
     }
