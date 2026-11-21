@@ -69,7 +69,7 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Exit on error</h4>
+ * <h3>Example 1: Exit on error</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -83,7 +83,7 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Exit when target found</h4>
+ * <h3>Example 2: Exit when target found</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -98,7 +98,7 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Conditional exit based on quota</h4>
+ * <h3>Example 3: Conditional exit based on quota</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
