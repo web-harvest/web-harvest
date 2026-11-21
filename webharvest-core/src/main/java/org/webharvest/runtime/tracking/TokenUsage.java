@@ -45,7 +45,7 @@ import java.util.Map;
  * value reflects an explicit recording call; zero/default values do not prove
  * that the corresponding resource was measured.</p>
  * 
- * <h3>Usage Example:</h3>
+ * <h2>Usage Example:</h2>
  * <pre>{@code
  * TokenUsage usage = tracker.getUsage();
  * 

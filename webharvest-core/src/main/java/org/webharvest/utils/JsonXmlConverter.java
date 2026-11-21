@@ -40,28 +40,24 @@ import org.json.JSONObject;
 /**
  * JSON to XML converter for WebHarvest.
  * 
- * <h3>Bug #61 Fix</h3>
+ * <h2>Bug #61 Fix</h2>
  * <p>
  * This is a custom implementation that fixes Bug #61 where org.json.XML.toString()
  * treats the key "content" as a special case for text nodes, causing it to be
  * stripped from the XML output.
  * </p>
  * 
- * <p>
  * <strong>Problem with org.json.XML:</strong>
  * <pre>
  * Input:  {"a": {"content": {"b": "c"}}}
  * Output: &lt;a&gt;&lt;b&gt;c&lt;/b&gt;&lt;/a&gt;  (content key is lost!)
  * </pre>
- * </p>
  * 
- * <p>
  * <strong>This implementation:</strong>
  * <pre>
  * Input:  {"a": {"content": {"b": "c"}}}
  * Output: &lt;a&gt;&lt;content&gt;&lt;b&gt;c&lt;/b&gt;&lt;/content&gt;&lt;/a&gt;  (content preserved!)
  * </pre>
- * </p>
  * 
  * <h3>Design Principles</h3>
  * <ul>

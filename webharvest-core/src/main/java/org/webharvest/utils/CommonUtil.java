@@ -547,7 +547,7 @@ public class CommonUtil {
      * Handles relative links, absolute paths, query parameters, and parent directory references.
      * Links can be full URLs, absolute paths, or relative paths as found in A or IMG tags.
      * 
-     * <h3>Bug #7 Fix (v2.2.0): Parent Directory Normalization</h3>
+     * <h4>Bug #7 Fix (v2.2.0): Parent Directory Normalization</h4>
      * <p>
      * <strong>Issue:</strong> Parent directory references ("..") were not normalized,
      * resulting in URLs like {@code http://example.com/foo/../bar.htm}.
@@ -671,7 +671,7 @@ public class CommonUtil {
      * for null it is an EmptyVariable, and for others it is NodeVariable
      * that wraps specified object.
      * 
-     * <h3>Bug #29 Fix (v2.2.0): NativeJavaObject Support</h3>
+     * <h4>Bug #29 Fix (v2.2.0): NativeJavaObject Support</h4>
      * <p>
      * <strong>Issue:</strong> Script processor with JavaScript returns NativeJavaObject,
      * but createVariable didn't unwrap it, causing it to be stored as-is in NodeVariable.

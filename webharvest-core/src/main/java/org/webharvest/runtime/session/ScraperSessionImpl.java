@@ -53,7 +53,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *   <li>Cancellation support with terminal state protection</li>
  * </ul>
  * 
- * <h3>Thread Safety:</h3>
+ * <h2>Thread Safety:</h2>
  * <p>All public methods are thread-safe. Internal state is protected by:</p>
  * <ul>
  *   <li>Volatile fields for status and error</li>

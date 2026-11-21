@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  *   <li>Snapshot semantics for bulk operations (getAllSessions, getSessionsByClientId)</li>
  * </ul>
  * 
- * <h3>Thread Safety:</h3>
+ * <h2>Thread Safety:</h2>
  * <p>All public methods are thread-safe and can be called concurrently from multiple threads.
  * Methods that return collections ({@link #getAllSessions()}, {@link #getSessionsByClientId(String)})
  * return snapshots that are safe from concurrent modification.</p>

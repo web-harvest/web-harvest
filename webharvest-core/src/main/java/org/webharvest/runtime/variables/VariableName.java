@@ -46,7 +46,7 @@ import org.webharvest.exception.VariableException;
  * The variable name must conform the general rules that apply
  * to variable names of programming languages.
  * 
- * <h3>Bug #6: Underscore Support (v2.2.0)</h3>
+ * <h2>Bug #6: Underscore Support (v2.2.0)</h2>
  * <p>Variable names can now contain underscores for better naming conventions:</p>
  * <ul>
  *   <li><strong>Function parameters:</strong> {@code p_parameter}, {@code p_username}</li>

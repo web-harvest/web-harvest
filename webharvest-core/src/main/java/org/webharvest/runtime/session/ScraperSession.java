@@ -51,7 +51,7 @@ import org.webharvest.runtime.DynamicScopeContext;
  *   <li>Error information (if failed)</li>
  * </ul>
  * 
- * <h3>Session Lifecycle:</h3>
+ * <h2>Session Lifecycle:</h2>
  * <pre>
  * 1. Session created    → PENDING status
  * 2. Execution starts   → RUNNING status

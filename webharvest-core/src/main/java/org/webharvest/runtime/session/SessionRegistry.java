@@ -49,7 +49,7 @@ import java.util.Optional;
  *   <li>Session cleanup and lifecycle management</li>
  * </ul>
  * 
- * <h3>Usage Example:</h3>
+ * <h2>Usage Example:</h2>
  * <pre>{@code
  * SessionRegistry registry = new SessionRegistryImpl();
  * 

@@ -41,7 +41,6 @@ package org.webharvest.runtime.variables;
 /**
  * This variables are unwrapped when passing into script engines
  * and preserve the mutable collections in the original state when passing over Scraper
- * <p/>
  * Created by IntelliJ IDEA.
  * User: awajda
  * Date: Sep 20, 2010

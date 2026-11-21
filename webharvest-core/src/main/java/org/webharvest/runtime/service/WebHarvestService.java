@@ -47,7 +47,7 @@ import java.util.Optional;
  * lifecycle management. Client IDs are used for session association and listing;
  * they are not an authentication or tenant-isolation boundary.</p>
  * 
- * <h3>Features:</h3>
+ * <h2>Features:</h2>
  * <ul>
  *   <li>Asynchronous execution with session tracking</li>
  *   <li>Session lifecycle management and cancellation</li>

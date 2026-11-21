@@ -46,7 +46,7 @@ import java.time.Duration;
  * and {@code maxElements} is stored but not enforced (see
  * <a href="https://github.com/web-harvest/web-harvest/issues/307">issue #307</a>).</p>
  * 
- * <h3>Usage Example:</h3>
+ * <h2>Usage Example:</h2>
  * <pre>{@code
  * SessionOptions options = SessionOptions.builder()
  *     .timeout(Duration.ofMinutes(30))

@@ -65,7 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>{@link EventBus} for event publishing</li>
  * </ul>
  * 
- * <h3>Thread Pool Configuration:</h3>
+ * <h2>Thread Pool Configuration:</h2>
  * <p>By default, uses a cached thread pool that creates threads on demand
  * and reuses idle threads. Can be customized via constructor.</p>
  * 

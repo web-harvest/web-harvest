@@ -41,7 +41,7 @@ package org.webharvest.runtime.tracking;
  * requested but does not connect runtime events to it. See issue #168 before
  * interpreting zero/default values as measured consumption.</p>
  * 
- * <h3>Thread Safety:</h3>
+ * <h2>Thread Safety:</h2>
  * <p>Implementations must be thread-safe. Multiple threads may record
  * resource usage concurrently during scraper execution.</p>
  * 

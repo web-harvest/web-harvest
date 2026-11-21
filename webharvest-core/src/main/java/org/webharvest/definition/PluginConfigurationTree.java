@@ -41,7 +41,7 @@ import java.util.List;
 /**
  * Configuration tree for v3.0 architecture - replaces IElementDef hierarchy.
  * 
- * <h3>Architecture Change - v3.0</h3>
+ * <h2>Architecture Change - v3.0</h2>
  * <p>
  * In v2.x, XML parsing creates a tree of *Def objects (HttpDef, XPathDef, etc.)
  * which then create Plugins. This requires maintaining 30+ *Def classes.

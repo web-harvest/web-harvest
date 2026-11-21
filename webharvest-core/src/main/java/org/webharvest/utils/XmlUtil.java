@@ -81,7 +81,7 @@ import org.xml.sax.SAXException;
 /**
  * XML utils - contains common logic for XML handling
  * 
- * <h3>Bug #40: XML Schema Validation Toggle (v2.2.0)</h3>
+ * <h2>Bug #40: XML Schema Validation Toggle (v2.2.0)</h2>
  * <p>
  * Added system property {@code webharvest.schema.validation} to control
  * whether XML schema validation is enabled. Default is TRUE (enabled).

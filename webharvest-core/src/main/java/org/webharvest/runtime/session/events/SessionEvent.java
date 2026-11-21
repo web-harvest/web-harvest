@@ -43,7 +43,7 @@ import java.time.Instant;
  * <p>Session events are published to Guava EventBus and can be subscribed to
  * for monitoring, logging, metrics collection, and custom business logic.</p>
  * 
- * <h3>Event Hierarchy:</h3>
+ * <h2>Event Hierarchy:</h2>
  * <pre>
  * SessionEvent (abstract)
  *   ├── SessionCreatedEvent
