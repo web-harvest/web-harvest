@@ -83,12 +83,12 @@
  * }</pre>
  * 
  * <h2>Thread Safety</h2>
- * <p>All classes in this package are thread-safe and designed for concurrent access:</p>
- * <ul>
- *   <li>{@link org.webharvest.runtime.session.ScraperSessionImpl} uses volatile fields and synchronized blocks</li>
- *   <li>{@link org.webharvest.runtime.session.SessionMetrics} uses {@link java.util.concurrent.atomic.AtomicLong}</li>
- *   <li>{@link org.webharvest.runtime.session.SessionRegistryImpl} uses {@link java.util.concurrent.ConcurrentHashMap}</li>
- * </ul>
+ * <p>The {@link org.webharvest.runtime.session.ScraperSession} contract requires
+ * implementations to be thread-safe. The built-in {@link org.webharvest.runtime.session.ScraperSessionImpl}
+ * uses volatile state and synchronized lifecycle transitions; {@link org.webharvest.runtime.session.SessionMetrics}
+ * uses atomic counters, and {@link org.webharvest.runtime.session.SessionRegistryImpl}
+ * uses a concurrent map. These implementation details do not guarantee thread safety
+ * for custom implementations.</p>
  * 
  * @since 2.2.0
  * @author Robert Bala
