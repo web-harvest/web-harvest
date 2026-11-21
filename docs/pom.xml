@@ -11,7 +11,7 @@
     <packaging>pom</packaging>
 
     <name>WebHarvest Documentation</name>
-    <description>Complete documentation for WebHarvest 2.2.0</description>
+    <description>WebHarvest documentation resources and Maven site packaging</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -75,7 +75,7 @@
                                     &lt;head&gt;&lt;title&gt;API Documentation&lt;/title&gt;&lt;/head&gt;
                                     &lt;body&gt;
                                     &lt;h1&gt;API Documentation&lt;/h1&gt;
-                                    &lt;p&gt;API documentation will be generated here.&lt;/p&gt;
+                                    &lt;p&gt;Java API Javadocs are generated as per-module Maven artifacts. Each Java module attaches a *-javadoc.jar containing the rendered HTML. This documentation site does not currently aggregate or publish those artifacts.&lt;/p&gt;
                                     &lt;/body&gt;
                                     &lt;/html&gt;
                                 </echo>

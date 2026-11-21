@@ -69,6 +69,8 @@
     <properties>
         <saxon.version>9.1.0.8</saxon.version>
         <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <rhino.version>1.7.15.1</rhino.version>
         <slf4j.version>2.0.20</slf4j.version>
         <log4j.version>2.25.5</log4j.version>
@@ -127,15 +129,6 @@
                     </plugins>
                 </pluginManagement>
             </build>
-        </profile>
-        <profile>
-            <id>disable-java8-doclint</id>
-            <activation>
-                <jdk>[1.8,)</jdk>
-            </activation>
-            <properties>
-                <additionalparam>-Xdoclint:none</additionalparam>
-            </properties>
         </profile>
         <profile>
             <id>quality-checks</id>
@@ -310,13 +303,19 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <docencoding>${project.reporting.outputEncoding}</docencoding>
+                    <charset>${project.reporting.outputEncoding}</charset>
+                    <show>protected</show>
                     <detectLinks>false</detectLinks>
                     <detectOfflineLinks>false</detectOfflineLinks>
                     <detectJavaApiLink>false</detectJavaApiLink>
                     <links>
                         <link>https://docs.oracle.com/en/java/javase/17/docs/api/</link>
                     </links>
-                    <additionalparam>-Xdoclint:none</additionalparam>
+                    <!-- Preserve the existing warning baseline while source Javadocs are remediated in Issue #291. -->
+                    <doclint>none</doclint>
                     <failOnError>false</failOnError>
                 </configuration>
             </plugin>
@@ -492,17 +491,7 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.8.1</version>
-                    <configuration>
-                        <detectLinks>false</detectLinks>
-                        <detectOfflineLinks>false</detectOfflineLinks>
-                        <detectJavaApiLink>false</detectJavaApiLink>
-                        <links>
-                            <link>https://docs.oracle.com/en/java/javase/11/docs/api/</link>
-                        </links>
-                        <additionalparam>-Xdoclint:none</additionalparam>
-                        <failOnError>false</failOnError>
-                    </configuration>
+                    <version>3.12.0</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-jar-plugin</artifactId>
