@@ -63,6 +63,25 @@ public class PluginMetadataServlet extends HttpServlet {
     
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(PluginMetadataServlet.class);
+    private static final String DOCUMENTATION_BASE_URL =
+            "https://github.com/web-harvest/web-harvest/blob/main/docs/web/documentation/2.2.0/";
+    private static final Set<String> CORE_DOCUMENTATION_PAGES = Set.of(
+            "body-processor", "call-param", "call", "case", "catch", "config", "constant",
+            "def", "else", "empty", "exit", "file", "function", "get-var", "html-to-xml",
+            "http-header", "http-param", "http", "if", "include", "json-to-xml", "list",
+            "log", "loop", "regexp-pattern", "regexp-result", "regexp-source", "regexp",
+            "return", "script", "set-var", "sleep", "stylesheet", "template", "text",
+            "tokenize", "try", "value-of", "var", "while", "xml-to-json", "xml",
+            "xpath", "xq-expression", "xq-param", "xquery", "xslt");
+    private static final Map<String, String> EXTERNAL_DOCUMENTATION_PAGES = Map.of(
+            "ftp", "external/ftp.html",
+            "ftp-get", "external/ftp-get.html",
+            "ftp-list", "external/ftp-list.html",
+            "ftp-put", "external/ftp-put.html",
+            "mail", "external/mail.html",
+            "webbrowser", "external/web-browser.html",
+            "zip", "external/zip.html",
+            "zip-entry", "external/zip-entry.html");
     private static final Gson GSON = new GsonBuilder()
         .setPrettyPrinting()
         .create();
@@ -396,7 +415,7 @@ public class PluginMetadataServlet extends HttpServlet {
         
         // Documentation
         PluginDocumentation doc = desc.getDocumentation();
-        String helpUrl = doc != null && doc.getUrl() != null ? doc.getUrl() : getHelpUrl(desc.getId());
+        String helpUrl = resolveHelpUrl(desc.getElementName(), doc == null ? null : doc.getUrl());
         plugin.put("helpUrl", helpUrl);
         
         // UI Hints
@@ -989,11 +1008,23 @@ public class PluginMetadataServlet extends HttpServlet {
     /**
      * Generate help URL for plugin
      */
-    private String getHelpUrl(String elementName) {
-        return String.format(
-            "https://web-harvest.sourceforge.io/documentation/2.2.0/%s.html",
-            elementName
-        );
+    static String getHelpUrl(String elementName) {
+        String documentationPage = EXTERNAL_DOCUMENTATION_PAGES.get(elementName);
+        if (documentationPage == null && CORE_DOCUMENTATION_PAGES.contains(elementName)) {
+            documentationPage = elementName + ".html";
+        }
+        if (documentationPage == null) {
+            documentationPage = "index.html";
+        }
+        return DOCUMENTATION_BASE_URL + documentationPage;
+    }
+
+    static String resolveHelpUrl(String elementName, String configuredUrl) {
+        if (configuredUrl == null || configuredUrl.isBlank()
+                || configuredUrl.startsWith("https://web-harvest.sourceforge.io/documentation/")) {
+            return getHelpUrl(elementName);
+        }
+        return configuredUrl;
     }
     
     /**
@@ -1095,7 +1126,7 @@ public class PluginMetadataServlet extends HttpServlet {
         plugin.put("version", "2.2.0");
         plugin.put("author", "WebHarvest Team");
         plugin.put("tags", Arrays.asList(elementName, category.toLowerCase().replace(" & ", "-")));
-        plugin.put("helpUrl", "https://web-harvest.sourceforge.io/documentation/plugin-" + elementName + ".html");
+        plugin.put("helpUrl", getHelpUrl(elementName));
         
         Map<String, Object> schema = new HashMap<>();
         schema.put("attributes", attributes);
