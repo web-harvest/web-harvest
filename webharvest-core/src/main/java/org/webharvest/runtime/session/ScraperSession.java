@@ -72,7 +72,7 @@ import org.webharvest.runtime.DynamicScopeContext;
  * // Monitor progress
  * while (session.getStatus() == SessionStatus.RUNNING) {
  *     SessionMetrics metrics = session.getMetrics();
- *     System.out.println("Progress: " + metrics.getProcessedElements() + " elements");
+ *     System.out.println("Elapsed: " + metrics.getDuration().getSeconds() + " seconds");
  *     Thread.sleep(1000);
  * }
  * 
