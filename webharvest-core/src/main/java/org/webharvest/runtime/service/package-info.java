@@ -35,14 +35,21 @@
  * High-level service API for WebHarvest session management.
  * 
  * <h2>Overview</h2>
- * <p>This package provides the main entry point for executing WebHarvest configurations
- * with session management, concurrent execution, and monitoring.</p>
+ * <p>This package provides the service API for executing WebHarvest configurations
+ * with session management, concurrent execution, and session-level monitoring.
+ * Client IDs support association and listing only; they do not enforce tenant isolation.</p>
  * 
  * <h3>Key Components:</h3>
  * <ul>
  *   <li>{@link org.webharvest.runtime.service.WebHarvestService} - Main service interface</li>
  *   <li>{@link org.webharvest.runtime.service.SessionOptions} - Execution configuration</li>
  * </ul>
+ * 
+ * <h2>Current limitations</h2>
+ * <p>The {@code SessionOptions.trackTokens} flag does not yet connect runtime events
+ * to resource counters (see <a href="https://github.com/web-harvest/web-harvest/issues/168">issue #168</a>).
+ * The {@code maxElements} option is stored but not enforced by the built-in service
+ * (see <a href="https://github.com/web-harvest/web-harvest/issues/307">issue #307</a>).</p>
  * 
  * <h2>Quick Start</h2>
  * <pre>{@code
