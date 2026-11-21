@@ -266,7 +266,7 @@ public class FtpPutPlugin extends AbstractPlugin {
         FTPClient ftpClient = null;
         try {
             // Create FTP connection
-            ftpClient = new FTPClient();
+            ftpClient = FtpClientFactory.create();
             ftpClient.connect(host, port);
             
             if (!ftpClient.login(username, password)) {
