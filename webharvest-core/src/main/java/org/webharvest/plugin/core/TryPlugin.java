@@ -68,7 +68,7 @@ import java.util.List;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Handle HTTP errors gracefully</h4>
+ * <h3>Example 1: Handle HTTP errors gracefully</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -87,7 +87,7 @@ import java.util.List;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Retry on failure</h4>
+ * <h3>Example 2: Retry on failure</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -109,7 +109,7 @@ import java.util.List;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Continue processing on XPath failure</h4>
+ * <h3>Example 3: Continue processing on XPath failure</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
