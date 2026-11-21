@@ -49,7 +49,7 @@ public class PluginClassScannerTest {
                     if ("ftp".equals(packageName)) {
                         throw new IllegalStateException("simulated package scan failure");
                     }
-                    return Set.of(org.webharvest.plugin.core.HttpPlugin.class);
+                    return Set.<Class<?>>of(org.webharvest.plugin.core.HttpPlugin.class);
                 },
                 fallback);
 
@@ -64,14 +64,27 @@ public class PluginClassScannerTest {
         List<String> result = PluginClassScanner.scanWithFallback(
                 new String[] {"core", "optional"},
                 packageName -> "core".equals(packageName)
-                        ? Set.of(org.webharvest.plugin.core.HttpPlugin.class)
-                        : Set.of(),
+                        ? Set.<Class<?>>of(org.webharvest.plugin.core.HttpPlugin.class)
+                        : Set.<Class<?>>of(),
                 fallback);
 
         assertEquals(result, List.of(org.webharvest.plugin.core.HttpPlugin.class.getName()),
                 "An absent optional package represented by an empty scan result must be skipped");
         assertNotSame(result, fallback,
                 "An empty optional package is not a scan failure");
+    }
+
+    @Test
+    public void testEmptyRequiredCoreScanUsesFallback() {
+        List<String> fallback = List.of("fallback.Plugin");
+
+        List<String> result = PluginClassScanner.scanWithFallback(
+                new String[] {"org.webharvest.plugin.core", "org.webharvest.plugin.ftp"},
+                packageName -> Set.<Class<?>>of(),
+                fallback);
+
+        assertSame(result, fallback,
+                "An empty scan of the required Core package must not be cached as a complete catalog");
     }
 
     @Test
