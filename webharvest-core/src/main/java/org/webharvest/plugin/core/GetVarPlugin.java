@@ -442,7 +442,7 @@ public class GetVarPlugin extends AbstractPlugin {
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the configuration schema for the get-var plugin.
      */
     public PluginConfigurationSchema getConfigurationSchema() {
         return new PluginConfigurationSchema() {
