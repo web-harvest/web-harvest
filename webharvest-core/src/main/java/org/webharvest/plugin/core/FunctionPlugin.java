@@ -66,7 +66,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple function</h4>
+ * <h3>Example 1: Simple function</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -80,7 +80,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Function with parameters</h4>
+ * <h3>Example 2: Function with parameters</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -96,7 +96,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Reusable extraction logic</h4>
+ * <h3>Example 3: Reusable extraction logic</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
