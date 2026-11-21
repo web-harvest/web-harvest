@@ -98,6 +98,367 @@ jobs:
             sleep "$delay"
           done
           exit 1
+      - name: Verify generated Javadoc JARs and HTML
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          modules=(
+            webharvest-core
+            webharvest-database
+            webharvest-ftp
+            webharvest-mail
+            webharvest-webbrowser
+            webharvest-zip
+            webharvest-cli
+            webharvest-ide
+          )
+          mkdir -p target/javadoc-audit
+          summary="target/javadoc-audit/summary.txt"
+          : > "$summary"
+          for module in "${modules[@]}"; do
+            jar_path="$module/target/${module}-2.3.1-javadoc.jar"
+            index_path="$module/target/apidocs/index.html"
+            if [[ ! -s "$jar_path" ]]; then
+              echo "Missing or empty Javadoc JAR: $jar_path" >&2
+              exit 1
+            fi
+            if [[ ! -s "$index_path" ]]; then
+              echo "Missing or empty generated Javadoc index: $index_path" >&2
+              exit 1
+            fi
+            jar tf "$jar_path" > "target/javadoc-audit/${module}-jar-entries.txt"
+            if ! grep -Eq '(^|/)index\.html        working-directory: webharvest-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_jar="target/webharvest-cli-2.3.1.jar"
+          if [ ! -s "$cli_jar" ]; then
+            echo "Packaged CLI JAR is missing or empty:"
+            ls -la target
+            exit 1
+          fi
+
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+
+          cat > "$smoke_dir/log4j.properties" <<'PROPERTIES'
+          log4j.rootLogger=INFO, console
+          log4j.appender.console=org.apache.log4j.ConsoleAppender
+          log4j.appender.console.Target=System.out
+          log4j.appender.console.layout=org.apache.log4j.PatternLayout
+          log4j.appender.console.layout.ConversionPattern=%p %c - %m%n
+          PROPERTIES
+
+          if ! java "-Dlog4j.configuration=file:$smoke_dir/log4j.properties" -jar "$cli_jar" -h > target/cli-help.log 2>&1; then
+            echo "Packaged CLI help command failed:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "WebHarvest Command Line Interface" target/cli-help.log; then
+            echo "CLI help banner missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
+          if ! grep -q "Usage:" target/cli-help.log; then
+            echo "CLI usage text missing:"
+            cat target/cli-help.log
+            exit 1
+          fi
+
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged distribution did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged JavaScript evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          echo "Compiling packaged CLI provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
+          echo "Packaged CLI JSR-223 service descriptor:"
+          if jar tf "$cli_jar" > "$smoke_dir/cli-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/cli-jar-entries.txt" || echo "No JSR-223 service descriptor in CLI JAR"
+          else
+            echo "Could not list CLI JAR entries"
+          fi
+          if unzip -p "$cli_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/cli-services.txt"; then
+            cat "$smoke_dir/cli-services.txt"
+          else
+            echo "Could not read CLI JSR-223 service descriptor"
+          fi
+          if ! java -cp "$cli_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged CLI JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
+          cat > "$smoke_dir/VerifyGroovyProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyGroovyProvider {
+              public static void main(String[] args) throws Exception {
+                  if (!Boolean.getBoolean("webharvest.requireGroovyCompatibility")) {
+                      return;
+                  }
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("groovy");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged CLI did not expose the Groovy JSR-223 provider");
+                  }
+                  // JSR-223 engineVersion reports the engine's spec version (2.0), not Groovy's library version.
+                  // Read GroovySystem from the classloader that supplied the packaged JSR-223 engine.
+                  Class<?> groovySystem = Class.forName("groovy.lang.GroovySystem", true, engine.getClass().getClassLoader());
+                  String version = (String) groovySystem.getMethod("getVersion").invoke(null);
+                  String expectedVersion = System.getProperty("webharvest.expectedGroovyVersion", "6.0.0");
+                  if (!expectedVersion.equals(version)) {
+                      throw new IllegalStateException("Expected packaged Groovy " + expectedVersion + ", got GroovySystem version: " + version);
+                  }
+                  Object result = engine.eval("def x = 123; x + 1");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged Groovy evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac -d "$smoke_dir" "$smoke_dir/VerifyGroovyProvider.java"
+          provider_args=()
+          if [[ "$GROOVY_COMPATIBILITY" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=$GROOVY_COMPATIBILITY_VERSION")
+          elif [[ "$GROOVY_PRODUCTION_MIGRATION" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=5.1.3")
+          fi
+          java "${provider_args[@]}" -cp "$cli_jar:$smoke_dir" VerifyGroovyProvider
+
+          cat > "$smoke_dir/smoke.xml" <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <config xmlns="http://org.webharvest/schema/2.1/core">
+            <def var="greeting">Java 17 packaged CLI smoke</def>
+            <file path="smoke-result.txt" action="write">
+              <get var="greeting"/>
+            </file>
+          </config>
+          XML
+
+          if ! java -jar "$cli_jar" "config=$smoke_dir/smoke.xml" "workdir=$smoke_dir" loglevel=debug > "$smoke_dir/cli.log" 2>&1; then
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+          if [ ! -s "$smoke_dir/smoke-result.txt" ]; then
+            echo "CLI exited successfully but did not create the expected absolute output path."
+            echo "Smoke directory contents:"
+            find "$smoke_dir" -maxdepth 3 -type f -print
+            echo "Any smoke output under the checkout:"
+            find "$GITHUB_WORKSPACE" -maxdepth 6 -name smoke-result.txt -type f -print
+            echo "CLI log:"
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+          if ! grep -q "Java 17 packaged CLI smoke" "$smoke_dir/smoke-result.txt"; then
+            echo "CLI output file exists but does not contain the expected payload."
+            echo "Output file:"
+            cat -A "$smoke_dir/smoke-result.txt"
+            echo "CLI log:"
+            cat "$smoke_dir/cli.log"
+            exit 1
+          fi
+      - name: Smoke-test packaged IDE on Java 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          ide_jar="webharvest-ide/target/webharvest-ide-2.3.1.jar"
+          if [ ! -s "$ide_jar" ]; then
+            echo "Packaged IDE JAR is missing or empty:"
+            ls -la webharvest-ide/target
+            exit 1
+          fi
+
+          smoke_dir="$(mktemp -d)"
+          cat > "$smoke_dir/VerifyJavaScriptProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyJavaScriptProvider {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("javascript");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged IDE did not expose the JavaScript JSR-223 provider");
+                  }
+                  Object result = engine.eval("var x = 123; x + 1;");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged IDE JavaScript result: " + result);
+                  }
+              }
+          }
+          JAVA
+          echo "Compiling packaged IDE provider probe in $smoke_dir"
+          if ! javac -d "$smoke_dir" "$smoke_dir/VerifyJavaScriptProvider.java" > "$smoke_dir/javac.log" 2>&1; then
+            echo "javac failed:"
+            cat "$smoke_dir/javac.log"
+            ls -la "$smoke_dir"
+            exit 1
+          fi
+          echo "Packaged IDE JSR-223 service descriptor:"
+          if jar tf "$ide_jar" > "$smoke_dir/ide-jar-entries.txt"; then
+            grep 'META-INF/services/javax.script.ScriptEngineFactory' "$smoke_dir/ide-jar-entries.txt" || echo "No JSR-223 service descriptor in IDE JAR"
+          else
+            echo "Could not list IDE JAR entries"
+          fi
+          if unzip -p "$ide_jar" META-INF/services/javax.script.ScriptEngineFactory > "$smoke_dir/ide-services.txt"; then
+            cat "$smoke_dir/ide-services.txt"
+          else
+            echo "Could not read IDE JSR-223 service descriptor"
+          fi
+          if ! java -cp "$ide_jar:$smoke_dir" VerifyJavaScriptProvider > "$smoke_dir/provider.log" 2>&1; then
+            echo "Packaged IDE JavaScript provider probe failed:"
+            cat "$smoke_dir/provider.log"
+            exit 1
+          fi
+          cat > "$smoke_dir/VerifyGroovyProvider.java" <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+
+          public final class VerifyGroovyProvider {
+              public static void main(String[] args) throws Exception {
+                  if (!Boolean.getBoolean("webharvest.requireGroovyCompatibility")) {
+                      return;
+                  }
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("groovy");
+                  if (engine == null) {
+                      throw new IllegalStateException("Packaged IDE did not expose the Groovy JSR-223 provider");
+                  }
+                  // JSR-223 engineVersion reports the engine's spec version (2.0), not Groovy's library version.
+                  // Read GroovySystem from the classloader that supplied the packaged JSR-223 engine.
+                  Class<?> groovySystem = Class.forName("groovy.lang.GroovySystem", true, engine.getClass().getClassLoader());
+                  String version = (String) groovySystem.getMethod("getVersion").invoke(null);
+                  String expectedVersion = System.getProperty("webharvest.expectedGroovyVersion", "6.0.0");
+                  if (!expectedVersion.equals(version)) {
+                      throw new IllegalStateException("Expected packaged Groovy " + expectedVersion + ", got GroovySystem version: " + version);
+                  }
+                  Object result = engine.eval("def x = 123; x + 1");
+                  if (!(result instanceof Number) || ((Number) result).intValue() != 124) {
+                      throw new IllegalStateException("Unexpected packaged Groovy evaluation result: " + result);
+                  }
+              }
+          }
+          JAVA
+          javac -d "$smoke_dir" "$smoke_dir/VerifyGroovyProvider.java"
+          provider_args=()
+          if [[ "$GROOVY_COMPATIBILITY" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=$GROOVY_COMPATIBILITY_VERSION")
+          elif [[ "$GROOVY_PRODUCTION_MIGRATION" == "true" ]]; then
+            provider_args+=("-Dwebharvest.requireGroovyCompatibility=true" "-Dwebharvest.expectedGroovyVersion=5.1.3")
+          fi
+          java "${provider_args[@]}" -cp "$ide_jar:$smoke_dir" VerifyGroovyProvider
+
+          port=18765
+          pid=""
+          cleanup() {
+            if [ -n "$pid" ]; then
+              kill "$pid" 2>/dev/null || true
+              wait "$pid" 2>/dev/null || true
+            fi
+            rm -rf "$smoke_dir"
+          }
+          trap cleanup EXIT
+
+          java -jar "$ide_jar" "port=$port" > "$smoke_dir/ide.log" 2>&1 &
+          pid=$!
+
+          ready=false
+          for _ in $(seq 1 30); do
+            if curl --silent --show-error --fail "http://127.0.0.1:$port/" -o "$smoke_dir/index.html" 2>/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat "$smoke_dir/ide.log"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" != true ]; then
+            cat "$smoke_dir/ide.log"
+            echo "Packaged IDE did not become ready on port $port"
+            exit 1
+          fi
+
+          grep -q "WebHarvest IDE" "$smoke_dir/index.html"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/static/version.json" -o "$smoke_dir/version.json"
+          grep -q '"version": "2.3.1"' "$smoke_dir/version.json"
+      - name: Inventory shaded CLI and IDE runtime contents
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          audit_dir="target/package-audit"
+          mkdir -p "$audit_dir"
+          for item in "cli:webharvest-cli/target/webharvest-cli-2.3.1.jar" "ide:webharvest-ide/target/webharvest-ide-2.3.1.jar"; do
+            name="${item%%:*}"
+            jar_path="${item#*:}"
+            report="$audit_dir/$name"
+            mkdir -p "$report"
+            if [ ! -s "$jar_path" ]; then
+              echo "MISSING: $jar_path" | tee "$report/status.txt"
+              continue
+            fi
+            echo "PRESENT: $jar_path" > "$report/status.txt"
+            sha256sum "$jar_path" > "$report/sha256.txt"
+            jar tf "$jar_path" > "$report/all-entries.txt"
+            grep -E '^(groovy/|org/codehaus/groovy/|org/apache/commons/collections/|META-INF/groovy-release-info\.properties$|META-INF/maven/(org\.codehaus\.groovy|commons-collections)/|META-INF/services/)' "$report/all-entries.txt" > "$report/relevant-entries.txt" || true
+            {
+              echo "Archive: $jar_path"
+              echo "SHA-256:"
+              cat "$report/sha256.txt"
+              echo "Relevant package/resource entries:"
+              cat "$report/relevant-entries.txt"
+            } > "$report/summary.txt"
+          done
+      - name: Upload Maven diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: java17-reactor-diagnostics
+          path: |
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+            **/target/pmd.xml
+            **/target/spotbugsXml.xml
+            **/target/checkstyle-result.xml
+            **/target/jacoco-report/jacoco.xml
+            **/target/site/jacoco/jacoco.xml
+            **/target/jacoco-report/jacoco.csv
+            **/target/site/jacoco/jacoco.csv
+            **/target/*.dump
+            **/target/*.dumpstream
+            **/target/package-audit/**
+            **/target/*-javadoc.jar
+            **/target/apidocs/**
+            target/javadoc-audit/**
+          if-no-files-found: warn
+          retention-days: 14
+ "target/javadoc-audit/${module}-jar-entries.txt"; then
+              echo "Javadoc JAR has no index.html: $jar_path" >&2
+              exit 1
+            fi
+            sha256sum "$jar_path" >> "$summary"
+            printf '%s: index.html present; Javadoc JAR contains index.html\n' "$module" >> "$summary"
+          done
+          cat "$summary"
       - name: Smoke-test packaged CLI on Java 17
         working-directory: webharvest-cli
         shell: bash
