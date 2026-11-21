@@ -23,6 +23,17 @@ The migration preserves the existing Java 17 baseline and the WebHarvest JSR-223
 
 The Core and packaged-launcher compatibility gates passed before the production migration was authorized. The production migration PR must still pass the exact-head full reactor, test, static-analysis, dependency, security and packaging checks against the production dependency profile.
 
+## Continuous verification
+
+The default production profile is verified independently from the experimental Groovy compatibility profiles:
+
+- Pull requests targeting `main`, pushes to `main`, and manual workflow dispatch run the production Groovy 5.1.3 gate.
+- The gate inspects the default resolved dependency graph and rejects legacy Groovy artifacts and Groovy test-framework adapters.
+- It checks the loaded `GroovySystem` version, JSR-223 engine alias discovery and evaluation, and the real `ScriptPlugin` integration path with Java interop.
+- The separate Groovy 6 compatibility experiment remains opt-in and must not replace the production-profile gate.
+
+A skipped experimental compatibility job is not evidence that the production Groovy gate passed. The production job must complete successfully on the exact commit under review.
+
 ## Downstream workflow owners
 
 Groovy 5.1.3 is a major-version migration from the historical Groovy 2.0.4 runtime. Repository tests cannot establish compatibility for every customer-authored workflow, embedded application or downstream extension. Owners should validate their own scripts and integrations before upgrading. In particular, review scripts that depend on old Groovy APIs, metaprogramming details, compiler behavior, GDK methods or implicit coercions.
