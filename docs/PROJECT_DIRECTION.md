@@ -204,3 +204,55 @@ Tracking: [Issue #93 — inventory and approve the built-in plugin set](https://
 - Maintainers: use [GitHub roadmap issue #1](https://github.com/web-harvest/web-harvest/issues/1) as the canonical planning record.
 
 All project-facing documentation and technical coordination in GitHub should be maintained in English. The roadmap is directional; implementation status is determined by merged code, tests, published artifacts and CI evidence.
+
+
+## Current integration status — 2026-11-21 (supersedes earlier checkpoints)
+
+**Canonical source:** public repository `web-harvest/web-harvest`, branch `main`, commit `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1` (PR #285 merge).
+
+### Security remediation integration
+
+All 12 approved, bounded remediation PRs have been merged sequentially, with exact-head validation and post-merge checks before proceeding:
+
+| PR | Scope | Result |
+|---|---|---|
+| #271 | Production Groovy 5.1.3 | Merged |
+| #272 | jsoup 1.23.2 | Merged |
+| #273 | Apache HttpComponents Client 5.6.5 / Core 5.4.4 | Merged |
+| #276 | Jetty 12.1.15 EE9 | Merged |
+| #278 | Commons Net 3.13.0 / PASV hardening | Merged |
+| #279 | Commons Email 1.6.0 / Jakarta Mail 1.6.8 | Merged |
+| #280 | org.json 20260719 | Merged |
+| #281 | Guava 33.8.0-jre | Merged |
+| #282 | Commons Collections 3.2.2 | Merged |
+| #283 | Remove unused Commons Lang 2.5 / 3.12.0 direct declarations | Merged |
+| #284 | Docs Jackson 2.23.0 | Merged |
+| #285 | Test-only WireMock 2.35.1 | Merged |
+
+Post-merge checks on the final main commit completed: OSV, full Java 17 reactor/static analysis, Core verify + JaCoCo, FTP + JaCoCo, logging/shaded audit and Maven verify all **SUCCESS**. The Groovy runtime Core/JSR-223 compatibility job was conditionally **SKIPPED**, not passed. Conditional Core network tests were also not counted as passes. See [Issue #194](https://github.com/web-harvest/web-harvest/issues/194) and the PR records for exact evidence.
+
+**Qualification:** green post-merge checks establish the configured checks on this source commit; they do not, by themselves, establish a clean final release SBOM, complete packaged CLI/IDE inventory, reproducible distribution, Maven Central publication or release readiness.
+
+### Updated work order
+
+1. **P0 — Final integrated security evidence:** run/retain a trusted aggregate production + test SBOM/OSV scan on exact `main`; inspect the full findings, package set and scan artifacts. Distinguish inherited findings, new findings, test-only findings, false positives and reachability/mitigation; record accepted residual risks explicitly.
+2. **P0 — Release artifact proof:** build the exact CLI and IDE distribution from the same main SHA; inventory shaded/runtime contents, hashes, licenses/notices and embedded dependency versions; run packaged startup/smoke and compatibility checks. Do not reuse old artifact hashes as evidence for this commit.
+3. **P1 — Release engineering:** modernize legacy OSSRH deployment wiring to the supported Sonatype Central Publisher Portal path in a separate non-publishing PR; modernize/verify source, Javadoc and GPG plugin lifecycle; validate a bundle with upload disabled. No credentials or keys are changed.
+4. **P1 — Release documentation:** refresh `docs/RELEASE_READINESS.md`, reconcile CHANGELOG [Unreleased]/v2.3.2 wording with the 2.3.1 reactor metadata, update Java 17 baseline and confirm ambiguous docs-module/license metadata with maintainer evidence.
+5. **P1 — Product stabilization:** independently reconcile IDE defects/tests (including #31 and remaining IDE issues) and Core/runtime/plugin compatibility against current main. Do not claim the IDE is closed or complete without current evidence.
+6. **P1 — Semantic Model Stage 1:** reconcile #8/#9/#11/#45 acceptance matrix and current-main compatibility evidence. Stage 1 implementation exists; formal acceptance is not closed. Keep Stage 2 canonical format-independent model deferred until Stage 1 is accepted.
+7. **P2 — Plugin platform:** complete inventory and maintainer decision in #93 before SPI implementation, module moves or repository extraction.
+8. **P2 — Documentation and website:** finalize user-facing docs after the release candidate facts are stable; website work follows verified docs and requires separate deployment authorization.
+
+### Release decision
+
+**NO-GO** for tag, GitHub Release or Maven publication. The security remediation queue is integrated, but the combined final SBOM/artifact evidence and release engineering/documentation gates are not yet complete. No release, tag, deployment, signing-key or credential action is authorized by this checkpoint.
+
+### Work-package owners / canonical tracking
+
+- Security evidence and residual-risk classification: #194 (closed integration parent; follow-up findings should be tracked in bounded child issues if any remain).
+- Release/distribution: #88 and `docs/RELEASE_READINESS.md`.
+- IDE stabilization: #31 and existing IDE issues.
+- Semantic Stage 1 acceptance: #8, #9, #11, #45.
+- Built-in plugin inventory / boundary: #93 (then existing plugin-contract issues #4/#60/#68).
+- Documentation governance: #85/#86; website: `web-harvest/website#1`.
