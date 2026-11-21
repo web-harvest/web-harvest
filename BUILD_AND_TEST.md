@@ -6,7 +6,7 @@ For branch, review, CI evidence and network-test policy, see the [Contributing G
 
 ## Prerequisites
 
-- JDK 11 for the current Core CI baseline.
+- JDK 17+ for the current `main` branch and release-stabilization baseline. Use the documented runtime for older maintenance branches.
 - Maven 3.6 or newer.
 - Node.js and npm only when working on IDE frontend assets.
 
