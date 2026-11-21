@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 import org.webharvest.exception.DatabaseException;
 
 /**
- * Default implementation of the {@link DriverManger} interface. Allows to load
+ * Default implementation of the {@link DriverManager} interface. Allows to load
  * database drivers from the arbitrary location. Database driver being
  * registered must be available on classpath or in any of previously added
  * driver resources.
