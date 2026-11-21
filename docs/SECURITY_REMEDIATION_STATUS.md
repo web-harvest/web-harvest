@@ -8,7 +8,7 @@
 
 ## Executive status
 
-<badge>12/12 remediation PRs merged</badge>
+**Status: 12/12 remediation PRs merged.**
 
 All 12 approved, bounded remediation PRs were merged sequentially. Each merge was guarded by exact-head validation and followed by required post-merge checks before the next merge. The final post-merge check set on `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1` completed successfully for OSV, full Java 17 reactor/static analysis, Core verify + JaCoCo, FTP + JaCoCo, logging/shaded audit and Maven verify.
 
