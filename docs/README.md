@@ -1,6 +1,6 @@
 # WebHarvest documentation
 
-This directory contains maintained project documentation, historical/versioned HTML and XML references, examples, scripts and site assets. It is not the generated Java API Javadoc output: the Maven reactor generates Javadocs under each Java module's `target/apidocs` and packages them as `*-javadoc.jar`. Those artifacts are built from source and are not maintained in this directory.
+This directory contains maintained project documentation, historical/versioned HTML and XML references, examples, scripts and site assets. It is not the generated Java API Javadoc output: the Maven reactor packages the rendered Javadoc HTML in each Java module's attached `*-javadoc.jar`. Those artifacts are built from source and are not maintained in this directory.
 
 For current project direction and contribution guidance, start here:
 
