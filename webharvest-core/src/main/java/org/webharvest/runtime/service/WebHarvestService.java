@@ -53,7 +53,7 @@ import java.util.Optional;
  *   <li>Session lifecycle management and cancellation</li>
  *   <li>Multi-session concurrent execution</li>
  *   <li>Client-based session association and listing</li>
- *   <li>Session timing and progress metrics</li>
+ *   <li>Session lifecycle and duration information</li>
  * </ul>
  * 
  * <h3>Basic Usage:</h3>
