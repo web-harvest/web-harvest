@@ -211,7 +211,7 @@ import java.util.regex.Pattern;
  * 
  * <h3>Attributes</h3>
  * <ul>
- *   <li><strong>replace:</strong> If true, performs find & replace (default: false)</li>
+ *   <li><strong>replace:</strong> If true, performs find &amp; replace (default: false)</li>
  *   <li><strong>max:</strong> Maximum matches to process (default: 1000000)</li>
  *   <li><strong>flag-caseinsensitive:</strong> Ignore case (default: false)</li>
  *   <li><strong>flag-multiline:</strong> ^ and $ match line boundaries (default: false)</li>
