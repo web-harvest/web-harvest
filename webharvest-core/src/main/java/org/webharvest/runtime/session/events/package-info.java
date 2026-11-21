@@ -80,17 +80,11 @@
  * ScraperSession session = new ScraperSessionImpl(sessionId, clientId, config, eventBus);
  * }</pre>
  * 
- * <h2>Future Integration (v2.3+)</h2>
- * <p>Kafka Event Publisher example:</p>
- * <pre>{@code
- * @Singleton
- * public class KafkaEventPublisher {
- *     @Subscribe
- *     public void onSessionCompleted(SessionCompletedEvent event) {
- *         kafkaProducer.send("webharvest.sessions.completed", toJson(event));
- *     }
- * }
- * }</pre>
+ * <h2>Integration boundary</h2>
+ * <p>Consumers may subscribe to events on an {@link com.google.common.eventbus.EventBus}
+ * supplied to a session implementation. The built-in {@code WebHarvestService}
+ * does not expose its internal event bus, and no Kafka publisher or external
+ * messaging adapter is included in this package.</p>
  * 
  * @since 2.2.0
  * @author Robert Bala
