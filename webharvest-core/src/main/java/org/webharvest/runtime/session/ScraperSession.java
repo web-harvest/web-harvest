@@ -137,8 +137,9 @@ public interface ScraperSession {
     /**
      * Returns the execution metrics for this session.
      * 
-     * <p>Metrics are updated in real-time during execution and include timing,
-     * progress, and performance data.</p>
+     * <p>The built-in service records session timing. Processed-element, HTTP,
+     * and plugin counters change only when explicitly recorded; the built-in runtime
+     * does not currently connect those counters to runtime events (see issue #168).</p>
      * 
      * @return the session metrics (never null)
      */
