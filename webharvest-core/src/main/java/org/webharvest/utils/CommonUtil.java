@@ -369,8 +369,8 @@ public class CommonUtil {
     }
 
     /**
-     * Escapes XML string - special characters: &'"<> are
-     * replaced with XML escape sequences: &amp; &apos; &quot; &lt; &gt;
+     * Escapes XML metacharacters (&amp;, &apos;, &quot;, &lt;, &gt;) using
+     * their corresponding XML entity references.
      */
     public static String escapeXml(String s) {
         if (s != null) {
@@ -562,7 +562,6 @@ public class CommonUtil {
      * @param link Relative or absolute link
      * @return Normalized full URL
      * @since 1.0
-     * @version 2.2.0
      */
     public static String fullUrl(String pageUrl, String link) {
         if (isFullUrl(link)) {
@@ -685,7 +684,6 @@ public class CommonUtil {
      * @param value Object to convert to Variable
      * @return Appropriate Variable instance
      * @since 1.0
-     * @version 2.2.0
      */
     public static Variable createVariable(Object value) {
         if (value instanceof Variable) {
