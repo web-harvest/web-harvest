@@ -42,7 +42,7 @@
  * <h3>Key Concepts:</h3>
  * <ul>
  *   <li><b>Session:</b> A single execution of a WebHarvest configuration</li>
- *   <li><b>Session ID:</b> Unique identifier (UUID) for tracking</li>
+ *   <li><b>Session ID:</b> Identifier (UUID for sessions created by the built-in service)</li>
  *   <li><b>Status:</b> Current state (PENDING, RUNNING, COMPLETED, FAILED, CANCELLED)</li>
  *   <li><b>Metrics:</b> Session timing and explicitly recorded counters</li>
  *   <li><b>Registry:</b> Central storage for all active sessions</li>
