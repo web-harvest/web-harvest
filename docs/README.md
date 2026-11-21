@@ -10,6 +10,7 @@ For current project direction and contribution guidance, start here:
 - [Plugin Inventory](PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery baseline; not yet an approved Core membership list.
 - [Contributor Guide](../CONTRIBUTING.md) — branches, bug fixes, CI, review and evidence expectations.
 - [Workflow Security Model](SECURITY.md) — trust boundaries for executable XML, scripts, nested includes and the embedded IDE.
+- [Groovy Runtime Migration Notes](GROOVY_RUNTIME_MIGRATION.md) — production Groovy baseline and compatibility guidance.
 - [Project roadmap on GitHub](https://github.com/web-harvest/web-harvest/issues/1).
 
 ## Documentation status
