@@ -77,7 +77,7 @@
  * // Monitor progress
  * while (!session.getStatus().isTerminal()) {
  *     System.out.println("Status: " + session.getStatus());
- *     System.out.println("Elements: " + session.getMetrics().getProcessedElements());
+ *     System.out.println("Elapsed: " + session.getMetrics().getDuration().getSeconds() + " seconds");
  *     Thread.sleep(1000);
  * }
  * }</pre>
