@@ -46,7 +46,7 @@ import com.google.inject.Scope;
  * is, client code can enter scope as many times as required. Nested scopes are
  * separated from each other.
  *
- * Based on work of Matthias Treydte <waldheinz at gmail.com>.
+ * Based on work by Matthias Treydte (waldheinz at gmail.com).
  *
  * @author Robert Bala
  * @author Piotr Dyraga
