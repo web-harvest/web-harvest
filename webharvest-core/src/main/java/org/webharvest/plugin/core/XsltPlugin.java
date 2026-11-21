@@ -85,7 +85,7 @@ import java.io.StringWriter;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Transform XML to HTML</h4>
+ * <h3>Example 1: Transform XML to HTML</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -112,7 +112,7 @@ import java.io.StringWriter;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: XML to JSON-like structure</h4>
+ * <h3>Example 2: XML to JSON-like structure</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
