@@ -170,7 +170,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * <h3>Important Notes</h3>
  * <ul>
  *   <li><strong>Binary Auto-Detection</strong>: Automatically detects binary content (images, PDFs, videos) and stores as byte[]</li>
- *   <li><strong>URL Encoding</strong>: Special characters (#, &, =, etc.) are automatically encoded</li>
+ *   <li><strong>URL Encoding</strong>: Special characters (#, &amp;, =, etc.) are automatically encoded</li>
  *   <li><strong>HTTPS Support</strong>: Full SSL/TLS support with certificate validation</li>
  *   <li><strong>Response Variable</strong>: HTTP response content is available in ${http} or assigned variable</li>
  * </ul>
