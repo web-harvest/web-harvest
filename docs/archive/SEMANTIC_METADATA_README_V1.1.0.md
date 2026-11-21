@@ -96,7 +96,7 @@ For the Stage 1 consumer contract (child policy, qualified relationships, and ru
 }
 ```
 
-See [`PLUGIN_INVENTORY.md`](../semantic-metadata/PLUGIN_INVENTORY.md) for the full curated list of
-plugins, their roles, and coverage status.
+For current runtime inventory status, see [`PLUGIN_INVENTORY.md`](../semantic-metadata/PLUGIN_INVENTORY.md).
+The historical curated table is preserved separately in the archived inventory snapshot.
 
 
