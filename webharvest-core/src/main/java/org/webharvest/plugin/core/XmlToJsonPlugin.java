@@ -64,7 +64,7 @@ import org.webharvest.runtime.variables.Variable;
  * that expects JSON input. It's the reverse operation of {@code <json-to-xml>}.
  * </p>
  * 
- * <h3>Common Use Cases</h3>
+ * <h2>Common Use Cases</h2>
  * <ul>
  *   <li><strong>API integration:</strong> Send scraped data to REST APIs expecting JSON</li>
  *   <li><strong>JavaScript processing:</strong> Export data for client-side JavaScript</li>
@@ -182,6 +182,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h3>XML to JSON Mapping</h3>
  * <table border="1">
+ * <caption>XML to JSON conversion examples</caption>
  *   <tr>
  *     <th>XML Structure</th>
  *     <th>JSON Output</th>

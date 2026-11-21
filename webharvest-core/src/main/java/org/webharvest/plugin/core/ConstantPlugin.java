@@ -65,7 +65,7 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * In user configurations, {@code <def>} or direct text content is typically preferred.
  * </p>
  * 
- * <h3>When to Use</h3>
+ * <h2>When to Use</h2>
  * <ul>
  *   <li>When you need an explicit constant value (rare in user configs)</li>
  *   <li>Framework uses it internally for literal text nodes</li>

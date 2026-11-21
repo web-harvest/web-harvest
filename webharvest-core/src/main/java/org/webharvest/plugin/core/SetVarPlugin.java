@@ -64,8 +64,9 @@ import org.slf4j.LoggerFactory;
  * {@code <def>} instead, which provides the same functionality with cleaner syntax.
  * </p>
  * 
- * <h3>Differences: set-var vs def</h3>
+ * <h2>Differences: set-var vs def</h2>
  * <table>
+ * <caption>set-var and def behavior comparison</caption>
  *   <tr>
  *     <th>Aspect</th>
  *     <th>{@code <set-var>}</th>

@@ -60,7 +60,7 @@ import org.webharvest.runtime.variables.Variable;
  * Must be used as a child element of {@code <xquery>}. Supports XQuery 1.0 syntax with Saxon engine.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Basic XQuery with parameters</h4>
  * <pre>{@code

@@ -88,7 +88,7 @@ import org.xml.sax.InputSource;
  * It requires both content and expression as sub-elements.
  * </p>
  * 
- * <h3>Bug #13 Enhancement: CSS Selector Support (v2.2.0)</h3>
+ * <h2>Bug #13 Enhancement: CSS Selector Support (v2.2.0)</h2>
  * <p>
  * Added support for CSS selectors as a modern alternative to XPath for HTML querying.
  * Use the {@code type="css"} attribute to enable CSS selector mode.
@@ -188,7 +188,7 @@ import org.xml.sax.InputSource;
  *   <li>{@code <xml>} - XML manipulation and transformation</li>
  * </ul>
  * 
- * @core This is a core plugin
+ * This class is marked as a core plugin with {@code @CorePlugin}.
  * @author WebHarvest Team
  * @since 2.1.0
  */

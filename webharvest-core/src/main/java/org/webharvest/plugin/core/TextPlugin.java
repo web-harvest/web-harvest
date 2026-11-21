@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
  * It's mainly used for explicit text declaration or charset conversion scenarios.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Explicit text content</h4>
  * <pre>{@code

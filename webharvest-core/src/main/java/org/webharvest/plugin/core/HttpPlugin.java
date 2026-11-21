@@ -74,7 +74,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * headers, parameters, authentication, redirects, proper URL encoding, and binary content.
  * </p>
  * 
- * <h3>Binary Content Support (Bug #39 - Fixed in v2.2.0)</h3>
+ * <h2>Binary Content Support (Bug #39 - Fixed in v2.2.0)</h2>
  * <p>
  * <strong>Issue:</strong> Binary content (images, PDFs, videos) was always converted to String,
  * corrupting binary data. No way to force binary mode for misconfigured servers.

@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * subsequent processors through variable references ({@code ${varname}}).
  * </p>
  * 
- * <h3>Variable Value Sources</h3>
+ * <h2>Variable Value Sources</h2>
  * <p>Variable value can be provided in three ways (in order of precedence):</p>
  * <ol>
  *   <li><strong>value attribute:</strong> Direct value assignment with template interpolation</li>

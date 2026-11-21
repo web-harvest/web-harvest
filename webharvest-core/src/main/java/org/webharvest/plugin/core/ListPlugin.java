@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  * Useful for creating explicit lists or combining multiple values.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Create explicit list</h4>
  * <pre>{@code

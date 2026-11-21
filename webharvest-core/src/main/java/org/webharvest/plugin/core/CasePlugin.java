@@ -65,7 +65,7 @@ import org.webharvest.runtime.variables.Variable;
  * syntax for multiple conditions. Provides structured conditional logic.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Route by HTTP status</h4>
  * <pre>{@code

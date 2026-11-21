@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
  * when you need explicit template processing or language selection.
  * </p>
  * 
- * <h3>Template Expression Syntax</h3>
+ * <h2>Template Expression Syntax</h2>
  * <p>The {@code ${expression}} syntax supports:</p>
  * <ul>
  *   <li><strong>Variables:</strong> {@code ${varname}} - Simple variable interpolation</li>

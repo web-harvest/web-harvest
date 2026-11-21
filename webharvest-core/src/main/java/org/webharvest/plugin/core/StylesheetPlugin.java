@@ -61,7 +61,7 @@ import org.webharvest.runtime.variables.Variable;
  * with Saxon engine.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Basic XML transformation</h4>
  * <pre>{@code

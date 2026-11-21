@@ -56,7 +56,7 @@ import org.webharvest.runtime.variables.Variable;
  * maintained for compatibility.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h2>Usage</h2>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

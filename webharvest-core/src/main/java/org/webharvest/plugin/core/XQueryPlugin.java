@@ -81,8 +81,9 @@ import javax.xml.transform.stream.StreamSource;
  * designed specifically for XML data.
  * </p>
  * 
- * <h3>XQuery vs XPath</h3>
+ * <h2>XQuery vs XPath</h2>
  * <table border="1">
+ * <caption>XPath and XQuery feature comparison</caption>
  *   <tr>
  *     <th>Feature</th>
  *     <th>XPath</th>

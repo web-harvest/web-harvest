@@ -83,7 +83,7 @@ import java.io.StringWriter;
  * Supports XSLT 1.0 and 2.0 for complex XML transformations.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Transform XML to HTML</h4>
  * <pre>{@code

@@ -77,7 +77,7 @@ import java.util.concurrent.Callable;
  * configurations, and abstraction of complex logic into reusable components.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Simple function call</h4>
  * <pre>{@code
