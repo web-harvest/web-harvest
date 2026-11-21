@@ -7,16 +7,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Metrics for a scraper session, tracking timing, progress, and performance.
+ * Thread-safe accumulator for session timing and explicitly recorded counters.
  * 
- * <p>This class is thread-safe and can be accessed from multiple threads
- * while a session is executing.</p>
+ * <p>The built-in service records session start/end timing. It does not currently
+ * connect processed-element, HTTP-request, or plugin-duration counters to runtime
+ * events; those values change only when a caller explicitly records them. See
+ * <a href="https://github.com/web-harvest/web-harvest/issues/168">issue #168</a>.</p>
  * 
- * <h3>Metrics Tracked:</h3>
+ * <h3>Available Values:</h3>
  * <ul>
- *   <li><b>Timing:</b> Start time, end time, duration</li>
- *   <li><b>Progress:</b> Number of elements processed</li>
- *   <li><b>Performance:</b> Elements per second</li>
+ *   <li><b>Timing:</b> Start time, end time, and duration (recorded by the session lifecycle)</li>
+ *   <li><b>Element count:</b> Explicitly incremented counter; not populated by the built-in service</li>
+ *   <li><b>HTTP and plugin counters:</b> Explicit accumulator methods; no built-in runtime recorder</li>
  * </ul>
  * 
  * <h3>Usage Example:</h3>
@@ -147,9 +149,11 @@ public class SessionMetrics {
     }
     
     /**
-     * Returns the number of elements processed.
+     * Returns the explicitly recorded processed-element count.
      * 
-     * @return the count of processed elements
+     * <p>The built-in service does not currently increment this counter.</p>
+     * 
+     * @return the recorded count
      */
     public long getProcessedElements() {
         return processedElements.get();
@@ -192,9 +196,10 @@ public class SessionMetrics {
     }
     
     /**
-     * Returns the processing rate in elements per second.
+     * Returns the rate derived from the explicitly recorded element count.
      * 
-     * <p>Returns 0 if duration is less than 1 second or no elements processed.</p>
+     * <p>The built-in service does not currently populate the element counter.
+     * Returns 0 if duration is less than 1 second or no elements were recorded.</p>
      * 
      * @return the elements per second
      */
@@ -225,7 +230,10 @@ public class SessionMetrics {
     }
     
     /**
-     * Records an HTTP request with metrics.
+     * Records an HTTP request in this accumulator.
+     * 
+     * <p>This method must be called by an instrumentation source; the built-in
+     * runtime does not currently record HTTP events here.</p>
      * 
      * @param bytesDownloaded bytes downloaded
      * @param bytesUploaded bytes uploaded
@@ -239,7 +247,10 @@ public class SessionMetrics {
     }
     
     /**
-     * Records a plugin execution.
+     * Records a plugin duration in this accumulator.
+     * 
+     * <p>This method must be called by an instrumentation source; the built-in
+     * runtime does not currently record plugin lifecycle timings here.</p>
      * 
      * @param pluginName the plugin name
      * @param executionTimeMs execution time in milliseconds
