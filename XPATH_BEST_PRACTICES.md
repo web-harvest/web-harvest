@@ -2,7 +2,7 @@
 
 This guide documents a small set of behaviors supported by the current Core implementation and tests. It is not a complete XPath reference.
 
-**Verification baseline:** `main` at `52c9bcbf6103d24d2b1beed45e33df2bd168aadf` (2026-11-17).
+**Verification baseline:** `main` at `94391dc17f833971b84d3c39b74f37ec91ca002a` (2026-11-21).
 
 ## How the Core plugin receives input
 
