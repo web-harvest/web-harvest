@@ -43,7 +43,6 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
-import com.google.common.base.Predicate;
 
 /**
  * {@link ClassPathScanner} interface implementation using
