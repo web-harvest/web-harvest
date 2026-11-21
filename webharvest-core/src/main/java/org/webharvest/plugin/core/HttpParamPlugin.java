@@ -141,7 +141,7 @@ import org.webharvest.utils.CommonUtil;
  *   <li><strong>Parent Element</strong>: Must be used as child of {@code <http>} element</li>
  *   <li><strong>HTTP Methods</strong>: Works with GET (query string), POST, PUT, PATCH (body)</li>
  *   <li><strong>Dynamic Values</strong>: Parameter values support variable substitution with ${var}</li>
- *   <li><strong>Special Characters</strong>: Automatically handles spaces, &, =, and other special characters</li>
+ *   <li><strong>Special Characters</strong>: Automatically handles spaces, &amp;, =, and other special characters</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
