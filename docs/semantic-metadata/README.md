@@ -67,7 +67,7 @@ For the Stage 1 consumer contract (child policy, qualified relationships, and ru
       "category": "Network",
       "documentation": {
         "summary": "Performs HTTP/HTTPS requests with headers, parameters and binary support.",
-        "url": "https://web-harvest.sourceforge.io/documentation/2.2.0/http.html"
+        "url": "https://github.com/web-harvest/web-harvest/blob/main/docs/web/documentation/2.2.0/http.html"
       },
       "semantics": {
         "role": "BODY_EVALUATOR",
