@@ -118,13 +118,13 @@ jobs:
           : > "$summary"
           for module in "${modules[@]}"; do
             jar_path="$module/target/${module}-2.3.1-javadoc.jar"
-              if [[ ! -s "$jar_path" ]]; then
+            if [[ ! -s "$jar_path" ]]; then
               echo "Missing or empty Javadoc JAR: $jar_path" >&2
               exit 1
             fi
             entries="target/javadoc-audit/${module}-jar-entries.txt"
             jar tf "$jar_path" > "$entries"
-            if ! grep -q 'index.html' "$entries"; then
+            if ! grep -qx 'index.html' "$entries"; then
               echo "Javadoc JAR has no index.html: $jar_path" >&2
               exit 1
             fi
