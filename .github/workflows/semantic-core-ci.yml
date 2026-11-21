@@ -175,7 +175,7 @@ jobs:
             -DincludeScope=test \
             -Dmdep.outputFile=target/groovy-production-test-classpath.txt
           test_classpath="webharvest-core/target/test-classes:webharvest-core/target/classes:$(cat webharvest-core/target/groovy-production-test-classpath.txt)"
-          java -cp "$test_classpath" groovy.ui.GroovyMain -e 'assert groovy.lang.GroovySystem.version == "5.1.3"'
+          java -cp "$test_classpath" groovy.ui.GroovyMain -e 'assert groovy.lang.GroovySystem.getVersion() == "5.1.3"'
       - name: Run JSR-223 provider discovery and evaluation tests
         run: |
           mvn --batch-mode --no-transfer-progress -pl webharvest-core \
