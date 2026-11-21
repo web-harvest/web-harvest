@@ -41,7 +41,7 @@ import com.google.inject.Inject;
  * Implementation of {@link Guard} verifying that current status of
  * configuration's processing is 'running'.
  *
- * @see RunningStatusController
+ * @see {@code RunningStatusController}
  *
  * @author mczapiewski
  * @since 2.1-SNAPSHOT
