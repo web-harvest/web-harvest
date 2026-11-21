@@ -33,12 +33,15 @@
 
 package org.webharvest.plugin.mail;
 
+import org.apache.commons.mail.HtmlEmail;
+import org.apache.commons.mail.SimpleEmail;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.testng.Assert.*;
@@ -103,6 +106,27 @@ public class MailPluginTest {
     }
 
     @Test
+    public void emptyBodyRemainsSupportedForPlainAndHtmlMessages() throws Exception {
+        SimpleEmail plainEmail = new SimpleEmail();
+        plainEmail.setHostName("localhost");
+        plainEmail.setFrom("sender@example.com");
+        plainEmail.addTo("recipient@example.com");
+        plainEmail.setSubject("Empty body");
+        MailPlugin.setBodyContent(plainEmail, "", false);
+        plainEmail.buildMimeMessage();
+        assertNotNull(plainEmail.getMimeMessage());
+
+        HtmlEmail htmlEmail = new HtmlEmail();
+        htmlEmail.setHostName("localhost");
+        htmlEmail.setFrom("sender@example.com");
+        htmlEmail.addTo("recipient@example.com");
+        htmlEmail.setSubject("Empty HTML body");
+        MailPlugin.setBodyContent(htmlEmail, "", true);
+        htmlEmail.buildMimeMessage();
+        assertNotNull(htmlEmail.getMimeMessage());
+    }
+
+    @Test
     public void testExecuteWithInvalidHost() throws Exception {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("mail", "http://org.webharvest/schema/2.1/core", "mail");
         config.setProperty("smtp-host", "invalid-host-that-does-not-exist");
@@ -110,38 +134,54 @@ public class MailPluginTest {
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        config.setProperty("body", "Test Body");
-        
+        plugin = new TestMailPlugin("Test Body");
         plugin.initialize(config);
-        
-        // Should throw PluginException due to connection failure
+
+        // Should throw PluginException due to DNS/connection failure
         try {
             plugin.execute(context);
             fail("Expected PluginException");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Mail operation failed") || e.getMessage().contains("operation failed") || e.getMessage().contains("Failed to initialize plugin") || e.getMessage().contains("Invalid message supplied"));
+            assertTrue(e.getMessage().contains("Mail operation failed")
+                    || e.getMessage().contains("operation failed")
+                    || e.getMessage().contains("Failed to initialize plugin")
+                    || e.getMessage().contains("Failed to send email"));
         }
     }
 
     @Test
-    public void testExecuteWithUnsupportedAction() throws Exception {
+    public void testExecuteWithUnavailableLocalSmtpServer() throws Exception {
         DefaultPluginConfiguration config = new DefaultPluginConfiguration("mail", "http://org.webharvest/schema/2.1/core", "mail");
-        config.setProperty("smtp-host", "localhost");
-        config.setProperty("smtp-port", "25");
+        config.setProperty("smtp-host", "127.0.0.1");
+        config.setProperty("smtp-port", "1");
         config.setProperty("from", "test@example.com");
         config.setProperty("to", "recipient@example.com");
         config.setProperty("subject", "Test Subject");
-        config.setProperty("body", "Test Body");
-        config.setProperty("action", "unsupported");
-        
+        plugin = new TestMailPlugin("Test Body");
+
         plugin.initialize(config);
-        
-        // Should throw PluginException due to unsupported action
+
+        // The plugin must reach SMTP delivery and report the unavailable server.
         try {
             plugin.execute(context);
             fail("Expected PluginException");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Unsupported mail action") || e.getMessage().contains("operation failed") || e.getMessage().contains("Failed to initialize plugin") || e.getMessage().contains("Invalid message supplied"));
+            assertTrue(e.getMessage().contains("Mail operation failed")
+                    || e.getMessage().contains("Failed to send email")
+                    || e.getMessage().contains("operation failed"));
+        }
+    }
+
+    private static class TestMailPlugin extends MailPlugin {
+        private final String body;
+
+        private TestMailPlugin(String body) {
+            this.body = body;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) {
+            return new NodeVariable(body);
         }
     }
 
