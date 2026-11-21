@@ -286,8 +286,8 @@ interface SessionInfo {
 ## 📚 Related Documentation
 
 - [Session Management](webharvest-core/SESSION_API_REFERENCE.md)
-- [Session History](SESSION_HISTORY.md)
-- [Token Tracking](webharvest-core/TOKEN_TRACKING.md)
+- [Historical Session History reference](docs/archive/SESSION_HISTORY.md)
+- [TokenTracker API source](webharvest-core/src/main/java/org/webharvest/runtime/tracking/TokenTracker.java)
 - [IDE Guide](docs/web/ide.html)
 
 ---
