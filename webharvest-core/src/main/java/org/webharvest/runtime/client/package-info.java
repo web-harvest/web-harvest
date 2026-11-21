@@ -32,18 +32,18 @@
  */
 
 /**
- * Client context for multi-tenant WebHarvest deployments.
+ * Caller-supplied client identity and metadata for WebHarvest sessions.
  * 
  * <h2>Overview</h2>
- * <p>This package provides client identification and metadata management for
- * multi-tenant scenarios where multiple clients share a single WebHarvest instance.</p>
+ * <p>This package associates a session with a caller-provided client identifier and
+ * immutable metadata. It supports grouping and lookup, but does not provide
+ * authentication, authorization, tenant isolation, billing, or quota enforcement.</p>
  * 
  * <h3>Use Cases:</h3>
  * <ul>
- *   <li>SaaS deployments with multiple tenants</li>
- *   <li>Resource usage tracking per client</li>
- *   <li>Billing and monetization</li>
- *   <li>Quota enforcement (future)</li>
+ *   <li>Group sessions by a caller-provided client ID</li>
+ *   <li>Attach caller-defined labels for reporting</li>
+ *   <li>Filter session listings by client ID</li>
  * </ul>
  * 
  * <h2>Usage Example</h2>
