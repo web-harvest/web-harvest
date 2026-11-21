@@ -133,6 +133,10 @@ public final class PluginClassScanner {
             LOG.debug("Scanned package {}: found {} plugin classes", packageName, pluginClasses.size());
         }
 
+        if (classNames.stream().noneMatch(name -> name.startsWith("org.webharvest.plugin.core."))) {
+            throw new IllegalStateException("Required Core plugin package scan produced no plugin classes");
+        }
+
         List<String> result = new ArrayList<>(classNames);
         Collections.sort(result);
         return Collections.unmodifiableList(result);
