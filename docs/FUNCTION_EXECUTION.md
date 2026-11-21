@@ -710,9 +710,9 @@ This prevents issues where `BaseTemplater.evaluateToVariable()` returns a `NodeV
 
 ## Related Documentation
 
-- [Plugin Development Guide](../documentation/plugin-development.html)
-- [Variable System Architecture](../documentation/architecture.html)
-- [Scripting Language Reference](../documentation/2.2.0/scripting.html)
+- [Plugin Development Guide](web/documentation/plugin-development.html)
+- [Variable System Architecture](web/documentation/architecture.html)
+- [Legacy 2.2.0 Script Plugin Reference](web/documentation/2.2.0/script.html)
 
 ---
 
