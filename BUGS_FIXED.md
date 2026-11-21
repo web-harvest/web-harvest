@@ -1,5 +1,7 @@
 # Fixed Bugs - WebHarvest
 
+> **Historical defect log:** This file preserves version-specific reports and fixes, primarily from the WebHarvest 2.2.x era. It is not a current defect tracker or a guarantee that every described capability remains implemented on `main`. Verify present behavior against current source, tests and CI before relying on an entry.
+
 This document tracks all bugs that have been reported and fixed in WebHarvest, organized by version.
 
 ## Format
@@ -8099,7 +8101,7 @@ eventBus.register(new Object() {
 4. **Auditing**: Complete execution trail
 5. **Replay**: Reconstruct execution flow
 
-**📚 For complete documentation, see: [`BUG_24_DOCS.md`](BUG_24_DOCS.md) (680 lines)**
+**Historical reference note:** The original supplemental `BUG_24_DOCS.md` (described here as 680 lines) is not present in the current repository tree. No replacement has been verified; this reference is retained as historical provenance only.
 
 ---
 
