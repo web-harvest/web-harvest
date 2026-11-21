@@ -36,7 +36,7 @@
  * 
  * <h2>Overview</h2>
  * <p>This package provides the service API for executing WebHarvest configurations
- * with session management, concurrent execution, and session-level monitoring.
+ * with session management, concurrent execution, and lifecycle timing.
  * Client IDs support association and listing only; they do not enforce tenant isolation.</p>
  * 
  * <h3>Key Components:</h3>
