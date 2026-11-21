@@ -88,6 +88,29 @@ public class PluginClassScannerTest {
     }
 
     @Test
+    public void testFallbackIsNotCachedAndNextCallRetriesDiscovery() {
+        List<String> fallback = List.of("fallback.Plugin");
+
+        List<String> first = PluginClassScanner.allPluginClassNames(
+                new String[] {"org.webharvest.plugin.core"},
+                packageName -> {
+                    throw new IllegalStateException("temporary scanner failure");
+                },
+                fallback);
+
+        assertSame(first, fallback, "A failed scan should return the compatibility fallback");
+
+        List<String> second = PluginClassScanner.allPluginClassNames(
+                new String[] {"org.webharvest.plugin.core"},
+                packageName -> Set.<Class<?>>of(org.webharvest.plugin.core.HttpPlugin.class),
+                fallback);
+
+        assertEquals(second, List.of(org.webharvest.plugin.core.HttpPlugin.class.getName()),
+                "A subsequent call should retry discovery instead of reusing the fallback");
+        assertNotSame(second, fallback);
+    }
+
+    @Test
     public void testAllPluginClassNamesResultsAreCached() {
         List<String> first = PluginClassScanner.allPluginClassNames();
         List<String> second = PluginClassScanner.allPluginClassNames();
