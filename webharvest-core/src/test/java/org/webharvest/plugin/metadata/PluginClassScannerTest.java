@@ -4,6 +4,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.testng.Assert.*;
 
@@ -36,6 +37,41 @@ public class PluginClassScannerTest {
             "Should contain TryPlugin");
         assertTrue(classNames.contains("org.webharvest.plugin.core.LoopPlugin"),
             "Should contain LoopPlugin");
+    }
+
+    @Test
+    public void testPackageScanFailureUsesCompleteFallbackInsteadOfPartialResults() {
+        List<String> fallback = List.of("fallback.Plugin");
+
+        List<String> result = PluginClassScanner.scanWithFallback(
+                new String[] {"core", "ftp"},
+                packageName -> {
+                    if ("ftp".equals(packageName)) {
+                        throw new IllegalStateException("simulated package scan failure");
+                    }
+                    return Set.of(org.webharvest.plugin.core.HttpPlugin.class);
+                },
+                fallback);
+
+        assertSame(result, fallback,
+                "A failed package scan must discard partial discovery and use the complete fallback list");
+    }
+
+    @Test
+    public void testAbsentOptionalPackageDoesNotTriggerFallback() {
+        List<String> fallback = List.of("fallback.Plugin");
+
+        List<String> result = PluginClassScanner.scanWithFallback(
+                new String[] {"core", "optional"},
+                packageName -> "core".equals(packageName)
+                        ? Set.of(org.webharvest.plugin.core.HttpPlugin.class)
+                        : Set.of(),
+                fallback);
+
+        assertEquals(result, List.of(org.webharvest.plugin.core.HttpPlugin.class.getName()),
+                "An absent optional package represented by an empty scan result must be skipped");
+        assertNotSame(result, fallback,
+                "An empty optional package is not a scan failure");
     }
 
     @Test
