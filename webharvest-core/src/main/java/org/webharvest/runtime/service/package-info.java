@@ -67,9 +67,7 @@
  * // Monitor progress
  * while (!session.getStatus().isTerminal()) {
  *     SessionMetrics metrics = session.getMetrics();
- *     System.out.printf("Progress: %d elements in %ds%n",
- *         metrics.getProcessedElements(),
- *         metrics.getDuration().getSeconds());
+ *     System.out.printf("Elapsed: %ds%n", metrics.getDuration().getSeconds());
  *     Thread.sleep(1000);
  * }
  * 
