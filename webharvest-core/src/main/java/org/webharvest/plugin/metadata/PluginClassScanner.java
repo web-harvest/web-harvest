@@ -108,7 +108,7 @@ public final class PluginClassScanner {
 
     static List<String> scanWithFallback(
             String[] packageNames,
-            Function<String, Set<Class<?>>> packageScanner)
+            Function<String, Set<Class<?>>> packageScanner,
             List<String> fallback) {
         try {
             return scanPluginPackages(packageNames, packageScanner);
