@@ -1,50 +1,85 @@
 # Release and distribution readiness assessment
 
 **Issue:** [#88](https://github.com/web-harvest/web-harvest/issues/88) (parent [#84](https://github.com/web-harvest/web-harvest/issues/84))  
-**Inspected against:** `main` @ `436cd50b159a5a22fc9e040663ebd323c5cdfa52`  
-**Recommendation:** **NO-GO** for publishing a 2.3.1 GitHub Release or Maven Central deployment without explicit maintainer approval and the blockers below cleared.
+**Inspected against:** `main` @ `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1`  
+**Assessment date:** 2026-11-21  
+**Recommendation:** **NO-GO** for GitHub Release or Maven publication.
 
-No release tag, GitHub Release, or Maven deploy was performed as part of this assessment.
+This assessment supersedes the earlier baseline references and Java 11 statements in this document. It is a source/CI checkpoint, not a release approval.
 
-## Evidence matrix
+## 1. Current source and CI facts
 
-| Area | Finding | Classification |
+| Area | Current evidence | Classification |
 |---|---|---|
-| Source / default branch | Public repo; default branch `main`; baseline SHA above | FACT |
-| CI on baseline | Workflow `Semantic Core Contract CI` run [`43578560301`](https://github.com/web-harvest/web-harvest/actions/runs/43578560301) succeeded on that SHA (`workflow_dispatch`) | FACT |
-| CI default triggers | Workflow historically targeted recovery/implementation branches and `2.2.x` PRs; `main` was not the only/natural PR base | FACT (addressed in this iteration: `push` includes `main` and `project/**`; `pull_request.branches` includes `main` as the PR base filter — not the head branch) |
-| POM version | Root and modules declare `2.3.1`, `groupId` `org.webharvest` | FACT |
-| GitHub Releases | `0` releases via GitHub API | FACT |
-| Git tags | Historical/archive tags exist (including `2.2.0`, `2.1.0rc1`); no verified `2.3.1` release tag identified as a published product release | FACT / INFERENCE |
-| Maven Central (`org.webharvest:webharvest`) | Solr search returned no `org.webharvest` artifacts for current coordinates; older `net.sourceforge.web-harvest` coordinates appear in public indexes | FACT |
-| Java baseline | Root compiler `source`/`target` = 11 | FACT |
-| Changelog / notes | Root `CHANGELOG.md` and older release-note docs exist; they are not by themselves proof of a published 2.3.1 | FACT |
-| Release automation | Root POM contains `release` profile pieces (Sonatype URLs, gpg plugin config). Presence of config ≠ configured credentials or a completed publish | FACT / UNKNOWN |
-| License / attribution | BSD-style license texts and `NOTICE` present; this assessment does not change license terms | FACT |
+| Canonical source | Public repository, default branch `main`, exact SHA `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1` | FACT |
+| Java baseline | Root POM declares `maven.compiler.release=17` | FACT |
+| Security remediation | All 12 approved PRs #271, #272, #273, #276, #278–#285 merged sequentially | FACT |
+| Final-main checks | OSV, full Java 17 reactor/static analysis, Core + JaCoCo, FTP + JaCoCo, logging/shaded audit and verify succeeded | FACT |
+| Conditional tests | Groovy Core/JSR-223 compatibility job skipped; not a pass. Network-dependent groups may be conditionally skipped | FACT / qualification |
+| Maven version | Root reactor declares 2.3.1 | FACT; not publication evidence |
+| GitHub Release | Earlier API inspection returned zero releases; recheck at candidate freeze | Historical FACT; current freeze recheck pending |
+| Maven Central | Current-coordinate consumer resolution has not been reverified for this checkpoint | UNKNOWN |
+| Exact release artifacts | Final CLI/IDE distribution build, inventory and checksums for this SHA not yet recorded | OPEN |
+| SBOM/OSV | Configured OSV check passed on final main; consolidated artifact-level report and residual finding classification still required | PARTIAL |
 
-## What “2.3.1” means today
+## 2. Security integration record
 
-**FACT:** `2.3.1` is the Maven reactor version string.  
-**NOT demonstrated:** that users can download a blessed 2.3.1 GitHub Release asset or resolve `org.webharvest:*:2.3.1` from Maven Central.
+| PR | Change | Status |
+|---|---|---|
+| #271 | Production Groovy 5.1.3 | Merged |
+| #272 | jsoup 1.23.2 | Merged |
+| #273 | HttpComponents Client 5.6.5 / Core 5.4.4 | Merged |
+| #276 | Jetty 12.1.15 EE9 | Merged |
+| #278 | Commons Net 3.13.0 and PASV hardening | Merged |
+| #279 | Commons Email 1.6.0 / Jakarta Mail 1.6.8 | Merged |
+| #280 | org.json 20260719 | Merged |
+| #281 | Guava 33.8.0-jre | Merged |
+| #282 | Commons Collections 3.2.2 | Merged |
+| #283 | Remove unused Commons Lang direct declarations | Merged |
+| #284 | Docs Jackson 2.23.0 | Merged |
+| #285 | Test-only WireMock 2.35.1 | Merged |
 
-## Smallest honest next actions (after approval)
+The Groovy runtime compatibility job was conditionally skipped and must not be represented as a pass. A green OSV job on this commit does not replace inspection of the generated production and test SBOMs, package-set matching, final shaded artifacts and inherited residual findings.
 
-1. Decide the first public artifact set (Core-only vs full reactor) and compatibility notes for XML/`set-var` behavior.
-2. Ensure `main` CI is green for the intended release commit without relying solely on ad-hoc `workflow_dispatch`.
-3. Produce a changelog section that only claims verified changes.
-4. Only then, with explicit approval: tag, GitHub Release, and/or Maven publish.
+## 3. Remaining release blockers
 
-## Blockers for GO
+### P0 — final security and artifact evidence
 
-- No GitHub Release / verified 2.3.1 distribution exists yet
-- Maven Central publication for current coordinates not demonstrated
-- Release credential/signing readiness in Actions (or maintainer-operated publish) is UNKNOWN and unexercised here
-- Broader product docs still contain historical claims that must not be copy-pasted into release notes without verification
+- [ ] Produce and retain the trusted aggregate production + test SBOM/OSV result for exact main SHA `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1`.
+- [ ] Inspect scanner logs, exit status, package-set equality and generated artifacts; classify inherited/new/test-only findings and document residual risk.
+- [ ] Build CLI and IDE distributables from this exact SHA; record artifact names, SHA-256, embedded dependency inventory and license/notice inventory.
+- [ ] Run packaged CLI/IDE startup and compatibility smoke tests against the final dependency set.
 
-## Explicit non-actions
+### P1 — publishing and build lifecycle
 
-- No version bump
-- No tag creation
-- No GitHub Release publication
-- No Maven deploy
-- No secret or signing-key changes
+- [ ] Replace retired OSSRH deployment wiring with the supported Sonatype Central Publisher Portal workflow in a separate PR.
+- [ ] Preserve manual publication by default; validate bundle generation with upload disabled.
+- [ ] Modernize and verify Maven source/Javadoc/GPG plugin lifecycle; inspect that sources, Javadoc and signatures are actually attached and usable. A successful `verify` alone is insufficient.
+- [ ] Verify Central Portal metadata, consumer resolution and exact intended artifact coordinates without publishing.
+
+### P1 — release narrative and metadata
+
+- [ ] Refresh this assessment whenever the candidate SHA changes.
+- [ ] Reconcile CHANGELOG `[Unreleased]` and the `v2.3.2` subsection against reactor version 2.3.1; do not silently relabel or delete scope.
+- [ ] Confirm docs-module description referring to 2.2.0 and license/SPDX metadata with source/maintainer evidence before editing.
+- [ ] Recheck GitHub tags/releases, release assets/checksums and Maven Central availability at candidate freeze.
+
+## 4. GO criteria
+
+GO requires all of the following on one exact candidate SHA:
+
+1. Required CI and meaningful compatibility tests pass; all skipped/manual checks are explicitly resolved or accepted.
+2. Trusted production + test SBOM/OSV evidence is complete and residual findings are classified and accepted.
+3. CLI/IDE artifacts are reproducible, inventoried, hashed and pass packaged smoke tests.
+4. Source, Javadoc and signature artifacts are produced and verified; non-publishing Central bundle validation succeeds.
+5. Version, changelog, compatibility notes, installation docs and artifact coordinates agree.
+6. Maintainer explicitly approves the exact tag/release/publication action.
+
+## 5. Explicit non-actions / authorization boundary
+
+- No version bump, tag, GitHub Release, Maven deploy or Central Portal upload.
+- No credential, token, GPG key or signing-secret changes.
+- No production website deployment.
+- POM version 2.3.1 is not represented as proof of a published release.
+
+**Current decision: NO-GO.** Security remediation integration is complete, but final SBOM/artifact proof and independent release-engineering/documentation gates remain open.
