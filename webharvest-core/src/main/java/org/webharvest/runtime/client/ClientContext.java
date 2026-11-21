@@ -39,18 +39,17 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Represents client context for multi-tenant session management.
+ * Represents caller-supplied client identity and metadata for session association.
  * 
- * <p>A client context identifies who is executing a scraping session and provides
- * metadata for tracking, monitoring, and future quota enforcement.</p>
+ * <p>The client identifier supports grouping and lookup of sessions. Metadata is
+ * caller-defined and opaque to Core. This value object does not authenticate callers,
+ * enforce tenant isolation, implement billing, or enforce quotas.</p>
  * 
  * <h3>Use Cases:</h3>
  * <ul>
- *   <li><b>Multi-tenant Applications:</b> Isolate sessions by client/tenant</li>
- *   <li><b>Resource Tracking:</b> Track resource usage per client</li>
- *   <li><b>Billing:</b> Associate sessions with billing accounts</li>
- *   <li><b>Monitoring:</b> Filter logs and metrics by client</li>
- *   <li><b>Quota Enforcement:</b> Future support for client-specific limits</li>
+ *   <li><b>Session grouping:</b> Associate sessions with a caller-provided client ID</li>
+ *   <li><b>Resource reporting:</b> Attach caller-defined labels to sessions</li>
+ *   <li><b>Monitoring:</b> Filter session listings by client ID</li>
  * </ul>
  * 
  * <h3>Usage Example:</h3>

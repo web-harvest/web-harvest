@@ -38,10 +38,12 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Immutable snapshot of resource usage for token tracking.
+ * Immutable snapshot of explicitly recorded resource counters.
  * 
- * <p>This class provides a point-in-time view of resource consumption
- * across different resource types. Instances are immutable and thread-safe.</p>
+ * <p>This class provides a point-in-time view of values supplied to a
+ * {@link TokenTracker}. Instances are immutable and thread-safe. A non-zero
+ * value reflects an explicit recording call; zero/default values do not prove
+ * that the corresponding resource was measured.</p>
  * 
  * <h3>Usage Example:</h3>
  * <pre>{@code

@@ -32,59 +32,36 @@
  */
 
 /**
- * Token-based resource usage tracking for WebHarvest sessions.
- * 
+ * Resource counter interfaces and immutable usage snapshots for WebHarvest.
+ *
  * <h2>Overview</h2>
- * <p>This package provides tracking of resource consumption during scraper execution.
- * Resources are measured in "tokens" that can be used for:</p>
+ * <p>This package defines resource categories and a counter API that stores
+ * explicitly recorded values. These counters are not a billing or quota system.
+ * The built-in execution path does not currently record real runtime resource
+ * events into {@link TokenTracker}; see
+ * <a href="https://github.com/web-harvest/web-harvest/issues/168">issue #168</a>.</p>
+ *
+ * <h3>Available Counter Types</h3>
  * <ul>
- *   <li>Usage analytics and reporting</li>
- *   <li>Performance monitoring</li>
- *   <li>Billing and monetization (future)</li>
- *   <li>Quota enforcement (future)</li>
+ *   <li>{@link ResourceType#HTTP_REQUEST} — HTTP request count</li>
+ *   <li>{@link ResourceType#HTTP_BYTES} — HTTP byte count</li>
+ *   <li>{@link ResourceType#CPU_TIME} — explicitly recorded CPU time in milliseconds</li>
+ *   <li>{@link ResourceType#MEMORY_PEAK} — explicitly recorded peak memory in bytes</li>
  * </ul>
- * 
- * <h3>Tracked Resources:</h3>
- * <ul>
- *   <li><b>HTTP_REQUEST:</b> Number of HTTP requests</li>
- *   <li><b>HTTP_BYTES:</b> Bytes downloaded</li>
- *   <li><b>CPU_TIME:</b> CPU time consumed (milliseconds)</li>
- *   <li><b>MEMORY_PEAK:</b> Peak memory usage (bytes)</li>
- * </ul>
- * 
+ *
  * <h2>Usage Example</h2>
  * <pre>{@code
- * // Create tracker
  * TokenTracker tracker = new TokenTrackerImpl("session-123", "client-456");
- * 
- * // Record HTTP request
  * tracker.record(ResourceType.HTTP_REQUEST, 1);
- * tracker.record(ResourceType.HTTP_BYTES, 52428); // 51 KB
- * 
- * // Record CPU time
- * long start = System.currentTimeMillis();
- * doWork();
- * tracker.record(ResourceType.CPU_TIME, System.currentTimeMillis() - start);
- * 
- * // Get usage snapshot
+ * tracker.record(ResourceType.HTTP_BYTES, 52428);
  * TokenUsage usage = tracker.getUsage();
- * System.out.println("HTTP Requests: " + usage.getHttpRequests());
- * System.out.println("Bytes: " + usage.getHttpBytes());
- * System.out.println("CPU Time: " + usage.getCpuTimeMillis() + "ms");
  * }</pre>
- * 
+ *
  * <h2>Thread Safety</h2>
- * <p>{@link org.webharvest.runtime.tracking.TokenTrackerImpl} uses atomic counters
- * for lock-free concurrent recording from multiple threads.</p>
- * 
- * <h2>Future Integration</h2>
- * <p>v2.3+ will add:</p>
- * <ul>
- *   <li>Prometheus metrics export</li>
- *   <li>Quota enforcement based on token limits</li>
- *   <li>Pricing models and billing integration</li>
- * </ul>
- * 
+ * <p>The built-in {@link TokenTrackerImpl} uses atomic counters for concurrent
+ * recording. A counter value represents only values explicitly supplied to it;
+ * it is not evidence that a runtime resource was measured.</p>
+ *
  * @since 2.2.0
  * @author Robert Bala
  */

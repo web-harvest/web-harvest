@@ -43,17 +43,17 @@ import java.util.Optional;
 /**
  * High-level service for managing WebHarvest scraper sessions.
  * 
- * <p>This service provides the main API for executing scraper configurations
- * with session management, token tracking, and multi-tenant support.</p>
+ * <p>This service provides asynchronous configuration execution and session
+ * lifecycle management. Client IDs are used for session association and listing;
+ * they are not an authentication or tenant-isolation boundary.</p>
  * 
  * <h3>Features:</h3>
  * <ul>
  *   <li>Asynchronous execution with session tracking</li>
- *   <li>Session lifecycle management</li>
+ *   <li>Session lifecycle management and cancellation</li>
  *   <li>Multi-session concurrent execution</li>
- *   <li>Client isolation and tracking</li>
- *   <li>Token usage monitoring</li>
- *   <li>Event-based progress reporting</li>
+ *   <li>Client-based session association and listing</li>
+ *   <li>Session lifecycle and duration information</li>
  * </ul>
  * 
  * <h3>Basic Usage:</h3>
@@ -94,18 +94,6 @@ import java.util.Optional;
  * for (ScraperSession session : sessions) {
  *     session.awaitCompletion();
  * }
- * }</pre>
- * 
- * <h3>Event Subscription Example:</h3>
- * <pre>{@code
- * // Get EventBus and subscribe to session events
- * EventBus eventBus = service.getEventBus();
- * eventBus.register(new Object() {
- *     @Subscribe
- *     public void onSessionCompleted(SessionCompletedEvent event) {
- *         System.out.println("Session " + event.getSessionId() + " completed!");
- *     }
- * });
  * }</pre>
  * 
  * @author Robert Bala

@@ -34,16 +34,12 @@
 package org.webharvest.runtime.tracking;
 
 /**
- * Tracks resource consumption for token-based usage metering.
+ * Counter API for explicitly recording resource usage values.
  * 
- * <p>Token tracking enables monitoring and measuring resource consumption
- * during scraper execution. This data can be used for:</p>
- * <ul>
- *   <li>Usage analytics and optimization</li>
- *   <li>Billing and monetization (future)</li>
- *   <li>Quota enforcement (future)</li>
- *   <li>Performance monitoring</li>
- * </ul>
+ * <p>This interface stores caller-supplied counters; it is not a billing or quota
+ * service. The built-in WebHarvest execution path currently creates a tracker when
+ * requested but does not connect runtime events to it. See issue #168 before
+ * interpreting zero/default values as measured consumption.</p>
  * 
  * <h3>Thread Safety:</h3>
  * <p>Implementations must be thread-safe. Multiple threads may record

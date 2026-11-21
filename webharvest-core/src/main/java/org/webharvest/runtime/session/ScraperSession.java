@@ -42,8 +42,8 @@ import org.webharvest.runtime.DynamicScopeContext;
  * <p>A session encapsulates all state and metadata for one execution of a WebHarvest configuration.
  * Each session has:</p>
  * <ul>
- *   <li>A unique session ID (UUID)</li>
- *   <li>An optional client identifier for multi-tenant scenarios</li>
+ *   <li>A session identifier (the built-in service uses UUIDs)</li>
+ *   <li>An optional client identifier for grouping and lookup, not security isolation</li>
  *   <li>Execution status tracking ({@link SessionStatus})</li>
  *   <li>Performance metrics ({@link SessionMetrics})</li>
  *   <li>Configuration being executed</li>
@@ -72,7 +72,7 @@ import org.webharvest.runtime.DynamicScopeContext;
  * // Monitor progress
  * while (session.getStatus() == SessionStatus.RUNNING) {
  *     SessionMetrics metrics = session.getMetrics();
- *     System.out.println("Progress: " + metrics.getProcessedElements() + " elements");
+ *     System.out.println("Elapsed: " + metrics.getDuration().getSeconds() + " seconds");
  *     Thread.sleep(1000);
  * }
  * 
@@ -87,17 +87,10 @@ import org.webharvest.runtime.DynamicScopeContext;
  * }
  * }</pre>
  * 
- * <h3>Multi-tenant Support:</h3>
- * <p>Sessions can be associated with a client ID for multi-tenant scenarios:</p>
- * <pre>{@code
- * // All sessions for a specific client
- * List<ScraperSession> clientSessions = registry.getSessionsByClientId("client-123");
- * 
- * // Useful for:
- * // - Resource usage tracking per client
- * // - Quota enforcement per client
- * // - Billing and monetization
- * }</pre>
+ * <h3>Client Association:</h3>
+ * <p>The built-in registry can group and list sessions by caller-supplied client ID.
+ * This is a lookup/filtering facility only; it does not enforce authorization,
+ * tenant isolation, billing, or quotas.</p>
  * 
  * <h3>Thread Safety:</h3>
  * <p>Implementations must be thread-safe. Multiple threads may query session state
@@ -116,8 +109,9 @@ public interface ScraperSession {
     /**
      * Returns the unique identifier for this session.
      * 
-     * <p>Session IDs are typically UUIDs and are guaranteed to be unique
-     * across all sessions in the system.</p>
+     * <p>The built-in {@code WebHarvestService} creates UUID identifiers.
+     * Custom {@code ScraperSession} implementations are responsible for the
+     * uniqueness of identifiers they supply.</p>
      * 
      * @return the session ID (never null)
      */
@@ -126,8 +120,8 @@ public interface ScraperSession {
     /**
      * Returns the client identifier associated with this session.
      * 
-     * <p>Client IDs enable multi-tenant scenarios where sessions from different
-     * clients need to be isolated and tracked separately.</p>
+     * <p>The built-in registry uses client IDs to group and list sessions.
+     * A client ID is not an authorization credential and does not isolate tenants.</p>
      * 
      * @return the client ID, or null if not associated with a client
      */
@@ -143,8 +137,9 @@ public interface ScraperSession {
     /**
      * Returns the execution metrics for this session.
      * 
-     * <p>Metrics are updated in real-time during execution and include timing,
-     * progress, and performance data.</p>
+     * <p>The built-in service records session timing. Processed-element, HTTP,
+     * and plugin counters change only when explicitly recorded; the built-in runtime
+     * does not currently connect those counters to runtime events (see issue #168).</p>
      * 
      * @return the session metrics (never null)
      */
