@@ -41,7 +41,7 @@
  * <ul>
  *   <li>Monitoring and logging</li>
  *   <li>Metrics collection</li>
- *   <li>External system integration (e.g., Kafka)</li>
+ *   <li>Caller-defined event handling and logging</li>
  *   <li>Custom business logic</li>
  * </ul>
  * 
