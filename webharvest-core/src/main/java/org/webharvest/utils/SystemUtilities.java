@@ -136,8 +136,8 @@ public class SystemUtilities {
     }
 
     /**
-     * Escapes XML string - special characters: &'"<> are
-     * replaced with XML escape sequences: &amp; &apos; &quot; &lt; &gt;
+     * Escapes XML metacharacters (&amp;, &apos;, &quot;, &lt;, &gt;) using
+     * their corresponding XML entity references.
      */
     public String escapeXml(Object s) {
         if (s != null) {
