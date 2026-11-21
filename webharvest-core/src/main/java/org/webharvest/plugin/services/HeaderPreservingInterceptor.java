@@ -31,7 +31,7 @@ import java.util.HashMap;
  * <p><strong>Solution:</strong> This interceptor adds default headers to EVERY request,
  * ensuring they're present on both initial and redirect requests.</p>
  * 
- * <h4>Example Usage:</h4>
+ * <h3>Example Usage:</h3>
  * <pre>{@code
  * Map<String, String> defaultHeaders = new HashMap<>();
  * defaultHeaders.put("Referer", "https://example.com/login");
