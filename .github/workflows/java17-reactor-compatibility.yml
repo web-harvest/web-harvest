@@ -98,6 +98,45 @@ jobs:
             sleep "$delay"
           done
           exit 1
+      - name: Verify generated Javadoc JARs and HTML
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          modules=(
+            webharvest-core
+            webharvest-database
+            webharvest-ftp
+            webharvest-mail
+            webharvest-webbrowser
+            webharvest-zip
+            webharvest-cli
+            webharvest-ide
+          )
+          mkdir -p target/javadoc-audit
+          summary="target/javadoc-audit/summary.txt"
+          : > "$summary"
+          for module in "${modules[@]}"; do
+            jar_path="$module/target/${module}-2.3.1-javadoc.jar"
+            index_path="$module/target/apidocs/index.html"
+            if [[ ! -s "$jar_path" ]]; then
+              echo "Missing or empty Javadoc JAR: $jar_path" >&2
+              exit 1
+            fi
+            if [[ ! -s "$index_path" ]]; then
+              echo "Missing or empty generated Javadoc index: $index_path" >&2
+              exit 1
+            fi
+            entries="target/javadoc-audit/${module}-jar-entries.txt"
+            jar tf "$jar_path" > "$entries"
+            if ! grep -q 'index.html' "$entries"; then
+              echo "Javadoc JAR has no index.html: $jar_path" >&2
+              exit 1
+            fi
+            sha256sum "$jar_path" >> "$summary"
+            printf '%s: index.html present; Javadoc JAR contains index.html\n' "$module" >> "$summary"
+          done
+          cat "$summary"
       - name: Smoke-test packaged CLI on Java 17
         working-directory: webharvest-cli
         shell: bash
@@ -417,5 +456,8 @@ jobs:
             **/target/*.dump
             **/target/*.dumpstream
             **/target/package-audit/**
+            **/target/*-javadoc.jar
+            **/target/apidocs/**
+            target/javadoc-audit/**
           if-no-files-found: warn
           retention-days: 14
