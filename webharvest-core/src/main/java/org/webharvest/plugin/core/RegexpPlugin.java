@@ -79,7 +79,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li><strong>Pattern matching:</strong> Find patterns in text using Java regex syntax</li>
  *   <li><strong>Capture groups:</strong> Extract parts of matches into variables (group0-group99)</li>
- *   <li><strong>Search & replace:</strong> Replace matched text with templates</li>
+ *   <li><strong>Search &amp; replace:</strong> Replace matched text with templates</li>
  *   <li><strong>Multiple matches:</strong> Process all matches or limit with max attribute</li>
  *   <li><strong>Regex flags:</strong> Case-insensitive, multiline, dotall, etc.</li>
  * </ul>
