@@ -67,7 +67,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Route by HTTP status</h4>
+ * <h3>Example 1: Route by HTTP status</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -88,7 +88,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: User role-based processing</h4>
+ * <h3>Example 2: User role-based processing</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -113,7 +113,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: File type processing</h4>
+ * <h3>Example 3: File type processing</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -144,7 +144,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Error handling with case</h4>
+ * <h3>Example 4: Error handling with case</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
