@@ -75,6 +75,16 @@ public class PluginClassScannerTest {
     }
 
     @Test
+    public void testAbsentOptionalPackageProducesEmptyScanResult() {
+        Set<Class<?>> pluginClasses = new org.webharvest.utils.ClassPathScannerImpl(
+                "org.webharvest.plugin.optionalmissing")
+                .getTypesAnnotatedWith(org.webharvest.plugin.annotations.CorePlugin.class);
+
+        assertTrue(pluginClasses.isEmpty(),
+                "An optional package absent from the classpath should be represented as an empty result");
+    }
+
+    @Test
     public void testEmptyRequiredCoreScanUsesFallback() {
         List<String> fallback = List.of("fallback.Plugin");
 
