@@ -240,7 +240,7 @@ import org.webharvest.runtime.variables.Variable;
  * <ul>
  *   <li><strong>Conversion speed:</strong> Fast for typical API responses (&lt; 1MB)</li>
  *   <li><strong>Memory usage:</strong> Entire JSON is loaded into memory</li>
- *   <li><strong>Large files:</strong> For huge JSON files (> 10MB), consider streaming JSON parsers</li>
+ *   <li><strong>Large files:</strong> For huge JSON files (&gt; 10MB), consider streaming JSON parsers</li>
  * </ul>
  * 
  * <h3>Related Processors</h3>
