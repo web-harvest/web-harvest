@@ -12,16 +12,21 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 
 /**
  * Dynamic scanner for discovering all plugin classes at runtime.
  * Replaces static PluginClassIndex with classpath-based discovery.
  * 
- * <p>Scans all plugin packages (core, ftp, mail, database, zip, webbrowser)
- * to discover classes annotated with {@link CorePlugin}.</p>
+ * <p>Scans the Core and optional extension packages for classes annotated with
+ * {@link CorePlugin}. Empty results are accepted for optional packages that are
+ * absent from the runtime classpath. A failed package scan or an empty required
+ * Core scan uses the complete compatibility fallback rather than caching partial
+ * discovery results.</p>
  * 
- * <p>Results are cached for performance. Scanning happens once at first access.</p>
+ * <p>Successful discovery results are cached. A fallback result is returned for
+ * the current call but is not cached, allowing a later call to retry scanning.</p>
  * 
  * @author WebHarvest Team
  * @since 2.3.0
@@ -69,17 +74,21 @@ public final class PluginClassScanner {
                 return cachedClassNames;
             }
 
-            cachedClassNames = scanWithFallback(
+            List<String> discovered = scanWithFallback(
                     PLUGIN_PACKAGES, PluginClassScanner::scanPackage, FALLBACK_CLASSES);
-            LOG.info("Resolved {} plugin class names", cachedClassNames.size());
-            return cachedClassNames;
+            if (discovered != FALLBACK_CLASSES) {
+                cachedClassNames = discovered;
+            }
+            LOG.info("Resolved {} plugin class names", discovered.size());
+            return discovered;
         }
     }
     
     /**
-     * Scans all plugin packages for classes annotated with @CorePlugin.
-     * 
-     * @return list of discovered plugin class names
+     * Scans one package for classes annotated with {@link CorePlugin}.
+     *
+     * @param packageName package to scan
+     * @return discovered plugin classes; empty when an optional package is absent
      */
     private static Set<Class<?>> scanPackage(String packageName) {
         ClassPathScanner scanner = new ClassPathScannerImpl(packageName);
@@ -89,12 +98,17 @@ public final class PluginClassScanner {
     /**
      * Uses the complete fallback list if any configured package scan fails.
      * Empty results are valid for optional packages that are not on the classpath.
+     * Fallback results are not cached by {@link #allPluginClassNames()}.
      *
-     * Package-private to allow deterministic failure-path tests.
+     * @param packageNames configured plugin packages
+     * @param packageScanner package scan function
+     * @param fallback complete compatibility fallback list
+     * @return discovered class names or the complete fallback list
      */
+
     static List<String> scanWithFallback(
             String[] packageNames,
-            java.util.function.Function<String, Set<Class<?>>> packageScanner,
+            Function<String, Set<Class<?>>> packageScanner)
             List<String> fallback) {
         try {
             return scanPluginPackages(packageNames, packageScanner);
@@ -106,7 +120,7 @@ public final class PluginClassScanner {
 
     private static List<String> scanPluginPackages(
             String[] packageNames,
-            java.util.function.Function<String, Set<Class<?>>> packageScanner) {
+            Function<String, Set<Class<?>>> packageScanner) {
         Set<String> classNames = new LinkedHashSet<>();
 
         for (String packageName : packageNames) {
