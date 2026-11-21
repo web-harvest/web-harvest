@@ -1009,8 +1009,8 @@ public class PluginMetadataServlet extends HttpServlet {
      * Generate help URL for plugin
      */
     static String getHelpUrl(String elementName) {
-        String documentationPage = EXTERNAL_DOCUMENTATION_PAGES.get(elementName);
-        if (documentationPage == null && CORE_DOCUMENTATION_PAGES.contains(elementName)) {
+        String documentationPage = elementName == null ? null : EXTERNAL_DOCUMENTATION_PAGES.get(elementName);
+        if (documentationPage == null && elementName != null && CORE_DOCUMENTATION_PAGES.contains(elementName)) {
             documentationPage = elementName + ".html";
         }
         if (documentationPage == null) {
