@@ -61,4 +61,4 @@ The following root-level files are retained for historical, migration, compatibi
 
 ## Audit tracking
 
-The repository-wide Markdown review is tracked in [Issue #152](https://github.com/web-harvest/web-harvest/issues/152). At the audit baseline, the repository tree contained 21 root-level Markdown files and 211 Markdown files under `docs/`; these are inventory counts, not a claim that every document is current or authoritative.
+The repository-wide Markdown review is tracked in [Issue #152](https://github.com/web-harvest/web-harvest/issues/152). At the pinned audit baseline (`82216004faae7264bdc8d2dfd7632df70483ea10`), the complete, non-truncated Git tree contains **22 root-level Markdown files**, **224 Markdown files under `docs/**`**, and **313 Markdown files in total**. These are inventory counts, not a claim that every document is current or authoritative. Recalculate them when the tree changes; do not treat the counts as audit completion.
