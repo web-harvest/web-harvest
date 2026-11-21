@@ -8,7 +8,7 @@ The IDE exposes a session-metrics payload, but most resource fields are not curr
 
 ## Verified implementation status
 
-**Source baseline:** `main` at `a63a614daedfb86ae173c524a96c511ac577af89` (2026-11-17).
+**Source baseline:** `main` at `bb66a088727fc92250dfeb37df4f410fcbde2d10` (2026-11-21).
 
 | Metric | Current implementation | Important limitation |
 |---|---|---|
@@ -312,7 +312,7 @@ interface SessionInfo {
 ---
 
 **Author**: Robert Bala  
-**Verified against**: `main` at `89a472f9f13e99acea92ce07fe11721e2878e99d`  
-**Review date**: 2026-11-17  
+**Verified against**: `main` at `bb66a088727fc92250dfeb37df4f410fcbde2d10`  
+**Review date**: 2026-11-21  
 **Status**: UI payload exists; several metric values remain synthetic or proxy measurements.
 
