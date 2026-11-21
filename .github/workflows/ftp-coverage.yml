@@ -49,7 +49,7 @@ jobs:
             --add-opens=java.base/java.lang=ALL-UNNAMED
             --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
             --add-opens=java.base/java.util=ALL-UNNAMED
-        run: mvn --batch-mode --no-transfer-progress -Pskip-core-tests-in-reactor -pl webharvest-ftp -am clean verify
+        run: mvn --batch-mode --no-transfer-progress -U -Pskip-core-tests-in-reactor -pl webharvest-ftp -am clean verify
       - name: Enforce FTP instruction and branch coverage >=80%
         if: always()
         shell: bash
