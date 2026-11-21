@@ -16,7 +16,7 @@ startup by `PluginMetadataCatalog` and exposed via
 
 ## Schema
 
-For the Stage 1 consumer contract (child policy, qualified relationships, and runtime availability), see [STAGE1_CONTRACT.md](./STAGE1_CONTRACT.md).
+For the Stage 1 consumer contract (child policy, qualified relationships, and runtime availability), see [STAGE1_CONTRACT.md](../semantic-metadata/STAGE1_CONTRACT.md).
 
 - **Version:** `1.1.0`
 - **Canonical file:** `webharvest-core/src/main/resources/metadata/plugin-metadata-schema.json`
@@ -96,7 +96,7 @@ For the Stage 1 consumer contract (child policy, qualified relationships, and ru
 }
 ```
 
-See [`PLUGIN_INVENTORY.md`](./PLUGIN_INVENTORY.md) for the full curated list of
+See [`PLUGIN_INVENTORY.md`](../semantic-metadata/PLUGIN_INVENTORY.md) for the full curated list of
 plugins, their roles, and coverage status.
 
 
