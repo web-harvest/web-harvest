@@ -1,8 +1,8 @@
 # WebHarvest XML Syntax Reference
 
 **Source fixtures**: `webharvest-core/src/test/resources/integration-tests/new_plugins/`  
-**Reviewed against**: `main` at `72c7e21f27e73c87cfc0e1a55b285775a7fdec7c` (2026-11-17)  
-**Evidence note**: Fixture presence is not proof that every example is exercised by a meaningful integration assertion. Coverage is being reconciled in [Issue #98](https://github.com/web-harvest/web-harvest/issues/98).
+**Reviewed against**: `main` at `94391dc17f833971b84d3c39b74f37ec91ca002a` (2026-11-21)  
+**Evidence note**: The fixture directory contains 43 XML files; fixture count is not the 44-name default runtime mapping count and is not proof that every example has a meaningful integration assertion. The source-backed 44-row mapping/test matrix is [Core Plugin Runtime Evidence](docs/CORE_PLUGIN_RUNTIME_EVIDENCE.md). [Issue #98](https://github.com/web-harvest/web-harvest/issues/98) is closed after that matrix and the standalone `xml` wrapper contract were reconciled.
 
 ---
 
