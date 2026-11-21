@@ -1,93 +1,69 @@
-# WebHarvest Semantic Metadata
+# Semantic Metadata Catalog — Current Implementation
 
-This directory documents the semantic metadata catalog that powers the visual
-designer, IDE tooling, and LLM integrations. The catalog is built during server
-startup by `PluginMetadataCatalog` and exposed via
-`GET /api/plugins/metadata`.
+This page describes the implementation present in the repository. It is not a declaration that the metadata endpoint is a stable third-party Plugin SPI.
 
-## Schema
+## Runtime catalog
 
-For the Stage 1 consumer contract (child policy, qualified relationships, and runtime availability), see [STAGE1_CONTRACT.md](./STAGE1_CONTRACT.md).
+The catalog is built from plugin classes at runtime:
 
-- **Version:** `1.1.0`
-- **Canonical file:** `webharvest-core/src/main/resources/metadata/plugin-metadata-schema.json`
-- **API contract:** `/api/plugins/metadata` now returns the `schemaVersion` and
-  an embedded `schema` object that mirrors the JSON schema file.
+1. `PluginClassScanner` scans the Core and optional extension packages for concrete classes annotated with `@CorePlugin`.
+2. Discovered classes are instantiated and their `PluginMetadata` is projected into `PluginDescriptor` entries by `PluginMetadataCatalog`.
+3. Structural semantics are resolved through `PluginSemanticsResolver`; UI hints are inferred from plugin metadata and category.
+4. If classpath scanning fails, the scanner uses its embedded compatibility fallback class list.
+5. The JSON resource `webharvest-core/src/main/resources/metadata/plugin-metadata-schema.json` describes the response shape. It is not a curated plugin list or a source of per-plugin metadata.
 
-### Top-Level Fields
+The active scanner packages are Core, FTP, Mail, Database, ZIP and WebBrowser. Optional extension classes are loaded reflectively and are included only when present on the runtime classpath.
 
-| Field | Description |
-| --- | --- |
-| `id` | Stable identifier used in XML (`<http>` ⇒ `http`). |
-| `elementName` | Canonical element name, usually matches `id`. |
-| `displayName` | Human friendly title for palette and docs. |
-| `origin` | Source module (`core`, `ftp`, `mail`, `database`, `zip`, `webbrowser`). |
-| `category` | High level grouping used by the palette. |
-| `description` | Short description suitable for tooltips. |
-| `documentation` | Summary, canonical documentation URL, and example snippets. |
-| `semantics` | Structural rules (role, allowed children, parent requirements, body behaviour). |
-| `ui` | Palette hints such as icon, palette group, search tags. |
-| `extensions` | Reserved for future per-plugin metadata blocks. |
+There is no active `plugin-semantics.json` override catalog or static plugin inventory used to build the current descriptors. The old curated inventory is preserved as a historical snapshot (see below).
 
-### Semantics Roles
+## Version fields — decision still open
 
-| Role | Meaning |
-| --- | --- |
-| `ROOT_CONTAINER` | Only the `<config>` node; accepts arbitrary children and anchors the workflow. |
-| `CONTEXT_CONTAINER` | Provides a new execution scope (loops, try/catch, ftp, database, etc.). |
-| `BODY_EVALUATOR` | Evaluates body/text content and returns a value (xpath, script, template). |
-| `DEPENDENT` | Helper element that must live inside a specific parent (`http-header`, `catch`, `zip-entry`). |
-| `LEAF` | Standalone processor without body or children (`sleep`, `exit`, `log`). |
+The current implementation exposes distinct values that must not be treated as interchangeable:
 
-## Contributor Workflow
+| Field | Current source value | Meaning/status |
+| --- | --- | --- |
+| Metadata `schemaVersion` | `2.3.0` on the normal catalog path | Returned by `PluginMetadataCatalog.getSchemaVersion()`; asserted by `PluginMetadataCatalogTest` |
+| Metadata API `version` | `2.2.0` | Hardcoded in both metadata and version endpoint responses; intended contract is unresolved in [Issue #296](https://github.com/web-harvest/web-harvest/issues/296) |
+| Fallback `schemaVersion` | `2.2.0` | Used by the servlet when catalog loading fails |
+| Maven reactor version | `2.3.1` | Build/project version; not proof of publication |
 
-1. **Register plugin classes** in `PluginClassIndex` so the runtime catalog can
-   discover them.
-2. **Add or update curated overrides** in
-   `webharvest-core/src/main/resources/metadata/plugin-semantics.json`. Include
-   documentation summaries, canonical URLs, and structural rules that cannot be
-   derived from the Java metadata.
-3. **Validate:** run `mvn -pl webharvest-core test -Dtest=PluginMetadataCatalogTest`
-   to ensure every plugin has documentation, semantics, and UI hints.
-4. **Expose through the IDE:** the frontend consumes the API response to drive
-   the palette, property panel, and node inspector. Additional metadata is
-   automatically available to `window.app.getPluginContext()` for LLM helpers.
+Do not infer a product/API version contract from these values. Issue #296 owns the decision and endpoint-level tests. This page intentionally does not choose between a Maven-derived product version, a retained legacy API version, or deprecation of the field.
 
-## API Response Snapshot
+## API endpoints
 
-```json
-{
-  "count": 52,
-  "schemaVersion": "1.1.0",
-  "schema": { ... },
-  "plugins": [
-    {
-      "id": "http",
-      "elementName": "http",
-      "category": "Network",
-      "documentation": {
-        "summary": "Performs HTTP/HTTPS requests with headers, parameters and binary support.",
-        "url": "https://github.com/web-harvest/web-harvest/blob/main/docs/web/documentation/2.2.0/http.html"
-      },
-      "semantics": {
-        "role": "BODY_EVALUATOR",
-        "allowsChildren": true,
-        "allowedChildTypes": ["http-header", "http-param"]
-      },
-      "ui": {
-        "paletteGroup": "Network",
-        "icon": "fa-globe",
-        "tags": ["http", "request", "web"]
-      },
-      "schema": {
-        "attributes": [ ... ]
-      }
-    }
-  ]
-}
-```
+The IDE servlet exposes:
 
-See [`PLUGIN_INVENTORY.md`](./PLUGIN_INVENTORY.md) for the full curated list of
-plugins, their roles, and coverage status.
+- `GET /api/plugins/metadata` — plugin descriptors, count, schema version and JSON schema document when the catalog is available.
+- `GET /api/plugins/metadata/version` — version metadata.
+- `GET /api/plugins/ontology` — ontology projection.
+- `GET /api/plugins/xsd` and `GET /api/plugins/xsd/{version}` — generated XML schemas.
 
+Each descriptor contains a documentation summary. The current catalog constructs `PluginDocumentation` with a null documentation URL; the IDE separately supplies a `helpUrl` using the verified GitHub documentation resolver. Known Core and extension plugin names map to existing files under `docs/web/documentation/2.2.0/`; unknown names map to its index. See [Issue #294](https://github.com/web-harvest/web-harvest/issues/294).
 
+## Contributor workflow
+
+1. Implement the plugin as a concrete class annotated with `@CorePlugin` in one of the scanned packages.
+2. Implement `Plugin.getMetadata()` and provide the configuration metadata used by the catalog.
+3. Express structural behavior through the plugin metadata and `PluginSemanticsResolver` conventions; add tests for any new semantic rule.
+4. If a new extension package is introduced, update `PluginClassScanner.PLUGIN_PACKAGES` and its fallback class list.
+5. Change the JSON schema resource only when the API response shape changes; do not use it as a substitute for plugin metadata.
+6. Run the focused catalog tests:
+
+   ```bash
+   mvn -pl webharvest-core test -Dtest=PluginMetadataCatalogTest
+   ```
+
+## Related documentation
+
+- [Stage 1 semantic contract](./STAGE1_CONTRACT.md) — consumer-facing structural rules and limitations.
+- [Current plugin inventory status](./PLUGIN_INVENTORY.md) — where to obtain the runtime inventory.
+- [Legacy user documentation](../web/documentation/2.2.0/index.html) — preserved 2.2.0 documentation; it is not claimed to cover every 2.3.1 behavior.
+
+## Historical snapshots
+
+The previous v1.1.0 README and curated plugin table are retained for historical context only:
+
+- [README v1.1.0 historical snapshot](../archive/SEMANTIC_METADATA_README_V1.1.0.md)
+- [Plugin inventory v1.1.0 historical snapshot](../archive/SEMANTIC_METADATA_PLUGIN_INVENTORY_V1.1.0.md)
+
+Neither snapshot is authoritative for the current runtime catalog.
