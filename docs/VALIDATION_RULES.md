@@ -149,6 +149,14 @@ private boolean isFunctionDefinition(PluginConfigurationTree configTree, String 
 
 ---
 
+## Text Content Validation
+
+The IDE `SchemaValidator` rejects non-whitespace text nodes that appear directly under the root `<config>` element, because configuration content must be expressed through plugin elements. Whitespace-only text at the root is ignored. Text inside plugin elements remains allowed for body-content processors such as `set-var`.
+
+This rule is specific to the IDE validator; it does not replace the Core Semantic Model Stage 1 structural validation contract.
+
+---
+
 ## Attribute Validation
 
 The validator checks:
