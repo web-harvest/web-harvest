@@ -65,6 +65,13 @@ public final class PluginClassScanner {
      * @return list of fully qualified class names
      */
     public static List<String> allPluginClassNames() {
+        return allPluginClassNames(PLUGIN_PACKAGES, PluginClassScanner::scanPackage, FALLBACK_CLASSES);
+    }
+
+    static List<String> allPluginClassNames(
+            String[] packageNames,
+            Function<String, Set<Class<?>>> packageScanner,
+            List<String> fallback) {
         if (cachedClassNames != null) {
             return cachedClassNames;
         }
@@ -74,9 +81,8 @@ public final class PluginClassScanner {
                 return cachedClassNames;
             }
 
-            List<String> discovered = scanWithFallback(
-                    PLUGIN_PACKAGES, PluginClassScanner::scanPackage, FALLBACK_CLASSES);
-            if (discovered != FALLBACK_CLASSES) {
+            List<String> discovered = scanWithFallback(packageNames, packageScanner, fallback);
+            if (discovered != fallback) {
                 cachedClassNames = discovered;
             }
             LOG.info("Resolved {} plugin class names", discovered.size());
