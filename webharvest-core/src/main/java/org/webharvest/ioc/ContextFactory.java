@@ -54,8 +54,8 @@ public interface ContextFactory {
      * instantiates particular implementation of {@link DynamicScopeContext}
      * basis on provided configuration namespace URI.
      *
-     * @param namespaceUri
-     *            namespace URI of configuration being executed
+     * @param config
+     *            configuration whose namespace URI determines the context implementation
      * @return brand new instance of {@link DynamicScopeContext}
      */
     DynamicScopeContext create(Config config);
