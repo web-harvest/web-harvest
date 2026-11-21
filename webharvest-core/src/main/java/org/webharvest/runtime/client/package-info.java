@@ -60,7 +60,7 @@
  * ScraperSession session = service.executeAsync(config, client, options);
  * 
  * // Query all sessions for this client
- * List<ScraperSession> clientSessions = registry.getSessionsByClientId(client.getClientId());
+ * List<ScraperSession> clientSessions = service.listSessions(client.getClientId());
  * }</pre>
  * 
  * @since 2.2.0
