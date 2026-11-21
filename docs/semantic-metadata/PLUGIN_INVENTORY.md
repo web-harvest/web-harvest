@@ -10,7 +10,7 @@ The current plugin catalog is generated at runtime. This file is a status and na
 - Runtime API: `GET /api/plugins/metadata`
 - Focused catalog tests: `webharvest-core/src/test/java/org/webharvest/plugin/metadata/PluginMetadataCatalogTest.java`
 
-The scanner discovers concrete `@CorePlugin` classes in the Core, FTP, Mail, Database, ZIP and WebBrowser packages. It caches the discovered class names and uses an embedded compatibility list if scanning fails. Optional extension modules appear only when their classes are available at runtime.
+The scanner discovers concrete `@CorePlugin` classes in the Core, FTP, Mail, Database, ZIP and WebBrowser packages. It caches the discovered class names. A package-level scan exception is logged and skipped, so the cached result can be partial or empty. The embedded compatibility list is used only if the overall scan method throws (or the in-progress branch uses it); see [Issue #309](https://github.com/web-harvest/web-harvest/issues/309). Optional extension modules appear only when their classes are available at runtime.
 
 ## What this file does not claim
 
