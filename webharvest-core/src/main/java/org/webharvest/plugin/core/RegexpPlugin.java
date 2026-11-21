@@ -79,7 +79,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li><strong>Pattern matching:</strong> Find patterns in text using Java regex syntax</li>
  *   <li><strong>Capture groups:</strong> Extract parts of matches into variables (group0-group99)</li>
- *   <li><strong>Search & replace:</strong> Replace matched text with templates</li>
+ *   <li><strong>Search &amp; replace:</strong> Replace matched text with templates</li>
  *   <li><strong>Multiple matches:</strong> Process all matches or limit with max attribute</li>
  *   <li><strong>Regex flags:</strong> Case-insensitive, multiline, dotall, etc.</li>
  * </ul>
@@ -173,7 +173,7 @@ import java.util.regex.Pattern;
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  * <loop item="url">
  *   <regexp>
- *     <regexp-pattern>https?://([^/]+)(/.*)}</regexp-pattern>
+ *     <regexp-pattern>https?://([^/]+)(/.*)</regexp-pattern>
  *     <regexp-source>
  *       <http url="https://example.com/links"/>
  *     </regexp-source>
@@ -211,7 +211,7 @@ import java.util.regex.Pattern;
  * 
  * <h3>Attributes</h3>
  * <ul>
- *   <li><strong>replace:</strong> If true, performs find & replace (default: false)</li>
+ *   <li><strong>replace:</strong> If true, performs find &amp; replace (default: false)</li>
  *   <li><strong>max:</strong> Maximum matches to process (default: 1000000)</li>
  *   <li><strong>flag-caseinsensitive:</strong> Ignore case (default: false)</li>
  *   <li><strong>flag-multiline:</strong> ^ and $ match line boundaries (default: false)</li>

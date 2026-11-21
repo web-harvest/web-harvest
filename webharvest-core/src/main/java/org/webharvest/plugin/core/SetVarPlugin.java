@@ -249,7 +249,7 @@ public class SetVarPlugin extends AbstractPlugin {
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the configuration schema for the set-var plugin.
      */
     public PluginConfigurationSchema getConfigurationSchema() {
         return new PluginConfigurationSchema() {

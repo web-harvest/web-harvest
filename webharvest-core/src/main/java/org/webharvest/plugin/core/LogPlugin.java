@@ -203,7 +203,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * @author Robert Bala (TDD implementation based on original concept by zsombor)
  * @since 2.2.0
- * @see org.webharvest.plugin.core.EchoPlugin
+ * @see {@code EchoPlugin}
  */
 @CorePlugin(
     elementName = "log",
