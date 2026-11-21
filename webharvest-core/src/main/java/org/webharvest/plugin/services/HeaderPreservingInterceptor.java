@@ -22,7 +22,7 @@ import java.util.HashMap;
  * HTTP request interceptor that ensures specified headers are present on ALL requests,
  * including redirect requests.
  * 
- * <h3>Bug #36: HTTP Redirect Header Preservation</h3>
+ * <h2>Bug #36: HTTP Redirect Header Preservation</h2>
  * 
  * <p><strong>Problem:</strong> When HttpClient follows redirects (HTTP 301/302),
  * it creates new requests but doesn't copy custom headers like Referer, Authorization,

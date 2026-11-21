@@ -43,7 +43,7 @@ package org.webharvest.runtime.session;
  *                  ↘ CANCELLED
  * </pre>
  * 
- * <h3>Status Descriptions:</h3>
+ * <h2>Status Descriptions:</h2>
  * <ul>
  *   <li><b>PENDING</b> - Session created but not yet started execution</li>
  *   <li><b>RUNNING</b> - Session is currently executing</li>

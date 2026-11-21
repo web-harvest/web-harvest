@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  *   <li>Modern Java support</li>
  * </ul>
  * 
- * <h3>Bug #36: Redirect Header Preservation (v2.2.0)</h3>
+ * <h2>Bug #36: Redirect Header Preservation (v2.2.0)</h2>
  * <p>Added support for:</p>
  * <ul>
  *   <li><code>followRedirects</code> - control redirect behavior</li>

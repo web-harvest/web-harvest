@@ -58,7 +58,7 @@ import java.util.Stack;
 /**
  * New XML parser for WebHarvest v3.0 - parses XML directly to PluginConfiguration.
  * 
- * <h3>Architecture Revolution - No More *Def Classes!</h3>
+ * <h2>Architecture Revolution - No More *Def Classes!</h2>
  * <p>
  * This parser eliminates the intermediate *Def layer (HttpDef, XPathDef, FileDef, etc.)
  * and creates PluginConfiguration objects directly from XML.

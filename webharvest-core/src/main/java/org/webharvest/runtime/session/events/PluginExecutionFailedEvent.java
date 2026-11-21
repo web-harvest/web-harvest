@@ -42,7 +42,7 @@ import org.webharvest.runtime.session.ScraperSession;
  * It captures failures during plugin execution for debugging, error tracking,
  * and alerting purposes.</p>
  * 
- * <h3>Use Cases:</h3>
+ * <h2>Use Cases:</h2>
  * <ul>
  *   <li><b>Error Tracking:</b> Monitor and log plugin failures for debugging</li>
  *   <li><b>Alerting:</b> Trigger notifications when critical plugins fail</li>

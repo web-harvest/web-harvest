@@ -43,7 +43,7 @@ import org.webharvest.runtime.variables.Variable;
  * It captures the result and timing of plugin execution for debugging, replay,
  * auditing, and performance analysis.</p>
  * 
- * <h3>Use Cases:</h3>
+ * <h2>Use Cases:</h2>
  * <ul>
  *   <li><b>Performance Analysis:</b> Track plugin execution times and identify bottlenecks</li>
  *   <li><b>Debugging:</b> Inspect results and execution order</li>

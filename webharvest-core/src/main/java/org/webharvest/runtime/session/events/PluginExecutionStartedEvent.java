@@ -42,7 +42,7 @@ import org.webharvest.runtime.session.ScraperSession;
  * It provides a stream of all plugin executions for debugging, replay, auditing,
  * and real-time monitoring.</p>
  * 
- * <h3>Use Cases:</h3>
+ * <h2>Use Cases:</h2>
  * <ul>
  *   <li><b>Debugging:</b> Track execution order and timing of plugins</li>
  *   <li><b>Replay:</b> Reconstruct execution flow from event stream</li>

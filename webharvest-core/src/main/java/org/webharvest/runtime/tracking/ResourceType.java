@@ -40,7 +40,7 @@ package org.webharvest.runtime.tracking;
  * built-in runtime measures each resource, and they do not define billing rates,
  * pricing, or quota policy. Runtime event integration remains tracked by issue #168.</p>
  * 
- * <h3>Resource Types:</h3>
+ * <h2>Resource Types:</h2>
  * <ul>
  *   <li><b>HTTP_REQUEST</b> - Number of HTTP requests made</li>
  *   <li><b>HTTP_BYTES</b> - Total bytes downloaded via HTTP</li>

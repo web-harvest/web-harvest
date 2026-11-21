@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * events; those values change only when a caller explicitly records them. See
  * <a href="https://github.com/web-harvest/web-harvest/issues/168">issue #168</a>.</p>
  * 
- * <h3>Available Values:</h3>
+ * <h2>Available Values:</h2>
  * <ul>
  *   <li><b>Timing:</b> Start time, end time, and duration (recorded by the session lifecycle)</li>
  *   <li><b>Element count:</b> Explicitly incremented counter; not populated by the built-in service</li>

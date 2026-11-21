@@ -45,7 +45,7 @@ import java.util.Objects;
  * caller-defined and opaque to Core. This value object does not authenticate callers,
  * enforce tenant isolation, implement billing, or enforce quotas.</p>
  * 
- * <h3>Use Cases:</h3>
+ * <h2>Use Cases:</h2>
  * <ul>
  *   <li><b>Session grouping:</b> Associate sessions with a caller-provided client ID</li>
  *   <li><b>Resource reporting:</b> Attach caller-defined labels to sessions</li>
@@ -192,7 +192,7 @@ public final class ClientContext {
     /**
      * Builder for creating {@link ClientContext} instances with fluent API.
      * 
-     * <h3>Usage Example:</h3>
+     * <h2>Usage Example:</h2>
      * <pre>{@code
      * ClientContext client = ClientContext.builder()
      *     .clientId("my-client")

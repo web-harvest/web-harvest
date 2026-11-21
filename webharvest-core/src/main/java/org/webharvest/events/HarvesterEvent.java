@@ -48,7 +48,6 @@ import org.webharvest.Harvester;
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
  * @version %I%, %G%
- * @see
  */
 public interface HarvesterEvent {
 

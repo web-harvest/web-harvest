@@ -41,7 +41,6 @@ package org.webharvest.exception;
 /**
  * Thrown when current JVM does not support a specific required feature.
  * E.g. character set, cryptographic algorithm, etc.
- * <p/>
  * Created by IntelliJ IDEA.
  * User: awajda
  * Date: Sep 26, 2010

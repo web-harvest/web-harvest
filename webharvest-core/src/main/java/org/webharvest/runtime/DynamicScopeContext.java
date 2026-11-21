@@ -110,7 +110,7 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * <p>This method is part of Bug #24: Event Sourcing for Inter-Processor Communication.
      * It provides plugins access to the EventBus for publishing execution events.</p>
      * 
-     * <h3>Thread Safety:</h3>
+     * <h4>Thread Safety:</h4>
      * <p>The EventBus reference is immutable (set once during context initialization).
      * EventBus.post() is thread-safe and can be called from multiple threads.</p>
      * 
@@ -126,7 +126,7 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * <p>This method is part of Bug #24: Event Sourcing for Inter-Processor Communication.
      * It provides plugins access to session metadata for event publishing.</p>
      * 
-     * <h3>Thread Safety:</h3>
+     * <h4>Thread Safety:</h4>
      * <p>The ScraperSession reference is immutable (set once during context initialization).
      * ScraperSession methods are thread-safe (volatile fields, synchronized transitions).</p>
      * 
@@ -142,7 +142,7 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * <p>This method should be called once during context initialization,
      * before any plugins are executed.</p>
      * 
-     * <h3>Thread Safety:</h3>
+     * <h4>Thread Safety:</h4>
      * <p>This method is NOT thread-safe. It must be called during initialization
      * before the context is shared across threads.</p>
      * 
@@ -157,7 +157,7 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * <p>This method should be called once during context initialization,
      * before any plugins are executed.</p>
      * 
-     * <h3>Thread Safety:</h3>
+     * <h4>Thread Safety:</h4>
      * <p>This method is NOT thread-safe. It must be called during initialization
      * before the context is shared across threads.</p>
      * 

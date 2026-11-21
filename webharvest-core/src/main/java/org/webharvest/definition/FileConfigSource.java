@@ -48,7 +48,7 @@ import org.webharvest.utils.HasReader;
  * Implementation of {@link ConfigSource} that uses a file system as
  * source of XML configurations.
  * 
- * <h3>Bug #47 Fix (v2.2.0): Charset Encoding</h3>
+ * <h2>Bug #47 Fix (v2.2.0): Charset Encoding</h2>
  * <p>
  * <strong>Issue:</strong> Used {@link FileReader} which relies on platform default charset
  * (e.g., WIN1250 on Windows instead of UTF-8), causing encoding problems in CLI mode.

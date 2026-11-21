@@ -57,7 +57,6 @@ import java.util.Set;
  * {@link org.webharvest.runtime.scripting.ScriptEngine} interface. This adapter
  * is universal for all scripting language implementations supporting JSR-223
  * specification.
- * <p/>
  * It is important to bear in mind that this implementation is not thread-safe,
  * that is, {@link javax.script.ScriptEngine} being adapted can not be shared
  * between multiple threads. Bindings from scraper's {@link DynamicScopeContext}

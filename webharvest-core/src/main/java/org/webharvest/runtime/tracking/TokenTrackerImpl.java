@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>This implementation provides lock-free concurrent access using
  * {@link AtomicLong} for each resource type counter.</p>
  * 
- * <h3>Performance Characteristics:</h3>
+ * <h2>Performance Characteristics:</h2>
  * <ul>
  *   <li><b>record()</b>: O(1) lock-free atomic operation</li>
  *   <li><b>getUsage()</b>: O(n) where n = number of resource types (typically 4)</li>

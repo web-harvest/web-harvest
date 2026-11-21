@@ -38,7 +38,7 @@ import java.util.Map;
 /**
  * Represents an HTTP response.
  * 
- * <h3>Bug #39 Fix (v2.2.0): Binary Content Support</h3>
+ * <h2>Bug #39 Fix (v2.2.0): Binary Content Support</h2>
  * <p>
  * Added {@link #getBodyAsBinary()} method to support binary content downloads
  * without String conversion corruption.
