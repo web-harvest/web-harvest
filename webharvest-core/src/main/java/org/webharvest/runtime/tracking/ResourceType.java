@@ -34,15 +34,11 @@
 package org.webharvest.runtime.tracking;
 
 /**
- * Types of resources that can be tracked for token usage calculation.
+ * Resource categories supported by {@link TokenTracker}.
  * 
- * <p>Resource tracking enables:</p>
- * <ul>
- *   <li>Monitoring resource consumption per session/client</li>
- *   <li>Billing based on actual usage</li>
- *   <li>Quota enforcement (future releases)</li>
- *   <li>Performance optimization insights</li>
- * </ul>
+ * <p>These values define counter names and units only. They do not imply that the
+ * built-in runtime measures each resource, and they do not define billing rates,
+ * pricing, or quota policy. Runtime event integration remains tracked by issue #168.</p>
  * 
  * <h3>Resource Types:</h3>
  * <ul>
@@ -71,16 +67,7 @@ package org.webharvest.runtime.tracking;
  * System.out.println("HTTP Requests: " + usage.get(ResourceType.HTTP_REQUEST));
  * }</pre>
  * 
- * <h3>Future Pricing Model:</h3>
- * <pre>
- * Resource Type    | Unit Cost | Calculation
- * ----------------|-----------|------------------
- * HTTP_REQUEST     | $0.0001   | per request
- * HTTP_BYTES       | $0.01     | per GB
- * CPU_TIME         | $0.001    | per minute
- * MEMORY_PEAK      | $0.0001   | per GB-hour
- * </pre>
- * 
+
  * @author Robert Bala
  * @since 2.2.0
  * @version %I%, %G%
