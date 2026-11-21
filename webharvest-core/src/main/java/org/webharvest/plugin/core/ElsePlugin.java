@@ -64,7 +64,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple if-else logic</h4>
+ * <h3>Example 1: Simple if-else logic</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -77,7 +77,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Handle empty results</h4>
+ * <h3>Example 2: Handle empty results</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -98,7 +98,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Error handling with HTTP</h4>
+ * <h3>Example 3: Error handling with HTTP</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
