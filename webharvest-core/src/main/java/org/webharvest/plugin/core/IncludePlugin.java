@@ -72,7 +72,7 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Include common functions</h4>
+ * <h3>Example 1: Include common functions</h3>
  * <pre>{@code
  * <!-- main.xml -->
  * <config>
@@ -87,7 +87,7 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Modular configuration</h4>
+ * <h3>Example 2: Modular configuration</h3>
  * <pre>{@code
  * <!-- main.xml -->
  * <config>
@@ -98,7 +98,7 @@ import org.webharvest.runtime.templaters.BaseTemplater;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Conditional include</h4>
+ * <h3>Example 3: Conditional include</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
