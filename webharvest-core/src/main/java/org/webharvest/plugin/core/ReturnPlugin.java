@@ -69,7 +69,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Early return from function</h4>
+ * <h3>Example 1: Early return from function</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -92,7 +92,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Conditional return</h4>
+ * <h3>Example 2: Conditional return</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
