@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple parameters</h4>
+ * <h3>Example 1: Simple parameters</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -82,7 +82,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Complex parameter values</h4>
+ * <h3>Example 2: Complex parameter values</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -105,7 +105,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Multiple parameters with types</h4>
+ * <h3>Example 3: Multiple parameters with types</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -125,7 +125,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Passing XML/HTML content</h4>
+ * <h3>Example 4: Passing XML/HTML content</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
