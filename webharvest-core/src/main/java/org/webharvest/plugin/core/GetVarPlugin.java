@@ -75,8 +75,9 @@ import org.slf4j.LoggerFactory;
  * to another processor without String conversion.
  * </p>
  * 
- * <h3>get-var vs Template ${} Syntax</h3>
+ * <h2>get-var vs Template ${} Syntax</h2>
  * <table border="1">
+ * <caption>get-var and template variable access</caption>
  *   <tr>
  *     <th>Syntax</th>
  *     <th>Use Case</th>

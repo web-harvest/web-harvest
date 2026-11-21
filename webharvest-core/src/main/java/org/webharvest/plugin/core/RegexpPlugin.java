@@ -75,7 +75,7 @@ import java.util.regex.Pattern;
  * easy access.
  * </p>
  * 
- * <h3>Core Features</h3>
+ * <h2>Core Features</h2>
  * <ul>
  *   <li><strong>Pattern matching:</strong> Find patterns in text using Java regex syntax</li>
  *   <li><strong>Capture groups:</strong> Extract parts of matches into variables (group0-group99)</li>

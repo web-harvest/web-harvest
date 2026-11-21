@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * scenario requiring text segmentation.
  * </p>
  * 
- * <h3>Parameters</h3>
+ * <h2>Parameters</h2>
  * <ul>
  *   <li><strong>delimiters:</strong> Characters to use as delimiters (default: space, tab, newline)</li>
  *   <li><strong>trimtokens:</strong> Trim whitespace from each token (default: true)</li>

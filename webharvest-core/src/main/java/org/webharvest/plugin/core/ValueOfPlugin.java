@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * In most cases, direct ${} syntax is simpler and preferred.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Explicit expression evaluation</h4>
  * <pre>{@code

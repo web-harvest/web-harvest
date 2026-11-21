@@ -67,7 +67,7 @@ import org.webharvest.utils.CommonUtil;
  * or when specific data is found.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Exit on error</h4>
  * <pre>{@code

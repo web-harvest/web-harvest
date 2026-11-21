@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * they are not treated as literal markup by this plugin. For variable
  * interpolation, use a {@code <template>} child whose content is CDATA.</p>
  *
- * <h3>Example: literal XML</h3>
+ * <h2>Example: literal XML</h2>
  * <pre>{@code
  * <def var="xmlData">
  *   <xml><![CDATA[

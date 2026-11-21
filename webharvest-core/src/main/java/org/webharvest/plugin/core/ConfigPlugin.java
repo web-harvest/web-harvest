@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * other processors. Every WebHarvest scraper must start with this element.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Basic configuration</h4>
  * <pre>{@code

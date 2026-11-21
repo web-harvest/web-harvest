@@ -60,7 +60,7 @@ import org.webharvest.runtime.variables.Variable;
  * Must be used as a child element of {@code <regexp>}. Supports Java regex syntax with capture groups.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Extract links from HTML</h4>
  * <pre>{@code

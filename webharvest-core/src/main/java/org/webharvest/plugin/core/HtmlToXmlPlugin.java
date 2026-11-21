@@ -97,7 +97,7 @@ import java.io.StringReader;
  * invalid HTML (unclosed tags, missing quotes, etc.) that XML parsers reject.
  * </p>
  * 
- * <h3>Why HTML to XML Conversion?</h3>
+ * <h2>Why HTML to XML Conversion?</h2>
  * <p>
  * HTML from the web is often "tag soup" - syntactically invalid but rendered by browsers:
  * </p>

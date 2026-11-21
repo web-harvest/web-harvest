@@ -66,7 +66,7 @@ import org.webharvest.runtime.variables.Variable;
  * JSON responses, providing a unified query language for both HTML and JSON sources.
  * </p>
  * 
- * <h3>Why Convert JSON to XML?</h3>
+ * <h2>Why Convert JSON to XML?</h2>
  * <ul>
  *   <li><strong>Unified querying:</strong> Use XPath for both HTML pages and JSON APIs</li>
  *   <li><strong>Complex extraction:</strong> XPath is more powerful than simple JSON path for nested data</li>
@@ -184,6 +184,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h3>JSON to XML Mapping</h3>
  * <table border="1">
+ * <caption>JSON to XML type conversion examples</caption>
  *   <tr>
  *     <th>JSON Type</th>
  *     <th>XML Representation</th>

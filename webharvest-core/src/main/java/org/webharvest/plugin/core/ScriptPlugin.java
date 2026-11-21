@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
  * API calls, conditional logic, and any processing that's difficult to express in pure XML.
  * </p>
  * 
- * <h3>Supported Languages</h3>
+ * <h2>Supported Languages</h2>
  * <ul>
  *   <li><strong>JavaScript (default):</strong> Rhino engine, ECMAScript 5 compatible</li>
  *   <li><strong>Groovy:</strong> Full Groovy language support with Java interop</li>

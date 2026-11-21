@@ -62,7 +62,7 @@ import org.webharvest.runtime.variables.Variable;
  * evaluates to false. Used with {@code <if>} for conditional branching logic.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Simple if-else logic</h4>
  * <pre>{@code

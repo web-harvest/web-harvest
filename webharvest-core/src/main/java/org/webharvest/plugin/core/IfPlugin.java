@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * error handling, data validation, and dynamic behavior in scrapers.
  * </p>
  * 
- * <h3>Condition Expressions</h3>
+ * <h2>Condition Expressions</h2>
  * <p>The {@code condition} attribute accepts:</p>
  * <ul>
  *   <li><strong>Boolean literals:</strong> {@code "true"}, {@code "false"}</li>

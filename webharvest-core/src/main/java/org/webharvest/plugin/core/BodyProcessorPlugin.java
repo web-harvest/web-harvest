@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * way to execute processor body content and return the results as a variable list.
  * </p>
  * 
- * <h3>Internal Usage</h3>
+ * <h2>Internal Usage</h2>
  * <p>This processor is automatically used by the framework when processors need to execute
  * their body content. It's rarely used directly in user XML configurations.</p>
  * 

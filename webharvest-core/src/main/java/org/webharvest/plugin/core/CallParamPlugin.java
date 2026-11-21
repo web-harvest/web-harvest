@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  * Parameters can be simple values or complex expressions. Must be used as a child element of {@code <call>}.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Simple parameters</h4>
  * <pre>{@code

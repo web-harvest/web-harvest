@@ -60,7 +60,7 @@ import org.webharvest.runtime.variables.Variable;
  * Must be used as a child element of {@code <regexp>}. Supports variable substitution and complex text sources.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Simple text matching</h4>
  * <pre>{@code

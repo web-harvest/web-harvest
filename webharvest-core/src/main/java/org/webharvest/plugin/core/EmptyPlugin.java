@@ -60,7 +60,7 @@ import org.webharvest.plugin.exceptions.PluginValidationException;
  * and (2) Execute processors for their side effects without producing output.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: Check if variable is empty</h4>
  * <pre>{@code

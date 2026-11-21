@@ -69,7 +69,7 @@ import org.webharvest.runtime.variables.Variable;
  * It executes its body content once for each item, with optional index tracking and empty-item handling.
  * </p>
  * 
- * <h3>Loop Input Sources</h3>
+ * <h2>Loop Input Sources</h2>
  * <p>Input is normalized once before iteration. Supported forms are:</p>
  * <ul>
  *   <li><strong>items attribute:</strong> A delimited string, or an exact ${variable} reference.

@@ -34,7 +34,7 @@ import org.webharvest.runtime.variables.Variable;
  * Useful for debugging, progress monitoring, and integration with CI/CD pipelines.
  * </p>
  * 
- * <h3>Overview</h3>
+ * <h2>Overview</h2>
  * <p>
  * The {@code <log>} plugin provides a simple way to output messages during scraper execution.
  * Unlike the {@code <echo>} plugin which stores values in variables, {@code <log>} writes
@@ -156,6 +156,7 @@ import org.webharvest.runtime.variables.Variable;
  * <h3>Comparison with Alternatives</h3>
  * 
  * <table border="1">
+ * <caption>Logging output alternatives</caption>
  *   <tr>
  *     <th>Feature</th>
  *     <th>&lt;log&gt;</th>
@@ -203,7 +204,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * @author Robert Bala (TDD implementation based on original concept by zsombor)
  * @since 2.2.0
- * @see {@code EchoPlugin}
+ * Historical related type: {@code EchoPlugin}.
  */
 @CorePlugin(
     elementName = "log",

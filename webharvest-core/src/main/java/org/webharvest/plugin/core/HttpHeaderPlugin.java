@@ -62,7 +62,7 @@ import org.webharvest.runtime.variables.Variable;
  * content type negotiation, custom headers, and API requirements. Must be used as a child element of {@code <http>}.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
  * <h4>Example 1: API Authentication with Bearer Token</h4>
  * <pre>{@code

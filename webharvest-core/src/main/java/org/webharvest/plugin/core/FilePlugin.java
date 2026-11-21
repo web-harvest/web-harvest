@@ -87,7 +87,7 @@ import java.util.regex.PatternSyntaxException;
  * and listing directory contents with filtering.
  * </p>
  * 
- * <h3>Supported Operations</h3>
+ * <h2>Supported Operations</h2>
  * <ul>
  *   <li><strong>read:</strong> Read file content (text or binary)</li>
  *   <li><strong>write:</strong> Write content to file (creates parent directories if needed)</li>
@@ -105,7 +105,6 @@ import java.util.regex.PatternSyntaxException;
  * preserves original {@code byte[]} data without String conversion. This prevents
  * corruption of binary content downloaded via {@code <http>}.
  * </p>
- * <p>
  * <strong>Example - Download binary file:</strong>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
@@ -121,7 +120,6 @@ import java.util.regex.PatternSyntaxException;
  * </file>
  * </config>
  * }</pre>
- * </p>
  * 
  * <h3>Usage Examples</h3>
  * 
