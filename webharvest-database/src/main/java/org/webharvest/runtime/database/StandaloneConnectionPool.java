@@ -56,7 +56,7 @@ import com.google.common.eventbus.Subscribe;
  * Default, standalone {@link ConnectionFactory} interface implementation. It
  * provides very simple connection pooling - {@link Connection} created once for
  * the given driver, url and username is reused later. While this will work fine
- * with the short-living object lifecycle (as it is in case of {@link Scraper}),
+ * with the short-living object lifecycle (as it is in case of {@link org.webharvest.runtime.Scraper}),
  * it is discouraged to use {@link StandaloneConnectionPool} as an
  * application-wide singleton having long lifecycle.
  * <p/>
