@@ -38,7 +38,7 @@ import java.util.Set;
 /**
  * Implementors of this interface can serve as the backing store for
  * Objects that are scoped within an (subclass of) {@link AttributeHolderScope}.
- * Based on work of Matthias Treydte <waldheinz at gmail.com>.
+ * Based on work by Matthias Treydte (waldheinz at gmail.com).
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
