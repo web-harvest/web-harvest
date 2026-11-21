@@ -80,7 +80,7 @@ public interface VisualPluginMetadata extends PluginMetadata {
     /**
      * Gets the visual group for palette organization.
      * 
-     * <p>Examples: "HTTP & Network", "XML Processing", "Control Flow", etc.</p>
+     * <p>Examples: "HTTP &amp; Network", "XML Processing", "Control Flow", etc.</p>
      * 
      * @return group name
      */
