@@ -3,7 +3,6 @@ package org.webharvest.server.validation;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-
 /**
  * Verifies root-level text validation without rejecting plugin body content.
  */
