@@ -140,7 +140,13 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
     for class_path, class_sha in archive_classes.items():
         matches = candidates.get(class_path, [])
         exact = [candidate for candidate in matches if candidate["class_sha256"] == class_sha]
-        if len(exact) == 1:
+        if distribution == "cli" and class_path.startswith("org/htmlunit/jetty/"):
+            # HtmlUnit relocates Jetty classes into this namespace. Preserve any
+            # container-JAR candidates, but do not misattribute them to HtmlUnit;
+            # the pinned Jetty module mapping remains the origin evidence.
+            status = "special_case_cli_relocated_jetty"
+            selected = []
+        elif len(exact) == 1:
             status = "unique_exact_byte_match"
             selected = exact
         elif len(exact) > 1:
@@ -153,11 +159,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             status = "ambiguous_path_match_bytes_differ"
             selected = matches
         else:
-            status = (
-                "special_case_cli_relocated_jetty"
-                if distribution == "cli" and class_path.startswith("org/htmlunit/jetty/")
-                else "unmatched"
-            )
+            status = "unmatched"
             selected = []
         counts[status] += 1
 
