@@ -1,8 +1,8 @@
 # Release and distribution readiness assessment
 
 **Issue:** [#88](https://github.com/web-harvest/web-harvest/issues/88) (parent [#84](https://github.com/web-harvest/web-harvest/issues/84))  
-**Inspected against:** `main` @ `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1`  
-**Assessment date:** 2026-11-21  
+**Inspected against:** `main` @ `383db9e3b14d40dec6e19d47913df5157d9f91c0`  
+**Assessment date:** 2026-11-22  
 **Recommendation:** **NO-GO** for GitHub Release or Maven publication.
 
 This assessment supersedes the earlier baseline references and Java 11 statements in this document. It is a source/CI checkpoint, not a release approval.
@@ -171,3 +171,36 @@ The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is 
 - [#323](https://github.com/web-harvest/web-harvest/issues/323) owns distribution-specific CLI/IDE component manifests or CycloneDX SBOMs, class-to-origin correlation, aggregate SBOM delta classification, license/NOTICE reconciliation and deterministic CI assertions.
 - [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
 - No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
+
+
+## 2026-11-22 current-main distribution checkpoint — `383db9e3b14d40dec6e19d47913df5157d9f91c0`
+
+This section supersedes the earlier artifact-count and Jetty-attribution status where they conflict. Earlier checkpoints are retained as historical evidence. **Recommendation remains NO-GO.**
+
+### Merged provenance baseline
+
+- PR [#322](https://github.com/web-harvest/web-harvest/pull/322) merged as `84a7e7d3b747e0af3929ec76cbad0bb372a50cd6`, adding extraction of actual shaded LICENSE/NOTICE payloads and embedded Maven POM metadata with per-resource hashes.
+- PR [#324](https://github.com/web-harvest/web-harvest/pull/324) merged as `6f30065ca0a19fb190a0f49c56c1fbdb2d6280bf`, recording release-readiness evidence.
+- PR [#325](https://github.com/web-harvest/web-harvest/pull/325) merged as `383db9e3b14d40dec6e19d47913df5157d9f91c0`, adding deterministic CLI/IDE shaded provenance reports and CLI relocated-Jetty module attribution.
+
+Exact PR #325 artifact facts (from its retained Java 17 diagnostics):
+- CLI archive SHA-256: `57ba3732db69a77370768a15fa6345e5b34edba9a43f3e6b983938d903063f72`; 55 embedded Maven coordinates, 47 exact aggregate-SBOM PURL matches and 8 Jetty client/WebSocket/compression deltas. All 1,280 relocated Jetty classes map to 12 pinned upstream modules.
+- IDE archive SHA-256: `d95d5740093733339918faa6a31fb2bb5e6368c3b6ad5875fd75092dff818c26`; 42 embedded Maven coordinates, 42 aggregate-SBOM PURL matches. The initial report mapped 1,015 of 1,931 IDE Jetty classes; this is superseded by the open PR #326 verification below.
+- The provenance JSON reports show no unresolved license-evidence source for the 55 CLI and 42 IDE coordinates. This means evidence is present (embedded POM, effective aggregate SBOM or pinned Jetty upstream project model); it is not the final legal choice/distribution-obligation sign-off. Jetty's upstream model declares EPL-2.0 OR Apache-2.0 and the applicable redistribution disposition remains to be documented.
+
+### Open exact-head distribution work
+
+- PR [#326](https://github.com/web-harvest/web-harvest/pull/326), head `85abc5a8bbac4f9070ec8c6cb9af19136c9e246b`, has all four required checks green: full Java 17 reactor/static analysis [45029525490](https://github.com/web-harvest/web-harvest/actions/runs/45029525490), aggregate SBOM scan [45029525483](https://github.com/web-harvest/web-harvest/actions/runs/45029525483), workflow validation [45029525468](https://github.com/web-harvest/web-harvest/actions/runs/45029525468), and Actions lockfile [45029525499](https://github.com/web-harvest/web-harvest/actions/runs/45029525499). Its exact-artifact gate verifies CLI 1,280/1,280 and IDE 1,931/1,931 Jetty classes mapped, with zero unmapped. PR remains open and unmerged; this is package-prefix/source-module correlation, not byte-identical upstream JAR attestation.
+- The pinned Jetty 12.1.15 upstream `NOTICE.txt` (tag `jetty-12.1.15`, commit `770f5e4d1c39673d6356163118a1e6bf1117ced3`, Git blob `ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db`) was not present in either shaded distribution. Existing `NOTICE.md`/`NOTICE.txt` files belong to Jakarta Mail, Eclipse Servlet, Commons Lang and other components; they must not be misattributed to Jetty.
+- PR [#333](https://github.com/web-harvest/web-harvest/pull/333) is open to add that exact upstream notice as a distinct `META-INF/NOTICE-jetty-12.1.15.txt` resource in both shaded JARs. It uses an additive Shade transformer (not a global notice merger), and its CI compares the packaged payload SHA-256 to the pinned repository copy. At this checkpoint, full Java 17 reactor/package validation is still running; no success is claimed yet.
+
+### Remaining P0/P1 release blockers
+
+1. Complete PR #326 review and merge only after maintainer review; verify the resulting exact main artifact report.
+2. Complete PR #333 exact-head CI, inspect the final JARs and verify the Jetty notice hash in both distributions. Preserve all pre-existing component notice resources.
+3. Produce or formally specify distribution-specific CycloneDX SBOMs / equivalent auditable component manifests tied to final archive hashes; classify every CLI/IDE delta against the aggregate production SBOM and distinguish embedded metadata from proven code attribution.
+4. Record the per-component license choice/disposition and applicable notice obligations, including the Jetty dual-license choice. Evidence collection is not a legal opinion.
+5. Rebuild CLI/IDE from one exact candidate SHA, retain final hashes/reports and rerun packaged startup/compatibility smoke tests.
+6. Finish Central Publisher Portal bundle/source/Javadoc/signature verification in non-upload mode, version/changelog/docs reconciliation and candidate-freeze checks.
+
+**Release remains NO-GO.** No tag, GitHub Release, Maven publication, signing/credential change or website deployment is authorized by this assessment.
