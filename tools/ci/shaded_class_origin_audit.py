@@ -213,10 +213,17 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             }
 
     for component in dependency_components.values():
+        coordinate_parts = component["coordinate"].split(":")
+        is_cli_jetty_special_case = (
+            distribution == "cli"
+            and len(coordinate_parts) >= 3
+            and coordinate_parts[0].startswith("org.eclipse.jetty")
+            and coordinate_parts[2] == "12.1.15"
+        )
         component["metadata_only_or_unmatched"] = (
             component["metadata_in_shaded_archive"]
             and component["matched_archive_class_count"] == 0
-            and not (distribution == "cli" and component["coordinate"].startswith("org.eclipse.jetty:"))
+            and not is_cli_jetty_special_case
         )
 
     return {
