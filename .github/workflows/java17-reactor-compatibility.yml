@@ -17,6 +17,7 @@ on:
       - "pom.xml"
       - "webharvest-*/**"
       - "docs/**"
+      - "tools/ci/**"
       - ".github/workflows/java17-reactor-compatibility.yml"
   workflow_dispatch:
     inputs:
