@@ -37,8 +37,11 @@ class ShadedInventoryTests(unittest.TestCase):
             report = json.loads(output.read_text(encoding="utf-8"))
             component = report["components"][0]
             self.assertEqual(component["purl"], "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15?type=jar")
-            self.assertEqual(component["code_attribution"], "namespace_correlated_not_artifact_specific")
-            self.assertEqual(component["class_count_correlated_namespace"], 1)
+            self.assertEqual(component["code_attribution"], "class_prefix_correlated_to_upstream_module_source")
+            self.assertEqual(component["class_evidence"]["class_count"], 1)
+            self.assertEqual(component["class_evidence"]["upstream_module"], "jetty-core/jetty-client")
+            self.assertEqual(component["class_evidence"]["upstream_commit"], "770f5e4d1c39673d6356163118a1e6bf1117ced3")
+            self.assertEqual(report["class_inventory"]["jetty_class_attribution"]["mapped_class_count"], 1)
             self.assertEqual(component["embedded_pom_licenses"], ["EPL-2.0 OR Apache-2.0"])
             self.assertEqual(report["class_inventory"]["org_htmlunit_jetty_classes"], 1)
             self.assertEqual(report["legal_resources"][0]["archive_entry"], "META-INF/NOTICE.txt")
