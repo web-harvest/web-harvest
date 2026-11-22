@@ -83,3 +83,56 @@ GO requires all of the following on one exact candidate SHA:
 - POM version 2.3.1 is not represented as proof of a published release.
 
 **Current decision: NO-GO.** Security remediation integration is complete, but final SBOM/artifact proof and independent release-engineering/documentation gates remain open.
+
+---
+
+## 2026-11-22 checkpoint — supersedes the earlier inspected SHA
+
+**Canonical source:** `main` includes PR #317 and PR #319; the latest merged change is PR #320 at `fb37955c2fb16cfe9600e615921bfab812f48071`.  
+**Recommendation:** **NO-GO** for GitHub Release, Maven Central publication or website deployment.
+
+This section is a dated evidence update. It does not erase the historical checkpoint above.
+
+### Changes merged since the previous assessment
+
+- [PR #317](https://github.com/web-harvest/web-harvest/pull/317) restored fatal Javadoc doclint enforcement and fixed fatal source markup errors across all eight Java modules. The warning baseline remains non-fatal and visible.
+- [PR #319](https://github.com/web-harvest/web-harvest/pull/319) updated the project direction/architecture status with the exact Javadoc and CI evidence.
+- [PR #320](https://github.com/web-harvest/web-harvest/pull/320) added the existing BSD license declaration, canonical project URL and SCM coordinates to the standalone `docs/pom.xml`. This closes the one missing-license-metadata item in the production and test CycloneDX SBOMs.
+
+### Exact evidence for PR #320
+
+PR head: `55ce5efac4298b73682663d15fd325c2f72d46f0`; merge commit: `fb37955c2fb16cfe9600e615921bfab812f48071`.
+
+All six PR workflows completed successfully:
+- Java 17 full reactor/static analysis, eight Javadoc JARs, CLI/IDE smoke tests and shaded package inventory — [run 45006761900](https://github.com/web-harvest/web-harvest/actions/runs/45006761900).
+- OSV and production/test SBOM comparison — [run 45006761820](https://github.com/web-harvest/web-harvest/actions/runs/45006761820).
+- Dependency inventory — [run 45006761816](https://github.com/web-harvest/web-harvest/actions/runs/45006761816).
+- Documentation Module CI/site generation — [run 45006761834](https://github.com/web-harvest/web-harvest/actions/runs/45006761834).
+- Logging Dependency Audit — [run 45006761805](https://github.com/web-harvest/web-harvest/actions/runs/45006761805).
+- GitHub Actions dependency lockfile — [run 45006761846](https://github.com/web-harvest/web-harvest/actions/runs/45006761846).
+
+The SBOM comparison reports 85 production and 26 test components on both base and head; the sole missing license metadata on the base (the standalone docs POM) is present on head; both OSV comparison reports contain no new findings. Package counts did not change.
+
+**Qualification:** these are PR-head workflow results. The commit workflow lookup for merge commit `fb37955c2fb16cfe9600e615921bfab812f48071` returned no runs at the time of this checkpoint; do not describe PR-head checks as post-merge CI.
+
+### Shaded package attribution — still unresolved
+
+The exact-head CLI/IDE package inventory lists 12 and 11 license/notice-like resource paths respectively. Both contain multiple LICENSE/NOTICE resources, Maven POM metadata for embedded components and individual ANTLR/ASM/JSR-223 license files; CLI additionally contains the HtmlUnit fetch polyfill license.
+
+The downloaded package-audit artifact records resource paths, not the full contents of every embedded license/notice resource. Therefore this evidence establishes resource presence only. It does **not** prove complete component-to-license attribution, required NOTICE text, correct treatment of multi-license alternatives, or legal sufficiency.
+
+The root `NOTICE` names a limited set of third-party components and then says “other components as documented in the project dependencies”. That catch-all has not yet been reconciled to every dependency actually shipped in the CLI and IDE. A separate component-to-obligation matrix and content-level review remain mandatory.
+
+### Remaining release blockers
+
+1. **Third-party notices and licenses:** enumerate every component shipped in CLI and IDE; inspect actual embedded resource contents; map each component to exact upstream license and NOTICE obligations; record multi-license selections and any exclusions. Do not change the project's BSD license as part of this work.
+2. **SBOM residual risk:** review all production and test components and OSV results, distinguishing runtime-reachable, test-only, inherited, disputed and false-positive findings; document disposition and ownership.
+3. **Release engineering:** verify the complete source/Javadoc/binary/signature bundle and Maven Central Publisher Portal workflow in non-upload mode. No credentials, signing keys or publication actions are authorized by this assessment.
+4. **Coordinates and publication history:** verify every current `org.webharvest` GAV and version against authoritative Maven Central records at candidate freeze. Historical `net.sourceforge.web-harvest` coordinates are not evidence for current coordinates.
+5. **Documentation:** continue root Markdown and maintained `docs/**` audit; classify historical/versioned content; resolve the generated API landing-page dead end by choosing a truthful per-module link or aggregate-site strategy. Do not claim aggregation until implemented.
+6. **Post-merge verification:** obtain and record an explicit main-branch verification result where workflow triggers permit; PR-head success is not a substitute.
+7. **Javadoc warning debt:** Core output is capped at 100 warnings; other module counts observed on PR #317 head were Database 14, FTP 7, Mail 5, WebBrowser 4, ZIP 2, CLI 3 and IDE 74. Keep warnings visible and non-fatal until the separate remediation/baseline plan is approved.
+
+### Decision
+
+**RELEASE = NO-GO.** No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
