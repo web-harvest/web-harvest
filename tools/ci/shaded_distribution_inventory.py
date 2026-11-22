@@ -264,6 +264,7 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
             "class_prefix_correlated_to_upstream_module_source"
             if matched else "embedded_metadata_without_matching_class_prefix"
         )
+        item["class_count_correlated_namespace"] = len(matched)
         item["class_evidence"] = {
             "namespace_prefix": jetty_namespace,
             "package_prefixes": spec["package_prefixes"],
