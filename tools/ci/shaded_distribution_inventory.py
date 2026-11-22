@@ -230,11 +230,7 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 if isinstance(license_item, dict) and isinstance(license_item.get("license"), dict)
                 and (license_item.get("license", {}).get("id") or license_item.get("license", {}).get("name"))
             ]
-        if item["embedded_pom_licenses"]:
-            item["license_evidence"] = "embedded_pom"
-        elif item["aggregate_sbom_licenses"]:
-            item["license_evidence"] = "aggregate_sbom_effective_model"
-        elif (item["group"], item["name"]) in JETTY_RELOCATED_MODULES and item["version"] == "12.1.15":
+        if (item["group"], item["name"]) in JETTY_RELOCATED_MODULES and item["version"] == "12.1.15":
             item["upstream_project_license_evidence"] = {
                 "project": "Eclipse Jetty",
                 "source_tag": JETTY_SOURCE_TAG,
@@ -247,6 +243,11 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 "notice_file": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/NOTICE.txt",
                 "notice_file_git_blob_sha": "ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db",
             }
+        if item["embedded_pom_licenses"]:
+            item["license_evidence"] = "embedded_pom"
+        elif item["aggregate_sbom_licenses"]:
+            item["license_evidence"] = "aggregate_sbom_effective_model"
+        elif item["upstream_project_license_evidence"]:
             item["license_evidence"] = "upstream_project_root_license_and_notice"
 
     roots: dict[str, int] = {}
