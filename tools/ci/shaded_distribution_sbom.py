@@ -44,13 +44,11 @@ def license_records(provenance: dict) -> tuple[list[dict], str]:
     if embedded:
         return [{"license": {"name": value}} for value in embedded], "embedded_pom"
     if aggregate:
-        records = []
-        for value in aggregate:
-            if isinstance(value, str) and value:
-                if value.startswith("LicenseRef-"):
-                    records.append({"license": {"name": value}})
-                else:
-                    records.append({"license": {"id": value}})
+        # The inventory stores either SPDX IDs or human-readable names without
+        # retaining the original field type. Preserve the value as a name rather
+        # than incorrectly asserting that every string is a valid SPDX identifier.
+        records = [{"license": {"name": value}} for value in aggregate
+                   if isinstance(value, str) and value]
         if records:
             return records, "aggregate_sbom_effective_model"
     if upstream:
