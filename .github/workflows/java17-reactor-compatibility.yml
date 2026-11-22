@@ -478,7 +478,7 @@ jobs:
           if maven_count == 0:
               raise SystemExit(f"No embedded Maven POM metadata extracted from {archive}")
           print(f"Extracted {legal_count} license/NOTICE resources and {maven_count} Maven metadata files from {archive}")
-            PY
+          PY
             {
               echo "Archive: $jar_path"
               echo "SHA-256:"
