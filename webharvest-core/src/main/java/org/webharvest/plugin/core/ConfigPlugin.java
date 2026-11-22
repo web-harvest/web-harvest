@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Basic configuration</h4>
+ * <h3>Example 1: Basic configuration</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: With custom scripting language</h4>
+ * <h3>Example 2: With custom scripting language</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core" 
@@ -95,7 +95,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Complex scraping workflow</h4>
+ * <h3>Example 3: Complex scraping workflow</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">
@@ -148,7 +148,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Error handling configuration</h4>
+ * <h3>Example 4: Error handling configuration</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core" charset="UTF-8">

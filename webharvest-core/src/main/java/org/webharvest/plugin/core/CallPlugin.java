@@ -79,7 +79,7 @@ import java.util.concurrent.Callable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple function call</h4>
+ * <h3>Example 1: Simple function call</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -99,7 +99,7 @@ import java.util.concurrent.Callable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Function with multiple parameters</h4>
+ * <h3>Example 2: Function with multiple parameters</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -119,7 +119,7 @@ import java.util.concurrent.Callable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Reusable scraping function</h4>
+ * <h3>Example 3: Reusable scraping function</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

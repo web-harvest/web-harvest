@@ -64,7 +64,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: API Authentication with Bearer Token</h4>
+ * <h3>Example 1: API Authentication with Bearer Token</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -77,7 +77,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Custom User-Agent</h4>
+ * <h3>Example 2: Custom User-Agent</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -88,7 +88,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Content-Type for POST requests</h4>
+ * <h3>Example 3: Content-Type for POST requests</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -100,7 +100,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Multiple custom headers</h4>
+ * <h3>Example 4: Multiple custom headers</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

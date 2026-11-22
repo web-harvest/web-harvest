@@ -62,7 +62,7 @@ import org.webharvest.runtime.variables.Variable;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple text matching</h4>
+ * <h3>Example 1: Simple text matching</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -73,7 +73,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Variable substitution</h4>
+ * <h3>Example 2: Variable substitution</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -88,7 +88,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Complex text processing</h4>
+ * <h3>Example 3: Complex text processing</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -103,7 +103,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Multi-line text with HTML</h4>
+ * <h3>Example 4: Multi-line text with HTML</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

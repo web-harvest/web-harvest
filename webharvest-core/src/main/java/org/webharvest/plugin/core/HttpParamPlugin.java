@@ -66,7 +66,7 @@ import org.webharvest.utils.CommonUtil;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Login form submission</h4>
+ * <h3>Example 1: Login form submission</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -78,7 +78,7 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Search form with dynamic values</h4>
+ * <h3>Example 2: Search form with dynamic values</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -92,7 +92,7 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: API data submission</h4>
+ * <h3>Example 3: API data submission</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -105,7 +105,7 @@ import org.webharvest.utils.CommonUtil;
  * </config>
  * }</pre>
  * 
- * <h4>Example 4: Multi-value parameters (checkboxes)</h4>
+ * <h3>Example 4: Multi-value parameters (checkboxes)</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

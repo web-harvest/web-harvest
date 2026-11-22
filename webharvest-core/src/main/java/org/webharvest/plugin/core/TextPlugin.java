@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Explicit text content</h4>
+ * <h3>Example 1: Explicit text content</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -81,7 +81,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Charset conversion</h4>
+ * <h3>Example 2: Charset conversion</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
