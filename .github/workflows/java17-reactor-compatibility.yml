@@ -708,8 +708,10 @@ jobs:
             local status
 
             set +e
+            local sbom_dir
+            sbom_dir="$(cd "$(dirname "${sbom}")" && pwd)"
             docker run --rm \
-              --volume "$(dirname "${sbom}"):/sbom:ro" \
+              --volume "${sbom_dir}:/sbom:ro" \
               "${osv_image}" \
               scan source --format=json --all-packages --lockfile="/sbom/$(basename "${sbom}")" \
               > "${output}" 2> "${log}"
