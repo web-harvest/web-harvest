@@ -49,6 +49,78 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(report["jetty_notice_audit"]["content_level_reconciliation"], "open")
             self.assertEqual(report["jetty_notice_audit"]["archive_named_jetty_notice_candidates"], [])
 
+    def test_pinned_jetty_notice_payload_is_recognized_by_exact_content_hash(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "jetty-cli.jar"
+            notice_source = SCRIPT.parents[2] / "third-party-notices/jetty-12.1.15/NOTICE.txt"
+            notice_payload = notice_source.read_bytes()
+            with zipfile.ZipFile(archive, "w") as jar:
+                jar.writestr("org/htmlunit/jetty/client/Client.class", b"class-bytes")
+                jar.writestr("META-INF/maven/org.eclipse.jetty/jetty-client/pom.properties",
+                             "groupId=org.eclipse.jetty\nartifactId=jetty-client\nversion=12.1.15\n")
+                jar.writestr("META-INF/NOTICE-jetty-12.1.15.txt", notice_payload)
+            output = root / "report.json"
+            subprocess.run([
+                sys.executable, str(SCRIPT), "--archive", str(archive),
+                "--distribution", "cli", "--output", str(output),
+            ], check=True, capture_output=True, text=True)
+            report = json.loads(output.read_text(encoding="utf-8"))
+            audit = report["jetty_notice_audit"]
+            self.assertEqual(audit["archive_named_jetty_notice_candidates"],
+                             ["META-INF/NOTICE-jetty-12.1.15.txt"])
+            self.assertEqual(audit["archive_named_jetty_notice_sha256"],
+                             [audit["upstream_notice_sha256"]])
+            self.assertEqual(audit["content_level_reconciliation"],
+                             "upstream_notice_payload_preserved")
+
+    def test_ide_jetty_modules_are_mapped_without_websocket_overlap(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "ide.jar"
+            modules = [
+                ("org.eclipse.jetty", "jetty-server", "org/eclipse/jetty/server/Server.class"),
+                ("org.eclipse.jetty", "jetty-security", "org/eclipse/jetty/security/SecurityHandler.class"),
+                ("org.eclipse.jetty", "jetty-session", "org/eclipse/jetty/session/Session.class"),
+                ("org.eclipse.jetty", "jetty-xml", "org/eclipse/jetty/xml/Xml.class"),
+                ("org.eclipse.jetty.websocket", "jetty-websocket-core-common", "org/eclipse/jetty/websocket/core/Frame.class"),
+                ("org.eclipse.jetty.websocket", "jetty-websocket-core-server", "org/eclipse/jetty/websocket/core/server/Handshaker.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-nested", "org/eclipse/jetty/ee9/nested/Handler.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-security", "org/eclipse/jetty/ee9/security/Security.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-servlet", "org/eclipse/jetty/ee9/servlet/Servlet.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-webapp", "org/eclipse/jetty/ee9/webapp/WebApp.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-api", "org/eclipse/jetty/ee9/websocket/api/Session.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-common", "org/eclipse/jetty/ee9/websocket/common/Frame.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-server", "org/eclipse/jetty/ee9/websocket/server/Creator.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-servlet", "org/eclipse/jetty/ee9/websocket/servlet/Servlet.class"),
+                ("org.eclipse.jetty.ee", "jetty-ee-webapp", "org/eclipse/jetty/ee/webapp/ClassLoader.class"),
+            ]
+            with zipfile.ZipFile(archive, "w") as jar:
+                for group, artifact, class_path in modules:
+                    jar.writestr(class_path, b"class-bytes")
+                    base = f"META-INF/maven/{group}/{artifact}/"
+                    jar.writestr(base + "pom.properties",
+                                 f"groupId={group}\nartifactId={artifact}\nversion=12.1.15\n")
+                jar.writestr("META-INF/NOTICE.txt", "Unrelated notice")
+            output = root / "report.json"
+            subprocess.run([
+                sys.executable, str(SCRIPT), "--archive", str(archive),
+                "--distribution", "ide", "--output", str(output),
+            ], check=True, capture_output=True, text=True)
+            report = json.loads(output.read_text(encoding="utf-8"))
+            attribution = report["class_inventory"]["jetty_class_attribution"]
+            self.assertEqual(attribution["mapped_class_count"], len(modules))
+            self.assertEqual(attribution["unmapped_class_count"], 0)
+            components = {item["name"]: item for item in report["components"]}
+            self.assertEqual(
+                sum(item["class_count_correlated_namespace"] for item in components.values()),
+                len(modules),
+            )
+            self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["class_count"], 1)
+            self.assertEqual(components["jetty-websocket-core-server"]["class_evidence"]["class_count"], 1)
+            self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["excluded_package_prefixes"],
+                             ["websocket/core/client/", "websocket/core/server/"])
+
     def test_ide_jetty_modules_are_mapped_without_websocket_overlap(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -334,6 +334,17 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
     if not legal_resources:
         raise ValueError(f"{archive_path} contains no license/NOTICE-like resources")
 
+    upstream_notice_path = Path(__file__).resolve().parents[2] / "third-party-notices/jetty-12.1.15/NOTICE.txt"
+    upstream_notice_sha256 = sha256(upstream_notice_path.read_bytes()) if upstream_notice_path.is_file() else None
+    jetty_notice_entries = [
+        item for item in legal_resources
+        if item["archive_entry"] == "META-INF/NOTICE-jetty-12.1.15.txt"
+    ]
+    jetty_notice_matches = [
+        item for item in jetty_notice_entries
+        if upstream_notice_sha256 and item["sha256"] == upstream_notice_sha256
+    ]
+
     return {
         "schema": "webharvest.shaded-provenance.v1",
         "distribution": distribution,
@@ -374,12 +385,16 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 item["archive_entry"] for item in legal_resources
                 if "notice" in item["archive_entry"].lower()
             ],
+            "upstream_notice_sha256": upstream_notice_sha256,
             "archive_named_jetty_notice_candidates": [
-                item["archive_entry"] for item in legal_resources
-                if "notice" in item["archive_entry"].lower()
-                and "jetty" in item["archive_entry"].lower()
+                item["archive_entry"] for item in jetty_notice_entries
             ],
-            "content_level_reconciliation": "open",
+            "archive_named_jetty_notice_sha256": [
+                item["sha256"] for item in jetty_notice_entries
+            ],
+            "content_level_reconciliation": (
+                "upstream_notice_payload_preserved" if len(jetty_notice_matches) == 1 else "open"
+            ),
         },
     }
 
