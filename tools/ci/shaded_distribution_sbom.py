@@ -20,8 +20,9 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def purl_for(group: str, name: str, version: str) -> str:
-    return f"pkg:maven/{group}/{name}@{version}?type=jar"
+def purl_for(group: str, name: str, version: str, classifier: str | None = None) -> str:
+    qualifiers = f"classifier={classifier}&type=jar" if classifier else "type=jar"
+    return f"pkg:maven/{group}/{name}@{version}?{qualifiers}"
 
 
 def coordinate(group: str, name: str, version: str) -> str:
@@ -35,14 +36,22 @@ def load_json(path: Path) -> dict:
     return value
 
 
-def license_records(provenance: dict) -> tuple[list[dict], str]:
+def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     embedded = provenance.get("embedded_pom_licenses") or []
+    dependency_pom = sorted({
+        value
+        for evidence in origin.get("dependency_jar_pom_license_evidence", [])
+        for value in evidence.get("licenses", [])
+        if isinstance(value, str) and value
+    })
     aggregate = provenance.get("aggregate_sbom_licenses") or []
     upstream = (provenance.get("upstream_project_license_evidence") or {}).get(
         "license_choices_declared_by_upstream", []
     )
     if embedded:
-        return [{"license": {"name": value}} for value in embedded], "embedded_pom"
+        return [{"license": {"name": value}} for value in embedded], "shaded_embedded_pom"
+    if dependency_pom:
+        return [{"license": {"name": value}} for value in dependency_pom], "resolved_dependency_jar_embedded_pom"
     if aggregate:
         # The inventory stores either SPDX IDs or human-readable names without
         # retaining the original field type. Preserve the value as a name rather
@@ -108,14 +117,19 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
     components = []
     component_refs = []
     distribution_purls = set()
+    component_evidence_by_purl = {}
     for coord in all_coordinates:
         parts = coord.split(":")
-        if len(parts) != 4:
+        if len(parts) == 4:
+            group, name, component_version, packaging = parts
+            classifier = None
+        elif len(parts) == 5:
+            group, name, component_version, classifier, packaging = parts
+        else:
             raise ValueError(f"Unsupported Maven coordinate: {coord}")
-        group, name, component_version, packaging = parts
         if packaging != "jar":
             continue
-        purl = purl_for(group, name, component_version)
+        purl = purl_for(group, name, component_version, classifier)
         # The distribution itself is represented by metadata.component, not as
         # a duplicate library entry in metadata.component.dependencies.
         if group == "org.webharvest" and name == f"webharvest-{distribution}":
@@ -124,7 +138,8 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         p = provenance_by_coordinate.get(coord, {})
         o = origin_by_coordinate.get(coord, {})
         agg = aggregate_components.get(purl)
-        licenses, license_source = license_records(p)
+        component_evidence_by_purl[purl] = (p, o)
+        licenses, license_source = license_records(p, o)
 
         hashes = []
         dependency_hashes = sorted(set(o.get("dependency_jar_sha256", [])))
@@ -138,9 +153,15 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
              "value": "present" if agg else "absent"},
             {"name": "webharvest:evidence:license-source", "value": license_source},
             {"name": "webharvest:evidence:class-origin-status",
-             "value": "not_correlated" if not o else (
-                 "metadata_only_or_unmatched" if o.get("metadata_only_or_unmatched")
-                 else "byte_correlated_or_explicit_special_case"
+             "value": (
+                 "not_correlated" if not o else
+                 "relocated_jetty_class_prefix_correlated"
+                 if p.get("code_attribution") == "class_prefix_correlated_to_upstream_module_source" else
+                 "dependency_class_byte_correlated"
+                 if o.get("matched_archive_class_count", 0) > 0 else
+                 "resolved_dependency_jar_without_class_entries"
+                 if o.get("dependency_jars") else
+                 "embedded_metadata_without_dependency_jar_or_class_match"
              )},
             {"name": "webharvest:evidence:dependency-class-count",
              "value": str(o.get("dependency_class_count", 0))},
@@ -151,6 +172,22 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
             {"name": "webharvest:evidence:dependency-jar-hash-semantics",
              "value": "SHA-256 of resolved source dependency JAR; not a hash of an extracted shaded component"},
         ]
+        if agg and agg.get("scope") in ("required", "optional", "excluded"):
+            item_scope = agg["scope"]
+        else:
+            item_scope = None
+        if o.get("dependency_jars"):
+            props.append({"name": "webharvest:evidence:resolved-maven-dependency-scope",
+                          "value": "runtime"})
+        for index, evidence in enumerate(o.get("dependency_jar_pom_license_evidence", [])):
+            props.extend([
+                {"name": f"webharvest:evidence:dependency-pom-license-source:{index}",
+                 "value": evidence.get("pom_entry", "")},
+                {"name": f"webharvest:evidence:dependency-pom-license-sha256:{index}",
+                 "value": evidence.get("pom_sha256", "")},
+                {"name": f"webharvest:evidence:dependency-pom-license-jar-sha256:{index}",
+                 "value": evidence.get("dependency_jar_sha256", "")},
+            ])
         if p.get("code_attribution"):
             props.append({"name": "webharvest:evidence:namespace-attribution",
                           "value": p["code_attribution"]})
@@ -169,9 +206,10 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
             "name": name,
             "version": component_version,
             "purl": purl,
-            "scope": "required",
             "properties": props,
         }
+        if item_scope:
+            item["scope"] = item_scope
         if hashes:
             item["hashes"] = hashes
         if licenses:
@@ -183,6 +221,34 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
     complete_distribution_purls = distribution_purls | {root_purl}
     aggregate_only = sorted(set(aggregate_components) - complete_distribution_purls)
     distribution_only = sorted(complete_distribution_purls - set(aggregate_components))
+    aggregate_only_classifications = [
+        {
+            "purl": purl,
+            "classification": "aggregate_reactor_component_not_observed_in_distribution_embedded_metadata_or_runtime_dependency_inventory",
+            "aggregate_scope": aggregate_components[purl].get("scope"),
+        }
+        for purl in aggregate_only
+    ]
+    distribution_only_classifications = []
+    for purl in distribution_only:
+        if purl == root_purl:
+            classification = "distribution_root_component"
+        else:
+            p, o = component_evidence_by_purl.get(purl, ({}, {}))
+            if p.get("code_attribution") == "class_prefix_correlated_to_upstream_module_source":
+                classification = "relocated_jetty_code_prefix_correlated"
+            elif o.get("matched_archive_class_count", 0) > 0:
+                classification = "runtime_dependency_class_byte_correlated"
+            elif o.get("dependency_jars"):
+                classification = "resolved_runtime_dependency_without_class_entries"
+            elif p.get("metadata_evidence"):
+                classification = "embedded_maven_metadata_without_dependency_jar_or_class_match"
+            else:
+                classification = "distribution_component_without_aggregate_purl_match"
+        distribution_only_classifications.append({
+            "purl": purl,
+            "classification": classification,
+        })
     root_ref = f"urn:webharvest:distribution:{distribution}:{version}:{archive_sha}"
     root_component = {
         "type": "application",
@@ -229,7 +295,9 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         "distribution_component_count": len(complete_distribution_purls),
         "aggregate_component_count": len(aggregate_components),
         "distribution_only_purls": distribution_only,
+        "distribution_only_classifications": distribution_only_classifications,
         "aggregate_only_purls": aggregate_only,
+        "aggregate_only_classifications": aggregate_only_classifications,
         "comparison_policy": "PURL membership only; not proof of package-content equivalence",
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
