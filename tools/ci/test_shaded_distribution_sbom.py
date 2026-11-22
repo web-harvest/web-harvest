@@ -19,6 +19,15 @@ class DistributionSbomTests(unittest.TestCase):
             provenance = {
                 "distribution": "cli",
                 "archive": {"file": "webharvest-cli.jar", "sha256": "a" * 64},
+                "legal_resources": [
+                    {"archive_entry": "META-INF/LICENSE", "sha256": "f" * 64, "size_bytes": 128},
+                    {"archive_entry": "META-INF/NOTICE", "sha256": "1" * 64, "size_bytes": 64},
+                ],
+                "jetty_notice_audit": {
+                    "content_level_reconciliation": "open",
+                    "upstream_notice_source": "https://example.invalid/jetty/NOTICE.txt",
+                    "upstream_notice_git_blob_sha": "2" * 40,
+                },
                 "components": [
                     {
                         "group": "example", "name": "metadata-only", "version": "1.0",
@@ -143,6 +152,20 @@ class DistributionSbomTests(unittest.TestCase):
             self.assertEqual(bom["metadata"]["component"]["hashes"][0]["content"], "a" * 64)
             self.assertEqual(bom["metadata"]["component"]["purl"],
                              "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar")
+            root_properties = {
+                item["name"]: item["value"]
+                for item in bom["metadata"]["component"]["properties"]
+            }
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource-count"], "2")
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource:0:archive-entry"],
+                             "META-INF/LICENSE")
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource:0:sha256"], "f" * 64)
+            self.assertEqual(root_properties["webharvest:evidence:jetty-notice-content-reconciliation"],
+                             "open")
+            self.assertEqual(root_properties["webharvest:evidence:jetty-upstream-notice-git-blob-sha"],
+                             "2" * 40)
+            self.assertEqual(delta["legal_resources"][1]["archive_entry"], "META-INF/NOTICE")
+            self.assertEqual(delta["jetty_notice_audit"]["content_level_reconciliation"], "open")
             self.assertTrue(out.exists())
             self.assertTrue(delta_out.exists())
 
