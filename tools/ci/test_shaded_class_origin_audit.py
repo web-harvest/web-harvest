@@ -132,6 +132,20 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             self.assertEqual(report["summary"]["unmatched"], 1)
             self.assertEqual(report["class_attribution"][0]["status"], "unmatched")
 
+    def test_component_reports_dependency_classes_absent_from_shaded_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {"com/example/Included.class": b"included"})
+            write_jar(root / "dependencies/example/library/1.0/library-1.0.jar", {
+                "com/example/Included.class": b"included",
+                "com/example/NotShaded.class": b"not-shaded",
+            })
+            report = self.run_audit(root)
+            component = next(x for x in report["components"] if x["coordinate"] == "example:library:1.0:jar")
+            self.assertEqual(component["dependency_class_count"], 2)
+            self.assertEqual(component["matched_archive_class_count"], 1)
+            self.assertEqual(component["unmatched_dependency_class_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
