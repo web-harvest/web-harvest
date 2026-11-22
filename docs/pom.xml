@@ -12,6 +12,22 @@
 
     <name>WebHarvest Documentation</name>
     <description>WebHarvest documentation resources and Maven site packaging</description>
+    <url>https://github.com/web-harvest/web-harvest</url>
+    <licenses>
+        <license>
+            <name>BSD License</name>
+            <url>http://www.opensource.org/licenses/bsd-license.php</url>
+            <distribution>repo</distribution>
+            <comments>
+                Original work: Copyright (c) 2006-2007, Vladimir Nikic
+                Modified work: Copyright (c) 2006-2025, the original author or authors
+            </comments>
+        </license>
+    </licenses>
+    <scm>
+        <url>https://github.com/web-harvest/web-harvest</url>
+        <connection>scm:git:https://github.com/web-harvest/web-harvest.git</connection>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
