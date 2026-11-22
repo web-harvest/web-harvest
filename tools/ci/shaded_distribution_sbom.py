@@ -38,9 +38,15 @@ def load_json(path: Path) -> dict:
 
 def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     embedded = provenance.get("embedded_pom_licenses") or []
-    dependency_pom = sorted({
+    dependency_jar_pom = sorted({
         value
         for evidence in origin.get("dependency_jar_pom_license_evidence", [])
+        for value in evidence.get("licenses", [])
+        if isinstance(value, str) and value
+    })
+    resolved_maven_pom = sorted({
+        value
+        for evidence in origin.get("resolved_maven_pom_license_evidence", [])
         for value in evidence.get("licenses", [])
         if isinstance(value, str) and value
     })
@@ -50,8 +56,10 @@ def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     )
     if embedded:
         return [{"license": {"name": value}} for value in embedded], "shaded_embedded_pom"
-    if dependency_pom:
-        return [{"license": {"name": value}} for value in dependency_pom], "resolved_dependency_jar_embedded_pom"
+    if dependency_jar_pom:
+        return [{"license": {"name": value}} for value in dependency_jar_pom], "resolved_dependency_jar_embedded_pom"
+    if resolved_maven_pom:
+        return [{"license": {"name": value}} for value in resolved_maven_pom], "resolved_maven_repository_pom_direct_declaration"
     if aggregate:
         # The inventory stores either SPDX IDs or human-readable names without
         # retaining the original field type. Preserve the value as a name rather
@@ -203,6 +211,15 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
                  "value": evidence.get("pom_sha256", "")},
                 {"name": f"webharvest:evidence:dependency-pom-license-jar-sha256:{index}",
                  "value": evidence.get("dependency_jar_sha256", "")},
+            ])
+        for index, evidence in enumerate(o.get("resolved_maven_pom_license_evidence", [])):
+            props.extend([
+                {"name": f"webharvest:evidence:resolved-maven-pom-source:{index}",
+                 "value": evidence.get("pom_path", "")},
+                {"name": f"webharvest:evidence:resolved-maven-pom-sha256:{index}",
+                 "value": evidence.get("pom_sha256", "")},
+                {"name": f"webharvest:evidence:resolved-maven-pom-license-scope:{index}",
+                 "value": evidence.get("evidence_scope", "")},
             ])
         if p.get("code_attribution"):
             props.append({"name": "webharvest:evidence:namespace-attribution",
