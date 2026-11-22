@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
  * Must be used as a child element of {@code <ftp>}.
  * </p>
  * 
- * <h3>Usage</h3>
+ * <h2>Usage</h2>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">

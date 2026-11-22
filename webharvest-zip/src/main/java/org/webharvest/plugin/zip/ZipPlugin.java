@@ -55,7 +55,7 @@ import org.webharvest.runtime.variables.Variable;
  * {@code <zip-entry>} child elements and returns the archive as binary data.
  * Capture the result in a variable when it must be passed to another processor.</p>
  *
- * <h3>Usage</h3>
+ * <h2>Usage</h2>
  * <pre>{@code
  * <config xmlns="http://org.webharvest/schema/2.1/core">
  *   <def var="archive">
@@ -71,7 +71,7 @@ import org.webharvest.runtime.variables.Variable;
  * </config>
  * }</pre>
  *
- * <h3>Runtime contract</h3>
+ * <h2>Runtime contract</h2>
  * <ul>
  *   <li>No attributes are accepted; the result is a binary {@link NodeVariable}.</li>
  *   <li>Only {@code <zip-entry>} children can write to the active archive.</li>

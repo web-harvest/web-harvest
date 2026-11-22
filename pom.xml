@@ -314,9 +314,8 @@
                     <links>
                         <link>https://docs.oracle.com/en/java/javase/17/docs/api/</link>
                     </links>
-                    <!-- Preserve the existing warning baseline while source Javadocs are remediated in Issue #291. -->
-                    <doclint>none</doclint>
-                    <failOnError>false</failOnError>
+                    <!-- Enforce doclint errors across every shipped module; keep residual warnings visible and tracked in Issue #291. -->
+                    <failOnError>true</failOnError>
                 </configuration>
             </plugin>
             <plugin>

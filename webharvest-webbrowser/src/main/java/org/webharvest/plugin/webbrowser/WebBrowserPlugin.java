@@ -66,14 +66,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * WebBrowser plugin for browser automation with JavaScript and AJAX support.
  * 
- * <h3>Bug #33 Fix (v2.2.1): JavaScript and AJAX Support</h3>
+ * <h2>Bug #33 Fix (v2.2.1): JavaScript and AJAX Support</h2>
  * <p>
  * <strong>History:</strong> This feature existed in old architecture (r655, 2015)
  * using PhantomJS, but was lost during refactoring to new plugin system. 
  * This implementation restores the functionality using HtmlUnit.
  * </p>
  * 
- * <h3>Features:</h3>
+ * <h2>Features:</h2>
  * <ul>
  * <li><strong>load</strong>: Load URL with full JavaScript execution and AJAX handling</li>
  * <li><strong>execute-script</strong>: Execute custom JavaScript on loaded page</li>
@@ -81,7 +81,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li><strong>close</strong>: Close browser instance</li>
  * </ul>
  * 
- * <h3>Attributes:</h3>
+ * <h2>Attributes:</h2>
  * <ul>
  * <li><code>action</code>: Action to perform (load|execute-script|get-content|close)</li>
  * <li><code>url</code>: URL to load (required for 'load' action)</li>
@@ -90,9 +90,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * <li><code>javascript-enabled</code>: Enable/disable JavaScript (default: true)</li>
  * </ul>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Render JavaScript-heavy page</h4>
+ * <h3>Example 1: Render JavaScript-heavy page</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -117,7 +117,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Single Page Application (SPA) scraping</h4>
+ * <h3>Example 2: Single Page Application (SPA) scraping</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -145,7 +145,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Execute JavaScript on page</h4>
+ * <h3>Example 3: Execute JavaScript on page</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -169,13 +169,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * </config>
  * }</pre>
  * 
- * <h3>When to Use</h3>
+ * <h2>When to Use</h2>
  * <ul>
  *   <li><strong>Use web-browser:</strong> JavaScript-rendered content, SPAs, AJAX, infinite scroll</li>
  *   <li><strong>Use http:</strong> Static HTML, APIs, better performance</li>
  * </ul>
  * 
- * <h3>Important Notes</h3>
+ * <h2>Important Notes</h2>
  * <ul>
  *   <li><strong>Performance:</strong> Slower than {@code <http>} due to JavaScript execution</li>
  *   <li><strong>Memory:</strong> Browser engine requires more memory</li>
@@ -183,7 +183,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li><strong>Named pages:</strong> Reuse browser instance with page attribute</li>
  * </ul>
  * 
- * <h3>Related Processors</h3>
+ * <h2>Related Processors</h2>
  * <ul>
  *   <li>{@code <http>} - HTTP requests (faster, no JavaScript)</li>
  *   <li>{@code <html-to-xml>} - Parse rendered HTML</li>

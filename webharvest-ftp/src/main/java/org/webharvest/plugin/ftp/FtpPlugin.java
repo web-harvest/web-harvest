@@ -68,9 +68,9 @@ import org.slf4j.LoggerFactory;
  * authentication, and binary/text transfers.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Download file from FTP</h4>
+ * <h3>Example 1: Download file from FTP</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 2: Upload scraped data to FTP</h4>
+ * <h3>Example 2: Upload scraped data to FTP</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -108,7 +108,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: List and download all files</h4>
+ * <h3>Example 3: List and download all files</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -127,7 +127,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h3>Parameters</h3>
+ * <h2>Parameters</h2>
  * <ul>
  *   <li><strong>host:</strong> FTP server hostname (required)</li>
  *   <li><strong>port:</strong> FTP port (default: 21)</li>
@@ -136,7 +136,7 @@ import org.slf4j.LoggerFactory;
  *   <li><strong>passive:</strong> Use passive mode (default: true, firewall-friendly)</li>
  * </ul>
  * 
- * <h3>Important Notes</h3>
+ * <h2>Important Notes</h2>
  * <ul>
  *   <li><strong>Passive mode:</strong> Enabled by default for firewall compatibility</li>
  *   <li><strong>Connection reuse:</strong> Single connection shared by all child operations</li>
@@ -144,7 +144,7 @@ import org.slf4j.LoggerFactory;
  *   <li><strong>FTPS support:</strong> Use port 990 for implicit SSL</li>
  * </ul>
  * 
- * <h3>Related Processors</h3>
+ * <h2>Related Processors</h2>
  * <ul>
  *   <li>{@code <ftp-get>} - Download files</li>
  *   <li>{@code <ftp-put>} - Upload files</li>

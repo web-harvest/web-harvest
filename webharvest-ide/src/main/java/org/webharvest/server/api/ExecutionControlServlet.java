@@ -16,7 +16,7 @@ import java.io.IOException;
 /**
  * REST API endpoint for execution control (pause, resume, stop) and info.
  * 
- * <h3>Endpoints:</h3>
+ * <h2>Endpoints:</h2>
  * <ul>
  *   <li><b>GET /api/execution/{id}/info</b> - Get execution info</li>
  *   <li><b>POST /api/execution/{id}/pause</b> - Pause running execution</li>
@@ -24,7 +24,7 @@ import java.io.IOException;
  *   <li><b>POST /api/execution/{id}/stop</b> - Stop execution (cannot resume)</li>
  * </ul>
  * 
- * <h3>Example Usage:</h3>
+ * <h2>Example Usage:</h2>
  * <pre>{@code
  * // Pause execution
  * POST /api/execution/abc-123/pause

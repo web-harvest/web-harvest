@@ -59,7 +59,7 @@ import com.google.common.eventbus.Subscribe;
  * with the short-living object lifecycle (as it is in case of {@link org.webharvest.runtime.Scraper}),
  * it is discouraged to use {@link StandaloneConnectionPool} as an
  * application-wide singleton having long lifecycle.
- * <p/>
+ * <p>
  * This implementation is not thread-safe and does not provide advanced
  * connection pooling features. It can not execute interval connection
  * validation, does not support connection retrieval and so forth. Additionally,
@@ -236,7 +236,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * {@link Connection#close()} method as well as implements
      * {@link ConnectionProxy#getTargetConnection()} method returning proxied
      * delegate instance.
-     * <p/>
+     * <p>
      * Connection close is suppressed to make it possible to reuse existing
      * connections and because only the pool itself should decide when to close
      * the connection.

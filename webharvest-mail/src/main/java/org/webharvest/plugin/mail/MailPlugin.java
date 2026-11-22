@@ -64,9 +64,9 @@ import org.slf4j.LoggerFactory;
  * emails with authentication for Gmail, Office365, and custom SMTP servers.
  * </p>
  * 
- * <h3>Usage Examples</h3>
+ * <h2>Usage Examples</h2>
  * 
- * <h4>Example 1: Simple text email with friendly sender name (Bug #4)</h4>
+ * <h3>Example 1: Simple text email with friendly sender name (Bug #4)</h3>
  * <pre>{@code
  * <mail smtp-host="smtp.gmail.com"
  *       smtp-port="587"
@@ -84,7 +84,7 @@ import org.slf4j.LoggerFactory;
  * <!-- Recipient sees: "WebHarvest Scraper <scraper@example.com>" -->
  * }</pre>
  * 
- * <h4>Example 2: HTML email with scraping results</h4>
+ * <h3>Example 2: HTML email with scraping results</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -120,7 +120,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h4>Example 3: Error notification email</h4>
+ * <h3>Example 3: Error notification email</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -143,7 +143,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h3>Parameters</h3>
+ * <h2>Parameters</h2>
  * <ul>
  *   <li><strong>smtp-host:</strong> SMTP server hostname (required)</li>
  *   <li><strong>smtp-port:</strong> SMTP port (default: 25, use 587 for TLS)</li>
@@ -156,14 +156,14 @@ import org.slf4j.LoggerFactory;
  *   <li><strong>type:</strong> Email type: "text" or "html" (default: text)</li>
  * </ul>
  * 
- * <h3>SMTP Servers</h3>
+ * <h2>SMTP Servers</h2>
  * <ul>
  *   <li><strong>Gmail:</strong> smtp.gmail.com:587 (requires App Password)</li>
  *   <li><strong>Office365:</strong> smtp.office365.com:587</li>
  *   <li><strong>Custom:</strong> Any SMTP server with authentication</li>
  * </ul>
  * 
- * <h3>Important Notes</h3>
+ * <h2>Important Notes</h2>
  * <ul>
  *   <li><strong>Gmail security:</strong> Use App Passwords, not account password</li>
  *   <li><strong>TLS port:</strong> Use 587 for TLS, 465 for SSL, 25 for plain</li>
@@ -171,7 +171,7 @@ import org.slf4j.LoggerFactory;
  *   <li><strong>Template support:</strong> All attributes support variable interpolation</li>
  * </ul>
  * 
- * <h3>Related Processors</h3>
+ * <h2>Related Processors</h2>
  * <ul>
  *   <li>{@code <http>} - HTTP requests</li>
  *   <li>{@code <file>} - File I/O for attachments</li>
