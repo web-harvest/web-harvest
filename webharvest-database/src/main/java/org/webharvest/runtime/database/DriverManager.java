@@ -39,7 +39,7 @@ import java.net.URI;
  * {@link DriverManager} allows to register database drivers placed in the
  * arbitrary locations. Database driver being registered must be available on
  * classpath or in any of previously added driver resources.
- * <p/>
+ * <p>
  * If no resources has been added to {@link DefaultDriverManager} (as it is in
  * most cases when web harvest is embedded into enterprise application running
  * within container), all drivers being registered must be accessible within
