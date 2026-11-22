@@ -417,8 +417,8 @@ jobs:
           done
 
           # Derive the URLs from the actual served entry page to protect its resource contract.
-          js_asset="$(grep -oE 'src=\"[^\"]+\.js[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d'\"' -f2)"
-          css_asset="$(grep -oE 'href=\"[^\"]+\.css[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d'\"' -f2)"
+          js_asset="$(grep -oE 'src=\"[^\"]+\.js[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d '"' -f2)"
+          css_asset="$(grep -oE 'href=\"[^\"]+\.css[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d '"' -f2)"
           test -n "$js_asset" || { echo "No JavaScript asset URL found in served IDE entry page"; exit 1; }
           test -n "$css_asset" || { echo "No CSS asset URL found in served IDE entry page"; exit 1; }
           # Vite's default base emits root-relative URLs (for example /dist/assets/main.js).
