@@ -156,6 +156,7 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 "embedded_pom": None,
                 "embedded_pom_licenses": [],
                 "aggregate_sbom_licenses": [],
+                "upstream_project_license_evidence": None,
                 "license_evidence": "unresolved",
                 "code_attribution": "embedded_metadata_only_unattributed",
                 "class_count_correlated_namespace": 0,
@@ -233,6 +234,18 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
             item["license_evidence"] = "embedded_pom"
         elif item["aggregate_sbom_licenses"]:
             item["license_evidence"] = "aggregate_sbom_effective_model"
+        elif (item["group"], item["name"]) in JETTY_RELOCATED_MODULES and item["version"] == "12.1.15":
+            item["upstream_project_license_evidence"] = {
+                "project": "Eclipse Jetty",
+                "source_tag": JETTY_SOURCE_TAG,
+                "source_commit": JETTY_SOURCE_COMMIT,
+                "license_choices_declared_by_upstream": ["EPL-2.0", "Apache-2.0"],
+                "license_file": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/LICENSE",
+                "license_file_git_blob_sha": "22840e2944ffc53b1953091fc31954e69126348d",
+                "notice_file": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/NOTICE.txt",
+                "notice_file_git_blob_sha": "ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db",
+            }
+            item["license_evidence"] = "upstream_project_root_license_and_notice"
 
     roots: dict[str, int] = {}
     for name in class_entries:
