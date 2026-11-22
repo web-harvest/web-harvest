@@ -85,10 +85,12 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
             key = (group, artifact, version)
             item = components.setdefault(key, {
                 "group": group, "name": artifact, "version": version,
-                "purl": f"pkg:maven/{group}/{artifact}@{version}",
+                "purl": f"pkg:maven/{group}/{artifact}@{version}?type=jar",
                 "metadata_evidence": [],
                 "embedded_pom": None,
-                "declared_licenses": [],
+                "embedded_pom_licenses": [],
+                "aggregate_sbom_licenses": [],
+                "license_evidence": "unresolved",
                 "code_attribution": "embedded_metadata_only_unattributed",
                 "class_count_correlated_namespace": 0,
             })
@@ -101,7 +103,7 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                     "sha256": sha256(pom_data),
                     "size_bytes": len(pom_data),
                 }
-                item["declared_licenses"] = parse_embedded_pom(pom_data)
+                item["embedded_pom_licenses"] = parse_embedded_pom(pom_data)
 
     jetty_class_entries = [name for name in class_entries if name.startswith("org/htmlunit/jetty/")]
     original_jetty_class_entries = [name for name in class_entries if name.startswith("org/eclipse/jetty/")]
@@ -112,21 +114,34 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 jetty_class_entries if jetty_class_entries else original_jetty_class_entries
             )
 
-    aggregate_purls = set()
+    aggregate_components = {}
     if sbom_path:
         bom = json.loads(sbom_path.read_text(encoding="utf-8"))
         if bom.get("bomFormat") != "CycloneDX":
             raise ValueError("aggregate SBOM is not CycloneDX")
-        aggregate_purls = {
-            item.get("purl") for item in bom.get("components", [])
+        aggregate_components = {
+            item.get("purl"): item for item in bom.get("components", [])
             if isinstance(item, dict) and isinstance(item.get("purl"), str)
         }
 
     for item in components.values():
+        aggregate_component = aggregate_components.get(item["purl"])
         item["aggregate_sbom"] = (
-            "present" if item["purl"] in aggregate_purls else
+            "present" if aggregate_component else
             "absent" if sbom_path else "not_compared"
         )
+        if aggregate_component:
+            item["aggregate_sbom_licenses"] = [
+                license_item.get("license", {}).get("id")
+                or license_item.get("license", {}).get("name")
+                for license_item in aggregate_component.get("licenses", [])
+                if isinstance(license_item, dict) and isinstance(license_item.get("license"), dict)
+                and (license_item.get("license", {}).get("id") or license_item.get("license", {}).get("name"))
+            ]
+        if item["embedded_pom_licenses"]:
+            item["license_evidence"] = "embedded_pom"
+        elif item["aggregate_sbom_licenses"]:
+            item["license_evidence"] = "aggregate_sbom_effective_model"
 
     roots: dict[str, int] = {}
     for name in class_entries:
@@ -152,7 +167,7 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
         "evidence_policy": {
             "pom_properties": "metadata presence only; not proof of executable code",
             "code_attribution": "only explicitly correlated namespaces are marked; all other origins remain unattributed",
-            "license": "declared licenses are copied from embedded POMs when present; missing declarations remain unresolved",
+            "license": "embedded POM declarations take precedence; aggregate CycloneDX effective-model license data is recorded separately; otherwise unresolved",
         },
         "class_inventory": {
             "total_class_files": len(class_entries),
