@@ -491,6 +491,21 @@ jobs:
               cat "$report/resource-manifest.tsv"
             } > "$report/summary.txt"
           done
+      - name: Materialize resolved runtime dependency JARs for class-origin audit
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          # -am keeps first-party reactor dependencies resolvable. The dependency
+          # plugin writes each project's runtime dependencies to its own target/dependency.
+          mvn --batch-mode --no-transfer-progress -pl webharvest-cli -am \
+            -DincludeScope=runtime -Dmdep.useRepositoryLayout=true \
+            org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies
+          mvn --batch-mode --no-transfer-progress -pl webharvest-ide -am \
+            -DincludeScope=runtime -Dmdep.useRepositoryLayout=true \
+            org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies
+          test -n "$(find webharvest-cli/target/dependency -name '*.jar' -type f -print -quit)"
+          test -n "$(find webharvest-ide/target/dependency -name '*.jar' -type f -print -quit)"
       - name: Generate and validate distribution-specific provenance inventories
         if: success()
         shell: bash
@@ -518,6 +533,18 @@ jobs:
             --sbom target/shaded-provenance/aggregate/bom.json \
             --output target/shaded-provenance/reports/ide-provenance.json
 
+          python3 -m unittest discover -s tools/ci -p 'test_shaded_class_origin_audit.py' -v
+          python3 tools/ci/shaded_class_origin_audit.py \
+            --archive webharvest-cli/target/webharvest-cli-2.3.1.jar \
+            --dependency-dir webharvest-cli/target/dependency \
+            --distribution cli \
+            --output target/shaded-provenance/reports/cli-class-origin.json
+          python3 tools/ci/shaded_class_origin_audit.py \
+            --archive webharvest-ide/target/webharvest-ide-2.3.1.jar \
+            --dependency-dir webharvest-ide/target/dependency \
+            --distribution ide \
+            --output target/shaded-provenance/reports/ide-class-origin.json
+
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -530,7 +557,34 @@ jobs:
                   raise SystemExit("Invalid distribution archive SHA-256")
               if not report["components"] or not report["legal_resources"]:
                   raise SystemExit("Incomplete distribution component/legal-resource inventory")
+          origin_root = Path("target/shaded-provenance/reports")
+          cli_origin = json.loads((origin_root / "cli-class-origin.json").read_text(encoding="utf-8"))
+          ide_origin = json.loads((origin_root / "ide-class-origin.json").read_text(encoding="utf-8"))
+          for provenance, origin in ((cli, cli_origin), (ide, ide_origin)):
+              if origin["archive"]["sha256"] != provenance["archive"]["sha256"]:
+                  raise SystemExit("Class-origin report is not tied to the exact shaded archive SHA-256")
+              if origin["archive"]["class_count"] != provenance["class_inventory"]["total_class_files"]:
+                  raise SystemExit("Class-origin report class count differs from the shaded provenance inventory")
+              summary = origin["summary"]
+              classified = sum(summary[key] for key in (
+                  "unique_exact_byte_match", "unique_path_match_bytes_differ",
+                  "ambiguous_exact_byte_match", "ambiguous_path_match_bytes_differ",
+                  "special_case_cli_relocated_jetty", "unmatched",
+              ))
+              if classified != summary["archive_class_count"]:
+                  raise SystemExit("Class-origin audit did not classify every shaded class")
+              if origin["dependency_set"]["jar_count"] == 0:
+                  raise SystemExit("Class-origin audit inspected no resolved runtime dependency JARs")
+
           cli_jetty = cli["class_inventory"]["jetty_class_attribution"]
+          if cli_origin["summary"]["special_case_cli_relocated_jetty"] != cli["class_inventory"]["org_htmlunit_jetty_classes"]:
+              raise SystemExit("CLI relocated Jetty class count differs between dedicated and generic attribution reports")
+          ide_jetty_classes = [
+              item for item in ide_origin["class_attribution"]
+              if item["archive_class"].startswith("org/eclipse/jetty/")
+          ]
+          if not ide_jetty_classes or any(item["status"] == "unmatched" for item in ide_jetty_classes):
+              raise SystemExit("IDE contains Jetty classes without a candidate runtime dependency JAR origin")
           if cli["class_inventory"]["org_htmlunit_jetty_classes"] == 0:
               raise SystemExit("Expected relocated HtmlUnit/Jetty class evidence in CLI")
           if cli_jetty["mapped_class_count"] != cli["class_inventory"]["org_htmlunit_jetty_classes"]:
@@ -570,6 +624,7 @@ jobs:
             **/target/*.dumpstream
             **/target/package-audit/**
             target/shaded-provenance/**
+            target/shaded-class-origin/**
             **/target/*-javadoc.jar
             target/javadoc-audit/**
           if-no-files-found: warn
