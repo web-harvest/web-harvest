@@ -11,7 +11,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
-import re
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -159,6 +158,8 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
             "total_class_files": len(class_entries),
             "org_htmlunit_jetty_classes": len(jetty_class_entries),
             "org_eclipse_jetty_classes": len(original_jetty_class_entries),
+            "org_htmlunit_jetty_class_entries": jetty_class_entries,
+            "org_eclipse_jetty_class_entries": original_jetty_class_entries,
             "top_level_package_roots": dict(sorted(roots.items())),
         },
         "aggregate_sbom": {
