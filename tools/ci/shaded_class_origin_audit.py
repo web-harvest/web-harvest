@@ -70,6 +70,27 @@ def embedded_pom_license_names(data: bytes) -> list[str]:
     return licenses
 
 
+def pom_parent_coordinates(data: bytes) -> tuple[str, str, str] | None:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+    parent = next((node for node in root if node.tag.rsplit("}", 1)[-1] == "parent"), None)
+    if parent is None:
+        return None
+
+    def child_text(node: ET.Element, name: str) -> str | None:
+        child = next((item for item in node if item.tag.rsplit("}", 1)[-1] == name), None)
+        return child.text.strip() if child is not None and child.text else None
+
+    group = child_text(parent, "groupId")
+    artifact = child_text(parent, "artifactId")
+    version = child_text(parent, "version")
+    if not group or not artifact or not version or "$" in (group + artifact + version):
+        return None
+    return group, artifact, version
+
+
 def resolved_maven_pom(path: Path, root: Path, repository: Path) -> dict | None:
     coordinate = coordinates_from_repository_path(path, root)
     if not coordinate:
@@ -78,19 +99,41 @@ def resolved_maven_pom(path: Path, root: Path, repository: Path) -> dict | None:
     if len(parts) not in (4, 5):
         return None
     group, artifact, version = parts[:3]
-    pom_path = repository / group.replace(".", "/") / artifact / version / f"{artifact}-{version}.pom"
-    if not pom_path.is_file():
-        return None
-    payload = pom_path.read_bytes()
-    licenses = embedded_pom_license_names(payload)
-    if not licenses:
-        return None
-    return {
-        "pom_path": pom_path.relative_to(repository).as_posix(),
-        "pom_sha256": sha256(payload),
-        "licenses": licenses,
-        "evidence_scope": "direct license declarations in the resolved Maven repository POM; parent inheritance is not inferred",
-    }
+    current = (group, artifact, version)
+    visited: set[tuple[str, str, str]] = set()
+    chain: list[dict[str, str]] = []
+
+    while current and current not in visited:
+        visited.add(current)
+        group_id, artifact_id, version_id = current
+        pom_path = repository / group_id.replace(".", "/") / artifact_id / version_id / f"{artifact_id}-{version_id}.pom"
+        if not pom_path.is_file():
+            return None
+        payload = pom_path.read_bytes()
+        chain.append({
+            "coordinate": f"{group_id}:{artifact_id}:{version_id}:pom",
+            "pom_path": pom_path.relative_to(repository).as_posix(),
+            "pom_sha256": sha256(payload),
+        })
+        licenses = embedded_pom_license_names(payload)
+        if licenses:
+            source = chain[-1]
+            inherited = len(chain) > 1
+            return {
+                "pom_path": source["pom_path"],
+                "pom_sha256": source["pom_sha256"],
+                "licenses": licenses,
+                "evidence_scope": (
+                    "license declarations in the resolved Maven parent POM chain; "
+                    "the source POM and every traversed parent POM are SHA-256 recorded"
+                    if inherited else
+                    "direct license declarations in the resolved Maven repository POM"
+                ),
+                "inheritance_chain": chain,
+            }
+        current = pom_parent_coordinates(payload)
+
+    return None
 
 
 def inspect_dependency_jar(path: Path, root: Path, maven_repository: Path) -> dict:
