@@ -81,9 +81,10 @@ class ShadedInventoryTests(unittest.TestCase):
                 "--distribution", "ide", "--sbom", str(sbom), "--output", str(output),
             ], check=True, capture_output=True, text=True)
             report = json.loads(output.read_text(encoding="utf-8"))
-            self.assertEqual(report["components"][0]["aggregate_sbom"], "present")
-            self.assertEqual(report["components"][0]["aggregate_sbom_licenses"], ["EPL-2.0"])
-            self.assertEqual(report["components"][0]["license_evidence"], "embedded_pom")
+            jetty = next(x for x in report["components"] if x["name"] == "jetty-client")
+            self.assertEqual(jetty["aggregate_sbom"], "present")
+            self.assertEqual(jetty["aggregate_sbom_licenses"], ["EPL-2.0"])
+            self.assertEqual(jetty["license_evidence"], "embedded_pom")
             inherited = next(x for x in report["components"] if x["name"] == "inherited-license")
             self.assertEqual(inherited["aggregate_sbom"], "present")
             self.assertEqual(inherited["aggregate_sbom_licenses"], ["Apache-2.0"])
