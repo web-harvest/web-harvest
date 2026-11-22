@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  * 
  * <p>Supports two modes of operation:</p>
  * 
- * <h3>1. Named Connection (recommended):</h3>
+ * <h2>1. Named Connection (recommended):</h2>
  * <pre>
  * &lt;connection id="mydb" driver="org.postgresql.Driver" 
  *             url="jdbc:postgresql://localhost/mydb"
