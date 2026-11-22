@@ -551,6 +551,22 @@ jobs:
             --distribution ide \
             --output target/shaded-provenance/reports/ide-class-origin.json
 
+          python3 -m unittest discover -s tools/ci -p 'test_shaded_distribution_sbom.py' -v
+          python3 tools/ci/shaded_distribution_sbom.py \
+            --provenance target/shaded-provenance/reports/cli-provenance.json \
+            --class-origin target/shaded-provenance/reports/cli-class-origin.json \
+            --aggregate-sbom target/shaded-provenance/aggregate/bom.json \
+            --distribution cli \
+            --output target/shaded-provenance/reports/cli-distribution-bom.json \
+            --delta-output target/shaded-provenance/reports/cli-sbom-delta.json
+          python3 tools/ci/shaded_distribution_sbom.py \
+            --provenance target/shaded-provenance/reports/ide-provenance.json \
+            --class-origin target/shaded-provenance/reports/ide-class-origin.json \
+            --aggregate-sbom target/shaded-provenance/aggregate/bom.json \
+            --distribution ide \
+            --output target/shaded-provenance/reports/ide-distribution-bom.json \
+            --delta-output target/shaded-provenance/reports/ide-sbom-delta.json
+
           python3 - <<'PY'
           import json
           from pathlib import Path
