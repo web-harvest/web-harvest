@@ -623,9 +623,17 @@ jobs:
               raise SystemExit("A relocated Jetty component is missing pinned upstream license/NOTICE provenance")
           if cli["jetty_notice_audit"]["content_level_reconciliation"] != "open":
               raise SystemExit("Jetty NOTICE status must remain explicitly open pending legal-resource reconciliation")
-          if ide["class_inventory"]["org_eclipse_jetty_classes"] == 0:
-              raise SystemExit("Expected original-namespace Jetty class evidence in IDE")
-          print("Validated exact CLI/IDE archive hashes, all 1,280 relocated Jetty classes, 12 upstream module/license records and the explicit open NOTICE gate.")
+          ide_class_count = ide["class_inventory"]["org_eclipse_jetty_classes"]
+          ide_jetty = ide["class_inventory"]["jetty_class_attribution"]
+          if ide_class_count != 1931:
+              raise SystemExit(f"Expected 1,931 IDE Jetty classes; found {ide_class_count}")
+          if ide_jetty["mapped_class_count"] != ide_class_count:
+              raise SystemExit(
+                  f"IDE Jetty attribution mapped {ide_jetty['mapped_class_count']} of {ide_class_count} classes"
+              )
+          if ide_jetty["unmapped_class_count"] != 0:
+              raise SystemExit(f"IDE has {ide_jetty['unmapped_class_count']} unmapped Jetty classes")
+          print("Validated exact CLI/IDE archive hashes, complete CLI/IDE Jetty class attribution, 12 CLI upstream module/license records and the explicit open NOTICE gate.")
           PY
       - name: Upload Maven diagnostics
         if: always()
