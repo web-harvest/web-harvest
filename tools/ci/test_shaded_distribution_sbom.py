@@ -80,7 +80,7 @@ class DistributionSbomTests(unittest.TestCase):
 
             bom, delta = build(p, o, a, "cli", out, delta_out)
             by_name = {item["name"]: item for item in bom["components"]}
-            self.assertEqual(set(by_name), {"metadata-only", "byte-match", "webharvest-cli"})
+            self.assertEqual(set(by_name), {"metadata-only", "byte-match"})
             self.assertEqual(by_name["metadata-only"]["hashes"][0]["content"], "b" * 64)
             self.assertEqual(by_name["metadata-only"]["licenses"], [
                 {"license": {"name": "Apache-2.0"}}
@@ -93,12 +93,13 @@ class DistributionSbomTests(unittest.TestCase):
             )
             self.assertEqual(delta["distribution_only_purls"], [
                 "pkg:maven/example/byte-match@2.0?type=jar",
-                "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar",
             ])
             self.assertEqual(delta["aggregate_only_purls"], [
                 "pkg:maven/example/aggregate-only@3.0?type=jar"
             ])
             self.assertEqual(bom["metadata"]["component"]["hashes"][0]["content"], "a" * 64)
+            self.assertEqual(bom["metadata"]["component"]["purl"],
+                             "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar")
             self.assertTrue(out.exists())
             self.assertTrue(delta_out.exists())
 
