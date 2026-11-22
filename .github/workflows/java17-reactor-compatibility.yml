@@ -502,7 +502,7 @@ jobs:
           mvn --batch-mode --no-transfer-progress -N install
           mvn --batch-mode --no-transfer-progress \
             -pl webharvest-core,webharvest-database,webharvest-ftp,webharvest-mail,webharvest-webbrowser,webharvest-zip -am \
-            -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true \
+            -DskipTests -DskipITs=true -Djacoco.skip=true -Dcheckstyle.skip=true \
             -Dspotbugs.skip=true -Dpmd.skip=true install
           mvn --batch-mode --no-transfer-progress -pl webharvest-cli \
             -DincludeScope=runtime -Dmdep.useRepositoryLayout=true \
