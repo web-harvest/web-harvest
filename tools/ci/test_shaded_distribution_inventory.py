@@ -63,6 +63,32 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(item["code_attribution"], "embedded_metadata_only_unattributed")
             self.assertEqual(item["embedded_pom_licenses"], [])
 
+
+    def test_cli_jetty_license_falls_back_to_pinned_upstream_project_model(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "jetty-cli.jar"
+            with zipfile.ZipFile(archive, "w") as jar:
+                jar.writestr("org/htmlunit/jetty/client/Client.class", b"class-bytes")
+                jar.writestr("META-INF/maven/org.eclipse.jetty/jetty-client/pom.properties",
+                             "groupId=org.eclipse.jetty\\nartifactId=jetty-client\\nversion=12.1.15\\n")
+                jar.writestr("META-INF/maven/org.eclipse.jetty/jetty-client/pom.xml", "<project/>")
+                jar.writestr("META-INF/NOTICE.txt", "Unrelated third-party notice")
+            output = root / "report.json"
+            subprocess.run([
+                sys.executable, str(SCRIPT), "--archive", str(archive),
+                "--distribution", "cli", "--output", str(output),
+            ], check=True, capture_output=True, text=True)
+            report = json.loads(output.read_text(encoding="utf-8"))
+            component = report["components"][0]
+            evidence = component["upstream_project_license_evidence"]
+            self.assertEqual(component["license_evidence"], "upstream_project_root_license_and_notice")
+            self.assertEqual(evidence["license_choices_declared_by_upstream"], ["EPL-2.0", "Apache-2.0"])
+            self.assertEqual(evidence["effective_license_model_pom_git_blob_sha"],
+                             "e4d1540441e9cce523e166681a67edb190765367")
+            self.assertEqual(evidence["notice_file_git_blob_sha"],
+                             "ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db")
+
     def test_aggregate_sbom_membership_is_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
