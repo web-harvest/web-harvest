@@ -66,6 +66,7 @@ class DistributionSbomTests(unittest.TestCase):
                 "bomFormat": "CycloneDX",
                 "components": [
                     {"purl": "pkg:maven/example/metadata-only@1.0?type=jar"},
+                    {"purl": "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar"},
                     {"purl": "pkg:maven/example/aggregate-only@3.0?type=jar"},
                 ],
             }
