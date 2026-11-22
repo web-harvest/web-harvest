@@ -16,7 +16,7 @@ The intended future is a separate company-maintained extensions repository and M
 | Module | Current responsibility | Boundary |
 |---|---|---|
 | `webharvest-core` | Workflow runtime, configuration model, plugin contracts/registry, XML execution and Stage 1 semantic inspection | Must not depend on IDE or optional integrations |
-| `webharvest-cli` | Headless CLI consuming Core | No semantic authority of its own |
+| `webharvest-cli` | Current shaded, one-shot headless batch adapter consuming Core and several integration modules | Optional process boundary under reassessment; Core Java API is primary. See [CLI/headless decision](CLI_AND_HEADLESS_EXECUTION.md) |
 | `webharvest-ide` | Optional editor/client UX and embedded webapp | No canonical workflow semantics or plugin identity source |
 | `webharvest-database` | Database extensions | Depends on Core; candidate for future company extensions |
 | `webharvest-ftp` | FTP extensions | Depends on Core; candidate for future company extensions |
@@ -27,7 +27,11 @@ The intended future is a separate company-maintained extensions repository and M
 
 These are module responsibilities, not a final plugin-by-plugin Core classification. A class is not Core merely because it currently lives in `webharvest-core` or has a Core registration annotation.
 
-## 3. Dependency direction
+## 3. CLI and headless execution boundary
+
+The Core Java API is the primary integration surface. The CLI is an optional process adapter for cases that benefit from process isolation, non-Java invocation or host-managed batch execution. It must not own workflow semantics or become a long-running service by default. A Docker image is a deployment option, not an architectural requirement. The current CLI bundles several integration modules and its public argument/execution contract is still being audited; do not remove modules, change artifact coordinates or break legacy invocation until the evidence and migration gates in [CLI and headless execution decision](CLI_AND_HEADLESS_EXECUTION.md) are complete.
+
+## 4. Dependency direction
 
 ```text
 webharvest-cli ───────────────▶ webharvest-core
