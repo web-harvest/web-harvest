@@ -70,7 +70,7 @@ import org.slf4j.LoggerFactory;
  * 
  * <h2>Usage Examples</h2>
  * 
- * <h3>Example 1: Download file from FTP</h4>
+ * <h3>Example 1: Download file from FTP</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h3>Example 2: Upload scraped data to FTP</h4>
+ * <h3>Example 2: Upload scraped data to FTP</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
@@ -108,7 +108,7 @@ import org.slf4j.LoggerFactory;
  * </config>
  * }</pre>
  * 
- * <h3>Example 3: List and download all files</h4>
+ * <h3>Example 3: List and download all files</h3>
  * <pre>{@code
  * <?xml version="1.0" encoding="UTF-8"?>
  * <config xmlns="http://org.webharvest/schema/2.1/core">
