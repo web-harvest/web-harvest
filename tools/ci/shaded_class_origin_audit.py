@@ -14,6 +14,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path, PurePosixPath
 import zipfile
+import xml.etree.ElementTree as ET
 
 
 def sha256(data: bytes) -> str:
@@ -42,12 +43,37 @@ def coordinates_from_repository_path(path: Path, root: Path) -> str | None:
     artifact, version = parts[-3], parts[-2]
     if not group or not artifact or not version:
         return None
+    filename = path.name[:-4]
+    prefix = f"{artifact}-{version}"
+    classifier = filename[len(prefix) + 1:] if filename.startswith(prefix + "-") else None
+    if classifier:
+        return f"{group}:{artifact}:{version}:{classifier}:jar"
     return f"{group}:{artifact}:{version}:jar"
+
+
+def embedded_pom_license_names(data: bytes) -> list[str]:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return []
+    licenses = []
+    for node in root.iter():
+        if node.tag.rsplit("}", 1)[-1] != "license":
+            continue
+        name = next((child.text.strip() for child in node
+                     if child.tag.rsplit("}", 1)[-1] == "name" and child.text), None)
+        url = next((child.text.strip() for child in node
+                    if child.tag.rsplit("}", 1)[-1] == "url" and child.text), None)
+        value = name or url
+        if value and value not in licenses:
+            licenses.append(value)
+    return licenses
 
 
 def inspect_dependency_jar(path: Path, root: Path) -> dict:
     digest = sha256(path.read_bytes())
     embedded_coordinates: set[str] = set()
+    embedded_pom_license_evidence = []
     classes: dict[str, str] = {}
     with zipfile.ZipFile(path) as jar:
         names = sorted(set(jar.namelist()))
@@ -59,6 +85,14 @@ def inspect_dependency_jar(path: Path, root: Path) -> dict:
                 )
                 if group and artifact and version:
                     embedded_coordinates.add(f"{group}:{artifact}:{version}:jar")
+                pom_path = str(PurePosixPath(name).parent / "pom.xml")
+                if pom_path in names:
+                    pom_data = jar.read(pom_path)
+                    embedded_pom_license_evidence.append({
+                        "pom_entry": pom_path,
+                        "pom_sha256": sha256(pom_data),
+                        "licenses": embedded_pom_license_names(pom_data),
+                    })
             if (name.endswith(".class") and not name.endswith("module-info.class")
                    ):
                 classes[name] = sha256(jar.read(name))
@@ -71,6 +105,7 @@ def inspect_dependency_jar(path: Path, root: Path) -> dict:
         "coordinate": primary or f"unidentified:{path.relative_to(root).as_posix()}",
         "path_coordinate": path_coordinate,
         "embedded_coordinates": coordinates,
+        "embedded_pom_license_evidence": embedded_pom_license_evidence,
         "class_count": len(classes),
         "classes": classes,
     }
@@ -114,6 +149,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             "coordinate": coordinate,
             "dependency_jars": [],
             "dependency_jar_sha256": [],
+            "dependency_jar_pom_license_evidence": [],
             "dependency_class_count": 0,
             "matched_archive_class_count": 0,
             "unique_exact_byte_match_count": 0,
@@ -123,6 +159,13 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
         })
         component["dependency_jars"].append(dependency["path"])
         component["dependency_jar_sha256"].append(dependency["sha256"])
+        for pom_evidence in dependency["embedded_pom_license_evidence"]:
+            if pom_evidence["licenses"]:
+                component["dependency_jar_pom_license_evidence"].append({
+                    "dependency_jar": dependency["path"],
+                    "dependency_jar_sha256": dependency["sha256"],
+                    **pom_evidence,
+                })
         component["dependency_class_count"] += dependency["class_count"]
         for class_path, class_sha in dependency["classes"].items():
             dependency_class_paths[coordinate].add(class_path)
@@ -216,6 +259,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
                 "coordinate": coordinate,
                 "dependency_jars": [],
                 "dependency_jar_sha256": [],
+                "dependency_jar_pom_license_evidence": [],
                 "dependency_class_count": 0,
                 "matched_archive_class_count": 0,
                 "unique_exact_byte_match_count": 0,
