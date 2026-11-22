@@ -166,6 +166,12 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
         elif len(matches) > 1:
             status = "ambiguous_path_match_bytes_differ"
             selected = matches
+        elif class_path.startswith("org/webharvest/"):
+            # Project-owned namespaces are explicit first-party candidates, not
+            # unexplained third-party classes. They remain separate from dependency
+            # byte matches and are not attributed to a particular reactor module.
+            status = "first_party"
+            selected = []
         else:
             status = "unmatched"
             selected = []
@@ -254,6 +260,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             "ambiguous_exact_byte_match": counts["ambiguous_exact_byte_match"],
             "ambiguous_path_match_bytes_differ": counts["ambiguous_path_match_bytes_differ"],
             "special_case_cli_relocated_jetty": counts["special_case_cli_relocated_jetty"],
+            "first_party": counts["first_party"],
             "unmatched": counts["unmatched"],
             "metadata_only_component_count": sum(
                 item["metadata_only_or_unmatched"] for item in dependency_components.values()
@@ -265,7 +272,8 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             "exact_byte_match": "one dependency JAR contains the same class path and identical class bytes",
             "path_match_bytes_differ": "one dependency JAR contains the same class path but class bytes differ; transformation or build variance is possible",
             "ambiguous": "multiple dependency JARs contain the same class path; all candidates are retained",
-            "unmatched": "no copied runtime dependency JAR contains the class path; may be first-party, generated, transformed, or otherwise unresolved",
+            "first_party": "class is in the project-owned org/webharvest namespace and has no runtime dependency JAR candidate; module-level source attribution is not asserted",
+            "unmatched": "no copied runtime dependency JAR contains the class path and it is outside the recognized first-party namespace; origin remains unresolved",
             "cli_jetty": "relocated org/htmlunit/jetty classes are a dedicated special case; see shaded provenance report for pinned upstream module-prefix mapping",
             "metadata": "embedded Maven metadata is not treated as proof of executable code",
         },
