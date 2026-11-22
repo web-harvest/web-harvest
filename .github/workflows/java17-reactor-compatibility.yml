@@ -407,6 +407,28 @@ jobs:
           grep -q "WebHarvest IDE" "$smoke_dir/index.html"
           curl --silent --show-error --fail "http://127.0.0.1:$port/static/version.json" -o "$smoke_dir/version.json"
           grep -q '"version": "2.3.1"' "$smoke_dir/version.json"
+
+          # Verify that Vite output is present in the shaded archive, not only in the source tree.
+          for asset in webapp/dist/assets/main.js webapp/dist/assets/main.css; do
+            if ! jar tf "$ide_jar" | grep -Fxq "$asset"; then
+              echo "Required frontend asset is missing from the packaged IDE JAR: $asset"
+              exit 1
+            fi
+          done
+
+          # Derive the URLs from the actual served entry page to protect its resource contract.
+          js_asset="$(grep -oE 'src=\"[^\"]+\.js[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d '"' -f2)"
+          css_asset="$(grep -oE 'href=\"[^\"]+\.css[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d '"' -f2)"
+          test -n "$js_asset" || { echo "No JavaScript asset URL found in served IDE entry page"; exit 1; }
+          test -n "$css_asset" || { echo "No CSS asset URL found in served IDE entry page"; exit 1; }
+          # Vite's default base emits root-relative URLs (for example /dist/assets/main.js).
+          # Strip the leading slash before joining with the server origin to avoid a double slash.
+          js_asset_path="${js_asset#/}"
+          css_asset_path="${css_asset#/}"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/$js_asset_path" -o "$smoke_dir/main.js"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/$css_asset_path" -o "$smoke_dir/main.css"
+          test -s "$smoke_dir/main.js"
+          test -s "$smoke_dir/main.css"
       - name: Inventory shaded CLI and IDE runtime contents
         if: always()
         shell: bash
