@@ -110,6 +110,22 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
     origin_by_coordinate = {
         item["coordinate"]: item for item in origin.get("components", [])
     }
+    # Maven pom.properties omits classifier. When the resolved runtime inventory
+    # identifies exactly one classifier variant for the same GAV, attach the
+    # shaded POM metadata to that exact variant instead of emitting a false
+    # second, unclassified component.
+    classifier_variants = {}
+    for origin_coordinate in origin_by_coordinate:
+        parts = origin_coordinate.split(":")
+        if len(parts) == 5:
+            classifier_variants.setdefault(":".join(parts[:3]), []).append(origin_coordinate)
+    normalized_provenance = {}
+    for provenance_coordinate, item in provenance_by_coordinate.items():
+        parts = provenance_coordinate.split(":")
+        variants = classifier_variants.get(":".join(parts[:3]), []) if len(parts) == 4 else []
+        target = variants[0] if len(variants) == 1 else provenance_coordinate
+        normalized_provenance[target] = item
+    provenance_by_coordinate = normalized_provenance
 
     # The union preserves metadata-only coordinates and dependencies whose
     # executable classes were byte-correlated but whose POM metadata was not shaded.
