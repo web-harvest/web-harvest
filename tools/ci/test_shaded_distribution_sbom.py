@@ -133,7 +133,7 @@ class DistributionSbomTests(unittest.TestCase):
             self.assertEqual(
                 next(x["value"] for x in by_name["byte-match"]["properties"]
                      if x["name"].endswith("license-source")),
-                "resolved_maven_repository_pom_direct_declaration",
+                "resolved_maven_repository_parent_pom_chain",
             )
             self.assertIn(
                 "example/byte-match/2.0/byte-match-2.0.pom",
