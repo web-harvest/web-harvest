@@ -45,6 +45,8 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(component["embedded_pom_licenses"], ["EPL-2.0 OR Apache-2.0"])
             self.assertEqual(report["class_inventory"]["org_htmlunit_jetty_classes"], 1)
             self.assertEqual(report["legal_resources"][0]["archive_entry"], "META-INF/NOTICE.txt")
+            self.assertEqual(report["jetty_notice_audit"]["content_level_reconciliation"], "open")
+            self.assertEqual(report["jetty_notice_audit"]["archive_named_jetty_notice_candidates"], [])
 
     def test_metadata_only_coordinate_stays_unattributed(self):
         with tempfile.TemporaryDirectory() as temp:
