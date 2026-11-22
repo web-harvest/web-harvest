@@ -256,3 +256,42 @@ Post-merge checks on the final main commit completed: OSV, full Java 17 reactor/
 - Semantic Stage 1 acceptance: #8, #9, #11, #45.
 - Built-in plugin inventory / boundary: #93 (then existing plugin-contract issues #4/#60/#68).
 - Documentation governance: #85/#86; website: `web-harvest/website#1`.
+
+## Current integration status — 2026-11-22 (PR #317 merged)
+
+**Canonical source:** public repository `web-harvest/web-harvest`, branch `main`, merge commit `5adfb247559b747fa35288966a5ef0add730e7fc` (PR #317).
+
+### Javadoc enforcement and generated API artifacts
+
+- Default Javadoc doclint is enforced across all shipped Java modules: fatal doclint errors fail the build; non-fatal warnings remain visible. `failOnWarnings` is intentionally not enabled while the warning baseline is being triaged.
+- PR #317 restored `failOnError=true`, removed the blanket doclint suppression, and corrected fatal source markup/heading errors in Core, Database, FTP, Mail, WebBrowser, ZIP, CLI and IDE.
+- Exact PR-head Java 17 full reactor/static analysis, Javadoc generation, packaged CLI and IDE smoke tests, and shaded package inventory all passed.
+- Actual Javadoc JAR inspection covered all eight modules, 1,101 HTML pages and 44,334 local href/src references; no missing local files or unresolved local fragments were found.
+- The visible warning baseline is: Core at least 100 (Javadoc output capped at 100), Database 14, FTP 7, Mail 5, WebBrowser 4, ZIP 2, CLI 3 and IDE 74. These warnings primarily concern missing comments and incomplete parameter/return/throws descriptions. Track remediation in [Issue #291](https://github.com/web-harvest/web-harvest/issues/291); do not suppress doclint or enable warning-fatal mode merely to make the build green.
+
+### Exact-head quality and security evidence
+
+On PR #317 head `7659929e361f394a61a23216d31313e83f936786`:
+- Java 17 full reactor/static analysis and all eight Javadoc JAR checks: PASS ([run 45006145026](https://github.com/web-harvest/web-harvest/actions/runs/45006145026)).
+- Core verify + JaCoCo and production Groovy 5.1.3 / JSR-223: PASS ([run 45006145127](https://github.com/web-harvest/web-harvest/actions/runs/45006145127)).
+- FTP tests + JaCoCo 80% gate: PASS ([run 45006144994](https://github.com/web-harvest/web-harvest/actions/runs/45006144994)).
+- Optional Database regression: PASS ([run 45006144985](https://github.com/web-harvest/web-harvest/actions/runs/45006144985)).
+- Logging/shaded audit: PASS ([run 45006144954](https://github.com/web-harvest/web-harvest/actions/runs/45006144954)).
+- Dependency inventory, OSV scan, Actions lockfile and Semantic Core Contract: PASS ([inventory](https://github.com/web-harvest/web-harvest/actions/runs/45006144957), [OSV](https://github.com/web-harvest/web-harvest/actions/runs/45006144948), [lockfile](https://github.com/web-harvest/web-harvest/actions/runs/45006144969), [semantic](https://github.com/web-harvest/web-harvest/actions/runs/45006145127)).
+- The experimental Groovy runtime compatibility job was conditionally SKIPPED and is not counted as PASS.
+
+The above is exact PR-head evidence. Post-merge verification on merge commit `5adfb247559b747fa35288966a5ef0add730e7fc` remains a separate required check; do not infer it from PR-head success.
+
+### Release decision and next gates
+
+**Release remains NO-GO.** PR #317 closes the fatal doclint enforcement/remediation batch; it does not establish release readiness.
+
+Remaining release gates are tracked in [Issue #88](https://github.com/web-harvest/web-harvest/issues/88):
+1. Complete post-merge verification on the new `main` commit.
+2. Reconcile third-party license and NOTICE attribution for shaded CLI/IDE packages. Presence of LICENSE/NOTICE resources is not proof of completeness.
+3. Review aggregate production and test SBOM findings, classify inherited/new/test-only/false-positive/reachable findings, and record accepted residual risk.
+4. Verify source, Javadoc and signature bundles and modernize/validate Maven Central Publisher Portal release engineering in non-upload mode.
+5. Reconcile release metadata, changelog, Java 17 compatibility/install guidance and exact release matrix.
+6. Continue the root Markdown, maintained `docs/**`, historical-content and documentation navigation audit ([Issue #152](https://github.com/web-harvest/web-harvest/issues/152)).
+
+No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or is authorized by this status update.
