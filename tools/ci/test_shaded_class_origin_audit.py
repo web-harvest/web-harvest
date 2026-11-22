@@ -27,16 +27,20 @@ def maven_properties(group: str, artifact: str, version: str) -> bytes:
 
 
 class ShadedClassOriginAuditTests(unittest.TestCase):
-    def run_audit(self, root: Path, distribution: str = "ide") -> dict:
+    def run_audit(self, root: Path, distribution: str = "ide",
+                  maven_repository: Path | None = None) -> dict:
         archive = root / "distribution.jar"
         output = root / "report.json"
-        subprocess.run([
+        command = [
             sys.executable, str(SCRIPT),
             "--archive", str(archive),
             "--dependency-dir", str(root / "dependencies"),
             "--distribution", distribution,
             "--output", str(output),
-        ], check=True, capture_output=True, text=True)
+        ]
+        if maven_repository is not None:
+            command.extend(["--maven-repository", str(maven_repository)])
+        subprocess.run(command, check=True, capture_output=True, text=True)
         return json.loads(output.read_text(encoding="utf-8"))
 
     def test_exact_byte_match_and_metadata_only_coordinate_are_distinct(self):
@@ -184,6 +188,33 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             component = next(x for x in report["components"]
                              if x["coordinate"] == "example:library:1.0:dom:jar")
             self.assertEqual(component["dependency_class_count"], 1)
+
+    def test_resolved_maven_repository_pom_license_is_preserved_when_jar_has_no_embedded_pom(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            write_jar(root / "dependencies/example/library/1.0/library-1.0.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            repository = root / "maven-repository"
+            pom = repository / "example/library/1.0/library-1.0.pom"
+            pom.parent.mkdir(parents=True, exist_ok=True)
+            pom.write_text(
+                "<project><licenses><license><name>Example License</name>"
+                "<url>https://example.invalid/license</url></license></licenses></project>",
+                encoding="utf-8",
+            )
+            report = self.run_audit(root, maven_repository=repository)
+            component = next(x for x in report["components"]
+                             if x["coordinate"] == "example:library:1.0:jar")
+            evidence = component["resolved_maven_pom_license_evidence"]
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["licenses"], ["Example License"])
+            self.assertEqual(evidence[0]["pom_path"], "example/library/1.0/library-1.0.pom")
+            self.assertEqual(len(evidence[0]["pom_sha256"]), 64)
+            self.assertIn("parent inheritance is not inferred", evidence[0]["evidence_scope"])
 
 
 if __name__ == "__main__":
