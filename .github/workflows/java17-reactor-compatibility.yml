@@ -496,12 +496,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # -am keeps first-party reactor dependencies resolvable. The dependency
-          # plugin writes each project's runtime dependencies to its own target/dependency.
-          mvn --batch-mode --no-transfer-progress -pl webharvest-cli -am \
+          # Install only into this ephemeral runner's local Maven repository so
+          # the standalone dependency-copy goals can resolve first-party modules.
+          # This is not a remote publication and does not upload any artifacts.
+          mvn --batch-mode --no-transfer-progress \
+            -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true \
+            -Dspotbugs.skip=true -Dpmd.skip=true install
+          mvn --batch-mode --no-transfer-progress -pl webharvest-cli \
             -DincludeScope=runtime -Dmdep.useRepositoryLayout=true \
             org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies
-          mvn --batch-mode --no-transfer-progress -pl webharvest-ide -am \
+          mvn --batch-mode --no-transfer-progress -pl webharvest-ide \
             -DincludeScope=runtime -Dmdep.useRepositoryLayout=true \
             org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy-dependencies
           test -n "$(find webharvest-cli/target/dependency -name '*.jar' -type f -print -quit)"
