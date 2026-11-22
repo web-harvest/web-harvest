@@ -59,7 +59,77 @@ JETTY_RELOCATED_MODULES = {
     ("org.eclipse.jetty.websocket", "jetty-websocket-core-common"): {
         "source_module": "jetty-core/jetty-websocket/jetty-websocket-core-common",
         "package_prefixes": ["websocket/core/"],
-        "exclude_prefixes": ["websocket/core/client/"],
+        "exclude_prefixes": ["websocket/core/client/", "websocket/core/server/"],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-core-server"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-core-server",
+        "package_prefixes": ["websocket/core/server/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-server"): {
+        "source_module": "jetty-core/jetty-server",
+        "package_prefixes": ["server/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-security"): {
+        "source_module": "jetty-core/jetty-security",
+        "package_prefixes": ["security/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-session"): {
+        "source_module": "jetty-core/jetty-session",
+        "package_prefixes": ["session/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-xml"): {
+        "source_module": "jetty-core/jetty-xml",
+        "package_prefixes": ["xml/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee", "jetty-ee-webapp"): {
+        "source_module": "jetty-core/jetty-ee/jetty-ee-webapp",
+        "package_prefixes": ["ee/webapp/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9", "jetty-ee9-nested"): {
+        "source_module": "jetty-ee9/jetty-ee9-nested",
+        "package_prefixes": ["ee9/nested/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9", "jetty-ee9-security"): {
+        "source_module": "jetty-ee9/jetty-ee9-security",
+        "package_prefixes": ["ee9/security/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9", "jetty-ee9-servlet"): {
+        "source_module": "jetty-ee9/jetty-ee9-servlet",
+        "package_prefixes": ["ee9/servlet/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9", "jetty-ee9-webapp"): {
+        "source_module": "jetty-ee9/jetty-ee9-webapp",
+        "package_prefixes": ["ee9/webapp/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-api"): {
+        "source_module": "jetty-ee9/jetty-ee9-websocket/jetty-ee9-websocket-jetty-api",
+        "package_prefixes": ["ee9/websocket/api/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-common"): {
+        "source_module": "jetty-ee9/jetty-ee9-websocket/jetty-ee9-websocket-jetty-common",
+        "package_prefixes": ["ee9/websocket/common/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-server"): {
+        "source_module": "jetty-ee9/jetty-ee9-websocket/jetty-ee9-websocket-jetty-server",
+        "package_prefixes": ["ee9/websocket/server/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-servlet"): {
+        "source_module": "jetty-ee9/jetty-ee9-websocket/jetty-ee9-websocket-servlet",
+        "package_prefixes": ["ee9/websocket/servlet/"],
+        "exclude_prefixes": [],
     },
     ("org.eclipse.jetty.websocket", "jetty-websocket-jetty-api"): {
         "source_module": "jetty-core/jetty-websocket/jetty-websocket-jetty-api",
