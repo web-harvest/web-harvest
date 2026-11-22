@@ -479,7 +479,7 @@ jobs:
                 raise SystemExit(f"No embedded Maven POM metadata extracted from {archive}")
             print(f"Extracted {legal_count} license/NOTICE resources and {maven_count} Maven metadata files from {archive}")
             PY
-            { 
+            {
               echo "Archive: $jar_path"
               echo "SHA-256:"
               cat "$report/sha256.txt"
@@ -487,13 +487,6 @@ jobs:
               cat "$report/relevant-entries.txt"
               echo "Extracted license/NOTICE and Maven metadata resources:"
               cat "$report/resource-manifest.tsv"
-            } > "$report/summary.txt"
-            {
-              echo "Archive: $jar_path"
-              echo "SHA-256:"
-              cat "$report/sha256.txt"
-              echo "Relevant package/resource entries:"
-              cat "$report/relevant-entries.txt"
             } > "$report/summary.txt"
           done
       - name: Upload Maven diagnostics
