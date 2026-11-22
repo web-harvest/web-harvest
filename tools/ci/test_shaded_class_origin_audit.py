@@ -67,6 +67,41 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             metadata = next(x for x in report["components"] if x["coordinate"] == "example:metadata-only:1.0:jar")
             self.assertTrue(metadata["metadata_only_or_unmatched"])
 
+    def test_resolved_parent_pom_license_is_recorded_with_full_hash_chain(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repository = root / "m2"
+            child = repository / "example" / "child" / "1.0" / "child-1.0.pom"
+            parent = repository / "example" / "parent" / "2.0" / "parent-2.0.pom"
+            child.parent.mkdir(parents=True)
+            parent.parent.mkdir(parents=True)
+            child.write_text(
+                "<project><parent><groupId>example</groupId><artifactId>parent</artifactId>"
+                "<version>2.0</version></parent><artifactId>child</artifactId></project>",
+                encoding="utf-8",
+            )
+            parent.write_text(
+                "<project><licenses><license><name>Apache-2.0</name></license></licenses></project>",
+                encoding="utf-8",
+            )
+            write_jar(root / "distribution.jar", {"com/example/Type.class": b"same"})
+            write_jar(root / "dependencies/example/child/1.0/child-1.0.jar", {
+                "com/example/Type.class": b"same",
+            })
+            report = self.run_audit(root, maven_repository=repository)
+            component = next(
+                x for x in report["components"]
+                if x["coordinate"] == "example:child:1.0:jar"
+            )
+            evidence = component["resolved_maven_pom_license_evidence"]
+            self.assertEqual(evidence["licenses"], ["Apache-2.0"])
+            self.assertIn("parent POM chain", evidence["evidence_scope"])
+            self.assertEqual(
+                [x["coordinate"] for x in evidence["inheritance_chain"]],
+                ["example:child:1.0:pom", "example:parent:2.0:pom"],
+            )
+            self.assertTrue(all(len(x["pom_sha256"]) == 64 for x in evidence["inheritance_chain"]))
+
     def test_unique_path_with_different_bytes_is_not_an_exact_match(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
