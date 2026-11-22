@@ -94,13 +94,14 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
                 if x["coordinate"] == "example:child:1.0:jar"
             )
             evidence = component["resolved_maven_pom_license_evidence"]
-            self.assertEqual(evidence["licenses"], ["Apache-2.0"])
-            self.assertIn("parent POM chain", evidence["evidence_scope"])
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["licenses"], ["Apache-2.0"])
+            self.assertIn("parent POM chain", evidence[0]["evidence_scope"])
             self.assertEqual(
-                [x["coordinate"] for x in evidence["inheritance_chain"]],
+                [x["coordinate"] for x in evidence[0]["inheritance_chain"]],
                 ["example:child:1.0:pom", "example:parent:2.0:pom"],
             )
-            self.assertTrue(all(len(x["pom_sha256"]) == 64 for x in evidence["inheritance_chain"]))
+            self.assertTrue(all(len(x["pom_sha256"]) == 64 for x in evidence[0]["inheritance_chain"]))
 
     def test_unique_path_with_different_bytes_is_not_an_exact_match(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -249,7 +250,8 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             self.assertEqual(evidence[0]["licenses"], ["Example License"])
             self.assertEqual(evidence[0]["pom_path"], "example/library/1.0/library-1.0.pom")
             self.assertEqual(len(evidence[0]["pom_sha256"]), 64)
-            self.assertIn("parent inheritance is not inferred", evidence[0]["evidence_scope"])
+            self.assertIn("direct license declarations", evidence[0]["evidence_scope"])
+            self.assertNotIn("parent POM chain", evidence[0]["evidence_scope"])
 
 
 if __name__ == "__main__":
