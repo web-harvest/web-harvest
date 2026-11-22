@@ -72,7 +72,15 @@ class DistributionSbomTests(unittest.TestCase):
                             "pom_path": "example/byte-match/2.0/byte-match-2.0.pom",
                             "pom_sha256": "d" * 64,
                             "licenses": ["MIT"],
-                            "evidence_scope": "direct license declarations in the resolved Maven repository POM; parent inheritance is not inferred",
+                            "evidence_scope": "license declarations in the resolved Maven parent POM chain; the source POM and every traversed parent POM are SHA-256 recorded",
+                            "inheritance_chain": [
+                                {"coordinate": "example:byte-match:2.0:pom",
+                                 "pom_path": "example/byte-match/2.0/byte-match-2.0.pom",
+                                 "pom_sha256": "d" * 64},
+                                {"coordinate": "example:parent:1.0:pom",
+                                 "pom_path": "example/parent/1.0/parent-1.0.pom",
+                                 "pom_sha256": "e" * 64},
+                            ],
                         }],
                     },
                     {
@@ -131,6 +139,17 @@ class DistributionSbomTests(unittest.TestCase):
                 "example/byte-match/2.0/byte-match-2.0.pom",
                 [x["value"] for x in by_name["byte-match"]["properties"]
                  if x["name"].endswith("resolved-maven-pom-source:0")],
+            )
+            chain_properties = {
+                item["name"]: item["value"] for item in by_name["byte-match"]["properties"]
+            }
+            self.assertEqual(
+                chain_properties["webharvest:evidence:resolved-maven-pom-chain:0:1:coordinate"],
+                "example:parent:1.0:pom",
+            )
+            self.assertEqual(
+                chain_properties["webharvest:evidence:resolved-maven-pom-chain:0:1:sha256"],
+                "e" * 64,
             )
             self.assertEqual(by_name["classified"]["purl"],
                              "pkg:maven/example/classified@1.0?classifier=dom&type=jar")
