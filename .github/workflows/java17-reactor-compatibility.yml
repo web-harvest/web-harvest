@@ -705,15 +705,18 @@ jobs:
             local sbom="$2"
             local output="${results}/${label}.json"
             local log="${results}/${label}.stderr.log"
+            local scan_input="${sbom%.json}.cdx.json"
             local status
 
+            # OSV-Scanner v2 auto-detects CycloneDX by the *.cdx.json filename.
+            cp "${sbom}" "${scan_input}"
             set +e
             local sbom_dir
             sbom_dir="$(cd "$(dirname "${sbom}")" && pwd)"
             docker run --rm \
               --volume "${sbom_dir}:/sbom:ro" \
               "${osv_image}" \
-              scan source --format=json --all-packages --lockfile="/sbom/$(basename "${sbom}")" \
+              scan source --format=json --all-packages --lockfile="/sbom/$(basename "${scan_input}")" \
               > "${output}" 2> "${log}"
             status=$?
             set -e
