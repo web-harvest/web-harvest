@@ -59,7 +59,16 @@ def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     if dependency_jar_pom:
         return [{"license": {"name": value}} for value in dependency_jar_pom], "resolved_dependency_jar_embedded_pom"
     if resolved_maven_pom:
-        return [{"license": {"name": value}} for value in resolved_maven_pom], "resolved_maven_repository_pom_direct_declaration"
+        inherited = any(
+            "parent POM chain" in evidence.get("evidence_scope", "")
+            for evidence in origin.get("resolved_maven_pom_license_evidence", [])
+        )
+        source = (
+            "resolved_maven_repository_parent_pom_chain"
+            if inherited else
+            "resolved_maven_repository_pom_direct_declaration"
+        )
+        return [{"license": {"name": value}} for value in resolved_maven_pom], source
     if aggregate:
         # The inventory stores either SPDX IDs or human-readable names without
         # retaining the original field type. Preserve the value as a name rather
