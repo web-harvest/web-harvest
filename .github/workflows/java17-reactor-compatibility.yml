@@ -425,12 +425,68 @@ jobs:
             sha256sum "$jar_path" > "$report/sha256.txt"
             jar tf "$jar_path" > "$report/all-entries.txt"
             grep -E '^(groovy/|org/codehaus/groovy/|org/apache/commons/collections/|META-INF/groovy-release-info\.properties$|META-INF/maven/(org\.codehaus\.groovy|commons-collections)/|META-INF/services/)' "$report/all-entries.txt" > "$report/relevant-entries.txt" || true
+
+            # Preserve the actual license/NOTICE and embedded Maven metadata payloads.
+            # A path-only inventory cannot establish which legal text ships in a shaded archive.
+            python3 - "$jar_path" "$report" <<'PY'
+          from hashlib import sha256
+          from pathlib import Path, PurePosixPath
+          import csv
+          import re
+          import sys
+          import zipfile
+
+          archive = Path(sys.argv[1])
+          report = Path(sys.argv[2])
+          resources = report / "resources"
+          resources.mkdir(parents=True, exist_ok=True)
+          manifest_path = report / "resource-manifest.tsv"
+          legal_count = 0
+          maven_count = 0
+
+          with zipfile.ZipFile(archive) as jar, manifest_path.open("w", encoding="utf-8", newline="") as stream:
+              writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
+              writer.writerow(["kind", "archive_entry", "extracted_file", "size_bytes", "sha256"])
+              index = 0
+              for item in jar.infolist():
+                  entry = item.filename
+                  if item.is_dir():
+                      continue
+                  basename = PurePosixPath(entry).name.lower()
+                  is_maven = entry.startswith("META-INF/maven/") and basename in {"pom.properties", "pom.xml"}
+                  is_legal = (
+                      basename.startswith(("license", "notice", "copying", "copyright", "third-party"))
+                      or basename == "dependencies"
+                      or "/licenses/" in entry.lower()
+                      or entry.lower().startswith("meta-inf/licenses/")
+                  )
+                  if not (is_maven or is_legal):
+                      continue
+                  payload = jar.read(item)
+                  index += 1
+                  safe_entry = re.sub(r"[^A-Za-z0-9._-]+", "__", entry)
+                  output = resources / f"{index:04d}__{safe_entry}"
+                  output.write_bytes(payload)
+                  digest = sha256(payload).hexdigest()
+                  kind = "maven-metadata" if is_maven else "license-notice"
+                  writer.writerow([kind, entry, output.relative_to(report).as_posix(), len(payload), digest])
+                  legal_count += int(is_legal)
+                  maven_count += int(is_maven)
+
+          if legal_count == 0:
+              raise SystemExit(f"No license/NOTICE-like resources extracted from {archive}")
+          if maven_count == 0:
+              raise SystemExit(f"No embedded Maven POM metadata extracted from {archive}")
+          print(f"Extracted {legal_count} license/NOTICE resources and {maven_count} Maven metadata files from {archive}")
+          PY
             {
               echo "Archive: $jar_path"
               echo "SHA-256:"
               cat "$report/sha256.txt"
               echo "Relevant package/resource entries:"
               cat "$report/relevant-entries.txt"
+              echo "Extracted license/NOTICE and Maven metadata resources:"
+              cat "$report/resource-manifest.tsv"
             } > "$report/summary.txt"
           done
       - name: Upload Maven diagnostics
