@@ -529,11 +529,16 @@ jobs:
                   raise SystemExit("Invalid distribution archive SHA-256")
               if not report["components"] or not report["legal_resources"]:
                   raise SystemExit("Incomplete distribution component/legal-resource inventory")
+          cli_jetty = cli["class_inventory"]["jetty_class_attribution"]
           if cli["class_inventory"]["org_htmlunit_jetty_classes"] == 0:
               raise SystemExit("Expected relocated HtmlUnit/Jetty class evidence in CLI")
+          if cli_jetty["mapped_class_count"] != cli["class_inventory"]["org_htmlunit_jetty_classes"]:
+              raise SystemExit("Not every relocated Jetty class maps to an upstream Jetty 12.1.15 module")
+          if cli_jetty["unmapped_class_count"] != 0:
+              raise SystemExit("Unmapped relocated Jetty classes remain in CLI")
           if ide["class_inventory"]["org_eclipse_jetty_classes"] == 0:
               raise SystemExit("Expected original-namespace Jetty class evidence in IDE")
-          print("Validated exact CLI/IDE archive hashes, embedded coordinates, class evidence and legal resources.")
+          print("Validated exact CLI/IDE archive hashes, embedded coordinates, complete relocated Jetty class mapping and legal resources.")
           PY
       - name: Upload Maven diagnostics
         if: always()
