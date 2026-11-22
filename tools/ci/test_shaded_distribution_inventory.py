@@ -58,7 +58,7 @@ class ShadedInventoryTests(unittest.TestCase):
             report = json.loads(output.read_text(encoding="utf-8"))
             item = next(x for x in report["components"] if x["name"] == "metadata-only")
             self.assertEqual(item["code_attribution"], "embedded_metadata_only_unattributed")
-            self.assertEqual(item["declared_licenses"], [])
+            self.assertEqual(item["embedded_pom_licenses"], [])
 
     def test_aggregate_sbom_membership_is_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
