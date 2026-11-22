@@ -50,6 +50,22 @@ class DistributionSbomTests(unittest.TestCase):
                         "matched_archive_class_count": 1,
                         "unmatched_dependency_class_count": 0,
                         "metadata_only_or_unmatched": False,
+                        "dependency_jar_pom_license_evidence": [{
+                            "dependency_jar": "example/byte-match/2.0/byte-match-2.0.jar",
+                            "dependency_jar_sha256": "c" * 64,
+                            "pom_entry": "META-INF/maven/example/byte-match/pom.xml",
+                            "pom_sha256": "d" * 64,
+                            "licenses": ["MIT"],
+                        }],
+                    },
+                    {
+                        "coordinate": "example:classified:1.0:dom:jar",
+                        "dependency_jar_sha256": ["e" * 64],
+                        "dependency_jars": ["example/classified/1.0/classified-1.0-dom.jar"],
+                        "dependency_class_count": 0,
+                        "matched_archive_class_count": 0,
+                        "unmatched_dependency_class_count": 0,
+                        "metadata_only_or_unmatched": True,
                     },
                     {
                         "coordinate": "org.webharvest:webharvest-cli:2.3.1:jar",
@@ -65,7 +81,8 @@ class DistributionSbomTests(unittest.TestCase):
             aggregate = {
                 "bomFormat": "CycloneDX",
                 "components": [
-                    {"purl": "pkg:maven/example/metadata-only@1.0?type=jar"},
+                    {"purl": "pkg:maven/example/metadata-only@1.0?type=jar", "scope": "required"},
+                    {"purl": "pkg:maven/example/classified@1.0?classifier=dom&type=jar", "scope": "optional"},
                     {"purl": "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar"},
                     {"purl": "pkg:maven/example/aggregate-only@3.0?type=jar"},
                 ],
@@ -81,12 +98,17 @@ class DistributionSbomTests(unittest.TestCase):
 
             bom, delta = build(p, o, a, "cli", out, delta_out)
             by_name = {item["name"]: item for item in bom["components"]}
-            self.assertEqual(set(by_name), {"metadata-only", "byte-match"})
+            self.assertEqual(set(by_name), {"metadata-only", "byte-match", "classified"})
             self.assertEqual(by_name["metadata-only"]["hashes"][0]["content"], "b" * 64)
             self.assertEqual(by_name["metadata-only"]["licenses"], [
                 {"license": {"name": "Apache-2.0"}}
             ])
             self.assertEqual(by_name["byte-match"]["hashes"][0]["content"], "c" * 64)
+            self.assertEqual(by_name["byte-match"]["licenses"], [{"license": {"name": "MIT"}}])
+            self.assertEqual(by_name["classified"]["purl"],
+                             "pkg:maven/example/classified@1.0?classifier=dom&type=jar")
+            self.assertEqual(by_name["classified"]["scope"], "optional")
+            self.assertNotIn("scope", by_name["byte-match"])
             self.assertIn(
                 "SHA-256 of resolved source dependency JAR",
                 next(x["value"] for x in by_name["byte-match"]["properties"]
@@ -98,6 +120,13 @@ class DistributionSbomTests(unittest.TestCase):
             self.assertEqual(delta["aggregate_only_purls"], [
                 "pkg:maven/example/aggregate-only@3.0?type=jar"
             ])
+            self.assertEqual(delta["aggregate_only_classifications"][0]["classification"],
+                "aggregate_reactor_component_not_observed_in_distribution_embedded_metadata_or_runtime_dependency_inventory")
+            self.assertEqual(
+                next(x["classification"] for x in delta["distribution_only_classifications"]
+                     if x["purl"] == "pkg:maven/example/byte-match@2.0?type=jar"),
+                "runtime_dependency_class_byte_correlated",
+            )
             self.assertEqual(bom["metadata"]["component"]["hashes"][0]["content"], "a" * 64)
             self.assertEqual(bom["metadata"]["component"]["purl"],
                              "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar")
