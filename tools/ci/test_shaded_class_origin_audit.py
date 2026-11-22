@@ -107,7 +107,21 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             jetty = next(x for x in report["components"] if x["coordinate"].startswith("org.eclipse.jetty:"))
             self.assertFalse(jetty["metadata_only_or_unmatched"])
 
-    def test_class_without_candidate_is_explicitly_unmatched(self):
+    def test_project_owned_class_without_dependency_candidate_is_first_party(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {
+                "org/webharvest/server/WebHarvestServer.class": b"first-party",
+            })
+            write_jar(root / "dependencies/example/library/1.0/library-1.0.jar", {
+                "com/example/Library.class": b"library",
+            })
+            report = self.run_audit(root)
+            self.assertEqual(report["summary"]["first_party"], 1)
+            self.assertEqual(report["summary"]["unmatched"], 0)
+            self.assertEqual(report["class_attribution"][0]["status"], "first_party")
+
+    def test_class_without_candidate_outside_project_namespace_is_unmatched(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             write_jar(root / "distribution.jar", {"generated/Generated.class": b"generated"})
