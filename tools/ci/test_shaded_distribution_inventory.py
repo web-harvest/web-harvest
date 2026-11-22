@@ -73,7 +73,7 @@ class ShadedInventoryTests(unittest.TestCase):
             with zipfile.ZipFile(archive, "w") as jar:
                 jar.writestr("org/htmlunit/jetty/client/Client.class", b"class-bytes")
                 jar.writestr("META-INF/maven/org.eclipse.jetty/jetty-client/pom.properties",
-                             "groupId=org.eclipse.jetty\\nartifactId=jetty-client\\nversion=12.1.15\\n")
+                             "groupId=org.eclipse.jetty\nartifactId=jetty-client\nversion=12.1.15\n")
                 jar.writestr("META-INF/maven/org.eclipse.jetty/jetty-client/pom.xml", "<project/>")
                 jar.writestr("META-INF/NOTICE.txt", "Unrelated third-party notice")
             output = root / "report.json"
@@ -97,7 +97,7 @@ class ShadedInventoryTests(unittest.TestCase):
             archive = self.make_archive(root)
             with zipfile.ZipFile(archive, "a") as jar:
                 jar.writestr("META-INF/maven/example/inherited-license/pom.properties",
-                             "groupId=example\\nartifactId=inherited-license\\nversion=1.0\\n")
+                             "groupId=example\nartifactId=inherited-license\nversion=1.0\n")
                 jar.writestr("META-INF/maven/example/inherited-license/pom.xml", "<project/>")
             sbom = root / "bom.json"
             sbom.write_text(json.dumps({"bomFormat": "CycloneDX", "components": [
