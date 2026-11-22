@@ -198,6 +198,10 @@
                             <transformers>
                                 <transformer implementation="org.apache.logging.log4j.maven.plugins.shade.transformer.Log4j2PluginCacheFileTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                                    <resource>META-INF/NOTICE-jetty-12.1.15.txt</resource>
+                                    <file>${maven.multiModuleProjectDirectory}/third-party-notices/jetty-12.1.15/NOTICE.txt</file>
+                                </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
                                         <Multi-Release>true</Multi-Release>

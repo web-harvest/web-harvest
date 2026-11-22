@@ -643,8 +643,12 @@ jobs:
               raise SystemExit(f"Expected 12 Jetty 12.1.15 components in CLI; found {len(jetty_components)}")
           if any(not component["upstream_project_license_evidence"] for component in jetty_components):
               raise SystemExit("A relocated Jetty component is missing pinned upstream license/NOTICE provenance")
-          if cli["jetty_notice_audit"]["content_level_reconciliation"] != "open":
-              raise SystemExit("Jetty NOTICE status must remain explicitly open pending legal-resource reconciliation")
+          for report in (cli, ide):
+              notice_audit = report["jetty_notice_audit"]
+              if notice_audit["archive_named_jetty_notice_candidates"] != ["META-INF/NOTICE-jetty-12.1.15.txt"]:
+                  raise SystemExit(f"{report['distribution']} is missing the separately named Jetty 12.1.15 NOTICE resource")
+              if notice_audit["content_level_reconciliation"] != "upstream_notice_payload_preserved":
+                  raise SystemExit(f"{report['distribution']} Jetty NOTICE bytes do not match the pinned upstream payload")
           ide_class_count = ide["class_inventory"]["org_eclipse_jetty_classes"]
           ide_jetty = ide["class_inventory"]["jetty_class_attribution"]
           if ide_class_count != 1931:
@@ -655,7 +659,7 @@ jobs:
               )
           if ide_jetty["unmapped_class_count"] != 0:
               raise SystemExit(f"IDE has {ide_jetty['unmapped_class_count']} unmapped Jetty classes")
-          print("Validated exact CLI/IDE archive hashes, complete CLI/IDE Jetty class attribution, 12 CLI upstream module/license records and the explicit open NOTICE gate.")
+          print("Validated exact CLI/IDE archive hashes, complete CLI/IDE Jetty class attribution, 12 CLI upstream module/license records and byte-identical Jetty 12.1.15 NOTICE preservation in both shaded archives.")
           PY
       - name: Upload Maven diagnostics
         if: always()
