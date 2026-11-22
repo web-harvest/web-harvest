@@ -15,6 +15,72 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 
+JETTY_RELOCATED_MODULES = {
+    ("org.eclipse.jetty", "jetty-client"): {
+        "source_module": "jetty-core/jetty-client",
+        "package_prefixes": ["client/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-alpn-client"): {
+        "source_module": "jetty-core/jetty-alpn/jetty-alpn-client",
+        "package_prefixes": ["alpn/client/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-http"): {
+        "source_module": "jetty-core/jetty-http",
+        "package_prefixes": ["http/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-util"): {
+        "source_module": "jetty-core/jetty-util",
+        "package_prefixes": ["util/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty", "jetty-io"): {
+        "source_module": "jetty-core/jetty-io",
+        "package_prefixes": ["io/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.compression", "jetty-compression-gzip"): {
+        "source_module": "jetty-core/jetty-compression/jetty-compression-gzip",
+        "package_prefixes": ["compression/gzip/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.compression", "jetty-compression-common"): {
+        "source_module": "jetty-core/jetty-compression/jetty-compression-common",
+        "package_prefixes": ["compression/"],
+        "exclude_prefixes": ["compression/gzip/"],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-core-client"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-core-client",
+        "package_prefixes": ["websocket/core/client/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-core-common"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-core-common",
+        "package_prefixes": ["websocket/core/"],
+        "exclude_prefixes": ["websocket/core/client/"],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-jetty-api"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-jetty-api",
+        "package_prefixes": ["websocket/api/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-jetty-common"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-jetty-common",
+        "package_prefixes": ["websocket/common/"],
+        "exclude_prefixes": [],
+    },
+    ("org.eclipse.jetty.websocket", "jetty-websocket-jetty-client"): {
+        "source_module": "jetty-core/jetty-websocket/jetty-websocket-jetty-client",
+        "package_prefixes": ["websocket/client/"],
+        "exclude_prefixes": [],
+    },
+}
+JETTY_SOURCE_TAG = "jetty-12.1.15"
+JETTY_SOURCE_COMMIT = "770f5e4d1c39673d6356163118a1e6bf1117ced3"
+
+
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -107,12 +173,34 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
 
     jetty_class_entries = [name for name in class_entries if name.startswith("org/htmlunit/jetty/")]
     original_jetty_class_entries = [name for name in class_entries if name.startswith("org/eclipse/jetty/")]
+    jetty_namespace = "org/htmlunit/jetty/" if jetty_class_entries else "org/eclipse/jetty/"
+    attributed_classes: dict[str, str] = {}
     for item in components.values():
-        if item["group"].startswith("org.eclipse.jetty") and (jetty_class_entries or original_jetty_class_entries):
-            item["code_attribution"] = "namespace_correlated_not_artifact_specific"
-            item["class_count_correlated_namespace"] = len(
-                jetty_class_entries if jetty_class_entries else original_jetty_class_entries
-            )
+        spec = JETTY_RELOCATED_MODULES.get((item["group"], item["name"]))
+        if not spec or item["version"] != JETTY_SOURCE_TAG.removeprefix("jetty-"):
+            continue
+        matched = [
+            name for name in class_entries
+            if any(name.startswith(jetty_namespace + prefix) for prefix in spec["package_prefixes"])
+            and not any(name.startswith(jetty_namespace + prefix) for prefix in spec["exclude_prefixes"])
+        ]
+        duplicates = [name for name in matched if name in attributed_classes]
+        if duplicates:
+            raise ValueError(f"Jetty class package mapping is ambiguous: {duplicates[:5]}")
+        for name in matched:
+            attributed_classes[name] = item["purl"]
+        item["code_attribution"] = "class_prefix_correlated_to_upstream_module_source"
+        item["class_evidence"] = {
+            "namespace_prefix": jetty_namespace,
+            "package_prefixes": spec["package_prefixes"],
+            "excluded_package_prefixes": spec["exclude_prefixes"],
+            "class_count": len(matched),
+            "class_entries": matched,
+            "upstream_tag": JETTY_SOURCE_TAG,
+            "upstream_commit": JETTY_SOURCE_COMMIT,
+            "upstream_module": spec["source_module"],
+            "upstream_pom": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/{spec['source_module']}/pom.xml",
+        }
 
     aggregate_components = {}
     if sbom_path:
@@ -175,6 +263,11 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
             "org_eclipse_jetty_classes": len(original_jetty_class_entries),
             "org_htmlunit_jetty_class_entries": jetty_class_entries,
             "org_eclipse_jetty_class_entries": original_jetty_class_entries,
+            "jetty_class_attribution": {
+                "namespace": jetty_namespace,
+                "mapped_class_count": len(attributed_classes),
+                "unmapped_class_count": len(set(jetty_class_entries if jetty_class_entries else original_jetty_class_entries) - set(attributed_classes)),
+            },
             "top_level_package_roots": dict(sorted(roots.items())),
         },
         "aggregate_sbom": {
