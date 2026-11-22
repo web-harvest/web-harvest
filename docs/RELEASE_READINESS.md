@@ -136,3 +136,38 @@ The root `NOTICE` names a limited set of third-party components and then says �
 ### Decision
 
 **RELEASE = NO-GO.** No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
+
+
+## 2026-11-22 follow-up — shaded distribution evidence
+
+**Canonical source:** PR #322 merged to `main` as `84a7e7d3b747e0af3929ec76cbad0bb372a50cd6`.  
+**Decision remains: NO-GO.** This follow-up supplements the prior checkpoint; it does not authorize a release or publication.
+
+### CI and retained artifact
+
+The exact PR head `cd1c773ed3732c9fadd017b3a0e938d8797a31b8` passed:
+- Java 17 full reactor, static analysis, Javadoc JAR audit, packaged CLI and IDE smoke tests, shaded inventory and diagnostics upload — run [45010539592](https://github.com/web-harvest/web-harvest/actions/runs/45010539592).
+- Workflow Configuration Validation — [45010539576](https://github.com/web-harvest/web-harvest/actions/runs/45010539576).
+- Actions dependency lockfile — [45010539661](https://github.com/web-harvest/web-harvest/actions/runs/45010539661).
+- OSV Scanner PR Scan — [45010539595](https://github.com/web-harvest/web-harvest/actions/runs/45010539595).
+
+Retained artifact: `java17-reactor-diagnostics`, artifact ID `14749662873`, SHA-256 `88c91fd9d480bd99b95114dd0da62ff8eb34e5678e9ba55c71bb85cf1b24a4f0`. It includes actual extracted legal-resource and embedded Maven POM/property payloads, with archive path, extracted path, size and SHA-256 in each distribution manifest.
+
+| Distribution | Extracted resources | Maven metadata | License/notice resources |
+|---|---:|---:|---:|
+| CLI | 123 | 110 | 13 |
+| IDE | 96 | 84 | 12 |
+
+### Relocated Jetty and legal-resource finding
+
+The CLI contains 1,280 relocated classes under `org/htmlunit/jetty/**`, no classes under `org/eclipse/jetty/**`, and 12 embedded Jetty 12.1.15 origin metadata records. The IDE contains 1,931 original-namespace `org/eclipse/jetty/**` classes. These are package-level facts; coordinate-to-class-family mapping and exact component-level SBOM generation remain open in [#323](https://github.com/web-harvest/web-harvest/issues/323).
+
+The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is Eclipse Servlet's notice. The extracted `META-INF/NOTICE.txt` in both packages is Apache Commons Lang's notice. None of these is Jetty's notice. The exact Jetty 12.1.15 upstream source was checked at tag `jetty-12.1.15`, commit `770f5e4d1c39673d6356163118a1e6bf1117ced3`: its root `LICENSE` is EPL-2.0 and its `NOTICE.txt` declares EPL-2.0 or Apache-2.0 and contains Jetty project/trademark/copyright and third-party notices. Upstream file blob IDs: LICENSE `22840e2944ffc53b1953091fc31954e69126348d`; NOTICE `ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db`.
+
+**Unresolved:** the shaded CLI/IDE archives do not currently expose a Jetty-specific NOTICE payload in the extracted manifest. The packaging process must preserve/aggregate Jetty's applicable legal notices without overwriting notices from Jakarta Mail, Eclipse Servlet, Commons Lang or other components. This is a release blocker, not a legal conclusion.
+
+### Follow-up ownership and gates
+
+- [#323](https://github.com/web-harvest/web-harvest/issues/323) owns distribution-specific CLI/IDE component manifests or CycloneDX SBOMs, class-to-origin correlation, aggregate SBOM delta classification, license/NOTICE reconciliation and deterministic CI assertions.
+- [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
+- No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
