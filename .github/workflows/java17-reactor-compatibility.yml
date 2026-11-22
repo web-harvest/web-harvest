@@ -575,7 +575,7 @@ jobs:
               classified = sum(summary[key] for key in (
                   "unique_exact_byte_match", "unique_path_match_bytes_differ",
                   "ambiguous_exact_byte_match", "ambiguous_path_match_bytes_differ",
-                  "special_case_cli_relocated_jetty", "unmatched",
+                  "special_case_cli_relocated_jetty", "first_party", "unmatched",
               ))
               if classified != summary["archive_class_count"]:
                   raise SystemExit("Class-origin audit did not classify every shaded class")
