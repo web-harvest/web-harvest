@@ -314,7 +314,7 @@
                     <links>
                         <link>https://docs.oracle.com/en/java/javase/17/docs/api/</link>
                     </links>
-                    <!-- Enforce doclint errors across modules; keep residual warnings visible and tracked in Issue #291. -->
+                    <!-- Enforce doclint errors across all modules; keep residual warnings visible and tracked in Issue #291. -->
                     <failOnError>true</failOnError>
                 </configuration>
             </plugin>
