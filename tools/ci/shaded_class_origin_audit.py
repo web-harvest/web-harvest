@@ -60,7 +60,7 @@ def inspect_dependency_jar(path: Path, root: Path) -> dict:
                 if group and artifact and version:
                     embedded_coordinates.add(f"{group}:{artifact}:{version}:jar")
             if (name.endswith(".class") and not name.endswith("module-info.class")
-                    and not name.startswith("META-INF/versions/")):
+                   ):
                 classes[name] = sha256(jar.read(name))
     path_coordinate = coordinates_from_repository_path(path, root)
     coordinates = sorted(embedded_coordinates)
@@ -74,6 +74,14 @@ def inspect_dependency_jar(path: Path, root: Path) -> dict:
         "class_count": len(classes),
         "classes": classes,
     }
+
+
+def is_cli_relocated_jetty(class_path: str) -> bool:
+    normalized = class_path
+    if normalized.startswith("META-INF/versions/"):
+        parts = normalized.split("/", 3)
+        normalized = parts[3] if len(parts) == 4 else normalized
+    return normalized.startswith("org/htmlunit/jetty/")
 
 
 def archive_coordinates(archive: zipfile.ZipFile) -> set[str]:
@@ -129,7 +137,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
         archive_classes = {}
         for name in sorted(set(archive.namelist())):
             if (name.endswith(".class") and not name.endswith("module-info.class")
-                    and not name.startswith("META-INF/versions/")):
+                   ):
                 archive_classes[name] = sha256(archive.read(name))
 
     for component in dependency_components.values():
@@ -140,7 +148,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
     for class_path, class_sha in archive_classes.items():
         matches = candidates.get(class_path, [])
         exact = [candidate for candidate in matches if candidate["class_sha256"] == class_sha]
-        if distribution == "cli" and class_path.startswith("org/htmlunit/jetty/"):
+        if distribution == "cli" and is_cli_relocated_jetty(class_path):
             # HtmlUnit relocates Jetty classes into this namespace. Preserve any
             # container-JAR candidates, but do not misattribute them to HtmlUnit;
             # the pinned Jetty module mapping remains the origin evidence.
