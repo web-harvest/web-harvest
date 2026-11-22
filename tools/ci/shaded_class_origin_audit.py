@@ -107,6 +107,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
 
     candidates: dict[str, list[dict]] = defaultdict(list)
     dependency_components: dict[str, dict] = {}
+    dependency_class_paths: dict[str, set[str]] = defaultdict(set)
     for dependency in dependencies:
         coordinate = dependency["coordinate"]
         component = dependency_components.setdefault(coordinate, {
@@ -124,6 +125,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
         component["dependency_jar_sha256"].append(dependency["sha256"])
         component["dependency_class_count"] += dependency["class_count"]
         for class_path, class_sha in dependency["classes"].items():
+            dependency_class_paths[coordinate].add(class_path)
             candidates[class_path].append({
                 "coordinate": coordinate,
                 "dependency_jar": dependency["path"],
@@ -142,6 +144,10 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
 
     for component in dependency_components.values():
         component["metadata_in_shaded_archive"] = component["coordinate"] in shaded_coordinates
+        component["unmatched_dependency_class_count"] = sum(
+            class_path not in archive_classes
+            for class_path in dependency_class_paths.get(component["coordinate"], set())
+        )
 
     class_results = []
     counts: Counter[str] = Counter()
@@ -215,6 +221,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
                 "unique_exact_byte_match_count": 0,
                 "unique_path_match_bytes_differ_count": 0,
                 "ambiguous_class_count": 0,
+                "unmatched_dependency_class_count": 0,
                 "metadata_in_shaded_archive": True,
             }
 
