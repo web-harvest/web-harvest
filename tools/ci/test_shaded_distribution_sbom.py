@@ -66,12 +66,13 @@ class DistributionSbomTests(unittest.TestCase):
                         "matched_archive_class_count": 1,
                         "unmatched_dependency_class_count": 0,
                         "metadata_only_or_unmatched": False,
-                        "dependency_jar_pom_license_evidence": [{
+                        "resolved_maven_pom_license_evidence": [{
                             "dependency_jar": "example/byte-match/2.0/byte-match-2.0.jar",
                             "dependency_jar_sha256": "c" * 64,
-                            "pom_entry": "META-INF/maven/example/byte-match/pom.xml",
+                            "pom_path": "example/byte-match/2.0/byte-match-2.0.pom",
                             "pom_sha256": "d" * 64,
                             "licenses": ["MIT"],
+                            "evidence_scope": "direct license declarations in the resolved Maven repository POM; parent inheritance is not inferred",
                         }],
                     },
                     {
@@ -121,6 +122,16 @@ class DistributionSbomTests(unittest.TestCase):
             ])
             self.assertEqual(by_name["byte-match"]["hashes"][0]["content"], "c" * 64)
             self.assertEqual(by_name["byte-match"]["licenses"], [{"license": {"name": "MIT"}}])
+            self.assertEqual(
+                next(x["value"] for x in by_name["byte-match"]["properties"]
+                     if x["name"].endswith("license-source")),
+                "resolved_maven_repository_pom_direct_declaration",
+            )
+            self.assertIn(
+                "example/byte-match/2.0/byte-match-2.0.pom",
+                [x["value"] for x in by_name["byte-match"]["properties"]
+                 if x["name"].endswith("resolved-maven-pom-source:0")],
+            )
             self.assertEqual(by_name["classified"]["purl"],
                              "pkg:maven/example/classified@1.0?classifier=dom&type=jar")
             self.assertEqual(by_name["classified"]["scope"], "optional")
