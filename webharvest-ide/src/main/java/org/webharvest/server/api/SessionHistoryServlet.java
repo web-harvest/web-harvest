@@ -24,19 +24,19 @@ import java.util.stream.Collectors;
 /**
  * REST API endpoint for retrieving session execution history.
  * 
- * <h3>Endpoints:</h3>
+ * <h2>Endpoints:</h2>
  * <ul>
  *   <li><b>GET /api/sessions/history</b> - Returns list of executed sessions</li>
  * </ul>
  * 
- * <h3>Query Parameters:</h3>
+ * <h2>Query Parameters:</h2>
  * <ul>
  *   <li><b>limit</b> - Maximum number of sessions to return (default: 20, max: 100)</li>
  *   <li><b>status</b> - Filter by session status (COMPLETED, FAILED, RUNNING, etc.)</li>
  *   <li><b>offset</b> - Skip first N sessions for pagination (default: 0)</li>
  * </ul>
  * 
- * <h3>Response Format:</h3>
+ * <h2>Response Format:</h2>
  * <pre>{@code
  * {
  *   "sessions": [
@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
  * }
  * }</pre>
  * 
- * <h3>Example Usage:</h3>
+ * <h2>Example Usage:</h2>
  * <pre>{@code
  * // Get last 10 sessions
  * GET /api/sessions/history?limit=10
