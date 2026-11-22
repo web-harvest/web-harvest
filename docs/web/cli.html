@@ -4,32 +4,22 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebHarvest CLI - Professional Command-Line Interface</title>
-    <meta name="description"
-        content="WebHarvest CLI: Professional command-line interface for automated web scraping. Unified configuration system, batch processing, cron integration, and CI/CD pipelines." />
-    <meta name="keywords"
-        content="webharvest CLI, command line web scraping, batch processing, automation, cron jobs, CI/CD, server automation, headless scraping, unified configuration" />
+    <title>WebHarvest CLI — legacy interface and compatibility notes</title>
+    <meta name="description" content="Historical WebHarvest CLI documentation. The command-line interface is under compatibility and product-role review." />
+    <meta name="keywords" content="WebHarvest, legacy CLI, headless execution, compatibility" />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="WebHarvest Team" />
-    <link rel="canonical" href="https://webharvest.sourceforge.net/cli.html" />
-
-    <!-- Open Graph / Facebook -->
+<!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://webharvest.sourceforge.net/cli.html" />
-    <meta property="og:title" content="WebHarvest CLI - Professional Command-Line Interface" />
+<meta property="og:title" content="WebHarvest CLI - Professional Command-Line Interface" />
     <meta property="og:description"
         content="Professional command-line interface for automated web scraping and data extraction. Unified configuration system works for both CLI and IDE." />
-    <meta property="og:image" content="https://webharvest.sourceforge.net/images/logo.png" />
-
-    <!-- Twitter -->
+<!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://webharvest.sourceforge.net/cli.html" />
-    <meta property="twitter:title" content="WebHarvest CLI - Professional Command-Line Interface" />
+<meta property="twitter:title" content="WebHarvest CLI - Professional Command-Line Interface" />
     <meta property="twitter:description"
         content="Professional command-line interface for automated web scraping and data extraction." />
-    <meta property="twitter:image" content="https://webharvest.sourceforge.net/images/logo.png" />
-
-    <!-- Structured Data -->
+<!-- Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -52,11 +42,7 @@
       "publisher": {
         "@type": "Organization",
         "name": "WebHarvest",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://webharvest.sourceforge.net/images/logo.png"
-        }
-      }
+  }
     }
     </script>
 
@@ -67,6 +53,12 @@
 </head>
 
 <body>
+
+    <div role="note" aria-label="Documentation status" style="background:#fff4d6;color:#4a3410;border:1px solid #e5c46b;padding:1rem 1.25rem;margin:1rem auto;max-width:1100px;border-radius:8px;">
+        <strong>Documentation status — historical page.</strong>
+        This page contains legacy CLI material and is being corrected. The CLI is an optional headless adapter under compatibility review; Core's Java API is the primary integration surface. Docker is not a product requirement. Do not infer current support or download availability from historical examples.
+        <a href="https://github.com/web-harvest/web-harvest/blob/main/docs/CLI_AND_HEADLESS_EXECUTION.md">Read the current architecture decision.</a>
+    </div>
 
     <!-- Professional Header -->
     <header class="site-header">
@@ -98,11 +90,10 @@
     <section class="hero">
         <div class="container hero-inner">
             <div class="hero-content">
-                <h1>Professional CLI<br />for Web Scraping</h1>
-                <p class="lead">Automate data extraction from the terminal</p>
+                <h1>Legacy headless CLI<br />and compatibility</h1>
+                <p class="lead">An optional process adapter for the WebHarvest Core runtime</p>
                 <p class="hero-description">
-                    Production-ready command-line interface with unified configuration system (v2.2.0).
-                    Perfect for servers, cron jobs, CI/CD pipelines, and batch processing workflows.
+                    The current CLI implementation is a one-shot batch runner. Its arguments, execution contract and distribution are under review. This historical page is not a guarantee that every feature described below is supported by the current main branch.
                 </p>
                 <div class="hero-buttons">
                     <a class="btn btn-primary btn-large" href="#download">
@@ -201,8 +192,7 @@
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h3>Batch Processing</h3>
-                <p>Process multiple configurations sequentially or in parallel. Handle large-scale
-                    data extraction with ease.</p>
+                <p>The current entry point executes one configuration per process. Parallel or multi-configuration batch orchestration is not established as a supported CLI capability.</p>
                 <div class="feature-tags">
                     <span class="tag">Parallel</span>
                     <span class="tag">Scalable</span>
@@ -300,7 +290,7 @@
                 <div class="step-number">2</div>
                 <div class="step-content">
                     <h3>Download & Extract</h3>
-                    <p>Download the CLI JAR file from SourceForge:</p>
+                    <p>This is a historical installation example. No current standalone CLI binary download is advertised here.</p>
                     <div class="code-window">
                         <div class="window-header">
                             <div class="window-controls">
@@ -312,11 +302,11 @@
                         </div>
                         <div class="window-content">
                             <pre><code class="language-bash"># Download CLI
-wget https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/webharvest-cli-2.2.0.jar/download -O webharvest-cli-2.2.0.jar
+# Legacy binary download command removed; no current CLI release is advertised here.
 
 # Or using curl
 curl -L -o webharvest-cli-2.2.0.jar \
-  https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/webharvest-cli-2.2.0.jar/download</code></pre>
+  https://github.com/web-harvest/web-harvest</code></pre>
                         </div>
                     </div>
                 </div>
@@ -798,12 +788,12 @@ java $JAVA_OPTS -jar webharvest-cli.jar config.xml</code></pre>
     <section class="download container" id="download" style="margin-top: 6rem;">
         <div class="download-card">
             <h2>Ready to Start?</h2>
-            <p>Download WebHarvest CLI and experience professional command-line web scraping</p>
+            <p>No current standalone CLI release is announced here. The product role and compatibility contract are being reassessed.</p>
             <div class="download-buttons">
                 <a class="btn btn-primary btn-large"
-                    href="https://sourceforge.net/projects/web-harvest/files/webhervest/2.2.0/webharvest-cli-2.2.0.jar/download">
+                    href="https://github.com/web-harvest/web-harvest">
                     <i class="fas fa-download"></i>
-                    Download CLI v2.2.0 (JAR)
+                    Open canonical GitHub repository
                 </a>
                 <a class="btn btn-secondary btn-large" href="examples/">
                     <i class="fas fa-code"></i>
@@ -825,7 +815,7 @@ java $JAVA_OPTS -jar webharvest-cli.jar config.xml</code></pre>
                 <a href="documentation/">Documentation</a>
                 <a href="examples/">Examples</a>
                 <a href="support.html">Support</a>
-                <a href="https://sourceforge.net/projects/web-harvest/">SourceForge</a>
+                <a href="https://github.com/web-harvest/web-harvest">GitHub repository</a>
             </div>
             <div class="footer-legal">
                 <p>Copyright © 2006-2025 WebHarvest Contributors. All rights reserved.</p>
