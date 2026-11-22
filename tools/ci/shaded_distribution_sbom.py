@@ -221,6 +221,15 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
                 {"name": f"webharvest:evidence:resolved-maven-pom-license-scope:{index}",
                  "value": evidence.get("evidence_scope", "")},
             ])
+            for chain_index, pom in enumerate(evidence.get("inheritance_chain", [])):
+                props.extend([
+                    {"name": f"webharvest:evidence:resolved-maven-pom-chain:{index}:{chain_index}:coordinate",
+                     "value": pom.get("coordinate", "")},
+                    {"name": f"webharvest:evidence:resolved-maven-pom-chain:{index}:{chain_index}:path",
+                     "value": pom.get("pom_path", "")},
+                    {"name": f"webharvest:evidence:resolved-maven-pom-chain:{index}:{chain_index}:sha256",
+                     "value": pom.get("pom_sha256", "")},
+                ])
         if p.get("code_attribution"):
             props.append({"name": "webharvest:evidence:namespace-attribution",
                           "value": p["code_attribution"]})
