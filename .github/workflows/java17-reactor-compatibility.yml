@@ -445,7 +445,7 @@ jobs:
             maven_count = 0
 
             with zipfile.ZipFile(archive) as jar, manifest_path.open("w", encoding="utf-8", newline="") as stream:
-                writer = csv.writer(stream, delimiter="\\t", lineterminator="\\n")
+                writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
                 writer.writerow(["kind", "archive_entry", "extracted_file", "size_bytes", "sha256"])
                 index = 0
                 for item in jar.infolist():
