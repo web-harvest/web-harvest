@@ -38,9 +38,15 @@ def load_json(path: Path) -> dict:
 
 def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     embedded = provenance.get("embedded_pom_licenses") or []
-    dependency_pom = sorted({
+    dependency_jar_pom = sorted({
         value
         for evidence in origin.get("dependency_jar_pom_license_evidence", [])
+        for value in evidence.get("licenses", [])
+        if isinstance(value, str) and value
+    })
+    resolved_maven_pom = sorted({
+        value
+        for evidence in origin.get("resolved_maven_pom_license_evidence", [])
         for value in evidence.get("licenses", [])
         if isinstance(value, str) and value
     })
@@ -50,8 +56,10 @@ def license_records(provenance: dict, origin: dict) -> tuple[list[dict], str]:
     )
     if embedded:
         return [{"license": {"name": value}} for value in embedded], "shaded_embedded_pom"
-    if dependency_pom:
-        return [{"license": {"name": value}} for value in dependency_pom], "resolved_dependency_jar_embedded_pom"
+    if dependency_jar_pom:
+        return [{"license": {"name": value}} for value in dependency_jar_pom], "resolved_dependency_jar_embedded_pom"
+    if resolved_maven_pom:
+        return [{"license": {"name": value}} for value in resolved_maven_pom], "resolved_maven_repository_pom_direct_declaration"
     if aggregate:
         # The inventory stores either SPDX IDs or human-readable names without
         # retaining the original field type. Preserve the value as a name rather
@@ -204,6 +212,15 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
                 {"name": f"webharvest:evidence:dependency-pom-license-jar-sha256:{index}",
                  "value": evidence.get("dependency_jar_sha256", "")},
             ])
+        for index, evidence in enumerate(o.get("resolved_maven_pom_license_evidence", [])):
+            props.extend([
+                {"name": f"webharvest:evidence:resolved-maven-pom-source:{index}",
+                 "value": evidence.get("pom_path", "")},
+                {"name": f"webharvest:evidence:resolved-maven-pom-sha256:{index}",
+                 "value": evidence.get("pom_sha256", "")},
+                {"name": f"webharvest:evidence:resolved-maven-pom-license-scope:{index}",
+                 "value": evidence.get("evidence_scope", "")},
+            ])
         if p.get("code_attribution"):
             props.append({"name": "webharvest:evidence:namespace-attribution",
                           "value": p["code_attribution"]})
@@ -275,6 +292,8 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         "hashes": [{"alg": "SHA-256", "content": archive_sha}],
         "properties": [
             {"name": "webharvest:evidence:archive-file", "value": provenance["archive"]["file"]},
+            {"name": "webharvest:evidence:archive-size-bytes",
+             "value": str(provenance["archive"].get("size_bytes", ""))},
             {"name": "webharvest:evidence:archive-class-count",
              "value": str(origin["archive"]["class_count"])},
             {"name": "webharvest:evidence:aggregate-bom-sha256",
@@ -283,6 +302,29 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
              "value": "union of embedded Maven metadata coordinates and resolved runtime dependency coordinates; root distribution is metadata.component"},
             {"name": "webharvest:evidence:root-component-purl",
              "value": purl_for("org.webharvest", f"webharvest-{distribution}", version)},
+            {"name": "webharvest:evidence:legal-resource-count",
+             "value": str(len(provenance.get("legal_resources", [])))},
+            {"name": "webharvest:evidence:jetty-notice-content-reconciliation",
+             "value": provenance.get("jetty_notice_audit", {}).get("content_level_reconciliation", "not-audited")},
+            {"name": "webharvest:evidence:jetty-upstream-notice-source",
+             "value": provenance.get("jetty_notice_audit", {}).get("upstream_notice_source", "")},
+            {"name": "webharvest:evidence:jetty-upstream-notice-git-blob-sha",
+             "value": provenance.get("jetty_notice_audit", {}).get("upstream_notice_git_blob_sha", "")},
+            *[
+                {"name": f"webharvest:evidence:legal-resource:{index}:archive-entry",
+                 "value": resource["archive_entry"]}
+                for index, resource in enumerate(provenance.get("legal_resources", []))
+            ],
+            *[
+                {"name": f"webharvest:evidence:legal-resource:{index}:sha256",
+                 "value": resource["sha256"]}
+                for index, resource in enumerate(provenance.get("legal_resources", []))
+            ],
+            *[
+                {"name": f"webharvest:evidence:legal-resource:{index}:size-bytes",
+                 "value": str(resource["size_bytes"])}
+                for index, resource in enumerate(provenance.get("legal_resources", []))
+            ],
         ],
     }
     bom = {
@@ -314,6 +356,8 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         "distribution_only_classifications": distribution_only_classifications,
         "aggregate_only_purls": aggregate_only,
         "aggregate_only_classifications": aggregate_only_classifications,
+        "legal_resources": provenance.get("legal_resources", []),
+        "jetty_notice_audit": provenance.get("jetty_notice_audit", {}),
         "comparison_policy": "PURL membership only; not proof of package-content equivalence",
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
