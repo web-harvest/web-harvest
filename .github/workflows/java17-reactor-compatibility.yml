@@ -421,8 +421,12 @@ jobs:
           css_asset="$(grep -oE 'href=\"[^\"]+\.css[^\"]*\"' "$smoke_dir/index.html" | tail -n 1 | cut -d'\"' -f2)"
           test -n "$js_asset" || { echo "No JavaScript asset URL found in served IDE entry page"; exit 1; }
           test -n "$css_asset" || { echo "No CSS asset URL found in served IDE entry page"; exit 1; }
-          curl --silent --show-error --fail "http://127.0.0.1:$port/$js_asset" -o "$smoke_dir/main.js"
-          curl --silent --show-error --fail "http://127.0.0.1:$port/$css_asset" -o "$smoke_dir/main.css"
+          # Vite's default base emits root-relative URLs (for example /dist/assets/main.js).
+          # Strip the leading slash before joining with the server origin to avoid a double slash.
+          js_asset_path="${js_asset#/}"
+          css_asset_path="${css_asset#/}"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/$js_asset_path" -o "$smoke_dir/main.js"
+          curl --silent --show-error --fail "http://127.0.0.1:$port/$css_asset_path" -o "$smoke_dir/main.css"
           test -s "$smoke_dir/main.js"
           test -s "$smoke_dir/main.css"
       - name: Inventory shaded CLI and IDE runtime contents
