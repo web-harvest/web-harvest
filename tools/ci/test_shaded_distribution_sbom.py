@@ -26,6 +26,13 @@ class DistributionSbomTests(unittest.TestCase):
                         "metadata_evidence": ["META-INF/maven/example/metadata-only/pom.properties"],
                         "embedded_pom_licenses": ["Apache-2.0"],
                         "aggregate_sbom_licenses": ["Apache-2.0"],
+                    },
+                    {
+                        "group": "example", "name": "classified", "version": "1.0",
+                        "purl": "pkg:maven/example/classified@1.0?type=jar",
+                        "metadata_evidence": ["META-INF/maven/example/classified/pom.properties"],
+                        "embedded_pom_licenses": ["BSD-3-Clause"],
+                        "aggregate_sbom_licenses": [],
                     }
                 ],
             }
@@ -108,6 +115,12 @@ class DistributionSbomTests(unittest.TestCase):
             self.assertEqual(by_name["classified"]["purl"],
                              "pkg:maven/example/classified@1.0?classifier=dom&type=jar")
             self.assertEqual(by_name["classified"]["scope"], "optional")
+            self.assertEqual(by_name["classified"]["licenses"], [{"license": {"name": "BSD-3-Clause"}}])
+            self.assertEqual(
+                next(x["value"] for x in by_name["classified"]["properties"]
+                     if x["name"].endswith("license-source")),
+                "shaded_embedded_pom",
+            )
             self.assertNotIn("scope", by_name["byte-match"])
             self.assertIn(
                 "SHA-256 of resolved source dependency JAR",
