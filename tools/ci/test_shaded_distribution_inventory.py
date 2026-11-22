@@ -36,10 +36,10 @@ class ShadedInventoryTests(unittest.TestCase):
             ], check=True, capture_output=True, text=True)
             report = json.loads(output.read_text(encoding="utf-8"))
             component = report["components"][0]
-            self.assertEqual(component["purl"], "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15")
+            self.assertEqual(component["purl"], "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15?type=jar")
             self.assertEqual(component["code_attribution"], "namespace_correlated_not_artifact_specific")
             self.assertEqual(component["class_count_correlated_namespace"], 1)
-            self.assertEqual(component["declared_licenses"], ["EPL-2.0 OR Apache-2.0"])
+            self.assertEqual(component["embedded_pom_licenses"], ["EPL-2.0 OR Apache-2.0"])
             self.assertEqual(report["class_inventory"]["org_htmlunit_jetty_classes"], 1)
             self.assertEqual(report["legal_resources"][0]["archive_entry"], "META-INF/NOTICE.txt")
 
@@ -66,7 +66,8 @@ class ShadedInventoryTests(unittest.TestCase):
             archive = self.make_archive(root)
             sbom = root / "bom.json"
             sbom.write_text(json.dumps({"bomFormat": "CycloneDX", "components": [
-                {"purl": "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15"}
+                {"purl": "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15?type=jar",
+                 "licenses": [{"license": {"id": "EPL-2.0"}}]}
             ]}), encoding="utf-8")
             output = root / "report.json"
             subprocess.run([
@@ -75,6 +76,8 @@ class ShadedInventoryTests(unittest.TestCase):
             ], check=True, capture_output=True, text=True)
             report = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(report["components"][0]["aggregate_sbom"], "present")
+            self.assertEqual(report["components"][0]["aggregate_sbom_licenses"], ["EPL-2.0"])
+            self.assertEqual(report["components"][0]["license_evidence"], "embedded_pom")
 
 
 if __name__ == "__main__":
