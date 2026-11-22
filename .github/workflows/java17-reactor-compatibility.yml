@@ -624,7 +624,6 @@ jobs:
             **/target/*.dumpstream
             **/target/package-audit/**
             target/shaded-provenance/**
-            target/shaded-class-origin/**
             **/target/*-javadoc.jar
             target/javadoc-audit/**
           if-no-files-found: warn
