@@ -489,6 +489,51 @@ jobs:
               cat "$report/resource-manifest.tsv"
             } > "$report/summary.txt"
           done
+      - name: Generate and validate distribution-specific provenance inventories
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/shaded-provenance/aggregate target/shaded-provenance/reports
+
+          python3 -m unittest tools.ci.test_shaded_distribution_inventory -v
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeTestScope=false -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory=target/shaded-provenance/aggregate \
+            -DoutputReactorProjects=false -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          python3 tools/ci/shaded_distribution_inventory.py \
+            --archive webharvest-cli/target/webharvest-cli-2.3.1.jar \
+            --distribution cli \
+            --sbom target/shaded-provenance/aggregate/bom.json \
+            --output target/shaded-provenance/reports/cli-provenance.json
+
+          python3 tools/ci/shaded_distribution_inventory.py \
+            --archive webharvest-ide/target/webharvest-ide-2.3.1.jar \
+            --distribution ide \
+            --sbom target/shaded-provenance/aggregate/bom.json \
+            --output target/shaded-provenance/reports/ide-provenance.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("target/shaded-provenance/reports")
+          cli = json.loads((root / "cli-provenance.json").read_text(encoding="utf-8"))
+          ide = json.loads((root / "ide-provenance.json").read_text(encoding="utf-8"))
+          for report in (cli, ide):
+              if len(report["archive"]["sha256"]) != 64:
+                  raise SystemExit("Invalid distribution archive SHA-256")
+              if not report["components"] or not report["legal_resources"]:
+                  raise SystemExit("Incomplete distribution component/legal-resource inventory")
+          if cli["class_inventory"]["org_htmlunit_jetty_classes"] == 0:
+              raise SystemExit("Expected relocated HtmlUnit/Jetty class evidence in CLI")
+          if ide["class_inventory"]["org_eclipse_jetty_classes"] == 0:
+              raise SystemExit("Expected original-namespace Jetty class evidence in IDE")
+          print("Validated exact CLI/IDE archive hashes, embedded coordinates, class evidence and legal resources.")
+          PY
       - name: Upload Maven diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -507,6 +552,7 @@ jobs:
             **/target/*.dump
             **/target/*.dumpstream
             **/target/package-audit/**
+            target/shaded-provenance/**
             **/target/*-javadoc.jar
             target/javadoc-audit/**
           if-no-files-found: warn
