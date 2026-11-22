@@ -496,10 +496,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Install only into this ephemeral runner's local Maven repository so
-          # the standalone dependency-copy goals can resolve first-party modules.
-          # This is not a remote publication and does not upload any artifacts.
+          # Install first-party module artifacts only into this ephemeral runner's
+          # local Maven repository so standalone dependency-copy goals can resolve them.
+          # This is not a remote publication and does not rebuild the shaded CLI/IDE JARs.
+          mvn --batch-mode --no-transfer-progress -N install
           mvn --batch-mode --no-transfer-progress \
+            -pl webharvest-core,webharvest-database,webharvest-ftp,webharvest-mail,webharvest-webbrowser,webharvest-zip -am \
             -DskipTests -Djacoco.skip=true -Dcheckstyle.skip=true \
             -Dspotbugs.skip=true -Dpmd.skip=true install
           mvn --batch-mode --no-transfer-progress -pl webharvest-cli \
