@@ -8,6 +8,7 @@ on:
       - "pom.xml"
       - "webharvest-*/**"
       - "docs/**"
+      - "tools/ci/**"
       - ".github/workflows/java17-reactor-compatibility.yml"
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - "pom.xml"
       - "webharvest-*/**"
       - "docs/**"
+      - "tools/ci/**"
       - ".github/workflows/java17-reactor-compatibility.yml"
   workflow_dispatch:
     inputs:
@@ -489,6 +491,66 @@ jobs:
               cat "$report/resource-manifest.tsv"
             } > "$report/summary.txt"
           done
+      - name: Generate and validate distribution-specific provenance inventories
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/shaded-provenance/aggregate target/shaded-provenance/reports
+
+          python3 -m unittest discover -s tools/ci -p 'test_shaded_distribution_inventory.py' -v
+
+          mvn --batch-mode --no-transfer-progress -DskipTests \
+            -DincludeTestScope=false -DoutputFormat=json -DoutputName=bom \
+            -DoutputDirectory=target/shaded-provenance/aggregate \
+            -DoutputReactorProjects=false -Dcyclonedx.skipAttach=true \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+
+          python3 tools/ci/shaded_distribution_inventory.py \
+            --archive webharvest-cli/target/webharvest-cli-2.3.1.jar \
+            --distribution cli \
+            --sbom target/shaded-provenance/aggregate/bom.json \
+            --output target/shaded-provenance/reports/cli-provenance.json
+
+          python3 tools/ci/shaded_distribution_inventory.py \
+            --archive webharvest-ide/target/webharvest-ide-2.3.1.jar \
+            --distribution ide \
+            --sbom target/shaded-provenance/aggregate/bom.json \
+            --output target/shaded-provenance/reports/ide-provenance.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("target/shaded-provenance/reports")
+          cli = json.loads((root / "cli-provenance.json").read_text(encoding="utf-8"))
+          ide = json.loads((root / "ide-provenance.json").read_text(encoding="utf-8"))
+          for report in (cli, ide):
+              if len(report["archive"]["sha256"]) != 64:
+                  raise SystemExit("Invalid distribution archive SHA-256")
+              if not report["components"] or not report["legal_resources"]:
+                  raise SystemExit("Incomplete distribution component/legal-resource inventory")
+          cli_jetty = cli["class_inventory"]["jetty_class_attribution"]
+          if cli["class_inventory"]["org_htmlunit_jetty_classes"] == 0:
+              raise SystemExit("Expected relocated HtmlUnit/Jetty class evidence in CLI")
+          if cli_jetty["mapped_class_count"] != cli["class_inventory"]["org_htmlunit_jetty_classes"]:
+              raise SystemExit("Not every relocated Jetty class maps to an upstream Jetty 12.1.15 module")
+          if cli_jetty["unmapped_class_count"] != 0:
+              raise SystemExit("Unmapped relocated Jetty classes remain in CLI")
+          jetty_components = [
+              component for component in cli["components"]
+              if component["group"].startswith("org.eclipse.jetty") and component["version"] == "12.1.15"
+          ]
+          if len(jetty_components) != 12:
+              raise SystemExit(f"Expected 12 Jetty 12.1.15 components in CLI; found {len(jetty_components)}")
+          if any(not component["upstream_project_license_evidence"] for component in jetty_components):
+              raise SystemExit("A relocated Jetty component is missing pinned upstream license/NOTICE provenance")
+          if cli["jetty_notice_audit"]["content_level_reconciliation"] != "open":
+              raise SystemExit("Jetty NOTICE status must remain explicitly open pending legal-resource reconciliation")
+          if ide["class_inventory"]["org_eclipse_jetty_classes"] == 0:
+              raise SystemExit("Expected original-namespace Jetty class evidence in IDE")
+          print("Validated exact CLI/IDE archive hashes, all 1,280 relocated Jetty classes, 12 upstream module/license records and the explicit open NOTICE gate.")
+          PY
       - name: Upload Maven diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -507,6 +569,7 @@ jobs:
             **/target/*.dump
             **/target/*.dumpstream
             **/target/package-audit/**
+            target/shaded-provenance/**
             **/target/*-javadoc.jar
             target/javadoc-audit/**
           if-no-files-found: warn
