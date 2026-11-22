@@ -118,6 +118,10 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         if packaging != "jar":
             continue
         purl = purl_for(group, name, component_version)
+        # The distribution itself is represented by metadata.component, not as
+        # a duplicate library entry in metadata.component.dependencies.
+        if group == "org.webharvest" and name == f"webharvest-{distribution}":
+            continue
         distribution_purls.add(purl)
         p = provenance_by_coordinate.get(coord, {})
         o = origin_by_coordinate.get(coord, {})
@@ -177,14 +181,17 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         components.append(item)
         component_refs.append(purl)
 
-    aggregate_only = sorted(set(aggregate_components) - distribution_purls)
-    distribution_only = sorted(distribution_purls - set(aggregate_components))
+    root_purl = purl_for("org.webharvest", f"webharvest-{distribution}", version)
+    complete_distribution_purls = distribution_purls | {root_purl}
+    aggregate_only = sorted(set(aggregate_components) - complete_distribution_purls)
+    distribution_only = sorted(complete_distribution_purls - set(aggregate_components))
     root_ref = f"urn:webharvest:distribution:{distribution}:{version}:{archive_sha}"
     root_component = {
         "type": "application",
         "bom-ref": root_ref,
         "name": f"WebHarvest {distribution.upper()} distribution",
         "version": version,
+        "purl": purl_for("org.webharvest", f"webharvest-{distribution}", version),
         "hashes": [{"alg": "SHA-256", "content": archive_sha}],
         "properties": [
             {"name": "webharvest:evidence:archive-file", "value": provenance["archive"]["file"]},
@@ -193,7 +200,9 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
             {"name": "webharvest:evidence:aggregate-bom-sha256",
              "value": sha256_file(aggregate_path)},
             {"name": "webharvest:evidence:component-membership-policy",
-             "value": "union of embedded Maven metadata coordinates and resolved runtime dependency coordinates; see evidence properties"},
+             "value": "union of embedded Maven metadata coordinates and resolved runtime dependency coordinates; root distribution is metadata.component"},
+            {"name": "webharvest:evidence:root-component-purl",
+             "value": purl_for("org.webharvest", f"webharvest-{distribution}", version)},
         ],
     }
     bom = {
@@ -219,7 +228,7 @@ def build(provenance_path: Path, origin_path: Path, aggregate_path: Path,
         "distribution": distribution,
         "archive": provenance["archive"],
         "aggregate_sbom": {"file": aggregate_path.name, "sha256": sha256_file(aggregate_path)},
-        "distribution_component_count": len(distribution_purls),
+        "distribution_component_count": len(complete_distribution_purls),
         "aggregate_component_count": len(aggregate_components),
         "distribution_only_purls": distribution_only,
         "aggregate_only_purls": aggregate_only,
