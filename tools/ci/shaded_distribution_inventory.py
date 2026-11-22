@@ -240,6 +240,8 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
                 "source_tag": JETTY_SOURCE_TAG,
                 "source_commit": JETTY_SOURCE_COMMIT,
                 "license_choices_declared_by_upstream": ["EPL-2.0", "Apache-2.0"],
+                "effective_license_model_pom": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/pom.xml",
+                "effective_license_model_pom_git_blob_sha": "e4d1540441e9cce523e166681a67edb190765367",
                 "license_file": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/LICENSE",
                 "license_file_git_blob_sha": "22840e2944ffc53b1953091fc31954e69126348d",
                 "notice_file": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/NOTICE.txt",
