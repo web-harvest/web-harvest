@@ -536,9 +536,19 @@ jobs:
               raise SystemExit("Not every relocated Jetty class maps to an upstream Jetty 12.1.15 module")
           if cli_jetty["unmapped_class_count"] != 0:
               raise SystemExit("Unmapped relocated Jetty classes remain in CLI")
+          jetty_components = [
+              component for component in cli["components"]
+              if component["group"].startswith("org.eclipse.jetty") and component["version"] == "12.1.15"
+          ]
+          if len(jetty_components) != 12:
+              raise SystemExit(f"Expected 12 Jetty 12.1.15 components in CLI; found {len(jetty_components)}")
+          if any(not component["upstream_project_license_evidence"] for component in jetty_components):
+              raise SystemExit("A relocated Jetty component is missing pinned upstream license/NOTICE provenance")
+          if cli["jetty_notice_audit"]["content_level_reconciliation"] != "open":
+              raise SystemExit("Jetty NOTICE status must remain explicitly open pending legal-resource reconciliation")
           if ide["class_inventory"]["org_eclipse_jetty_classes"] == 0:
               raise SystemExit("Expected original-namespace Jetty class evidence in IDE")
-          print("Validated exact CLI/IDE archive hashes, embedded coordinates, complete relocated Jetty class mapping and legal resources.")
+          print("Validated exact CLI/IDE archive hashes, all 1,280 relocated Jetty classes, 12 upstream module/license records and the explicit open NOTICE gate.")
           PY
       - name: Upload Maven diagnostics
         if: always()
