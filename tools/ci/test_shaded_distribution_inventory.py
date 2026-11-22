@@ -39,6 +39,7 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(component["purl"], "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15?type=jar")
             self.assertEqual(component["code_attribution"], "class_prefix_correlated_to_upstream_module_source")
             self.assertEqual(component["class_evidence"]["class_count"], 1)
+            self.assertEqual(component["class_count_correlated_namespace"], 1)
             self.assertEqual(component["class_evidence"]["upstream_module"], "jetty-core/jetty-client")
             self.assertEqual(component["class_evidence"]["upstream_commit"], "770f5e4d1c39673d6356163118a1e6bf1117ced3")
             self.assertEqual(report["class_inventory"]["jetty_class_attribution"]["mapped_class_count"], 1)
@@ -86,6 +87,10 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(attribution["mapped_class_count"], len(modules))
             self.assertEqual(attribution["unmapped_class_count"], 0)
             components = {item["name"]: item for item in report["components"]}
+            self.assertEqual(
+                sum(item["class_count_correlated_namespace"] for item in components.values()),
+                len(modules),
+            )
             self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["class_count"], 1)
             self.assertEqual(components["jetty-websocket-core-server"]["class_evidence"]["class_count"], 1)
             self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["excluded_package_prefixes"],
