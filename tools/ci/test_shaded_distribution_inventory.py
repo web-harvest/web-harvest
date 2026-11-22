@@ -48,6 +48,49 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(report["jetty_notice_audit"]["content_level_reconciliation"], "open")
             self.assertEqual(report["jetty_notice_audit"]["archive_named_jetty_notice_candidates"], [])
 
+    def test_ide_jetty_modules_are_mapped_without_websocket_overlap(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "ide.jar"
+            modules = [
+                ("org.eclipse.jetty", "jetty-server", "org/eclipse/jetty/server/Server.class"),
+                ("org.eclipse.jetty", "jetty-security", "org/eclipse/jetty/security/SecurityHandler.class"),
+                ("org.eclipse.jetty", "jetty-session", "org/eclipse/jetty/session/Session.class"),
+                ("org.eclipse.jetty", "jetty-xml", "org/eclipse/jetty/xml/Xml.class"),
+                ("org.eclipse.jetty.websocket", "jetty-websocket-core-common", "org/eclipse/jetty/websocket/core/Frame.class"),
+                ("org.eclipse.jetty.websocket", "jetty-websocket-core-server", "org/eclipse/jetty/websocket/core/server/Handshaker.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-nested", "org/eclipse/jetty/ee9/nested/Handler.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-security", "org/eclipse/jetty/ee9/security/Security.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-servlet", "org/eclipse/jetty/ee9/servlet/Servlet.class"),
+                ("org.eclipse.jetty.ee9", "jetty-ee9-webapp", "org/eclipse/jetty/ee9/webapp/WebApp.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-api", "org/eclipse/jetty/ee9/websocket/api/Session.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-common", "org/eclipse/jetty/ee9/websocket/common/Frame.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-jetty-server", "org/eclipse/jetty/ee9/websocket/server/Creator.class"),
+                ("org.eclipse.jetty.ee9.websocket", "jetty-ee9-websocket-servlet", "org/eclipse/jetty/ee9/websocket/servlet/Servlet.class"),
+                ("org.eclipse.jetty.ee", "jetty-ee-webapp", "org/eclipse/jetty/ee/webapp/ClassLoader.class"),
+            ]
+            with zipfile.ZipFile(archive, "w") as jar:
+                for group, artifact, class_path in modules:
+                    jar.writestr(class_path, b"class-bytes")
+                    base = f"META-INF/maven/{group}/{artifact}/"
+                    jar.writestr(base + "pom.properties",
+                                 f"groupId={group}\\nartifactId={artifact}\\nversion=12.1.15\\n")
+                jar.writestr("META-INF/NOTICE.txt", "Unrelated notice")
+            output = root / "report.json"
+            subprocess.run([
+                sys.executable, str(SCRIPT), "--archive", str(archive),
+                "--distribution", "ide", "--output", str(output),
+            ], check=True, capture_output=True, text=True)
+            report = json.loads(output.read_text(encoding="utf-8"))
+            attribution = report["class_inventory"]["jetty_class_attribution"]
+            self.assertEqual(attribution["mapped_class_count"], len(modules))
+            self.assertEqual(attribution["unmapped_class_count"], 0)
+            components = {item["name"]: item for item in report["components"]}
+            self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["class_count"], 1)
+            self.assertEqual(components["jetty-websocket-core-server"]["class_evidence"]["class_count"], 1)
+            self.assertEqual(components["jetty-websocket-core-common"]["class_evidence"]["excluded_package_prefixes"],
+                             ["websocket/core/client/", "websocket/core/server/"])
+
     def test_metadata_only_coordinate_stays_unattributed(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
