@@ -64,10 +64,16 @@ class ShadedInventoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             archive = self.make_archive(root)
+            with zipfile.ZipFile(archive, "a") as jar:
+                jar.writestr("META-INF/maven/example/inherited-license/pom.properties",
+                             "groupId=example\\nartifactId=inherited-license\\nversion=1.0\\n")
+                jar.writestr("META-INF/maven/example/inherited-license/pom.xml", "<project/>")
             sbom = root / "bom.json"
             sbom.write_text(json.dumps({"bomFormat": "CycloneDX", "components": [
                 {"purl": "pkg:maven/org.eclipse.jetty/jetty-client@12.1.15?type=jar",
-                 "licenses": [{"license": {"id": "EPL-2.0"}}]}
+                 "licenses": [{"license": {"id": "EPL-2.0"}}]},
+                {"purl": "pkg:maven/example/inherited-license@1.0?type=jar",
+                 "licenses": [{"license": {"id": "Apache-2.0"}}]}
             ]}), encoding="utf-8")
             output = root / "report.json"
             subprocess.run([
@@ -78,6 +84,10 @@ class ShadedInventoryTests(unittest.TestCase):
             self.assertEqual(report["components"][0]["aggregate_sbom"], "present")
             self.assertEqual(report["components"][0]["aggregate_sbom_licenses"], ["EPL-2.0"])
             self.assertEqual(report["components"][0]["license_evidence"], "embedded_pom")
+            inherited = next(x for x in report["components"] if x["name"] == "inherited-license")
+            self.assertEqual(inherited["aggregate_sbom"], "present")
+            self.assertEqual(inherited["aggregate_sbom_licenses"], ["Apache-2.0"])
+            self.assertEqual(inherited["license_evidence"], "aggregate_sbom_effective_model")
 
 
 if __name__ == "__main__":
