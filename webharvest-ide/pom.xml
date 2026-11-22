@@ -116,12 +116,13 @@
                         </configuration>
                     </execution>
                     <!-- npm run build -->
+                    <!-- Build before process-resources copies src/main/resources into target/classes. -->
                     <execution>
                         <id>npm run build</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>compile</phase>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <arguments>run build</arguments>
                         </configuration>
