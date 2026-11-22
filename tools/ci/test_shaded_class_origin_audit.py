@@ -147,5 +147,44 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             self.assertEqual(component["unmatched_dependency_class_count"], 1)
 
 
+    def test_dependency_jar_embedded_pom_license_is_preserved_with_hash_evidence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            write_jar(root / "dependencies/example/library/1.0/library-1.0.jar", {
+                "META-INF/maven/example/library/pom.properties":
+                    maven_properties("example", "library", "1.0"),
+                "META-INF/maven/example/library/pom.xml":
+                    b"<project><licenses><license><name>Apache License 2.0</name>"
+                    b"<url>https://www.apache.org/licenses/LICENSE-2.0</url>"
+                    b"</license></licenses></project>",
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            report = self.run_audit(root)
+            component = next(x for x in report["components"]
+                             if x["coordinate"] == "example:library:1.0:jar")
+            evidence = component["dependency_jar_pom_license_evidence"]
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["licenses"], ["Apache License 2.0"])
+            self.assertEqual(len(evidence[0]["dependency_jar_sha256"]), 64)
+            self.assertEqual(len(evidence[0]["pom_sha256"]), 64)
+
+    def test_classifier_is_preserved_in_repository_layout_coordinate(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            write_jar(root / "dependencies/example/library/1.0/library-1.0-dom.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            report = self.run_audit(root)
+            component = next(x for x in report["components"]
+                             if x["coordinate"] == "example:library:1.0:dom:jar")
+            self.assertEqual(component["dependency_class_count"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
