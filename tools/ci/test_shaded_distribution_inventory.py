@@ -74,7 +74,7 @@ class ShadedInventoryTests(unittest.TestCase):
                     jar.writestr(class_path, b"class-bytes")
                     base = f"META-INF/maven/{group}/{artifact}/"
                     jar.writestr(base + "pom.properties",
-                                 f"groupId={group}\\nartifactId={artifact}\\nversion=12.1.15\\n")
+                                 f"groupId={group}\nartifactId={artifact}\nversion=12.1.15\n")
                 jar.writestr("META-INF/NOTICE.txt", "Unrelated notice")
             output = root / "report.json"
             subprocess.run([
