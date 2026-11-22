@@ -296,6 +296,20 @@ def build_inventory(archive_path: Path, distribution: str, sbom_path: Path | Non
         },
         "components": sorted(components.values(), key=lambda item: item["purl"]),
         "legal_resources": sorted(legal_resources, key=lambda item: item["archive_entry"]),
+        "jetty_notice_audit": {
+            "upstream_notice_source": f"https://github.com/jetty/jetty.project/blob/{JETTY_SOURCE_TAG}/NOTICE.txt",
+            "upstream_notice_git_blob_sha": "ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db",
+            "archive_notice_candidates": [
+                item["archive_entry"] for item in legal_resources
+                if "notice" in item["archive_entry"].lower()
+            ],
+            "archive_named_jetty_notice_candidates": [
+                item["archive_entry"] for item in legal_resources
+                if "notice" in item["archive_entry"].lower()
+                and "jetty" in item["archive_entry"].lower()
+            ],
+            "content_level_reconciliation": "open",
+        },
     }
 
 
