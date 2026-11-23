@@ -1411,3 +1411,61 @@ Source blobs on current `main`:
 - `XMLPlugin.java`: `8a0d938bd16cbddaedcdfe832d7d5579f13636a6`.
 
 No runtime changes or tests were made/run. XSLT hardening above is a source-level observation, not a claim of broader XML parser safety across all Core paths.
+
+
+### 15.32 Exact 44-name Core registry classification (2026-11-23)
+
+The following classification is a source-backed product proposal, not a maintainer-approved plugin removal/migration decision. It is based on the exact 44 mappings in `CorePluginsRegistrar.registerCorePlugins()` on current `main`.
+
+| XML name | Current role | Proposed SPI/catalog treatment |
+|---|---|---|
+| `call` | Function invocation | Core execution capability; nested dispatch pins session generation |
+| `call-param` | Function argument child | Declarative child grammar/value evaluator; not standalone capability |
+| `case` | Conditional branch child | Control-flow grammar node; preserve legacy semantics |
+| `catch` | Exception branch child | Control-flow grammar node; preserve error binding semantics |
+| `constant` | Constant value | Core value capability |
+| `def` | Variable definition/assignment | Core value/context capability |
+| `else` | Conditional branch child | Control-flow grammar node; ownership/order is parent-sensitive |
+| `empty` | Empty value | Core value capability |
+| `exit` | Execution-scoped early exit | Core execution-control capability, distinct from runtime shutdown |
+| `file` | Local file operations | Core host-effect capability; host filesystem service/policy required |
+| `function` | Function definition | Declarative definition node; function body is executed through `call` |
+| `get` | Variable lookup | Core value/context capability |
+| `html-to-xml` | HTML normalization/conversion | Core transformation capability; bounded parsing/output |
+| `http` | HTTP request | Core network capability; policy-aware transport required |
+| `http-header` | HTTP request header child | Declarative child configuration; not standalone request capability |
+| `http-param` | HTTP request parameter child | Declarative child configuration; not standalone request capability |
+| `if` | Conditional execution | Core control-flow capability; branch dispatch generation-pinned |
+| `include` | External configuration composition | Core composition capability plus file/URL host effects and nested-generation inheritance |
+| `json-to-xml` | JSON conversion | Core transformation capability; bounded parse/output |
+| `loop` | Collection iteration | Core control-flow capability; bounded materialization/iteration/output |
+| `regexp` | Regex match/replace | Core transformation capability; ReDoS-safe execution policy |
+| `regexp-pattern` | Regex pattern child | Declarative child grammar; not standalone capability |
+| `regexp-result` | Regex result-template child | Declarative child grammar with nested execution; inherits parent generation/budget |
+| `regexp-source` | Regex source child | Declarative child grammar; not standalone capability |
+| `return` | Function return | Execution-control grammar node; meaningful within function invocation |
+| `script` | JSR-223 script execution | Core script capability; host-authorized engine/object access and budgets |
+| `list` | List value construction | Core value capability |
+| `log` | Execution output/logging | Core host-output capability; no direct process stdout/stderr bypass |
+| `value-of` | Value extraction | Core value capability |
+| `xml` | XML literal/body construction | Core value/markup capability; not an XML parser by itself |
+| `set-var` | Legacy variable assignment alias | Compatibility alias to preserve; migration/deprecation policy required |
+| `sleep` | Execution delay | Core time effect; shared deadline and cancellation required |
+| `stylesheet` | XSLT stylesheet child | Declarative child grammar; not standalone capability |
+| `template` | Template interpolation | Core templating capability; runtime-scoped engine service |
+| `text` | Text value | Core value capability |
+| `tokenize` | Text tokenization | Core transformation capability; bounded output/list |
+| `try` | Exception handling | Core control-flow capability; uses normal body executor path |
+| `while` | Condition loop | Core control-flow capability; shared deadline and iteration budget |
+| `xml-to-json` | XML conversion | Core transformation capability; bounded input/output |
+| `xpath` | XPath/CSS query | Core query capability; bounded Saxon/Jsoup execution |
+| `xquery` | XQuery evaluation | Core query capability; bounded Saxon execution and explicit resource policy |
+| `xq-expression` | XQuery expression child | Declarative child grammar; required child of `xquery` |
+| `xq-param` | XQuery parameter child | Declarative child grammar; parameter evaluation semantics |
+| `xslt` | XSLT transformation | Core transformation capability; preserve existing external-resource restrictions |
+
+**Boundary counts (derived from the 44 registrar statements):** 25 execution/value/query/transformation/host-effect candidates; 19 control-flow/declaration/detail/compatibility nodes. These counts are a useful discussion aid, not a final packaging decision: some control-flow nodes (`call`, `if`, `loop`, `try`, `while`, `exit`) are executable capabilities; some declarative child nodes execute value expressions; and `function` defines callable behavior. The authoritative distinction is provider identity/lifecycle vs XML role/grammar, not a simplistic “all non-root tags are plugins” rule.
+
+**Not in the 44 mappings:** root `<config>` is handled by root configuration execution; `BodyProcessorPlugin` is an internal/removed historical class; `VarPlugin` is legacy/deprecated and not registered by the current registrar. `SetVarPlugin` is registered despite the scanner fallback metadata omission recorded in 15.19.
+
+Source blob: `CorePluginsRegistrar.java` `7ddc5b26a33c5143ed893a513263718990fa515e`.
