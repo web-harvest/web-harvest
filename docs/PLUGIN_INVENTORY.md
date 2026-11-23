@@ -2572,3 +2572,42 @@ The table records explicit configuration in the inspected adapter code, not undo
 - MailPlugin.java: 083297481e7e218916a77f0dea2308c63bbac7e7.
 - WebBrowserPlugin.java: be7675390275b16ed63e5515a11969585acd2de6.
 - FilePlugin.java: 8d78e797975ab236a47420d18f28600beaae04bf.
+
+
+### 15.60 Existing plugin metadata cannot declare execution/effect capabilities (2026-11-23)
+
+The preceding sections define requirements for polymorphic cancellation, deadlines, resource ownership and side-effect disposition. This pass verifies whether the current public plugin contracts can declare those properties. They cannot in the inspected API.
+
+- `PluginMetadata` exposes identity/presentation fields, dependencies, configuration schema, XML namespace/element mapping, Core classification and inferred/declared semantic node roles. It has no fields for blocking behavior, cancellation mode, deadline support, resource ownership, side-effect class, idempotency/reconciliation, process-isolation requirement, concurrency/reentrancy or cleanup budget.
+- `PluginConfigurationSchema` describes configuration attributes, parent/child grammar, body allowance, schema version and validation. Its FILE_PATH/URL attribute types are configuration types, not capability declarations or enforceable sandbox permissions.
+- `@CorePlugin` carries namespace, element name, description, version, palette category/visibility and system-component flags. It is registration/editor metadata, not an execution-safety contract.
+- `Plugin.execute(DynamicScopeContext)` declares that InterruptedException may be thrown, but accepts no immutable execution handle, cancellation token, monotonic deadline, operation/resource registrar or effect journal. The same interface exposes mutable parent-plugin/running-level state and instance cleanup, which do not describe per-invocation capability.
+- The source therefore cannot support preflight policy decisions such as “this provider is safe for in-process GRACE”, “this operation can be aborted by handle”, “this effect is retry-safe”, or “this provider requires process isolation” from its descriptor alone. Runtime discovery currently has to infer behavior from implementation code or rely on undocumented convention.
+
+#### Required descriptor and runtime capability split
+
+Do not overload PluginConfigurationSchema or presentation annotations with operational policy. The target descriptor should separate:
+
+1. **Static provider capabilities** — declared at discovery time: execution model (sync/async), concurrency/reentrancy, cooperative cancellation support, bounded/unbounded blocking operations, resource types, side-effect categories, idempotency/reconciliation support, cleanup behavior, and whether hard isolation is mandatory.
+2. **Per-operation capabilities** — declared when an invocation is admitted: actual deadline/remaining budget, registered abort/close handles, effect identity, idempotency key, commit/acknowledgement checkpoints, and compensation/reconciliation action.
+3. **Host-verified facts** — conformance evidence and runtime observations. A provider declaration is a claim, not proof. The host must validate claims against conformance tests and downgrade/deny capabilities that are not verified.
+4. **Trust boundary** — metadata/permissions do not sandbox Java code. Any provider that is untrusted or requires a hard KILL guarantee must execute in a separately killable process with OS-level resource/security controls.
+
+A provider may declare that an operation is non-cancellable in-process; the host can then reject it under a strict deadline policy, isolate it, or expose an explicit weaker guarantee. It must not silently promise GRACE/KILL compliance.
+
+#### Required conformance
+
+- Descriptor schema rejects unknown capability values and unsupported combinations; capability versioning is independent from XML configuration schema version.
+- Provider claims are compared against runtime-observed behavior: interrupt propagation, abort-handle completion, deadline compliance, effect disposition, cleanup idempotency and concurrent invocation safety.
+- Discovery/preflight can reject a provider before activation when required host capabilities or isolation are unavailable.
+- Runtime reports declared, verified and observed capability separately; refresh to a new generation cannot retroactively change capabilities of already-pinned sessions.
+- Tests include lying/misdeclared provider capability, missing abort handle, false idempotency claim, blocking uninterruptible operation, and two concurrent calls against a provider declared non-reentrant.
+
+**Evidence / coverage boundary:** interface/annotation source inspection only. No implementation changes, tests or builds were performed.
+
+**Exact source blobs at main snapshot 1729bdf4620a66686d02605083e27e27d1ab3944:**
+
+- PluginMetadata.java: 0d31ed2c958bd03d429af8df6be94f1decfcbfdf.
+- PluginConfigurationSchema.java: c649a8a2d58c496bf913a8a16ac989cab81a6e98.
+- CorePlugin.java: 073f25677e8a647a4a9bbd6de7ec456df521ae40.
+- Plugin.java: 29772a9b37c8fead735f4a5e0bd47e5b90b4367e.
