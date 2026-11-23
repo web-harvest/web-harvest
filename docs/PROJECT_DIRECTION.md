@@ -329,9 +329,9 @@ The current IDE is not yet certified against this full target. It remains a clie
 
 The IDE is a separate product distribution from the Core library. This does not imply a separate Git repository now.
 
-### 10.3 CLI — headless Data Plane surface
+### 10.3 CLI — one headless Data Plane interface
 
-CLI is the non-interactive execution and automation surface. It should expose Core execution to scripts, pipelines, scheduled jobs and external integrations. It is not intended to become a parallel human Control Plane or own semantic authority.
+CLI is one non-interactive interface to the broader Data Plane. It should expose Core execution to scripts, pipelines, scheduled jobs and external integrations. The Data Plane may also be accessed through programmatic APIs or direct agent/Core integration; it is not synonymous with the CLI. CLI is not intended to become a parallel human Control Plane or own semantic authority.
 
 CLI is a separate product distribution from both Core and IDE. Its current POM directly depends on Core and all five extension modules (Database, FTP, Mail, WebBrowser and ZIP), so today's shaded CLI distribution includes the integrations as a practical packaging fact. That current coupling must not define the long-term Data Plane contract or extension pack taxonomy.
 
