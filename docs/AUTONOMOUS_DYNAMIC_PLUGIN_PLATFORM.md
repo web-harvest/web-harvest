@@ -1263,3 +1263,66 @@ This is a source-level test inventory at baseline `1729bdf4620a66686d02605083e27
 - ScrapingInterceptorTest.java: 3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff
 
 Source inspection only. No tests were executed as part of this inventory.
+
+## 8.2 P0-01 execution-control state machine: concrete races and missing ownership
+
+Baseline source: `1729bdf4620a66686d02605083e27e27d1ab3944`. This pass traces the actual service/session control flow and distinguishes session status from worker execution state.
+
+### Confirmed control-flow defects
+
+1. **The submitted task handle is discarded.** `WebHarvestServiceImpl.executeAsync()` calls `executorService.submit(...)` without retaining the returned `Future`. `ScraperSessionImpl` therefore cannot cancel/interupt or await its actual worker.
+2. **Cancellation publishes terminal state before worker exit.** `ScraperSessionImpl.cancel()` sets `CANCELLED`, records end time, posts `SessionCancelledEvent`, and signals completion. It has no worker handle and does not interrupt or await execution. A caller of `awaitCompletion()` can therefore return while plugin code is still running.
+3. **A cancelled session can continue through the normal execution path.** `executeSession()` does not check cancellation before context creation, `markRunning`, scraper invocation or successful completion. If cancellation wins before `markRunning`, `markRunning` throws because status is no longer PENDING; if cancellation wins while scraper code is running, that code has no service-owned interruption path. The later `markCompleted()` then rejects the CANCELLED state; `markFailed()` is a no-op for an already-terminal session. Neither path proves worker exit.
+4. **Timeout execution creates an unowned executor.** `executeWithTimeout()` creates a new single-thread executor for each timeout session, submits work, and retains only its Future locally. On normal completion it never shuts the executor down. On timeout it cancels the Future but still does not shut down/await the executor or prove the scraper worker stopped.
+5. **Shutdown is not a termination proof.** `shutdown()` ignores the boolean returned by `awaitTermination(60, SECONDS)`, then logs completion regardless. `shutdownNow()` cancels session status and invokes executorService.shutdownNow(), but cannot cancel timeout executors and does not await worker exit.
+6. **Admission races with shutdown.** `executeAsync()` checks a volatile boolean and later submits without an atomic admission/submit boundary. Shutdown can begin between the check and submission. The lifecycle needs a synchronized/atomic admission gate that closes before draining and has defined rollback if submission is rejected.
+7. **Session identity replacement is dangerous for control ownership.** `SessionRegistryImpl.register()` uses `put`, replacing a prior object with the same ID; `unregister(String)` removes by key only. Existing tests explicitly expect replacement (see 8.1), so changing this requires a deliberate API/test contract, not a silent implementation tweak.
+
+### Correct state model
+
+Do not overload `SessionStatus` with execution truth. Keep at least these orthogonal dimensions:
+
+- **Request/outcome:** PENDING, RUNNING, COMPLETED, FAILED, CANCEL_REQUESTED, CANCELLED (business/API compatibility may retain current names with documented semantics).
+- **Execution:** NOT_SUBMITTED, QUEUED, RUNNING, INTERRUPT_REQUESTED, EXITED, UNRESPONSIVE, QUARANTINED.
+- **Termination disposition:** NOT_REQUESTED, GRACE_IN_PROGRESS, GRACEFUL, KILL_IN_PROGRESS, KILL_UNRESPONSIVE, PROCESS_EXIT_CONFIRMED.
+- **Resource disposition:** OPEN, CLOSE_REQUESTED, DRAINING, CLOSED, CLOSE_FAILED, retained while owner remains unresponsive.
+
+Every submitted task must have an immutable owner tuple `(runtimeId, sessionId, executionGeneration)` and a retained task handle. Timeout, explicit cancellation, runtime shutdown and parent/child cancellation must converge on one idempotent termination coordinator; they must not independently mutate status and race cleanup.
+
+### Required transition/ordering contract
+
+1. Atomically close admission before shutdown begins draining. A submission either becomes registered and owned before closure, or is rejected; there is no accepted-but-untracked task.
+2. Register the session, execution generation, task handle and resource owner before execution can publish RUNNING. If submission fails, roll back registration and report rejection without leaving a phantom session.
+3. Cancellation first records a request and closes admission to new child operations. It then propagates one deadline/token and requests interruption/abort on owned tasks and operation handles.
+4. GRACE waits within a bounded cleanup budget for worker/child exit and resource lease drain. Only observed completion signals `GRACEFUL`/`EXITED`.
+5. KILL for in-process Java is best-effort interruption plus quarantine. A non-cooperative thread is `UNRESPONSIVE`/`QUARANTINED`; do not close resources it may still be using and do not report it as killed. Hard kill requires a process boundary and confirmed process exit.
+6. Timeout execution must use a service/runtime-owned executor or an explicitly owned per-session executor whose shutdown and termination are part of the same report. No anonymous executor may escape the session ledger.
+7. `awaitCompletion()` must document whether it waits for business outcome or actual execution quiescence. Provide distinct waits if both are needed; never let a terminal business status imply worker exit.
+8. Shutdown reports timeout/unresponsive tasks and honors the actual result of `awaitTermination`; it must not log successful termination on a false result.
+
+### P0-01 acceptance tests — exact scenarios
+
+- **Cancel-before-start:** hold executor admission with a deterministic gate, cancel after registration but before worker entry; assert scraper body never begins and worker reaches EXITED.
+- **Cancel-during-block:** plugin signals `entered`, blocks on a latch; cancel; assert interrupt/abort observed, body exits, then resources drain. Verify `awaitBusinessOutcome` can complete earlier only if explicitly documented, while `awaitExecutionExit` remains pending.
+- **GRACE cooperative:** worker and child operation respond to cancellation; assert all task handles exit and all leases close before the grace deadline.
+- **KILL non-cooperative:** worker deliberately ignores interruption; assert result is UNRESPONSIVE/QUARANTINED, no false EXITED/KILLED status, and resources remain retained until safe retirement.
+- **Timeout normal completion:** assert timeout executor/task is terminated and no worker thread remains after completion.
+- **Timeout expiration:** controlled blocking plugin; assert cancellation request, bounded cleanup, worker disposition and resource report are consistent.
+- **Shutdown/admission race:** coordinate submit and shutdown with barriers; every submission is either accepted+tracked or rejected, never orphaned.
+- **Shutdown timeout:** inject a worker that outlives the shutdown budget; assert shutdown result exposes failure to terminate rather than logging success.
+- **Duplicate ID/replacement:** update the existing replacement test to the chosen identity-safe contract; prove stale unregister/cancel cannot affect the replacement session.
+
+### Existing tests and source references
+
+- `WebHarvestServiceImpl.java`: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`
+- `ScraperSessionImpl.java`: `78d07d1c485ea215d68d6d415f36b2be0c180a4f`
+- `SessionRegistryImpl.java`: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`
+- `SessionOptions.java`: `6afb9740dbab866cbf2ce2487735bc5d78bb1ea8`
+- `WebHarvestServiceTest.java`: `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c`
+- `ScraperSessionTest.java`: `31988741de660cb7455851e98ff75a706ea7d3dc`
+- `SessionRegistryTest.java`: `aea82998ecf4ac81a8d02765af3f36465c3f8083`
+- `SessionManagementIntegrationTest.java`: `63f3ef6581ffec66a19200c0fd0aefda826cd999`
+
+### Priority decision
+
+Keep this as **P0-01, first implementation slice**, ahead of resource-ledger implementation: without retained task handles and truthful execution disposition, resource leases cannot know when it is safe to close. P0-02 must be designed alongside it, but resource closure implementation depends on P0-01's quiescence signal. No runtime implementation was performed in this audit.
