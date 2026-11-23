@@ -84,8 +84,8 @@ The platform maintains a current effective registry generation. Artifact-source 
 2. Discover provider descriptors from candidate artifacts.
 3. Validate descriptor syntax, provider/API compatibility, dependency graph, artifact integrity, IDs, QNames, namespaces, aliases and policy requirements.
 4. Resolve host enablement and authorization policy.
-5. Construct authorized providers through host DI/factories and initialize them in an isolated candidate generation.
-6. Build all runtime and semantic projections from that candidate.
+5. Construct authorized providers through host DI/factories and prepare them in an isolated candidate generation without irreversible business side effects.
+6. Build all runtime and semantic projections from that prepared candidate.
 7. Atomically publish the complete new immutable/versioned generation.
 8. Retire the previous generation only when no execution/session still references it.
 
