@@ -2886,3 +2886,52 @@ This matrix maps the current documentation evidence to the actual acceptance cri
 The audit PR is documentation and design evidence. It does not satisfy runtime acceptance by describing the desired behavior. Existing source/test references are not test results; tests inspected but not executed remain unverified. No code, POM, test, workflow, module, API or release metadata changes are authorized by this traceability matrix.
 
 **Current decision: STOP before implementation; continue source/design review and maintainer decision preparation only.**
+
+## 15.66 Minimal Core membership — explicit decision alternatives for #93 (2026-11-23)
+
+Section 15.63 classifies every current XML mapping, but it intentionally leaves one product decision open: whether “Core” means the smallest execution kernel, or the compatibility distribution that ships the established XML surface. These are different boundaries and should not be collapsed into one package/module decision.
+
+### Decision A — compatibility-first Core (recommended immediate baseline)
+
+- **Logical execution kernel:** retain the 15 execution/value/context identities from 15.63.
+- **XML grammar:** retain the 13 declarative/parent-consumed identities as Core grammar/schema semantics; they are not independently activated providers.
+- **Compatibility capability set:** retain all 16 host-service capability identities in the current Core compatibility distribution for now, with explicit host-service boundaries, budgets and policy enforcement as required by #349.
+- **Optional integrations:** keep Database, FTP, Mail, WebBrowser and ZIP outside the mandatory Core dependency graph.
+- **Compatibility:** preserve all 44 current XML names, aliases and established behavior, including `set-var`.
+
+This is the lowest-risk decision for the next engineering step: it defines a coherent logical kernel without forcing a premature Maven/package split or breaking existing XML documents. It does **not** claim that every capability is safe or enabled by default. A restrictive host profile may deny effects; compatibility behavior and authorization remain separate.
+
+### Decision B — kernel-only Core distribution
+
+- Ship the 15 execution/value/context identities and 13 grammar/schema identities as the mandatory Core distribution.
+- Move the 16 capability providers into separately selectable, first-party capability artifacts, preserving their XML identities through an explicit compatibility bundle/profile.
+- Keep the five optional integration modules independent as in 15.63.
+
+This produces a smaller default artifact, but it is a materially larger compatibility and packaging change. Before choosing it, maintainers must decide which capability providers are bundled in the standard compatibility profile, how old XML documents resolve them, and how the current reactor/publication model exposes those artifacts. It must not be implemented as silent removal from the registrar.
+
+### Decision C — selective capability split
+
+Retain only individually approved capability providers in the Core distribution and move the rest into first-party capability artifacts. This may produce a better product boundary than treating all 16 uniformly, but requires a per-capability decision based on host-service requirements, dependency footprint, minimal workflow usefulness, and compatibility evidence. No provider should be classified as “pure” or “safe” merely because it performs parsing or transformation; CPU, memory, external-resource resolution and script-engine behavior still need explicit limits.
+
+### Recommendation and exact maintainer decisions requested
+
+Recommend **Decision A as the immediate compatibility baseline**, while recording the logical execution kernel separately from the compatibility capability set. Defer physical artifact/module extraction until the descriptor/SPI and out-of-tree fixture gates pass.
+
+For #93 closure, maintainers need to record all of the following explicitly:
+
+1. Choose A, B or C (or record a materially different alternative).
+2. Approve the 15 execution/value/context identities as the logical execution kernel, or identify exceptions.
+3. Approve the 13 declarative identities as Core grammar/schema, not standalone providers, or identify exceptions.
+4. Decide whether all 16 capability providers remain in the compatibility distribution initially, and whether any are disabled by default under the host policy profile.
+5. Confirm the five optional integration boundaries (Database, FTP, Mail, WebBrowser, ZIP).
+6. Confirm preservation of all 44 XML identities and aliases, including `set-var`, during any later packaging transition.
+
+### Consequences for dependent work
+
+- #346 may define descriptors and host-policy semantics against the approved logical roles; it must not assume a packaging split that has not been chosen.
+- #347 must support both built-in and managed first-party/external artifacts without hard-coding the current packaging decision into the registry.
+- #348 must project grammar and capability availability from one effective registry generation; grammar identity does not imply provider activation.
+- #349 must enforce policy at host-service boundaries regardless of whether a capability ships in Core or a separate artifact.
+- #350 must test the selected compatibility distribution and Core-only profile separately where both are supported.
+
+**Decision status: PROPOSAL ONLY — no maintainer choice is inferred.** This section clarifies the decision required to close #93; it does not authorize module moves, POM changes, provider removal, SPI implementation or release work. Source inventory and design only; no tests/builds run for this documentation update.
