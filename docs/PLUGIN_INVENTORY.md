@@ -1977,3 +1977,33 @@ This section narrows the POM-level findings in 15.47 to source-level call sites.
 4. Build the minimal Core plus one selected capability and an independent consumer fixture against the exact published candidate artifacts before any dependency is moved.
 
 **Evidence boundary:** source imports/call sites and POM declarations were inspected on GitHub; no Maven dependency tree, bytecode analysis, test suite or runtime experiment was executed. No production source, POM or runtime behavior was changed.
+
+
+### 15.49 Optional provider source-level dependency direction (2026-11-23)
+
+This pass inspected the ten concrete optional-module provider entry-point classes on `main`. It complements the POM-only module graph in 15.47. The result is limited to direct imports in these ten entry points; it is not a complete scan of every helper/test/resource in each module.
+
+| Optional provider(s) | Direct WebHarvest imports observed | External implementation imports observed | Boundary finding |
+|---|---|---|---|
+| Database: `DatabasePlugin`, `ConnectionPlugin` | Core plugin API/config/schema/metadata, `DynamicScopeContext`, variables, exceptions and `org.webharvest.runtime.database.StandaloneConnectionPool` | JDK JDBC types; Guava EventBus in connection handling | No import from another optional WebHarvest module. However, the providers depend on a Core runtime-internal database pool, not just a small neutral extension API. Pool/session ownership must be redesigned or explicitly exposed through a stable host service before third-party-style isolation. |
+| FTP: `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Core plugin API/config/schema/metadata, `DynamicScopeContext`, variables and exceptions | Apache Commons Net FTP client/types | No import from another optional WebHarvest module. The provider classes are transport-specific and mostly use Core runtime context/value APIs; they are plausible optional capabilities once those Core types are represented by the approved SPI/session service contract. |
+| Mail: `MailPlugin` | Core plugin API/config/schema/metadata, `DynamicScopeContext`, variables and exceptions | Commons Email and Activation APIs | No import from another optional WebHarvest module. SMTP transport is isolated in the module; configuration, secrets and send authorization must remain host-policy responsibilities. |
+| WebBrowser: `WebBrowserPlugin` | Core plugin API/config/schema/metadata, `DynamicScopeContext`, variables, plus `ScraperSession` and session cancellation/completion/failure event classes | HtmlUnit browser/page APIs; Guava EventBus | No import from another optional WebHarvest module. This provider has the strongest direct coupling to Core runtime session internals in this sample. The final lifecycle SPI must replace or deliberately standardize these session/event hooks; otherwise a third-party provider compiled against the intended public SPI cannot reproduce the current lifecycle behavior. |
+| ZIP: `ZipPlugin`, `ZipEntryPlugin` | Core plugin API/config/schema/metadata, `DynamicScopeContext`, variables, exceptions and `CommonUtil` | No non-JDK implementation imports in the entry-point classes | No import from another optional WebHarvest module and no third-party transport dependency. It is still coupled to Core plugin/context/value APIs; JDK-only implementation is not a reason to place it in the minimal language kernel. |
+
+#### Concrete source blobs (current `main`)
+
+- Database `ConnectionPlugin.java`: `edb6ed93584cb03d967c830d120848c7e891f481`; `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728`.
+- FTP `FtpGetPlugin.java`: `fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`; `FtpListPlugin.java`: `c5fcfa6c5f90f643e6df8e85f6ad6a0b6e1074fa`; `FtpPlugin.java`: `d7098611ea7e0569b7cf9af01346be7b951da799`; `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`.
+- Mail `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`.
+- WebBrowser `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
+- ZIP `ZipEntryPlugin.java`: `ea90361ca90b31d4c3903688ca78204121af0743`; `ZipPlugin.java`: `e62046292bca8689637e5eefbd7ce25ed460d118`.
+
+#### Architectural consequence
+
+1. The current optional modules follow the desired **Maven/source direction** toward Core; no direct optional-to-optional imports were found in these ten entry-point classes.
+2. They are not yet independent against a narrow public SPI. All ten rely on Core plugin/configuration/runtime types; Database additionally consumes Core's database pool implementation, and WebBrowser consumes Core session/event internals.
+3. Therefore, “optional module depends on Core” is not sufficient evidence of a stable extension boundary. Issue #346 must define provider context, values, services, cancellation, session lifecycle, diagnostics and resource ownership without leaking implementation-specific runtime classes into the SPI.
+4. Before any module extraction, add a source-level forbidden-import check and an independent fixture that compiles against the intended public SPI only. Keep module-specific adapters inside the optional artifact.
+
+**Evidence boundary:** direct imports in the ten optional provider entry-point classes were inspected on GitHub. No tests, builds, Maven dependency tree, full-module source import scan or runtime experiment was executed. No production code or POM was changed.
