@@ -1153,7 +1153,7 @@ This audit checks singleton-like services used by concurrent execution. A shared
 
 - HttpServiceImpl owns one final Apache CloseableHttpClient and executes request-local HttpGet/HttpPost/response objects. This is a plausible shared-client design; the inspected source does not establish that the client itself is unsafe for concurrent requests.
 - The service is AutoCloseable, but the inspected API does not bind its close lifecycle to runtime shutdown, session leases or in-flight request draining. Closing the shared client while requests are active needs an explicit owner/lease contract; per-session close would be incorrect for a runtime-shared client.
-- Request/response maps are local to each call. No shared mutable request-header map is retained by executeRequest. Constructor-supplied default headers are captured by HeaderPreservingInterceptor; immutability/defensive-copy behavior must be checked in that interceptor before treating configuration as immutable.
+- Request/response maps are local to each call. No shared mutable request-header map is retained by executeRequest. Constructor-supplied default headers are copied into a private HashMap by HeaderPreservingInterceptor; getDefaultHeaders() returns a detached copy. This is a positive defensive-copy property, although the returned copy is not itself immutable.
 
 ### DefaultPluginFactory and metadata catalog
 
@@ -1174,14 +1174,15 @@ This audit checks singleton-like services used by concurrent execution. A shared
 
 - DefaultPluginFactory.java: 91c8084f671027954375ff3cab784691f8ae26e5
 - PluginMetadataCatalog.java: 5ac82d7fb6436b458b29647e4c929878557b1c6e
-- JSRScriptEngineFactory.java: 8d9d8c1c1b6d2f3d2e8b9e9f4a6b4b1c (verify exact blob before implementation)
+- JSRScriptEngineFactory.java: f99047b30d2ca455898771ae8c207fafe4f1efd7
+- HeaderPreservingInterceptor.java: 182181cc2652b68fbe6c769149d1bcdb622d57d1
 - ThreadLocalCache.java: 3d69e3c9066f0ed0201e13da0427429df227e429
 - JSRScriptEngineAdapter.java: 962f414ca17497461974faab2a9c26344332ff11
 - BaseTemplater.java: dacefb8faec186176148ab2a0cbc5a538941d4c5
 - HttpServiceImpl.java: 9e3dab1a40250f4d059ea812c74012d994873f0d
 - WebHarvestServiceImpl.java: 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec
 
-Source inspection only. Provider-specific interpreter state, Apache client concurrency under close, header interceptor immutability and classloader collectability were not reproduced or tested.
+Source inspection only. Provider-specific interpreter state, Apache client concurrency under close, classloader collectability and provider-specific interpreter reset semantics were not reproduced or tested. HeaderPreservingInterceptor defensive-copies its input map; its returned map is a detached but mutable copy.
 
 ## 8. Prioritized execution backlog and decision gates
 
