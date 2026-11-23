@@ -829,3 +829,20 @@ The following source files were inspected directly to begin the per-class attrib
 This sample reveals a useful distinction: some effects already have an injectable Core service seam (`HttpService`), while others directly use JAXP/third-party APIs or a narrow context object (`WorkingDir`, `ScriptEngineFactory`). It is premature to conclude that these seams are policy-complete. The next pass must inspect the corresponding service interfaces and Guice bindings, enumerate all call sites, and map the tests that assert path/network/script/query behavior.
 
 The import-level sample is a starting slice, not completion of the #93 per-plugin dependency/call-site matrix. No code, test or POM behavior changed.
+
+
+### 15.10 Verification of three apparent host-service seams (2026-11-23)
+
+A follow-up inspected the actual service interfaces, default Guice bindings and focused tests. This refines section 15.9: the existence of an injectable interface is not equivalent to a policy-enforcing boundary.
+
+| Seam | Exact source evidence | Current conclusion |
+|---|---|---|
+| HTTP | `HttpService.java` blob `7ef8e5f318f8dcbaf23d05f360474c6a41f27ed2`; `HttpServiceImpl.java` blob `9e3dab1a40250f4d059ea812c74012d994873f0d`; `ScraperModule.java` blob `d31a5e30b0949c752743123cbcfb4219ba60713e` | The interface accepts method, URL, body and headers only; it has no policy/context parameter. The default implementation enables redirects by default, reads the entire response into a byte array, and exposes no explicit connect/response timeout or response-size limit in the inspected implementation. ScraperModule binds one singleton `HttpServiceImpl`. Thus this is a useful abstraction seam, but current binding is not a per-host/per-session policy boundary. |
+| Filesystem | `WorkingDir.java` blob `5f763cf8e8c43dda4add3e198304eda599aed499`; `FilePlugin.java` blob `8d78e797975ab236a47420d18f28600beaae04bf` | `WorkingDir` is a Guice binding annotation for a working-directory string (Javadoc describes temporary-file location); it is not itself a filesystem service or sandbox. No canonical-path, symlink, root allowlist or byte-budget guarantee follows from this annotation. The actual FilePlugin path operations still need method-level review. |
+| Scripting | `ScriptEngineFactory.java` blob `3aa0acd84369b6167db810200d39fc6a6c0c7765`; `ScraperModule.java` blob `d31a5e30b0949c752743123cbcfb4219ba60713e` | Core exposes an engine-factory abstraction and binds `JSRScriptEngineFactory` as a singleton. The interface returns an engine for a ScriptSource; it does not carry a host permission context, allowed host-object set, execution budget or cancellation contract. Engine selection abstraction is not script isolation. |
+
+The existing `HttpServiceRedirectContractTest` (blob `f21c8c62ccca31e4b01891970244b1d9439b1b8f`) verifies deterministic loopback redirect enabled/disabled behavior and configured header propagation. It does not establish destination allowlisting, private/link-local address blocking, redirect target revalidation, DNS rebinding resistance, timeout enforcement or bounded response consumption. Tests were inspected, not run in this audit.
+
+**Architecture consequence:** the next policy design must be expressed in host-owned service contracts, not merely descriptor permission strings. HTTP needs destination/redirect validation, timeout and bounded-body policy; filesystem needs a canonicalized root-aware service; scripting needs an explicit capability context and execution lifecycle. Existing interfaces can inform compatibility adapters, but should not be assumed to satisfy the new contracts unchanged.
+
+No runtime code, tests, POMs or behavior changed.
