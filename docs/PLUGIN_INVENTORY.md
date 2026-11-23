@@ -3294,3 +3294,50 @@ Likewise, preserve the supported Guice `@Inject` behavior for existing plugins i
 5. Run two runtimes with distinct `HttpService` bindings and prove there is no cross-runtime service leakage.
 
 **Scope:** exact source/test blobs listed above, inspected at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This refines, rather than reverses, 15.72. No runtime test was executed; all observations are static source/test inspection. No production/POM/test changes were made. Runtime implementation remains STOP pending contract approval.
+
+## 15.74 Runtime composition, EventBus ownership and session completion audit (2026-11-23)
+
+This pass follows the session and event-delivery paths from the public async service and the Guice-managed Harvester path. It distinguishes thread-safe event delivery from correct ownership, isolation and lifecycle. The presence of Guava `EventBus` does not by itself establish that all execution paths share one runtime bus or that subscribers are retired with their owner.
+
+### A. Two active composition paths create different EventBus topologies
+
+- `WebHarvestServiceImpl` (blob `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`) owns one `EventBus` field per service instance. Its one-argument constructor creates a new bus; `executeAsync` passes that bus to each `ScraperSessionImpl`, puts the same instance into each `ScraperContext`, and constructs `new Scraper(eventBus)`. Thus sessions launched by one service share a service-owned bus.
+- `ScraperSessionImpl` (blob `78d07d1c485ea215d68d6d415f36b2be0c180a4f`) also has a convenience constructor that creates a new `EventBus` per session. The service avoids that constructor, but callers can still create isolated buses unless the composition boundary requires injection.
+- The separate Guice path binds `EventBus` in `ScrapingScope` in `ScraperModule` (blob `d31a5e30b0949c752743123cbcfb4219ba60713e`). `ScrapingHarvester` (blob `2af32ca67c235e075c8cc613118814d54e555338`) enters that scope, obtains the scoped bus, sets it on the context and creates its own session with that bus.
+- Therefore the repository has at least two distinct runtime composition topologies: service-owned shared bus and Guice scraping-scope bus. They are not proven to be the same runtime instance or to share the same lifecycle/observer set. The session convenience constructor is a third standalone topology.
+- `Scraper` (blob `eef7b989e6f44cddf0e99fb3967dcbde6e7a3de0`) accepts an explicit bus but its default constructor creates another one. The root executor is also default-constructed in these paths unless explicitly injected.
+
+### B. Event subscriber registration is tied to the process-global injector, not bus ownership
+
+- `EventBusTypeListener` (blob `3b368eb75ce842f3db6a67b1e9424f644b341824`) detects declared `@Subscribe` methods and, after Guice injection, resolves the bus through `InjectorHelper.getInjector().getInstance(EventBus.class)`.
+- This listener therefore depends on the static injector described in 15.72 and obtains whichever injector is currently stored there. It does not receive an explicit runtime/bus owner in its registration callback.
+- The inspected listener registers subscribers but has no corresponding unregister/dispose path. The inspected sources do not establish how long subscriber instances remain reachable or how a runtime shuts down its event-delivery graph.
+- This creates a mismatch between the desired runtime-owned bus and the existing static-injector subscriber-registration path. It also makes multiple Guice injectors in one JVM unsafe to treat as independent without a targeted isolation test.
+
+### C. Session cancellation is currently terminal-state publication, not execution quiescence
+
+- `ScraperSessionImpl.cancel()` (blob `78d07d1c485ea215d68d6d415f36b2be0c180a4f`) synchronously changes status to `CANCELLED`, ends metrics, posts `SessionCancelledEvent` and signals waiters. The session does not own or invoke a worker/descendant execution handle in this implementation.
+- `WebHarvestServiceImpl.executeAsync` submits `executeSession` but discards the returned `Future`. `cancelSession` only calls `session.cancel()`; it does not cancel/interupt the submitted worker or await its quiescence.
+- The timeout path creates a new single-thread executor, submits a second worker and retains only its `Future` locally. On timeout it calls `future.cancel(true)`, but the executor is not shut down, and the outer session worker can proceed to mark the session failed while the inner execution may still be running.
+- `shutdownNow()` marks sessions cancelled and shuts down the service executor, but the session state transition is still not proof that nested/inner execution, provider resources or external operations have stopped.
+- These source facts reinforce 15.53–15.59: session terminal status, worker termination, descendant quiescence, resource cleanup and external-effect disposition must remain separate facts. GRACE/KILL must operate on retained host-owned execution handles under one monotonic deadline; an in-process non-cooperative plugin cannot be safely force-killed.
+
+### D. Context and bus concurrency contract must be explicit
+
+- `ScraperContext` (blob `6273525f5566ef59575acb593dfec8f3ad3b5e21`) stores variables in ordinary `HashMap` and `Stack` instances and mutates its scope stack without synchronization. The class does not claim thread safety. Do not infer that a thread-safe event bus makes a shared execution context safe for concurrent plugin mutation.
+- A shared runtime EventBus can be appropriate and is the recommended target, provided it is one explicit instance per runtime, safely supports concurrent publication/subscriber dispatch, carries session/correlation identity in every event, and has a deterministic subscriber registration/removal lifecycle. Sharing one bus across sessions must not imply sharing their mutable contexts.
+- The current service-owned bus is shared by every session created by that service. The current Guice path obtains a scoped bus per scraping invocation. The target must deliberately choose one runtime-owned bus and make both execution entry points consume it; it must not accidentally create one bus per plugin, scraper, session or invocation.
+
+### E. Target ownership and required conformance
+
+1. The runtime composition root owns exactly one event-delivery service/bus and its subscriber registry. Sessions and all nested plugin executions receive that same runtime-owned event service explicitly.
+2. Event payloads carry immutable runtime ID, session ID, event sequence/correlation and relevant generation identity. Subscribers must filter by ownership/correlation; one session must not observe another session's private execution state by accidental broad subscription.
+3. Registration returns an owned subscription handle; runtime/provider shutdown unregisters subscribers exactly once. No static injector lookup is allowed to choose a bus.
+4. Event dispatch must define ordering, reentrancy, exception isolation, back-pressure/queueing (if asynchronous), and behavior during shutdown. Thread-safe posting alone is insufficient.
+5. Execution contexts remain session-confined unless a separate synchronized/immutable data-sharing contract is explicitly introduced. Tests must prove that concurrent sessions cannot see or mutate each other's variables.
+6. Retain every submitted execution handle, including timeout/nested work. Cancellation requests do not publish quiescence; awaiters complete only after execution and owned cleanup reach the specified terminal/quiescent state.
+7. One runtime composition must be propagated through parser, root executor, body executor, activation manager, context, session, services and event bus. Remove default constructors that silently synthesize partial compositions from the new-kernel path; keep explicit legacy adapters where required.
+
+Required tests: two sessions in one runtime share the same bus but retain isolated contexts; two runtimes use different buses and subscribers with no leakage; subscriber registration/unregistration and runtime shutdown are leak-free; concurrent event publication has defined ordering/isolation; service and Guice entry paths use the same composition contract; cancellation/timeout/shutdown prove worker and descendant quiescence; cooperative GRACE then KILL escalation is observable; non-cooperative in-process work is quarantined rather than falsely reported as killed; event subscriber exceptions cannot silently corrupt execution outcome.
+
+**Evidence limits and gate:** blobs above were fetched from PR #351 head `4b5f1f1604e92187112c9c3975cc768ab5ee19a9`. This is static source inspection; no tests/builds or concurrency experiments were run. It does not establish the precise internal thread-safety guarantees of every Guava version or prove a reproduced cross-runtime leak. No runtime/POM/test changes are made. Runtime implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
