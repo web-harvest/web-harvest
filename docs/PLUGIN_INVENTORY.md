@@ -922,3 +922,30 @@ The same Include path provides a concrete example for the container-neutral embe
 - `DefaultConfigFactory.java` (blob `64e3b3ad284999dcf55d5aa4a71f380293f3ccf9`) itself imports Guice `@Inject`, `Provider` and `@Singleton`; it obtains a `ConfigParser` through a Guice Provider.
 
 **Conclusion:** the current Include execution path is not independently constructible through a plain-Java host composition path. This is a real Core migration seam, not proof that Guice must remain the public contract. The neutral runtime should own a configuration factory/parser service contract; plain Java composition should be able to provide it directly, while Guice/Spring adapters may bind it through their native container. Provider construction should not rely on private-field injection as the only supported path. Add a no-IoC embedded Include execution test to the container-neutral conformance suite, alongside equivalent Guice and future Spring adapter tests. No implementation or tests changed/run.
+
+
+### 15.16 Core IoC dependency seam inventory (2026-11-23)
+
+This pass distinguishes neutral interfaces from Guice-bound implementation/composition classes. It is a source audit, not an instruction to remove Guice annotations mechanically.
+
+| Type | Source blob | Current dependency shape | Container-neutral migration target |
+|---|---|---|---|
+| `ConfigFactory` | `37af0cef66db0ee17311ca2d73b63ea59bd2605e` | Interface has no Guice imports or container types. | Keep as a neutral runtime service contract; make construction available through the host composition API. |
+| `ConfigParser` | `b434357f0c929a5deaf790b595fe6c509f5456e6` | Interface has no Guice imports or container types. | Keep parser contract neutral; adapter supplies an implementation/factory. |
+| `DefaultConfigFactory` | `64e3b3ad284999dcf55d5aa4a71f380293f3ccf9` | Imports Guice `@Inject`, `Provider`, `@Singleton`; constructor accepts `Provider<ConfigParser>`. | Separate neutral implementation from Guice binding; use explicit constructor/factory dependency. |
+| `ScraperModule` | `d31a5e30b0949c752743123cbcfb4219ba60713e` | Extends Guice `AbstractModule`; owns bindings, custom scopes, static injection and singleton/scoped registrations. | Retain as optional Guice adapter/composition module, not as Core's only composition path. Extract neutral service graph and lifecycle ownership. |
+| `AttributeHolderScope` | `11a39c99e517ae9ae1ba09cf69a885b636465b64` | Implements Guice `Scope` and `Provider<AHT>`; thread-local/nested scope entry and exit are coupled to Guice provider wrapping. | Separate execution-context storage/lifetime primitive from Guice Scope adapter. Preserve nested-scope semantics and explicitly define concurrency/thread handoff behavior. |
+| `DefaultHarvesterFactory` | `58bae4e22a82d89dac1c6e63e28ce5f3587e687e` | Guice `@Singleton`, constructor takes `Provider<WebScraper>`, `Provider<EventBus>` and `ScraperScope`; creates `ScrapingHarvester`. | Neutral factory receives explicit runtime-owned providers/services and scope/lifecycle abstraction; Guice adapter maps native providers to it. |
+| `ScrapingHarvester` | `2af32ca67c235e075c8cc613118814d54e555338` | Imports Guice `@Inject`/`Provider`; directly depends on `ScraperScope` and `ScopeAttributeHolder`; enters/exits scope around execute. | Execution/session lifecycle must be expressed without Guice types. Keep session scope cleanup deterministic and prevent session close from disposing host/runtime services. |
+| `PluginDependencyInjector` | `12d72a925ed81cf34ce2c47de9020042749797b0` | Public interface itself is container-neutral; accepts dependency types and registered `DependencyProvider` abstractions. | Candidate bridge for provider construction, but validate its semantics against generation pinning, host-owned service lifetime, dependency identity and cleanup before adopting it as the SPI. |
+
+**Key distinction:** the current code already contains neutral seams (`ConfigFactory`, `ConfigParser`, `PluginDependencyInjector`) alongside Guice-specific implementations and runtime composition (`DefaultConfigFactory`, `ScraperModule`, `AttributeHolderScope`, `DefaultHarvesterFactory`, `ScrapingHarvester`). The migration is therefore not “replace Guice with Spring”; it is to make the service graph, scopes and ownership explicit and neutral, then retain Guice as one adapter. Spring should map to the same contracts, not introduce a second independent runtime container.
+
+**Required design follow-up before implementation:**
+1. Specify neutral runtime construction and close semantics, including host-owned vs runtime-owned services.
+2. Specify session scope without thread-local/container assumptions leaking into the public contract; define behavior for async execution and thread handoff before selecting an implementation.
+3. Specify provider/dependency resolution for plugin generations, including constructor injection and deterministic close ordering.
+4. Prove a Core-only plain-Java host can create a runtime, execute a Core workflow containing `include`, close the session, and close the runtime without Guice on the classpath.
+5. Run the same neutral conformance fixture through the Guice adapter; add Spring only when that adapter is declared supported.
+
+**Evidence boundary:** source blobs were fetched from current `main`. No runtime code, tests, POMs or dependency declarations changed. Tests were not run in this audit.
