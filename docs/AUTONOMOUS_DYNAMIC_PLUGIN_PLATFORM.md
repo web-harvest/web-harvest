@@ -862,3 +862,57 @@ The platform must separate **termination request**, **session outcome**, and **e
 - `WebHarvestServiceTest.java`: blob `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c` — service tests do not assert actual worker quiescence or detached timeout-executor cleanup.
 
 Source inspection only. No runtime implementation, POM change or test execution is included in this documentation checkpoint.
+
+
+## 7.23 Interruption propagation and blocking-operation audit
+
+This section records a source-level audit of representative Core and optional providers on `main`. It distinguishes (a) interruption being swallowed or converted into ordinary failure, (b) blocking I/O having no operation-scoped abort handle, and (c) operations whose cancellation behavior has not been demonstrated. These are source findings, not measured runtime behavior.
+
+### Confirmed interruption-swallowing paths
+
+- **FilePlugin** (`8d78e797975ab236a47420d18f28600beaae04bf`): `doExecute()` declares `InterruptedException` but its broad `catch (Exception)` converts it to `EmptyVariable`. `handleFileWrite()` also catches `Exception` around `super.executeBody(context)`, suppressing interruption from child plugins and continuing into file-write logic. Template processing has another broad catch that treats failure as a warning and continues. The read/write/list helpers also use synchronous file APIs without a cancellation/abort abstraction.
+- **XQueryPlugin** (`b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`): XQuery evaluation catches `Exception` and wraps it as `ScraperXQueryException`; child-element execution catches `Exception` and returns `EmptyVariable`. Because `InterruptedException` is an `Exception`, both paths can convert interruption into ordinary plugin failure/fallback instead of preserving cancellation.
+- **RegexpPlugin** (`a860ab08554122680c4d5d5fde1be3d683139c6a`): the main execution catch converts any `Exception` to an empty `ListVariable`; result-template processing catches any `Exception` and returns the original template. The main method declares `InterruptedException`, but these broad catches can suppress it in nested execution.
+- **WebBrowserPlugin** (`be7675390275b16ed63e5515a11969585acd2de6`): the top-level `doExecute()` catches `Exception` from `executeAction()` and wraps it in `RuntimeException`, including an `InterruptedException` from the execute-script path. `handleExecuteScript()` itself catches `Exception` around browser execution and JavaScript waiting, also wrapping interruption without restoring the interrupt flag. `handleLoad()` does restore the flag when its explicit `Thread.sleep()` is interrupted, but wraps it as `PluginException`. This is inconsistent propagation across actions.
+
+### Blocking operations without demonstrated cancellation handles
+
+- **HTTP service** (`9e3dab1a40250f4d059ea812c74012d994873f0d`): `executeRequest()` calls the shared Apache client synchronously and consumes the response entity before returning. The inspected method exposes no request-scoped cancellation handle or link to a session deadline. IOException is wrapped as `HttpServiceException`; source inspection alone does not prove whether every underlying socket wait is interruptible.
+- **FTP Get** (`fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`): connect/login/retrieveFile are synchronous Commons Net calls. The client is disconnected in `finally`, but the executing thread has no externally retained operation handle to abort a blocked transfer. The broad catch wraps ordinary exceptions; interruption behavior of the library call must be established with a deterministic test and explicit socket/data-connection timeouts.
+- **FTP Put** (`34061eb4fbc3a70f95d8d90a3a2faef611659f82`): same structural limitation for upload. Disconnect in `finally` is cleanup after control returns; it is not a demonstrated external abort mechanism while `storeFile` is blocked.
+- **Mail** (`083297481e7e218916a77f0dea2308c63bbac7e7`): `email.send()` is synchronous and has no session-scoped abort handle in the inspected plugin. A broad `catch (Exception)` wraps failure. SMTP timeout/connection behavior and commit ambiguity need explicit tests; after message acceptance by the server, cancellation cannot imply message rollback.
+- **WebBrowser**: HtmlUnit page loading and JavaScript background waits are synchronous from the plugin's perspective. The inspected code has a configured JavaScript wait and `Thread.sleep`, but no session deadline/cancellation token passed to the WebClient or a registered close/abort callback for the active page operation.
+
+### Positive propagation examples, with limits
+
+- **IncludePlugin** (`ab06127f7f5402978937160a42455b4c0107dfab`): explicitly catches `InterruptedException`, restores the interrupt flag and rethrows it before its general exception wrapper.
+- **XPathPlugin** (`e519eb21a2e6faeef43a9d23c219502ac7f7f2a6`): body execution explicitly rethrows `InterruptedException` before its broad exception handling.
+- **TryPlugin** (`f1363d5e880f424276deeabac1082750fe61a012`): delegates child execution through `executeBody()` and declares `InterruptedException`; this is a propagation path, not proof that all descendants and blocking libraries are cancellable.
+- **CasePlugin** (`1b12791f6539d84209a72044bfabee23f096d6bd`): selected branch execution is delegated and cleanup failures are attached as suppressed exceptions. Cancellation behavior still depends on branch/plugin execution and cleanup contracts.
+
+### Required remediation and conformance rules
+
+1. At every broad catch boundary, catch/rethrow `InterruptedException` before `Exception`; restore the interrupt flag when translating interruption into an API that cannot declare it. Never return a successful/empty fallback after cancellation.
+2. Define one shared cancellation/deadline context for descendants and host services. Thread interruption is a wake-up hint, not the authoritative lifecycle state.
+3. HTTP, FTP, SMTP, browser and filesystem adapters need explicit operation ownership, finite connect/response/read/write deadlines, and host-visible abort/close handles where supported.
+4. Preserve side-effect uncertainty. FTP upload, file writes, HTTP mutations and SMTP send may have committed before cancellation is observed; report `COMMIT_UNKNOWN` where the protocol cannot establish the outcome and prohibit blind retry.
+5. Keep GRACE cleanup bounded and separate from operation deadlines. Cleanup must close owned resources without allowing a cancelled plugin to start new child work.
+6. Add deterministic tests using latches and controlled fake servers: interrupt during each broad catch; cancel during child-body execution; cancel during HTTP response-body read; FTP data transfer; SMTP send/acceptance; HtmlUnit load and JavaScript wait; file write before/after open; assert interrupt propagation, abort invocation, worker quiescence and effect disposition.
+7. Add static regression checks or focused unit tests that prevent new `catch (Exception)` blocks from swallowing `InterruptedException` in methods whose call graph can execute nested plugins or blocking operations.
+
+### Exact inspected source blobs
+
+- `FilePlugin.java`: `8d78e797975ab236a47420d18f28600beaae04bf`
+- `XQueryPlugin.java`: `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`
+- `RegexpPlugin.java`: `a860ab08554122680c4d5d5fde1be3d683139c6a`
+- `IncludePlugin.java`: `ab06127f7f5402978937160a42455b4c0107dfab`
+- `XPathPlugin.java`: `e519eb21a2e6faeef43a9d23c219502ac7f7f2a6`
+- `CasePlugin.java`: `1b12791f6539d84209a72044bfabee23f096d6bd`
+- `TryPlugin.java`: `f1363d5e880f424276deeabac1082750fe61a012`
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`
+- `FtpGetPlugin.java`: `fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`
+- `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`
+- `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`
+
+Source inspection only. No code or test changes are included in this checkpoint.
