@@ -609,3 +609,34 @@ through live add → discover → inspect/semantic/schema visibility → authori
 execute → update → generation-pinned concurrency → remove/drain/cleanup →
 re-add, without restarting the host or editing Core source. Startup-only
 scanner tests do not satisfy this release gate.
+
+
+### 12.6 Optional extension side-effect and policy audit
+
+This is a source-level review of the current optional module implementations. It
+records observed behavior and missing host-policy contracts; it is not a claim
+that the modules have passed security testing. Existing test sources were
+inspected but not executed for this audit.
+
+| Module / entry points | Observed execution and lifecycle behavior | Policy / verification gaps before safe activation |
+|---|---|---|
+| Database — `DatabasePlugin`, `ConnectionPlugin` | Supports named and inline connection configuration. Inline configuration includes JDBC driver, URL, username, password and SQL. SQL reaches `prepareStatement(sql)`; the inspected plugin schema does not expose a parameter-binding contract. SELECT handling is based on a `startsWith("select")` check. ResultSet/Statement cleanup occurs in finally; connection cleanup differs between standalone and EventBus/session-managed paths. No password logging was observed in the inspected code. | Driver and JDBC URL allowlists; credential/secret provider; query timeout; transaction and cancellation semantics; result-row/byte limits; safe connection-pool ownership; parameterized query contract. |
+| FTP — `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Uses Apache Commons Net FTP. Inline configuration carries host, port, user, password and paths. Logs include host, username and path (not password). Logout/disconnect cleanup is present. Get buffers the full remote object in a `ByteArrayOutputStream` and returns a String-backed value; put materializes the body as a byte array. Direct plugin variants do not show explicit timeout configuration. | Explicit secure transport mode (FTP vs FTPS/SFTP; no SFTP evidence found); destination/host allowlist and local path sandbox; secret source; connection/data timeout; bounded transfer size; cancellation and partial-transfer cleanup. |
+| Mail — `MailPlugin` | Uses Commons Email; host, port, from, to, subject and body are accepted; SMTP defaults to port 25. Debug logging includes host/from/to/subject. The inspected implementation does not visibly configure SMTP username/password authentication despite credentials appearing in class documentation. Sending is an irreversible external side effect. | Explicit send authorization; recipient/domain policy; TLS/authentication requirements; secret source; log redaction; idempotency/retry semantics and audit trail. |
+| Web browser — `WebBrowserPlugin` | Supports load, execute-script, get-content and close. JavaScript is enabled by default. URL validation checks HTTP(S) scheme, while HtmlUnit follows URLs and executes JavaScript. Logs include requested URL and a prefix of submitted JavaScript; result content is debug-logged. Session cleanup is present on completion/failure/cancel/close paths. | Scheme-only checks are not an SSRF boundary: private/link-local/local destinations, redirects and DNS rebinding need explicit policy. Add JavaScript permission, destination/redirect policy, navigation and execution time/resource limits, output limits and concurrency/terminal-race tests. |
+| ZIP — `ZipPlugin`, `ZipEntryPlugin` | Builds archives in memory. `ZipEntryPlugin` passes the supplied entry name to `new ZipEntry(name)`; only non-empty validation was observed. Scoped execution-context stream ownership and nested archive restoration are covered by the ZIP integration path; streams use try-with-resources. | Normalize/reject absolute and traversal-like entry names; define duplicate-entry policy; cap entry count, total uncompressed bytes and in-memory archive size; define cancellation and failure cleanup. This is a producer-side path/name policy gap, not evidence of an extraction vulnerability. |
+
+The existing tests cover meaningful happy/error paths (including FTP mock-server
+operations, database plugin/driver behavior, mail configuration and SMTP
+integration, browser regression/integration behavior, and ZIP nested archive
+bytes/orphan-entry rejection). They do **not**, based on the inspected sources,
+establish the full host-policy controls above. In particular, tests for TLS/auth,
+SSRF/redirect policy, bounded transfer/archive resources, secret/log redaction,
+and cancellation/resource exhaustion are not demonstrated by this inventory.
+Do not infer a passing test result from the presence of test source files.
+
+These requirements must be represented in provider descriptors as requested
+permissions/resource declarations and enforced by the embedding host. Descriptor
+declarations alone are not enforcement. They belong in #349 policy/lifecycle
+and #350 conformance acceptance, and must not be treated as a reason to activate
+an extension automatically when it is discovered.
