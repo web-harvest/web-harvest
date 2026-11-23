@@ -760,3 +760,14 @@ The current `WebBrowserPlugin` implementation has useful session cleanup but doe
 - The legacy sessionless-context map has weak keys but no explicit context-disposal event in the inspected class. Weak-key collection does not itself guarantee `WebClient.close()` is invoked.
 
 Required target: browser resources are owned by a runtime-scoped service and keyed by runtime + session identity; session completion closes only that session; runtime close closes only that runtime's remaining sessions after admission/drain; host-wide shutdown is a separate explicit operation. Keep the terminal-race/idempotent-close guarantees. Conformance must prove runtime A close leaves runtime B's browser pages usable, and that sessionless compatibility either has deterministic disposal or is explicitly deprecated/restricted. Source inspection only; no tests run. Source blob: `WebBrowserPlugin.java` `be7675390275b16ed63e5515a11969585acd2de6`.
+
+
+## 7.20 Session lifecycle must not silently vanish when an IoC provider is unavailable
+
+Current `ScrapingHarvester.execute()` obtains `EventBus` through an injected Guice `Provider`. If the provider is null or `.get()` throws, the implementation logs a warning and continues without an EventBus. A `ScraperSession` is created and attached to the context only when EventBus exists. This means no session completed/failed/cancelled lifecycle events are available in the fallback path; browser code then uses its legacy sessionless static weak-key map.
+
+The existing `finally` correctly exits the scraping scope, and session-backed execution emits terminal state before scope exit. Preserve that ordering, but do not silently downgrade lifecycle guarantees because an optional container binding is absent.
+
+Target contract: the neutral runtime always owns a lifecycle/session coordinator. A host IoC adapter may supply it, but if a required binding is unavailable the runtime must fail clearly rather than proceed with weaker cleanup semantics. If a deliberately reduced no-session mode is retained for compatibility, it must be explicit, bounded and tested with deterministic resource disposal. Conformance cases: no EventBus binding, provider lookup failure, normal completion, plugin failure, interruption/cancellation, session terminal cleanup and no leaked browser/JDBC/session resources.
+
+Source inspection only; no tests run. Source blob: `ScrapingHarvester.java` `2af32ca67c235e075c8cc613118814d54e555338`.
