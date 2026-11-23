@@ -702,3 +702,10 @@ Required target: distinguish construction, initialize/prepare, per-execution com
 Required tests: initialization fails after allocating a test resource → rollback closes once; execute succeeds/fails/is interrupted → per-execution cleanup runs once; provider/generation remains usable across multiple executions; generation retirement closes plugin/provider resources once after leases drain; repeated close is harmless; one runtime's close does not dispose another runtime's services.
 
 Source blobs on current `main`: `Plugin.java` `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`; `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`; `DefaultPluginBodyExecutor.java` `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+## 7.15 Existing lifecycle tests do not close the unload/rollback gap
+
+Test-source review confirms that existing lifecycle tests intentionally protect per-execution cleanup and interruption ordering: `AbstractPluginExceptionBug5Test` checks cleanup after success, failure and interruption. `AbstractPluginLifecycleBranchContractTest` checks initialized-state reset and repeated public cleanup without a preceding execute. `DefaultPluginBodyExecutorTest` exercises child execution/interruption but the inspected fixture does not assert public `Plugin.cleanup()` after child creation/execution.
+
+The inspected tests do not cover partial initialization failure after resource allocation, execute-then-public-cleanup double invocation on the same initialized instance, provider reuse across sessions, generation lease draining or exactly-once disposal on generation retirement. Test sources were inspected, not run.
+
+New conformance tests must retain the existing per-execution cleanup and interrupt-order guarantees while separately proving failed-prepare rollback and final provider/generation close.
