@@ -1114,3 +1114,25 @@ Exact current-main source blobs:
 6. Ensure inspect/semantic/schema responses carry registry generation identity and execution rejects or revalidates stale validated trees against the generation it pins.
 
 **No implementation or behavior change:** this is source-backed architecture evidence only. No code, tests, POMs or runtime registration changed; no tests were run.
+
+
+### 15.21 XML namespace identity and registry collision behavior (2026-11-23)
+
+The parser preserves namespace information in each `DefaultPluginConfiguration`, but current runtime dispatch does not use it:
+
+- `StreamingXmlParser.ConfigurationTreeHandler.startElement` normalizes the XML namespace and stores it in the configuration. It separately stores `localName` as the plugin element name.
+- `CorePluginRegistry` is a process-global singleton whose map is keyed only by `String elementName`, not by namespace plus local name.
+- `registerMapping` performs an unconditional `ConcurrentHashMap.put(elementName, pluginClass)`. A second registration for the same local name silently replaces the earlier class; there is no duplicate-owner/collision error or provenance record.
+- `DefaultPluginBodyExecutor.createChildPlugin` looks up only `childConfig.getElementName()`; it does not pass or compare the stored namespace.
+- The current test tree contains no dedicated CorePluginRegistry namespace/collision contract test.
+
+**Consequences:** the runtime's actual identity is currently local-name-only even though XML configuration stores a namespace. Two providers claiming the same local name cannot coexist under distinct namespaces in the current registry; later registration wins. This is incompatible with a robust external plugin platform where independent vendors/modules may legitimately use overlapping local names.
+
+**Required target contract:** use a canonical qualified element identity (at minimum namespace URI + local name, with explicit namespace/version compatibility rules), reject ambiguous duplicate ownership during candidate-generation validation, and preserve provider/artifact provenance in diagnostics. Any legacy namespace normalization/alias behavior must be explicit and tested; do not silently resolve collisions by registration order.
+
+Source blobs:
+- `StreamingXmlParser.java`: `faad2801021009082cf8f2b72d3543f70aad1353`.
+- `CorePluginRegistry.java`: `20f478addbf2bacc481e4e11e0328f06942a2a38`.
+- `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+
+No implementation or tests changed/run.
