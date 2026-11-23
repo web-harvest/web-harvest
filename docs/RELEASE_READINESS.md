@@ -228,3 +228,23 @@ Additional exact-artifact evidence:
 ### Decision
 
 **RELEASE = NO-GO.** The exact PR #340 candidate has strong technical distribution/SBOM/Javadoc evidence, but legal disposition, exact 2.3.1 publication scope and the mandatory plugin-platform implementation/conformance gate remain unresolved. PR #340 is Draft/unmerged. PR #343 is Draft/unmerged. No tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
+
+
+### 2.3.1 publication matrix — proposal awaiting explicit approval (#342)
+
+The latest #342 decision record contains a concrete proposed scope. It is useful for release planning but is **not yet an approved publication list**:
+
+| Coordinate / product | Proposed 2.3.1 treatment | Required gate |
+|---|---|---|
+| `org.webharvest:webharvest:2.3.1:pom` | Publish current root parent, conditionally | Remove retired OSSRH routing; isolate GPG signing from ordinary `verify`; prove published child POMs and a clean consumer resolve through this parent |
+| `org.webharvest:webharvest-core:2.3.1:jar` | Primary Central library | Sources/Javadoc/signatures, exact artifact inventory and clean-consumer proof |
+| `org.webharvest:webharvest-cli:2.3.1:jar` | Exclude from Core Central bundle; separate application distribution | Decide its independent download/release channel; do not imply that its current shaded five-extension payload is the supported Packs/Kits mechanism |
+| `org.webharvest:webharvest-ide:2.3.1:jar` | Exclude from Core Central bundle; separate application distribution | Separate application packaging and legal/provenance obligations |
+| `org.webharvest:webharvest-{database,ftp,mail,webbrowser,zip}:2.3.1:jar` | Defer public publication | #93 approved classification and #346–#350 stable SPI, activation, compatibility, policy and conformance gates |
+| `org.webharvest:webharvest-docs:2.3.1:pom` | Exclude | No demonstrated downstream consumer use case |
+
+The parent option is the least disruptive proposal because the existing child POMs inherit it and use its managed configuration. It is not release-safe as currently inspected: the parent carries retired OSSRH `distributionManagement` and a GPG profile bound to `verify`. A dedicated parent or flattening strategy would require its own compatibility proof and is not an acceptable untested release-time shortcut.
+
+The proposal also defers all five extension artifacts rather than publishing a nominally public SPI that does not yet exist. The current CLI's direct dependency on all five extensions is a packaging fact, not an approval to publish them or a future Pack/Kit design.
+
+**Maintainer decision still required:** explicitly approve/revise the exact parent + Core GAV scope, confirm CLI/IDE distribution channels, and approve deferral of all five extension GAVs. Until that decision is recorded in #342, #341 remains blocked. This checkpoint records the proposal without converting it into authorization.
