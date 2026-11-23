@@ -1531,11 +1531,13 @@ The immutable execution identity is `(runtimeId, sessionId, executionGeneration)
 Ownership scopes remain distinct:
 
 - **Runtime owner:** executor/admission coordinator, the one shared service EventBus, runtime-scoped transports/services, registry-generation manager and runtime shutdown.
-- **Generation owner:** immutable descriptor/dispatch/semantic/schema snapshot, provider bindings and generation-scoped registrations/resources. A generation belongs to exactly one runtime.
+- **Generation owner:** immutable descriptor/dispatch/semantic/schema snapshot, provider bindings, generation-scoped registrations and provider-owned resources. A generation belongs to exactly one runtime. Candidate generations have distinct provisional ownership before publication.
 - **Session owner:** execution context, cancellation/deadline, pinned generation and session-scoped resources/subscriptions.
 - **Operation owner:** in-flight I/O/task handles, abort action, operation lease and external-effect disposition.
 
-A shared service EventBus is deliberately runtime-scoped and remains shared by concurrent sessions. Ownership isolation is expressed by registration tokens and owner identity, not by allocating one bus per session. Runtime-scoped shared services (for example HTTP transport) must not be closed by a session terminal event.
+The resource ledger therefore needs four resource scopes: RUNTIME, GENERATION, SESSION and OPERATION. GENERATION resources are keyed by runtime plus generation identity (not by session); candidate-generation resources remain provisional and are rolled back if preparation/activation fails. A published generation's resources close only during its retirement, after all sessions, tasks, callbacks and leases referencing it have drained. Runtime-scoped shared services (for example HTTP transport) remain open until runtime shutdown.
+
+A shared service EventBus is deliberately runtime-scoped and remains shared by concurrent sessions. Ownership isolation is expressed by registration tokens and owner identity, not by allocating one bus per session. Runtime-scoped shared services must not be closed by a session terminal event.
 
 ### 8.7.2 Cross-component invariants
 
@@ -1558,8 +1560,8 @@ The following is the single cross-component order. Components may perform indepe
 4. **Request abort:** invoke operation-specific abort handles where supported. Record unsupported abort honestly; do not equate an interrupt request with operation exit or remote rollback.
 5. **Observe execution exit:** await the retained worker/child task handles. Cooperative completion becomes EXITED; timeout/non-cooperation becomes UNRESPONSIVE/QUARANTINED, never synthetic EXITED.
 6. **Drain leases and callbacks:** wait for active operation/resource leases and in-flight subscriber callbacks to finish within the bounded cleanup budget. Retire/unregister owner-bound subscriptions idempotently; mandatory scope teardown runs even when callbacks fail.
-7. **Resolve resource disposition:** close only resources whose owners are retiring and whose users are proven quiescent. Record CLOSED, CLOSE_FAILED or QUARANTINED plus every unresolved lease/close failure. Runtime-scoped resources remain open until runtime shutdown.
-8. **Retire generation:** only when no session/task/callback/lease/provider work can reference it, close generation-owned providers/resources and loader, then release strong references from registries, factories and caches.
+7. **Resolve resource disposition:** close only resources whose owners are retiring and whose users are proven quiescent. Record CLOSED, CLOSE_FAILED or QUARANTINED plus every unresolved lease/close failure. Session/operation resources close at their own owner boundary; runtime-scoped resources remain open until runtime shutdown.
+8. **Retire generation:** only when no session/task/callback/lease/provider work can reference it, close generation-scoped provider resources and providers through the generation owner, then close its loader and release strong references from registries, factories and caches.
 9. **Publish final report:** report business outcome, execution disposition, resource disposition, generation retirement and external-effect disposition independently. A partial or failed cleanup remains visible and retryable where safe.
 
 If the cleanup budget expires at any stage, stop advancing the retirement state. Quarantine unresolved owners and retain resources/classloaders that may still be in use. Do not silently continue to close.
