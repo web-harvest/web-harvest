@@ -805,3 +805,60 @@ Source evidence on the audited `main` baseline:
 - Focused test-source blobs: `ScrapingInterceptorTest.java` `3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff`; `ScrapingAwareTypeListenerTest.java` `6d854e1107fc16d42b31f1207021e3d6e59faaae`; `EventBusTypeListenerTest.java` `9eb438cdd6cc8cd44b2636f777f661d0a3ea4bde`. Their current assertions do not prove the valid intercepted path, which EventBus receives a subscriber, or listener removal at runtime close.
 
 The companion `MULTI_RUNTIME_ISOLATION_AUDIT.md` records the source-level call paths and the focused test-coverage observations in greater detail. This section adds the normative ownership and acceptance requirements to the target architecture; it does not claim that the current runtime satisfies them.
+
+
+## 7.22 Session cancellation is not worker termination (GRACE/KILL acceptance)
+
+The current asynchronous service/session implementation does not provide a reliable termination protocol. The following findings are based on source inspection of the current `main` baseline; they are not runtime-test results.
+
+### Current source behavior
+
+- `WebHarvestServiceImpl.executeAsync()` submits a lambda with `executorService.submit(...)` but discards the returned `Future`. The service therefore has no per-session execution handle to cancel, interrupt, await or inspect.
+- `ScraperSessionImpl.cancel()` changes the public status to `CANCELLED`, posts `SessionCancelledEvent` and signals waiters. It does not interrupt the executing thread, cancel a task or wait for plugin/descendant work to quiesce. The public terminal state can therefore precede actual execution termination.
+- The worker continues after cancellation unless some independent code stops it. Its later `markCompleted()` requires status `RUNNING`; after the session has been marked `CANCELLED`, that transition fails. The status machine therefore conflates a cancellation request with execution completion and can report a terminal state while work is still active.
+- `executeWithTimeout()` creates a new single-thread executor for each timed session, submits the actual scraper work to it, calls `future.cancel(true)` only on timeout, and never shuts that executor down. The future is local to this method and is not connected to `cancelSession()` or service shutdown. The outer session worker can finish while the inner scraper task remains unresponsive.
+- `shutdown()` calls `executorService.shutdown()` and waits for 60 seconds, but ignores the boolean returned by `awaitTermination`. It can log shutdown complete without proving worker termination. It also does not escalate or report still-running sessions.
+- `shutdownNow()` first calls `session.cancel()` on registered sessions and then calls `executorService.shutdownNow()`. Because the submitted task handles are not retained, the service cannot correlate interruption/queued-task removal with each session or await per-session quiescence. Work delegated to the separate timeout executor is outside this executor's shutdown.
+- Existing `ScraperSessionTest` cancellation coverage asserts only status transition. `WebHarvestServiceTest` uses timing/sleep assertions and does not prove that the worker thread, nested executor, plugin operation or resource leases have exited. These tests do not establish GRACE or KILL semantics.
+
+### Required two-mode termination contract
+
+The platform must separate **termination request**, **session outcome**, and **execution quiescence**. A session must not be reported as safely terminated merely because a cancellation flag or public status changed.
+
+**GRACE (cooperative termination):**
+
+1. Atomically stop admission of new work for the target session and its descendants.
+2. Propagate one cancellation signal and the session's monotonic deadline through nested dispatch, plugin calls and host services.
+3. Retain and signal the actual task/worker handles; interrupt only as a cooperative wake-up mechanism where the operation contract permits it.
+4. Allow bounded cleanup and resource release, while preventing new external side effects from starting after cancellation admission closes.
+5. Await worker, child-operation and resource-lease quiescence within the configured grace period.
+6. Report `TERMINATED_GRACEFULLY` only after quiescence is proven. If the deadline expires, report an explicit unresponsive/escalation state rather than a false terminal success.
+
+**KILL (forced escalation):**
+
+1. Escalate only after GRACE expires or an explicit host policy requests immediate escalation.
+2. For in-process Java code, use cooperative abort hooks and thread interruption as best-effort escalation; never use `Thread.stop()` and never claim that interruption forcibly terminates arbitrary plugin code.
+3. If in-process work does not quiesce, mark it `UNRESPONSIVE`/`QUARANTINED`, deny it new work, retain ownership of resources that may still be in use, and surface that the JVM worker is still alive.
+4. A hard-kill guarantee for arbitrary/non-cooperative providers requires process isolation. The host may report `KILLED` only after the worker process has exited and its owned resources have been reconciled.
+5. Preserve the distinction between execution termination and external-effect disposition. Do not infer rollback, exactly-once behavior or retry safety from a worker exit or interrupt.
+
+### Required implementation and conformance gates
+
+- One authoritative task handle per session, covering the actual execution (including timeout/delegated execution); no detached per-session executor.
+- Atomic admission/termination state machine that handles cancellation-before-start, cancellation-during-start, concurrent completion, repeated cancel, timeout-vs-cancel and shutdown races without illegal terminal transitions.
+- Separate observable fields/states for requested termination mode, session/business outcome, worker liveness/quiescence, cleanup outcome and unresolved external effects.
+- Bounded GRACE duration and separately bounded cleanup budget, both based on monotonic time; no unbounded joins or hidden executor threads.
+- Service shutdown must stop admission, request GRACE for all active sessions, await actual quiescence, escalate according to policy, and return/report incomplete shutdown if workers remain alive. It must not log success solely because a wait method returned.
+- Tests must use latches/barriers and observable worker/resource handles rather than sleeps: cancellation before task start; cancellation while blocked in an interruptible operation; non-cooperative plugin; nested child operation; timeout and explicit cancel racing; normal completion racing cancel; service close with active sessions; interrupted caller; cleanup failure; worker still alive after KILL request; process-isolated worker exit.
+- Compatibility tests must prove that legacy plugins are not silently advertised as hard-killable or safely retryable. Legacy in-process execution defaults to cooperative/best-effort cancellation with unknown quiescence until verified.
+
+### Source evidence (main baseline)
+
+- `WebHarvestServiceImpl.java`: blob `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec` — discarded submitted Future, detached timeout executor, timeout-only inner Future cancellation, ignored `awaitTermination` result, and service shutdown paths.
+- `ScraperSessionImpl.java`: blob `78d07d1c485ea215d68d6d415f36b2be0c180a4f` — `cancel()` changes status/posts event/signals completion without owning or interrupting a worker; terminal transition is not worker-quiescence proof.
+- `ScraperSession.java`: blob `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237` — public contract describes cancellation as best-effort/cooperative but does not expose termination mode, task handle, worker liveness or quiescence.
+- `SessionOptions.java`: blob `6afb9740dbab866cbf2ce2487735bc5d78bb1ea8` — one execution timeout option; no grace period, escalation policy or cleanup budget.
+- `ScraperSessionTest.java`: blob `31988741de660cb7455851e98ff75a706ea7d3dc` — cancellation tests assert state only; no worker/child/resource termination proof.
+- `WebHarvestServiceTest.java`: blob `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c` — service tests do not assert actual worker quiescence or detached timeout-executor cleanup.
+
+Source inspection only. No runtime implementation, POM change or test execution is included in this documentation checkpoint.
