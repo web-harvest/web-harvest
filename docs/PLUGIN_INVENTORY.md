@@ -3391,3 +3391,40 @@ Source blobs: ScraperModule `d31a5e30b0949c752743123cbcfb4219ba60713e`; Attribut
 6. Complete an automated repository-wide Java call-site inventory for `PluginDependencyInjector`, `InjectDependency`, `InjectorHelper`, `DefaultPluginFactory`, `CorePluginRegistry` and `PluginRegistryHolder`; separately document external/public API compatibility assumptions.
 
 **Evidence limits and gate:** all findings are static source/tree inspection at PR head `a6e6540ca3a2a4da636cf5b7b2a5470bb3ac4a63`. No tests, builds or runtime experiments were run. The static ScraperScope instance is confirmed; a cross-runtime leak is a risk to prove, not a reproduced fact. The custom DI zero-call-site claim remains unproven. No runtime/POM/test changes are made. Implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
+
+## 15.76 Legacy event delivery contracts and subscriber lifecycle (2026-11-23)
+
+The event audit found a second layer beyond the direct session EventBus path. The legacy Harvester API routes its own event types through an EventSink/Registry abstraction, while session events and newer plugin-facing context access use EventBus directly. These paths can converge on the same scoped Guava EventBus in the CLI/Harvester flow, but they have different ownership, correlation and registration contracts.
+
+### A. Two event APIs converge on the scoped EventBus in the legacy Harvester path
+
+- `EventSink` defines `publish(HarvesterEvent)`; it is a legacy facade for the Harvester event family, not the general session event API.
+- `HarvesterEventSink` resolves the target EventBus by looking up `event.getHarvester()` in `Registry<Harvester, EventBus>`, then posts to that bus. Missing/null mappings fail synchronously.
+- `DefaultHandlerHolder` registers legacy `EventHandler` instances on the scoped EventBus in `onBeforeScraping`, binds the Harvester-to-bus mapping, then unregisters those handlers and unbinds the mapping in `onAfterScraping`.
+- `ScraperModule` binds `EventSink` to singleton `HarvesterEventSink`, `HandlerHolder` to singleton `DefaultHandlerHolder`, and a locked Harvester/EventBus registry. The scoped EventBus is also exposed through `ScrapingHarvester` and the execution context.
+- This is not evidence of two independent physical event buses in this path. It is evidence of two event-facing APIs and a separate routing/registration layer around one scoped Guava EventBus. The target should preserve required legacy event types as an adapter over the canonical runtime event service, not maintain parallel delivery infrastructure.
+
+Source blobs: EventSink `794d2a215575bb9e0c27d034b64a602749ba03f9`; HarvesterEventSink `a98e0eb3da69e176b8680f902fd30931dbdcc377`; DefaultHandlerHolder `70e95fb913dbce81ace132fe056e9d55cae04cde`; HandlerHolder `4a605c04e4fde9206caf3fd0063fe9fb0a596b0f`; ScraperModule `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+
+### B. Subscriber lifecycle is inconsistent across registration mechanisms
+
+- `DefaultHandlerHolder` has a paired registration/unregistration path for its legacy EventHandler list. Its list is a mutable `LinkedList`; the shown `register`, `onBeforeScraping` and `onAfterScraping` methods do not synchronize access to it. Because the holder is bound as a Guice singleton, concurrent registration while scraping callbacks iterate the list is not proven safe.
+- `EventBusTypeListener` separately auto-registers any Guice-created instance whose concrete class declares a `@Subscribe` method. The listener obtains the EventBus through static `InjectorHelper`. It has no matching unregistration callback or subscription handle in the inspected implementation.
+- `EventBasedStatusHolder` is an additional Guava subscriber for pause/resume/stop/exit events. Its mutable `status` field is not volatile or guarded consistently by a single lock; pause/resume use Monitor guards, while stop/exit write directly. Its lifecycle and publication-thread assumptions need explicit tests.
+- Guava EventBus dispatch is synchronous for the standard EventBus implementation. A subscriber that blocks (for example while entering a Monitor guard) can therefore block the publishing thread. The canonical event contract must decide whether lifecycle/control events are synchronous, asynchronous, ordered, bounded, or deadline-aware rather than inherit accidental behavior from the legacy bus.
+
+Source blobs: EventBusTypeListener `3b368eb75ce842f3db6a67b1e9424f644b341824`; EventBasedStatusHolder `34cc3dadef3f2d651a463bf28192b64765eea70e`.
+
+### C. Target event model
+
+1. One runtime-owned event service is the canonical publication/subscription boundary for session, plugin and legacy Harvester events.
+2. Legacy `EventSink` and `HarvesterEvent` become adapters that attach canonical runtime/session identity and preserve legacy payload compatibility.
+3. All subscriber registrations return explicit subscription handles owned by a runtime, provider generation or invocation. Close/unregister is deterministic and idempotent.
+4. Registration storage is concurrency-safe; the lifecycle contract defines whether a subscriber is per-runtime, per-generation, per-session or per-invocation.
+5. Event payloads are immutable and carry runtime ID, session ID, event sequence and generation identity. A subscriber must not infer its target session from a process-global registry.
+6. Control events (pause, resume, graceful stop, kill escalation) must not be blocked indefinitely by arbitrary observers. Define dispatch isolation, deadline behavior and subscriber exception policy.
+7. Preserve existing legacy event delivery and handler callback behavior through compatibility tests, but eliminate duplicate routing registries once all consumers use the canonical event service.
+
+Required tests: concurrent handler registration with concurrent executions; handler register/unregister balance after success/failure/cancel; subscriber unregistration after provider/runtime disposal; event subscriber blocking and exception behavior; ordering under concurrent publishers; isolation of events across two runtimes and sessions; pause/resume/GRACE/KILL delivery under a bounded deadline.
+
+**Evidence limits and gate:** static source inspection only at PR head `2c1b4d1f75340ee6e44380cd44f2e925f004237f`. No runtime concurrency tests or builds were run. No claim is made that Guava EventBus itself is not thread-safe; the findings concern ownership, registration lifecycle, mutable subscriber state and synchronous blocking. No production/POM/test changes. Runtime implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
