@@ -3468,3 +3468,43 @@ Source/test blobs: `ScraperSessionTest` `31988741de660cb7455851e98ff75a706ea7d3d
 ### D. Gate and disposition
 
 This is a static source/test review; no tests, builds or runtime experiments were executed. No claim is made that the race above has been reproduced. The tests currently present are insufficient to accept the GRACE/KILL and quiescence contract. Keep runtime implementation STOP until #346 acceptance and #93/#94 prerequisites are met. No production/POM/test changes are made by this audit.
+
+
+## 15.78 Event subscriber and scope lifecycle test-oracle audit (2026-11-24)
+
+This pass checks whether the existing event/scope tests actually exercise the lifecycle properties required by the runtime design, rather than merely invoking methods or asserting object construction.
+
+### A. Automatic Guice subscriber registration is not asserted
+
+- `EventBusTypeListener.hear` detects `@Subscribe` methods declared on the concrete class, registers an `InjectionListener` with Guice, and after injection resolves the bus through `InjectorHelper.getInjector().getInstance(EventBus.class)` before registering the instance.
+- The current `EventBusTypeListenerTest` uses a mocked `TypeEncounter`, but its subscriber/non-subscriber tests only assert that the listener object is non-null. They do not verify whether `typeEncounter.register(...)` is called or not, invoke the captured injection listener, verify the selected EventBus, or verify unregistration. The test named as registration coverage does not currently prove registration behavior.
+- The production listener has no matching disposal callback or subscription handle in the inspected implementation. Repeated object creation/runtime disposal therefore has no tested subscriber-balance invariant.
+
+Source/test blobs: `EventBusTypeListener` `3b368eb75ce842f3db6a67b1e9424f644b341824`; `EventBusTypeListenerTest` `9eb438cdd6cc8cd44b2636f777f661d0a3ea4bde`.
+
+### B. Legacy handler and status tests are sequential method tests
+
+- `DefaultHandlerHolderTest` covers handler list registration, one before/after cycle, multiple sequential cycles, and expected registry interactions using mocks. It does not exercise concurrent `register`, `onBeforeScraping` and `onAfterScraping`, failure halfway through registration, duplicate handler ownership, or cleanup after callback failure.
+- `EventBasedStatusHolderTest` invokes `pause(null)`, `resume(null)`, `stop(null)` and `exit(null)` directly on one test thread. It does not publish through an EventBus, coordinate a paused execution thread, verify visibility across threads, or race stop/exit with pause/resume.
+- These tests prove basic local state/method behavior, not safe concurrent event delivery or lifecycle cleanup.
+
+Source/test blobs: `DefaultHandlerHolderTest` `c75b446d221b388b9fc7754e6f0aedce897e92a8`; `EventBasedStatusHolderTest` `9959484b5010e5ace0e4fd8ab5d735f7c8cd01ad`.
+
+### C. Scraper scope and IDE bus tests do not prove runtime isolation
+
+- `ScraperScopeTest` constructs one scope, enters one holder, reads it and exits. It does not test nested frames, exception-safe unwinding, two ScraperModule/Injector instances on the same thread, simultaneous threads, or runtime ownership boundaries.
+- `ExecutionManagerSessionLifecycleTest` does prove that a terminal event reaches a subscriber registered directly on the context's EventBus. It does not create a Guice-managed `@Subscribe` plugin, compare the subscriber's bus identity with the job context bus, or exercise two concurrent IDE jobs.
+- Thus the previously identified IDE composition mismatch remains a required test target, not a reproduced cross-bus failure.
+
+Source/test blobs: `ScraperScopeTest` `f9b14478a5acf5ce1cf072950c7ebe5b3fe498a1`; IDE `ExecutionManagerSessionLifecycleTest` `5d1af8348df6dd6a470ee0623a8d82fe37f224bb`.
+
+### D. Required test additions
+
+1. Capture and invoke the Guice `InjectionListener`; assert subscriber registration on the explicitly supplied runtime bus and exactly-once unregistration on disposal.
+2. Assert non-subscriber types register no listener; test inherited/overridden subscriber methods and duplicate injection semantics explicitly.
+3. Race handler registration against before/after callbacks; inject failures at each registration/cleanup point and assert no leaked handler or Harvester-to-bus association.
+4. Publish pause/resume/stop/exit from separate threads while a controlled execution is blocked; assert defined state visibility, bounded wake-up and deterministic terminal precedence.
+5. Exercise nested scope enter/exit under exceptions, two independent injectors on one thread, and concurrent runtime scopes on separate threads. Assert no foreign frame reuse.
+6. In the IDE path, instantiate a real Guice-managed subscriber and assert its bus identity is exactly the bus on the job context/session; repeat with two simultaneous jobs and dispose each independently.
+
+**Evidence limits and gate:** source/test inspection only; tests/builds/runtime experiments were not executed. No claim is made that a cross-runtime leak or event race has been reproduced. No production/POM/test changes. Runtime changes remain STOP pending #346 acceptance and #93/#94 prerequisites.
