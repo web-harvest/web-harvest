@@ -1518,3 +1518,89 @@ Baseline: `main` source tree inspected on 2026-11-23. This checkpoint supplement
 The `DefaultPluginFactory` constructor cache is per-factory, not static; the retention risk is conditional on the factory's lifetime. The `PluginPackageScanner` can be constructed with a non-global registry, so process-global mutation occurs only when wired to `CorePluginRegistry.getInstance()`; its source does not itself force that singleton. By contrast, `CorePluginRegistry` is unconditionally a process-wide singleton, `PluginClassScanner` and `PluginMetadataCatalog` have unconditional static state, and `BaseTemplater` has a static injected field.
 
 No runtime source was changed and no tests were run in this checkpoint.
+
+
+## 8.7 Cross-P0 lifecycle contract — one ownership graph and retirement order
+
+This section reconciles the contracts in #354–#358 with plugin generation ownership in #347/#349. It is a design-level integration checkpoint; it does not authorize runtime implementation before #93/#346 approval.
+
+### 8.7.1 One identity, separate ownership scopes
+
+The immutable execution identity is `(runtimeId, sessionId, executionGeneration)`. It is propagated unchanged through session, worker task, async context token, event envelope, operation lease and plugin-generation pin. A component must reject stale or mismatched identity rather than infer ownership from a session ID, thread, EventBus instance or mutable registry lookup.
+
+Ownership scopes remain distinct:
+
+- **Runtime owner:** executor/admission coordinator, the one shared service EventBus, runtime-scoped transports/services, registry-generation manager and runtime shutdown.
+- **Generation owner:** immutable descriptor/dispatch/semantic/schema snapshot, provider bindings and generation-scoped registrations/resources. A generation belongs to exactly one runtime.
+- **Session owner:** execution context, cancellation/deadline, pinned generation and session-scoped resources/subscriptions.
+- **Operation owner:** in-flight I/O/task handles, abort action, operation lease and external-effect disposition.
+
+A shared service EventBus is deliberately runtime-scoped and remains shared by concurrent sessions. Ownership isolation is expressed by registration tokens and owner identity, not by allocating one bus per session. Runtime-scoped shared services (for example HTTP transport) must not be closed by a session terminal event.
+
+### 8.7.2 Cross-component invariants
+
+1. **Admission is authoritative.** The runtime coordinator atomically accepts or rejects work against runtime shutdown. A session coordinator closes child/operation admission before cancellation and drain. No component may create untracked executor work.
+2. **One pinned generation per execution tree.** The session pins one immutable generation before parsing/validation/execution. Child plugins, includes, loops, metadata/schema lookup and nested execution inherit that exact pin. Publishing G2 affects only new sessions; a G1 session cannot observe mixed G2 descriptors or providers.
+3. **Context is explicit, not thread identity.** Every async hop carries the same immutable owner identity, cancellation token, monotonic deadline, host policy and generation pin. ThreadLocal may be an adapter, never the source of truth; cleanup is mandatory on all exit paths.
+4. **Events are notifications, not ownership authority.** The shared EventBus can notify lifecycle coordinators, but subscribers must filter owner identity and hold revocable registration tokens. A terminal event for A cannot close B's resources, unregister B, mutate B's status or retire B's generation.
+5. **A lease protects every active use.** Resource/operation acquisition and close-request are atomic: after draining begins no new lease is granted. An acquired lease is released in `finally`; resource close waits for all relevant leases and actual worker/operation exit.
+6. **Cancellation is not rollback.** Worker exit, resource closure and remote side-effect disposition are separate facts. An ambiguous external commit remains UNKNOWN and is not retried automatically.
+7. **No false KILL.** In-process interruption cannot establish hard termination. An unresponsive worker or operation is quarantined; its resources, provider instances and classloader remain retained while it may still execute.
+8. **Generation retirement is last.** A provider generation cannot be disposed while any session, nested task, subscriber callback, operation lease, resource lease or provider-owned asynchronous task can still reference it.
+
+### 8.7.3 Normative termination and generation-retirement sequence
+
+The following is the single cross-component order. Components may perform independent preparation concurrently, but they may not skip a gate or claim a later state before its prerequisite is proven.
+
+1. **Close admission:** atomically reject new runtime sessions (runtime shutdown) or new child/operation work (session/generation retirement). Existing accepted work remains tracked.
+2. **Freeze ownership changes:** mark the retiring session/generation as DRAINING; reject new resource leases and subscriber registrations for that owner. Reconciliation may build a candidate generation off to the side but cannot mutate the published snapshot.
+3. **Signal cancellation:** propagate one owner-bound cancellation request and monotonic cleanup deadline to worker, child tasks and operations. Preserve interruption across plugin catch boundaries.
+4. **Request abort:** invoke operation-specific abort handles where supported. Record unsupported abort honestly; do not equate an interrupt request with operation exit or remote rollback.
+5. **Observe execution exit:** await the retained worker/child task handles. Cooperative completion becomes EXITED; timeout/non-cooperation becomes UNRESPONSIVE/QUARANTINED, never synthetic EXITED.
+6. **Drain leases and callbacks:** wait for active operation/resource leases and in-flight subscriber callbacks to finish within the bounded cleanup budget. Retire/unregister owner-bound subscriptions idempotently; mandatory scope teardown runs even when callbacks fail.
+7. **Resolve resource disposition:** close only resources whose owners are retiring and whose users are proven quiescent. Record CLOSED, CLOSE_FAILED or QUARANTINED plus every unresolved lease/close failure. Runtime-scoped resources remain open until runtime shutdown.
+8. **Retire generation:** only when no session/task/callback/lease/provider work can reference it, close generation-owned providers/resources and loader, then release strong references from registries, factories and caches.
+9. **Publish final report:** report business outcome, execution disposition, resource disposition, generation retirement and external-effect disposition independently. A partial or failed cleanup remains visible and retryable where safe.
+
+If the cleanup budget expires at any stage, stop advancing the retirement state. Quarantine unresolved owners and retain resources/classloaders that may still be in use. Do not silently continue to close.
+
+### 8.7.4 Atomic publication and rollback
+
+Generation reconciliation has two phases:
+
+- **Prepare:** discover artifact fingerprints; parse implementation-independent descriptors; validate identity, compatibility, dependency graph, policy and collisions; prepare provider bindings/resources under the candidate owner without changing the active snapshot.
+- **Commit:** atomically publish the complete immutable snapshot only after preparation and authorized activation succeed. Existing sessions keep their old pin. On any failure, dispose only candidate-owned allocations that are proven unused and preserve the last-known-good snapshot.
+
+A registry generation is not a bag of independently updated maps. XML dispatch, metadata, schema, inspection, semantic projection and execution all resolve through the same snapshot identity. A stale validation token must be rejected or explicitly revalidated before execution.
+
+### 8.7.5 Dependency order and work-package boundaries
+
+| Work package | Produces | Consumes / must coordinate with |
+|---|---|---|
+| #354 worker lifecycle | tracked task handles, atomic admission, truthful worker/child exit and quarantine | Foundation for safe resource close in #355 and generation retirement in #347 |
+| #355 resource ledger | owner-bound registration, leases, drain, abort/close results | Requires #354 quiescence for final close; coordinates #356/#357/#358 |
+| #356 shared EventBus | owner-bound registration tokens, safe callback snapshots/teardown | Uses #354 identity/quiescence and #355 ownership; preserves one shared runtime bus |
+| #357 context propagation | immutable execution owner/context token, deadline/policy/generation propagation | Carries #354 task identity and #347 generation pin; provides context to #358 |
+| #358 interruption/effects | cancellation/deadline/abort semantics and UNKNOWN external-effect reporting | Uses #354 task handles, #355 operation leases and #357 propagated context |
+| #347/#349 generation/policy | candidate validation, atomic generation publication, authorization, pin/drain/retire | Final retirement depends on all prior lifecycle proofs; must not duplicate their coordinators |
+| #350 conformance | independent external fixture and cross-cutting release evidence | Verifies the integrated contract against one exact Core artifact |
+
+**Coordinator boundary:** there is one runtime admission/termination coordinator and one runtime registry-generation manager. The resource ledger owns resource state and leases; the EventBus owns event delivery and registration mechanics; the context carrier transports immutable execution identity and policy; plugin policy decides activation/authorization. These components expose narrow contracts and report state to the coordinator. Do not create competing per-plugin, per-session and per-generation shutdown coordinators that independently close the same resource.
+
+### 8.7.6 Required cross-product acceptance tests
+
+The existing per-issue tests are necessary but insufficient. Add a small number of end-to-end deterministic scenarios to #350:
+
+- **A/B isolation:** sessions A and B run concurrently on one shared EventBus and runtime transport. Cancel/retire A; B continues publishing, using HTTP/JDBC/browser resources and receiving only its own state changes.
+- **G1/G2 handover:** A pins G1; candidate G2 is prepared and atomically published; A and its nested include/loop remain on G1; B starts on G2. Failed G3 preparation leaves G2 active.
+- **Graceful drain:** cancel A while an operation lease and subscriber callback are blocked on test latches. GRACE rejects new work, aborts where supported, awaits worker exit, callback completion and lease release, then closes only A-owned resources and retires its generation when eligible.
+- **Unresponsive quarantine:** a deliberately non-cooperative provider remains active after the cleanup budget. Assert UNRESPONSIVE/QUARANTINED, retained resource and loader, no false close/retirement, while B remains healthy.
+- **Ambiguous side effect:** controlled SMTP/HTTP fixture accepts a request but drops acknowledgement. Assert worker exit is independent, effect is UNKNOWN, and retry is not automatic.
+- **Runtime shutdown:** reject new sessions atomically, drain all sessions, retire all generations, close runtime-scoped services and the shared EventBus exactly once; surface any timeout/close failure.
+- **Failure aggregation:** inject callback, abort and close failures together; mandatory cleanup still runs and the final report preserves every failure and suppressed cause.
+
+Every scenario uses latches/barriers and bounded waits; no correctness assertion relies on timing-only sleeps or forced GC. GC/WeakReference checks are diagnostic evidence only, not the sole retirement proof.
+
+### Evidence and decision boundary
+
+This integration is derived from the current open issue contracts #347 and #354–#358 and the source audits already recorded in sections 7.22–7.28 and 8.1–8.6. It identifies cross-issue invariants and ordering; it does not claim these mechanisms exist in runtime code. #93 (inventory/boundary approval) and #346 (versioned SPI/descriptor approval) remain prerequisites. No runtime implementation or tests were changed or run.
