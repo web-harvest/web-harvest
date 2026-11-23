@@ -1326,3 +1326,41 @@ Every submitted task must have an immutable owner tuple `(runtimeId, sessionId, 
 ### Priority decision
 
 Keep this as **P0-01, first implementation slice**, ahead of resource-ledger implementation: without retained task handles and truthful execution disposition, resource leases cannot know when it is safe to close. P0-02 must be designed alongside it, but resource closure implementation depends on P0-01's quiescence signal. No runtime implementation was performed in this audit.
+
+## 8.3 P0-02 resource ownership: JDBC and browser paths are not equivalent
+
+Baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This pass compared the actual resource subscribers and their existing lifecycle tests. It refines the earlier broad P0-02 assessment: browser ownership has meaningful per-session isolation coverage, while JDBC pool cleanup still reacts to every terminal event on the shared bus.
+
+### JDBC pool: cross-session close defect remains directly visible
+
+- `StandaloneConnectionPool.registerForSession(EventBus)` records only the EventBus reference; it does not record the owning session ID or execution generation.
+- Its `@Subscribe` handlers for `SessionCompletedEvent`, `SessionFailedEvent` and `SessionCancelledEvent` all call `closeAllConnections()` unconditionally. They do not inspect the event's session ID.
+- The service creates one shared EventBus for all sessions. Consequently, every registered JDBC pool subscriber sees every session terminal event. A terminal event from A can close a pool still in use by B.
+- `StandaloneConnectionPoolTest` currently tests each terminal event by posting it to a pool registered on a standalone EventBus. It asserts the physical connection closes, but does not use two sessions or prove owner matching. The test's event objects use mocked sessions; there is no cross-session identity assertion.
+- The pool Javadoc describes the EventBus as the current session's bus, but that assumption conflicts with `WebHarvestServiceImpl` injecting one shared EventBus into all session contexts. The documentation and composition root are inconsistent.
+
+### Browser state: a useful positive control, but not full lease safety
+
+- `WebBrowserPlugin` uses a static concurrent map keyed by session ID, creates a `BrowserSessionState` per session, and its three terminal event handlers compare the event session ID before closing. This avoids the JDBC subscriber's cross-session event bug.
+- `WebBrowserPluginLifecycleTest.browserPagesAreIsolatedAndCleanedUpPerSession` creates sessions A and B on the same EventBus, verifies page isolation, terminates A, and verifies B's named/default pages remain usable. This is a real positive multi-session regression test.
+- Browser close currently closes WebClients immediately on the matching terminal event. The inspected path has no operation lease or in-flight request drain proof; session-ID filtering protects ownership but does not prove it is safe to close a client while an operation is still using it.
+
+### Refined P0-02 work items
+
+1. Preserve the one shared EventBus; do not regress browser ownership by introducing per-session buses.
+2. Give every JDBC pool an immutable `(runtimeId, sessionId, executionGeneration)` owner and filter terminal events by the complete owner identity.
+3. Prefer registration through a session resource coordinator/ledger over independent ad-hoc EventBus registration; the coordinator owns registration tokens and cleanup.
+4. Add a two-session JDBC regression test mirroring the browser test: A and B both acquire live connections on the same shared EventBus; completing/failing/cancelling A closes only A; B's connection remains usable; then B's own terminal event closes B.
+5. Add race tests for pool registration concurrent with session termination and for terminal event concurrent with connection acquisition/use.
+6. For JDBC and browser resources, add operation leases so close request prevents new operations and drains active operations within GRACE budget. Identity filtering alone is insufficient.
+7. Preserve close failures and unresolved in-use resources in the termination report; do not silently treat close request as resource quiescence.
+
+### Exact test/source blobs
+
+- `StandaloneConnectionPool.java`: `ab4a92fb63599e88a55821fe141bf5aa50327008`
+- `StandaloneConnectionPoolTest.java`: `1498206a92d2c2006bb399b71720e633590b0efa`
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`
+- `WebBrowserPluginLifecycleTest.java`: `572f475dacabb7f706ce150d945a6dd762a83114`
+- `WebHarvestServiceImpl.java`: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`
+
+Source inspection only; the JDBC cross-session failure was not executed as a runtime reproduction. Browser test source demonstrates the positive per-session behavior but was not run in this audit.
