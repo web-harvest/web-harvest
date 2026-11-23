@@ -926,7 +926,7 @@ This section audits the ownership and cleanup of representative session resource
 - One service-wide event bus is shared by all sessions (WebHarvestServiceImpl.java, blob 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec). The service constructs each ScraperSessionImpl with the same eventBus, then injects that same instance into every DynamicScopeContext.
 - Both inline database operations and named connection declarations register independent pools on that shared bus (DatabasePlugin.java, blob b3934d753f17f133bd582b50206db701af843728; ConnectionPlugin.java, blob edb6ed93584cb03d967c830d120848c7e891f481; StandaloneConnectionPool.java, blob ab4a92fb63599e88a55821fe141bf5aa50327008). Each creates a StandaloneConnectionPool and registers it with context.getEventBus(), then expects terminal session events to release its physical connections.
 - The pool's terminal-event handlers do not check event session identity. onExecutionEnd(SessionCompletedEvent), onExecutionError(SessionFailedEvent) and onExecutionCancelled(SessionCancelledEvent) all call closeAllConnections() unconditionally. Since the bus is shared, a completion, failure or cancellation event from session A can close the JDBC connections currently owned by an active operation in session B. The pool then unregisters itself from the shared bus. This is a source-proven cross-session isolation defect; no runtime reproduction was performed in this documentation audit.
-- The same event-bus topology means event subscription alone is not a sufficient ownership boundary. Every listener must either be scoped to a truly session-private bus or validate the event's session/generation identity before changing resources.
+- The same event-bus topology means event subscription alone is not a sufficient ownership boundary. Every listener must validate the event's session/generation identity before changing session-owned resources. The bus remains shared.
 
 ### Resource ownership patterns and limits
 
@@ -935,16 +935,31 @@ This section audits the ownership and cleanup of representative session resource
 - Plugin lifecycle cleanup (AbstractPlugin.java, blob be3298304840e4a585b4fb148c2e62cf471ee8f7) invokes per-plugin doCleanup() in a finally path, but suppresses cleanup exceptions to preserve the execution error. That is useful local hygiene, not an authoritative session resource ledger; it cannot prove that resources created by nested/async work have drained.
 - HTTP service (HttpServiceImpl.java, blob 9e3dab1a40250f4d059ea812c74012d994873f0d) owns an AutoCloseable client, but the inspected request path does not register an operation-scoped abort/lease with the session. Its close method is a service/client lifecycle operation, not proof that an individual session can safely abort only its own in-flight request.
 
+### Shared EventBus is intentional — subscriber state must be thread-safe
+
+The shared EventBus is an architectural invariant, not the defect to remove. The runtime should retain one service/runtime-scoped EventBus so sessions, plugins and infrastructure can exchange typed events without creating isolated event topologies. Do not solve resource isolation by creating one EventBus per session.
+
+The defect is in subscriber ownership and mutable subscriber state:
+
+- DynamicScopeContext explicitly documents that EventBus.post() is thread-safe and that the bus reference is initialized before the context is shared. WebHarvestServiceImpl deliberately injects the same EventBus into every session and Scraper.
+- A thread-safe event publication mechanism does not make each subscriber's fields, registries, JDBC connections or cleanup protocol thread-safe. Concurrent sessions can post events concurrently; subscriber callbacks must therefore tolerate concurrent invocation and must not mutate shared state without a defined synchronization/ownership strategy.
+- StandaloneConnectionPool explicitly documents that it is not thread-safe. Its current event handlers also close the pool on every session terminal event without checking the event's session identity. This is both an ownership/isolation bug and a concurrency-safety gap; the fix is not a private EventBus.
+- Keep the shared bus as the transport. Bind each session-owned resource registration to an immutable session ID and execution generation. A subscriber may receive all events, but it must act only on matching ownership identity. Alternatively, a runtime-level resource coordinator can subscribe once and route events to the matching session resource owner.
+- Subscriber registration/unregistration must itself be lifecycle-safe. Avoid registering mutable resource objects in ways that permit a callback to race with close/unregister and operate on partially retired state. Define callback serialization or make callbacks idempotent and concurrency-safe.
+- Event ordering must not be assumed across independent posting threads. If a resource needs ordered transitions, serialize them per session/resource or enforce them through an atomic state machine; a globally serialized event bus is not required and could unnecessarily serialize unrelated sessions.
+
+Thus the target is: **one shared, thread-safe event transport; concurrent-safe subscribers; immutable event/session identity; session-scoped resource ownership; per-resource synchronization/leases.** A session-A terminal event must never close session-B resources, while both sessions continue to publish and consume events on the same bus.
+
 ### Required ownership contract
 
 1. Introduce an authoritative session-scoped resource registry/lease owner. Registration must bind a resource to an immutable session identity and execution generation; ownership cannot be inferred from a shared event bus.
 2. Make terminal cleanup idempotent and identity-checked. A resource registered for session A must never be closed by session B's completion, failure, cancellation or timeout.
 3. Define resource states such as registered, active/in-use, close-requested, draining, closed and close-failed. A close request must prevent new leases, signal supported abort handles, and await in-flight leases within the GRACE cleanup budget.
 4. Separate resource close initiation from proof of operation quiescence. Closing a JDBC connection or HtmlUnit client while a statement/page operation is still active is not, by itself, proof that the worker has stopped using it.
-5. Make resource registration race-safe with session termination: if termination wins, registration must fail or immediately close the candidate; if registration wins, termination must see and drain it. No resource may be published after the final cleanup snapshot.
+5. Make resource registration race-safe with session termination: if termination wins, registration must fail or immediately close the candidate; if registration wins, termination must see and drain it. No resource may be published after the final cleanup snapshot. Keep the EventBus shared; enforce this race safety in the resource owner/registry, not by creating per-session buses.
 6. Scope application-wide clients/pools separately from session-owned handles. A session must close only its lease/borrowed handle; it must not close a shared application client used by other sessions.
 7. Preserve close failures and unresolved use-after-close states in the session termination report. Do not silently treat a failed resource close as graceful quiescence.
-8. Add deterministic multi-session tests: two concurrent sessions with separate inline JDBC pools; complete/fail/cancel session A while B is blocked in a statement and assert B remains usable; cancel B and assert only B's resource closes; race registration against cancellation; close browser/client while an operation lease is held; verify cleanup idempotency, lease drain and close-failure reporting.
+8. Add deterministic multi-session tests on the same shared EventBus: two concurrent sessions with separate inline/named JDBC pools; complete/fail/cancel session A while B is blocked in a statement and assert B remains usable; cancel B and assert only B's resource closes; concurrently post terminal events and verify subscriber thread safety; race registration against cancellation; close browser/client while an operation lease is held; verify cleanup idempotency, lease drain and close-failure reporting.
 
 ### Exact inspected source blobs
 
