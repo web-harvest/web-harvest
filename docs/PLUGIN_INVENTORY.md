@@ -2330,3 +2330,42 @@ Core invariants:
 10. Verify monotonic deadline handling, bounded cleanup, observability/audit trail and no resurrection after terminal state.
 
 **Decision boundary:** GRACE can be guaranteed as a protocol for cooperative providers. Hard KILL cannot be guaranteed for arbitrary in-process Java plugins. If hard termination is a product requirement, process isolation is an architectural prerequisite, not an optional future optimization. No tests/builds/runtime/POM changes were made in this audit pass.
+
+
+### 15.55 Session cancellation is a terminal status signal, not execution termination (2026-11-23)
+
+A focused trace from the public session API through the asynchronous service and plugin executor identifies a concrete lifecycle mismatch that the GRACE/KILL contract must correct:
+
+- `ScraperSessionImpl.cancel()` synchronously changes any non-terminal session to `CANCELLED`, marks its metrics ended, posts `SessionCancelledEvent`, and signals the completion condition. It does not hold or cancel a worker `Future`, interrupt the executing thread, or wait for plugin/child execution to unwind.
+- Consequently, `awaitCompletion()` and its timed overload return as soon as the session status becomes terminal. They do not currently mean that the worker stopped, descendants settled, or session-owned resources were released. The session API documentation describes cancellation as cooperative, but the implementation's immediate terminal transition makes this distinction especially important for callers.
+- `WebHarvestServiceImpl.executeAsync()` submits the session runnable and discards the returned `Future`; no execution handle is retained for later cancellation. `cancelSession()` delegates only to `ScraperSession.cancel()`.
+- `shutdownNow()` separately calls `cancel()` on registered sessions and then invokes `executorService.shutdownNow()`. This interrupts executor workers as a separate service-level action, but it still does not establish that plugin code has unwound. Graceful `shutdown()` calls `shutdown()` and waits up to 60 seconds; it ignores the boolean result of `awaitTermination` and logs shutdown complete even if termination was not confirmed.
+- The optional per-session timeout path creates a new single-thread executor, submits the scraper, and cancels its `Future` on timeout, but does not retain or shut down that executor. This is a separate executor-ownership defect to resolve in the same lifecycle redesign; a timeout-triggered interrupt is not proof of worker termination.
+- `DefaultPluginBodyExecutor.executeChildrenInternal()` correctly propagates `InterruptedException` and prevents later siblings from running. However, this only covers code paths that actually observe thread interruption; it does not provide a session-wide cancellation token, descendant registry, or a way for the host to reach every active worker.
+- Nested execution remains synchronous in the inspected `LoopPlugin` and `CallPlugin` paths, but each constructs a fresh `DefaultPluginBodyExecutor`. Those children inherit the same mutable context object, not an explicit immutable execution handle with a shared cancellation generation/deadline. The broader nested-dispatch inventory in 15.37/15.40 remains applicable.
+- `WebBrowserPlugin` listens for completed, failed and cancelled session events and closes its browser state on those events. Because the cancellation event is emitted before worker quiescence is established, this event currently signals a requested/declared session state, not proof that all in-flight browser calls have stopped. Resource close must be idempotent and coordinated with active operations in the future contract.
+
+**Test coverage qualification:** `ScraperSessionTest` verifies status transitions and that waiters wake after completion/cancellation, but it has no blocked worker/plugin proving whether cancellation interrupts or drains it. `WebHarvestServiceTest.testCancelSession_ExistingSession` permits cancellation or an already-terminal status after a sleep; it does not assert worker exit, descendant completion, resource release, or absence of post-cancel side effects. The inspected tests therefore do not establish the semantics required by GRACE/KILL.
+
+**Required correction in the target contract:**
+
+1. Separate `STOP_REQUESTED` from terminal execution outcomes. A stop request must not mark metrics ended or satisfy `awaitTermination/quiescence` until the host has reconciled the worker, descendants and registered resources.
+2. Retain a host-owned execution handle for every admitted session and nested/async task. It must support atomic admission closure, cancellation propagation, supported interruption, bounded drain, and observable worker completion.
+3. Define distinct waits: status/request acknowledgement versus execution quiescence. A compatibility `awaitCompletion()` must have one documented meaning and must never report quiescence solely because a stop flag changed.
+4. Make timeout and shutdown use the same cancellation protocol and monotonic deadline. Retain and deterministically close every executor created by the runtime; never leave timeout helper executors detached.
+5. Test with latch-controlled cooperative and non-cooperative plugins: stop request while blocked, no new sibling/child admission, GRACE drain, KILL escalation, late completion after cancellation, browser/resource close racing an active call, service shutdown deadline, and proof that `awaitQuiescence` remains false while worker code is still running.
+
+This is a source/test inspection finding, not a reproduced live race; no tests were executed. It is stronger than a missing-interface observation: the immediate status/event/completion behavior and discarded execution `Future` are directly visible in the inspected implementation.
+
+**Exact source/test blobs at `main` snapshot `1729bdf4620a66686d02605083e27e27d1ab3944`:**
+
+- `ScraperSessionImpl.java`: `78d07d1c485ea215d68d6d415f36b2be0c180a4f`.
+- `ScraperSession.java`: `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237`.
+- `WebHarvestServiceImpl.java`: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`.
+- `DynamicScopeContext.java`: `f5ca038f25442f597986bf64ebc65e958b92a010`.
+- `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+- `LoopPlugin.java`: `ba91342e4e560f6bea9165bdba9b5ce4b4db82d8`.
+- `CallPlugin.java`: `01238d278e4bbddb262c797f34a481dcd964e3c9`.
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
+- `ScraperSessionTest.java`: `31988741de660cb7455851e98ff75a706ea7d3dc`.
+- `WebHarvestServiceTest.java`: `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c`.
