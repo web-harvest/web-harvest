@@ -771,3 +771,37 @@ The existing `finally` correctly exits the scraping scope, and session-backed ex
 Target contract: the neutral runtime always owns a lifecycle/session coordinator. A host IoC adapter may supply it, but if a required binding is unavailable the runtime must fail clearly rather than proceed with weaker cleanup semantics. If a deliberately reduced no-session mode is retained for compatibility, it must be explicit, bounded and tested with deterministic resource disposal. Conformance cases: no EventBus binding, provider lookup failure, normal completion, plugin failure, interruption/cancellation, session terminal cleanup and no leaked browser/JDBC/session resources.
 
 Source inspection only; no tests run. Source blob: `ScrapingHarvester.java` `2af32ca67c235e075c8cc613118814d54e555338`.
+
+## 7.21 Guice type-listener registrations and AOP interception are not runtime-owned
+
+The multi-runtime hazard extends beyond the shared scope and static service fields. The current Guice extension points also resolve their owning services through process-global state and do not define reverse lifecycle operations:
+
+- `ScrapingInterceptor.invoke()` calls `InjectorHelper.getInjector()`, then resolves `ScraperScope` and `ScrapingAwareHelper` from that injector. An AOP-intercepted Harvester belonging to runtime A can therefore enter the scope and notify listeners obtained from runtime B after B's injector has most recently performed static injection.
+- `EventBusTypeListener.afterInjection()` also calls `InjectorHelper.getInjector()` and registers the injected object with that injector's `EventBus`. A subscriber created by A can consequently be registered on B's EventBus. The listener does not capture the injector/EventBus that owns its Guice binding and has no corresponding unregister/disposal callback.
+- `ScrapingAwareTypeListener` obtains a provider for `ScrapingAwareHelper` from its `TypeEncounter`, but the helper stores listeners in a mutable `ArrayList`, documents that registration is not thread-safe, and has no remove operation. The source explicitly records the missing reverse process. Runtime disposal cannot currently detach these listener references through a supported lifecycle API.
+
+This is a separate lifecycle defect from merely sharing a static scope instance: even if scope objects and script engines become runtime-owned, the current interceptor and type-listener callbacks can still route events or retain objects across runtime boundaries.
+
+Required target:
+
+1. Interceptors and injection/type-listener callbacks must capture or receive the owning runtime's explicit service context; no callback may resolve an injector, EventBus, scope or listener collection through a process-static service locator.
+2. Subscriber and lifecycle-listener registration must return an ownership/disposal handle (or equivalent deterministic unregister operation). The handle belongs to the runtime/container that created the subscriber.
+3. Runtime close must stop new registrations, detach only that runtime's subscribers/listeners, and leave other runtimes' EventBus instances and callbacks usable. Registration/removal must be safe under concurrent injection and shutdown.
+4. A host-owned EventBus must remain host-owned; WebHarvest may register/unregister its subscribers but must not close the host's bus.
+
+Required conformance tests (source inspection only; not run):
+
+- Construct runtimes A and B, then create an A subscriber after B is initialized; publish an event on each bus and prove the subscriber receives only A's event.
+- Invoke a valid AOP-intercepted Harvester for A after B has been initialized; prove its scope and before/after listeners are resolved from A, not B.
+- Close A while B remains active; prove A subscribers/listeners are detached and B continues receiving events and executing harvesters.
+- Race subscriber/listener creation against runtime close; prove no post-close registration leak, cross-runtime registration or concurrent collection failure.
+- Repeat on reused executor threads to ensure teardown does not depend on thread-local cleanup alone.
+
+Source evidence on the audited `main` baseline:
+
+- `ScrapingInterceptor.java`: blob `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2` — static injector lookup for AOP scope/helper resolution; helper's mutable listener collection and missing removal path.
+- `ScrapingAwareTypeListener.java`: blob `4ed97073d64878be10cd4798c47b56ecd169f1cf` — post-injection listener registration with no reverse callback.
+- `EventBusTypeListener.java`: blob `3b368eb75ce842f3db6a67b1e9424f644b341824` — static injector lookup and EventBus registration without disposal.
+- Focused test-source blobs: `ScrapingInterceptorTest.java` `3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff`; `ScrapingAwareTypeListenerTest.java` `6d854e1107fc16d42b31f1207021e3d6e59faaae`; `EventBusTypeListenerTest.java` `9eb438cdd6cc8cd44b2636f777f661d0a3ea4bde`. Their current assertions do not prove the valid intercepted path, which EventBus receives a subscriber, or listener removal at runtime close.
+
+The companion `MULTI_RUNTIME_ISOLATION_AUDIT.md` records the source-level call paths and the focused test-coverage observations in greater detail. This section adds the normative ownership and acceptance requirements to the target architecture; it does not claim that the current runtime satisfies them.
