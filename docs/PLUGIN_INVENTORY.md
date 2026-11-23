@@ -1661,3 +1661,15 @@ A focused trace of the Plugin contract and active executor adds a lifecycle cave
 Therefore, current `doCleanup()` is per-execution cleanup, not proof of safe provider/generation unload. Failed initialization has no guaranteed rollback hook, and the active executor does not demonstrate a deterministic public cleanup path for created instances. Dynamic plugin lifecycle must separate prepare/initialize, per-execution completion, failed-prepare rollback, and final provider/generation close, with explicit ownership and exactly-once disposal.
 
 Conformance must include partial initialization failure after resource allocation, execution success/failure/interruption, reuse across sessions, generation retirement after leases drain, repeated close, and runtime isolation. This is source inspection only; no tests run. Source blobs: `Plugin.java` `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`; `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`; `DefaultPluginBodyExecutor.java` `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+### 15.39 Existing lifecycle tests cover per-execution cleanup, not provider unload/rollback (2026-11-23)
+
+Test-source review qualifies the lifecycle gap in 15.38:
+
+- `AbstractPluginExceptionBug5Test` asserts that `doCleanup()` runs after successful execution, ordinary failure and interruption. This validates per-execution cleanup and interrupt ordering.
+- `AbstractPluginLifecycleBranchContractTest` checks initialized state, calls public `cleanup()` and verifies state reset/idempotence when cleanup is called twice without a preceding execute.
+- `DefaultPluginBodyExecutorTest` exercises child execution and interruption propagation, but the inspected fixture does not assert public `Plugin.cleanup()` is invoked after the executor creates/executes a child.
+- No inspected lifecycle test covers a `doInitialize()` implementation that allocates a resource and then throws, followed by rollback.
+- No inspected test covers one plugin/provider surviving multiple sessions and then being disposed exactly once when its generation retires after active execution leases drain.
+- No inspected test covers duplicate `doCleanup()` caused by `execute()` followed by public `cleanup()` on the same initialized instance.
+
+These test sources are evidence of current coverage intent, not test execution. No local test suite was run. The future conformance suite must preserve existing per-execution cleanup/interrupt guarantees while adding failed-prepare rollback, separate final disposal and generation/provider lifetime assertions.
