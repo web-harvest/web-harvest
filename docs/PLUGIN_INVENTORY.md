@@ -3257,3 +3257,40 @@ The target must not preserve all three construction mechanisms and merely wrap t
 Required tests include: two independent runtimes with different service bindings; no cross-runtime injector leakage; no reflection fallback when Guice/runtime composition is absent; deterministic missing-service failure; constructor/member injection parity for supported legacy plugins; no duplicate construction on a single activation; explicit prototype/singleton semantics; provider disposal only after all generation leases drain; and compatibility tests for any retained public factory/DI API.
 
 **Scope and evidence limits:** exact source blobs are recorded above at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This is source inspection, not a runtime reproduction. The active Core executor and static Guice path are confirmed. The claim that `PluginDependencyInjector` has no other production/downstream use is NOT established; the full call-site census is still required. No tests/builds were run and no source/POM/workflow/runtime changes were made. Runtime implementation/removal remains STOP pending #346 acceptance and #93/#94 prerequisites.
+
+
+## 15.73 DI contract and runtime composition evidence — two annotations and a misleading test boundary (2026-11-23)
+
+The follow-up test inspection refines the DI finding: `PluginDependencyInjector` is not the active Core executor's injection mechanism, but its API is not merely dead test scaffolding. Its contract has explicit tests, while the active Guice path is also exercised directly by a Core plugin test.
+
+### A. Two independent injection annotations and semantics coexist
+
+- `HttpPlugin` (main blob `c6045d6c7638f3aa86c510240814633597b108ad`) has a field annotated with Guice `com.google.inject.Inject` for `HttpService`. `ScraperModule` binds `HttpService` to singleton `HttpServiceImpl`.
+- `HttpPluginWithDependencyInjectionTest` (test blob `fa82e5b92b00fb43cf1577bf40bd2b7cb3d77b9f`) creates a Guice injector with `ScraperModule`, asks Guice for `HttpPlugin`, then directly initializes and executes it against a loopback HTTP server. This verifies Guice-managed direct construction/injection, but it does NOT exercise the executor's `InjectorHelper` lookup or its null-injector reflection fallback.
+- Separately, `PluginDependencyInjectorTest` (test blob `e5aa0a4ad9b3bfe80b18b1576ff0103e5062e0f5`) explicitly constructs `DefaultPluginDependencyInjector`, registers its own provider/singleton, and verifies injection into a private field annotated with WebHarvest's custom `@InjectDependency`.
+- `DefaultPluginDependencyInjectorTest` (test blob `5234ba0664300920a5f21c66e22bddfe4e684558`) verifies provider/singleton registration and lookup, null/error behavior, and basic injection behavior. Its mocked-plugin case does not establish runtime wiring.
+- These are two different DI contracts: Guice `@Inject` plus Guice binding/scope semantics, and WebHarvest `@InjectDependency` plus a separate exact-type provider/singleton registry and reflective field assignment. The custom annotation is not an alias for Guice injection.
+
+### B. Runtime composition is split at the root boundary too
+
+- `RootConfigurationExecutor` (main blob `46fed681684797a826eca230cd7f3369f7d2a28b`) has a no-argument constructor that creates `new DefaultPluginBodyExecutor()`; it also permits an executor to be supplied directly.
+- This means the configured root execution path can construct the body executor outside an explicit runtime composition object. The body executor then reaches back into `CorePluginRegistry.getInstance()` and static `InjectorHelper`, as described in 15.71/15.72.
+- By contrast, `DefaultHarvesterFactory` (main blob `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`) is Guice-injected with providers and runtime services. The repository therefore already contains a partial instance-owned composition pattern, but it is not propagated through the root parser/dispatch/activation chain.
+
+### C. Corrected interpretation and migration rule
+
+Do not conclude that `PluginDependencyInjector` can be deleted merely because the current Core body executor bypasses it. Its public interface, custom annotation and test contract are evidence of a compatibility surface. First establish all production, optional-module, IDE/CLI, test and downstream usages. Then decide whether:
+- custom `@InjectDependency` semantics are mapped explicitly into the canonical host-service injection contract and retained through an adapter; or
+- the custom API is deprecated with a documented compatibility window and migration path.
+
+Likewise, preserve the supported Guice `@Inject` behavior for existing plugins in the compatibility distribution, but do not make Guice a mandatory dependency of the new Core execution kernel. One canonical runtime service model must define the supported injection points, qualifiers, scopes, lifecycle and error semantics; compatibility adapters may implement that model, but must not maintain separate service registries.
+
+### D. Additional conformance tests required
+
+1. Distinguish direct Guice construction from executor-mediated activation; explicitly test both legacy and new paths.
+2. Verify legacy `HttpPlugin` service injection when reached through parsed XML and the real executor, not only when fetched directly from Guice.
+3. Verify custom `@InjectDependency` compatibility or an explicit deprecation/migration behavior; include inherited fields, duplicate/missing providers and scope semantics.
+4. Prove `RootConfigurationExecutor`, parser, body executor and activation manager receive one runtime composition and the same pinned generation.
+5. Run two runtimes with distinct `HttpService` bindings and prove there is no cross-runtime service leakage.
+
+**Scope:** exact source/test blobs listed above, inspected at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This refines, rather than reverses, 15.72. No runtime test was executed; all observations are static source/test inspection. No production/POM/test changes were made. Runtime implementation remains STOP pending contract approval.
