@@ -3428,3 +3428,43 @@ Source blobs: EventBusTypeListener `3b368eb75ce842f3db6a67b1e9424f644b341824`; E
 Required tests: concurrent handler registration with concurrent executions; handler register/unregister balance after success/failure/cancel; subscriber unregistration after provider/runtime disposal; event subscriber blocking and exception behavior; ordering under concurrent publishers; isolation of events across two runtimes and sessions; pause/resume/GRACE/KILL delivery under a bounded deadline.
 
 **Evidence limits and gate:** static source inspection only at PR head `2c1b4d1f75340ee6e44380cd44f2e925f004237f`. No runtime concurrency tests or builds were run. No claim is made that Guava EventBus itself is not thread-safe; the findings concern ownership, registration lifecycle, mutable subscriber state and synchronous blocking. No production/POM/test changes. Runtime implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
+
+
+## 15.77 Session termination test coverage and the meaning of terminal status (2026-11-24)
+
+This pass compares the current session/service implementation with the actual tests that exercise cancellation, waiting, timeout, shutdown and concurrent execution. It narrows the earlier source findings to concrete test-oracle gaps.
+
+### A. `awaitCompletion` means terminal status, not execution quiescence
+
+- `ScraperSessionImpl.awaitCompletion()` waits only while `!status.isTerminal()`; the timed overload uses the same condition. `cancel()` changes status to `CANCELLED`, posts `SessionCancelledEvent`, marks metrics ended and signals the completion condition immediately.
+- No worker, descendant-execution, provider-resource or cleanup handle is consulted by either await method. Therefore a successful return proves only that the session state became terminal. It does not prove the submitted task returned, nested work stopped, or owned resources were released.
+- The distinction is observable in the service implementation: `executeAsync` discards the Future returned by `executorService.submit`; `cancelSession` delegates only to `ScraperSession.cancel()`. The timeout helper creates another single-thread executor, retains its Future only locally, calls `cancel(true)` on timeout, and does not shut that executor down in the shown method.
+- A cancellation race is also possible by inspection: after `cancel()` makes the session terminal, the still-running worker may return from `scraper.execute` and call `markCompleted()`, which rejects the non-RUNNING state. The outer worker catches the resulting exception and calls `markFailed`, which intentionally leaves an already-terminal session unchanged. The visible status can remain CANCELLED while the worker's actual exit time is later. This is a source-derived race scenario, not a reproduced runtime result.
+
+Source blobs: `ScraperSessionImpl` `78d07d1c485ea215d68d6d415f36b2be0c180a4f`; `WebHarvestServiceImpl` `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`.
+
+### B. Existing tests validate state transitions, not worker termination
+
+- `ScraperSessionTest.testStatusTransition_PendingToCancelled` checks only the boolean return and terminal enum. It does not start a worker or assert that one has exited.
+- The await tests prove that waiters are released after `markCompleted()` and that a timed wait can expire while status remains RUNNING. They do not test cancellation while a worker is blocked, nor distinguish terminal status from quiescence.
+- `WebHarvestServiceTest.testCancelSession_ExistingSession` sleeps for 100 ms and accepts either a successful cancel or an already-terminal session. This intentionally permits the execution to have completed before cancellation; it cannot prove cancellation reaches an active worker.
+- `testShutdownNow` asserts only `isShutdown()`. The test does not await worker exit or inspect descendant tasks/resource cleanup. The service timeout path has no focused test in the inspected test class that proves interruption, executor shutdown or quiescence.
+- `SessionManagementIntegrationTest.testConcurrentExecution_NoInterference` is named as a concurrent test, but the method calls its synchronous `executeRealXml` helper inside a loop and sleeps between calls. It verifies distinct contexts across sequential executions, not simultaneous execution or cross-session race isolation.
+- `ExecutionManagerSessionLifecycleTest` verifies that a terminal event reaches the context EventBus. It does not exercise termination, worker ownership or subscriber disposal.
+- `SessionRegistryTest` does contain concurrent register/lookup tests. Those establish registry data-structure concurrency only; they do not establish execution-worker or plugin lifecycle safety.
+
+Source/test blobs: `ScraperSessionTest` `31988741de660cb7455851e98ff75a706ea7d3dc`; `WebHarvestServiceTest` `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c`; `SessionManagementIntegrationTest` `63f3ef6581ffec66a19200c0fd0aefda826cd999`; `SessionRegistryTest` `aea82998ecf4ac81a8d02765af3f36465c3f8083`; IDE `ExecutionManagerSessionLifecycleTest` `5d1af8348df6dd6a470ee0623a8d82fe37f224bb`.
+
+### C. Required deterministic termination conformance tests
+
+1. Use latch-controlled plugins to hold an execution after the session becomes RUNNING. Request cancellation and assert the worker remains observable until it actually exits; assert `awaitQuiescence` does not complete merely because status becomes CANCELLED.
+2. Cooperative GRACE: publish a stop request, propagate the same monotonic deadline through nested work, allow provider cleanup, and assert exactly-once resource release and worker exit.
+3. Non-cooperative in-process plugin: prove GRACE expiry produces an explicit UNRESPONSIVE/QUARANTINED result, does not claim hard KILL, and retains provider-generation/classloader ownership while code is still executing.
+4. Timeout: verify the host retains the submitted handle, requests interruption, shuts down or otherwise owns every helper executor, waits within a bounded cleanup budget, and reports execution/quiescence/effect disposition separately.
+5. Shutdown: test both graceful and immediate shutdown with active and queued sessions; assert no new work is admitted, all submitted handles are accounted for, and service termination is not reported before its owned workers reach the documented state.
+6. Race matrix: cancellation vs successful return, cancellation vs exception, timeout vs cancellation, repeated termination requests, and shutdown vs nested execution. Assert exactly one terminal transition and no false quiescence.
+7. Replace the misleading sequential integration case with a barrier/latch-based simultaneous-execution test. Verify contexts remain isolated while sessions share the intended runtime EventBus.
+
+### D. Gate and disposition
+
+This is a static source/test review; no tests, builds or runtime experiments were executed. No claim is made that the race above has been reproduced. The tests currently present are insufficient to accept the GRACE/KILL and quiescence contract. Keep runtime implementation STOP until #346 acceptance and #93/#94 prerequisites are met. No production/POM/test changes are made by this audit.
