@@ -1775,3 +1775,103 @@ This pass reconciles the ten optional-module plugin entry points against their a
 - ZIP `ZipPluginContractTest.java`: `0c1a161a913106db28f59c2c788fe628a26088f0`; `ZipPluginIntegrationTest.java`: `992dba66310702aff205553d7f85c2eda31b57a9`.
 
 This is test-source inspection only. No tests were executed in this pass, no runtime code changed, and no passing test result is claimed. The source files were read from `main`; this audit section is being added to the #351 documentation branch.
+
+
+### 15.46 Repository-wide destination proposal — all 57 concrete candidates (2026-11-23)
+
+**Status: proposed classification for maintainer review; no package move or runtime decision is authorized.** This section combines the 44 current Core XML mappings, the three additional Core-package plugin classes, and the ten optional-module entry points. “Destination” means a target architectural ownership boundary, not a proposed immediate Maven module rename.
+
+#### Classification rules
+
+- **Kernel/language** means provider behavior required to interpret the WebHarvest execution language: values, variable/context operations, function invocation, structured control flow and body composition.
+- **Built-in capability** means first-party behavior that may ship with WebHarvest but is not intrinsically required to execute the language kernel. It must depend on host-provided services/policies and may be separately enabled in a runtime profile.
+- **Optional integration** means an external-system, network, database, mail, browser or archive capability that must not be a mandatory dependency of the minimal kernel.
+- **Grammar/descriptor** means XML syntax or parent-owned detail semantics. It needs schema/semantic representation but is not an independently installable provider.
+- **Runtime protocol / historical / disabled compatibility** are not ordinary provider destinations.
+
+#### Current Core-package candidates
+
+| Current implementation | Current XML/runtime status | Proposed destination | Rationale / migration constraint |
+|---|---|---|---|
+| CallPlugin | Registered `call` | Kernel/language | Function invocation and nested execution; must inherit runtime, generation, policy and budget |
+| CallParamPlugin | Registered `call-param` | Grammar/descriptor | Call argument detail, not independent capability |
+| CasePlugin | Registered `case` | Grammar/descriptor | Parent-owned conditional branch |
+| CatchPlugin | Registered `catch` | Grammar/descriptor | Try/catch branch and error binding |
+| ConstantPlugin | Registered `constant` | Kernel/language | Literal/value definition |
+| DefPlugin | Registered `def` | Kernel/language | Variable definition/context mutation |
+| ElsePlugin | Registered `else` | Grammar/descriptor | Parent-owned conditional branch |
+| EmptyPlugin | Registered `empty` | Kernel/language | Empty value primitive |
+| ExitPlugin | Registered `exit` | Kernel/language | Execution-scoped control signal; never runtime shutdown |
+| FilePlugin | Registered `file` | Built-in capability: filesystem | Host filesystem service, path confinement and byte/time limits required |
+| FunctionPlugin | Registered `function` | Kernel/language | Function declaration/body composition |
+| GetVarPlugin | Registered `get` | Kernel/language | Variable/context lookup |
+| HtmlToXmlPlugin | Registered `html-to-xml` | Built-in capability: HTML conversion | Parser dependency and input/output/time budgets; not essential to language dispatch |
+| HttpPlugin | Registered `http` | Built-in capability: HTTP | Host transport and destination policy; no direct unrestricted network access |
+| HttpHeaderPlugin | Registered `http-header` | Grammar/descriptor | HTTP request detail owned by `http` |
+| HttpParamPlugin | Registered `http-param` | Grammar/descriptor | HTTP request detail owned by `http` |
+| IfPlugin | Registered `if` | Kernel/language | Structured conditional execution; nested body must pin generation |
+| IncludePlugin | Registered `include` | Built-in capability: configuration sources | File/URL loading, include depth/bytes and nested-generation policy; keep composition contract distinct from unrestricted filesystem |
+| JsonToXmlPlugin | Registered `json-to-xml` | Built-in capability: data conversion | JSON parser/materialization and bounded conversion |
+| LoopPlugin | Registered `loop` | Kernel/language | Iteration and nested body execution under shared budget |
+| RegexpPlugin | Registered `regexp` | Built-in capability: text transformation | CPU/input/output bounds and ReDoS containment |
+| RegexpPatternPlugin | Registered `regexp-pattern` | Grammar/descriptor | Parent-owned regexp detail |
+| RegexpResultPlugin | Registered `regexp-result` | Grammar/descriptor | Parent-owned result/template detail; nested execution inherits context |
+| RegexpSourcePlugin | Registered `regexp-source` | Grammar/descriptor | Parent-owned regexp input detail |
+| ReturnPlugin | Registered `return` | Kernel/language | Function-scoped control signal |
+| ScriptPlugin | Registered `script` | Built-in capability: scripting | Runtime-scoped engine, explicit host-object permissions and execution limits; no static global engine |
+| ListPlugin | Registered `list` | Kernel/language | Collection/value construction |
+| LogPlugin | Registered `log` | Built-in capability: host logging | Host logging service, redaction and output policy |
+| ValueOfPlugin | Registered `value-of` | Kernel/language | Value extraction/composition |
+| XMLPlugin | Registered `xml` | Kernel/language | XML/text value construction; parser semantics must remain explicit |
+| SetVarPlugin | Registered legacy `set-var` | Kernel/language compatibility | Preserve exact legacy mapping and semantics; metadata scanner parity must be fixed separately |
+| SleepPlugin | Registered `sleep` | Built-in capability: time | Deadline-aware cancellable delay; host policy controls maximum duration |
+| StylesheetPlugin | Registered `stylesheet` | Grammar/descriptor | XSLT stylesheet detail owned by `xslt` |
+| TemplatePlugin | Registered `template` | Kernel/language | Template interpolation is language-level, but engine service must be runtime-scoped |
+| TextPlugin | Registered `text` | Kernel/language | Text value/body construction |
+| TokenizePlugin | Registered `tokenize` | Kernel/language | Deterministic text/list primitive; output limits remain mandatory |
+| TryPlugin | Registered `try` | Kernel/language | Exception/control-flow semantics and nested body execution |
+| WhilePlugin | Registered `while` | Kernel/language | Condition loop; canonical validation/runtime iteration limit required (see 15.33) |
+| XmlToJsonPlugin | Registered `xml-to-json` | Built-in capability: data conversion | XML parser and bounded JSON materialization |
+| XPathPlugin | Registered `xpath` | Built-in capability: query | Saxon/Jsoup query engines, resolver restrictions and execution/result budgets |
+| XQueryPlugin | Registered `xquery` | Built-in capability: query | Saxon execution with resolver restrictions and execution/result budgets |
+| XQExpressionPlugin | Registered `xq-expression` | Grammar/descriptor | Required XQuery detail, not independent provider |
+| XQParamPlugin | Registered `xq-param` | Grammar/descriptor | XQuery parameter detail owned by `xquery` |
+| XsltPlugin | Registered `xslt` | Built-in capability: transformation | Preserve external-resource restrictions; add output/deadline budgets |
+| BodyProcessorPlugin | Not registered; historical implementation | Historical/internal; exclude from public catalog | 2.3.x docs state removed; runtime uses PluginBodyExecutor directly |
+| ConfigPlugin | Not registered as child plugin | Runtime/document protocol | Root `<config>` is handled by RootConfigurationExecutor, not provider discovery |
+| VarPlugin | Not registered; deprecated | Disabled legacy compatibility | Do not advertise or auto-enable; reactivation requires explicit compatibility decision and XML execution fixture |
+
+#### Optional-module candidates
+
+| Current implementation | Current module | Proposed destination | Rationale / migration constraint |
+|---|---|---|---|
+| DatabasePlugin | `webharvest-database` | Optional integration: JDBC/database | JDBC drivers, credentials, URL policy, query timeout/cancellation, result bounds and transaction semantics |
+| ConnectionPlugin | `webharvest-database` | Optional integration: JDBC/database | Connection declaration consumed by DatabasePlugin; deterministic session/runtime ownership and secret handling |
+| FtpPlugin | `webharvest-ftp` | Optional integration: FTP | External network and remote filesystem effects; current implementation uses plain FTPClient, not FTPS |
+| FtpGetPlugin | `webharvest-ftp` | Optional integration: FTP | Child contract currently conflicts with independently opening its own client; bound remote reads |
+| FtpPutPlugin | `webharvest-ftp` | Optional integration: FTP | Remote write authorization and bounded payloads; resolve parent/child connection mismatch |
+| FtpListPlugin | `webharvest-ftp` | Optional integration: FTP | Remote directory enumeration and output bounds; resolve parent/child connection mismatch |
+| MailPlugin | `webharvest-mail` | Optional integration: SMTP/mail | Irreversible external send; current executable schema does not implement documented auth/TLS options |
+| WebBrowserPlugin | `webharvest-webbrowser` | Optional integration: browser automation | SSRF/redirect/DNS policy, JavaScript permission, session isolation and deterministic teardown |
+| ZipPlugin | `webharvest-zip` | Optional capability: archive | JDK-based and locally scoped, but not required by minimal execution kernel; bounded archive/entry resources |
+| ZipEntryPlugin | `webharvest-zip` | Grammar/provider detail within archive capability | Parent-owned ZIP entry writer; path traversal, duplicate and aggregate-size policy required |
+
+#### Resulting architectural posture
+
+1. Preserve all 44 current XML mappings as the compatibility baseline in the default compatibility profile. This is a compatibility statement, not a commitment that every capability is always enabled in every embedding host.
+2. Keep the language kernel small and host-neutral. It owns execution semantics, values, context, function/control flow, descriptor grammar and generation-pinned nested dispatch.
+3. Keep filesystem, HTTP, configuration-source loading, scripting, logging, time, query and transformation behavior behind explicit first-party capability contracts. Whether selected capabilities are bundled by default is a product-profile decision; none may bypass host policy.
+4. Keep Database, FTP, Mail, WebBrowser and ZIP outside the mandatory kernel. ZIP may be shipped as a first-party optional capability; its JDK-only implementation does not justify forcing it into the kernel.
+5. Represent parent-owned XML detail elements as descriptor/schema fragments rather than independently installable top-level providers. Root `config` is a runtime protocol; `BodyProcessorPlugin` and disabled `VarPlugin` are not default providers.
+6. Keep legacy `set-var` executable and discoverable in parity with the runtime registry until an explicit compatibility/deprecation decision is approved.
+7. No Maven module split, package move, class deletion, SPI freeze or runtime rewrite follows from this proposal. First approve the classification, then define the neutral provider/service contract, then prove an out-of-tree extension and live generation lifecycle.
+
+#### Open maintainer decisions
+
+- Approve or revise the proposed language-kernel membership, especially whether `regexp`, `tokenize`, `template` and XML value construction are kernel semantics or separately selectable capabilities.
+- Decide which first-party capabilities are enabled in the default compatibility profile versus opt-in host profiles.
+- Decide whether ZIP remains a first-party optional capability or is excluded from the supported distribution.
+- Confirm the legacy support horizon for `set-var`; decide whether `var` remains disabled permanently or needs a separately gated compatibility pack.
+- Approve policy defaults for filesystem, HTTP, include, scripting, logging, time, query and transformation effects before implementation.
+
+**Evidence boundary:** this is a synthesis of source inventories and call-site/test audits already referenced in sections 15.18–15.45. It does not claim tests were executed, does not claim a complete transitive dependency/dataflow proof, and does not authorize runtime changes. Maintainer approval is still required.
