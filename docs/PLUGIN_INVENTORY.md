@@ -2824,3 +2824,34 @@ No optional integration should be pulled into the mandatory Core dependency grap
 7. Do not begin module moves, package deletion, POM splitting, SPI implementation or release work from this proposal alone. #93 remains open until the maintainer records the product-boundary decision.
 
 **Decision status: PROPOSAL ONLY — maintainer acceptance outstanding.** Source inventory is complete; this classification is now explicit for review. No runtime/POM/test/workflow changes were made and no tests/builds were run for this documentation update.
+
+
+## 15.64 Proposed safe defaults for the remaining #346 SPI decisions (2026-11-23)
+
+The following defaults are recommended to make maintainer review concrete. They are intentionally conservative and remain **proposals**. They do not freeze the API, create a compatibility promise, or authorize implementation.
+
+| Open decision | Recommended default | Reason / rejection condition |
+|---|---|---|
+| Descriptor wire format | UTF-8 JSON descriptor with an explicit schema version, canonical field/array ordering for identity hashing, and a separately versioned JSON Schema. Keep runtime XML configuration and plugin descriptor formats distinct. | Easy to inspect and parse without class loading. Reject descriptors with unknown major schema versions or unknown mandatory fields; permit optional extensions only under an explicit forward-compatibility rule. |
+| Provider/plugin identity | Stable reverse-DNS IDs owned by the provider namespace; separate `providerId` from `pluginId`. XML QName and aliases are bindings, never IDs. | Avoid collisions and renames caused by Java package/class changes. Reject duplicate IDs and QName/alias collisions before activation. |
+| Artifact identity | Record artifact coordinates where available plus immutable content digest; treat coordinates, digest, publisher identity and trust decision as separate fields. | A digest identifies bytes but does not establish who published them or whether the host trusts them. |
+| Trust/provenance | Host-configured provider allowlist/policy is authoritative. Signature/attestation may provide provenance evidence but must not imply automatic authorization. Unknown publisher or changed digest requires a new decision. | Discovery must not become trust or execution. Do not introduce an implicit trust-on-first-use path. |
+| SPI compatibility | Explicit descriptor version, SPI major version and Core compatibility range. Fail closed on unsupported major versions; minor/patch compatibility only where the contract guarantees it. | Avoid reflective best-effort adaptation of incompatible providers. Do not equate Maven version ranges with binary compatibility proof. |
+| Java API shape | Start with the smallest public boundary: provider factory/entry point, invocation instance, immutable execution context and host capability services. Keep resource/effect handles as focused value contracts; do not publish six interfaces merely because the conceptual model has six boxes. | Reduce long-term binary surface while retaining host-owned deadlines, cancellation, resource ownership and effect reporting. Exact names/packages wait for a compiling out-of-tree fixture. |
+| Discovery mechanism | Descriptor-first artifact scan; optional ServiceLoader/provider binding only inside an already managed artifact. Discovery and descriptor projection must not initialize provider classes or invoke constructors. | ServiceLoader alone cannot own update/removal, trust, artifact staging, rollback or generation retirement. |
+| Permission vocabulary | Stable, namespaced capability identifiers with explicit operation scope (e.g. filesystem read/write, outbound network, database, browser navigation, script engine, secret access). Unknown permissions deny by default. | Broad booleans such as `network=true` are insufficient for host policy. Enforce at the actual host service/engine boundary. |
+| Provider concurrency | Default to serialized calls per provider instance; parallelism/reentrancy is opt-in and requires host-verified conformance. | Existing legacy providers have unspecified shared state and concurrency behavior. |
+| Legacy L0 admission | Compatibility profile may run only explicitly trusted legacy providers under documented weaker guarantees. Strict profile denies L0 providers for untrusted/side-effecting use unless the embedding host explicitly accepts the risk. Never advertise hard KILL, bounded cancellation or safe retry for L0. | Preserves migration without turning old APIs into false security guarantees. L1/L2/L3 promotion is per artifact version and evidence-backed. |
+| Isolation model | Trusted providers may run in-process under host policy; untrusted providers require a separate worker process and OS isolation. | A Java ClassLoader is not a sandbox. Do not promise safe termination of non-cooperative in-process code. |
+| Registry publication | Immutable candidate generation, full validation before atomic publication, last-known-good retained on failure; each execution pins exactly one generation. | Prevent partial multi-index state, cross-runtime leakage and semantic/runtime time-of-check/time-of-use drift. |
+| XML compatibility | Preserve all current registered names and aliases, including `set-var`; declarative nodes remain schema/grammar identities without independent activation unless their source behavior proves otherwise. | Avoid accidental breakage from mapping-count or class-scanner discrepancies. |
+
+### Suggested decision sequence
+
+1. Maintainer accepts/rejects the product-boundary proposal in 15.63 (#93).
+2. Maintainer accepts/revises these SPI defaults and the consolidated contract in 15.62 (#346).
+3. Only then create a minimal compiling descriptor/SPI prototype and an out-of-tree fixture; do not begin registry/runtime replacement in parallel.
+4. Validate the fixture against descriptor-only discovery, compatibility failures, host-policy denial and XML compatibility before authorizing #347–#350 implementation slices.
+5. Freeze the public API only after the fixture proves independent compilation and the compatibility policy is documented.
+
+**Decision status: REVIEW INPUT ONLY.** These defaults are recommendations, not maintainer decisions. No public API, descriptor schema, Java interface, module, POM, runtime code or test was created or changed.
