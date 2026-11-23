@@ -659,3 +659,84 @@ permissions/resource declarations and enforced by the embedding host. Descriptor
 declarations alone are not enforcement. They belong in #349 policy/lifecycle
 and #350 conformance acceptance, and must not be treated as a reason to activate
 an extension automatically when it is discovered.
+
+
+### 12.7 Core mapping role and host-effect crosswalk (proposal, not approval)
+
+This crosswalk turns the 44-name runtime evidence matrix into descriptor/SPI
+inputs. It does **not** decide which capabilities belong in the minimal Core
+product. “No special host permission identified” means only that the operation
+is internal to the execution model; it does not remove the need for CPU, memory,
+recursion, concurrency and execution-time budgets.
+
+| XML name | Runtime role | Descriptor kind | Host effect / policy domain to declare |
+|---|---|---|---|
+| `call` | Invoke a named function | Executable | Internal execution; recursion/depth and execution budget |
+| `call-param` | Supply a function argument | Declarative child | Inherits parent call/function context; no independent activation |
+| `case` | Select a control-flow branch | Executable | Internal execution budget |
+| `catch` | Handle a parent try failure | Declarative/control-flow child | Inherits parent try scope; no independent activation |
+| `constant` | Produce a constant value | Executable | Memory/output-size budget |
+| `def` | Define a variable | Executable | Context mutation and memory budget |
+| `else` | Alternative branch | Declarative/control-flow child | Inherits parent if scope |
+| `empty` | Execute nested work and return empty | Executable | Inherits permissions of nested operations |
+| `exit` | Terminate current execution path | Executable | Session cancellation/termination semantics |
+| `file` | Read/write a local file | Executable | Filesystem roots, read/write mode, symlink/path policy, byte limits |
+| `function` | Define a callable function | Executable/declaration | Function namespace, recursion/depth and memory budget |
+| `get` | Read a context variable | Executable | Context read; secret-value handling if host marks values sensitive |
+| `html-to-xml` | Parse/convert HTML | Executable | CPU, memory, input/output size and parser limits |
+| `http` | Perform an HTTP request | Executable | Outbound network destinations, schemes, redirects, headers, credentials, timeout and response limits |
+| `http-header` | Configure an HTTP header | Declarative child | Inherits HTTP policy; sensitive-header/credential redaction |
+| `http-param` | Configure HTTP request parameters | Declarative child | Inherits HTTP policy; URL/body encoding and size limits |
+| `if` | Conditional execution | Executable | Internal execution budget |
+| `include` | Load another configuration file | Executable | Filesystem read roots, canonical path/symlink policy, include depth/cycle limits |
+| `json-to-xml` | Parse/convert JSON | Executable | CPU, memory, input/output size and parser limits |
+| `loop` | Iterate a collection | Executable | Iteration, recursion, CPU and wall-clock budgets |
+| `regexp` | Apply regular-expression processing | Executable | CPU/time/input-size limits; regex denial-of-service controls |
+| `regexp-pattern` | Configure a regexp pattern | Declarative child | Inherits regexp execution policy |
+| `regexp-result` | Configure regexp result/capture template | Declarative child | Inherits regexp execution policy; output-size limit |
+| `regexp-source` | Configure regexp input | Declarative child | Inherits regexp execution policy; input-size limit |
+| `return` | Return from a function | Executable/control-flow | Function/session lifecycle semantics |
+| `script` | Evaluate a script | Executable | Script-engine allowlist, code-execution trust, exposed host capabilities, CPU/time/memory limits |
+| `list` | Construct a list | Executable | Memory and collection-size budget |
+| `log` | Emit a log message | Executable | Logging sink/routing policy, redaction and message-size limit |
+| `value-of` | Resolve/extract a value | Executable | Context/data access; output-size budget |
+| `xml` | Produce an XML value or supply parent XML content | Dual-use | Parser/serializer limits; declarative use inherits parent capability |
+| `set-var` | Legacy variable assignment | Executable/compatibility alias | Context mutation; preserve compatibility |
+| `sleep` | Delay execution | Executable | Maximum per-call and cumulative wait budget; cancellation responsiveness |
+| `stylesheet` | Supply XSLT stylesheet text | Declarative child | Inherits XSLT policy; stylesheet/parser resource limits |
+| `template` | Render a template | Executable | Template evaluation limits; filesystem/network only if separately exposed by the template engine |
+| `text` | Produce text content | Executable | Memory/output-size budget |
+| `tokenize` | Split text into tokens | Executable | CPU, input-size and collection-size limits |
+| `try` | Establish an exception boundary | Executable | Cancellation/fatal-error propagation; bounded nesting |
+| `while` | Conditional iteration | Executable | Iteration, recursion, CPU and wall-clock budgets |
+| `xml-to-json` | Convert XML to JSON | Executable | CPU, memory, input/output size and parser limits |
+| `xpath` | Query XML using XPath | Executable | CPU, expression complexity and result-size limits |
+| `xquery` | Evaluate XQuery | Executable | Query engine/function allowlist, CPU/time/memory and result-size limits |
+| `xq-expression` | Supply XQuery expression text | Declarative child | Inherits XQuery policy |
+| `xq-param` | Supply XQuery parameter | Declarative child | Inherits XQuery policy; nested value providers retain their own permissions |
+| `xslt` | Execute XSLT transformation | Executable | External document/stylesheet access policy, extension functions, CPU/time/memory and output limits |
+
+#### Descriptor and enforcement implications
+
+1. Descriptors should distinguish **executable providers** from **declarative
+   configuration nodes**. The latter retain XML identity and schema/parent-child
+   rules but do not acquire an independently activatable provider merely because
+   they have a class or registrar mapping.
+2. Permission declarations should be capability-scoped and structured (for
+   example filesystem read vs write, outbound network destination classes,
+   script engine/function access), not a single broad “plugin permission”.
+3. A child node inherits the relevant parent execution policy; it must not
+   silently grant itself broader permissions. Nested executable providers still
+   require their own permission checks.
+4. Host enforcement must occur at the actual I/O/engine boundary. Descriptor
+   declarations are requests, not enforcement. Legacy providers that bypass
+   policy-aware host services must be adapted or remain unavailable under a
+   restricted host profile.
+5. Resource budgets apply even to internal Core operations. CPU/memory/recursion
+   exhaustion can affect the embedding process even when no filesystem or network
+   permission is requested.
+6. The same policy model must be usable for built-in and external providers;
+   product membership and trust level remain separate decisions.
+
+This table is a design aid for #346/#349/#350. It is not a statement that all
+listed hooks exist today, nor a maintainer-approved Core membership decision.
