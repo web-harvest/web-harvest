@@ -924,7 +924,7 @@ This section audits the ownership and cleanup of representative session resource
 ### Confirmed cross-session JDBC cleanup defect
 
 - One service-wide event bus is shared by all sessions (WebHarvestServiceImpl.java, blob 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec). The service constructs each ScraperSessionImpl with the same eventBus, then injects that same instance into every DynamicScopeContext.
-- Inline database operations register independent pools on that shared bus (DatabasePlugin.java, blob b3934d753f17f133bd582b50206db701af843728; StandaloneConnectionPool.java, blob ab4a92fb63599e88a55821fe141bf5aa50327008). Each inline operation creates a StandaloneConnectionPool, registers it with context.getEventBus(), and expects terminal session events to release its physical connections.
+- Both inline database operations and named connection declarations register independent pools on that shared bus (DatabasePlugin.java, blob b3934d753f17f133bd582b50206db701af843728; ConnectionPlugin.java, blob edb6ed93584cb03d967c830d120848c7e891f481; StandaloneConnectionPool.java, blob ab4a92fb63599e88a55821fe141bf5aa50327008). Each creates a StandaloneConnectionPool and registers it with context.getEventBus(), then expects terminal session events to release its physical connections.
 - The pool's terminal-event handlers do not check event session identity. onExecutionEnd(SessionCompletedEvent), onExecutionError(SessionFailedEvent) and onExecutionCancelled(SessionCancelledEvent) all call closeAllConnections() unconditionally. Since the bus is shared, a completion, failure or cancellation event from session A can close the JDBC connections currently owned by an active operation in session B. The pool then unregisters itself from the shared bus. This is a source-proven cross-session isolation defect; no runtime reproduction was performed in this documentation audit.
 - The same event-bus topology means event subscription alone is not a sufficient ownership boundary. Every listener must either be scoped to a truly session-private bus or validate the event's session/generation identity before changing resources.
 
@@ -953,6 +953,7 @@ This section audits the ownership and cleanup of representative session resource
 - ScraperSessionImpl.java: 78d07d1c485ea215d68d6d415f36b2be0c180a4f
 - SessionRegistryImpl.java: 8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124
 - DatabasePlugin.java: b3934d753f17f133bd582b50206db701af843728
+- ConnectionPlugin.java: edb6ed93584cb03d967c830d120848c7e891f481
 - StandaloneConnectionPool.java: ab4a92fb63599e88a55821fe141bf5aa50327008
 - WebBrowserPlugin.java: be7675390275b16ed63e5515a11969585acd2de6
 - AbstractPlugin.java: be3298304840e4a585b4fb148c2e62cf471ee8f7
