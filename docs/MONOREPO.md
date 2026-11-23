@@ -60,7 +60,7 @@ Preserve legacy XML compatibility—including the `<set-var>` alias—unless an 
 - **Company Extensions:** optional company-maintained plugins distributed as independent Maven artifacts from a separate Git repository.
 - **Third-party plugins:** independently maintained artifacts built against published Core APIs.
 - **IDE:** human-facing Control Plane client consuming Core semantic/runtime contracts; separate product distribution from Core.
-- **CLI:** headless Data Plane execution/automation surface consuming Core; separate product distribution from Core and IDE.
+- **CLI:** one headless Data Plane interface for execution/automation, consuming Core; separate product distribution from Core and IDE.
 - **Official Packs/Kits:** curated compatible groupings of extension artifacts, with explicit manifests/compatibility metadata; pack composition does not erase individual extension artifact boundaries.
 
 The public Plugin Author Guide describes the target experience. Existing `Plugin` / `AbstractPlugin` classes and registration mechanisms are evidence to inspect, not proof that a stable independent SPI is already published.
@@ -124,7 +124,7 @@ The maintainer has clarified the target product roles:
 
 - **Core** is the embeddable semantic execution runtime. The format-independent model, polymorphic capability contracts and controlled dynamic loading are the basis for agent-composed configurations, including future runtime-time configuration changes. This is a target; safe live reconfiguration and the complete public semantic/SPI contract are not claimed as implemented.
 - **IDE** is intended to become the human-facing Control Plane: understand, design, inspect, configure, supervise and observe Core execution. It remains a client and must not become the owner of workflow semantics or plugin identity.
-- **CLI** is the headless Data Plane surface for scripts, pipelines, automation and integrations. It is a separate distribution, not a parallel human control plane.
+- **CLI** is one headless Data Plane interface for scripts, pipelines, automation and integrations. Other programmatic/API or agent-facing interfaces may also expose Data Plane capabilities. CLI is a separate distribution, not a parallel human control plane.
 - **Official extensions** should be curated into compatible Packs/Kits. Packs group independently identifiable extension artifacts and carry compatibility/dependency metadata; they need not be monolithic JARs.
 
 ### Current dependency fact
