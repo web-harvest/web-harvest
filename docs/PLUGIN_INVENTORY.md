@@ -1933,3 +1933,47 @@ The precise call-site/dependency rationale is not uniform: sections 15.8–15.10
 Before approving a migration, produce an effective dependency graph for each candidate artifact (including transitive compile/runtime dependencies), map each Core library to exact reachable call sites and tests, and run a forbidden-dependency check proving that the minimal kernel has no dependency on optional capability artifacts. For every proposed artifact split, add a consumer fixture that compiles using only the published minimal API plus the selected capability artifact.
 
 **Evidence boundary:** POM source inspection only; no Maven dependency tree was executed, no tests were run, and no POM or runtime file was changed.
+
+
+### 15.48 Core dependency-to-call-site evidence map (2026-11-23)
+
+This section narrows the POM-level findings in 15.47 to source-level call sites. It is intentionally a **high-confidence call-site sample, not an exhaustive bytecode reachability or transitive dependency proof**. “Candidate to isolate” means a design seam to evaluate after the SPI is approved; it does not authorize moving a dependency or changing the default XML profile.
+
+| Core dependency family | Direct source evidence inspected on `main` | Architectural implication | Confidence / unresolved work |
+|---|---|---|---|
+| Guice | `ScraperModule` imports and extends Guice module APIs, binds runtime factories/services/scopes and installs listeners/interceptors; `HttpPlugin` and `ScriptPlugin` use Guice `@Inject`. `DefaultPluginFactory` also has reflective constructor paths; `DefaultPluginDependencyInjector` is a separate reflection-based injector. | Guice is an active host composition mechanism, not merely a plugin implementation detail. Define a neutral provider/service/lifecycle contract first; keep Guice in a host adapter or compatibility composition layer until callers are migrated. | High for active runtime use. CGLIB is a direct POM declaration but no direct source call site was established in this pass; determine whether it is required by Guice/runtime or is removable. |
+| Apache HttpClient 5 | `HttpServiceImpl` directly imports HttpClient 5 request/client/entity classes and owns a `CloseableHttpClient`; `ScraperModule` binds `HttpService` to `HttpServiceImpl`; `HttpPlugin` depends on the `HttpService` abstraction, not HttpClient classes. | Good capability seam already exists: HTTP provider implementation can move behind a host-owned service/capability module without making the XML plugin itself depend on transport classes. Preserve injectable test/custom transport behavior and explicit network policy. | High for the observed path. Audit all other Core callers and lifecycle ownership of the shared client before extraction. |
+| JSR-223 / BeanShell / Groovy / Rhino | `ScriptPlugin` consumes `ScriptEngineFactory`; `JSRScriptEngineFactory` uses `javax.script.ScriptEngineManager` and a thread-local engine cache. `TemplatePlugin` and `HttpPlugin` evaluate templates through `BaseTemplater` with BeanShell language selection. The POM declares BeanShell, Groovy runtime/JSR-223 and Rhino runtime artifacts. | Scripting engines are pluggable implementation providers, but the current language/template surface is part of the XML compatibility contract. Move engine implementations behind a runtime-scoped scripting service; explicitly define engine availability, host-object permissions, cache/session isolation and execution limits. | High for the service seam and ScriptPlugin path. Full language-to-engine provider resolution and engine-specific transitive dependencies still require inspection. |
+| Saxon | `XPathPlugin` and `XQueryPlugin` directly import Saxon `Configuration`, query contexts, expression and value types. `XsltPlugin` uses JAXP `TransformerFactory` rather than direct Saxon imports in the inspected source. | XPath/XQuery have a concrete Saxon coupling; XSLT already exposes a JAXP provider seam. Query and transformation are capabilities, not unavoidable language-kernel dependencies. Resolver restrictions, external document access and execution/result budgets belong in the host policy contract. | High for XPath/XQuery. Confirm the actual XSLT provider selected at runtime and whether Saxon is the selected JAXP implementation in supported packaging. |
+| Jsoup / TagSoup | `XPathPlugin` imports Jsoup for CSS selectors; `HtmlToXmlPlugin` imports Jsoup parser/cleaner APIs for HTML normalization. | HTML parsing and CSS selection are separable data/query capabilities. The POM also declares TagSoup, but a direct TagSoup call site was not established in the inspected classes. | High for Jsoup. TagSoup reachability and fallback usage remain open; do not remove based on the current sample. |
+| JSON libraries | `JsonToXmlPlugin` imports `org.json` types and the Core `JsonXmlConverter`; `XmlToJsonPlugin` imports `org.json` types directly. | JSON conversion is a separable data-conversion capability. Keep XML compatibility and conversion semantics stable while making the implementation/provider selectable. | High for `org.json`. Gson is declared in the POM but no direct Gson call site was established in this pass; trace utility and transitive callers before deciding. |
+| Discovery/reflection | `PluginClassScanner` uses the project `ClassPathScanner` / `ClassPathScannerImpl` and maintains a fallback class list. `PluginPackageScanner` performs package/resource/JAR enumeration itself. `DefaultPluginFactory` uses reflective constructors. | The active discovery implementation is not demonstrated to require the Reflections library. The two scanners and reflective factory are separate seams; neither package scanning nor metadata scanning is an acceptable final public extension/security contract. | High for observed scanner implementation. The POM-declared `org.reflections` artifact has no verified direct call site in this pass; establish whether it is unused, used indirectly, or required by another Core class/test before removal. |
+| Guava / SLF4J / Commons utilities | `ScraperModule` directly uses Guava `EventBus` and `Monitor`; inspected plugin/runtime classes use SLF4J. Core POM declares Commons Lang, IO and Collections. | Treat these as shared host/runtime infrastructure until a complete call-site map proves otherwise. Logging needs host redaction policy; event bus and synchronization are runtime composition concerns, not plugin SPI types. | Partial. No exhaustive mapping of Commons/Guava/SLF4J usage was attempted. |
+
+#### Source blob evidence (current `main`)
+
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+- `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`.
+- `ScriptPlugin.java`: `0bd1992d0739f43c9d550b302d4fa0a815e63995`.
+- `TemplatePlugin.java`: `e20b948fe6a43936ef80587ff326535cf429e416`.
+- `JSRScriptEngineFactory.java`: `f99047b30d2ca455898771ae8c207fafe4f1efd7`.
+- `XPathPlugin.java`: `e519eb21a2e6faeef43a9d23c219502ac7f7f2a6`.
+- `XQueryPlugin.java`: `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`.
+- `XsltPlugin.java`: `c94b8e26dba566cb30bc12f6fc811bb1fcdc59b1`.
+- `HtmlToXmlPlugin.java`: source inspected; its blob ID is recorded in the GitHub source history for this audit branch.
+- `JsonToXmlPlugin.java`: `b10638356f38b7a7259454c6bd72f14f0380a5dd`.
+- `XmlToJsonPlugin.java`: `f92faf37c73e0f16a813be174669b7dcec79ff2c`.
+- `PluginClassScanner.java`: `dadd28a434000816253ac66bff736e2c5fff0494`.
+- `PluginPackageScanner.java`: `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232`.
+- `DefaultPluginFactory.java`: `91c8084f671027954375ff3cab784691f8ae26e5`.
+- `DefaultPluginDependencyInjector.java`: `fe7aeacda9041c0aba88d4c15aea9c54d81d3431`.
+
+#### Required next dependency proof
+
+1. Resolve the effective compile/runtime dependency graph for Core and each proposed capability artifact; include optional/runtime-scoped engines and classifier variants.
+2. Trace every direct Core POM dependency to production call sites, service-provider resources, reflection, tests and published consumer behavior. In particular, settle CGLIB, Gson, TagSoup and Reflections rather than treating absence from this sample as proof of dead code.
+3. Establish a dependency allowlist for the minimal kernel and a forbidden-dependency check in CI. Keep Guice, HTTP, scripting, query, HTML and JSON implementations out of neutral SPI signatures.
+4. Build the minimal Core plus one selected capability and an independent consumer fixture against the exact published candidate artifacts before any dependency is moved.
+
+**Evidence boundary:** source imports/call sites and POM declarations were inspected on GitHub; no Maven dependency tree, bytecode analysis, test suite or runtime experiment was executed. No production source, POM or runtime behavior was changed.
