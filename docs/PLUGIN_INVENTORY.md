@@ -1229,3 +1229,21 @@ Source blobs on current `main`:
 - `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
 
 Tests were not run. The source-level TODO in `IncludeVisitor` is not a test result; no claim is made that every include scenario lacks coverage. No runtime, test or POM files changed.
+
+
+### 15.25 Path-resolution helper verification (2026-11-23)
+
+A follow-up inspected the shared path helpers used by `IncludeVisitor`, rather than inferring their behavior from the caller alone.
+
+- `CommonUtil.adaptFilename()` only changes backslashes to forward slashes.
+- `CommonUtil.getAbsoluteFilename(workingPath, filePath)` returns an absolute input path unchanged; otherwise it concatenates `workingPath + "/" + filePath`. It does not canonicalize the filesystem path, collapse `..`, resolve symlinks or enforce a root.
+- `CommonUtil.fullUrl(pageUrl, link)` accepts a full URL unchanged. Relative links are combined with the base URL and dot segments are normalized, but normalization is not an outbound-destination policy and does not validate scheme/host/IP/redirect targets.
+- `FilePlugin.handleFileList()` uses `File.listFiles()` and recursive `collectFiles()` when `listrecursive=true`; the inspected recursion has no depth, entry-count or output-size budget.
+- The file read path uses `Files.readAllBytes`, and the write path logs full text content at INFO. These are direct memory/logging exposure points, not merely missing descriptor annotations.
+
+This confirms the earlier section 15.24 gap more precisely: current include resolution is path joining/URL construction, not a canonical root or destination allowlist. A host-provided resolver must authorize the **resolved canonical target** (including symlink and redirect behavior), and file enumeration/read/write must apply budgets during traversal/I/O rather than only validating the initial string.
+
+Source blob:
+- `CommonUtil.java`: `70b5297bdd1d11f2571ce6c367764c04b6ba4222`.
+
+No runtime code or tests changed/run. This source audit does not claim a particular deployment is exploitable; host process permissions still constrain the effective impact.
