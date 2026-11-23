@@ -2143,3 +2143,59 @@ The current \`DefaultPluginRegistry\` should therefore be treated as a legacy co
 - \`DefaultPluginRegistryUnregisterResidualBranchContractTest.java\`: \`07de046e581e135ee41224bf3f15dec51f797ae3\`.
 
 **Evidence boundary:** direct source inspection and test-source review on GitHub \`main\`. No tests, builds, concurrency experiments or runtime changes were made. This section is an evidence-backed audit addition, not approval of the SPI or authorization to change production registry behavior.
+
+
+### 15.52 Discovery cache, classloader identity and catalog refresh gaps (2026-11-23)
+
+This pass traces the current classpath discovery path into metadata catalog construction and compares it with the separate package scanner. It is source/test review only; no tests or runtime experiments were executed.
+
+#### Discovery and metadata are process/classloader scoped, not runtime scoped
+
+1. \`PluginClassScanner.cachedClassNames\` is one static volatile cache guarded by \`PluginClassScanner.class\`. It has no runtime, artifact, classloader or scan-generation key. \`clearCache()\` clears this process/classloader-wide cache for every caller using that defining classloader.
+2. The scanner asks \`ClassPathScannerImpl\` to scan with \`ClasspathHelper.classLoaders()\`. The returned \`Class<?>\` objects are reduced to class-name strings in a \`LinkedHashSet\`; the classloader that exposed each class is discarded.
+3. \`PluginMetadataCatalog\` is itself static and eagerly initializes \`DESCRIPTORS\` once when the class is initialized. It iterates the class-name list, calls one-argument \`Class.forName(className)\` (which uses the caller's defining loader and initializes the class), then invokes the implementation's no-argument constructor to obtain metadata.
+4. Consequently, a class visible only through a child/plugin classloader can be found by the discovery scan but its loader identity is not carried into metadata construction. The subsequent \`Class.forName(String)\` does not use the loader that discovered it. This is a concrete discovery-to-load identity mismatch in the current path.
+5. Clearing \`PluginClassScanner\`'s cache does not rebuild \`PluginMetadataCatalog.DESCRIPTORS\`: the latter is an immutable static map with no refresh/reconcile API. A later scan therefore cannot, through the inspected public catalog path, publish a changed descriptor set.
+6. \`buildRuntimeCatalog()\` uses \`descriptors.put(descriptor.getId(), descriptor)\`; duplicate descriptor IDs silently replace earlier descriptors in iteration order. There is no collision diagnostic or artifact provenance in the resulting key.
+7. By contrast, \`PluginPackageScanner\` explicitly retains a \`Map<String, ClassLoader>\` while enumerating package classes and calls \`Class.forName(name, false, candidateLoader)\`. This demonstrates that loader identity is available in a separate legacy path, but that path writes classes directly into the global \`CorePluginRegistry\` rather than producing a runtime-scoped candidate catalog.
+
+#### Existing tests do not establish dynamic catalog behavior
+
+The inspected \`PluginClassScannerTest\` covers discovery, fallback, sorting, cache reuse and explicit cache clearing. \`PluginMetadataCatalogDynamicTest\` covers initial metadata projection and schema/UI fields. \`PluginPackageScannerClasspathTest\` verifies a class loaded from a temporary JAR using a child \`URLClassLoader\`, but it exercises the separate package scanner and global Core registry.
+
+The inspected tests do not establish:
+
+- two independent runtime catalogs with distinct classloader visibility;
+- descriptor discovery and metadata construction using the exact loader that exposed the provider;
+- add/update/remove after \`PluginMetadataCatalog\` has initialized;
+- cache invalidation scoped to one runtime without affecting another;
+- duplicate descriptor ID rejection with artifact provenance;
+- safe retirement of a loader after its provider is removed.
+
+The temporary-JAR scanner test is useful evidence for the separate package scanner's loader-aware path; it must not be read as proof that \`PluginClassScanner\` + \`PluginMetadataCatalog\` support the same behavior.
+
+#### Required target contract / acceptance additions
+
+For #346/#347/#350:
+
+- discovery results must retain an explicit artifact/provider identity and owning classloader or isolated process handle; do not reduce candidates to bare class-name strings;
+- each runtime must own its discovery state, descriptor catalog and immutable registry generation; no static process-wide cache or catalog may be authoritative;
+- descriptor parsing must not initialize or instantiate provider implementation classes;
+- metadata inspection must be possible from data-only descriptors before activation;
+- refresh must build and validate a candidate generation, detect duplicate IDs/QNames deterministically, and publish atomically; failed refresh must preserve last-known-good state;
+- classloader/process retirement must wait for executions pinned to the old generation, then release provider instances and resources deterministically;
+- add tests for two runtimes with separate loaders, child-loader-only provider discovery, add/update/remove, duplicate identity, failed refresh rollback, stale refresh races and old-generation execution drain.
+
+The existing \`PluginClassScanner\` and \`PluginMetadataCatalog\` should remain legacy compatibility surfaces during migration, not be extended as the target hot-discovery/catalog mechanism.
+
+#### Exact source/test blobs (current \`main\`)
+
+- \`PluginClassScanner.java\`: \`dadd28a434000816253ac66bff736e2c5fff0494\`.
+- \`PluginMetadataCatalog.java\`: \`5ac82d7fb6436b458b29647e4c929878557b1c6e\`.
+- \`ClassPathScannerImpl.java\`: \`ee310a0f79fbe196cf0ddd7f3f9896aa129b2596\`.
+- \`PluginPackageScanner.java\`: \`c0e6cbff6cb8c472f66e4c897263cb3c3c7f8232\`.
+- \`PluginClassScannerTest.java\`: \`acb1d90457c8912f23f0078a9e0f73092178c221\`.
+- \`PluginMetadataCatalogDynamicTest.java\`: \`c3582c89aad930e15c714b434b0a5c4aba4d6425\`.
+- \`PluginPackageScannerClasspathTest.java\`: \`ff9c42f4bac2efdc6b97185c1358772daf628192\`.
+
+**Evidence boundary:** direct source and test-source inspection on GitHub \`main\`. No test/build/runtime experiment was run. No production source or POM was changed. This section adds evidence for the existing #347 hot-discovery and #349 runtime-isolation requirements; it does not authorize an implementation design beyond the approved SPI decision.
