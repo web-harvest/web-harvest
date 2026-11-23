@@ -1550,3 +1550,19 @@ Source blobs on current main:
 - CallPlugin.java: 01238d278e4bbddb262c797f34a481dcd964e3c9.
 - LoopPlugin.java: ba91342e4e560f6bea9165bdba9b5ce4b4db82d8.
 - RegexpPlugin.java: a860ab08554122680c4d5d5fde1be3d683139c6a.
+### 15.35 Public runtime implementation signatures expose Guice types (2026-11-23)
+
+A follow-up API-surface check qualifies the earlier observation that the Plugin interface itself does not expose Guice. Several public runtime implementation/composition types do expose Guice directly:
+
+- DefaultHarvesterFactory has a public constructor accepting Guice Provider<WebScraper>, Provider<EventBus> and ScraperScope.
+- ScrapingHarvester has a public constructor accepting Guice Provider<WebScraper>, Provider<EventBus> and ScraperScope.
+- AttributeHolderScope is public, implements Guice Scope and Provider<AHT>, and exposes a scope method accepting Guice Key<T> and Provider<T>.
+- ScraperModule is a Guice AbstractModule and requests static injection for InjectorHelper and BaseTemplater; it also binds the static ScraperScope.
+
+Therefore, do not infer a container-neutral public embedding surface merely from the Plugin, Harvest or Harvester facade interfaces. The existing public implementation/composition seam still requires Guice. The neutral Java embedding API must be a separate host-facing contract; Guice Provider/Scope/Key/AbstractModule should remain inside an optional Guice adapter. Plain-Java compile/runtime and host-managed Guice adapter fixtures are both required.
+
+Source blobs on current main:
+- DefaultHarvesterFactory.java: 58bae4e22a82d89dac1c6e63e28ce5f3587e687e.
+- ScrapingHarvester.java: 2af32ca67c235e075c8cc613118814d54e555338.
+- AttributeHolderScope.java: 11a39c99e517ae9ae1ba09cf69a885b636465b64.
+- ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e.
