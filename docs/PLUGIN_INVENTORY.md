@@ -2657,3 +2657,110 @@ These are conformance/migration levels, not security trust labels. A provider ma
 - PluginConfigurationSchema.java: c649a8a2d58c496bf913a8a16ac989cab81a6e98.
 - AbstractPlugin.java: be3298304840e4a585b4fb148c2e62cf471ee8f7.
 - DefaultPluginFactory.java: 91c8084f671027954375ff3cab784691f8ae26e5.
+
+
+### 15.62 Consolidated normative execution and provider SPI contract (2026-11-23)
+
+This section consolidates the source-backed findings and design constraints in 15.45–15.61 into one candidate contract for review across #346–#350. It is a design baseline, not an approved public API and not an implementation. The existing XML/runtime contract remains the compatibility surface until maintainers approve the SPI and migration plan.
+
+#### A. Identity and immutable descriptor
+
+Every provider is identified by a stable, globally unique `providerId` and every plugin/capability by a stable `pluginId`. Class names, package names, XML local names and display labels are never identity.
+
+A versioned, data-only descriptor must carry:
+
+- descriptor schema version and SPI/API version range, plus supported Core compatibility range;
+- provider ID, artifact coordinates/content digest, provider version and provenance;
+- plugin IDs, XML QName mappings, explicit aliases and deterministic collision behavior;
+- semantic capability IDs/roles, input/output contracts, composition and parent/child constraints;
+- configuration schema and validation version (separate from capability schema version);
+- dependency/version/conflict declarations and optional capability relationships;
+- requested permissions/resource classes, execution model, concurrency/reentrancy and lifecycle scope;
+- declared cancellation/deadline behavior, abortable resource kinds, effect categories, idempotency/reconciliation claims, cleanup budget and process-isolation requirement.
+
+Descriptor parsing and semantic projection must not load or instantiate provider implementation classes. Unknown mandatory fields/versions, incompatible API ranges, duplicate IDs/QNames/aliases, dependency cycles and unsupported capability combinations fail closed with actionable diagnostics. Optional unknown extension fields may be ignored only where the descriptor version explicitly permits forward-compatible extension. XML aliases are explicit data, never inferred from class names.
+
+#### B. Provider construction and invocation boundary
+
+The new SPI must not expose `DynamicScopeContext`, Core `Variable`, `ScraperSession`, Guice injectors, Guava EventBus or mutable legacy plugin parent/running-level state as its stable public contract.
+
+Conceptual host-owned interfaces (names illustrative; exact Java types/package/API version remain open):
+
+- `PluginProvider`: creates provider/plugin instances using an immutable activation context and returns a provider lifecycle handle.
+- `PluginInstance`: invokes one capability with immutable input/configuration and an `ExecutionContext`; has explicit instance/session close semantics.
+- `ExecutionContext`: immutable execution/runtime identity, cancellation token, monotonic deadline/remaining budget, generation identity, parent/child relationship, host service capabilities, resource registrar and effect-operation recorder.
+- `ResourceRegistration`: registers an operation-scoped abort/close action and ownership scope; registration returns an idempotent handle that is released only after the operation is quiescent.
+- `EffectOperation`: records operation ID, external system, idempotency/correlation key, commit/acknowledgement checkpoints, disposition and reconciliation/compensation capability.
+- `ProviderGeneration`: immutable descriptor/capability snapshot plus provider/classloader ownership and reference-counted execution leases.
+
+These are logical boundaries, not a mandate to expose six public Java interfaces. API minimization and compatibility review remain part of #346. The essential requirement is that every provider invocation receives host-controlled context and cannot mutate global registry state.
+
+#### C. Admission, execution and terminal-state model
+
+The host admits an invocation only after descriptor compatibility, provider enablement, authorization, permission/resource policy, dependency resolution and generation selection succeed. Admission atomically pins one immutable generation and creates one execution handle before provider code starts.
+
+Minimum execution lifecycle:
+
+`CREATED -> ADMITTED -> RUNNING -> STOP_REQUESTED_GRACE -> TERMINATING -> QUIESCENT`
+
+KILL escalation:
+
+`STOP_REQUESTED_GRACE -> KILL_REQUESTED -> TERMINATING -> QUIESCENT`
+
+If in-process work does not unwind:
+
+`KILL_REQUESTED -> UNRESPONSIVE/QUARANTINED`
+
+Terminal execution outcomes are distinct from business/effect outcomes. At minimum: `SUCCEEDED`, `FAILED`, `CANCELLED`, `TERMINATED`, `UNRESPONSIVE`. A requested stop is not terminal quiescence. Session status, event publication or completion-future signalling must not claim that worker/descendant execution has stopped.
+
+GRACE closes new top-level and nested admission, propagates the same cancellation token/deadline to descendants and async work, permits bounded cooperative cleanup, and waits for quiescence. KILL escalates after the monotonic deadline or explicit request, invokes registered abort handles and interrupts where supported. In-process non-cooperation yields `UNRESPONSIVE/QUARANTINED`; no unsafe thread termination. A hard KILL guarantee requires a separately managed worker process and verified process exit.
+
+#### D. Generation and resource ownership
+
+Every invocation and descendant pins its originating provider generation. Refresh atomically publishes G(n+1); new admissions use it, while existing executions remain on G(n). Removal closes admission to the retiring generation and applies explicit drain/cancel policy. Provider disposal and classloader closure occur exactly once only after all invocation/descendant/resource leases are released and execution is quiescent.
+
+Per-invocation cleanup, plugin-instance close, provider-generation disposal and runtime shutdown are four separate lifecycle scopes. Closing a session-owned resource on a cancellation event before active operations unwind is forbidden. A cleanup callback is not proof of quiescence. Runtime shutdown must report remaining unresponsive executions and retain any resources/classloaders they still require rather than falsely report a clean drain.
+
+#### E. Deadline, resources and external effects
+
+One monotonic deadline is created at admission and propagated to all nested/async operations. Each blocking adapter applies the minimum of its configured cap and remaining host budget, or declares that it cannot enforce the budget. Cleanup has a separate bounded budget and cannot reset the execution deadline.
+
+Provider capability claims are separated into `DECLARED`, `HOST_VERIFIED` and `OBSERVED`; metadata alone is not proof. A provider operation declares whether it is cooperative, externally abortable, timeout-bounded or non-interruptible. Abort/close handles are operation-scoped and must not close resources still used by another live operation.
+
+Execution state and external-effect disposition are independent. Effect values: `NOT_STARTED`, `COMMITTED`, `ABORTED`, `INDETERMINATE`, and `PARTIALLY_COMMITTED` only where partial progress is established. Unknown acknowledgement is not proof of rollback. Retry defaults to unsafe for indeterminate non-idempotent effects. Compensation is a new operation, not rollback. Process death does not reverse a remote database, SMTP, HTTP or FTP effect.
+
+#### F. Legacy adapter and migration
+
+All current `Plugin` implementations enter the new execution path through a compatibility adapter. Until proven otherwise they are L0: in-process, cancellation-unverified, no hard KILL, unknown resource/effect disposition, unsafe retry and unspecified concurrency (serialize per instance). Existing XML behavior remains available only under a runtime policy that explicitly accepts this weaker profile.
+
+- L0 legacy-compatible: no strict cancellation/deadline/effect guarantee.
+- L1 cooperative: receives host context and passes nested cancellation, deadline and quiescence conformance.
+- L2 resource-aware: additionally registers abort/close handles and reports effect disposition/reconciliation.
+- L3 isolated: separate worker process with verified exit and OS-level resource controls; required for hard KILL of non-cooperative code.
+
+Promotion is per provider artifact/version and runtime compatibility range, backed by conformance evidence. No promotion by plugin name, annotation, schema, dependency list or generic unit test. Capability changes apply only to new generations; already-pinned sessions retain the old profile.
+
+#### G. Minimum release-gate evidence mapped to child issues
+
+| Gate | Required evidence | Owning issue |
+|---|---|---|
+| Descriptor/SPI | Versioned schema + minimal Java contract; compatibility, identity, collision, dependency and descriptor-only projection tests; maintainer approval before implementation | #346 |
+| Discovery/registry | Managed artifact source; add/update/remove/re-add without restart; deterministic atomic generations; last-known-good rollback; old-generation pinning and classloader retirement | #347 |
+| Semantic/runtime parity | Exact ID/QName/alias/capability equality for one generation across metadata, schema, inspection, validation and dispatch; stale snapshot rejection | #348 |
+| Policy/lifecycle | Denied-by-default authorization; declared vs verified capabilities; resource/effect handling; bounded GRACE/KILL; two-runtime isolation; no false quiescence | #349 |
+| Conformance/release | Out-of-tree fixture against exact Core artifact; positive/negative matrix; cancellation/effect/deadline/lease tests; artifact hashes, CI run IDs and maintainer sign-off | #350 |
+
+No implementation begins until #93 inventory/Core boundary and #94 architecture dependencies are reviewed, the #346 contract is accepted by maintainers, and the required design decisions are recorded. A green CI run on documentation does not constitute SPI approval or release GO.
+
+#### H. Explicit open decisions before API freeze
+
+1. Exact descriptor serialization/schema format and canonicalization/signature envelope.
+2. Stable provider/plugin ID namespace and artifact provenance/trust roots.
+3. Minimal Java SPI type count, binary compatibility policy and Java 17 API baseline.
+4. Provider, instance, session and invocation scopes; concurrency and reentrancy defaults.
+5. Process worker protocol, startup/health/IPC, OS resource limits and failure recovery for L3.
+6. Host permission vocabulary and policy UX for filesystem paths, network endpoints, DB, browser, scripts, secrets, time and memory.
+7. Whether any legacy provider is promoted above L0 in the first migration wave, based on evidence rather than assumption.
+8. Which XML compatibility aliases and the `set-var` behavior are explicitly frozen by #93.
+
+**Status:** candidate consolidated contract for review only. No maintainer approval, public API freeze, production implementation, test run, package split or release authorization is implied.
