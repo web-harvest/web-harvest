@@ -1136,3 +1136,31 @@ Source blobs:
 - `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
 
 No implementation or tests changed/run.
+
+
+### 15.22 Parent/child contract trace: function-call and HTTP detail elements (2026-11-23)
+
+This pass traced the four detail implementations against their parent metadata, schema declarations and parent execution code. It confirms the detail-element classification, but also exposes inconsistent metadata and incomplete child-plugin behavior.
+
+| Detail element | Declared parent contract | Parent-side execution evidence | Finding |
+|---|---|---|---|
+| `call-param` | `CallParamPluginMetadata.getParentRelationship()` says required parent `call`; its schema `getRequiredParents()` returns both `call` and `def`. `CallPluginMetadata` allows `call-param` children. | `CallPlugin` explicitly iterates direct `call-param` children to collect argument values. In function bodies, examples place `call-param` inside `def`; `CallParamPlugin.doExecute` reads the corresponding `callParam<Name>` variable from the function context and otherwise evaluates its body. | One XML element serves two distinct contexts: argument declaration under `call`, and parameter lookup under `def` inside a function. The schema comment says the latter requires `def` within `function`, but `getRequiredParents()` alone cannot express that ancestor condition. Visual parent metadata currently describes only `call`, so it is incomplete. Do not flatten this to one simple required-parent edge. |
+| `http-header` | Metadata relationship and schema both require parent `http`; parent `HttpPlugin` metadata/schema allow `http-header` and `http-param`. | `HttpPlugin.collectHeaders()` reads direct child configuration nodes named `http-header` and extracts their `name` and `_textContent` values before invoking the HTTP service. | This is declarative request configuration consumed by the parent, not an independent request capability. |
+| `http-param` | Metadata relationship and schema both require parent `http`; parent `HttpPlugin` metadata/schema allow both HTTP detail elements. | `HttpPlugin.collectParameters()` reads direct child configuration nodes named `http-param`, extracts `name` and `_textContent`, and appends encoded query parameters to the request URL. | This is declarative request configuration consumed by the parent, not an independent request capability. |
+
+**Important implementation discrepancy for HTTP detail classes:** both `HttpHeaderPlugin.doExecute()` and `HttpParamPlugin.doExecute()` contain TODO/simplified placeholder behavior rather than attaching values to a parent request object. The active `HttpPlugin` path independently consumes the raw child configuration. Therefore the parent configuration is the demonstrated source of request headers/parameters; the child implementation classes must not be mistaken for independently functioning integrations. Their standalone execution semantics and whether they should be instantiated at all require an explicit compatibility decision and targeted tests.
+
+**Descriptor/SPI implications:**
+- Model detail constructs as descriptor/schema elements with explicit parent-context constraints, not automatically as separately installable top-level capabilities.
+- Support context-sensitive constraints (for example `call-param` under `call` versus `def` nested within `function`); a flat list of parent local names is insufficient to encode the documented rule.
+- Keep parent consumption semantics and child implementation lifecycle distinct. A descriptor may describe a declarative child that is interpreted by its parent without creating a provider instance.
+- Validate the actual XML tree against the same descriptor generation used for execution. Current generic executor behavior and metadata validation do not establish this full-tree contract.
+
+Source blobs on current `main`:
+- `CallParamPlugin.java`: `4681032a90e27e77c818cacc6bd6fd35ea76e31f`.
+- `CallPlugin.java`: `01238d278e4bbddb262c797f34a481dcd964e3c9`.
+- `HttpHeaderPlugin.java`: `eb9ebd92ac924c3e8bce58e9a2b8edf1efd93b2a`.
+- `HttpParamPlugin.java`: `b20b05a335de88a1dbac6316a762b8361a4dcfb8`.
+- `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
+
+No runtime implementation or tests changed/run. This is source-level evidence; it does not claim a new end-to-end behavior test has passed.
