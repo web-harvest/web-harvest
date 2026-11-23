@@ -1673,3 +1673,16 @@ Test-source review qualifies the lifecycle gap in 15.38:
 - No inspected test covers duplicate `doCleanup()` caused by `execute()` followed by public `cleanup()` on the same initialized instance.
 
 These test sources are evidence of current coverage intent, not test execution. No local test suite was run. The future conformance suite must preserve existing per-execution cleanup/interrupt guarantees while adding failed-prepare rollback, separate final disposal and generation/provider lifetime assertions.
+
+
+### 15.40 Additional nested-executor construction in the shared AbstractPlugin body path (2026-11-23)
+
+A direct read of the complete `AbstractPlugin.executeBody()` implementation exposes an additional executor-construction path that must be included in the migration inventory:
+
+- `AbstractPlugin.executeBody()` constructs `new DefaultPluginBodyExecutor()` whenever the plugin configuration has children, then invokes `executeBody(configuration, context)`.
+- This is a shared base-class path used by plugins that delegate body execution through `executeBody()`, including `TryPlugin`. Therefore, saying that TryPlugin has no detached executor construction is only narrowly true at the TryPlugin call site; it is not true for the complete execution path.
+- The seven explicit constructions listed in 15.37 remain valid for the six plugin classes, but they are not the complete runtime construction inventory: the shared `AbstractPlugin` path adds another construction site outside that six-class list.
+- Every such executor must receive the same runtime composition context, provider factory, pinned registry generation, host policy, cancellation/deadline and shared budget. The no-argument default constructor must not silently create a detached execution path.
+- The audit must distinguish syntactic construction sites from reachable execution paths: the shared base-class path can be reached by any plugin using `executeBody()`, so migration tests must cover both explicit nested dispatchers and ordinary body delegation (including Try).
+
+This corrects the scope of 15.37: **seven direct constructions across six mapped plugin classes, plus the shared `AbstractPlugin.executeBody()` construction path**. Source inspection only; no tests run. Source blob: `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
