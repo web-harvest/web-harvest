@@ -1716,3 +1716,18 @@ A source pass over the parallel factory/registry API found another lifecycle mod
 This is a legacy/parallel API audit, not evidence that it is the current CLI runtime path. The new platform must either formally retire this API or adapt it to the same descriptor-only registry and explicit provider/instance ownership contract; it must not preserve a second, incompatible lifecycle model. Add tests for registration without plugin side effects, unregister disposal policy, failed prepare rollback, factory-created instance ownership, and parity with the authoritative registry. Source inspection only; tests not run.
 
 Source evidence: DefaultPluginRegistry.java da5c6f6e835cc8b551394e0853a70ca4bcd60d2f; DefaultPluginFactory.java 91c8084f671027954375ff3cab784691f8ae26e5; PluginFactory.java f1d2434c5a36d21d9c09bb638f4ebf3e5eaa94f8; DefaultPluginDependencyInjector.java fe7aeacda9041c0aba88d4c15aea9c54d81d3431; PluginDependencyInjector.java 12d72a925ed81cf34ce2c47de9020042749797b0.
+
+
+### 15.43 Browser session cleanup is session-event-driven but globally stored
+
+A direct read of the current `WebBrowserPlugin` source refines the browser ownership finding in 15.41:
+
+- `SESSION_PAGES` is a static process-wide `ConcurrentHashMap<String, BrowserSessionState>`, keyed only by `ScraperSession.sessionId`; the key does not encode a WebHarvest runtime identity.
+- `CONTEXT_PAGES` is a second static process-wide synchronized `WeakHashMap<DynamicScopeContext, BrowserSessionState>` for legacy contexts without a session. The state constructor receives no EventBus in this compatibility path, so there is no session-terminal callback for it.
+- For normal sessions, `BrowserSessionState` registers itself with the supplied EventBus. Completed, failed and cancelled events call an idempotent synchronized `close()`, which closes every WebClient, unregisters the listener and removes the matching session entry. `getBrowserSessionState()` also checks terminal session status after map lookup and closes/removes a state if the terminal transition raced with registration.
+- The explicit `WebBrowserPlugin.closeAllPages()` method iterates and closes **all** entries in both static maps. It is therefore a process-wide shutdown operation, not a safe per-runtime close hook: one embedded WebHarvest runtime must not call it while another runtime is active.
+- The sessionless WeakHashMap compatibility path has no explicit context-disposal callback in the inspected class. Weak-key removal is not equivalent to calling `WebClient.close()`; deterministic browser resource release for that path remains unproven.
+
+This source confirms meaningful per-session terminal cleanup for normal session-backed use, while also confirming that storage and the global shutdown method are process-wide. A target runtime-owned browser service should use runtime-scoped identity/storage, expose per-session close and runtime close separately, and reserve process-wide close for an explicit host-wide shutdown. Tests must cover two runtimes, same/different session IDs, sessionless contexts, terminal-event races, and closing one runtime while another retains active pages. Source inspection only; no tests run.
+
+Source blob: `WebBrowserPlugin.java` `be7675390275b16ed63e5515a11969585acd2de6`.
