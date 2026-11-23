@@ -1197,3 +1197,35 @@ Source blobs on current `main`:
 - `StylesheetPlugin.java`: `4132be73c6e010cb952aa63c7fd7d90efb83c6de`.
 
 No runtime implementation or tests changed/run. This is a source audit, not proof of end-to-end behavior for every nested form.
+
+
+### 15.24 Filesystem, include and script execution boundary trace (2026-11-23)
+
+This pass followed three high-impact Core capabilities beyond their plugin entry-point imports and inspected the actual operations and default bindings.
+
+| Capability | Source-confirmed execution path | Current boundary gap / implication |
+|---|---|---|
+| `file` | `FilePlugin.doExecute()` evaluates the configured path and dispatches read/write/append/list. Read constructs `new File(workingDir, path)` and calls `Files.readAllBytes`. Write constructs the same way, creates parent directories with `mkdirs()`, executes the body, then writes via `FileOutputStream`. List recursively collects files when configured. | The inspected path does not canonicalize/normalize against an allowed root, resolve symlinks, or enforce byte/entry limits before I/O. A configured path can therefore be interpreted relative to `workingDir` but this is not a sandbox guarantee. Reads are whole-file memory loads. Text write logs the full content at INFO; `doExecute` logs the configuration object and path. Sensitive file content/path data can leak to logs. Binary reads currently return EmptyVariable ("not implemented"). |
+| `include` | `IncludePlugin` evaluates `path`, obtains the active `ConfigSource`, calls `parentConfig.getConfigSource().include(location)`, creates/reloads a new `Config`, swaps `context.config`, executes included root children with a new `DefaultPluginBodyExecutor`, then restores the parent config in finally. `AbstractConfigSource.include()` delegates to `IncludeVisitor`; file includes resolve relative paths via `CommonUtil.getAbsoluteFilename`, URL includes resolve via `CommonUtil.fullUrl` and create a new `URLConfigSource`. `FileConfigSource` opens a `FileInputStream`; `URLConfigSource` uses `url.openStream()`. | Include is both configuration composition and a new file/remote-fetch boundary. The inspected path does not show host root/destination policy, redirect validation, explicit timeouts, size bounds or an include-depth/cycle budget. `IncludeVisitor` itself contains TODOs stating that unit tests and documentation are missing. Include also relies on injected `ConfigFactory`; without it, execution fails with a message that it requires the configured Guice injector. The included children currently execute through the default executor rather than an explicitly passed registry-generation handle. |
+| `script` | `ScriptPlugin` evaluates its body into source text, selects a scripting language, and delegates to injected `ScriptEngineFactory`; if the factory is absent it falls back to `BaseTemplater.evaluateToVariable`. `ScraperModule` binds `JSRScriptEngineFactory` as a Guice singleton. That factory uses `ScriptEngineManager` to discover engines by language name and caches engine instances in a thread-local cache. | Engine discovery is not a trust or permission decision. The SPI shown has no policy/capability context, allowed host-object set, execution budget or cancellation contract. The fallback path can execute without the injected factory and must be explicitly accounted for in any restricted profile. Thread-local engine reuse needs lifecycle/cleanup analysis, especially for dynamic classloader retirement; no cleanup contract is visible in the inspected factory. |
+
+**Additional concrete observations:**
+- `ScraperModule` binds `WorkingDir` to the supplied string. The annotation is a binding qualifier, not a root-aware filesystem service.
+- `FilePlugin` catches broad exceptions and returns `EmptyVariable` for several failures; a future policy denial should have a distinguishable, inspectable failure result rather than being silently indistinguishable from empty output.
+- `IncludePlugin` restores the previous config in a finally block (positive context-restoration behavior), but the active runtime generation is not passed explicitly to the nested executor in the inspected code.
+- `ConfigSource.include()` supports both file and URL origins. This means a local include can transition to a URL only if the location-resolution contract allows it; host policy must validate the resolved target, not just the original include string.
+- These findings do not prove exploitability in every deployment: effective access also depends on the host process filesystem/network permissions and configuration source. They do prove that the inspected Core path does not itself establish the required host policy boundary.
+
+Source blobs on current `main`:
+- `FilePlugin.java`: `8d78e797975ab236a47420d18f28600beaae04bf`.
+- `IncludePlugin.java`: `ab06127f7f5402978937160a42455b4c0107dfab`.
+- `AbstractConfigSource.java`: `61a59ff096c62e37a7d4c6445e212da868a49bff`.
+- `IncludeVisitor.java`: `5794e81d1d699e416183a6a0101d16598d03cd1e`.
+- `FileConfigSource.java`: `60313fb8f21db7630fa66dacf7a2dcfd4871eb98`.
+- `URLConfigSource.java`: `1579ea14f6e2f7b187cb88c65e97dd321c8a2e23`.
+- `ScriptPlugin.java`: `0bd1992d0739f43c9d550b302d4fa0a815e63995`.
+- `ScriptEngineFactory.java`: `3aa0acd84369b6167db810200d39fc6a6c0c7765`.
+- `JSRScriptEngineFactory.java`: `f99047b30d2ca455898771ae8c207fafe4f1efd7`.
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+
+Tests were not run. The source-level TODO in `IncludeVisitor` is not a test result; no claim is made that every include scenario lacks coverage. No runtime, test or POM files changed.
