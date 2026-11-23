@@ -645,6 +645,47 @@ inspected but not executed for this audit.
 | Web browser — `WebBrowserPlugin` | Supports load, execute-script, get-content and close. JavaScript is enabled by default. URL validation checks HTTP(S) scheme, while HtmlUnit follows URLs and executes JavaScript. Logs include requested URL and a prefix of submitted JavaScript; result content is debug-logged. Session cleanup is present on completion/failure/cancel/close paths. | Scheme-only checks are not an SSRF boundary: private/link-local/local destinations, redirects and DNS rebinding need explicit policy. Add JavaScript permission, destination/redirect policy, navigation and execution time/resource limits, output limits and concurrency/terminal-race tests. |
 | ZIP — `ZipPlugin`, `ZipEntryPlugin` | Builds archives in memory. `ZipEntryPlugin` passes the supplied entry name to `new ZipEntry(name)`; only non-empty validation was observed. Scoped execution-context stream ownership and nested archive restoration are covered by the ZIP integration path; streams use try-with-resources. | Normalize/reject absolute and traversal-like entry names; define duplicate-entry policy; cap entry count, total uncompressed bytes and in-memory archive size; define cancellation and failure cleanup. This is a producer-side path/name policy gap, not evidence of an extraction vulnerability. |
 
+### 15.6.1 Optional plugin entry-point reconciliation
+
+The module-level table above is not sufficient for the #93 per-implementation
+inventory. The ten concrete entry points currently resolve as follows (source
+files were re-read from `main` on 2026-11-23):
+
+| Implementation / XML name | Role and relationship | Source-confirmed behavior | Required policy / unresolved contract |
+|---|---|---|---|
+| `DatabasePlugin` / `database` | Executable SQL operation; accepts either a named `connection` or inline JDBC configuration | Evaluates SQL templates/body, obtains a JDBC connection, calls `prepareStatement(sql)`; classifies queries using `sql.trim().toLowerCase().startsWith("select")`; materializes all result rows as XML text; closes ResultSet/Statement in finally. | JDBC driver and URL allowlists; secrets; parameter binding; query timeout, cancellation, transactions and result limits. The prefix-based SELECT classification is not a general SQL statement classifier. |
+| `ConnectionPlugin` / `connection` | Executable declaration that stores a named connection factory in the execution context for later `database` use | Requires `id`, `driver`, `url`; optional username/password/poolSize; registers its factory for session cleanup when EventBus is present. Metadata reports `isCorePlugin=false`; DatabasePlugin consumes the named connection. | Treat credentials as secrets; JDBC URL/driver allowlist; deterministic session ownership/cleanup; avoid exposing connection details through variable/log output. |
+| `FtpPlugin` / `ftp` | Parent/container and standalone action entry point | Accepts actions `get`, `put`, `list`, `mkdir`, `rmdir`, `del`; creates an Apache Commons Net `FTPClient`, logs in, executes remote operation and disconnects in finally. GET/PUT materialize payloads in memory. | Network destination and credential policy, remote path policy, bounded payloads/timeouts/cancellation, explicit secure transport. **Important:** source uses plain `FTPClient`; class Javadoc's statement that port 990 enables implicit FTPS is not evidence of TLS. |
+| `FtpGetPlugin` / `ftp-get` | Child operation whose schema requires parent `ftp`; nevertheless the implementation reads host/user/password itself and creates its own FTP connection | Downloads to `ByteArrayOutputStream`, then materializes bytes; closes/logout/disconnects its own client. | Resolve the mismatch between advertised shared parent connection and per-child connection setup; remote host/path policy, size bounds, timeouts, secure transport and cancellation. |
+| `FtpPutPlugin` / `ftp-put` | Child operation requiring parent `ftp`; implementation independently connects using host/user/password | Executes child body, converts it to a byte array, uploads via FTPClient, then closes its own connection. | Same parent-vs-own-connection mismatch; outbound destination, remote write authorization, body size, timeouts, secure transport and cancellation. |
+| `FtpListPlugin` / `ftp-list` | Child operation requiring parent `ftp`; implementation independently connects using host/user/password | Lists remote directory and materializes names/results; own connection lifecycle. | Same parent-vs-own-connection mismatch; destination/path policy, maximum entries/output size, timeout, secure transport and cancellation. |
+| `MailPlugin` / `mail` | Executable irreversible SMTP send | Creates SimpleEmail/HtmlEmail and calls `send()`; logs SMTP host, sender, recipient and subject. Current schema requires smtp-host/from/to/subject; optional port/type/from-name. | **Source/Javadoc mismatch:** Javadoc describes username/password authentication and TLS examples, but current schema has no username/password or TLS fields and execution does not configure authentication/TLS. Do not advertise authenticated/TLS delivery until implemented and tested. Add send authorization, recipient policy, secret support, transport security and log redaction. |
+| `WebBrowserPlugin` / `web-browser` | Executable browser session with load/execute-script/get-content/close actions | Browser clients are held in session-keyed state (or weak context fallback); session completion/failure/cancellation events close clients. JavaScript defaults to enabled; URL check accepts HTTP(S) scheme only. | SSRF destination/redirect/DNS policy, explicit JavaScript permission, execution/navigation/time/memory/output limits, concurrent terminal-state tests. Session scoping is a positive lifecycle improvement, not a security boundary. |
+| `ZipPlugin` / `zip` | Executable archive scope/provider | Creates an in-memory `ByteArrayOutputStream` archive and exposes the active stream through scoped execution context; nested scope restoration and try-with-resources are covered by the ZIP integration contract. | Bounded archive/entry count/uncompressed size and cancellation; deterministic close/rollback on failure. |
+| `ZipEntryPlugin` / `zip-entry` | Declarative child operation requiring parent `zip`; writes one named entry into the scoped archive | Requires non-empty `name`, optional charset, rejects root use; passes the name directly to `new ZipEntry(name)`. | Normalize/reject absolute and traversal-like names; duplicate policy; per-entry and aggregate size limits; charset/error policy. |
+
+This reconciliation exposes two important mismatches that must not be hidden by
+the generic module labels: (1) FTP child schemas require an `ftp` parent, while
+the child implementations create their own network clients rather than using
+the advertised shared parent connection; (2) Mail Javadoc advertises
+authentication/TLS configuration that the current executable schema and
+`doExecute` path do not implement. The FTP source also documents FTPS on port
+990 while the factory constructs plain `FTPClient`, not an `FTPSClient`.
+These are source observations, not runtime test results.
+
+Source blob IDs:
+- `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728`
+- `ConnectionPlugin.java`: `edb6ed93584cb03d967c830d120848c7e891f481`
+- `FtpPlugin.java`: `d7098611ea7e0569b7cf9af01346be7b951da799`
+- `FtpGetPlugin.java`: `fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`
+- `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`
+- `FtpListPlugin.java`: `c5fcfa6c5f90f643e6df8e85f6ad6a0b6e1074fa`
+- `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`
+- `ZipPlugin.java`: `e62046292bca8689637e5eefbd7ce25ed460d118`
+- `ZipEntryPlugin.java`: `ea90361ca90b31d4c3903688ca78204121af0743`
+- `FtpClientFactory.java`: `acfb17feb4361527bf86db21642f77a96c2ddece`
+
 The existing tests cover meaningful happy/error paths (including FTP mock-server
 operations, database plugin/driver behavior, mail configuration and SMTP
 integration, browser regression/integration behavior, and ZIP nested archive
