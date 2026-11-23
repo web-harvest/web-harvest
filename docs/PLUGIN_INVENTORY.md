@@ -1275,3 +1275,40 @@ Source blobs on current `main`:
 - `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
 
 No HTTP behavior tests were run; these are source-level findings and must not be represented as a passing runtime conformance test.
+
+
+### 15.27 Loop, sleep, logging and execution-control effects (2026-11-23)
+
+The remaining Core utility/control-flow paths were traced to distinguish semantic constructs from host effects and to check whether nested execution preserves runtime-generation ownership.
+
+**Loop (`LoopPlugin`, `LoopInputSourceResolver`):**
+- `LoopInputSourceResolver` recognizes a leading `list` or `xpath` child as a source and evaluates it through a newly constructed `DefaultPluginBodyExecutor`.
+- `LoopPlugin` constructs another new `DefaultPluginBodyExecutor` for custom loop-body execution. These constructors do not receive an explicit registry-generation/runtime handle in the inspected call sites; they therefore rely on the existing global/default executor resolution path.
+- Source collections are flattened/materialized into `List<Variable>`; inline text is split into a complete token list. The loop result is accumulated in an unbounded `StringBuilder`.
+- `maxloops` defaults to 100 and limits body executions when non-negative. A negative value is accepted: with a finite source list it disables the iteration cap; without a source, available item count becomes zero. No runtime-wide execution budget is visible here.
+- `filter` is explicitly logged as unsupported and ignored.
+- A context-local scope is created for each iteration and the final item/index are deliberately retained in the outer context; this is relevant compatibility behavior to preserve.
+
+**Sleep (`SleepPlugin`):**
+- Parses `milliseconds` as an `int`; invalid input silently becomes zero. Positive values call `Thread.sleep(millis)`, then execute child processors.
+- Interruption is propagated, which is a useful cancellation seam, but there is no visible host policy ceiling, aggregate time budget or deadline propagation in this plugin.
+- A descriptor should declare a time/delay effect; the host runtime should enforce per-operation and total execution budgets without replacing interruptible cancellation.
+
+**Log (`LogPlugin`):**
+- Writes directly to process-global `System.out` or `System.err` and returns the message as a value. It does not use a host-provided logging/output service.
+- This bypasses host routing, structured logging, redaction and output quotas; a multi-tenant embedding host cannot independently control plugin output through the current service surface.
+
+**Exit (`ExitPlugin`):**
+- On a true condition it posts a `ScraperExecutionExitEvent` to an injected EventBus and throws `ScraperExecutionExitException`. This is execution-control flow, not JVM/process termination in the inspected method.
+- The neutral runtime contract should represent execution-scoped stop/exit outcomes explicitly and keep them distinct from host shutdown or cancellation.
+
+**Generation/lifecycle implication:** the two Loop-created default executors are another concrete nested-execution seam, in addition to IncludePlugin. A dynamic registry cannot guarantee generation consistency if nested source/body evaluation silently resolves through a process-global registry. Every nested executor must inherit the parent session's pinned generation, host policy context, cancellation/deadline and resource budget.
+
+Source blobs on current `main`:
+- `LoopPlugin.java`: `ba91342e4e560f6bea9165bdba9b5ce4b4db82d8`.
+- `LoopInputSourceResolver.java`: `97f152bd9c0eec7e41fd7e031db3f4c7c3d613f4`.
+- `SleepPlugin.java`: `e6c83473ee573099f4690bafeb8f73ecf313e28a`.
+- `LogPlugin.java`: `108db83ce34ffe80e18e0a7fc08d791dce207118`.
+- `ExitPlugin.java`: `b197f5580c2850795aadd15bfd0850af6458f074`.
+
+No tests were run and no runtime behavior changed. The absence of a policy hook in these inspected call sites is not a claim that the host OS cannot impose process-level limits; it means the Core/runtime API does not yet expose these as explicit per-execution host contracts.
