@@ -579,3 +579,8 @@ The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), section 15.31, e
 - Assert the shared budget is consumed across nested calls, rather than reset on each nested executor/plugin.
 
 Tests must run on the exact candidate commit. Source-level test presence or declared metadata is not acceptance evidence.
+
+
+### 7.8.1 Loop limits are validated and enforced from one effective policy
+
+The source audit in PR #351 section 15.33 found that `WhilePlugin` validation accepts `maxloops` up to 1,000,000 while execution silently clamps to 10,000. Future validation must calculate the effective policy limit once and expose that same value to inspection, diagnostics and execution. A configuration that requests more than the host allows must either be rejected before execution with a structured policy diagnostic or explicitly normalized with a visible effective value; silent runtime clamping is not acceptable. The shared session budget remains authoritative across nested loops.
