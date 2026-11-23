@@ -666,3 +666,17 @@ A follow-up source search included fully-qualified construction expressions and 
 `TryPlugin` uses `AbstractPlugin.executeBody()` at the inspected call site and does not construct a separate executor there. The seven direct constructions across six plugin classes must all receive the same runtime composition context, provider factory, pinned registry generation, policy, cancellation/deadline and shared budget. This is a source-text call-site inventory, not bytecode/dataflow proof against indirect factories.
 
 Correction: earlier sections that listed only Call/If/Regexp or Call/Include/Loop/Regexp were incomplete. Use this six-class/seven-construction list as the current direct call-site inventory.
+## 7.13 ScrapingScope is a process-wide shared instance, not runtime-owned
+
+A focused source check of `ScraperScope` and `AttributeHolderScope` makes the multi-runtime limitation more precise:
+
+- `ScraperModule` declares `private static final ScraperScope SCRAPER_SCOPE = new ScraperScope()`.
+- Every `ScraperModule` binds its `ScrapingScope` to that same static `SCRAPER_SCOPE` instance and binds `ScraperScope.class` to the same instance.
+- `ScraperScope` extends `AttributeHolderScope<AttributeHolder>`; the latter stores its scope stack in an instance `ThreadLocal<Stack<AHT>>`.
+- `ScrapingHarvester.execute()` enters this shared scope before creating/using the session and exits it in `finally`.
+
+Thus separate Guice injectors do not receive separate scope objects: the scope instance and its ThreadLocal are process-wide. The ThreadLocal stack provides same-thread nesting, but it does not encode runtime identity or establish independently owned per-runtime scope state. It must not be presented as evidence of multi-runtime isolation. In particular, two independently configured WebHarvest runtimes on one thread share the same scope stack object, and the static injector/script-engine seams remain separate sources of cross-runtime coupling.
+
+Required target: the runtime composition root owns its own execution/session scope implementation. A host/runtime identity must be explicit in the provider context; nested executions must inherit the correct runtime context without relying on a process-wide ThreadLocal stack. Conformance must exercise two runtime instances on the same thread with nested and sequential executions, plus concurrent execution on separate threads, and prove that closing or failing one runtime cannot expose or dispose another runtime's scoped services.
+
+Source blobs on current `main`: `ScraperModule.java` `d31a5e30b0949c752743123cbcfb4219ba60713e`; `ScraperScope.java` `877b943c38994566cc0128629d26de6a3618bcd9`; `AttributeHolderScope.java` `11a39c99e517ae9ae1ba09cf69a885b636465b64`; `ScrapingHarvester.java` `2af32ca67c235e075c8cc613118814d54e555338`.
