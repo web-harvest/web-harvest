@@ -1875,3 +1875,61 @@ This is test-source inspection only. No tests were executed in this pass, no run
 - Approve policy defaults for filesystem, HTTP, include, scripting, logging, time, query and transformation effects before implementation.
 
 **Evidence boundary:** this is a synthesis of source inventories and call-site/test audits already referenced in sections 15.18–15.45. It does not claim tests were executed, does not claim a complete transitive dependency/dataflow proof, and does not authorize runtime changes. Maintainer approval is still required.
+
+
+### 15.47 Maven dependency direction and compatibility constraints (2026-11-23)
+
+This is a POM-declaration audit, not a resolved/transitive dependency graph. It records direct production declarations and module edges; it does not claim bytecode reachability or prove the absence of reflective/service-loader dependencies.
+
+#### Observed module graph
+
+| Module | Direct production dependency relevant to this boundary | Observed direction | Initial assessment |
+|---|---|---|---|
+| `webharvest-core` | No WebHarvest sibling module dependency declared | Base module | Good direction at the Maven sibling-module level; its own dependency footprint is not yet a minimal kernel |
+| `webharvest-database` | `webharvest-core`, `commons-dbcp` | Optional module → Core | Correct direction; JDBC driver is not bundled as a production module dependency |
+| `webharvest-ftp` | `webharvest-core`, `commons-net` | Optional module → Core | Correct direction; FTP transport library remains outside Core |
+| `webharvest-mail` | `webharvest-core`, `commons-email` | Optional module → Core | Correct direction; SMTP library remains outside Core |
+| `webharvest-webbrowser` | `webharvest-core`, `org.htmlunit:htmlunit` | Optional module → Core | Correct direction; browser automation library remains outside Core |
+| `webharvest-zip` | `webharvest-core` only | Optional module → Core | Correct direction; ZIP implementation uses JDK facilities and has no additional production library |
+| Root aggregator | Lists Core, CLI, IDE, five optional modules and docs as reactor modules | Aggregation only | Reactor membership is not a runtime dependency edge; root POM dependencyManagement/BOM entries must not be misread as dependencies of every child |
+
+**Positive finding:** all five audited optional Maven modules declare Core as their WebHarvest sibling dependency; none of their POMs declares another optional WebHarvest module as a production dependency. The inspected POM declarations therefore show the desired one-way module direction. This does not prove there are no reverse references through reflection, resources, test fixtures or runtime classpath assumptions; source-level cross-module reference checks remain a separate gate.
+
+#### Core is still a capability bundle, not a neutral minimal kernel
+
+The current Core POM directly declares production libraries for multiple capability families:
+- dependency injection / construction: Guice and CGLIB;
+- HTTP: Apache HttpClient 5;
+- scripting: BeanShell, Groovy runtime/JSR-223, Rhino engine;
+- query/transformation/HTML: Saxon (base plus `dom` classifier), Jsoup, TagSoup;
+- JSON: `org.json` and Gson;
+- discovery/reflection: Reflections;
+- shared utilities and logging: SLF4J, Commons Lang/IO/Collections, Guava and annotations.
+
+The precise call-site/dependency rationale is not uniform: sections 15.8–15.10 and 15.36 identify several direct provider seams, but this POM pass does not prove which transitive dependency can be removed or split. In particular, Guice is used by active runtime construction and public composition types (15.34–15.35); removing it from Core requires first delivering the neutral provider/runtime composition contract and a separate Guice adapter. It is not a safe dependency-only cleanup.
+
+#### Compatibility and migration risks
+
+1. **Published artifact compatibility:** all current optional artifacts depend on `org.webharvest:webharvest-core:${project.version}`. A future kernel/capability split must preserve coordinates or provide compatibility artifacts/BOM/dependency mediation; moving classes without a bridge breaks downstream Maven consumers.
+2. **XML compatibility:** the default runtime's 44 mappings, including `set-var`, remain the compatibility baseline. A capability being separately selectable must not silently make its XML unknown in existing applications. The runtime needs explicit profile/availability diagnostics and a deliberate default compatibility profile.
+3. **SPI compatibility:** current plugin classes, Guice field injection, metadata annotations and registry APIs are implementation details with inconsistent meanings. They are not a stable third-party ABI. Do not promise binary compatibility until the neutral descriptor/provider/service/lifecycle contract and version negotiation are specified.
+4. **Optional-module independence:** optional modules must compile and run against the minimal public Core API only. They must not depend on Core internals, Guice internals or another optional module. An out-of-tree sample extension is the required proof before repository extraction.
+5. **Runtime classpath and service ownership:** moving a library to an optional artifact is insufficient if Core still statically references its implementation or scanner roots require it. The catalog must tolerate absent capabilities and expose a clear unsupported-capability error without class-loading the optional implementation.
+6. **Reactor vs published graph:** root aggregator membership does not imply all dependencies are required by a consumer. Release profiles, dependencyManagement and the effective published POM must be checked for each proposed artifact, including CLI/IDE adapters, before publishing a split.
+7. **Java/runtime baseline:** preserve Java 17 unless a separately approved compatibility decision changes it; validate extension bytecode and API signatures against the declared baseline.
+
+#### POM evidence (current `main`, 2026-11-23)
+
+- Root aggregator `pom.xml`: `dc944dc1a15a2c4eedecd270af2016a9ec03c0d4`.
+- Core `webharvest-core/pom.xml`: `d6dd45ba5ee481b30fce3f07d4ce08a1b1ea45ed`.
+- Database `webharvest-database/pom.xml`: `828886c603c916aaa8dbfeac7b9f914960be8434`.
+- FTP `webharvest-ftp/pom.xml`: `46dd3f1777eed4fa7e8cfaaf3e5e9cbb3694791f`.
+- Mail `webharvest-mail/pom.xml`: `7fee00811be02d9fdc95af26992310dfe43e1221`.
+- WebBrowser `webharvest-webbrowser/pom.xml`: `d3b82f4f934b9bcb6d64d5d7c7059ee529151671`.
+- ZIP `webharvest-zip/pom.xml`: `65123421e0095bf77d90f8ccc4a0c46db833e337`.
+
+#### Remaining dependency gate
+
+Before approving a migration, produce an effective dependency graph for each candidate artifact (including transitive compile/runtime dependencies), map each Core library to exact reachable call sites and tests, and run a forbidden-dependency check proving that the minimal kernel has no dependency on optional capability artifacts. For every proposed artifact split, add a consumer fixture that compiles using only the published minimal API plus the selected capability artifact.
+
+**Evidence boundary:** POM source inspection only; no Maven dependency tree was executed, no tests were run, and no POM or runtime file was changed.
