@@ -548,3 +548,10 @@ The conformance suite must use two independent loopback origins (different ports
 - Exercise every advertised HTTP method through the concrete `HttpServiceImpl`; plugin tests with a recording/mock `HttpService` only verify adapter forwarding and cannot establish transport support.
 - Verify configured request deadlines actually reach the client, response bodies are bounded while streaming, cancellation aborts in-flight I/O, and logs redact query credentials and response content.
 - Keep the test deterministic and offline; no public internet dependency. Test source presence is not a pass—release evidence must include successful execution on the exact candidate commit.
+
+
+### 7.7.1 Multiple runtimes in one JVM must remain isolated
+
+The source audit in PR #351 section 15.30 confirms `BaseTemplater.scriptEngineFactory` is a public static Guice-injected field read by static evaluation methods. `ScraperModule` installs it through static injection. Consequently, scripting configuration is shared process-wide rather than owned by a runtime/session, so independently embedded WebHarvest runtimes can overwrite or observe one another's engine factory.
+
+The neutral API must make scripting/templating services explicit dependencies of each runtime or execution context. Conformance must create two runtime instances with different engine providers and prove isolation under concurrent execution, reconfiguration and close; closing one runtime must not affect the other. No process-static service locator or static injection is allowed for runtime-specific services.
