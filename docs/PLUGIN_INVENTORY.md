@@ -1487,3 +1487,66 @@ Source blobs on current `main`:
 - `WhilePluginTest.java`: `85e2df9baf1f418dd61ef483b51902e0153164a3`.
 - `WhilePluginEnhancedTest.java`: `85ec8fdf51f99095bfef1ff172217cd75fe78d08`.
 - `WhilePluginMassiveTest.java`: `110db71e06f186cb2cbac66145ef71d7c8765a45`.
+### 15.34 Active plugin construction vs the legacy project-owned injection helper (2026-11-23)
+
+A source-level trace of the active executor, injector helper, injection interfaces and representative Core service-consuming plugins resolves an important ambiguity: the repository's PluginDependencyInjector is not the mechanism used by runtime dispatch.
+
+**Active creation path**
+
+DefaultPluginBodyExecutor.createChildPlugin() performs the following steps:
+
+1. Resolve the element name through the process-global CorePluginRegistry.getInstance().
+2. Read the process-static Guice injector through InjectorHelper.getInjector().
+3. If non-null, create the plugin with Guice Injector.getInstance(pluginClass).
+4. Otherwise call deprecated pluginClass.newInstance(), requiring an accessible no-argument constructor.
+5. Call plugin.initialize(childConfig).
+
+The active executor imports Guice Injector directly. InjectorHelper contains a static Guice Injector field, and ScraperModule requests static injection for it. This is not container-neutral host composition and is not isolated per runtime.
+
+**The separate PluginDependencyInjector helper**
+
+- PluginDependencyInjector exposes injectDependencies(Plugin), registerProvider(Class<T>, DependencyProvider<T>), registerSingleton(Class<T>, T) and getDependency(Class<T>).
+- DefaultPluginDependencyInjector stores provider and singleton maps keyed by exact Class<?>; singleton wins over provider.
+- Injection scans only plugin.getClass().getDeclaredFields(), looking for the project's own @InjectDependency; it does not traverse superclasses.
+- It performs reflective field assignment only. There is no constructor injection, qualifier/key model, lifecycle/disposal ownership, or automatic integration with DefaultPluginBodyExecutor.
+- Its annotation @InjectDependency is distinct from Guice @Inject.
+
+The helper's test sources exercise basic provider/singleton lookup, null/error cases and one declared-field injection fixture. They do not establish active executor integration, constructor injection, inherited-field handling, container neutrality, runtime isolation or lifecycle ownership. Tests were inspected, not run.
+
+**Representative Core plugin service dependencies**
+
+The current Core source includes Guice-injected fields for:
+- HttpPlugin: HttpService.
+- ScriptPlugin: ScriptEngineFactory.
+- FilePlugin: String workingDir, qualified with @WorkingDir.
+- IncludePlugin: ConfigFactory.
+
+These dependencies are not injected by the project's @InjectDependency helper. The active Guice construction path supplies them. The inventory is representative, not yet a complete 44-plugin constructor/service-dependency matrix.
+
+**Nested executor construction paths**
+
+Direct new DefaultPluginBodyExecutor() construction is present in:
+- CallPlugin (function body dispatch),
+- IncludePlugin (included configuration body),
+- LoopPlugin (loop body),
+- RegexpPlugin (result/template dispatch).
+
+The existing architecture audit separately traces conditional branch dispatch. Every such path must inherit the same runtime-owned provider factory, immutable registry generation, host policy, cancellation/deadline and shared budget. A default executor detached from the parent execution context is not acceptable.
+
+**Implication for the migration matrix**
+
+Do not classify the existing helper as a ready-made neutral SPI or simply wire it into the executor. The target must define a runtime-owned plugin factory/provider contract with constructor injection, typed/qualified service requirements, host-container adapters, deterministic initialize/cleanup/rollback, explicit lifetimes and per-runtime isolation. The plain-Java composition path must not require Guice on the runtime classpath; Guice and Spring integrations must adapt host-owned containers rather than start new ones.
+
+Source blobs on current main:
+- PluginDependencyInjector.java: 12d72a925ed81cf34ce2c47de9020042749797b0.
+- DefaultPluginDependencyInjector.java: fe7aeacda9041c0aba88d4c15aea9c54d81d3431.
+- DefaultPluginBodyExecutor.java: 0116211ed31986b757f6f9e4bb5689f199b54f69.
+- InjectorHelper.java: 24c114b24a3abc079a9d447b59155e3598f5abe7.
+- ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e.
+- HttpPlugin.java: c6045d6c7638f3aa86c510240814633597b108ad.
+- ScriptPlugin.java: 0bd1992d0739f43c9d550b302d4fa0a815e63995.
+- FilePlugin.java: 8d78e797975ab236a47420d18f28600beaae04bf.
+- IncludePlugin.java: ab06127f7f5402978937160a42455b4c0107dfab.
+- CallPlugin.java: 01238d278e4bbddb262c797f34a481dcd964e3c9.
+- LoopPlugin.java: ba91342e4e560f6bea9165bdba9b5ce4b4db82d8.
+- RegexpPlugin.java: a860ab08554122680c4d5d5fde1be3d683139c6a.
