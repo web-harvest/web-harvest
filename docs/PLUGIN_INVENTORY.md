@@ -1731,3 +1731,18 @@ A direct read of the current `WebBrowserPlugin` source refines the browser owner
 This source confirms meaningful per-session terminal cleanup for normal session-backed use, while also confirming that storage and the global shutdown method are process-wide. A target runtime-owned browser service should use runtime-scoped identity/storage, expose per-session close and runtime close separately, and reserve process-wide close for an explicit host-wide shutdown. Tests must cover two runtimes, same/different session IDs, sessionless contexts, terminal-event races, and closing one runtime while another retains active pages. Source inspection only; no tests run.
 
 Source blob: `WebBrowserPlugin.java` `be7675390275b16ed63e5515a11969585acd2de6`.
+
+
+### 15.44 Session lifecycle currently depends on optional EventBus availability
+
+A direct read of `ScrapingHarvester.execute()` adds an important condition to the resource ownership model:
+
+- The public constructor receives Guice `Provider<EventBus>`. `execute()` attempts `eventBusProvider.get()` only when the provider is non-null.
+- If provider lookup throws, the exception is caught and logged as a warning; execution continues with `eventBus == null`.
+- A `ScraperSession` is created, attached to `DynamicScopeContext` and marked running only when an EventBus was obtained. Without it, the context runs without a session and without session terminal events.
+- Consequently, browser cleanup through `SessionCompletedEvent` / failed / cancelled is not available in this path. The browser plugin falls back to its static weak-key context map. Other resource-bearing plugins must use their own no-EventBus fallback; this is not equivalent to a uniformly enforced session lifecycle.
+- The method does exit `ScraperScope` in a `finally` block, and session-backed execution marks the session completed or failed before leaving the scope. That ordering is useful, but it does not repair the no-EventBus path.
+
+For the target platform, lifecycle ownership must not silently disappear when a container provider is unavailable. Either the session/lifecycle service is a required runtime dependency and startup/execution fails clearly when absent, or the runtime supplies a container-neutral internal lifecycle implementation. A host may provide an adapter, but absence/failure must not silently downgrade cleanup guarantees. Test provider absent, provider lookup failure, execution success/failure/interruption, and resource cleanup in each supported mode.
+
+Source blob: `ScrapingHarvester.java` `2af32ca67c235e075c8cc613118814d54e555338`.
