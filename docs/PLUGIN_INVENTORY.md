@@ -1686,3 +1686,18 @@ A direct read of the complete `AbstractPlugin.executeBody()` implementation expo
 - The audit must distinguish syntactic construction sites from reachable execution paths: the shared base-class path can be reached by any plugin using `executeBody()`, so migration tests must cover both explicit nested dispatchers and ordinary body delegation (including Try).
 
 This corrects the scope of 15.37: **seven direct constructions across six mapped plugin classes, plus the shared `AbstractPlugin.executeBody()` construction path**. Source inspection only; no tests run. Source blob: `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
+
+
+### 15.41 Resource ownership is split across invocation, session and runtime scopes (2026-11-23)
+
+A targeted source pass across resource-bearing built-ins shows that plugin-instance cleanup is not the only, or even the main, owner of resources:
+
+- **Invocation-local resources:** DatabasePlugin.doExecute() closes ResultSet and Statement in its own finally; it closes the connection proxy / named connection according to whether a session EventBus exists. FTP plugin variants create an FTPClient per execution and logout/disconnect it in finally. These are operation-owned resources, not evidence that a plugin provider should be closed after every call.
+- **Session-owned resources:** ConnectionPlugin creates a StandaloneConnectionPool and registers it with the session EventBus; its ConnectionFactoryVariable is stored in the execution context. DatabasePlugin relies on session event cleanup for physical pool ownership when an EventBus exists; the standalone/no-EventBus path explicitly closes the named pool.
+- **Browser session resources:** WebBrowserPlugin stores browser pages in static process-level maps keyed by session ID (SESSION_PAGES) and, for legacy sessionless contexts, in a synchronized WeakHashMap. Each BrowserSessionState registers itself with the session EventBus and closes pages/unregisters/removes its session entry on completed, failed or cancelled events. closeAllPages() is also an explicit global shutdown path. The map is process-global storage, while the intended ownership of entries is per session; runtime isolation and deterministic owner shutdown are not yet established.
+- **Runtime-owned service:** HttpServiceImpl is AutoCloseable and closes its underlying CloseableHttpClient; the existing Guice singleton binding and missing explicit runtime/injector close owner were documented in 7.2. This resource must not be closed when an individual plugin execution or session ends if it is shared by other sessions.
+- **Irreversible side effect:** MailPlugin sends during doExecute(); no resource doCleanup() override was found in this targeted pass. Sending mail is an execution effect, not a cleanup responsibility.
+
+No doCleanup() override was found in the targeted set of resource-bearing implementations inspected for this section. This is a bounded source pass, not a repository-wide proof that no override exists. The key design implication is to model **invocation, session, registry-generation, runtime and host** ownership separately. Generation retirement must close only generation-owned providers/resources after leases drain; it must not close host- or runtime-owned shared services, nor defer invocation-local cleanup until unload. Source inspection only; no tests run.
+
+Source evidence: DatabasePlugin.java b3934d753f17f133bd582b50206db701af843728; ConnectionPlugin.java edb6ed93584cb03d967c830d120848c7e891f481; FtpPlugin.java d7098611ea7e0569b7cf9af01346be7b951da799; WebBrowserPlugin.java be7675390275b16ed63e5515a11969585acd2de6; MailPlugin.java 083297481e7e218916a77f0dea2308c63bbac7e7; HttpServiceImpl.java 9e3dab1a40250f4d059ea812c74012d994873f0d.
