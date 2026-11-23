@@ -558,3 +558,54 @@ The conformance suite (#350) must prove:
 - Classpath/JAR ordering and repeated bootstrap do not change the effective registry output.
 
 **Release rule:** no release GO until this suite passes against the exact candidate Core artifact, the independent fixture report and artifact hashes are attached to #94/#88, and the maintainer records explicit sign-off.
+
+
+### 12.5 Autonomous dynamic platform clarification (2026-11-23)
+
+The concise pipeline above is superseded by the more complete target contract in
+[Autonomous Dynamic Plugin Platform](AUTONOMOUS_DYNAMIC_PLUGIN_PLATFORM.md)
+(being introduced in documentation PR #352). “Artifact/classpath discovery” must
+not be interpreted as a one-time scan of the JVM's immutable startup classpath.
+
+The release target is a **runtime-managed extension source** with autonomous
+reconciliation of live artifact add, update and removal while the host remains
+running. The host owns artifact fingerprints, provider discovery, dependency and
+collision validation, classloader/module lifecycle, and publication of immutable
+registry generations. A generic provider contract is used for built-in and
+external artifacts; Core must not maintain package roots or per-plugin class
+lists.
+
+Discovery, descriptor parsing and semantic/catalog/schema projection are
+side-effect-free and do not instantiate provider implementations. Discovery
+makes a provider known; host policy separately determines compatibility,
+availability, enablement, authorization and execution. Only an authorized
+provider may be constructed through the host's DI/provider factory.
+
+Runtime dispatch, metadata/catalog, schema, inspection, Semantic Model and
+validation are projections of the **same** registry generation. Each execution
+pins one generation. New sessions use the newest published generation; existing
+sessions remain consistent on their pinned generation. Removal prevents new
+admissions, drains or cancels existing work according to a defined policy, and
+releases provider resources and classloaders only after all references retire.
+Failed reconciliation preserves the last-known-good generation and reports
+actionable artifact/provider diagnostics.
+
+A normal JVM classpath is fixed after process startup. Merely copying a JAR into
+a directory does not make it visible to that classloader. Therefore, the
+implementation must own a managed extension source and explicit classloader or
+module lifecycle; it must not promise live loading based only on classpath
+mutation. ServiceLoader may enumerate providers inside an already managed
+artifact/classloader, but it is not the whole discovery or lifecycle mechanism.
+
+**Security boundary:** in-process Java permissions and host policy are not a
+sandbox against malicious provider code. A provider loaded into the host JVM
+runs with the process's effective privileges. Only trusted/approved providers
+may run in-process; genuinely untrusted extensions require a separate process
+or stronger OS/container isolation boundary. This distinction must be reflected
+in the SPI, threat model and release documentation.
+
+Mandatory #350 evidence must exercise a separately built external provider
+through live add → discover → inspect/semantic/schema visibility → authorize →
+execute → update → generation-pinned concurrency → remove/drain/cleanup →
+re-add, without restarting the host or editing Core source. Startup-only
+scanner tests do not satisfy this release gate.
