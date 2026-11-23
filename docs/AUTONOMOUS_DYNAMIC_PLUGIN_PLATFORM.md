@@ -680,3 +680,25 @@ Thus separate Guice injectors do not receive separate scope objects: the scope i
 Required target: the runtime composition root owns its own execution/session scope implementation. A host/runtime identity must be explicit in the provider context; nested executions must inherit the correct runtime context without relying on a process-wide ThreadLocal stack. Conformance must exercise two runtime instances on the same thread with nested and sequential executions, plus concurrent execution on separate threads, and prove that closing or failing one runtime cannot expose or dispose another runtime's scoped services.
 
 Source blobs on current `main`: `ScraperModule.java` `d31a5e30b0949c752743123cbcfb4219ba60713e`; `ScraperScope.java` `877b943c38994566cc0128629d26de6a3618bcd9`; `AttributeHolderScope.java` `11a39c99e517ae9ae1ba09cf69a885b636465b64`; `ScrapingHarvester.java` `2af32ca67c235e075c8cc613118814d54e555338`.
+## 7.14 Current Plugin cleanup contract conflates per-execution cleanup and unload
+
+A direct lifecycle trace of `Plugin`, `AbstractPlugin` and `DefaultPluginBodyExecutor` found a mismatch that the dynamic provider transaction must resolve:
+
+- `Plugin.cleanup()` is documented as cleaning resources when a plugin is unloaded.
+- `AbstractPlugin.execute()` invokes protected `doCleanup()` from its `finally` block after every execution, including execution failure/interruption paths. It does not clear `initialized` or the stored configuration afterward.
+- `AbstractPlugin.cleanup()` separately invokes `doCleanup()` again when `initialized` is true, then clears `initialized` and configuration. Thus calling the public cleanup after a normal execution can invoke the same cleanup hook a second time; idempotence is not enforced by the base class.
+- `AbstractPlugin.initialize()` stores configuration and calls `doInitialize()`. If initialization throws, it wraps/rethrows the failure but does not invoke `doCleanup()` as rollback and does not clear the stored configuration. `initialized` remains false.
+- `DefaultPluginBodyExecutor.createChildPlugin()` creates and initializes the instance. `executeChildPlugin()` then calls `childPlugin.execute(context)` and returns the result; it does not call public `childPlugin.cleanup()` in a `finally` block. The conditional selected-branch paths likewise create and execute child plugins.
+
+Consequences:
+
+1. Per-execution resource release (`doCleanup()` in `execute`) is not the same lifecycle event as provider/plugin unload (`cleanup()`). A dynamic plugin may own classloader/provider/generation resources that must outlive one execution and be closed only when its owning generation/runtime is retired.
+2. Initialization that allocates a resource and then fails has no guaranteed rollback hook in the current base class or executor construction path.
+3. The public cleanup hook can run after per-execution cleanup without base-class exactly-once protection. Plugin implementations must currently self-manage idempotence if both paths are used.
+4. The executor does not demonstrate a deterministic plugin-instance disposal path after create/execute. This must be defined before dynamic activation/reconciliation can claim safe rollback or unload.
+
+Required target: distinguish construction, initialize/prepare, per-execution completion, rollback-after-failed-prepare, and final close/unload. Make cleanup ownership explicit (provider instance vs execution instance vs generation/runtime), guarantee exactly-once disposal, and preserve the ability for generation-scoped providers to serve multiple sessions without closing on each execution. A failed candidate preparation must close all resources it allocated and preserve the last-known-good generation.
+
+Required tests: initialization fails after allocating a test resource → rollback closes once; execute succeeds/fails/is interrupted → per-execution cleanup runs once; provider/generation remains usable across multiple executions; generation retirement closes plugin/provider resources once after leases drain; repeated close is harmless; one runtime's close does not dispose another runtime's services.
+
+Source blobs on current `main`: `Plugin.java` `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`; `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`; `DefaultPluginBodyExecutor.java` `0116211ed31986b757f6f9e4bb5689f199b54f69`.
