@@ -530,3 +530,12 @@ Migration constraints:
 - Static injection into `BaseTemplater` must be replaced by explicit runtime/session scripting-service access so two runtimes in one JVM cannot overwrite each other's engine factory.
 
 The implementation plan must first inventory public signatures, dependency scopes, static state and construction call sites; then introduce neutral seams behind compatibility adapters. Do not remove Guice from the build or restructure POMs as an isolated cleanup before the plain-Java fixture and Guice adapter tests prove parity.
+
+
+### 7.6.1 Redirects must not forward credentials across origins
+
+The source audit in PR #351 section 15.29 confirms that the current `HeaderPreservingInterceptor` reapplies configured default headers to every request, including redirects, without checking origin. Its documented use cases include Authorization and API keys. The current redirect test covers only a same-origin relative redirect and asserts that the API key is preserved.
+
+The neutral transport contract must define an origin as scheme + host + effective port and strip Authorization, Proxy-Authorization, Cookie and configured secret headers when a redirect changes origin, by default. Host policy may grant a narrowly scoped exception, but it must be explicit, auditable and bound to the destination. Redirect loops, hop count, scheme downgrade, DNS/address changes and destination policy must be enforced in the transport itself.
+
+The conformance suite must use two independent loopback origins (different ports) and prove secret-header stripping across cross-origin and multi-hop redirects, while separately testing same-origin preservation where allowed. A fake `HttpService` test that only verifies the plugin forwards a verb does not prove the concrete transport supports that verb; real `HttpServiceImpl` transport tests are mandatory.
