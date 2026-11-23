@@ -1648,3 +1648,16 @@ A follow-up search for fully-qualified as well as imported executor construction
 `TryPlugin` follows `AbstractPlugin.executeBody()` and does not construct a new executor at the inspected call site. This list is based on source text search in the 44 mapped Core implementation files, not bytecode/dataflow proof that no indirect executor factory exists elsewhere.
 
 Correction to 15.34: its nested-dispatch list was incomplete; the complete direct call-site list is the seven constructions above across six plugin classes. All must receive the same runtime provider factory, immutable registry generation, host policy, cancellation/deadline and shared budget. The detached default-constructor pattern must not survive the dynamic runtime migration.
+### 15.38 Plugin execution cleanup is not an unload/rollback lifecycle (2026-11-23)
+
+A focused trace of the Plugin contract and active executor adds a lifecycle caveat to the provider dependency matrix:
+
+- `Plugin.cleanup()` is documented as the resource cleanup method called when a plugin is unloaded.
+- `AbstractPlugin.execute()` calls `doCleanup()` in `finally` after each execution, but does not clear its initialized flag or stored configuration.
+- `AbstractPlugin.cleanup()` calls `doCleanup()` again whenever initialized is true, then clears initialized/configuration. The base class does not enforce exactly-once invocation across the per-execution and final cleanup paths.
+- `AbstractPlugin.initialize()` calls `doInitialize()` after storing configuration. If initialization fails, it does not invoke `doCleanup()` as rollback and does not clear the stored configuration.
+- The active `DefaultPluginBodyExecutor` creates/initializes a plugin and then executes it; `executeChildPlugin()` does not invoke public `Plugin.cleanup()` in a finally block. The selected conditional branch path also creates/executes plugins without an explicit final cleanup call.
+
+Therefore, current `doCleanup()` is per-execution cleanup, not proof of safe provider/generation unload. Failed initialization has no guaranteed rollback hook, and the active executor does not demonstrate a deterministic public cleanup path for created instances. Dynamic plugin lifecycle must separate prepare/initialize, per-execution completion, failed-prepare rollback, and final provider/generation close, with explicit ownership and exactly-once disposal.
+
+Conformance must include partial initialization failure after resource allocation, execution success/failure/interruption, reuse across sessions, generation retirement after leases drain, repeated close, and runtime isolation. This is source inspection only; no tests run. Source blobs: `Plugin.java` `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`; `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`; `DefaultPluginBodyExecutor.java` `0116211ed31986b757f6f9e4bb5689f199b54f69`.
