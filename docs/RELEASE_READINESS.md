@@ -135,8 +135,6 @@ The root `NOTICE` names a limited set of third-party components and then says â€
 
 ### Decision
 
-- The exact PR #340 Java 17 runner log reports Apache Maven **3.9.15**. Central Publishing Maven plugin 0.12.0's tagged README identifies a tested Maven range beginning at 3.9.16; #341 therefore requires an explicit supported Maven pin and retained version evidence for the bundle workflow. Existing general CI remains unchanged pending separate evidence.
-
 **RELEASE = NO-GO.** No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
 
 
@@ -217,6 +215,7 @@ The root POM still contains legacy publication wiring:
 - `maven-source-plugin:2.0.4` is pinned in plugin management; `maven-javadoc-plugin:3.12.0` is pinned.
 - The official `org.sonatype.central:central-publishing-maven-plugin` is not configured.
 - The inspected PR #340 diagnostics artifact retained all eight Javadoc JARs but did not retain source JARs, detached `.asc` signatures or a Central bundle. This is missing retained evidence, not proof those files were not generated during Maven execution.
+- The exact PR #340 Java 17 runner log reports Apache Maven **3.9.15**. The official Central Publishing plugin 0.12.0 tagged README identifies a tested Maven range beginning at 3.9.16; #341 therefore requires an explicit supported Maven pin and retained version evidence for the bundle workflow. Existing general CI remains unchanged pending separate evidence.
 
 Sonatype's current documentation describes the official Central Publishing Maven plugin, manual publishing as the default (`autoPublish=false`), and bundle-only generation using `skipUpload=true`. The plugin does not generate all source/Javadoc/signature prerequisites by itself. References: [Central Publishing Maven plugin](https://central.sonatype.org/publish/publish-portal-maven/), [OSSRH sunset](https://central.sonatype.org/publish/publish-maven/), and [Apache Maven Central requirements](https://maven.apache.org/repository/guide-central-repository-upload.html).
 
