@@ -916,3 +916,46 @@ This section records a source-level audit of representative Core and optional pr
 - `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`
 
 Source inspection only. No code or test changes are included in this checkpoint.
+
+## 7.24 Session resource ownership, cleanup scope and cross-session isolation
+
+This section audits the ownership and cleanup of representative session resources. The key distinction is between a resource being associated with a session by convention and the runtime actually owning a resource lease that can be drained safely. Source inspection found a concrete cross-session cleanup defect in the current database path.
+
+### Confirmed cross-session JDBC cleanup defect
+
+- One service-wide event bus is shared by all sessions (WebHarvestServiceImpl.java, blob 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec). The service constructs each ScraperSessionImpl with the same eventBus, then injects that same instance into every DynamicScopeContext.
+- Inline database operations register independent pools on that shared bus (DatabasePlugin.java, blob b3934d753f17f133bd582b50206db701af843728; StandaloneConnectionPool.java, blob ab4a92fb63599e88a55821fe141bf5aa50327008). Each inline operation creates a StandaloneConnectionPool, registers it with context.getEventBus(), and expects terminal session events to release its physical connections.
+- The pool's terminal-event handlers do not check event session identity. onExecutionEnd(SessionCompletedEvent), onExecutionError(SessionFailedEvent) and onExecutionCancelled(SessionCancelledEvent) all call closeAllConnections() unconditionally. Since the bus is shared, a completion, failure or cancellation event from session A can close the JDBC connections currently owned by an active operation in session B. The pool then unregisters itself from the shared bus. This is a source-proven cross-session isolation defect; no runtime reproduction was performed in this documentation audit.
+- The same event-bus topology means event subscription alone is not a sufficient ownership boundary. Every listener must either be scoped to a truly session-private bus or validate the event's session/generation identity before changing resources.
+
+### Resource ownership patterns and limits
+
+- Browser state (WebBrowserPlugin.java, blob be7675390275b16ed63e5515a11969585acd2de6) uses a static map keyed by session ID and its BrowserSessionState filters completion/failure/cancellation events by that ID. It closes its WebClients and removes the map entry on terminal events. This is a better ownership key than the JDBC listener, but the close happens on the terminal event itself: there is no operation lease/drain protocol proving that an in-flight page load or script has quiesced before the client is closed. Session state is therefore associated and cleaned up, but concurrent-operation safety is not established.
+- Session registry (SessionRegistryImpl.java, blob 8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124) tracks session objects only. It has no resource registration, lease count, close ordering, or quiescence contract. Unregistering/clearing a session is not resource cleanup.
+- Plugin lifecycle cleanup (AbstractPlugin.java, blob be3298304840e4a585b4fb148c2e62cf471ee8f7) invokes per-plugin doCleanup() in a finally path, but suppresses cleanup exceptions to preserve the execution error. That is useful local hygiene, not an authoritative session resource ledger; it cannot prove that resources created by nested/async work have drained.
+- HTTP service (HttpServiceImpl.java, blob 9e3dab1a40250f4d059ea812c74012d994873f0d) owns an AutoCloseable client, but the inspected request path does not register an operation-scoped abort/lease with the session. Its close method is a service/client lifecycle operation, not proof that an individual session can safely abort only its own in-flight request.
+
+### Required ownership contract
+
+1. Introduce an authoritative session-scoped resource registry/lease owner. Registration must bind a resource to an immutable session identity and execution generation; ownership cannot be inferred from a shared event bus.
+2. Make terminal cleanup idempotent and identity-checked. A resource registered for session A must never be closed by session B's completion, failure, cancellation or timeout.
+3. Define resource states such as registered, active/in-use, close-requested, draining, closed and close-failed. A close request must prevent new leases, signal supported abort handles, and await in-flight leases within the GRACE cleanup budget.
+4. Separate resource close initiation from proof of operation quiescence. Closing a JDBC connection or HtmlUnit client while a statement/page operation is still active is not, by itself, proof that the worker has stopped using it.
+5. Make resource registration race-safe with session termination: if termination wins, registration must fail or immediately close the candidate; if registration wins, termination must see and drain it. No resource may be published after the final cleanup snapshot.
+6. Scope application-wide clients/pools separately from session-owned handles. A session must close only its lease/borrowed handle; it must not close a shared application client used by other sessions.
+7. Preserve close failures and unresolved use-after-close states in the session termination report. Do not silently treat a failed resource close as graceful quiescence.
+8. Add deterministic multi-session tests: two concurrent sessions with separate inline JDBC pools; complete/fail/cancel session A while B is blocked in a statement and assert B remains usable; cancel B and assert only B's resource closes; race registration against cancellation; close browser/client while an operation lease is held; verify cleanup idempotency, lease drain and close-failure reporting.
+
+### Exact inspected source blobs
+
+- WebHarvestServiceImpl.java: 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec
+- DynamicScopeContext.java: f5ca038f25442f597986bf64ebc65e958b92a010
+- ScraperSessionImpl.java: 78d07d1c485ea215d68d6d415f36b2be0c180a4f
+- SessionRegistryImpl.java: 8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124
+- DatabasePlugin.java: b3934d753f17f133bd582b50206db701af843728
+- StandaloneConnectionPool.java: ab4a92fb63599e88a55821fe141bf5aa50327008
+- WebBrowserPlugin.java: be7675390275b16ed63e5515a11969585acd2de6
+- AbstractPlugin.java: be3298304840e4a585b4fb148c2e62cf471ee8f7
+- HttpServiceImpl.java: 9e3dab1a40250f4d059ea812c74012d994873f0d
+
+Source inspection only. No runtime implementation, POM change, test execution or reproduction is included in this checkpoint.
