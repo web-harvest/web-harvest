@@ -949,3 +949,33 @@ This pass distinguishes neutral interfaces from Guice-bound implementation/compo
 5. Run the same neutral conformance fixture through the Guice adapter; add Spring only when that adapter is declared supported.
 
 **Evidence boundary:** source blobs were fetched from current `main`. No runtime code, tests, POMs or dependency declarations changed. Tests were not run in this audit.
+
+
+### 15.17 Core runtime, metadata scanner and audit-test reconciliation (2026-11-23)
+
+The current `main` sources establish three distinct inventories that must not be conflated:
+
+| Surface | Source-backed count/behavior | What it proves |
+|---|---|---|
+| Executable default XML registry | `CorePluginsRegistrar` manually registers 44 element mappings, including legacy `set-var`; `CorePluginsRegistrarContractTest` independently asserts the expected mapping set. | These names are executable through the default Core registry when this registrar runs. |
+| Metadata scanner successful path | `PluginClassScanner` scans six hard-coded package roots and returns concrete annotated `Plugin` class names; successful results are cached. | It discovers metadata candidates from the current classpath packages. It does not activate/register XML runtime elements. |
+| Metadata scanner fallback | `createFallbackList()` contains 43 Core class names plus 10 optional module class names; the Core list omits `SetVarPlugin`, although the runtime registrar exposes `set-var`. | Fallback metadata discovery is not parity-equivalent to the executable registry. |
+| Metadata completeness audit | `AllPluginsMetadataAuditTest` maintains a separate manually enumerated Core class list and explicitly excludes deprecated `VarPlugin`/`SetVarPlugin`. It instantiates classes through no-arg constructors and checks metadata/schema fields. | Metadata shape only for that manually selected set; not runtime registration, provider construction, host dependency injection, or XML execution. |
+
+Exact source references:
+- `CorePluginsRegistrar.java`: `7ddc5b26a33c5143ed893a513263718990fa515e`.
+- `PluginClassScanner.java`: `dadd28a434000816253ac66bff736e2c5fff0494`.
+- `CorePluginsRegistrarContractTest.java`: `bda7938a517bccc78150932711355035c5b4d1eb`.
+- `AllPluginsMetadataAuditTest.java`: `333180663b23346d604c070f04123624df904dfc`.
+
+**Classification consequence:** do not mechanically equate every annotated concrete Core class with an independent public capability. `ConfigPlugin` is a configuration/root processing concern; `BodyProcessorPlugin` is an internal body-processing mechanism; `VarPlugin` is legacy syntax superseded by `def`; `SetVarPlugin` is different: it is explicitly retained as a runtime XML compatibility mapping, even though the metadata audit excludes it and the scanner fallback omits it. This is an unresolved product classification and test-contract decision, not authorization to remove or rename any element.
+
+**Required inventory/test work before #93 closure:**
+1. Maintain one source-of-truth classification table that separately records executable XML mapping, descriptor/metadata discovery, public semantic capability, compatibility alias/deprecation state and test evidence.
+2. Add a parity contract between the default runtime registry and descriptor/catalog projection; explicitly state whether legacy `set-var` remains discoverable and inspectable.
+3. Test scanner fallback parity against the intended descriptor inventory (not merely non-empty fallback behavior).
+4. Test every retained public provider through the actual runtime construction path, including providers requiring injected services; no-arg metadata instantiation is not sufficient.
+5. Classify `ConfigPlugin` and `BodyProcessorPlugin` as internal execution infrastructure unless a separately justified public capability contract is approved.
+6. Preserve `VarPlugin` deprecation semantics and `SetVarPlugin` XML compatibility until a maintainer-approved migration plan exists.
+
+**Evidence boundary:** this is a source/test inventory only. No production source, tests, plugin registration, XML behavior or POMs changed; no tests were run.
