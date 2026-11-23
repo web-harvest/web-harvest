@@ -979,3 +979,27 @@ Exact source references:
 6. Preserve `VarPlugin` deprecation semantics and `SetVarPlugin` XML compatibility until a maintainer-approved migration plan exists.
 
 **Evidence boundary:** this is a source/test inventory only. No production source, tests, plugin registration, XML behavior or POMs changed; no tests were run.
+
+
+### 15.18 Resolution of the three non-mapped Core classes (2026-11-23)
+
+This pass resolves the earlier open questions for `BodyProcessorPlugin`, `ConfigPlugin` and `VarPlugin` using the current 2.3.x runtime and retained 2.2.0 documentation.
+
+| Class / element | Current runtime evidence | Documentation/test evidence | Inventory disposition (evidence-based; not a maintainer product approval) |
+|---|---|---|---|
+| `BodyProcessorPlugin` / `body-processor` | Not in the 44-entry registrar. Runtime execution now calls `PluginBodyExecutor.executeBody(...)` directly; root execution uses `RootConfigurationExecutor`. | Retained `docs/web/documentation/2.2.0/body-processor.html` explicitly says “Removed in 2.3.x” and explains direct `executeBody(...)` invocation. | Historical internal implementation, not a 2.3.x public XML capability. Keep out of runtime descriptor/public semantic inventory; retain only historical documentation as clearly versioned. |
+| `ConfigPlugin` / `config` | Not in child-plugin registrar. Root `<config>` is executed by package-private `RootConfigurationExecutor`, which applies charset/script language and delegates children to `PluginBodyExecutor`. | `RootConfigurationExecutorBranchContractTest` tests root settings, fallback behavior, child synchronization and body execution. | Root document/runtime construct, not an ordinary discoverable child plugin. Represent root configuration as a runtime/document contract, not as a provider in the dynamic plugin catalog. |
+| `VarPlugin` / `var` | Not in default registrar. | Class Javadoc describes it as deprecated and recommends `def`, but also calls it a legacy syntax maintained for compatibility; test filename exists but does not establish default runtime enablement. | Deprecated, currently non-default implementation. Do not advertise as enabled; any compatibility reactivation requires an explicit decision and dedicated XML execution fixture. |
+| `SetVarPlugin` / `set-var` | Explicitly present in default 44-entry registrar and protected by `SetVarCompatibilityRegistrationContractTest`. | Class Javadoc says deprecated but retained for 1.x XML compatibility; metadata audit omission is therefore not authoritative. | Enabled legacy compatibility capability. Keep in runtime and descriptor/inspection parity until an approved migration/deprecation policy says otherwise. |
+
+Source references:
+- `RootConfigurationExecutor.java`: `46fed681684797a826eca230cd7f3369f7d2a28b`.
+- `RootConfigurationExecutorBranchContractTest.java`: `2d21cc6593cb1d493eecd03f756d0e21461986f3`.
+- `docs/web/documentation/2.2.0/body-processor.html`: `65d4d1a4f7452df0288686adb8ba5844baf44c7e`.
+- `VarPlugin.java`: `37bbbad754955c2bda0d054f0fd1b3fa6b0e99f5`.
+- `SetVarPlugin.java`: `9f941b46a7da54b4103734896f9ad78041e57e44`.
+- `SetVarCompatibilityRegistrationContractTest.java`: `db1c3af911ae5e1413aa5fc589d4b8e55129eb6b`.
+
+**Important distinction for the future SPI:** root configuration and body execution are runtime protocol, not provider discovery. A future dynamic catalog must not manufacture descriptors for internal framework machinery or root document nodes. Conversely, the legacy `set-var` mapping is genuinely executable and must not disappear due to scanner fallback or metadata-audit omissions. `var` has legacy source documentation but no default registration; compatibility support must be described honestly as not enabled by default.
+
+**No implementation decision:** no class was deleted, moved, or modified; no XML behavior changed; no tests were run. Maintainer approval remains required for product classification and compatibility policy.
