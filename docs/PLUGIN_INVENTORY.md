@@ -3003,3 +3003,65 @@ The source audit supports the following constraints for #346:
 - Is the compatibility range a separate Core runtime API contract, not inferred from Maven version ranges? It must be an explicit machine-readable compatibility claim and must fail closed where unsupported.
 
 **Disposition:** source evidence strengthens the #346 design but does not authorize implementation. The minimal compiling SPI/schema and independent fixture remain the next gate after explicit maintainer acceptance. No source, POM, test or runtime changes were made; no tests/builds were run.
+
+## 15.68 Existing plugin mechanism overlap and consolidation audit (2026-11-23)
+
+This audit distinguishes chronology from responsibility. It is based on the current main source baseline 1729bdf4620a66686d02605083e27e27d1ab3944, source files and path-specific Git history. It does not claim a complete repository-wide call-site census; that remains a required pre-removal gate.
+
+### A. Chronology: the user's hypothesis is substantially correct
+
+Path history shows:
+
+- PluginFactory.java and DefaultPluginFactory.java: introduced with the plugin architecture on 2025-09-09 (commit 45c46b57e6ddf6b768677753f556983e405b5dd3); further plugin architecture work followed in 0e7c80535866c4dfaca60472086542afb89dd204.
+- PluginRegistry.java and DefaultPluginRegistry.java: also present in that 2025-09-09 plugin-architecture introduction. The interface is therefore an early legacy design, not a newly introduced runtime registry.
+- PluginMetadataCatalog.java: path history first shows it by 2025-11-02 (commit 9d78b022182ba47933f404ed3f15f483987f2c57), with later metadata/catalog work including #90 and #306 in November 2026. It is materially newer than the original factory/registry design.
+
+This establishes chronology, not that the newest class is automatically the right long-term authority.
+
+### B. These are different responsibilities today, but they overlap in ownership and data
+
+| Mechanism | Current responsibility | Structural problem |
+|---|---|---|
+| PluginRegistry / DefaultPluginRegistry | Mutable runtime store of plugin instances, metadata, ID and XML-name indexes, category and namespace indexes; register/unregister/clear/refresh | Stores live legacy instances and metadata in parallel mutable maps; registration may instantiate classes; it is not an immutable generation |
+| PluginFactory / DefaultPluginFactory | Creates legacy Plugin instances by Java class, plugin ID or XML namespace/element; depends on PluginRegistry to find an existing instance/class | Identity lookup and creation are coupled to the instance registry; it exposes implementation classes and caches reflective constructors |
+| PluginMetadataCatalog | Static metadata/semantic/UI descriptor projection for catalog consumers | Builds its own static descriptor map independently by scanning, loading and instantiating plugin classes and calling legacy metadata/schema methods |
+| CorePluginRegistry | Process-wide singleton mapping XML element names to plugin classes | A second mutable XML-to-class mapping alongside the registry's namespace/element index and the catalog's descriptor identity/element data |
+
+The factory is not itself a registry, and the catalog is not itself an instance factory. They are not literal duplicates by class responsibility. The architectural duplication is that identity, XML binding, metadata and implementation ownership are independently represented and mutated/discovered in multiple places. The current factory's dependency on registry-held plugin instances makes this overlap concrete.
+
+### C. Target consolidation — one authoritative generation, not three competing stores
+
+For the new architecture, #346/#347 should define exactly one authoritative, immutable, versioned plugin-generation snapshot. That generation owns/indexes:
+
+1. validated provider manifests and immutable plugin descriptors;
+2. the canonical plugin/capability identity index;
+3. explicit XML QName and compatibility-alias bindings;
+4. dependency and conflict resolution results;
+5. admitted provider bindings and their generation-scoped activation handles (kept separate from inert descriptor data).
+
+All read paths (catalog/API, semantic projection, XML resolution, IDE/editor discovery) must query the same pinned generation. A session pins one generation; a replacement is prepared off-snapshot and atomically published. No independent mutable registry or static catalog may become a second source of truth.
+
+The intended responsibility mapping is:
+
+- Generation manager / immutable snapshot: sole owner of published descriptor and binding indexes.
+- Descriptor/catalog query facade: read-only projection over the pinned/current snapshot; no scanning, classloading, construction or independent static cache. The existing PluginMetadataCatalog name may temporarily survive as this facade if compatibility requires it, but its present static discovery implementation must not survive as a parallel authority.
+- Provider activation/instance manager: sole host-owned construction and lifecycle path after admission; resolves opaque provider bindings against the selected generation. This is the conceptual successor to the legacy factory, not another registry.
+- XML compatibility adapter: resolves existing XML names/aliases through the generation's canonical binding index and adapts legacy providers. It must not maintain a separate mutable XML-to-class registry.
+- Legacy facades: PluginRegistry, DefaultPluginRegistry, PluginFactory, DefaultPluginFactory and CorePluginRegistry may remain temporarily as compatibility adapters only where proven call sites require them. They must delegate to the single authority; they must not own independent plugin maps, constructors, classloader caches or publication state.
+
+### D. Removal and migration gates
+
+Before deleting or repurposing any existing class, complete a repository-wide call-site and compatibility census covering production code, tests, optional modules, IDE/CLI, XML parser/processor registration, dependency-injection wiring, reflection/configuration and public API consumers. Record each call site, its current behavior and its replacement against the generation model.
+
+Then migrate in this order:
+
+1. Establish the canonical descriptor/binding model and generation read APIs in #346/#347.
+2. Route catalog/semantic/IDE read-only consumers to the same immutable descriptor snapshot; preserve output compatibility where required.
+3. Route XML QName resolution through that snapshot while retaining all approved legacy XML names and aliases.
+4. Route provider construction through one host activation/instance manager; adapt old Plugin implementations only at the Core boundary.
+5. Prove no production or supported external call sites depend on the old mutable registries/factory semantics.
+6. Deprecate and then remove the redundant legacy implementations in a separately reviewed change, with compatibility tests.
+
+Do not simply delete PluginRegistry because it is old, and do not simply bless PluginMetadataCatalog because it is newer. The catalog is the better starting point for read-only metadata projection, but its current class-scanning/instantiation mechanism must be replaced. The legacy registry/factory are compatibility surfaces to inventory and drain, not foundations for the new SPI.
+
+**Decision status: architectural recommendation for #346/#347; not implementation approval.** No production code, POM or tests were changed; no tests/builds were run for this audit.
