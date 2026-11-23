@@ -722,3 +722,17 @@ A complete read of `AbstractPlugin.executeBody()` identifies an additional runti
 - The out-of-tree conformance fixture must cover explicit nested dispatch (Call/If/Case/Include/Loop/Regexp) and base-class body delegation (including Try), asserting that provider identity, generation and policy context remain unchanged through every nested layer.
 
 This is source inspection only; tests were not run. Source blob: `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
+
+
+## 7.17 Resource ownership must be explicit across invocation, session, generation, runtime and host scopes
+
+A targeted source audit of resource-bearing built-ins shows distinct owners that must not be collapsed into a generic plugin close() call:
+
+- **Invocation scope:** JDBC ResultSet/Statement and FTP client connections are created and closed inside the operation's doExecute() / finally paths. These must be bounded by each invocation and must not wait for registry-generation retirement.
+- **Session scope:** named JDBC connection pools are registered with the session EventBus and stored in the session execution context. The no-EventBus compatibility path closes the named pool directly. Session completion/failure/cancellation owns disposal; ending one session must not dispose another session's resources.
+- **Browser state:** WebBrowserPlugin holds static process-level maps, with entries keyed by session ID and a legacy weak-keyed context map for sessionless execution. Per-session state registers with the session EventBus and closes pages/unregisters on completed, failed or cancelled events. closeAllPages() is a separate global shutdown operation. The storage is process-global even though the intended entry lifetime is session-scoped; runtime identity and two-runtime isolation remain unproven.
+- **Runtime scope:** the Guice-bound HttpServiceImpl is shared per injector and implements AutoCloseable. Its underlying HTTP client must survive individual plugin/session completion when shared; an explicit runtime owner must stop admissions/drain sessions before closing it exactly once.
+- **Generation scope:** only provider instances and resources explicitly owned by that generation may be retired after all generation leases drain. A generation must not close a host-owned service or a runtime-shared transport pool merely because a provider used it.
+- **Host scope:** services supplied by an embedding application remain host-owned unless the host explicitly transfers ownership. Runtime shutdown must not close them by default.
+
+A targeted scan did not find doCleanup() overrides in the resource-bearing built-in implementations inspected; this is not a repository-wide absence claim. Several built-ins release their operation resources in doExecute() finally blocks, independently of AbstractPlugin.doCleanup(). Therefore, lifecycle contracts must separately define per-invocation completion, session termination, provider prepare/rollback/final close, generation retirement and runtime shutdown. The conformance suite must assert that closing one scope cannot prematurely close resources owned by a wider scope, and that all resources are eventually released by their actual owner. Source inspection only; no tests run.
