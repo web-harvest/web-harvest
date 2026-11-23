@@ -1247,3 +1247,31 @@ Source blob:
 - `CommonUtil.java`: `70b5297bdd1d11f2571ce6c367764c04b6ba4222`.
 
 No runtime code or tests changed/run. This source audit does not claim a particular deployment is exploitable; host process permissions still constrain the effective impact.
+
+
+### 15.26 HTTP execution contract: declared options, service capability and actual behavior (2026-11-23)
+
+The HTTP path was traced end-to-end from `HttpPlugin` through the injected `HttpService` to `HttpServiceImpl`.
+
+**Contract mismatches confirmed from source:**
+- `HttpPlugin` accepts and documents GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS and TRACE. `HttpServiceImpl.request()` implements only GET and POST; every other accepted method throws `HttpServiceException("Unsupported HTTP method: ...")`.
+- `HttpPlugin` documentation advertises a `timeout` attribute (30,000 ms default) and `followRedirects`. Neither appears in the plugin configuration schema's attribute list, optional-attribute list or `doExecute()` reads. The plugin calls `httpService.get/post/request(url, body, headers)` without any timeout/redirect policy argument.
+- The default `ScraperModule` binding is `HttpServiceImpl.class` in Guice Singleton scope. Its default constructor uses `HttpClients.createDefault()`. The constructor that accepts `followRedirects` is not used by that binding.
+- The custom redirect constructor configures only `setRedirectsEnabled`; it does not install host policy or per-redirect destination validation.
+- `HttpServiceImpl.executeRequest()` materializes the complete entity with `EntityUtils.toByteArray(entity)`; no response-byte limit is visible in the inspected path. The response is then retained as a byte array and exposed as binary or converted to text.
+- `HttpServiceImpl` logs request URLs at DEBUG. `HttpPlugin` logs the first 200 characters of text responses at DEBUG. URLs can contain query credentials/tokens; response excerpts can contain secrets or personal data.
+- `HttpPlugin` returns response bodies regardless of HTTP status; status is available through the response abstraction but no status-based failure policy is applied in this path.
+
+**SPI/security implications:**
+- HTTP needs a host-supplied policy-aware transport service, not merely an injectable generic client. It must authorize initial and redirect destinations, resolve and validate address classes, enforce connect/response timeouts and response-size limits while streaming, support cancellation, and define redirect/header/credential forwarding policy.
+- Method support must be described by the actual transport capability contract. A schema cannot advertise verbs the selected service cannot execute.
+- Credentials, query strings and response bodies require explicit redaction policy; logging must not leak them by default.
+- HTTP status handling (return body vs typed non-success result vs exception) must be an explicit compatibility contract.
+
+Source blobs on current `main`:
+- `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
+- `HttpService.java`: `7ef8e5f318f8dcbaf23d05f360474c6a41f27ed2`.
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`.
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+
+No HTTP behavior tests were run; these are source-level findings and must not be represented as a passing runtime conformance test.
