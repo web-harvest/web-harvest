@@ -2247,3 +2247,86 @@ The required architecture is a runtime-owned immutable catalog generation acquir
 - `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
 
 **Evidence boundary:** direct inspection of GitHub `main` source. No tests, builds, concurrency experiments, runtime changes or POM changes were made. This is an audit finding and acceptance-test proposal only; it does not authorize implementation or freeze the SPI.
+
+
+### 15.54 Polymorphic termination contract: GRACE and KILL (2026-11-23)
+
+This section records the required lifecycle semantics raised for the plugin platform. It is a target-contract proposal derived from the existing generation/session/lifecycle gaps above; it is not an implementation claim or authorization to change runtime code.
+
+#### One host-controlled contract across provider types
+
+Termination must not depend on concrete plugin classes or provider-specific stop methods. The runtime should manage a common execution handle and immutable termination request for every execution kind, including nested plugin calls and provider adapters. The request should carry at least:
+
+- unique execution and runtime identity;
+- reason and initiator (user stop, runtime shutdown, timeout, parent cancellation, provider failure);
+- mode: `GRACE` or `KILL`;
+- monotonic deadline / remaining budget (never wall-clock-only timeout arithmetic);
+- cancellation generation/token so stale or duplicate signals cannot revive or affect a later execution;
+- parent/child relationship and the pinned provider-catalog generation.
+
+Providers receive a narrow, runtime-scoped cancellation/execution context. The host owns the state machine, deadline, admission control, resource registry, lease accounting and final outcome. Provider callbacks are cooperative extension points, not authorities over runtime state.
+
+#### GRACE semantics
+
+1. Atomically transition the execution from `RUNNING` to `STOP_REQUESTED_GRACE`; repeated requests are idempotent and cannot extend the original deadline unless an explicit policy permits it.
+2. Stop admitting new top-level work and new nested work for that execution. Propagate the same cancellation token/deadline to all child executions, async tasks and provider calls.
+3. Notify provider code through the common cancellation context and interruptible APIs. Allow bounded completion/rollback of safe sections; do not silently treat a stop request as success.
+4. Wait until the configured deadline for execution scopes, child tasks and resource operations to settle. Record whether the task completed, cancelled, failed or exceeded its deadline.
+5. Run deterministic cleanup exactly once, release the execution's generation lease only after no code can still use that generation, and then allow old-generation retirement.
+
+GRACE is a request for orderly termination, not a promise that arbitrary third-party code will cooperate.
+
+#### KILL semantics and the in-process Java boundary
+
+KILL is an escalation, not a stronger Java callback:
+
+- Immediately close admission, cancel child tasks, signal cancellation and issue thread interruption where the execution contract supports it.
+- Close host-owned cancellable I/O/resources through registered handles, with idempotent close and bounded cleanup.
+- If execution is still running after escalation, mark it `UNRESPONSIVE/QUARANTINED`; do not report it as terminated, do not release its generation lease, and do not unload its classloader while its code may still be executing.
+- Do not use `Thread.stop()`, unsafe asynchronous exception injection, or classloader disposal as a kill mechanism. Java cannot safely and reliably force-stop arbitrary code running in-process.
+- If the product requires a hard kill guarantee for untrusted or non-cooperative providers, execute those providers behind a process boundary (worker process/container/OS isolation). KILL then means terminate the worker process, verify process exit, reclaim its OS resources, and only then release the corresponding generation/process lease. In-process providers remain trusted/cooperative code and cannot be advertised as hard-killable.
+
+A timeout or interrupt request alone is not proof of termination. The externally visible result must distinguish `TERMINATED`, `CANCELLED`, `FAILED`, `KILL_ESCALATED` and `UNRESPONSIVE` (or an equivalent versioned outcome model).
+
+#### Lifecycle state machine and invariants
+
+The target model should define and test legal transitions, at minimum:
+
+`CREATED -> RUNNING -> STOP_REQUESTED_GRACE -> TERMINATING -> TERMINATED`
+
+Escalation path:
+
+`STOP_REQUESTED_GRACE -> KILL_REQUESTED -> TERMINATING -> TERMINATED`
+
+Non-cooperative in-process path:
+
+`KILL_REQUESTED -> UNRESPONSIVE/QUARANTINED`
+
+Failure/cancellation may be terminal outcomes only after child work and resource ownership have been reconciled. No transition may move a terminal execution back to running. A stale signal for an earlier execution/cancellation generation must be ignored.
+
+Core invariants:
+
+- exactly-once terminal publication and cleanup;
+- no new work after stop admission closes;
+- cancellation/deadline propagation through every nested call and asynchronous boundary;
+- parent cancellation reaches descendants; child failure does not accidentally cancel unrelated siblings unless policy says so;
+- generation lease remains held until all execution/child/provider activity is proven quiescent;
+- runtime shutdown drains or quarantines executions before disposing providers;
+- one runtime's GRACE/KILL cannot cancel, interrupt, close or retire another runtime's work/resources;
+- cleanup and resource close are idempotent, bounded and observable;
+- hard-kill guarantees are advertised only for process-isolated execution.
+
+#### Required conformance matrix for #346/#347/#349/#350
+
+1. GRACE on a simple provider: signal observed, no new nested work admitted, bounded cleanup, one terminal outcome.
+2. GRACE on nested and asynchronous work: all descendants inherit the same deadline/token; no orphan task or leaked generation lease.
+3. GRACE deadline expiry escalates once to KILL; duplicate/stale signals are harmless.
+4. Cooperative in-process KILL: interruption and registered I/O closure are observed; termination is reported only after actual quiescence.
+5. Non-cooperative in-process provider ignores interrupt: execution becomes UNRESPONSIVE/QUARANTINED, its lease/classloader remain retained, and runtime remains honest about incomplete termination.
+6. Process-isolated provider ignores GRACE: worker is killed, process exit verified, OS resources reclaimed, and lease released only after confirmed exit.
+7. Runtime A shutdown while B is active: A's sessions/providers/resources terminate without affecting B.
+8. Concurrent stop, natural completion, failure and timeout races: exactly one terminal outcome and exactly-once cleanup.
+9. Refresh G1->G2 during GRACE/KILL: old executions remain pinned to G1 until quiescence; new executions use G2.
+10. Verify monotonic deadline handling, bounded cleanup, observability/audit trail and no resurrection after terminal state.
+
+**Decision boundary:** GRACE can be guaranteed as a protocol for cooperative providers. Hard KILL cannot be guaranteed for arbitrary in-process Java plugins. If hard termination is a product requirement, process isolation is an architectural prerequisite, not an optional future optimization. No tests/builds/runtime/POM changes were made in this audit pass.
