@@ -2075,3 +2075,71 @@ The first SPI proof should be a tiny external provider with no dependency on opt
 - `ScraperSession.java`: `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237`.
 
 **Evidence boundary:** this section is based on source inspection of current `main`. No API, schema, registry or runtime code was changed; no tests/builds were run. The proposal requires maintainer review and approval in #346 before implementation.
+
+
+### 15.51 Registry consistency and lifecycle gaps (2026-11-23)
+
+This pass inspects the current \`main\` implementations and focused registry tests. It is a source/test audit only; the tests were read but not executed.
+
+#### \`DefaultPluginRegistry\` is thread-safe only at individual map-operation level
+
+The implementation uses \`ConcurrentHashMap\` for its maps, but registration and removal update several independent indexes in sequence. There is no transaction, lock, immutable candidate or generation boundary covering the complete operation.
+
+Concrete consequences visible in the source:
+
+1. **Duplicate-ID check is a check-then-act race.** \`registerPlugin\` calls \`pluginsById.containsKey(pluginId)\` and later \`put\`. Two concurrent registrations with the same ID can both pass the check; the later \`put\` replaces the earlier instance while metadata and secondary indexes may reflect a mixed sequence.
+2. **Secondary category/namespace collections are mutable \`ArrayList\`s.** They are stored inside concurrent maps, but concurrent list mutation and snapshot copying are not protected by the map's thread safety. Concurrent register/unregister/read operations can race.
+3. **QName collision is silently last-write-wins.** \`pluginsByNamespaceAndElement.put(namespace + ":" + elementName, plugin)\` does not reject an existing different plugin. Two distinct plugin IDs can therefore claim the same namespace/element.
+4. **Unregister can remove another plugin's QName mapping.** Removal uses \`pluginsByNamespaceAndElement.remove(key)\` without checking that the current value is the plugin being unregistered. If plugin B replaced plugin A at the same QName, unregistering A removes B's mapping.
+5. **The multi-index state is externally observable mid-update.** ID, metadata, QName, category and namespace indexes are changed separately; readers can observe partial registration/removal.
+6. **\`registerPlugin(Class)\` instantiates immediately.** This contradicts the \`PluginRegistry\` Javadoc that says a class is instantiated when needed. It delegates to instance registration and does not retain a provider binding for deferred activation.
+7. **\`pluginClassesById\` is not populated by the inspected registration paths.** The map is removed from/cleared but the inspected \`registerPlugin(Class)\` path creates an instance and delegates without storing the class.
+8. **\`refresh()\` is explicitly a no-op.** The current implementation does not discover, reconcile or reload providers.
+
+These are not merely missing target-platform features: items 1–5 are consistency hazards in the current mutable registry under concurrent use, and item 4 is a deterministic mapping-loss case when QName collisions occur.
+
+#### The Core XML registry is a separate global overwrite surface
+
+\`CorePluginRegistry\` is a process-wide static singleton. \`registerMapping\` unconditionally puts a class by element name, so a duplicate element silently replaces the previous mapping. \`clear()\` clears the singleton map globally. It has no runtime identity, descriptor provenance, activation state, collision diagnostics or immutable generation.
+
+\`PluginPackageScanner\` is explicitly opt-in, enumerates classes from configured packages/classloaders, inspects \`@CorePlugin\`, and writes mappings directly into that global singleton. It is not a managed artifact watcher/reconciler and does not provide descriptor-first inspection or host-controlled activation. The default Core registrar remains a distinct registration path.
+
+#### Existing tests do not exercise the identified consistency contracts
+
+The inspected \`DefaultPluginRegistryTest\` and \`DefaultPluginRegistryUnregisterResidualBranchContractTest\` cover sequential registration, sequential unregister, basic lookup, category/namespace cleanup and input validation. They do not test:
+
+- concurrent duplicate-ID registration or concurrent register/unregister/read;
+- duplicate QName rejection and preservation of the surviving mapping after unregister;
+- atomic visibility across all indexes;
+- failed registration rollback;
+- provider class deferral/activation;
+- meaningful \`refresh()\` reconciliation;
+- runtime isolation or immutable registry generations.
+
+No test was run in this pass. These are test-source observations, not claims that an unexecuted test fails.
+
+#### Required target contract / acceptance additions
+
+For #346/#347/#350, the authoritative registry must:
+
+- build a complete candidate state off to the side and publish it atomically as one immutable generation;
+- reject duplicate stable IDs, QNames and aliases deterministically before publication (unless an explicit, versioned alias-resolution rule is approved);
+- never let removal of one provider erase another provider's mapping;
+- keep descriptor discovery separate from implementation construction and activation;
+- serialize or compare-and-swap candidate publication so stale concurrent scans cannot overwrite newer state;
+- pin execution and semantic validation to the same generation;
+- preserve last-known-good state when candidate validation, provider preparation or activation fails;
+- test concurrent reconciliation, duplicate/collision rollback, add/update/remove/re-add, stale-scan races, runtime isolation and active-execution retirement.
+
+The current \`DefaultPluginRegistry\` should therefore be treated as a legacy compatibility implementation during migration, not extended incrementally into the target authoritative registry without a new atomic state model.
+
+#### Exact source/test blobs (current \`main\`)
+
+- \`DefaultPluginRegistry.java\`: \`da5c6f6e835cc8b551394e0853a70ca4bcd60d2f\`.
+- \`PluginRegistry.java\`: \`eceeddca531c98ca4a7f235e04ab28511bfc9281\`.
+- \`CorePluginRegistry.java\`: \`20f478addbf2bacc481e4e11e0328f06942a2a38\`.
+- \`PluginPackageScanner.java\`: \`c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232\`.
+- \`DefaultPluginRegistryTest.java\`: \`ee2dd3c932637c39bd25282505d06c940a286f64\`.
+- \`DefaultPluginRegistryUnregisterResidualBranchContractTest.java\`: \`07de046e581e135ee41224bf3f15dec51f797ae3\`.
+
+**Evidence boundary:** direct source inspection and test-source review on GitHub \`main\`. No tests, builds, concurrency experiments or runtime changes were made. This section is an evidence-backed audit addition, not approval of the SPI or authorization to change production registry behavior.
