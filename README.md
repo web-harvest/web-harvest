@@ -1,6 +1,6 @@
 # WebHarvest
 
-WebHarvest is an open-source Java workflow and data-extraction platform built around an embeddable Core execution runtime and a format-independent semantic direction. Its product surfaces are evolving toward a human-facing IDE Control Plane, a headless CLI/Data Plane interface, and curated Packs/Kits of official extensions. XML remains a supported compatibility and configuration format.
+WebHarvest is an open-source Java workflow and data-extraction platform built around an embeddable Core execution runtime and a format-independent semantic direction. Its product surfaces are evolving toward a human-facing IDE Control Plane, a headless CLI interface to the Data Plane, and curated Packs/Kits of official extensions. XML remains a supported compatibility and configuration format.
 
 **Canonical repository:** https://github.com/web-harvest/web-harvest  
 **Website source:** https://github.com/web-harvest/website  
@@ -13,7 +13,7 @@ WebHarvest is an open-source Java workflow and data-extraction platform built ar
 - XML-based workflow configuration and execution.
 - A Java Core runtime and plugin contracts/registry.
 - Optional integration modules for database, FTP, mail, browser automation and ZIP/archive operations.
-- A headless CLI for execution and automation (Data Plane surface).
+- A headless CLI for execution and automation (one Data Plane interface).
 - An IDE/editor evolving toward the primary human-facing Control Plane.
 - Curated official extension Packs/Kits as the intended user-facing distribution model; individual extension modules remain separate technical artifacts.
 
@@ -61,7 +61,7 @@ The project direction is to:
 1. keep Core as an embeddable semantic execution runtime, independent of IDE and optional integrations;
 2. evolve the format-independent semantic model, polymorphic capability contracts and controlled dynamic loading so agents can construct and validate execution configurations against explicit runtime capabilities;
 3. evolve IDE into the human-facing Control Plane for understanding, designing, configuring, supervising and observing Core execution;
-4. keep CLI as a separate headless Data Plane surface for scripts, pipelines, automation and integrations;
+4. keep CLI as one separate headless interface to the Data Plane for scripts, pipelines, automation and integrations;
 5. stabilize a versioned public Plugin SPI, descriptor, discovery/registration and compatibility contract;
 6. package official extensions for users as curated, compatible Packs/Kits while preserving individual extension artifact boundaries;
 7. retain the monorepo until objective extraction gates pass; only then consider a separate company-maintained Extensions repository and Maven release train.
@@ -107,7 +107,7 @@ The product roles are intentionally distinct:
 
 - **Core — semantic execution runtime.** Core owns workflow meaning, capability contracts, validation and execution. The target semantic model is format-independent; XML is a supported adapter/compatibility format, not the semantic source of truth. Polymorphic capabilities and controlled dynamic loading are intended to let agents compose and validate execution configurations while a runtime is operating. This is a target architecture, not a claim that arbitrary live reconfiguration is already implemented.
 - **IDE — human Control Plane.** The IDE is intended to become the primary human-facing environment to understand, design, inspect, configure, supervise and observe Core execution. The current IDE is an evolving client; it does not own workflow semantics or plugin identity.
-- **CLI — Data Plane surface.** CLI is a separate headless interface for invoking Core from scripts, pipelines, automation and integrations. It is not a second human control plane.
+- **CLI — Data Plane interface.** CLI is one headless interface for invoking Core from scripts, pipelines, automation and integrations. The Data Plane is the broader execution/integration layer and need not be limited to CLI. CLI is not a second human control plane.
 - **Official extensions — Packs/Kits.** Users should be able to select curated, compatible sets of official capabilities. Packs/Kits compose extension artifacts; they do not make the underlying extensions one inseparable library or require every extension to be installed.
 
 IDE and CLI are separate product distributions from the Core library. They may initially share a coordinated release version, but their artifact/package scope and release boundaries must remain explicit. See [Project Direction](docs/PROJECT_DIRECTION.md), [Monorepo policy](docs/MONOREPO.md), and [distribution decision #342](https://github.com/web-harvest/web-harvest/issues/342).
