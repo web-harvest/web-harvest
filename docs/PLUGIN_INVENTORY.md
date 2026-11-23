@@ -2935,3 +2935,71 @@ For #93 closure, maintainers need to record all of the following explicitly:
 - #350 must test the selected compatibility distribution and Core-only profile separately where both are supported.
 
 **Decision status: PROPOSAL ONLY — no maintainer choice is inferred.** This section clarifies the decision required to close #93; it does not authorize module moves, POM changes, provider removal, SPI implementation or release work. Source inventory and design only; no tests/builds run for this documentation update.
+
+
+## 15.67 Source-level SPI boundary audit — existing contracts versus target boundary (2026-11-23)
+
+This section records a focused reinspection of the current implementation on `main` at tree/commit baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. It is source inspection only; no tests were run.
+
+### A. Existing public plugin interface is not a viable new SPI
+
+Source: `webharvest-core/src/main/java/org/webharvest/plugin/Plugin.java`, blob `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`.
+
+The existing `Plugin` contract directly requires:
+- `execute(DynamicScopeContext)` and returns Core-owned `Variable`;
+- Core `PluginConfiguration`, `PluginMetadata`, and legacy exception types;
+- mutable parent linkage through `setParentPlugin(Plugin)`;
+- a mutable running-level concept;
+- legacy initialize/isInitialized/cleanup lifecycle methods.
+
+This is a compatibility contract, not a suitable neutral SPI. A new SPI artifact must not depend on `webharvest-core`, `DynamicScopeContext`, `Variable`, or the old plugin hierarchy. The adapter belongs on the Core/host side and translates between contracts; the new SPI must not import legacy types to make that adapter convenient.
+
+### B. Existing metadata is neither a static manifest nor safe discovery input
+
+Source: `PluginMetadata.java`, blob `0d31ed2c958bd03d429af8df6be94f1decfcbfdf`; `PluginDescriptor.java`, blob `c3d3f8a70f4072895fed6c0133c8caf0bc556e79`; `PluginMetadataCatalog.java`, blob `5ac82d7fb6436b458b29647e4c929878557b1c6e`.
+
+- `PluginMetadata` exposes a Java callback interface, arrays and a `PluginConfigurationSchema` callback, and includes `getClassName()`. Semantic role defaults are inferred by invoking metadata/schema methods and inspecting visual metadata types.
+- The current `PluginDescriptor` is a runtime projection object containing `className`, `origin`, display/UI fields, semantic projection, dependency list and generic extensions. Its existence does not establish a versioned wire contract or an implementation-independent descriptor.
+- `PluginMetadataCatalog` owns static descriptor/schema state. Its catalog initialization enumerates implementation names, calls `Class.forName(className)`, then `getDeclaredConstructor().newInstance()`, followed by plugin metadata/schema callbacks. Thus catalog generation can load, initialize and instantiate implementation code; it is not descriptor-only discovery.
+- The current class lookup uses one-argument `Class.forName`, not an explicit artifact-scoped loader contract. The catalog is static rather than runtime/generation-owned.
+
+Target consequence: descriptor parsing and semantic projection must operate exclusively on validated data values. No provider class, ServiceLoader, constructor, static initializer, plugin metadata callback or implementation-defined schema callback may execute in the discovery/projection phase.
+
+### C. Existing factory and registry APIs expose implementation classes and mutation
+
+Sources: `PluginFactory.java`, blob `f1d2434c5a36d21d9c09bb638f4ebf3e5eaa94f8`; `DefaultPluginFactory.java`, blob `91c8084f671027954375ff3cab784691f8ae26e5`; `PluginRegistry.java`, blob `eceeddca531c98ca4a7f235e04ab28511bfc9281`; `CorePluginRegistry.java`, blob `20f478addbf2bacc481e4e11e0328f06942a2a38`.
+
+- `PluginFactory` creates by `Class<? extends Plugin>`, plugin ID, or XML namespace/element name and returns the legacy `Plugin` object.
+- `DefaultPluginFactory` caches `Constructor` values keyed by `Class`. The cache is instance-owned, but retains implementation classes/classloaders for as long as its factory remains reachable.
+- `PluginRegistry` exposes register/unregister/clear/refresh and returns plugin implementation instances and classes indirectly through its API.
+- `CorePluginRegistry` is a process-wide singleton with mutable mappings and public `clear()`.
+
+Target consequence: new SPI must describe provider entry points as opaque data until activation. The host owns construction, classloader selection, registry publication and retirement. Provider code must not receive mutation authority over registry generations. A generation manager, not a legacy registry facade, is the unit of publication.
+
+### D. Configuration schema and runtime XML configuration are distinct but both currently Java-facing
+
+Sources: `PluginConfiguration.java`, blob `085f0681ac816d5587c98c93e1b134ac1904656b`; `PluginConfigurationSchema.java`, blob `c649a8a2d58c496bf913a8a16ac989cab81a6e98`.
+
+The current schema is an interface implemented by Java code, and its contract returns arrays/attribute-definition callbacks. Runtime configuration is a separate mutable object with child-configuration mutation. The new descriptor therefore needs a declarative, serializable configuration schema, while each invocation receives an immutable validated configuration value. Do not serialize a live `PluginConfiguration` implementation or call provider-defined schema methods during discovery.
+
+### E. Refined minimal SPI and descriptor rules
+
+The source audit supports the following constraints for #346:
+
+1. **Separate artifacts:** the SPI API must compile without a dependency on `webharvest-core`. Core may depend on/adapt the SPI; the SPI must not depend back on Core.
+2. **Data-only metadata:** use schema-validated immutable descriptor values. Keep UI/editor hints as optional projections, never as authority for runtime semantics, permissions or activation.
+3. **Opaque provider binding:** descriptor entry-point data is inert until explicit host admission/activation. Do not store a live `Class`, `Constructor`, `PluginMetadata`, `PluginConfigurationSchema` or provider instance in the descriptor.
+4. **Host-owned lifecycle:** host creates and closes provider/instance/invocation scopes. Provider close cannot close runtime-shared services. All failures are reported/aggregated rather than swallowed.
+5. **Explicit compatibility adapter:** old implementations remain behind a Core-side adapter. The adapter is the only boundary allowed to know both legacy Core types and the new SPI.
+6. **No semantic authority from UI metadata:** UI hints and display categories may be projected from descriptors, but semantic capability, execution role, host permissions and policy remain separately typed and validated.
+
+### F. Remaining questions to settle before schema/API freeze
+
+- Is the descriptor one artifact-level manifest containing one or more plugin contributions, or one descriptor per plugin contribution? Recommendation: one provider manifest per immutable artifact version, containing a deterministically ordered list of plugin contributions. This aligns provider trust/digest with artifact ownership while allowing one artifact to contribute multiple plugin IDs.
+- How is provider identity ownership established and delegated? Reverse-DNS syntax alone does not prove domain control. The host must bind the namespace to an explicit publisher/trust policy; a provider cannot self-assert trusted ownership.
+- Which canonicalization standard is used for digest/signature input? Recommendation: RFC 8785 JSON Canonicalization Scheme (JCS), with an explicit Unicode/number/duplicate-key policy and conformance vectors. Do not invent a project-specific canonicalizer.
+- Which JSON Schema dialect is normative? Pin a specific dialect/version and validator behavior; do not use an unversioned `$schema` or silently accept unknown keywords.
+- Are dependency declarations artifact-level, plugin-level or both? Define hard versus optional dependencies, version constraints, cycles, capability-provider selection and deterministic resolution before activation.
+- Is the compatibility range a separate Core runtime API contract, not inferred from Maven version ranges? It must be an explicit machine-readable compatibility claim and must fail closed where unsupported.
+
+**Disposition:** source evidence strengthens the #346 design but does not authorize implementation. The minimal compiling SPI/schema and independent fixture remain the next gate after explicit maintainer acceptance. No source, POM, test or runtime changes were made; no tests/builds were run.
