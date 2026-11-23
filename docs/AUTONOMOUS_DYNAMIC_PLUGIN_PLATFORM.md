@@ -975,3 +975,56 @@ Thus the target is: **one shared, thread-safe event transport; concurrent-safe s
 - HttpServiceImpl.java: 9e3dab1a40250f4d059ea812c74012d994873f0d
 
 Source inspection only. No runtime implementation, POM change, test execution or reproduction is included in this checkpoint.
+
+## 7.25 Shared registry concurrency, mutation atomicity and classloader cache isolation
+
+This section extends the shared-EventBus rule to mutable plugin-discovery and registry structures. A thread-safe transport does not make registries or their lifecycle operations thread-safe. The inspected implementation contains several concrete concurrency and isolation gaps.
+
+### DefaultPluginRegistry: concurrent maps do not make compound registry operations atomic
+
+DefaultPluginRegistry describes itself as providing thread-safe registration and discovery, and uses ConcurrentHashMap for each top-level index. That is insufficient for its compound operations:
+
+- registerPlugin() performs containsKey(pluginId) followed by separate writes to the ID, metadata, QName, category and namespace indexes. Two concurrent registrations of the same ID can both pass the check; the last ID/metadata write wins while category/namespace lists can retain both plugin instances. Readers can observe partially published index state between those writes.
+- Category and namespace values are mutable ArrayList instances created inside computeIfAbsent(). The map operation is atomic, but the subsequent add(plugin) is not. Concurrent registration, unregister, clear() or snapshot reads can race on those lists; copying a list in getPluginsByCategory() / getPluginsByNamespace() does not make the source list safe to traverse while it is mutated.
+- Namespace+element registration uses unconditional put(), so two different plugin IDs with the same QName silently overwrite the QName index while both remain in the ID/category/namespace indexes. unregisterPlugin() later removes the QName key unconditionally; unregistering the older plugin can therefore erase the newer plugin's mapping.
+- unregisterPlugin() removes the primary ID entry before updating the other indexes. Concurrent readers can observe an index set that no longer represents one coherent registry generation. clear() likewise clears indexes sequentially, not as one atomic publication.
+- registerPlugin(Class) instantiates the plugin immediately before registration. That is executable provider construction during registration, not descriptor-only discovery or a side-effect-free staging phase.
+
+The current DefaultPluginRegistryTest source exercises sequential registration, duplicate IDs, QName lookup and unregister behavior. The inspected test file contains no concurrent registration/unregistration, duplicate-QName collision, partial-publication, list-race or clear-vs-read test. This is a test-source observation; tests were not run.
+
+### CorePluginRegistry: individually concurrent operations, globally shared mutable state
+
+CorePluginRegistry is a process-wide static singleton backed by a ConcurrentHashMap. Individual map operations are concurrent-safe, but the registry is not runtime-scoped:
+
+- every runtime/scanner using getInstance() mutates the same element-name map;
+- registerMapping() silently overwrites an existing element-name mapping;
+- clear() removes every runtime's mappings, not just the caller's;
+- there is no immutable snapshot/generation publication, collision report or ownership token.
+
+This is a multi-runtime isolation defect even though the backing map is concurrent. The registry's map-level thread safety must not be described as runtime isolation or atomic registry lifecycle.
+
+### Discovery caches and scanner mutation
+
+- PluginClassScanner.cachedClassNames is one process-static volatile cache. Its synchronized initialization prevents simultaneous cache construction, but the cache key contains no classloader, runtime, artifact set or discovery generation. A successful scan in the first classloader context is reused by later runtimes/classloaders. clearCache() is global and invalidates all callers at once; it does not create a runtime-specific cache.
+- PluginPackageScanner preserves the exposing ClassLoader while enumerating candidate classes and uses Class.forName(name, false, loader), which is a positive property for class identity. However, registration is then written to the injected CorePluginRegistry; in the current default composition that is the process-global singleton. Concurrent scans can therefore race through a shared mutable target and overwrite element mappings. The scanner itself does not stage a complete immutable result or publish it atomically.
+- The scanner's local enumeration map is per invocation; this does not make the target registry or the process-static discovery cache isolated. Do not infer that every scanner method is intrinsically unsafe merely because the target registry is global—the concrete defect is the shared mutation target and unkeyed static cache.
+
+### Required target and conformance
+
+1. Replace mutable multi-index updates with a single-writer transaction or immutable registry-generation build followed by one atomic snapshot swap. Readers must see either the complete old generation or the complete new generation.
+2. Enforce plugin-ID and QName uniqueness before publication. A collision must fail with a deterministic diagnostic; unregister must remove only the exact mapping/owner it registered.
+3. Do not expose mutable ArrayList values behind concurrent maps. Prefer immutable index values inside an immutable generation; do not rely on ConcurrentHashMap to protect nested mutable objects.
+4. Scope Core registries and discovery caches to an explicit runtime/artifact/classloader generation. Remove process-global CorePluginRegistry ownership from runtime composition; clear() must affect only its owner.
+5. Keep descriptor discovery side-effect-free. Provider construction must occur only after compatibility, enablement, trust and permission checks, not as an incidental registry registration step.
+6. Add deterministic concurrency tests: same-ID simultaneous registration; different IDs with the same QName; register/unregister of colliding QName; concurrent category/namespace reads and writes; clear vs readers; two runtime registries with same element names; two classloaders with different plugin sets; cache refresh while an older generation remains in use.
+7. Add an out-of-tree fixture proving that runtime A can update/retire its plugin generation while runtime B continues to resolve and execute its own generation, with no global cache clear or registry mutation crossing the boundary.
+
+### Exact inspected source blobs
+
+- DefaultPluginRegistry.java: da5c6f6e835cc8b551394e0853a70ca4bcd60d2f
+- CorePluginRegistry.java: 20f478addbf2bacc481e4e11e0328f06942a2a38
+- PluginPackageScanner.java: c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232
+- PluginClassScanner.java: dadd28a434000816253ac66bff736e2c5fff0494
+- DefaultPluginRegistryTest.java: ee2dd3c932637c39bd25282505d06c940a286f64
+
+Source inspection only. No runtime implementation, POM changes, test execution or runtime reproduction is included in this checkpoint.
