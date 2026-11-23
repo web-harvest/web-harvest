@@ -2764,3 +2764,64 @@ No implementation begins until #93 inventory/Core boundary and #94 architecture 
 8. Which XML compatibility aliases and the `set-var` behavior are explicitly frozen by #93.
 
 **Status:** candidate consolidated contract for review only. No maintainer approval, public API freeze, production implementation, test run, package split or release authorization is implied.
+
+
+## 15.63 Consolidated candidate classification and destination proposal for #93 (2026-11-23)
+
+This section converts the source census into a bounded product-boundary proposal. It is deliberately conservative: **it classifies current responsibilities and proposes destinations, but does not approve a reduced Core distribution, delete XML names, move packages or authorize implementation.** The current 44-name XML compatibility surface remains intact until a maintainer-approved migration decision exists.
+
+### A. The 44 current Core XML mappings
+
+The destination distinction is between (1) Core execution semantics, (2) Core-owned capability providers that require explicit host services/policy, and (3) declarative XML grammar nodes. A declarative node retains XML identity/schema/validation but does not automatically become an independently activatable provider.
+
+| Candidate group | XML names | Proposed destination and rationale |
+|---|---|---|
+| Execution semantics and value/context primitives | `call`, `case`, `constant`, `def`, `empty`, `exit`, `function`, `get`, `if`, `loop`, `return`, `list`, `value-of`, `set-var`, `text`, `try`, `while` | Retain as Core-owned execution/value semantics for the compatibility baseline. They define control flow, function behavior, values and execution-context behavior rather than external integrations. Keep `set-var` as an explicit legacy compatibility identity; do not silently alias/remove it. |
+| Core-owned capability providers with host-service boundaries | `file`, `html-to-xml`, `http`, `include`, `json-to-xml`, `regexp`, `script`, `log`, `sleep`, `template`, `xml`, `tokenize`, `xml-to-json`, `xpath`, `xquery`, `xslt` | Keep their XML contracts available in the current Core compatibility profile, but model them as explicit capabilities behind host-owned services and budgets. Filesystem/network/script execution require policy enforcement at the I/O/engine boundary; parsing/query/transformation require CPU, memory, input/output and external-resource limits. Their presence in current Core is not proof that every embedding host must enable them by default. |
+| Declarative or parent-consumed XML grammar | `call-param`, `catch`, `else`, `http-header`, `http-param`, `regexp-pattern`, `regexp-result`, `regexp-source`, `stylesheet`, `xq-expression`, `xq-param` | Retain as XML grammar/schema/semantic identities, not independent activation units by default. Their execution/permissions inherit the owning parent operation; nested executable values still undergo their own admission and policy checks. |
+| Dual-use identity | `xml` | Preserve the dual role already demonstrated by the runtime matrix: standalone XML value/body behavior and parent-consumed XSLT content. Descriptor projection must express the two roles without creating duplicate plugin identity. |
+| Declaration with executable body semantics | `function` | Preserve function-definition XML and its relationship to `call`; the function body is not an independently activated external provider. Keep this explicit in the descriptor grammar. |
+
+The groups intentionally overlap only where a mapping has more than one documented role (`xml`, and function definition/body semantics). The source-backed per-name classification remains the 15.32 table; the direct XML test evidence remains the 44-row `CORE_PLUGIN_RUNTIME_EVIDENCE.md` matrix. Do not infer that every mapping has an independent top-level dispatch test: parent-consumed nodes are tested through their parent contract.
+
+### B. Ten optional-module entry points
+
+| Current module | Implementations | Proposed destination |
+|---|---|---|
+| Database | `DatabasePlugin`, `ConnectionPlugin` | Keep in the optional Database integration artifact. Core must not acquire JDBC driver, connection-pool or database dependencies. Require explicit driver/URL/secret/query/transaction/cancellation policy. |
+| FTP | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Keep in the optional FTP integration artifact. Preserve the four XML identities only through an explicitly enabled integration; fix/define transport security, destination, credential, parent/child connection and transfer-budget contracts before strict-profile activation. |
+| Mail | `MailPlugin` | Keep in the optional Mail integration artifact. SMTP send is an irreversible external effect; require explicit authorization, transport-security/secret policy, redaction and indeterminate-commit handling. |
+| WebBrowser | `WebBrowserPlugin` | Keep in the optional browser integration artifact. Browser navigation and JavaScript are high-risk network/code capabilities; require destination/redirect/SSRF policy, explicit script authorization and bounded lifecycle/resource controls. |
+| ZIP | `ZipPlugin`, `ZipEntryPlugin` | Keep as an optional archive capability artifact. Preserve scoped stream ownership; add archive-size/entry-count and entry-name policy before strict activation. |
+
+No optional integration should be pulled into the mandatory Core dependency graph. The existing module/POM direction is compatible with this proposal at the inspected direct-dependency level; transitive and runtime coupling still require the approved out-of-tree proof. ZIP has the strongest current XML/runtime integration evidence; the other optional modules have material gaps documented in 15.45–15.58. This is not a claim that their tests were executed in this audit.
+
+### C. Three additional Core-package classes outside the 44 mappings
+
+| Class | Current evidence | Proposed destination |
+|---|---|---|
+| `ConfigPlugin` | Root configuration/bootstrap protocol; not one of the 44 child mappings | Keep as internal Core configuration protocol unless a separate public XML capability is explicitly specified. Do not expose as an ordinary plugin merely because it is plugin-named. |
+| `BodyProcessorPlugin` | Historical/internal metadata artifact; current body execution is through `AbstractPlugin.executeBody()` and `DefaultPluginBodyExecutor`; no current registrar mapping | Exclude from the default provider set. Retain only as legacy/internal code until a separate cleanup decision is made; do not count its metadata/fixture as proof of an active runtime capability. |
+| `VarPlugin` | Deprecated and not registered by the current registrar; `DefPlugin` is the current variable-definition path | Exclude from the default provider set. Do not restore it based on scanner visibility. This does not affect the separate registered `set-var` compatibility mapping. |
+
+### D. Test and migration evidence map
+
+| Candidate area | Existing evidence | Remaining acceptance work |
+|---|---|---|
+| 44 Core XML names | `CORE_PLUGIN_RUNTIME_EVIDENCE.md` maps every registered name to source/runtime evidence and labels direct vs parent-consumed behavior. The registrar contract test protects the exact name/class mapping. | Re-run the compatibility corpus on the eventual exact candidate; add descriptor/schema/semantic parity and enabled/disabled policy tests. Do not treat the matrix as a security or lifecycle suite. |
+| Core execution and value semantics | Core control-flow, function/call, value and text-processing XML integration suites are identified in the runtime matrix. | Add shared generation/deadline/cancellation, recursion/iteration/output-budget and stale-validation tests under #347–#350. |
+| Host-effect Core capabilities | File, HTTP, include, script, logging, sleep and transformation call sites/policy gaps are recorded in 15.6–15.60. | Add policy-boundary tests with recording/fake host services, bounded input/output and cancellation; verify actual enforcement rather than descriptor claims. |
+| Database/FTP/Mail/WebBrowser/ZIP | Optional-module source, dependencies, lifecycle and existing test strength are mapped in 15.45–15.58 and 15.6.1. | Build per-provider XML conformance and deterministic fake-service tests; add cancellation, deadline, external-effect and resource-close assertions. Keep live network credentials/services out of ordinary CI. |
+| All provider types | Current source audit identifies legacy construction, mutable/global registries, classloader cache and session lifecycle gaps. | Independent out-of-tree Maven fixture plus add/update/remove/re-add, last-known-good rollback, two-runtime isolation, generation pinning, resource drain and policy-denial tests. |
+
+### E. Proposed decision and guardrails for maintainer review
+
+1. Accept the classification above as a **working destination proposal**, not as permission to move code.
+2. Keep all 44 current XML names and their existing compatibility behavior in the current compatibility profile, including `set-var`.
+3. Keep Database, FTP, Mail, WebBrowser and ZIP outside the mandatory Core dependency graph.
+4. Treat the 13 declarative/parent-consumed identities as descriptor grammar/schema entries rather than automatically activatable provider instances; preserve their XML names and parent semantics.
+5. Treat ConfigPlugin as internal root protocol, BodyProcessorPlugin as historical/internal, and VarPlugin as deprecated/unregistered.
+6. Defer any decision to remove/split current Core capabilities until maintainers explicitly decide which host-service capabilities are mandatory in the minimal Core distribution and which are separately selectable first-party providers.
+7. Do not begin module moves, package deletion, POM splitting, SPI implementation or release work from this proposal alone. #93 remains open until the maintainer records the product-boundary decision.
+
+**Decision status: PROPOSAL ONLY — maintainer acceptance outstanding.** Source inventory is complete; this classification is now explicit for review. No runtime/POM/test/workflow changes were made and no tests/builds were run for this documentation update.
