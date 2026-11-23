@@ -2611,3 +2611,49 @@ A provider may declare that an operation is non-cancellable in-process; the host
 - PluginConfigurationSchema.java: c649a8a2d58c496bf913a8a16ac989cab81a6e98.
 - CorePlugin.java: 073f25677e8a647a4a9bbd6de7ec456df521ae40.
 - Plugin.java: 29772a9b37c8fead735f4a5e0bd47e5b90b4367e.
+
+
+### 15.61 Conservative compatibility profile for legacy Plugin implementations (2026-11-23)
+
+Sections 15.54–15.60 establish the target execution handle, capability declaration and effect/deadline model. The existing Plugin API cannot satisfy that contract without an adapter because legacy implementations receive only DynamicScopeContext and return Variable (or throw InterruptedException). They do not receive a host-owned invocation handle, deadline, resource registrar or effect journal.
+
+To preserve XML/runtime compatibility without inventing guarantees, every legacy Plugin implementation must enter the new runtime through an explicit **LegacyPluginAdapter** with a conservative, host-assigned capability profile:
+
+- execution model: in-process, synchronous from the legacy interface's perspective; nested behavior may still block or initiate library-managed asynchronous work;
+- cancellation: interruption may be attempted, but cooperative cancellation is unverified unless the exact implementation and its dependency paths pass conformance;
+- hard KILL: unsupported in-process; a non-quiescent legacy call is UNRESPONSIVE/QUARANTINED, never reported as terminated;
+- deadline: host can observe its own monotonic deadline and request interruption, but cannot promise that a legacy call will return by it;
+- resource ownership: unknown unless the adapter can register concrete resources at the actual call site; session EventBus cleanup is not a substitute for active-operation leases;
+- side effects: UNKNOWN/INDETERMINATE by default for external or mutating operations unless a provider-specific adapter proves otherwise;
+- retry: unsafe by default when effect disposition is unknown; no automatic replay after timeout/interruption;
+- concurrency/reentrancy: unspecified by default; serialize per plugin instance unless an explicit verified capability permits concurrent use;
+- cleanup: legacy cleanup is best-effort provider cleanup, not proof of invocation quiescence or generation retirement.
+
+The adapter must not infer capabilities from plugin name, category, XML schema, annotations, dependency list or a plugin's declaration that it throws InterruptedException. Capabilities may be promoted only by versioned provider metadata plus host conformance evidence tied to the provider artifact/version and runtime compatibility range.
+
+#### Migration levels
+
+- **L0 — Legacy-compatible:** behavior remains available under compatibility policy; no strict cancellation/deadline/retry guarantee is claimed.
+- **L1 — Cooperative:** provider receives the host execution context, propagates cancellation and deadline through descendants, and passes deterministic GRACE/quiescence tests.
+- **L2 — Resource-aware:** provider additionally registers operation-scoped abort/close handles and reports effect disposition/reconciliation; passes resource-race and side-effect conformance.
+- **L3 — Isolated:** provider executes in a separately managed process with verified worker exit and OS-level resource controls; only this level can support a hard KILL guarantee for arbitrary non-cooperative code.
+
+These are conformance/migration levels, not security trust labels. A provider may be L3 for hard termination while still having INDETERMINATE external effects; process death does not undo remote commits. Conversely, a provider can be L2 and fully cooperative without requiring process isolation if hard KILL is not promised.
+
+#### Host policy
+
+- Existing configurations may continue through L0 only when the selected runtime policy permits the weaker guarantee and surfaces it to the caller.
+- A strict GRACE policy requires L1 or higher; resource-sensitive/side-effect-sensitive operations require L2 or explicit provider-specific policy.
+- A hard KILL requirement requires L3. If process isolation is unavailable, admission must fail or downgrade only with explicit caller acceptance; never silently pretend thread interruption is a kill.
+- Refresh creates a new provider capability record for the new generation. Sessions pinned to the old generation retain the old profile and adapter until their execution leases drain.
+- Capability promotion is versioned and auditable; no automatic promotion based solely on a passing generic unit test or metadata declaration.
+
+**Evidence / coverage boundary:** this is a conservative compatibility design derived from the current Plugin API and prior source findings. No implementation, migration or test execution was performed. The profile is a proposal for review, not a claim that an adapter already exists.
+
+**Exact source blobs at main snapshot 1729bdf4620a66686d02605083e27e27d1ab3944:**
+
+- Plugin.java: 29772a9b37c8fead735f4a5e0bd47e5b90b4367e.
+- PluginMetadata.java: 0d31ed2c958bd03d429af8df6be94f1decfcbfdf.
+- PluginConfigurationSchema.java: c649a8a2d58c496bf913a8a16ac989cab81a6e98.
+- AbstractPlugin.java: be3298304840e4a585b4fb148c2e62cf471ee8f7.
+- DefaultPluginFactory.java: 91c8084f671027954375ff3cab784691f8ae26e5.
