@@ -1075,3 +1075,42 @@ These may need descriptors/schema fragments for validation and semantic projecti
 **Next evidence gate:** trace the parser/validator/runtime handling for each subordinate construct and verify parent constraints and nested execution with source-backed fixtures. Then build the authoritative table across Core and optional modules, with separate columns for runtime mapping, discovery, descriptor, public semantic capability, compatibility, construction dependencies, and test level. Do not treat file names as test execution or test coverage percentages.
 
 **Evidence boundary:** source/test inventory only. No source, POM, runtime behavior, tests, or XML compatibility changed; no tests were run.
+
+
+### 15.20 Runtime XML tree, descriptor semantics and discovery lifecycle (2026-11-23)
+
+This pass traced the parser, executor, metadata catalog and optional package scanner together. It identifies a larger boundary than the nested-element inventory alone.
+
+| Path | Current implementation evidence | Consequence |
+|---|---|---|
+| XML parsing | `StreamingXmlParser.ConfigurationTreeHandler.startElement` deliberately sets `elementInfo = null`; the old resolver lookup is commented out. It creates `PluginConfigurationTree` nodes with `pluginClass = null` and attaches children structurally. | Parsing currently builds a permissive name/configuration tree; it does not resolve names against the runtime registry or validate descriptor parent/child constraints at parse time. |
+| Runtime dispatch | `DefaultPluginBodyExecutor.createChildPlugin` resolves each child element name through global singleton `CorePluginRegistry`; missing names fail at execution. It creates via global Guice injector when present, otherwise deprecated reflective no-arg construction, then calls `initialize`. | Parse-time validity and execution-time availability are separate. A document can parse before an unknown element fails during execution. Construction is coupled to global registry and optional global injector. |
+| Runtime structural checks | `DefaultPluginBodyExecutor` explicitly validates sibling `if/else` and `try/catch` pairing/order. The generic child loop does not consult each parent's `PluginConfigurationSchema.getAllowedSubElements()`, `getRequiredSubElements()` or `getRequiredParents()`. | Some structural constraints are hard-coded special cases; schema parent/child metadata is not a general runtime XML-tree validator. |
+| Semantic projection | `PluginSemanticsResolver` derives allowed children and required parents from schema and visual metadata. `PluginMetadataValidator` checks consistency among descriptor objects (including required-parent/allowed-child relationships). | This validates the metadata graph, not a concrete parsed XML document's actual parent/child edges. It cannot currently guarantee that the XML tree being executed conforms to the descriptor graph. |
+| Catalog construction | `PluginMetadataCatalog` builds a static final descriptor map during class initialization. It calls `PluginClassScanner.allPluginClassNames()`, loads each class, and calls its no-arg constructor to obtain metadata. | Catalog is a one-time classpath snapshot, not a live view. Metadata discovery constructs plugin instances; descriptor inspection is not strictly side-effect-free/provider-free. |
+| Classpath scanner | `PluginClassScanner` scans six hard-coded package roots and caches successful results. Its fallback is a static list. `clearCache()` clears only class-name cache. | It cannot discover an artifact added to a managed plugin directory after startup and cannot refresh the already initialized static catalog. |
+| Opt-in package scanner | `PluginPackageScanner` scans only explicitly supplied packages or the `webharvest.plugin.packages` system property, then immediately registers annotated classes into `CorePluginRegistry`. It is documented as opt-in and is not part of default registration. | This is a package-to-global-registry helper, not an autonomous managed-artifact lifecycle, descriptor-first discovery, staged reconciliation or generation-aware activation mechanism. |
+
+Exact current-main source blobs:
+- `StreamingXmlParser.java`: `faad2801021009082cf8f2b72d3543f70aad1353`.
+- `PluginConfigurationTree.java`: `bf84a746bb8bd7210b63fc194347917e40f2c017`.
+- `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+- `PluginConfigurationSchema.java`: `c649a8a2d58c496bf913a8a16ac989cab81a6e98`.
+- `PluginSemanticsResolver.java`: `5590d9642e1dc2b1890a24b6caf1c2d19b07346d`.
+- `PluginMetadataValidator.java`: `8230e1a6167a189feff0fe5fb3bcdb0cd0af3732`.
+- `PluginMetadataCatalog.java`: `5ac82d7fb6436b458b29647e4c929878557b1c6e`.
+- `PluginClassScanner.java`: `dadd28a434000816253ac66bff736e2c5fff0494`.
+- `PluginPackageScanner.java`: `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232`.
+- `CorePluginRegistry.java`: `20f478addbf2bacc481e4e11e0328f06942a2a38`.
+
+**Architecture consequence for #346–#350:** the target cannot be achieved by replacing package names in `PluginClassScanner` or adding a JAR watcher around `PluginPackageScanner`. The new platform needs one authoritative, versioned registry generation from which both parsing/validation and execution resolve the same provider identities and structural semantics. Parse/inspect/validate must use descriptors without constructing providers; execution must pin the same immutable generation for its session and obtain provider instances through the neutral host composition/lifecycle contract. Dynamic updates must publish a new generation atomically while existing sessions retain their pinned generation.
+
+**Migration seams (design only):**
+1. Replace global `CorePluginRegistry` as the semantic/runtime authority with an instance-owned generation registry; retain an adapter for legacy static APIs only during migration.
+2. Make XML parsing resolve element names and namespaces against a descriptor snapshot, preserving a useful tree and source locations while reporting unknown/unauthorized/structurally invalid elements before execution.
+3. Apply `allowedChildren`, `requiredParents`, required/allowed child rules and special control-flow pairing as one deterministic tree-validation pass; do not rely on ad-hoc executor checks as the only structural guard.
+4. Replace eager `newInstance()` catalog projection with immutable descriptor/provider metadata that can be read without constructing plugin implementations.
+5. Make managed artifact source discovery, validation, host authorization and activation separate phases. A newly discovered provider may be described without being activated.
+6. Ensure inspect/semantic/schema responses carry registry generation identity and execution rejects or revalidates stale validated trees against the generation it pins.
+
+**No implementation or behavior change:** this is source-backed architecture evidence only. No code, tests, POMs or runtime registration changed; no tests were run.
