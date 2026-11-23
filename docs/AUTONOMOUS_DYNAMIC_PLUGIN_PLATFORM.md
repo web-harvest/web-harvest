@@ -440,3 +440,19 @@ The current implementation contains meaningful drift between visual `ParentChild
 **Generation invariant:** parsing, structural validation, semantic projection, inspection and execution must consume one immutable descriptor/grammar generation. The parsed tree must be validated against the exact generation pinned by execution; stale validation cannot silently authorize execution under a changed provider or grammar generation. Descriptor discovery remains side-effect-free and does not instantiate providers. Provider preparation/activation happens only after host policy authorizes the candidate generation.
 
 These fields are design requirements to settle in the SPI contract (#346) and external fixture (#350), not an implementation claim. No runtime changes or tests are implied by this document update.
+
+
+### 9.6 Descriptor and concrete XML-tree conformance
+
+The external fixture and Core compatibility suite must additionally prove:
+
+- discovery/catalog/semantic projection reads provider descriptors without invoking provider constructors or static initialization with observable side effects;
+- a declarative child node can be represented, validated and interpreted by its parent without being instantiated as an independent provider;
+- required and allowed child rules are enforced against the concrete XML tree, including missing required children, illegal children, duplicate singleton children and ordering where the descriptor declares order significant;
+- ancestor-sensitive constraints are enforced (including the two documented `call-param` contexts), rather than approximated by a flat immediate-parent string list;
+- body semantics are preserved: raw text, evaluated expression, nested value-producing processor and parent-consumed configuration are distinguishable;
+- schema and visual metadata disagreements are surfaced as descriptor-build diagnostics or rejected, never silently resolved by choosing one source;
+- namespace URI + local name is the dispatch identity; duplicate qualified identities and conflicting aliases are rejected during candidate-generation validation, while the same local name in distinct namespaces remains unambiguous;
+- an XML tree validated under generation N cannot execute under generation N+1 without explicit revalidation; a running session remains pinned to its original generation.
+
+Tests must include both positive legacy XML fixtures and negative malformed-tree/collision fixtures. They must assert not only validation results but also which provider instances were and were not constructed. These tests complement, rather than replace, the live add/update/remove/re-add lifecycle scenario in section 9.2.
