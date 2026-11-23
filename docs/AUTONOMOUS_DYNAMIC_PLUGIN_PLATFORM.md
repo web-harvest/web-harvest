@@ -95,6 +95,24 @@ The host controls trust, enablement, permissions, resource limits and provider c
 
 Permission declarations must be explicit and inspectable, covering relevant capabilities such as filesystem access, outbound network, database access, browser/script execution, mail delivery, process execution, secrets and resource consumption. Core defines the contract; the embedding host decides policy.
 
+## 6.1 In-process trust boundary
+
+Host enablement, permission declarations and resource policies are necessary
+controls, but they do **not** sandbox arbitrary Java code loaded into the same
+JVM. In-process providers execute with the effective privileges of the host
+process and may be able to access process-visible files, credentials, network,
+threads, native interfaces or other ambient capabilities. A Java ClassLoader
+provides namespace and lifecycle isolation; it is not a security boundary.
+
+The platform must therefore distinguish trusted in-process extensions from
+untrusted code. Only providers admitted by the host's trust policy may execute
+in-process. If the product intends to support genuinely untrusted third-party
+extensions, their execution requires a separate process and an explicit
+IPC/capability boundary, with OS/container restrictions appropriate to the
+deployment. Do not describe permission metadata or a custom ClassLoader as a
+sandbox. This trust decision is a release architecture requirement, not an
+optional implementation detail.
+
 ## 7. Update, removal and classloader lifecycle
 
 Dynamic update/removal must be safe while the host is serving work:
