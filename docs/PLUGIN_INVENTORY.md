@@ -2240,7 +2240,7 @@ The required architecture is a runtime-owned immutable catalog generation acquir
 - `AbstractPlugin.java`: `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
 - `DefaultPluginFactory.java`: `91c8084f671027954375ff3cab784691f8ae26e5`.
 - `DefaultPluginRegistry.java`: `da5c6f6e835cc8b551394e0853a70ca4bcd60d2f`.
-- `DynamicScopeContext.java`: `[verified separately in source tree]`.
+- `DynamicScopeContext.java`: `f5ca038f25442f597986bf64ebc65e958b92a010`.
 - `ScraperSession.java`: `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237`.
 - `ScraperSessionImpl.java`: `78d07d1c485ea215d68d6d415f36b2be0c180a4f`.
 - `SessionRegistryImpl.java`: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`.
