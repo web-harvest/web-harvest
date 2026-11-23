@@ -9,15 +9,15 @@
 
 The current Maven reactor uses a shared project version and shared CI. The plugin modules and clients still depend on Core APIs that are evolving. Premature extraction would turn internal boundaries into public compatibility promises before they are ready.
 
-The intended future is a separate company-maintained extensions repository and Maven release train, but only after the objective gates in section 6 pass.
+The intended future may include a separate company-maintained Extensions repository and Maven release train, but only after the objective gates in section 6 pass. This is not a current repository-splitting task. User-facing official extensions should ultimately be curated into compatible Packs/Kits while retaining extension-level artifact identities.
 
 ## 2. Current Maven modules
 
 | Module | Current responsibility | Boundary |
 |---|---|---|
 | `webharvest-core` | Workflow runtime, configuration model, plugin contracts/registry, XML execution and Stage 1 semantic inspection | Must not depend on IDE or optional integrations |
-| `webharvest-cli` | Headless CLI consuming Core | No semantic authority of its own |
-| `webharvest-ide` | Optional editor/client UX and embedded webapp | No canonical workflow semantics or plugin identity source |
+| `webharvest-cli` | Headless execution and automation client of Core; Data Plane surface | No semantic authority of its own; separate product distribution |
+| `webharvest-ide` | Human-facing editor/control client of Core; intended Control Plane | No canonical workflow semantics or plugin identity source; separate product distribution |
 | `webharvest-database` | Database extensions | Depends on Core; candidate for future company extensions |
 | `webharvest-ftp` | FTP extensions | Depends on Core; candidate for future company extensions |
 | `webharvest-mail` | Mail extensions | Depends on Core; candidate for future company extensions |
@@ -59,7 +59,9 @@ Preserve legacy XML compatibility—including the `<set-var>` alias—unless an 
 - **Core:** runtime, essential built-in plugins, versioned Plugin SPI, descriptors and semantic contracts.
 - **Company Extensions:** optional company-maintained plugins distributed as independent Maven artifacts from a separate Git repository.
 - **Third-party plugins:** independently maintained artifacts built against published Core APIs.
-- **CLI/IDE:** clients consuming Core, with separate release boundaries only when independent builds and compatibility are demonstrated.
+- **IDE:** human-facing Control Plane client consuming Core semantic/runtime contracts; separate product distribution from Core.
+- **CLI:** headless Data Plane execution/automation surface consuming Core; separate product distribution from Core and IDE.
+- **Official Packs/Kits:** curated compatible groupings of extension artifacts, with explicit manifests/compatibility metadata; pack composition does not erase individual extension artifact boundaries.
 
 The public Plugin Author Guide describes the target experience. Existing `Plugin` / `AbstractPlugin` classes and registration mechanisms are evidence to inspect, not proof that a stable independent SPI is already published.
 
@@ -114,3 +116,25 @@ The website repository must not become a Maven reactor peer or a second source o
 - [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md)
 - [Contribution workflow](../CONTRIBUTING.md)
 - [Canonical roadmap issue](https://github.com/web-harvest/web-harvest/issues/1)
+
+
+## 10. Product-surface and pack policy — 2026-11-23
+
+The maintainer has clarified the target product roles:
+
+- **Core** is the embeddable semantic execution runtime. The format-independent model, polymorphic capability contracts and controlled dynamic loading are the basis for agent-composed configurations, including future runtime-time configuration changes. This is a target; safe live reconfiguration and the complete public semantic/SPI contract are not claimed as implemented.
+- **IDE** is intended to become the human-facing Control Plane: understand, design, inspect, configure, supervise and observe Core execution. It remains a client and must not become the owner of workflow semantics or plugin identity.
+- **CLI** is the headless Data Plane surface for scripts, pipelines, automation and integrations. It is a separate distribution, not a parallel human control plane.
+- **Official extensions** should be curated into compatible Packs/Kits. Packs group independently identifiable extension artifacts and carry compatibility/dependency metadata; they need not be monolithic JARs.
+
+### Current dependency fact
+
+The current CLI POM directly depends on Core and all five extension modules. Therefore its current shaded distribution includes Database, FTP, Mail, WebBrowser and ZIP. The POM-level inspection found each extension module directly depends on Core and no direct dependency between the five extension modules. This is evidence from declared Maven dependencies only; it does not prove the absence of reflection, descriptor, resource or transitive runtime coupling.
+
+### Candidate kit taxonomy — proposal only
+
+- Data Integration Kit: Database, FTP, Mail.
+- Web Automation Kit: WebBrowser.
+- ZIP/Archive capability: candidate standalone pack or shared capability within broader kits.
+
+Do not create/publish packs until workflows, registration/discovery, runtime footprint, security/trust and compatibility are verified. Retain monorepo until the existing extraction gates pass. CLI and IDE repository extraction are separate later decisions; separate product distributions do not require separate repositories.

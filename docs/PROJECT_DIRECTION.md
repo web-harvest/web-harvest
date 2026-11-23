@@ -295,3 +295,67 @@ Remaining release gates are tracked in [Issue #88](https://github.com/web-harves
 6. Continue the root Markdown, maintained `docs/**`, historical-content and documentation navigation audit ([Issue #152](https://github.com/web-harvest/web-harvest/issues/152)).
 
 No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or is authorized by this status update.
+
+
+---
+
+## 10. Product topology clarification — 2026-11-23
+
+This section records the maintainer's clarified product direction and refines the earlier descriptions of IDE as merely optional and CLI as a generic client. It distinguishes current implementation from the intended architecture.
+
+### 10.1 Core — semantic execution runtime
+
+Core is an embeddable Java runtime, not a standalone Control Plane service. It owns workflow execution, the format-independent semantic model, capability contracts, validation and controlled resolution of implementations.
+
+The target architecture combines:
+
+- a format-independent semantic representation, with XML retained as a supported compatibility/configuration adapter;
+- polymorphic capability contracts so workflows and agents can express required behavior without binding to a display label or concrete implementation class;
+- explicit, compatibility-aware capability resolution and controlled dynamic loading;
+- structured diagnostics and observable lifecycle/registration outcomes.
+
+The intended agent capability is to compose, validate and supply execution configurations against the semantic/runtime contracts, including configurations introduced while a runtime is operating. This is a **target**, not evidence that safe live reconfiguration, a stable public SPI, or a complete canonical semantic runtime is already implemented. Dynamic loading must never mean arbitrary classpath scanning, implicit trust, silent fallback or uncontrolled code execution.
+
+### 10.2 IDE — human-facing Control Plane
+
+The IDE is intended to become one of WebHarvest's primary product surfaces and the principal human-facing Control Plane. Its responsibilities should evolve toward:
+
+- understanding and inspecting semantic workflows and available capabilities;
+- designing and configuring workflows without owning their canonical meaning;
+- supervising execution and presenting lifecycle, validation and diagnostic state;
+- observing runtime activity and helping a human reason about changes and failures.
+
+The current IDE is not yet certified against this full target. It remains a client/editor whose semantic behavior must progressively move behind Core contracts. Visual layout/editor state must remain distinct from workflow semantics and plugin identity.
+
+The IDE is a separate product distribution from the Core library. This does not imply a separate Git repository now.
+
+### 10.3 CLI — headless Data Plane surface
+
+CLI is the non-interactive execution and automation surface. It should expose Core execution to scripts, pipelines, scheduled jobs and external integrations. It is not intended to become a parallel human Control Plane or own semantic authority.
+
+CLI is a separate product distribution from both Core and IDE. Its current POM directly depends on Core and all five extension modules (Database, FTP, Mail, WebBrowser and ZIP), so today's shaded CLI distribution includes the integrations as a practical packaging fact. That current coupling must not define the long-term Data Plane contract or extension pack taxonomy.
+
+### 10.4 Official extension Packs/Kits
+
+Official extensions should be presented and managed as curated, compatible Packs/Kits: coherent capability sets with explicit versions and Core/SPI compatibility. A pack is a user-facing selection, installation and compatibility unit; it is not necessarily a single combined JAR.
+
+Keep individual extension modules/artifacts independently identifiable and buildable where appropriate. A future pack manifest should describe included extension IDs/artifacts, versions, required/optional capabilities, Core/SPI compatibility ranges and dependency constraints. This manifest/installer experience is a target, not a current feature.
+
+Initial taxonomy candidates for evaluation (not yet approved release products):
+
+- **Data Integration Kit:** Database, FTP and Mail.
+- **Web Automation Kit:** WebBrowser.
+- **Archive capability / Kit:** ZIP, potentially included in broader kits rather than distributed as a standalone pack.
+
+Validate these groupings against real workflows, runtime dependency footprint, security/trust profile, plugin discovery and user value before creating pack artifacts.
+
+### 10.5 Repository and distribution boundaries
+
+- Keep the current monorepo. Repository extraction is governed by the objective gates in [MONOREPO.md](MONOREPO.md).
+- Keep Core as the independently consumable library contract.
+- Distribute IDE and CLI separately from the Core library and from each other. A coordinated version number may be used initially, but artifact scope and release decisions must be explicit.
+- Keep extension-level artifact boundaries; compose official extensions into Packs/Kits above those artifacts.
+- Do not publish every Maven reactor module merely because it exists in the reactor.
+- Do not infer Central bundle membership from reactor membership or from the current CLI's shaded dependency graph.
+
+The exact 2.3.1 Maven publication set remains a decision tracked in [#342](https://github.com/web-harvest/web-harvest/issues/342). Central Publisher Portal bundle engineering in [#341](https://github.com/web-harvest/web-harvest/issues/341) must consume that agreed scope and remains blocked until the maintainer is notified before implementation.

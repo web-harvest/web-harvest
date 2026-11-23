@@ -171,3 +171,32 @@ The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is 
 - [#323](https://github.com/web-harvest/web-harvest/issues/323) owns distribution-specific CLI/IDE component manifests or CycloneDX SBOMs, class-to-origin correlation, aggregate SBOM delta classification, license/NOTICE reconciliation and deterministic CI assertions.
 - [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
 - No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
+
+
+---
+
+## 2026-11-23 — product distribution scope clarification (not a release approval)
+
+The maintainer has clarified the intended product topology:
+
+- **Core** is the primary embeddable semantic execution library.
+- **IDE** is the intended human-facing Control Plane and a separate product distribution.
+- **CLI** is the headless Data Plane surface and a separate product distribution.
+- **Official extensions** should be offered as curated, compatible Packs/Kits while preserving individual extension artifact identities.
+- The current monorepo remains in place; no repository split is authorized or required to achieve separate product distributions.
+
+This changes how the 2.3.1 artifact set must be evaluated. Reactor membership, current CLI shaded dependencies and the fact that modules share version 2.3.1 are not publication-scope decisions.
+
+### Required scope decision before bundle implementation
+
+Issue [#342](https://github.com/web-harvest/web-harvest/issues/342) owns the exact 2.3.1 GAV/publication and distribution matrix. It must distinguish:
+
+1. Core library and the parent POM needed by downstream Maven consumers (or an explicitly chosen alternative parent/flattening strategy).
+2. CLI application distribution, outside the Core library bundle.
+3. IDE application distribution, outside the Core library bundle.
+4. Individually identifiable extension artifacts and any optional BOM/pack metadata.
+5. Documentation-only POM/module exclusions unless a specific consumer-facing artifact is justified.
+
+Issue [#341](https://github.com/web-harvest/web-harvest/issues/341) owns the technical Central Publisher Portal bundle workflow, but must consume the agreed scope from #342. No bundle implementation has begun. Per maintainer instruction, notify the maintainer before beginning that implementation.
+
+**Release remains NO-GO.** This clarification does not authorize a version change, tag, GitHub Release, Maven publication, signing/credential change or website deployment.
