@@ -421,3 +421,22 @@ This is a product-level embedding requirement, not a request to support every
 IoC framework with a bespoke adapter on day one. The neutral contract must
 permit arbitrary host containers; supported first-party adapters are delivered
 and tested as separate integrations.
+
+
+## 7.4 Descriptor contract: provider identity versus XML child syntax
+
+The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), sections 15.22–15.23, demonstrates that an XML element name is not necessarily an independently activatable provider. The SPI descriptor must model these separately.
+
+A descriptor contract must express at least:
+
+- **Provider identity and provenance:** stable provider ID, artifact identity/digest, qualified element identity (namespace URI + local name), aliases and compatibility/version rules.
+- **XML role:** executable capability, declarative detail/configuration node, internal/root construct, or compatibility alias. Role is not inferred from package, annotation, visual palette category or class name.
+- **Parent/child grammar:** allowed and required child roles, required parent contexts, cardinality, ordering where relevant, and whether constraints apply to the direct parent or an ancestor context. A flat `requiredParents: string[]` is insufficient for constructs such as `call-param`, whose documented contexts are direct child of `call` for arguments and child of `def` within a `function` for parameter lookup.
+- **Value/body semantics:** whether the node consumes raw text/configuration, evaluates its body, allows nested executable processors, contributes a value to its parent, or is interpreted entirely by the parent. For example, RegExp and XSLT parents read child configuration directly; XQuery consumes expression/parameter nodes, and XQuery parameter bodies can evaluate nested value-producing processors.
+- **Construction and lifecycle:** whether a provider instance is required at all for a declarative child, and if so, how it is created, scoped and closed through the neutral host/runtime contract.
+
+The current implementation contains meaningful drift between visual `ParentChildRelationship` metadata and schema `getRequiredParents()`; some detail nodes advertise a required parent visually while their schemas omit the corresponding constraint. Other child implementation classes are no-op placeholders while the parent directly consumes their raw configuration. A discovery/catalog implementation must therefore not instantiate every annotated class to build its semantic model, nor assume every registered XML name represents an executable extension.
+
+**Generation invariant:** parsing, structural validation, semantic projection, inspection and execution must consume one immutable descriptor/grammar generation. The parsed tree must be validated against the exact generation pinned by execution; stale validation cannot silently authorize execution under a changed provider or grammar generation. Descriptor discovery remains side-effect-free and does not instantiate providers. Provider preparation/activation happens only after host policy authorizes the candidate generation.
+
+These fields are design requirements to settle in the SPI contract (#346) and external fixture (#350), not an implementation claim. No runtime changes or tests are implied by this document update.
