@@ -492,3 +492,69 @@ Evidence links:
 - [XQueryComplexTypesIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/examples/XQueryComplexTypesIntegrationTest.java)
 - [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java)
 - [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
+
+
+## 12. Plugin Platform release-gate audit — 2026-11-23
+
+**Status:** Release-blocking architecture gap. This section records current-main source behavior; it is not an implementation claim or an approved SPI.
+
+**Related work:** [#93 inventory/decision](https://github.com/web-harvest/web-harvest/issues/93), [#94 unified plugin platform](https://github.com/web-harvest/web-harvest/issues/94), [#346 SPI/descriptors](https://github.com/web-harvest/web-harvest/issues/346), [#347 discovery/registry](https://github.com/web-harvest/web-harvest/issues/347), [#348 semantic projection](https://github.com/web-harvest/web-harvest/issues/348), [#349 policy/lifecycle](https://github.com/web-harvest/web-harvest/issues/349), [#350 conformance suite](https://github.com/web-harvest/web-harvest/issues/350), [release gate #88](https://github.com/web-harvest/web-harvest/issues/88).
+
+### 12.1 Current implementation facts
+
+The following files were read from current `main`; blob IDs are included to make the audit reproducible:
+
+| Source | Blob | Confirmed behavior |
+|---|---|---|
+| `CorePluginsRegistrar.java` | `7ddc5b26a33c5143ed893a513263718990fa515e` | 44 manual XML mappings, including legacy `set-var`; process-global static initialized flag and singleton registry |
+| `PluginClassScanner.java` | `dadd28a434000816253ac66bff736e2c5fff0494` | Scans six hard-coded package roots; annotation-based class discovery; caches successful class-name list; fallback on scan failure |
+| `PluginMetadataCatalog.java` | `5ac82d7fb6436b458b29647e4c929878557b1c6e` | Builds a static catalog from scanner results; loads each class and invokes its no-argument constructor, then calls `getMetadata()`; duplicate descriptor IDs are inserted with `Map.put` |
+| `PluginDescriptor.java` | `c3d3f8a70f4072895fed6c0133c8caf0bc556e79` | Carries ID, element name, display/category/description, origin, class name, semantics, UI hints, dependencies and extensions; not yet a versioned provider SPI |
+| `PluginSemanticsResolver.java` | `5590d9642e1dc2b1890a24b6caf1c2d19b07346d` | Derives semantics from implementation class plus `PluginMetadata` / schema / visual metadata |
+| `SemanticModel.java` | `abfb1af10be445084149682462143d4676eb018c` | Stage 1 lazily creates a descriptor index from the metadata catalog |
+| `PluginDescriptorIndex.java` | `017a6011783c30d24a6b74d22628f3e010e9094b` | Uses namespace-qualified descriptor lookup, but runtime availability is a separate local-name-only probe against `CorePluginRegistry` |
+| `OptionalPluginProfile.java` | `6c83ad1474553d9657ca8f44547e8808fd1f934a` | Hard-coded five-entry optional-extension profile with class-name presence probes |
+| `CorePlugin.java` | `073f25677e8a647a4a9bbd6de7ec456df521ae40` | Annotation Javadoc says Core plugins are always available, while actual annotation use spans optional modules and non-default/internal/legacy classes |
+
+### 12.2 Release-critical consequences
+
+1. **No general external provider discovery contract:** package roots are hard-coded. A third-party artifact in an unrelated package is not discovered by this scanner merely because it is on the classpath.
+2. **Discovery is not side-effect-free:** catalog initialization constructs each discovered implementation. A disabled provider could therefore execute constructor code before host activation policy; providers requiring host DI or a non-default constructor cannot participate cleanly.
+3. **Catalog collision handling is unsafe for correctness:** duplicate IDs can overwrite prior descriptors rather than fail bootstrap with a collision diagnostic.
+4. **Semantic/runtime truth is split:** Stage 1 semantic indexing consumes the metadata catalog, while runtime availability is checked separately against the manual Core registry. The optional profile is another hard-coded list. These are not one immutable effective registry snapshot.
+5. **Current descriptors are not the public SPI:** explicit provider/API compatibility, lifecycle/DI factory, artifact provenance, permissions/resource policies and stable dependency/alias resolution are not yet represented as a complete extension contract.
+6. **Annotation is not activation or trust:** `@CorePlugin` cannot determine product membership, enablement or authorization.
+
+These are source-backed architecture gaps. They do not establish a confirmed exploit or claim that the current Stage 1 XML inspector is defective within its narrower documented contract.
+
+### 12.3 Existing test coverage inspected (not executed in this audit)
+
+- `PluginClassScannerTest` blob `acb1d90457c8912f23f0078a9e0f73092178c221`: covers sorting, unique names, cache, retry/fallback, optional-package absence and required-Core scan failure. It does not prove third-party artifact/provider discovery or registry parity.
+- `PluginMetadataCatalogTest` blob `40efed43975105fc214357ba526c78d4615d9693`: checks descriptor completeness and selected semantic/UI/schema projections. It does not assert constructor-free discovery, no-arg-free DI provider construction, duplicate-ID failure or host activation isolation.
+- `PluginDescriptorIndexTest` blob `7e80f3e375eceaa1618ffcf03b40152b54171751`: covers namespace resolution, ambiguity, optional availability and runtime probe failure. It does not bind the index to an authoritative runtime registry snapshot.
+- `SemanticModelTest` blob `769f65937d116a93a99b881e9cfb0eb93529a670`: covers XML fidelity, secure parsing and limits; it does not test external plugin capability discovery.
+- `CorePluginsRegistrarContractTest` blob `bda7938a517bccc78150932711355035c5b4d1eb`: asserts exactly 44 default mappings including `set-var`.
+
+No tests were run as part of this read-only audit.
+
+### 12.4 Mandatory target behavior and tests
+
+The target pipeline is:
+
+`artifact/classpath discovery → descriptor parsing → compatibility/dependency/collision validation → host activation and permission policy → provider construction through host DI → immutable effective registry snapshot → semantic/metadata/schema projections + runtime dispatch`
+
+Discovery and descriptor projection must not instantiate implementations. A provider is constructed only after activation and authorization. The same snapshot ID must be used by validation and execution.
+
+The conformance suite (#350) must prove:
+
+- External JAR outside the current six package roots is discovered through the supported provider mechanism without Core source edits.
+- Disabled provider constructor sentinel remains untouched; descriptor/catalog/semantic projection works without implementation construction.
+- A DI-only provider (no public no-arg constructor) is constructed only after activation.
+- Duplicate IDs, XML QNames/namespaces and aliases fail deterministically; no silent overwrite.
+- Malformed, incompatible, missing-dependency and linkage-failing providers produce explicit fail-closed diagnostics.
+- Runtime dispatch, metadata, semantic index and structural/semantic validation expose identical enabled IDs/QNames/aliases for one registry snapshot.
+- Core-only runtime works without optional modules; XML compatibility including `set-var` remains intact.
+- Lifecycle initialization rollback, cancellation, concurrency, classloader close, resource cleanup and secret/log redaction are verified.
+- Classpath/JAR ordering and repeated bootstrap do not change the effective registry output.
+
+**Release rule:** no release GO until this suite passes against the exact candidate Core artifact, the independent fixture report and artifact hashes are attached to #94/#88, and the maintainer records explicit sign-off.
