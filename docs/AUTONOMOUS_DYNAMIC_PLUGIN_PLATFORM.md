@@ -709,3 +709,16 @@ Test-source review confirms that existing lifecycle tests intentionally protect 
 The inspected tests do not cover partial initialization failure after resource allocation, execute-then-public-cleanup double invocation on the same initialized instance, provider reuse across sessions, generation lease draining or exactly-once disposal on generation retirement. Test sources were inspected, not run.
 
 New conformance tests must retain the existing per-execution cleanup and interrupt-order guarantees while separately proving failed-prepare rollback and final provider/generation close.
+
+
+## 7.16 Shared AbstractPlugin body delegation also creates a detached executor
+
+A complete read of `AbstractPlugin.executeBody()` identifies an additional runtime construction path beyond the seven direct constructions in six mapped plugin classes listed in 7.12:
+
+- When a plugin configuration has children, `AbstractPlugin.executeBody()` constructs `new DefaultPluginBodyExecutor()` and delegates the children to it.
+- `TryPlugin` uses this shared base-class body path. It does not contain its own constructor expression, but its actual body execution still reaches a detached default executor.
+- Consequently, the seven construction expressions in 7.12 are not the complete runtime inventory. The shared base-class path is an additional construction site with potentially broad reach across plugins that delegate through `executeBody()`.
+- The migration must replace both explicit nested-dispatch construction and this base-class delegation with a runtime-owned executor/provider context. All paths must inherit the same pinned generation, host policy, cancellation/deadline and shared budget; no default constructor may silently drop that context.
+- The out-of-tree conformance fixture must cover explicit nested dispatch (Call/If/Case/Include/Loop/Regexp) and base-class body delegation (including Try), asserting that provider identity, generation and policy context remain unchanged through every nested layer.
+
+This is source inspection only; tests were not run. Source blob: `AbstractPlugin.java` `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
