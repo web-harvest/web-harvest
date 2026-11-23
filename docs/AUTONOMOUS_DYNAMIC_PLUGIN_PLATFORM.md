@@ -1364,3 +1364,69 @@ Baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This pass compared the actu
 - `WebHarvestServiceImpl.java`: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`
 
 Source inspection only; the JDBC cross-session failure was not executed as a runtime reproduction. Browser test source demonstrates the positive per-session behavior but was not run in this audit.
+
+
+## 8.4 P0-02 resource ownership: HTTP, FTP and SMTP operation boundaries
+
+Baseline: `1729bdf4620a66686d02605083e27e27d1ab3944`. This pass extends 8.3 beyond JDBC/browser. It distinguishes long-lived shared resources from operation-local resources and external effects. The source review is static; concurrency failures below are risks implied by the observed lifecycle, not claimed runtime reproductions.
+
+### HTTP: runtime singleton with no visible drain contract
+
+- `ScraperModule` binds `HttpService` to `HttpServiceImpl` in Guice `Singleton` scope. This is injector/runtime-scoped, not session-scoped.
+- `HttpServiceImpl` owns one final `CloseableHttpClient`; each request creates a request object and `executeRequest` closes its `CloseableHttpResponse` with try-with-resources.
+- `HttpServiceImpl.close()` directly closes the shared client. The inspected `HttpService` contract exposes request methods but no operation lease, cancellation/abort handle, admission gate or drain operation.
+- The client may be safely shared for concurrent requests according to its library contract, but thread-safe request execution does not prove safe shutdown while requests are active. Runtime shutdown needs to stop new requests, account for in-flight calls, and close the client only after drain or explicitly report unresolved work.
+- Do not make this client session-owned merely to simplify cleanup. Its observed ownership is injector/runtime; the new runtime resource coordinator should register it at that level.
+
+### FTP: operation-local client, synchronous network work
+
+- `FtpPlugin` creates a new `FTPClient` for each invocation, executes connect/login and the selected operation synchronously, then logs out/disconnects in `finally`.
+- The separate `FtpGetPlugin` and `FtpPutPlugin` paths likewise create a client per invocation and disconnect in `finally`.
+- This is a useful operation-local ownership pattern: it does not share one FTP client across sessions. However, no explicit operation handle is registered with the session, and the inspected code does not expose a cancellation hook that can abort a blocked connect/transfer. A worker interrupt alone is not proof that the socket operation has stopped.
+- Model the client/socket as an operation-owned resource whose lifetime is nested under the session. Register its abort/close action before blocking network I/O; GRACE requests abort and awaits operation exit; KILL may quarantine it if exit cannot be confirmed. Do not close it twice or report successful drain solely because the plugin method returned an exception.
+
+### SMTP: operation-local message object, externally ambiguous outcome
+
+- `MailPlugin.doExecute()` constructs a new Commons Email object for each invocation and calls synchronous `email.send()`. No reusable SMTP client or retained send/abort handle is visible in this path.
+- The message object is invocation-local, but SMTP delivery is an external side effect. If cancellation/interruption races with the send, local worker exit cannot establish whether the remote server accepted the message. The result model must preserve an explicit effect disposition such as NOT_STARTED, IN_PROGRESS, CONFIRMED, FAILED or UNKNOWN; it must not retry an UNKNOWN send automatically.
+- This is not a shared-resource lease in the same sense as JDBC/browser/HTTP. It is an operation/effect record that must be linked to the execution owner and cancellation report.
+
+### Unified ownership and lease contract for P0-02
+
+Use one resource ledger/coordinator with immutable owner identity `(runtimeId, sessionId, executionGeneration)`, plus a resource identity and declared scope: RUNTIME, SESSION or OPERATION. Every registration returns an idempotent registration token; cleanup is performed by that token/owner, never by an unqualified global close.
+
+A lease is acquired before a resource is used and released in `finally`. The coordinator must atomically reject new leases after close is requested, track active leases, and expose these distinct states:
+
+- registration: REGISTERED / REJECTED;
+- use: IDLE / IN_USE;
+- close: OPEN / CLOSE_REQUESTED / DRAINING / CLOSED / CLOSE_FAILED / QUARANTINED;
+- effect disposition (where applicable): NOT_STARTED / IN_PROGRESS / CONFIRMED / FAILED / UNKNOWN.
+
+Close request and lease acquisition must share one atomic boundary. The coordinator waits only within the GRACE cleanup budget. A timeout with active leases is unresolved, not CLOSED. KILL must retain a resource that an unresponsive worker may still access. Runtime-scoped resources drain only during runtime shutdown; session and operation resources drain at their owning boundary. A session terminal event on the shared EventBus is a signal to the coordinator, not permission for every subscriber to close every resource.
+
+### Deterministic acceptance tests to add
+
+1. **HTTP runtime drain:** block a request at a controlled transport barrier; request runtime close; assert new requests are rejected, client close waits for the active request lease, and close failures/timeouts are surfaced.
+2. **HTTP multi-session:** A and B issue requests through the same runtime client; terminating A does not close the shared client or interrupt B.
+3. **Browser close/use race:** pause after obtaining a WebClient lease but before/during page operation; request session close; assert no new lease is admitted and close waits for the active operation.
+4. **JDBC two-session ownership:** on one shared EventBus, A's completed/failed/cancelled event closes only A's pool; B remains usable until B terminates.
+5. **JDBC registration/use race:** coordinate pool registration, connection acquisition and termination; assert no post-close registration/use escapes the ledger and no connection is closed while a lease is active.
+6. **FTP abort:** block connect/transfer with a controllable local server; request GRACE and verify socket abort plus worker exit; if not confirmed within budget, report unresolved/quarantined.
+7. **SMTP ambiguous send:** simulate disconnect/cancellation after server acceptance but before client acknowledgement; assert effect disposition UNKNOWN and no automatic retry.
+8. **Close failure:** inject close failures for each resource class; assert the termination report retains each failure and never marks the resource CLOSED.
+
+### Exact source blobs
+
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`
+- `StandaloneConnectionPool.java`: `ab4a92fb63599e88a55821fe141bf5aa50327008`
+- `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728`
+- `ConnectionPlugin.java`: `edb6ed93584cb03d967c830d120848c7e891f481`
+- `FtpPlugin.java`: `d7098611ea7e0569b7cf9af01346be7b951da799`
+- `FtpGetPlugin.java`: `fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`
+- `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`
+- `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`
+- `WebBrowserPluginLifecycleTest.java`: `572f475dacabb7f706ce150d945a6dd762a83114`
+
+This section is an architecture/source audit only. No runtime code or tests were changed or executed.
