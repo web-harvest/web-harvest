@@ -2423,3 +2423,66 @@ The future SPI/adapter conformance contract should require:
 - `IncludePluginTest.java`: `65ce0add3fb45651913f9dea3000b1ec32f61b9a`.
 - `CasePluginTest.java`: `25021e40e0025aa4e19232ea364954f8278d6ac9`.
 - `TryPluginTest.java`: `3593103011139561cb2079eb1cc0a4e4a0ccdbdf`.
+
+
+### 15.57 Optional provider cancellation and resource ownership audit (2026-11-23)
+
+The same cancellation/exception review was extended across the five optional integration modules. This section distinguishes interruption propagation, synchronous external operations and resource ownership. No live cancellation experiment or test execution was performed.
+
+#### Database
+
+- `DatabasePlugin.getBodyContent()` is called before the main JDBC try/catch and declares `InterruptedException`; that body interruption can escape. The SQL phase then uses synchronous `PreparedStatement.executeQuery/executeUpdate`, iterates the `ResultSet`, and closes ResultSet/Statement in `finally`.
+- The inspected SQL execution path does not set `Statement.setQueryTimeout` or call `Statement.cancel()`; the host has no per-statement cancellation handle in this plugin. Interrupting a worker therefore cannot be treated as proof that a JDBC driver stopped the SQL operation.
+- `ConnectionPlugin` stores a session-owned connection factory in the mutable execution context. The factory registers with the session EventBus and is closed on session lifecycle events; because the cancellation event currently precedes quiescence (15.55), pool close may race active statements. The pool proxy also intentionally suppresses ordinary connection close when session event ownership is active. The target contract must distinguish logical close request from driver-confirmed statement/connection quiescence.
+
+#### FTP
+
+- `FtpPlugin.doExecute()` invokes `executeAction()` inside a broad `catch (Exception)`; its action methods declare `InterruptedException`, so interruption from nested FTP PUT body execution is converted into a generic runtime failure. The `finally` block logs out/disconnects only after the synchronous action returns or throws.
+- `FtpPutPlugin.doExecute()` calls `getBodyContent()` inside a broad `catch (Exception)`; nested-body interruption is wrapped as a generic FTP failure. `FtpGetPlugin` and `FtpListPlugin` resolve optional body paths before their FTP try blocks and therefore allow interruption from that preliminary body execution to escape; their subsequent `retrieveFile/listFiles` operations are synchronous and expose no host-visible per-transfer cancellation handle.
+- `FtpGetPlugin`, `FtpPutPlugin` and `FtpListPlugin` disconnect in `finally`, but this is post-unwind cleanup, not a way for the host to reach and abort an active transfer. `FtpPlugin` similarly disconnects only after its action call returns.
+- The inspected FTP plugin test files contain no interruption/cancellation assertions; no test was executed.
+
+#### Mail
+
+- `MailPlugin.getBodyContent()` declares `InterruptedException`, but is called inside the broad `catch (Exception)` in `doExecute()`; interruption is converted to a generic mail failure. The plugin then performs synchronous `email.send()` without exposing a host-owned SMTP operation handle or an explicit cancellation/abort hook.
+- The inspected MailPlugin unit/integration test sources contain no interruption/cancellation assertions; no test was executed.
+
+#### WebBrowser
+
+- `WebBrowserPlugin.doExecute()` catches broad `Exception`. `handleLoad()` does catch `InterruptedException` separately and restores the thread interrupt flag before wrapping it in `PluginException`; `handleExecuteScript()`, however, catches broad `Exception` around `Thread.sleep()` and wraps interruption without restoring the flag. Thus the load and execute-script paths have inconsistent interruption semantics.
+- `handleLoad()` creates a new `WebClient` in a local variable and only registers it in the session's `BrowserSessionState` after page load and optional JavaScript waits. If interruption/failure occurs before registration, the session cancellation listener cannot find that client to close it; the inspected method has no failure-path `finally` closing the local client. This is a concrete ownership gap to address.
+- The session state closes registered clients on completed/failed/cancelled events. As established in 15.55, cancellation event publication is not a quiescence barrier; there is no active-operation reference count/lease around calls using a stored `WebClient`. Closing a client may therefore race an in-flight browser operation.
+- The inspected WebBrowser lifecycle/unit test sources contain no interruption/cancellation assertions; no test was executed.
+
+#### ZIP
+
+- The ZIP path is a positive example: `ZipPlugin.doExecute()` runs child execution inside try-with-resources for the `ZipOutputStream`; interruption from `executeBody()` can escape while the stream is still deterministically closed. `ZipEntryPlugin` executes its body before writing the entry, so an interruption in child-body execution occurs before that entry's write/commit.
+- This does not make ZIP execution independently cancellable during byte-array compression/writes, but its current resource scope is clearer than the other inspected adapters.
+
+#### Cross-module target requirements
+
+- The common host cancellation handle must be able to reach active JDBC statements/connections, FTP control/data sockets and transfers, SMTP transport, HtmlUnit clients/background jobs, HTTP requests, file writes and ZIP streams.
+- Each adapter must declare whether an operation is cooperatively interruptible, externally abortable, only bounded by a timeout, or non-interruptible; the host must not infer termination from thread interruption.
+- Cleanup must be coordinated with in-flight operation leases. An event notification may request close, but resource disposal must wait for safe quiescence or escalate to process isolation where appropriate.
+- Side-effecting operations need explicit cancellation commit semantics: a cancelled FTP upload, SMTP send, JDBC update or file write may have crossed an irreversible boundary. The runtime must report outcome as indeterminate/committed/aborted where the underlying protocol cannot prove rollback; it must not falsely report a clean cancellation.
+- Add deterministic fake-server/fake-driver tests with latches for active JDBC query/update, FTP retrieve/store/list, SMTP send, HtmlUnit page load/background JS, and ZIP child execution; verify interruption type/flag, abort visibility, cleanup timing, no use-after-close, and exactly-once terminal outcome.
+
+**Evidence / coverage boundary:** current-main source and selected test-source inspection only. No test suite, live server, JDBC driver experiment or network cancellation experiment was run. Findings about resource abortability are limited to the absence of an explicit host-visible operation handle in the inspected plugin/service paths; they do not claim that a particular third-party library can never respond to interruption.
+
+**Exact source/test blobs at `main` snapshot `1729bdf4620a66686d02605083e27e27d1ab3944`:**
+
+- `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728`.
+- `ConnectionPlugin.java`: `edb6ed93584cb03d967c830d120848c7e891f481`.
+- `FtpPlugin.java`: `d7098611ea7e0569b7cf9af01346be7b951da799`.
+- `FtpGetPlugin.java`: `fd4ee5da4556bf91bdae7940072cf7a5e106f6d5`.
+- `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`.
+- `FtpListPlugin.java`: `c5fcfa6c5f90f643e6df8e85f6ad6a0b6e1074fa`.
+- `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`.
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
+- `ZipPlugin.java`: `e62046292bca8689637e5eefbd7ce25ed460d118`.
+- `ZipEntryPlugin.java`: `ea90361ca90b31d4c3903688ca78204121af0743`.
+- `DatabasePluginTest.java`: `34002d58b1dc63beaa9df3aeb487073fc0a4bb2e`.
+- `FtpPluginTest.java`: `dfeec2757e16f71015bc87537223b4e54e21f608`.
+- `MailPluginTest.java`: `fcd0b6c2a895a0a31fddd8443696cdb7e8de0462`.
+- `WebBrowserPluginLifecycleTest.java`: `572f475dacabb7f706ce150d945a6dd762a83114`.
+- `ZipPluginContractTest.java`: `0c1a161a913106db28f59c2c788fe628a26088f0`.
