@@ -2007,3 +2007,71 @@ This pass inspected the ten concrete optional-module provider entry-point classe
 4. Before any module extraction, add a source-level forbidden-import check and an independent fixture that compiles against the intended public SPI only. Keep module-specific adapters inside the optional artifact.
 
 **Evidence boundary:** direct imports in the ten optional provider entry-point classes were inspected on GitHub. No tests, builds, Maven dependency tree, full-module source import scan or runtime experiment was executed. No production code or POM was changed.
+
+
+### 15.50 SPI design constraints derived from current Core APIs (2026-11-23)
+
+This is a **review proposal**, not an approved public API and not implementation authorization. It translates the current source seams into constraints for Issue #346.
+
+#### Current API facts that rule out a simple interface rename
+
+| Existing surface | Observed current behavior | SPI consequence |
+|---|---|---|
+| `Plugin` | Execution accepts `DynamicScopeContext`, returns Core `Variable`, exposes mutable parent/running-level state, and includes initialization/cleanup on the plugin instance. | Cannot be the neutral third-party SPI unchanged: it leaks Core runtime/context/value types and combines provider definition, execution instance and lifecycle state. |
+| `AbstractPlugin` | Execution implementation directly accesses Guava `EventBus`, `ScraperSession`, Core execution events, metrics, and SLF4J; it wraps the subclass `doExecute` path. | Useful as a legacy adapter/base class, but not a dependency of the new SPI. Translate host-neutral execution events/diagnostics through a context/service contract. |
+| `PluginMetadata` | Metadata includes ID/name/version, namespace/element, class name and schema; default semantic roles are inferred from schema and `VisualPluginMetadata`. | Existing metadata is not a complete authoritative descriptor: no descriptor/API compatibility range, aliases, artifact provenance, permissions, lifecycle scope or complete semantic IO contract. Class name must not be identity. |
+| `PluginConfigurationSchema` | Schema exposes attribute definitions, body allowance, allowed/required children and required parents; it is a Java interface and validates Core `PluginConfiguration`. | Preserve the useful structural concepts, but serialize a data-only descriptor schema so metadata/inspection can work without provider class loading. Keep executable custom validators behind a separately activated provider hook or a declarative rule set. |
+| `DefaultPluginFactory` | Creates implementations from Java classes/IDs/QNames and caches constructors; instantiation is reflective. | Factory should consume a validated provider binding from a registry generation, not become the discovery authority. Constructor caching must be scoped to the owning artifact/runtime and retired with it. |
+| `DefaultPluginRegistry` | Holds mutable concurrent maps of plugin instances/classes/metadata; supports register/unregister/clear/refresh. | Not suitable as the final authoritative registry: publish immutable generation snapshots atomically; keep mutation in a candidate builder/reconciler. Do not store live instances as descriptor identity. |
+| `CorePluginRegistry` | Static singleton mutable element-to-class map with overwrite semantics and global clear. | Retain only inside the legacy XML adapter during migration. It must not be the new registry or a cross-runtime source of truth. |
+| `PluginMetadataCatalog` | Static catalog built from `PluginClassScanner` class names; calls `Class.forName` and invokes no-arg constructors to derive descriptors. | This violates descriptor-only, side-effect-free discovery. Replace its data source with immutable descriptor projection from the selected registry snapshot; no plugin class loading or construction during catalog generation. |
+| `ScraperSession` / `DynamicScopeContext` | Expose runtime/session/configuration/context implementation types; WebBrowser and AbstractPlugin consume session events/context directly. | New SPI must expose narrow execution services and cancellation/resource ownership abstractions, not these implementation classes. Provide adapters for existing built-ins. |
+
+#### Proposed contract shape for review
+
+Keep the SPI split into three layers, each with a distinct responsibility:
+
+1. **Data-only descriptor** — stable plugin ID and provider ID; descriptor format/API version; supported Core range; XML QNames and explicit aliases; configuration/parent-child constraints; semantic roles and input/output/composition contracts; dependency/conflict declarations; declared capability/permission requirements; provider binding name; artifact provenance. It must be parseable and validated without loading implementation classes.
+2. **Provider binding** — a generic Java service/provider entry point located within a managed artifact. It creates an implementation only after the host has accepted the descriptor, compatibility, enablement and policy. ServiceLoader may locate provider bindings inside an already managed artifact; it is not the artifact watcher, trust policy, registry or hot-update mechanism.
+3. **Runtime instance contract** — a host-created instance receives a narrow immutable service/context view and explicit configuration, executes with a generation-pinned execution context, and closes deterministically. Declare supported instance scope/concurrency (runtime, session, invocation or explicitly thread-safe shared); do not infer it from constructor shape.
+
+A conceptual API (names illustrative; not source code to implement yet):
+
+- `PluginProvider`: stable provider binding; creates a runtime instance from host-supplied services.
+- `PluginDescriptor`: immutable data-only identity, compatibility, XML, schema, semantic, dependency and permission declaration.
+- `PluginInstance`: initialize, execute and close; no global registry mutation.
+- `PluginExecutionContext`: host-neutral values/configuration, cancellation/deadline, diagnostics, scoped service access and declared capability handles.
+- `PluginServices`: host-owned services scoped to the provider/runtime, with explicit close ownership.
+- `PluginRegistrySnapshot`: immutable generation ID plus effective descriptor/activation projection; execution and validation pin the same snapshot.
+
+Do **not** expose `DynamicScopeContext`, `Variable`, `ScraperSession`, Guice types, Guava EventBus, Core registry classes, or implementation class names as SPI identity. Existing built-ins can initially implement the new contract through adapters around current `Plugin` classes; the legacy XML parser/runtime remains an adapter until conformance proves parity.
+
+#### Lifecycle and security decisions that must be explicit in #346
+
+- Descriptor parsing/validation is side-effect-free; implementation class loading occurs only after compatibility, host enablement, trust and permissions pass.
+- Distinguish discovered → compatible → enabled → authorized → activated → retiring. Classpath presence is not enablement or trust.
+- Define provider construction and initialization rollback, runtime/session/invocation scope, concurrency, cancellation, execution failure, close/dispose, active-session drain and artifact classloader retirement.
+- Permission declarations are requests, not grants. Host policy supplies capability handles; do not pass unrestricted filesystem/network/session internals.
+- Same-JVM classloaders do not sandbox hostile Java. In-process execution is for trusted providers only; untrusted extensions require process/OS isolation and IPC.
+- Registry publication is atomic and immutable. A failed candidate leaves the last-known-good generation active; an execution and its validation token identify the same generation.
+- Compatibility is fail-closed for unsupported descriptor/API major versions and Core ranges. Alias and QName collisions are deterministic errors, never last-write-wins.
+
+#### Acceptance implications
+
+The first SPI proof should be a tiny external provider with no dependency on optional WebHarvest modules and no access to Core implementation classes. It must compile against only the intended SPI artifact, publish a descriptor, be visible to descriptor-only inspection before activation, and execute only after explicit host enablement/authorization. Then prove a second runtime can load the same provider independently and close it without affecting the first runtime. The full live add/update/remove and generation-pinning matrix remains in #347/#350.
+
+#### Source evidence (current `main`)
+
+- `Plugin.java`: `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`.
+- `PluginMetadata.java`: `0d31ed2c958bd03d429af8df6be94f1decfcbfdf`.
+- `PluginConfigurationSchema.java`: `c649a8a2d58c496bf913a8a16ac989cab81a6e98`.
+- `AbstractPlugin.java`: `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
+- `PluginFactory.java`: `f1d2434c5a36d21d9c09bb638f4ebf3e5eaa94f8`.
+- `DefaultPluginFactory.java`: `91c8084f671027954375ff3cab784691f8ae26e5`.
+- `PluginRegistry.java`: `eceeddca531c98ca4a7f235e04ab28511bfc9281`.
+- `DefaultPluginRegistry.java`: `da5c6f6e835cc8b551394e0853a70ca4bcd60d2f`.
+- `CorePluginRegistry.java`: `20f478addbf2bacc481e4e11e0328f06942a2a38`.
+- `PluginMetadataCatalog.java`: `5ac82d7fb6436b458b29647e4c929878557b1c6e`.
+- `ScraperSession.java`: `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237`.
+
+**Evidence boundary:** this section is based on source inspection of current `main`. No API, schema, registry or runtime code was changed; no tests/builds were run. The proposal requires maintainer review and approval in #346 before implementation.
