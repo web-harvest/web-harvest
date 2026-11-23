@@ -1164,3 +1164,36 @@ Source blobs on current `main`:
 - `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
 
 No runtime implementation or tests changed/run. This is source-level evidence; it does not claim a new end-to-end behavior test has passed.
+
+
+### 15.23 Parent/child contract trace: RegExp, XQuery and XSLT detail elements (2026-11-23)
+
+The remaining declarative detail groups were traced from their parent processors into their metadata and schema implementations.
+
+| Parent capability | Detail elements | Parent-side behavior | Detail implementation / contract evidence |
+|---|---|---|---|
+| `regexp` | `regexp-pattern`, `regexp-source`, `regexp-result` | `RegexpPlugin.doExecute()` reads its direct child configurations by element name and derives pattern/source/replacement inputs. The parent schema requires `regexp-pattern` and `regexp-source`, and allows those plus `regexp-result`. | Each detail class declares a visual required-parent relationship to `regexp`; each `doExecute()` is explicitly a no-op placeholder returning `EmptyVariable`. The detail schemas do not override `getRequiredParents()`. |
+| `xquery` | `xq-expression`, `xq-param` | `XQueryPlugin.doExecute()` iterates direct children, reads expression content and parameter configuration, then constructs the query inputs. Parent schema requires `xq-expression` and allows both detail elements. | Both detail classes declare visual parent relationship to `xquery`. `XQExpressionPlugin` evaluates its body; `XQParamPlugin` executes its body so nested value-producing elements (for example variable lookup) can supply parameter values. Neither detail schema declares `getRequiredParents()`; XQParam deliberately permits nested child processors for value generation. |
+| `xslt` | `stylesheet` (and the `xml` input construct) | `XsltPlugin.doExecute()` obtains required direct child content by element name for `xml` and `stylesheet`; it performs the transformation itself. The parent metadata/schema allow `xml` and `stylesheet`. | `StylesheetPlugin` declares a visual required-parent relationship to `xslt`, but its `doExecute()` is a no-op placeholder and its schema does not override `getRequiredParents()`. The actual transformation consumes child content at the parent. |
+
+**Cross-cutting discrepancy:** for these detail classes, visual `ParentChildRelationship` metadata describes a required parent, but the corresponding schema classes do not declare the same relationship through `getRequiredParents()`. This is materially different from the HTTP detail classes, whose schemas do declare `http` as a required parent. A descriptor validator that reads only schema constraints will therefore lose some currently advertised parent relationships; one that reads only visual metadata will miss required-child and nested-value semantics.
+
+**Design consequences:**
+- The future descriptor model must separate *provider capability identity* from *XML syntax/detail-node identity*. A detail node may be parsed and semantically described without being an independently activatable provider.
+- Parent descriptors need typed child roles, cardinality/requiredness, value interpretation and whether a child body is evaluated, rather than only a list of child element names.
+- Distinguish three patterns: parent directly interprets raw child configuration (`regexp`, `xslt`); parent interprets a child expression/value contract (`xquery`); child body is itself evaluated to produce a nested value (`xq-param`).
+- Reconcile visual parent metadata and schema parent constraints before treating either as authoritative. Missing schema declarations are not proof that the child is actually standalone.
+- Preserve XML compatibility while making structural validation generation-scoped and consistent with the parent executor.
+
+Source blobs on current `main`:
+- `RegexpPlugin.java`: `a860ab08554122680c4d5d5fde1be3d683139c6a`.
+- `RegexpPatternPlugin.java`: `f8aae44f39deae0393ebf264156b460dc312442f`.
+- `RegexpSourcePlugin.java`: `e97be0a919e78ce5f8c8efb5a9d0e673078f07313`.
+- `RegexpResultPlugin.java`: `c473354f978aec5b9b6df6687dbfc8c759ba1377`.
+- `XQueryPlugin.java`: `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`.
+- `XQExpressionPlugin.java`: `70728c7b6669796a3367e276aacd6735135c0faa`.
+- `XQParamPlugin.java`: `3ec7b37615a4bb3cda4614cb4a4eb94ea7236a98`.
+- `XsltPlugin.java`: `c94b8e26dba566cb30bc12f6fc811bb1fcdc59b1`.
+- `StylesheetPlugin.java`: `4132be73c6e010cb952aa63c7fd7d90efb83c6de`.
+
+No runtime implementation or tests changed/run. This is a source audit, not proof of end-to-end behavior for every nested form.
