@@ -281,3 +281,24 @@ No implementation, test pass or release readiness is implied by this design docu
 7. Update #88 with exact-candidate evidence and explicit maintainer sign-off.
 
 Do not implement a startup-only scanner as an interim substitute. Preserve XML compatibility and keep Core free of compile-time dependencies on optional extensions.
+
+
+### 7.2 Host-owned service lifetime and the current HTTP singleton gap
+
+The current Core wiring binds `HttpService` to `HttpServiceImpl` in Guice `Singleton` scope inside `ScraperModule` (`ScraperModule.java` blob `d31a5e30b0949c752743123cbcfb4219ba60713e`). This means one service/client is shared by all executions using that injector. The scope is **per injector**, not a process-wide singleton.
+
+The existing `Harvester.execute` path enters and exits a per-execution `ScraperScope`, but `HttpService` is not in that scope. `ScrapingHarvester.execute` exits the scope in `finally` (`ScrapingHarvester.java` blob `2af32ca67c235e075c8cc613118814d54e555338`); `DefaultHarvesterFactory` creates harvesters from the injector-owned providers (`DefaultHarvesterFactory.java` blob `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`). The HTTP client is therefore shared across executions and is not automatically closed when an execution scope exits.
+
+`HttpServiceImpl` implements `AutoCloseable` and closes its underlying `CloseableHttpClient` (`HttpServiceImpl.java` blob `9e3dab1a40250f4d059ea812c74012d994873f0d`). However, Guice's injector does not provide an application shutdown contract here, and the inspected production CLI creates an injector and executes a harvester without a corresponding `HttpService.close()` or host-runtime close path (`WebHarvestCLI.java` blob `c094100d160ae02618604923a32a79a85de3bbb0`). The Core API does not currently expose a runtime/container owner with deterministic shutdown semantics.
+
+The test suite shows inconsistent ownership:
+- `HttpPluginWithDependencyInjectionTest` explicitly obtains and closes `HttpServiceImpl` in `@AfterMethod` (`fa82e5b92b00fb43cf1577bf40bd2b7cb3d77b9f`).
+- `HttpServiceImplBasicTest` creates a new injector in `@BeforeMethod`, retains only the service, and has no teardown/close (`3e4d6930be8c51c8b2ac4e7043227e8c827b9fcd`).
+
+**Conclusion:** singleton scope itself is not automatically the defect. A shared, thread-safe HTTP connection pool can be the right lifetime across concurrent sessions. The demonstrated defect is that the owning runtime/injector has no explicit, reliable resource-disposal contract; the current CLI and at least one test path do not close the client. Moving the binding to per-execution scope would avoid neither the ownership question nor necessarily be desirable: it could create one client/pool per execution and lose connection reuse.
+
+**Provisional target:** introduce an explicit host/runtime owner (for example, an `AutoCloseable` runtime/container facade) that owns the injector and all application-scoped services. It must stop new executions, drain or cancel active sessions according to policy, then close managed services exactly once. Keep shared HTTP transport at runtime scope if concurrency tests validate it; pass per-session/request policy and cancellation context separately rather than turning the connection pool into a session singleton. Do not close the shared service at the end of an individual scrape.
+
+Required tests: two concurrent sessions safely share the runtime-owned service; closing one session does not close the client; host shutdown prevents new work, drains/cancels active work and closes the client once; close is idempotent; failures during startup/shutdown clean up already-created resources; post-close use fails deterministically. Update test fixtures to close their runtime/injector owner rather than reaching into Guice for an implementation-specific service.
+
+This is a separate host lifecycle issue under #349, not a reason to change the plugin inventory or replace `Singleton` with `ScrapingScope` immediately. No runtime code or tests were changed/run in this audit.
