@@ -3110,3 +3110,50 @@ This is a focused production call-site trace on main baseline 1729bdf4620a66686d
 7. Only then deprecate and remove `PluginRegistryHolder`, `PluginRegistry`, `DefaultPluginRegistry`, old `PluginFactory` implementations and `CorePluginRegistry`/registrar wiring in separate reviewed steps.
 
 **Important:** this trace confirms multiple simultaneously active authorities and a real fallback path. It does not yet prove every call site or public consumer. No source/POM/test changes were made; no tests/builds were run. Implementation remains blocked on #346 maintainer acceptance and the #93/#94 prerequisites.
+
+
+## 15.70 Test-suite contract census — legacy registry, factory and catalog (2026-11-23)
+
+This pass inspects targeted test sources on main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. It maps what the current tests intentionally preserve and therefore what a consolidation must replace. Tests were inspected, not executed.
+
+### A. Legacy registry tests encode mutable-instance semantics
+
+- `DefaultPluginRegistryTest` (test blob `ee2dd3c932637c39bd25282505d06c940a286f64`) constructs `DefaultPluginRegistry` directly and tests registration of live `Plugin` instances and classes, ID/QName/category/namespace lookup, duplicate registration, unregister, and secondary-index removal.
+- The existing contract is not just a lookup interface: it includes mutable registration and unregister behavior, including instance/class admission and cleanup across indexes. A generation-backed replacement needs explicit compatibility tests for every supported behavior; it must not inherit silent overwrite or partial-index semantics.
+- `DefaultPluginFactoryTest` (test blob `a33a410ecf034a08b37b4746799fdbe0d98be6f6`) constructs `DefaultPluginFactory` with a mocked `PluginRegistry`. This confirms that registry lookup is a factory test seam and that a direct factory deletion would break established unit-level integration contracts unless callers/tests are migrated together.
+
+### B. Catalog tests explicitly enshrine class scanning and dynamic construction
+
+- `PluginMetadataCatalogTest` (test blob `40efed43975105fc214357ba526c78d4615d9693`) asserts catalog coverage against `PluginClassScanner.allPluginClassNames()`, and validates descriptors/schema by plugin IDs.
+- `PluginMetadataCatalogDynamicTest` (test blob `c3582c89aad930e15c714b434b0a5c4aba4d6425`) clears the scanner cache and asserts that catalog metadata is generated from plugin classes without static JSON files. Its test name and assertions encode the current scanner-driven discovery mechanism as intended behavior.
+- These tests are not proof that scanning/classloading/instantiation is the desired future contract. They must be replaced by descriptor-only tests that prove metadata projection without provider class initialization, constructors or execution, plus parity fixtures for the existing metadata/schema surface.
+
+### C. XML registry and package scanner have independent test contracts
+
+- `CorePluginsRegistrarContractTest` (test blob `bda7938a517bccc78150932711355035c5b4d1eb`) resets the global `CorePluginRegistry`, invokes `CorePluginsRegistrar.registerCorePlugins()`, and asserts the exact registered XML-name set and implementation class for each mapping. This is a valuable 44-name compatibility fixture, but currently tests the separate manual registrar as authority.
+- `PluginPackageScannerClasspathTest` (test blob `ff9c42f4bac2efdc6b97185c1358772daf628192`) resets/registers Core mappings, then scans a hard-coded Core package into the singleton `CorePluginRegistry`; it also exercises a JAR/classloader scenario. This is a second discovery mechanism and needs explicit migration to managed-artifact discovery, not silent deletion.
+- Preserve the exact XML identity/implementation compatibility expectations where approved, including `set-var`; change the authority under test to the generation snapshot and add collision, rollback, update/remove/re-add and last-known-good tests.
+
+### D. Semantic and IDE-facing tests reveal cross-authority assumptions
+
+- `PluginDescriptorIndexTest` (test blob `7e80f3e375eceaa1618ffcf03b40152b54171751`) obtains descriptors from `PluginMetadataCatalog` while separately injecting runtime-availability predicates into `PluginDescriptorIndex`. This matches the production split identified in section 15.69 and confirms that tests currently allow metadata and runtime availability to be supplied independently.
+- `PluginMetadataJsonGeneratorTest` (test blob `07192369c0535cdc9754acd088a922a159baf144`) obtains `PluginRegistryHolder.getInstance()` and asserts that legacy/internal processors remain registered outside the palette. The JSON generator migration must preserve the intended visibility distinction while removing dependence on the process-global mutable registry.
+- `DefaultConfigFactoryTest` (test blob `a2733b95bc8319bfbc93a3040fb985492e613a1d`) tests parser/configuration construction through a parser supplier; this focused test does not itself prove that XML QName resolution has moved off `CorePluginRegistry`. The XML parser/processor call-site census remains open.
+- The inspected IDE help-URL test (`PluginMetadataHelpUrlTest`, blob `0643ea1bd80ba8db9e5786f907d2d9e7e4471f78`) did not expose a registry/catalog/factory reference in the inspected source. This is not evidence that the IDE has no such dependencies; production servlet evidence in 15.69 remains active.
+
+### E. Required test migration matrix
+
+| Existing test contract | New authoritative test contract |
+|---|---|
+| Mutable register/unregister and secondary indexes | Immutable generation build, collision rejection, atomic publication and rollback |
+| Factory resolves registered instance/class then constructs | Host activation manager resolves admitted provider binding; constructor and lifecycle exactly once per defined scope |
+| Catalog coverage equals scanner-discovered class names | Descriptor-only artifact scan; no class initialization or constructor sentinel |
+| Dynamic metadata generated from Java classes | Versioned descriptor/schema parse and stable projection, with legacy output parity |
+| Registrar exact mapping set | Generation-owned QName/alias binding fixture for all approved XML names, including `set-var` |
+| Package scanner mutates global Core registry | Managed artifact add/update/remove/re-add with isolated loader and generation pinning |
+| Semantic index accepts independent availability predicate | Descriptor, XML binding and availability read from one generation token |
+| JSON generator reads global registry | Generation-backed palette projection preserving internal/hidden processor policy |
+
+### F. Scope and gate
+
+This is a targeted test-source census, not a full repository-wide call-site or external API census. It covers the principal Core registry/factory/catalog/semantic test families and identifies the tests that currently codify legacy implementation choices. Remaining work includes production/test references in DI and parser internals, optional modules, IDE/CLI routes, reflection/configuration and downstream public API compatibility. No tests/builds were run and no source/POM/runtime behavior changed. Removal remains STOP until #346 is accepted, the #93/#94 prerequisites are met, and the full census plus migration/conformance plan is reviewed.
