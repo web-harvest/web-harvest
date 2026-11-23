@@ -1130,3 +1130,89 @@ This section distinguishes genuinely thread-confined legacy execution objects fr
 - SessionMetrics.java: 1204e7566ab56760323703b031e7985bf635feed
 
 Source inspection only. No runtime implementation, test execution, stress test or ThreadLocal leak reproduction is included in this checkpoint.
+
+## 7.28 Shared service and scripting-engine state across concurrent sessions
+
+This audit checks singleton-like services used by concurrent execution. A shared service may be safe to share only when its mutable state, request state and close lifecycle are separately controlled.
+
+### Script engines: thread isolation is not session isolation
+
+- JSRScriptEngineFactory uses ThreadLocalCache keyed only by ScriptingLanguage. The cache is per factory instance and per Java worker thread, not per ScraperSession or execution generation.
+- WebHarvestServiceImpl uses a reusable executor (the default is a cached thread pool). A worker thread can execute session A and later session B; if both request the same scripting language, the same underlying javax.script.ScriptEngine can be reused across those sessions.
+- JSRScriptEngineAdapter explicitly documents that the adapted engine is not thread-safe. ThreadLocalCache prevents two threads from sharing one cached engine concurrently, but does not prevent sequential cross-session reuse on a pooled worker, nor does it define a reset/dispose boundary when a session ends.
+- The adapter clears engine-scope bindings before copying variables and includes pollution detection, which is a useful mitigation. However, clearing bindings is not proof that provider-specific interpreter state, compiled artifacts, global objects, classloader references or host objects are reset. The provider-specific behavior must be tested; do not claim a confirmed cross-session data leak without such a test.
+- ScriptEngineManager is held as one factory field. Its provider discovery/manager thread-safety and provider classloader isolation are not established by the inspected code.
+
+### BaseTemplater: mutable global injection point
+
+- BaseTemplater is a utility with static mutable `@Inject public static ScriptEngineFactory scriptEngineFactory`. This is process-global state, not runtime/session-scoped dependency injection.
+- Concurrent evaluation reads the same static reference. Concurrent injector/bootstrap activity can replace it while work is running; separate runtimes cannot safely select independent factories or classloader generations. There is no explicit lifecycle or visibility contract for the field.
+- The per-call local result list and indexes are local, but that does not neutralize the static dependency.
+
+### HttpServiceImpl: shareable client, unclear owner/close coordination
+
+- HttpServiceImpl owns one final Apache CloseableHttpClient and executes request-local HttpGet/HttpPost/response objects. This is a plausible shared-client design; the inspected source does not establish that the client itself is unsafe for concurrent requests.
+- The service is AutoCloseable, but the inspected API does not bind its close lifecycle to runtime shutdown, session leases or in-flight request draining. Closing the shared client while requests are active needs an explicit owner/lease contract; per-session close would be incorrect for a runtime-shared client.
+- Request/response maps are local to each call. No shared mutable request-header map is retained by executeRequest. Constructor-supplied default headers are captured by HeaderPreservingInterceptor; immutability/defensive-copy behavior must be checked in that interceptor before treating configuration as immutable.
+
+### DefaultPluginFactory and metadata catalog
+
+- DefaultPluginFactory's constructor cache is a ConcurrentHashMap keyed by Class. This safely publishes constructor lookup results at map level, but the key strongly retains Class objects and therefore their defining classloaders for the lifetime of the factory. A runtime/plugin-generation retirement must release the factory/cache as part of classloader retirement.
+- PluginMetadataCatalog is static/eager and builds descriptors once from PluginClassScanner's class-name list. It loads classes with one-argument Class.forName(), which uses the catalog's defining loader and initializes the class. The resulting static descriptor map is not runtime-, artifact- or classloader-generation scoped. This compounds the scanner cache isolation issue in 7.25.
+- The catalog map is unmodifiable, but descriptor internals and the returned catalog schema are not proven deeply immutable by the inspected excerpts. Treat deep immutability as unverified until all nested collections/objects are inspected.
+
+### Required service ownership rules
+
+1. Treat ScriptEngine as mutable session state unless a provider-specific conformance test proves safe reset/reuse. The conservative default is a session/generation-owned engine with deterministic disposal; an optimized worker-local cache requires an explicit reset contract and cross-session isolation tests.
+2. Replace BaseTemplater static injection with an instance dependency or an explicitly runtime-scoped immutable service. No mutable process-global injection point may select a runtime's provider.
+3. Make the HTTP client runtime-owned and shared across sessions only through a lease-aware service. Runtime shutdown closes admission, drains in-flight request leases, then closes the client once. Sessions must never close a runtime-shared client.
+4. Tie plugin factories, metadata catalogs and constructor caches to an immutable runtime/plugin generation. Retirement must release all strong Class/Method/Constructor references before closing the defining classloader.
+5. Make all runtime configuration immutable after publication; defensively copy default headers and nested metadata/schema values.
+6. Add cross-session tests on the same reused worker thread: session A writes interpreter globals/host objects, session B must not observe them; session A ends and its generation/classloader must become collectible after retirement. Add concurrent HTTP calls with shutdown/close racing and assert lease drain; two independent runtimes must use different factories/catalogs without static cross-talk.
+
+### Exact inspected source blobs
+
+- DefaultPluginFactory.java: 91c8084f671027954375ff3cab784691f8ae26e5
+- PluginMetadataCatalog.java: 5ac82d7fb6436b458b29647e4c929878557b1c6e
+- JSRScriptEngineFactory.java: 8d9d8c1c1b6d2f3d2e8b9e9f4a6b4b1c (verify exact blob before implementation)
+- ThreadLocalCache.java: 3d69e3c9066f0ed0201e13da0427429df227e429
+- JSRScriptEngineAdapter.java: 962f414ca17497461974faab2a9c26344332ff11
+- BaseTemplater.java: dacefb8faec186176148ab2a0cbc5a538941d4c5
+- HttpServiceImpl.java: 9e3dab1a40250f4d059ea812c74012d994873f0d
+- WebHarvestServiceImpl.java: 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec
+
+Source inspection only. Provider-specific interpreter state, Apache client concurrency under close, header interceptor immutability and classloader collectability were not reproduced or tested.
+
+## 8. Prioritized execution backlog and decision gates
+
+This is the active implementation queue derived from the source audits above. Priority means dependency/blocking order, not permission to bypass maintainer approval. Until the architecture decisions in issues #93/#346 and the release/compatibility boundaries are approved, work remains audit/specification and test design; runtime implementation is STOP.
+
+### P0 — must be resolved before claiming safe concurrent multi-session execution
+
+1. **P0-01 — Session execution ownership and termination proof** (sections 7.22–7.23; #349): retain worker/child task handles; implement GRACE/KILL state machine; separate cancellation request, business outcome and proven quiescence; cover timeout executors; report unresponsive/quarantined workers. Acceptance: deterministic latch-based tests prove GRACE drain, KILL escalation, no false terminal/quiescent state and no orphan executor.
+2. **P0-02 — Session resource ledger and leases** (7.24; #349): immutable runtime/session/generation owner; race-safe registration; lease acquisition/release; close-request/drain/closed/failed states; idempotent cleanup and failure report. Acceptance: session A terminal events never close B JDBC/browser/HTTP resources on the same shared EventBus.
+3. **P0-03 — Shared EventBus subscriber safety and lifecycle** (7.24, 7.26): retain one shared service bus; make subscribers concurrent-safe, owner-aware and unregisterable; prevent late registration during retirement. Acceptance: concurrent A/B terminal events, registration-vs-close race, idempotent delivery and subscriber retirement tests.
+4. **P0-04 — Context confinement and asynchronous propagation** (7.27): bind context to runtime/session/generation and one worker; explicitly propagate scope tokens across executor hops; clear ThreadLocal in finally; reject context reassignment and cross-thread mutable access. Acceptance: interleaved nested-context tests and executor reuse tests show no variable/scope bleed.
+5. **P0-05 — Interruption/deadline/effect disposition** (7.22–7.23, 7.28): preserve InterruptedException; propagate shared deadline and abort handles; record COMMIT_UNKNOWN for external side effects. Acceptance: controlled HTTP/FTP/SMTP/JDBC/file tests prove bounded cancellation and no unsafe automatic retry.
+6. **P0-06 — Runtime-owned immutable plugin generation** (7.25–7.26, 7.28): atomically publish complete registry snapshots; scope caches/factories/catalogs to runtime and classloader generation; enforce ID/QName collisions; retire exact generation. Acceptance: two-runtime out-of-tree fixture with overlapping QNames and distinct plugin classloaders.
+
+### P1 — required before production-grade dynamic plugin lifecycle
+
+7. **P1-01 — Subscriber/scope teardown correctness** (7.26–7.27): registration tokens, exact unregister, callback failure aggregation, unconditional scope exit, detached registry snapshots. Acceptance: no listener retention after generation retirement and no cleanup skipped after callback failure.
+8. **P1-02 — Script-engine session isolation** (7.28): prove provider reset semantics or use session-owned engines; remove static BaseTemplater injection. Acceptance: same-worker A→B interpreter contamination tests and two-runtime independent factory tests.
+9. **P1-03 — Shared HTTP client lifecycle** (7.28): runtime ownership, in-flight leases, immutable default headers, close-after-drain. Acceptance: concurrent requests during shutdown and close-race tests.
+10. **P1-04 — Classloader/cache retirement** (7.25, 7.28): remove static discovery/catalog caches and strong factory references across generations. Acceptance: generation retirement plus weak-reference/classloader reclamation test.
+11. **P1-05 — Concurrency conformance suite**: add stress/repeatable tests for registry mutation, event delivery, session context, subscriber lifecycle and resource closure; no reliance on sleeps or timing-only assertions.
+
+### P2 — after P0/P1 architecture and conformance gates
+
+12. **P2-01 — Performance and cache optimization**: only after isolation correctness, measure per-session engine cost and consider safe worker-local reuse with explicit reset contracts.
+13. **P2-02 — Observability**: structured termination/resource reports, owner/generation correlation, subscriber and lease diagnostics, unresponsive worker visibility.
+14. **P2-03 — Compatibility and migration**: document legacy provider capability levels, defaults, opt-in concurrency/isolation, migration fixtures and deprecation path.
+
+### Immediate next work order
+
+- Next: complete the shared-service/classloader-retirement audit (including HeaderPreservingInterceptor and plugin cache ownership) and verify all source blob IDs.
+- Then: inspect the tests that can be reused for P0 acceptance and map each backlog item to exact test classes/missing cases.
+- Then: publish a single traceability matrix linking each P0/P1 task to source evidence, issue, implementation boundary and acceptance test.
+- STOP: do not change runtime code, merge PR #352, close issues or publish a release until the maintainer decision gates are explicitly satisfied.
