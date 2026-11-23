@@ -181,7 +181,7 @@ The maintainer has clarified the intended product topology:
 
 - **Core** is the primary embeddable semantic execution library.
 - **IDE** is the intended human-facing Control Plane and a separate product distribution.
-- **CLI** is the headless Data Plane surface and a separate product distribution.
+- **CLI** is one headless interface to the broader Data Plane and a separate product distribution.
 - **Official extensions** should be offered as curated, compatible Packs/Kits while preserving individual extension artifact identities.
 - The current monorepo remains in place; no repository split is authorized or required to achieve separate product distributions.
 
