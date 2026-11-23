@@ -635,3 +635,20 @@ Source blobs on current main:
 - ScrapingHarvester.java: 2af32ca67c235e075c8cc613118814d54e555338.
 - AttributeHolderScope.java: 11a39c99e517ae9ae1ba09cf69a885b636465b64.
 - ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e.
+## 7.11 Core's Maven dependency graph currently makes Guice a compile dependency
+
+The POM check confirms that Guice is not merely an implementation detail accidentally imported by one adapter class. `webharvest-core/pom.xml` declares `com.google.inject:guice` as a normal dependency with no scope, so Maven treats it as compile/runtime transitive dependency for Core consumers. The root POM's dependencyManagement entry pins Guice 5.1.0; dependencyManagement alone does not add it, but the Core module's explicit dependency does. Core also declares Guava as a normal dependency.
+
+Combined with the source findings in 7.9–7.10, this means a Java application consuming the current Core artifact receives Guice transitively even if it wants only the plain Java facade. Moving only `ScraperModule` to a new adapter artifact would not remove the dependency while `AttributeHolderScope`, `DefaultHarvesterFactory`, `ScrapingHarvester`, active executor construction and other Core source still compile against Guice.
+
+Required migration boundary:
+- Remove Guice types from the public and internal Core runtime contracts that are needed for Core-only load/inspect/validate/execute.
+- Move Guice composition, scopes, module bindings and Guice-specific provider bridges into an optional adapter artifact, with an explicit dependency on Core.
+- Ensure Core's POM has no compile/runtime Guice dependency; a test-scoped Guice dependency is acceptable only where legacy tests genuinely require it and does not leak to consumers.
+- Verify the resolved consumer dependency tree, not only source imports: a minimal plain-Java fixture must compile and run with Guice absent from its classpath. A separate fixture should use a host-owned Guice injector through the adapter.
+- Do not create a new parent POM or flatten the current reactor as a shortcut. The artifact split must be designed and verified against the current reactor/publication model after the SPI decision.
+
+Evidence on current `main`:
+- `webharvest-core/pom.xml` blob `d6dd45ba5ee481b30fce3f07d4ce08a1b1ea45ed`: Guice dependency has no `<scope>` element.
+- Root `pom.xml` blob `dc944dc1a15a2c4eedecd270af2016a9ec03c0d4`: dependencyManagement pins Guice 5.1.0.
+- This is a POM/source inspection only; no dependency tree was resolved and no consumer fixture was built in this audit.
