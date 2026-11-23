@@ -497,3 +497,19 @@ The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), sections 15.26â€
 - **Time and control flow:** sleep must consume the same execution deadline/budget and remain interruptible. Loop iterations, materialized source items and accumulated output require bounded budgets. Negative/unbounded loop limits must be explicitly authorized or rejected by policy. Exit/stop outcomes must remain execution-scoped and distinct from host/runtime shutdown.
 
 These are capability contracts, not just descriptor labels. Built-in Core and external providers must receive the same host-controlled services, with lifecycle ownership defined by the neutral runtime API.
+
+
+### 9.7 Host-effect and nested-generation conformance
+
+The external provider fixture and built-in Core compatibility suite must verify the following against the same neutral service contracts:
+
+- HTTP method support is consistent across descriptor/schema/service; unsupported methods fail during structural/configuration validation rather than after network dispatch.
+- Timeout/deadline values reach the transport; connect/read/total deadlines, redirect destination revalidation, response byte ceilings, cancellation and status handling are tested with controlled local fixtures.
+- Redirects to loopback, link-local, private and otherwise denied destinations are rejected according to host policy, including multi-hop redirects and address changes. Authorization headers are not forwarded across origins unless the host policy explicitly allows it.
+- Oversized/chunked responses are stopped while streaming; response bodies and URL credentials/query tokens do not appear in logs.
+- Loop source and body child execution use the same pinned generation as the parent. Reconcile/update during an active loop must not mix generations; a nested include/source/body cannot silently observe the newly published generation.
+- Loop source materialization, iteration count, accumulated output and sleep consume bounded per-execution budgets; cancellation interrupts a long loop/sleep and releases generation/resource leases.
+- Output/logging is routed through the host-provided output service; restricted profiles can deny or redact it without changing process-global stdout/stderr.
+- Execution-scoped exit, cancellation and runtime shutdown remain distinguishable and do not terminate the host JVM or unrelated sessions.
+
+Use deterministic fake/loopback services and failure injection. Tests must assert the effective policy at the transport/output boundary, not only that descriptor metadata declares a permission. No such implementation or passing test is claimed by this design document.
