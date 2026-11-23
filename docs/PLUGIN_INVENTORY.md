@@ -1634,3 +1634,17 @@ The manual registrar was re-read and counted directly: **44 unique XML element n
 4. The crosswalk does not authorize deleting or moving any element. Preserve the 44 current mappings as compatibility baseline until a maintainer-approved migration table and contract fixtures exist.
 
 Audit limits: this pass inspected the 44 implementation sources and registrar mapping for injection annotations, direct nested-executor construction and prominent host-effect APIs; it did not execute tests, perform bytecode/dataflow analysis, or prove absence of indirect effects. Existing test-source presence and coverage caveats remain as documented in earlier sections.
+### 15.37 Correction: complete nested executor construction call-site set (2026-11-23)
+
+A follow-up search for fully-qualified as well as imported executor construction found an additional direct path that the earlier abbreviated lists did not enumerate. The inspected Core call-site set is:
+
+- `CallPlugin`: `new DefaultPluginBodyExecutor()` for function-body dispatch.
+- `IfPlugin`: `new org.webharvest.plugin.DefaultPluginBodyExecutor()` for selected-branch dispatch.
+- `CasePlugin`: `new DefaultPluginBodyExecutor()` for selected case/fallback branch dispatch.
+- `IncludePlugin`: `new DefaultPluginBodyExecutor()` for included configuration children.
+- `LoopPlugin`: `new DefaultPluginBodyExecutor()` for loop-body dispatch.
+- `RegexpPlugin`: two direct executor constructions for result/template dispatch.
+
+`TryPlugin` follows `AbstractPlugin.executeBody()` and does not construct a new executor at the inspected call site. This list is based on source text search in the 44 mapped Core implementation files, not bytecode/dataflow proof that no indirect executor factory exists elsewhere.
+
+Correction to 15.34: its nested-dispatch list was incomplete; the complete direct call-site list is the seven constructions above across six plugin classes. All must receive the same runtime provider factory, immutable registry generation, host policy, cancellation/deadline and shared budget. The detached default-constructor pattern must not survive the dynamic runtime migration.
