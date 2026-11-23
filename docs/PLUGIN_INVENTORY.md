@@ -784,3 +784,28 @@ recursion, concurrency and execution-time budgets.
 
 This table is a design aid for #346/#349/#350. It is not a statement that all
 listed hooks exist today, nor a maintainer-approved Core membership decision.
+
+
+
+### 15.8 Core artifact dependency footprint and boundary implications (2026-11-23)
+
+This is a **module-level direct dependency audit**, not a class-to-library attribution claim. The current `webharvest-core/pom.xml` at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944` declares the following production dependencies (test-scoped entries are excluded):
+
+| Dependency family | Direct Core POM declarations | Boundary implication to verify at call-site level |
+|---|---|---|
+| Logging / utility / collections | SLF4J API, Commons Lang 3, Commons IO, Commons Collections, Guava | Likely shared runtime infrastructure; retain only where actual Core call sites require them. |
+| JSON / data conversion | `org.json:json`, Gson | Determine whether conversion providers can be separated without breaking shared value/config contracts. |
+| HTML / parsing | TagSoup, Jsoup | HTML parsing/conversion is a candidate adapter capability; confirm shared parser use before moving. |
+| HTTP client | Apache HttpComponents 5 `httpclient5` | Outbound network capability should sit behind a host-policy-aware service; HTTP XML compatibility must remain. |
+| XML query / transformation | Saxon (base and DOM classifier) | XPath/XQuery/XSLT call sites and shared XML value contracts must be mapped before module separation. |
+| Script engines | BeanShell; Rhino Engine (runtime); Groovy + Groovy JSR-223 (runtime profile) | Script execution is a high-risk host capability; engine discovery and host object exposure need explicit policy. |
+| Discovery / DI / annotations | Reflections, Guice, `javax.annotation-api` | Reflections is not an acceptable substitute for the managed-artifact discovery contract; Guice/API dependencies may be shared Core infrastructure but provider construction must be host-controlled. |
+| Bytecode/test support | CGLIB `cglib-nodep` (production scope in current POM) | Confirm production call sites; avoid retaining test-era infrastructure in the minimal Core runtime without evidence. |
+
+The POM also declares test-only SLF4J Simple, WireMock and Mockito; these are not production runtime dependencies. The Groovy production profile is active unless `groovy.compatibility` is set, and declares the Groovy runtime and JSR-223 artifacts separately. The compatibility profile substitutes the configured Groovy compatibility version. These profile semantics must be preserved when evaluating any dependency split.
+
+**What this establishes:** Core currently carries direct runtime dependencies spanning HTTP, HTML parsing, XML transformation/query, scripting, reflection-based scanning and DI, in addition to execution primitives. Therefore, “move the optional plugin classes” is not a sufficient modularization plan. A boundary proposal must map (a) each implementation's direct imports/call sites, (b) shared Core callers and public value contracts, and (c) transitive dependency reachability before deciding whether a dependency belongs in Core, an adapter, or a host-provided service.
+
+**What this does not establish:** the table does not prove that each listed dependency is used by a particular plugin, that every dependency can be removed independently, or that any Core/extension membership decision has been approved. The next audit step is per-class import/call-site attribution for the dependency-heavy capabilities, followed by test coverage and compatibility mapping. No source or POM changes are authorized by this inventory.
+
+Evidence: `webharvest-core/pom.xml` fetched from the current `main` branch at the baseline above; the production Groovy dependencies are declared in the `groovy-production-runtime` profile. Test dependencies are separately scoped as `test`.
