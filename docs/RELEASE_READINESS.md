@@ -1,8 +1,8 @@
 # Release and distribution readiness assessment
 
 **Issue:** [#88](https://github.com/web-harvest/web-harvest/issues/88) (parent [#84](https://github.com/web-harvest/web-harvest/issues/84))  
-**Inspected against:** `main` @ `383db9e3b14d40dec6e19d47913df5157d9f91c0`  
-**Assessment date:** 2026-11-22  
+**Inspected against:** `main` @ `c84761a3396bcabae656d3a3ef75c5f2ed7a71d1`  
+**Assessment date:** 2026-11-21  
 **Recommendation:** **NO-GO** for GitHub Release or Maven publication.
 
 This assessment supersedes the earlier baseline references and Java 11 statements in this document. It is a source/CI checkpoint, not a release approval.
@@ -172,37 +172,60 @@ The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is 
 - [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
 - No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
 
+## 2026-11-23 checkpoint — combined shaded distribution gates and release engineering
 
-## 2026-11-22 current-main distribution checkpoint — `383db9e3b14d40dec6e19d47913df5157d9f91c0`
+**Canonical source baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Combined technical candidate:** [PR #340](https://github.com/web-harvest/web-harvest/pull/340), exact head `788309118af09a4198f35044b0dc3ccc4a60b7e0`.  
+**Recommendation remains: NO-GO** for GitHub Release, Maven Central publication or website deployment.
 
-This section supersedes the earlier artifact-count and Jetty-attribution status where they conflict. Earlier checkpoints are retained as historical evidence. **Recommendation remains NO-GO.**
+### Combined exact-head CI and artifact inspection
 
-### Merged provenance baseline
+All three workflows completed successfully on the same PR #340 head:
+- Java 17 full reactor, static analysis, Javadoc, packaged CLI/IDE smoke, shaded provenance, CycloneDX and distribution OSV — [run 45121496312](https://github.com/web-harvest/web-harvest/actions/runs/45121496312).
+- Workflow lint and pinned action smoke — [run 45121496291](https://github.com/web-harvest/web-harvest/actions/runs/45121496291).
+- Aggregate production/test SBOM and base/head OSV comparison — [run 45121496426](https://github.com/web-harvest/web-harvest/actions/runs/45121496426).
 
-- PR [#322](https://github.com/web-harvest/web-harvest/pull/322) merged as `84a7e7d3b747e0af3929ec76cbad0bb372a50cd6`, adding extraction of actual shaded LICENSE/NOTICE payloads and embedded Maven POM metadata with per-resource hashes.
-- PR [#324](https://github.com/web-harvest/web-harvest/pull/324) merged as `6f30065ca0a19fb190a0f49c56c1fbdb2d6280bf`, recording release-readiness evidence.
-- PR [#325](https://github.com/web-harvest/web-harvest/pull/325) merged as `383db9e3b14d40dec6e19d47913df5157d9f91c0`, adding deterministic CLI/IDE shaded provenance reports and CLI relocated-Jetty module attribution.
+Inspected artifacts:
+- `java17-reactor-diagnostics`, ID `14794145976`, SHA-256 `2dc996b40c7566979da67c8cb1e6dcd40bb759758f0a1696461ccb1acb0c63f8`.
+- `osv-cyclonedx-evidence`, ID `14794275559`, SHA-256 `d6803f899ee8ddf1fc8fb70dec870fa4a12b1f927cb2429177e90a584bfd9522`.
 
-Exact PR #325 artifact facts (from its retained Java 17 diagnostics):
-- CLI archive SHA-256: `57ba3732db69a77370768a15fa6345e5b34edba9a43f3e6b983938d903063f72`; 55 embedded Maven coordinates, 47 exact aggregate-SBOM PURL matches and 8 Jetty client/WebSocket/compression deltas. All 1,280 relocated Jetty classes map to 12 pinned upstream modules.
-- IDE archive SHA-256: `d95d5740093733339918faa6a31fb2bb5e6368c3b6ad5875fd75092dff818c26`; 42 embedded Maven coordinates, 42 aggregate-SBOM PURL matches. The initial report mapped 1,015 of 1,931 IDE Jetty classes; this is superseded by the open PR #326 verification below.
-- The provenance JSON reports show no unresolved license-evidence source for the 55 CLI and 42 IDE coordinates. This means evidence is present (embedded POM, effective aggregate SBOM or pinned Jetty upstream project model); it is not the final legal choice/distribution-obligation sign-off. Jetty's upstream model declares EPL-2.0 OR Apache-2.0 and the applicable redistribution disposition remains to be documented.
+| Gate | Exact candidate evidence | Result |
+|---|---|---|
+| CLI distribution CycloneDX | 72 components, 72 unique PURLs; no missing license entries | PASS |
+| IDE distribution CycloneDX | 54 components, 54 unique PURLs; no missing license entries | PASS |
+| CLI OSV | 72 scanned packages; exact PURL set equality with BOM; zero vulnerability findings | PASS |
+| IDE OSV | 54 scanned packages; exact PURL set equality with BOM; zero vulnerability findings | PASS |
+| Aggregate OSV | Base/head production 85 packages each; base/head test 26 each; all four scanner exit codes 0; zero vulnerabilities and zero newly introduced findings | PASS |
+| Class-byte origin | CLI 20,307 exact matches + 1,280 separately mapped relocated Jetty + 4 first-party; IDE 17,512 exact matches + 23 first-party; zero unmatched/ambiguous | PASS |
+| Jetty NOTICE | Same upstream payload in CLI and IDE, SHA-256 `ce642d8c8861ef05cf94c010a2d707425ed086d56641c127d0636fd0ac031e77` | PASS |
+| Javadoc JAR audit | All eight generated Javadoc JARs contain `index.html` | PASS |
 
-### Open exact-head distribution work
+CLI archive SHA-256: `04cdae0fe3a21e1279ad908757ff10b7f85c8d472f613acac2fa46f086502aa3`.  
+IDE archive SHA-256: `6b0275c508ed64f2f38257da0138a34fb1a08e1731270794a886d8c879a8904c`.
 
-- PR [#326](https://github.com/web-harvest/web-harvest/pull/326), head `85abc5a8bbac4f9070ec8c6cb9af19136c9e246b`, has all four required checks green: full Java 17 reactor/static analysis [45029525490](https://github.com/web-harvest/web-harvest/actions/runs/45029525490), aggregate SBOM scan [45029525483](https://github.com/web-harvest/web-harvest/actions/runs/45029525483), workflow validation [45029525468](https://github.com/web-harvest/web-harvest/actions/runs/45029525468), and Actions lockfile [45029525499](https://github.com/web-harvest/web-harvest/actions/runs/45029525499). Its exact-artifact gate verifies CLI 1,280/1,280 and IDE 1,931/1,931 Jetty classes mapped, with zero unmapped. PR remains open and unmerged; this is package-prefix/source-module correlation, not byte-identical upstream JAR attestation.
-- The pinned Jetty 12.1.15 upstream `NOTICE.txt` (tag `jetty-12.1.15`, commit `770f5e4d1c39673d6356163118a1e6bf1117ced3`, Git blob `ea13d34f3c2e9a22eb2b5c9fd1919f7f6b9d61db`) was not present in either shaded distribution. Existing `NOTICE.md`/`NOTICE.txt` files belong to Jakarta Mail, Eclipse Servlet, Commons Lang and other components; they must not be misattributed to Jetty.
-- PR [#333](https://github.com/web-harvest/web-harvest/pull/333), head `e5305d4be9d78e32ffd6558bd3b20335b8ebf25c`, has passed the full Java 17 reactor/package/provenance gate [45041148333](https://github.com/web-harvest/web-harvest/actions/runs/45041148333), aggregate SBOM scan [45041148318](https://github.com/web-harvest/web-harvest/actions/runs/45041148318), workflow validation [45041148364](https://github.com/web-harvest/web-harvest/actions/runs/45041148364), EventBus regression [45041148328](https://github.com/web-harvest/web-harvest/actions/runs/45041148328), logging/shaded audit [45041148278](https://github.com/web-harvest/web-harvest/actions/runs/45041148278), dependency inventory [45041148266](https://github.com/web-harvest/web-harvest/actions/runs/45041148266) and Actions lockfile [45041148341](https://github.com/web-harvest/web-harvest/actions/runs/45041148341). The optional manual Database diagnostic was skipped and is not counted as a pass.
-- Retained artifact `14761394411` confirms the exact CLI and IDE JARs both contain `META-INF/NOTICE-jetty-12.1.15.txt` with SHA-256 `ce642d8c8861ef05cf94c010a2d707425ed086d56641c127d0636fd0ac031e77`, identical to the pinned upstream file. The artifact's CLI/IDE archive SHA-256 values are `f875abb8db3b946fbf3191d7da5781a191bf415c10d126c5bee2bf57a4ba422b` and `d0be98a151d55ad1d31e3041ecaa7405c283bd532f952780dbca32e12f7994fd`.
-- Before/after resource-manifest comparison confirms all 13 pre-existing CLI and 12 pre-existing IDE legal resources remain present with unchanged hashes; exactly one distinct Jetty notice was added to each distribution. PR #333 remains open/unmerged, so this is PR-head evidence rather than current-main release evidence.
+Guice 5.1.0 license evidence is linked to the resolved `guice-parent:5.1.0` POM chain with source and parent hashes. IDE `jetty-jakarta-servlet-api:5.0.2` retains both upstream-declared Apache-2.0 and EPL-1.0 choices with its `jetty-toolchain:1.6` parent chain. This is technical evidence only, not a legal choice or sign-off.
 
-### Remaining P0/P1 release blockers
+Aggregate-vs-distribution comparison is PURL membership only; it is not proof of package-content equivalence. The exact candidate is a draft PR and has not been merged.
 
-1. Complete PR #326 review and merge only after maintainer review; verify the resulting exact main artifact report.
-2. Complete maintainer review/merge of PR #333 only when approved, then repeat the exact archive-level Jetty NOTICE hash and pre-existing-resource preservation checks on current main. PR-head CI already passes, but does not yet establish current-main evidence.
-3. Produce or formally specify distribution-specific CycloneDX SBOMs / equivalent auditable component manifests tied to final archive hashes; classify every CLI/IDE delta against the aggregate production SBOM and distinguish embedded metadata from proven code attribution.
-4. Record the per-component license choice/disposition and applicable notice obligations, including the Jetty dual-license choice. Evidence collection is not a legal opinion.
-5. Rebuild CLI/IDE from one exact candidate SHA, retain final hashes/reports and rerun packaged startup/compatibility smoke tests.
-6. Finish Central Publisher Portal bundle/source/Javadoc/signature verification in non-upload mode, version/changelog/docs reconciliation and candidate-freeze checks.
+### Release engineering findings on current main
 
-**Release remains NO-GO.** No tag, GitHub Release, Maven publication, signing/credential change or website deployment is authorized by this assessment.
+The root POM still contains legacy publication wiring:
+- `distributionManagement` targets `oss.sonatype.org/content/repositories/snapshots/` and `oss.sonatype.org/service/local/staging/deploy/maven2/`.
+- The `release` profile binds `maven-gpg-plugin:1.4` signing to `verify`.
+- `maven-source-plugin:2.0.4` is pinned in plugin management; `maven-javadoc-plugin:3.12.0` is pinned.
+- The official `org.sonatype.central:central-publishing-maven-plugin` is not configured.
+- The inspected PR #340 diagnostics artifact retained all eight Javadoc JARs but did not retain source JARs, detached `.asc` signatures or a Central bundle. This is missing retained evidence, not proof those files were not generated during Maven execution.
+
+Sonatype's current documentation describes the official Central Publishing Maven plugin, manual publishing as the default (`autoPublish=false`), and bundle-only generation using `skipUpload=true`. The plugin does not generate all source/Javadoc/signature prerequisites by itself. References: [Central Publishing Maven plugin](https://central.sonatype.org/publish/publish-portal-maven/), [OSSRH sunset](https://central.sonatype.org/publish/publish-maven/), and [Apache Maven Central requirements](https://maven.apache.org/repository/guide-central-repository-upload.html).
+
+Follow-up [#341](https://github.com/web-harvest/web-harvest/issues/341) owns the bounded migration: reactor GAV/publication inventory, modern pinned plugins, safe non-upload bundle generation, complete artifact manifest and CI proof that no upload/publish action runs. No Portal credentials or upload endpoint were used during this inspection.
+
+### Remaining release blockers and decision
+
+1. Complete #341 and inspect the non-upload Central bundle on one exact candidate SHA.
+2. Obtain independent legal/maintainer review of the third-party license choices and notice obligations; technical metadata is not legal approval.
+3. Reconcile CHANGELOG, Java 17 compatibility/installation documentation, release matrix and Maven coordinates against the exact candidate.
+4. Recheck current GitHub tags/releases and authoritative Maven Central availability for intended `org.webharvest` GAVs at candidate freeze; historical `net.sourceforge.web-harvest` coordinates are not proof of current publication.
+5. Obtain explicit maintainer approval for the exact release action.
+
+**RELEASE = NO-GO.** No merge of #340, tag, GitHub Release, Maven Central upload/publication, signing with maintainer keys, credential change or website deployment has been performed or authorized.
