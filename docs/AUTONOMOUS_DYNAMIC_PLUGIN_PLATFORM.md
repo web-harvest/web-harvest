@@ -1077,3 +1077,56 @@ This section audits the lifecycle of Guice-managed EventBus subscribers and Scra
 - ScrapingAwareTypeListenerTest.java: 6d854e1107fc16d42b31f1207021e3d6e59faaae
 
 Source inspection only. No runtime implementation, test execution or leak/concurrency reproduction is included in this checkpoint.
+
+## 7.27 Execution-context confinement, Guice scope boundaries and session registry identity
+
+This section distinguishes genuinely thread-confined legacy execution objects from process-wide state, and records where the current code does not enforce that confinement. The intended target remains concurrent sessions on a shared service EventBus; per-session mutable execution context must not be concurrently accessed unless its API explicitly supports it.
+
+### ScraperContext: mutable state is safe only under an undocumented single-execution-thread assumption
+
+- ScraperContext stores variable state in plain HashMap<String, Stack<Variable>>, with a separate mutable Stack<ScopeFrame>, HashSet and HashMap per nested frame. setLocalVar(), getVar(), replaceExistingVar(), iteration and executeWithinNewContext() do not synchronize these structures or publish immutable snapshots.
+- executeWithinNewContext() mutates the shared scopeStack and centralReferenceTable. Two threads entering nested contexts on the same ScraperContext can interleave pushes/pops and variable stack changes, causing one execution to observe or remove another execution's variables. This is not a claim that ordinary single-threaded nested plugin execution is broken; it means concurrent use of one context is not supported by the implementation and must be prohibited or redesigned.
+- ScraperContext exposes mutable setters for config, EventBus and ScraperSession. The source comment says EventBus/session are set once and then immutable, but setters do not enforce one-time assignment, immutability, visibility or session/context identity. A caller can replace these references while another thread is using the context.
+- ScraperModule's ContextFactory obtains a fresh ScraperContext from an unscoped Provider and sets its Config, which supports a per-execution-context construction model. However, the type/API does not encode thread confinement, ownership, or generation identity, and the inspected factory does not itself bind the created context to exactly one worker/session.
+
+### Guice ScrapingScope: ThreadLocal isolates threads, not asynchronous execution propagation
+
+- AttributeHolderScope stores a Stack of AttributeHolder instances in a ThreadLocal. Nested scope entry/exit is therefore isolated by Java thread, and scoped object creation synchronizes on the current holder's attribute map.
+- This is not asynchronous context propagation. If execution moves to another executor thread, that thread has no current ScrapingScope unless it explicitly enters one with the correct holder. Conversely, reusing a worker thread without balanced exit can expose stale scope state to later tasks.
+- exit() pops the holder but does not remove the ThreadLocal when its stack becomes empty. Long-lived executor threads can retain an empty ThreadLocal/Stack allocation; more importantly, any unbalanced enter/exit retains the holder and its scoped objects on that worker thread.
+- The scope is static/shared at ScraperModule class level, but the per-thread stack is the isolation boundary. Do not treat a shared ScraperScope instance as a shared scope context, nor assume it follows a session across thread hops.
+
+### Scope-bound status and Monitor
+
+- ScraperModule binds Monitor, EventBasedStatusHolder and RunningStatusGuard in ScrapingScope, so their intended lifetime is one thread's active scraping scope rather than one process-wide singleton.
+- EventBasedStatusHolder keeps a plain mutable ScraperState and changes it in EventBus subscriber methods. This is acceptable only if event delivery and reads follow the intended scope/thread discipline; it is not independently thread-safe, and the handlers do not inspect an execution/session identity in the event payload.
+- The monitor coordinates pause/resume transitions within the scope, but it does not establish worker cancellation, session ownership, or safe cross-thread context propagation. Status pause/resume and session terminal state remain separate state machines.
+
+### SessionRegistry: concurrent map, but identity and lifecycle semantics are incomplete
+
+- SessionRegistryImpl uses ConcurrentHashMap and returns detached collection snapshots; these are positive map-level properties.
+- register() uses put(sessionId, session), silently replacing any existing session with the same ID. A late registration can replace a live session; a later unregister(sessionId) can then remove whichever instance currently occupies that key, not necessarily the instance that originally registered it.
+- unregister() and clear() only remove references from the registry. They do not request cancellation, await quiescence, retire resources, unregister subscribers or preserve a termination record. Registry membership is not execution ownership or proof of lifecycle completion.
+- The returned snapshots contain mutable ScraperSession objects. Snapshot collection structure is detached, but session status, metrics and context continue to change concurrently; callers must not mistake a list snapshot for an immutable point-in-time session-state snapshot.
+
+### Required execution-context and scope contract
+
+1. Give each execution context an immutable owner identity: runtime ID, session ID and execution generation. Bind the context once before publication; reject reassignment to another session/generation.
+2. Explicitly choose one of two models for context variables: strict single-worker thread confinement with assertions that reject cross-thread use, or a redesigned execution-local context stack that supports documented concurrency. Do not merely replace HashMap with ConcurrentHashMap: nested variable-stack semantics and scope frames require atomic ownership.
+3. For asynchronous work, propagate an explicit scope/context token and enter/exit it around each task. Never rely on ThreadLocal state following an executor task. Ensure exit is unconditional and remove the ThreadLocal when the stack becomes empty.
+4. Keep ScrapingScope's pause/status objects scoped to a single execution owner. Define event identity and reject stale or cross-session pause/resume/stop events; keep pause state separate from session cancellation and worker termination.
+5. Change SessionRegistry registration to reject duplicate IDs or use putIfAbsent with an explicit collision result. Make unregister identity-aware (session ID plus exact instance/generation) and separate registry removal from session termination/resource retirement.
+6. Add deterministic tests: same ScraperContext accessed from two threads; nested variable scopes under interleaving; context reassignment after binding; scope propagation across executor threads; unbalanced scope cleanup and ThreadLocal removal; stale pause/resume event delivery; duplicate session-ID registration and stale unregister; registry snapshot versus live mutable session state.
+
+### Exact inspected source blobs
+
+- ScraperContext.java: 6273525f5566ef59575acb593dfec8f3ad3b5e21
+- ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e
+- AttributeHolderScope.java: 11a39c99e517ae9ae1ba09cf69a885b636465b64
+- ScopeAttributeHolder.java: 9267c320c96ee4b956eb0d24619b60aeaa258352
+- EventBasedStatusHolder.java: 34cc3dadef3f2d651a463bf28192b64765eea70e
+- SessionRegistryImpl.java: 8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124
+- ScraperSessionImpl.java: 78d07d1c485ea215d68d6d415f36b2be0c180a4f
+- SessionMetrics.java: 1204e7566ab56760323703b031e7985bf635feed
+
+Source inspection only. No runtime implementation, test execution, stress test or ThreadLocal leak reproduction is included in this checkpoint.
