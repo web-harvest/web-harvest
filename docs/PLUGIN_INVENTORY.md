@@ -3508,3 +3508,48 @@ Source/test blobs: `ScraperScopeTest` `f9b14478a5acf5ce1cf072950c7ebe5b3fe498a1`
 6. In the IDE path, instantiate a real Guice-managed subscriber and assert its bus identity is exactly the bus on the job context/session; repeat with two simultaneous jobs and dispose each independently.
 
 **Evidence limits and gate:** source/test inspection only; tests/builds/runtime experiments were not executed. No claim is made that a cross-runtime leak or event race has been reproduced. No production/POM/test changes. Runtime changes remain STOP pending #346 acceptance and #93/#94 prerequisites.
+
+
+## 15.79 Additional legacy scope lifecycle and runtime-composition call sites (2026-11-24)
+
+The targeted production-source census uncovered a second legacy lifecycle registry in Guice scope management, plus several direct consumers that must be included in the migration map. These are additional call sites beyond the EventBus and plugin registry paths already recorded.
+
+### A. ScrapingAwareHelper is another process/injector-owned mutable subscriber list
+
+- `ScrapingInterceptor.invoke` obtains the injector through `InjectorHelper.getInjector()`, resolves `ScraperScope` and a singleton `ScrapingAwareHelper`, enters the scope, calls `helper.onBeforeScraping(harvester)`, invokes the Harvester method, then calls `helper.onAfterScraping(harvester)` and `scope.exit()` in its `finally` block.
+- `ScrapingAwareHelper` stores listeners in an ordinary `ArrayList`. Its own source comments explicitly mark registration as not thread-safe and note that unregister is missing. The inspected API exposes `addListener` but no removal/disposal method.
+- The helper is a Guice singleton and iterates the mutable list while callbacks execute. Concurrent registration can race iteration; repeated runtime creation can retain listener instances for the injector lifetime. Neither property has a lifecycle/concurrency test in the inspected class.
+- Cleanup ordering has an additional failure mode: `helper.onAfterScraping(harvester)` runs before `scope.exit()` in the same `finally` block. If an after-callback throws, the subsequent scope exit is skipped. This is a source-derived cleanup hazard, not a reproduced leak.
+- Target migration must not create a parallel listener registry. Existing ScrapingAware callbacks should become owned runtime/scope lifecycle subscriptions with deterministic close, concurrency-safe snapshots, and exception-safe scope unwinding.
+
+Source blob: `ScrapingInterceptor` `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`.
+
+### B. Additional direct runtime and discovery consumers
+
+| Consumer | Current direct dependency | Migration constraint |
+|---|---|---|
+| `DefaultPluginBodyExecutor` | `CorePluginRegistry.getInstance()` and `InjectorHelper.getInjector()` for child dispatch/construction | Resolve from the session-pinned generation and explicit runtime activation manager; no global injector fallback |
+| `Scraper` | Default constructor creates a new EventBus; execution reads the global CorePluginRegistry | Runtime factory must inject one runtime-owned event service and pinned plugin generation; legacy constructor remains an adapter only |
+| `DefaultHarvest` | Legacy `HandlerHolder` and `EventSink` | Preserve Harvester callbacks/events through adapters over the canonical runtime lifecycle/event service |
+| `ScrapingInterceptor` | Static injector lookup, scope creation, singleton `ScrapingAwareHelper` | Replace implicit static lookup with explicit runtime composition and owned scope lifecycle |
+| `PluginMetadataJsonGenerator` | `PluginRegistryHolder.getInstance()` | Project metadata from the same immutable published generation as XML dispatch and IDE discovery |
+| IDE `PluginMetadataServlet` | Catalog path plus fallback to `CorePluginRegistry` | Remove independent hard-coded fallback after generation-backed read model is available |
+| IDE `SchemaValidator` | Captures `CorePluginRegistry.getInstance()` in its constructor | Structural validation and runtime binding must consume the same generation/compatibility index |
+| `PluginPackageScanner` | Accepts and mutates a `CorePluginRegistry` directly | Preserve legacy scan API only as a compatibility adapter; provider contributions must be validated before generation publication |
+| Database `StandaloneConnectionPool` | Registers itself on a session EventBus and handles session lifecycle events | Preserve scoped resource cleanup while moving registration to explicit subscription handles owned by the runtime/session |
+
+Source blobs: `DefaultPluginBodyExecutor` `0116211ed31986b757f6f9e4bb5689f199b54f69`; `Scraper` `eef7b989e6f44cddf0e99fb3967dcbde6e7a3de`; `DefaultHarvest` `f353bf980319e11e06045ceaeed688b27e57fa1d`; `PluginMetadataJsonGenerator` `<source inspected in the same baseline; see section 15.68>`; IDE `SchemaValidator` `b435fb62bce5d0d87981817a427ebc013cb93759`; `PluginPackageScanner` `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232`; Database `StandaloneConnectionPool` `<source inspected in the same baseline; see section 15.57>`.
+
+### C. EventBus immutability is documented but not enforced by ScraperContext
+
+- `DynamicScopeContext` documents the EventBus reference as immutable and set once during context initialization, and notes that Guava EventBus publication is thread-safe.
+- The concrete `ScraperContext.setEventBus` implementation is an unconditional assignment to a mutable field; it does not reject a second assignment or establish safe publication. This is not evidence that callers currently mutate it concurrently, but the documented set-once invariant is not enforced by this implementation.
+- The new runtime should pass an immutable event-service reference through context construction rather than expose a mutable setter. Thread-safe publication on the bus must not be confused with thread-safe mutation of the execution context or its variables.
+
+Source blobs: `DynamicScopeContext` `f5ca038f25442f597986bf64ebc65e958b92a010`; `ScraperContext` `6273525f5566ef59575acb593dfec8f3ad3b5e21`.
+
+### D. Census boundary and next verification
+
+This pass fetched and inspected targeted production files at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`, including Core IoC/runtime/plugin packages, the IDE execution/validation/metadata paths and the Database integration. It is not a claim that every one of the 352 production Java files or external embedding consumers has been exhaustively call-site scanned. GitHub code search returned no indexed results for the custom DI identifiers, so those zero-result searches are not treated as proof of absence.
+
+Before any compatibility adapter is removed, complete a reproducible repository-wide source-reference inventory for the named APIs and their reflective/configuration entry points, then add a public API/downstream consumer review. No runtime/POM/test changes are made; tests/builds/runtime experiments were not executed. Implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
