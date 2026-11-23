@@ -471,3 +471,17 @@ The host composition API must provide explicit, policy-bearing services (or equi
 Descriptors may declare requested effects and resource ceilings, but the host grants and enforces them. Built-in Core operations and external providers must use the same service contracts; an extension must not gain a broader filesystem/network/script capability by calling JDK or third-party APIs directly.
 
 The compatibility plan must preserve existing XML behavior where explicitly approved, while restricted profiles can deny effects predictably and expose structured diagnostics. No service implementation or migration is claimed here; this is a required design input for #346, #349 and #350.
+
+
+### 7.5.1 Resolved-target authorization is mandatory
+
+The follow-up helper trace in PR #351 section 15.25 confirms that current path helpers are not security boundaries: filename adaptation only changes separators; relative filesystem includes are concatenated with the base path; absolute paths are accepted unchanged; and URL includes accept a full URL unchanged. URL dot-segment normalization does not constrain destination hosts, schemes, resolved IP addresses or redirects.
+
+Therefore:
+- authorize canonical filesystem targets after path resolution, with symlink/race-safe enforcement at open/list/create time;
+- reject or explicitly grant absolute paths and traversal outside configured roots;
+- authorize URL scheme, hostname, port and resolved address classes, and revalidate every redirect/connection target;
+- apply byte/entry/depth budgets during reads and recursive enumeration, not after materializing the result;
+- never treat URL normalization or a base URL as an SSRF control.
+
+The external fixture and built-in compatibility suite must include traversal, absolute-path, symlink, redirect-to-private-address, DNS/address-change and oversized recursive-list cases. This refines the requirements in 7.5; no implementation is present or claimed.
