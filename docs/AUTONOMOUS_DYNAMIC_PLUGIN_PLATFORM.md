@@ -748,3 +748,15 @@ The repository contains a parallel legacy factory/registry API distinct from the
 - The parallel DefaultPluginDependencyInjector injects annotated fields reflectively and maintains singleton/provider maps, but prior source audit established that this injector is not wired into the active body executor. It is not a substitute for the runtime-neutral host provider contract.
 
 This is not evidence that this factory is the active CLI execution path. The dynamic platform must make an explicit compatibility decision: retire this API, or adapt it as a facade over the same descriptor-only authoritative registry and provider/lifecycle model. It must not retain a second source of plugin identity, construction semantics or disposal ownership. Conformance should cover registry registration/unregistration, retained prototype disposal, factory-created instance ownership, failed preparation rollback and API parity. Source inspection only; tests not run.
+
+
+## 7.19 Browser state needs runtime-scoped ownership, not a process-wide shutdown hook
+
+The current `WebBrowserPlugin` implementation has useful session cleanup but does not yet provide a safe embedding/runtime ownership boundary:
+
+- `SESSION_PAGES` and `CONTEXT_PAGES` are static process-wide maps. The session map is keyed by session ID alone, without runtime identity.
+- Session-backed `BrowserSessionState` registers with the session EventBus and closes/unregisters on completed, failed and cancelled events. A terminal-state check after lookup also closes a state if terminal transition races with registration. Preserve these protections.
+- `closeAllPages()` closes every browser state in the process. It cannot be used as an individual WebHarvest runtime's close operation when multiple runtimes share one JVM.
+- The legacy sessionless-context map has weak keys but no explicit context-disposal event in the inspected class. Weak-key collection does not itself guarantee `WebClient.close()` is invoked.
+
+Required target: browser resources are owned by a runtime-scoped service and keyed by runtime + session identity; session completion closes only that session; runtime close closes only that runtime's remaining sessions after admission/drain; host-wide shutdown is a separate explicit operation. Keep the terminal-race/idempotent-close guarantees. Conformance must prove runtime A close leaves runtime B's browser pages usable, and that sessionless compatibility either has deterministic disposal or is explicitly deprecated/restricted. Source inspection only; no tests run. Source blob: `WebBrowserPlugin.java` `be7675390275b16ed63e5515a11969585acd2de6`.
