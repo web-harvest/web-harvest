@@ -57,3 +57,23 @@ Core currently owns Guice-facing runtime classes and module wiring. The above st
 - `BaseTemplater.java`: `dacefb8faec186176148ab2a0cbc5a538941d4c5`
 
 This is source inspection only. No tests were run, no runtime code or POM was changed, and no claim is made that the proposed target contract is already implemented.
+
+
+## Additional active consumers and listener-retention findings
+
+A follow-up read of the actual Guice type listeners and interceptor confirms that the global injector seam is actively consumed, not just exposed as a utility:
+
+- `ScrapingInterceptor.invoke()` calls `InjectorHelper.getInjector()` and uses that injector to resolve `ScraperScope` and `ScrapingAwareHelper` before entering the scope. Therefore a method intercepted by runtime A can resolve scope/listener services from the most recently injected runtime B.
+- `EventBusTypeListener.afterInjection()` calls `InjectorHelper.getInjector().getInstance(EventBus.class).register(i)`. An object created by one injector can consequently be registered with the EventBus obtained from another runtime after the static injector reference has been overwritten.
+- `ScrapingModule` installs both listeners for each injector; their callback code does not capture the owning injector as an instance field. This makes the global lookup especially consequential for embedded multi-injector use.
+- `ScrapingAwareTypeListener` adds detected instances to the injector-scoped `ScrapingAwareHelper`. That helper stores listeners in a mutable `ArrayList`; registration is explicitly marked not thread-safe, and there is no unregister operation. The source documentation itself notes the missing reverse process. Runtime disposal therefore needs listener deregistration and subscriber unregistration, not just injector garbage collection.
+- `EventBusTypeListener` registers subscribers but the inspected listener has no corresponding unregister/disposal callback. EventBus ownership and subscriber lifetime need an explicit runtime lifecycle contract.
+
+This expands the required two-runtime tests: invoke an AOP-intercepted Harvester from each runtime after constructing both injectors; create a subscriber through A and verify it registers only with A's EventBus; close A and prove its subscribers/listeners are detached while B remains operational.
+
+Additional source blobs:
+- `ScrapingInterceptor.java`: `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`
+- `ScrapingAwareTypeListener.java`: `4ed97073d64878be10cd4798c47b56ecd169f1cf`
+- `EventBusTypeListener.java`: `3b368eb75ce842f3db6a67b1e9424f644b341824`
+- `PostConstructListener.java`: `7d3a23788e96f4507d51f88c6dc5b21f1dc4e49b`
+- `DefaultHarvesterFactory.java`: `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`
