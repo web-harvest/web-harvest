@@ -539,3 +539,12 @@ The source audit in PR #351 section 15.29 confirms that the current `HeaderPrese
 The neutral transport contract must define an origin as scheme + host + effective port and strip Authorization, Proxy-Authorization, Cookie and configured secret headers when a redirect changes origin, by default. Host policy may grant a narrowly scoped exception, but it must be explicit, auditable and bound to the destination. Redirect loops, hop count, scheme downgrade, DNS/address changes and destination policy must be enforced in the transport itself.
 
 The conformance suite must use two independent loopback origins (different ports) and prove secret-header stripping across cross-origin and multi-hop redirects, while separately testing same-origin preservation where allowed. A fake `HttpService` test that only verifies the plugin forwards a verb does not prove the concrete transport supports that verb; real `HttpServiceImpl` transport tests are mandatory.
+
+
+### 9.8 HTTP transport tests must exercise the real implementation
+
+- Use two local HTTP servers on distinct ports as separate origins. Redirect from origin A to B and assert that Authorization, Cookie, Proxy-Authorization and configured secret headers are removed unless a destination-specific host grant explicitly permits forwarding.
+- Test same-origin preservation separately from cross-origin stripping; do not infer one from the other. Include multi-hop redirects, HTTPS-to-HTTP downgrade policy, redirect hop limits and denied private/link-local targets.
+- Exercise every advertised HTTP method through the concrete `HttpServiceImpl`; plugin tests with a recording/mock `HttpService` only verify adapter forwarding and cannot establish transport support.
+- Verify configured request deadlines actually reach the client, response bodies are bounded while streaming, cancellation aborts in-flight I/O, and logs redact query credentials and response content.
+- Keep the test deterministic and offline; no public internet dependency. Test source presence is not a pass—release evidence must include successful execution on the exact candidate commit.
