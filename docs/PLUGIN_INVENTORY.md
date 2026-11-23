@@ -2855,3 +2855,34 @@ The following defaults are recommended to make maintainer review concrete. They 
 5. Freeze the public API only after the fixture proves independent compilation and the compatibility policy is documented.
 
 **Decision status: REVIEW INPUT ONLY.** These defaults are recommendations, not maintainer decisions. No public API, descriptor schema, Java interface, module, POM, runtime code or test was created or changed.
+
+
+## 15.65 P0 acceptance traceability and implementation entry gate (2026-11-23)
+
+This matrix maps the current documentation evidence to the actual acceptance criteria of #93, #346–#350 and parent #94. A documented requirement is not a passed test. “Covered in design” must not be reported as “implemented” or “verified”.
+
+| Gate / issue | Evidence now available | Still missing before acceptance | Current disposition |
+|---|---|---|---|
+| #93 — inventory and Core boundary | Sections 15.32, 15.45–15.50 and 15.63: exact 44-name registrar inventory, ten optional entry points, three additional Core-package classes, source/POM boundary and proposed destination for every candidate; CORE_PLUGIN_RUNTIME_EVIDENCE.md test map. | Maintainer decision on minimal Core membership; explicit compatibility profile/default enablement; approval of optional integration boundary and set-var; confirmation whether any current Core host-effect capability is optional by default. | **STOP — proposal ready for review, not approved.** |
+| #346 — descriptor and SPI | Sections 15.50, 15.60–15.62 and 15.64: required descriptor fields, provider/runtime boundary, lifecycle, compatibility, conservative defaults, trust and permission model. | Maintainer acceptance; actual versioned schema and Java API; serialization/canonicalization and compatibility tests; compiling built-in and external examples; explicit public binary-compatibility policy. | **STOP — design candidate only.** |
+| #347 — discovery and registry | Sections 15.51–15.53 and 15.62: current registry/scanner defects; descriptor-first discovery; immutable generations, atomic publication, last-known-good, generation pinning and retirement contract. | Implementation against accepted SPI; managed artifact source/reconciliation; real add/update/remove/re-add; atomic rollback; two-runtime and classloader/resource-drain conformance. | **STOP — no implementation authorized.** |
+| #348 — semantic/runtime parity | Sections 15.32, 15.62 and 15.63: executable vs declarative XML roles; one-generation projection principle; exact 44-name compatibility evidence. | Registry-backed Semantic Model/catalog/inspection/validation; snapshot token in inspection and validation; exact set-equality tests across descriptor, semantic, schema, validation and dispatch; external enabled/disabled fixture. | **STOP — contract only.** |
+| #349 — policy and lifecycle | Sections 15.6–15.7 and 15.54–15.61: side-effect inventory; host-effect boundaries; GRACE/KILL; cancellation/quiescence; interruption, resource, deadline, effect and legacy-profile constraints. | Actual host service enforcement and default profile; denied-by-default and unknown-permission tests; deterministic cleanup/fault injection; capability conformance evidence; process worker/OS policy if untrusted providers are supported. | **STOP — requirements only.** |
+| #350 — conformance and release evidence | Sections 15.45–15.61 plus 15.63: current test-strength map and proposed positive/negative, lifecycle, compatibility, policy, generation and packaging matrix. | Independent out-of-tree Maven fixture against exact candidate artifact; executable live lifecycle matrix; test reports, artifact hashes and CI run IDs; explicit maintainer release sign-off. | **STOP — no fixture or release proof.** |
+| #94 — unified parent architecture | PR #352 describes managed sources, immutable generations, semantic/runtime parity, host-owned composition and isolation; MULTI_RUNTIME_ISOLATION_AUDIT.md records concrete static-IoC cross-runtime hazards. | Maintainer architecture review; reconcile approved #93/#346 decisions; implementation and full parent acceptance matrix. | **STOP — Draft design, unmerged.** |
+| #88 — release gate | Distribution candidate evidence is recorded elsewhere; plugin platform remains P0 and Jetty Servlet API legal disposition remains open. | All P0 child gates above, release/legal/NOTICE closure, exact release-candidate evidence and explicit sign-off. | **NO-GO.** |
+
+### Mandatory implementation entry sequence
+
+1. Maintainer records a decision on #93: Core compatibility baseline, default built-in set, optional integrations, and the 44 XML names including set-var.
+2. Maintainer reviews and accepts/revises #346 descriptor/SPI contract. The JSON/reverse-DNS/host-allowlist/minimal-SPI recommendations in 15.64 are defaults to decide, not hidden approvals.
+3. Produce a minimal compiling API/schema prototype plus independent out-of-tree fixture. The fixture must prove descriptor-only discovery and semantic projection before provider implementation loading, then authorized activation and XML execution.
+4. Only after that proof, authorize bounded #347–#349 implementation slices; keep #350 as the independent acceptance authority.
+5. Run the full compatibility and conformance matrix against one exact candidate commit/artifact. Attach immutable artifact hashes, reports and workflow IDs to #94/#88.
+6. Release remains blocked until maintainers explicitly sign off every P0 gate and the separate legal/distribution requirements.
+
+### Scope and evidence guardrail
+
+The audit PR is documentation and design evidence. It does not satisfy runtime acceptance by describing the desired behavior. Existing source/test references are not test results; tests inspected but not executed remain unverified. No code, POM, test, workflow, module, API or release metadata changes are authorized by this traceability matrix.
+
+**Current decision: STOP before implementation; continue source/design review and maintainer decision preparation only.**
