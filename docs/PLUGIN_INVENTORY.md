@@ -1701,3 +1701,18 @@ A targeted source pass across resource-bearing built-ins shows that plugin-insta
 No doCleanup() override was found in the targeted set of resource-bearing implementations inspected for this section. This is a bounded source pass, not a repository-wide proof that no override exists. The key design implication is to model **invocation, session, registry-generation, runtime and host** ownership separately. Generation retirement must close only generation-owned providers/resources after leases drain; it must not close host- or runtime-owned shared services, nor defer invocation-local cleanup until unload. Source inspection only; no tests run.
 
 Source evidence: DatabasePlugin.java b3934d753f17f133bd582b50206db701af843728; ConnectionPlugin.java edb6ed93584cb03d967c830d120848c7e891f481; FtpPlugin.java d7098611ea7e0569b7cf9af01346be7b951da799; WebBrowserPlugin.java be7675390275b16ed63e5515a11969585acd2de6; MailPlugin.java 083297481e7e218916a77f0dea2308c63bbac7e7; HttpServiceImpl.java 9e3dab1a40250f4d059ea812c74012d994873f0d.
+
+
+### 15.42 Legacy PluginFactory/PluginRegistry has a separate prototype-instance lifecycle (2026-11-23)
+
+A source pass over the parallel factory/registry API found another lifecycle model that must not be confused with the active CorePluginRegistry + DefaultPluginBodyExecutor path:
+
+- DefaultPluginRegistry.registerPlugin(Class) reflectively constructs a plugin instance and stores it in maps as the registered Plugin object; metadata and namespace lookups are read from that retained instance.
+- DefaultPluginRegistry.unregisterPlugin(id) removes registry/map entries but does not call Plugin.cleanup() on the retained instance.
+- DefaultPluginFactory.createPlugin(id/namespace+element) reads the retained instance only to obtain its class, then creates a new plugin instance. createPlugin(class, configuration) initializes the new instance but exposes no corresponding destroy/close handle or ownership callback.
+- DefaultPluginFactory instantiation prefers a no-argument constructor, otherwise a PluginMetadata constructor, using reflection and a constructor cache. It is not the active Guice path used by DefaultPluginBodyExecutor, and the earlier source audit found PluginDependencyInjector is not wired into active execution.
+- The retained registry object therefore behaves as a metadata/prototype object, while the factory-created instance is a separate execution object. The API does not define ownership/cleanup for either object on unregister, failed initialization or normal caller completion.
+
+This is a legacy/parallel API audit, not evidence that it is the current CLI runtime path. The new platform must either formally retire this API or adapt it to the same descriptor-only registry and explicit provider/instance ownership contract; it must not preserve a second, incompatible lifecycle model. Add tests for registration without plugin side effects, unregister disposal policy, failed prepare rollback, factory-created instance ownership, and parity with the authoritative registry. Source inspection only; tests not run.
+
+Source evidence: DefaultPluginRegistry.java da5c6f6e835cc8b551394e0853a70ca4bcd60d2f; DefaultPluginFactory.java 91c8084f671027954375ff3cab784691f8ae26e5; PluginFactory.java f1d2434c5a36d21d9c09bb638f4ebf3e5eaa94f8; DefaultPluginDependencyInjector.java fe7aeacda9041c0aba88d4c15aea9c54d81d3431; PluginDependencyInjector.java 12d72a925ed81cf34ce2c47de9020042749797b0.
