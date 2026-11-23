@@ -1566,3 +1566,71 @@ Source blobs on current main:
 - ScrapingHarvester.java: 2af32ca67c235e075c8cc613118814d54e555338.
 - AttributeHolderScope.java: 11a39c99e517ae9ae1ba09cf69a885b636465b64.
 - ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e.
+### 15.36 44-entry Core provider dependency and host-effect crosswalk (2026-11-23)
+
+The manual registrar was re-read and counted directly: **44 unique XML element names map to 44 unique implementation classes**. This section records the provider-construction and host-effect findings visible in the implementation source. It is an inventory of current behavior, not an approved minimal-Core decision.
+
+**Construction/service dependency findings**
+
+- Four of the 44 classes have explicit Guice field injection in the inspected source: `HttpPlugin` → `HttpService`; `ScriptPlugin` → `ScriptEngineFactory`; `FilePlugin` → qualified `String workingDir` (`@WorkingDir`); `IncludePlugin` → `ConfigFactory`.
+- No constructor-injected service dependency was identified among the 44 mapped classes in this pass. This does not mean the classes are already constructible through a neutral factory: active dispatch still uses Guice `Injector.getInstance()` or deprecated no-argument reflection, and nested dispatch creates detached default executors.
+- The remaining mapped classes do not declare a separate project `@InjectDependency` requirement in the inspected source. This is not proof that they have no transitive service requirements: they call shared runtime/context/templating facilities, and some depend on globally injected `BaseTemplater` state.
+- `HttpPlugin`, `ScriptPlugin`, `FilePlugin` and `IncludePlugin` therefore require explicit neutral service requirements in the migration descriptors. Their existing Guice field annotations must not become the SPI contract.
+
+**Per-element role and effect classification**
+
+| XML element | Implementation | Current role / effect relevant to migration |
+|---|---|---|
+| `call` | `CallPlugin` | Function dispatch; creates a nested executor; must inherit runtime context and generation |
+| `call-param` | `CallParamPlugin` | Declarative argument/parameter detail; two parent contexts documented in 15.22 |
+| `case` | `CasePlugin` | Conditional branch selection; child execution |
+| `catch` | `CatchPlugin` | Exception branch syntax; consumed by try/catch control flow |
+| `constant` | `ConstantPlugin` | Value definition |
+| `def` | `DefPlugin` | Variable/definition semantics |
+| `else` | `ElsePlugin` | Conditional branch syntax |
+| `empty` | `EmptyPlugin` | Empty value |
+| `exit` | `ExitPlugin` | Execution control effect |
+| `file` | `FilePlugin` | Host filesystem read/write/list/create; working-directory service; canonical path and resource policy required |
+| `function` | `FunctionPlugin` | Function declaration/composition |
+| `get` | `GetVarPlugin` | Context/value lookup |
+| `html-to-xml` | `HtmlToXmlPlugin` | HTML parse/DOM conversion; input/output/time budgets |
+| `http` | `HttpPlugin` | Outbound network request; host transport/destination policy; injected `HttpService` |
+| `http-header` | `HttpHeaderPlugin` | HTTP request detail syntax; consumed by `HttpPlugin`, not an independent network capability |
+| `http-param` | `HttpParamPlugin` | HTTP request detail syntax; consumed by `HttpPlugin`, not an independent network capability |
+| `if` | `IfPlugin` | Conditional branch dispatch; creates nested executor; inherit context/generation |
+| `include` | `IncludePlugin` | File/URL configuration loading and nested execution; injected `ConfigFactory`; include policy/depth/bytes/deadline |
+| `json-to-xml` | `JsonToXmlPlugin` | JSON parse/materialization and XML conversion; input/depth/output budgets |
+| `loop` | `LoopPlugin` | Repeated child execution; creates nested executor; shared cancellation/deadline/budget |
+| `regexp` | `RegexpPlugin` | Pattern matching/transformation; CPU/input/output budget and ReDoS containment |
+| `regexp-pattern` | `RegexpPatternPlugin` | Declarative regex detail; consumed by `regexp` |
+| `regexp-result` | `RegexpResultPlugin` | Declarative regex result/template detail; consumed by `regexp` |
+| `regexp-source` | `RegexpSourcePlugin` | Declarative regex source detail; consumed by `regexp` |
+| `return` | `ReturnPlugin` | Function control-flow effect |
+| `script` | `ScriptPlugin` | JSR-223 execution; injected `ScriptEngineFactory`; host-object permissions, engine isolation and execution budget |
+| `list` | `ListPlugin` | Value/list composition |
+| `log` | `LogPlugin` | Host logging effect; redaction and data-exposure policy |
+| `value-of` | `ValueOfPlugin` | Value extraction |
+| `xml` | `XMLPlugin` | XML value/parse semantics; parser hardening and input budget |
+| `set-var` | `SetVarPlugin` | Legacy variable mutation compatibility; preserve current XML contract unless explicitly migrated |
+| `sleep` | `SleepPlugin` | Wall-clock delay; host time budget and cancellation required |
+| `stylesheet` | `StylesheetPlugin` | Declarative XSLT stylesheet detail; consumed by `xslt` |
+| `template` | `TemplatePlugin` | Template/value composition; scripting/templating dependency must be runtime-scoped, not static |
+| `text` | `TextPlugin` | Text value/body composition |
+| `tokenize` | `TokenizePlugin` | String transformation; input/output budget |
+| `try` | `TryPlugin` | Exception handling and child execution |
+| `while` | `WhilePlugin` | Repeated condition evaluation; shared script/query budget; 10,000 runtime vs 1,000,000 validation mismatch in 15.33 |
+| `xml-to-json` | `XmlToJsonPlugin` | XML parse and JSON materialization; input/depth/output budget |
+| `xpath` | `XPathPlugin` | Saxon XPath/query execution; resolver, deadline, cancellation and result budget |
+| `xquery` | `XQueryPlugin` | Saxon XQuery execution; resolver, deadline, cancellation and result budget |
+| `xq-expression` | `XQExpressionPlugin` | Declarative XQuery expression detail; consumed by `xquery` |
+| `xq-param` | `XQParamPlugin` | Declarative XQuery parameter detail; consumed by `xquery` |
+| `xslt` | `XsltPlugin` | XML transformation; preserve external-resource restrictions and add output/deadline budget |
+
+**Cross-cutting implications**
+
+1. Keep XML syntax nodes and provider capabilities distinct. The detail elements `call-param`, `http-header`, `http-param`, `regexp-pattern`, `regexp-result`, `regexp-source`, `stylesheet`, `xq-expression` and `xq-param` are not nine independent extension services.
+2. Host effects are not confined to the four Guice-injected classes. `SleepPlugin`, `LogPlugin`, transformation/query plugins and nested control-flow plugins require explicit policy/budget propagation even where they currently obtain dependencies from static helpers or the execution context.
+3. The descriptor must state service requirements and effects independently of the implementation class. Host policy grants the effects; plugin code must not bypass those grants by directly opening JDK resources.
+4. The crosswalk does not authorize deleting or moving any element. Preserve the 44 current mappings as compatibility baseline until a maintainer-approved migration table and contract fixtures exist.
+
+Audit limits: this pass inspected the 44 implementation sources and registrar mapping for injection annotations, direct nested-executor construction and prominent host-effect APIs; it did not execute tests, perform bytecode/dataflow analysis, or prove absence of indirect effects. Existing test-source presence and coverage caveats remain as documented in earlier sections.
