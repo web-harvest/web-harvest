@@ -2199,3 +2199,51 @@ The existing \`PluginClassScanner\` and \`PluginMetadataCatalog\` should remain 
 - \`PluginPackageScannerClasspathTest.java\`: \`ff9c42f4bac2efdc6b97185c1358772daf628192\`.
 
 **Evidence boundary:** direct source and test-source inspection on GitHub \`main\`. No test/build/runtime experiment was run. No production source or POM was changed. This section adds evidence for the existing #347 hot-discovery and #349 runtime-isolation requirements; it does not authorize an implementation design beyond the approved SPI decision.
+
+
+### 15.53 Execution/session lifecycle does not pin plugin generations (2026-11-23)
+
+This pass follows the current Core plugin factory, registry, execution context and session lifecycle. It is source inspection only; no tests, builds or runtime experiments were executed.
+
+#### A session retains execution state, but no plugin-catalog generation
+
+- `ScraperSession` exposes the configuration, execution context, status and metrics. Its API has no runtime identity, plugin-catalog snapshot, provider/artifact identity, generation token or lease/retirement handle.
+- `ScraperSessionImpl.markRunning(context)` stores the `DynamicScopeContext`; the session does not capture a plugin registry/catalog snapshot alongside it. `DynamicScopeContext` exposes session and EventBus references, but the inspected interface has no generation or runtime-scoped provider-catalog accessor.
+- `SessionRegistryImpl` is only a concurrent map of sessions. Register/unregister/clear do not acquire or release plugin/provider resources, and unregistering a session does not imply execution completion or provider retirement.
+- The session cancellation contract is cooperative. A terminal status transition is not itself evidence that every executing plugin body has unwound or released provider resources.
+
+#### Factory and legacy registry are instance/class based, not generation based
+
+- `DefaultPluginFactory` resolves a plugin ID or QName through `PluginRegistry`, obtains the registered plugin instance's implementation class, then creates a new instance through reflection. Its constructor cache is keyed by `Class<? extends Plugin>`; it has no provider artifact identity or generation key.
+- `DefaultPluginRegistry` stores live plugin instances, metadata and class/QName/category indexes in mutable maps. It has no immutable snapshot or lease API. Unregister removes index entries but does not call `Plugin.cleanup()`, track active executions, or defer classloader disposal.
+- The factory's class-based creation path can initialize a newly created instance when configuration is supplied. The current model therefore mixes a registry of representative instances with per-configuration instances; neither is bound to an immutable catalog generation.
+- `AbstractPlugin.execute()` runs the plugin body and invokes `doCleanup()` in its `finally` path after each execution. Separately, `Plugin.cleanup()` invokes `doCleanup()` when the instance remains initialized. This legacy lifecycle is not a provider-generation retirement protocol: it does not count in-flight calls, distinguish execution cleanup from provider disposal, or coordinate classloader lifetime.
+
+#### Consequence and evidence boundary
+
+The inspected public session/factory/registry contracts do not establish that an execution started before a refresh continues using the same provider generation after that refresh. Nor do they establish that a removed provider remains loaded until all active executions drain. This is an absence-of-contract finding, not proof of a specific observed cross-generation race: no concurrent runtime experiment was run.
+
+The required architecture is a runtime-owned immutable catalog generation acquired at execution admission. The execution/session (including nested plugin-body execution) must retain a lease to that exact generation; refresh publishes a new generation atomically for new executions; retirement stops new admissions to the old generation and releases provider instances/classloaders only after its active lease count reaches zero. Provider disposal must be distinct from per-invocation cleanup. Runtime close must stop admissions, drain or explicitly cancel executions, then release only runtime-owned resources.
+
+#### Required conformance tests for #347/#349/#350
+
+1. Start a long-running execution under generation G1, publish G2, and prove the active execution and all nested plugin calls still resolve G1 while newly admitted executions resolve G2.
+2. Remove/update a provider while its execution is active; prove its instance and classloader remain valid until the final G1 lease is released, then are closed exactly once.
+3. Fail candidate refresh and prove G1 remains the last-known-good generation for new and active executions.
+4. Run two independent runtimes with distinct provider versions/classloaders and prove no cross-runtime resolution, retirement or cleanup.
+5. Exercise success, failure, interruption, cancellation, nested execution and runtime close; prove every lease is released exactly once and no provider is disposed while in use.
+6. Verify session-registry unregister/clear cannot silently retire providers still referenced by active execution.
+
+#### Exact source blobs (current `main`)
+
+- `Plugin.java`: `29772a9b37c8fead735f4a5e0bd47e5b90b4367e`.
+- `AbstractPlugin.java`: `be3298304840e4a585b4fb148c2e62cf471ee8f7`.
+- `DefaultPluginFactory.java`: `91c8084f671027954375ff3cab784691f8ae26e5`.
+- `DefaultPluginRegistry.java`: `da5c6f6e835cc8b551394e0853a70ca4bcd60d2f`.
+- `DynamicScopeContext.java`: `[verified separately in source tree]`.
+- `ScraperSession.java`: `c8d0086ea160e2d8f02657c4cc9aa9d11d65b237`.
+- `ScraperSessionImpl.java`: `78d07d1c485ea215d68d6d415f36b2be0c180a4f`.
+- `SessionRegistryImpl.java`: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`.
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+
+**Evidence boundary:** direct inspection of GitHub `main` source. No tests, builds, concurrency experiments, runtime changes or POM changes were made. This is an audit finding and acceptance-test proposal only; it does not authorize implementation or freeze the SPI.
