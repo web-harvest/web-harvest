@@ -1467,3 +1467,54 @@ The P0 suite should use a small reusable test harness, not duplicated timing-bas
 ### Evidence and execution boundary
 
 The test paths and blob IDs above were obtained from the Git tree at the stated baseline. The descriptions of existing assertions are from the prior source-level review recorded in 8.1–8.4. No tests were executed in this checkpoint. CI green status must be recorded per exact commit SHA, not inferred from an earlier commit.
+
+
+## 8.6 P0-06 plugin-generation source audit — loader identity and retirement
+
+Baseline: `main` source tree inspected on 2026-11-23. This checkpoint supplements sections 7.25/7.28 and the existing #347/#346 contracts. It is a source audit, not a reproduced classloader leak or runtime test.
+
+### Confirmed implementation facts
+
+| Component | Source evidence | Consequence |
+|---|---|---|
+| `CorePluginRegistry` | `webharvest-core/src/main/java/org/webharvest/definition/CorePluginRegistry.java`, blob `20f478addbf2bacc481e4e11e0328f06942a2a38`; static `INSTANCE`, mutable `ConcurrentHashMap`, public `clear()` | One process-wide registry; callers can clear all mappings. Concurrent map safety does not provide runtime ownership or immutable generation publication. |
+| `DefaultPluginRegistry` | `.../plugin/registry/DefaultPluginRegistry.java`, blob `da5c6f6e835cc8b551394e0853a70ca4bcd60d2f` | Multiple indexes are independently mutable. `containsKey` then `put` is not an atomic uniqueness check; QName mapping overwrites; category/namespace values are mutable `ArrayList` behind concurrent maps. Registry stores plugin instances/classes/metadata strongly until unregister/clear. |
+| `PluginClassScanner` | `.../plugin/metadata/PluginClassScanner.java`, blob `dadd28a434000816253ac66bff736e2c5fff0494` | Static successful cache stores class-name strings only, has no runtime/classloader/generation key, and has no artifact-change reconciliation. `clearCache()` is global. Fallback list is hard-coded. |
+| `PluginPackageScanner` | `.../plugin/scanner/PluginPackageScanner.java`, blob `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232` | It enumerates TCCL and defining loader, associates each class name with a loader, and uses `Class.forName(name, false, candidateLoader)`. It then mutates the injected `CorePluginRegistry` one class at a time. The scanner itself does not prove that the injected registry is runtime-owned; passing the singleton makes it process-global. No candidate snapshot/atomic publication or generation retirement is present in this path. |
+| `PluginMetadataCatalog` | `.../plugin/metadata/PluginMetadataCatalog.java`, blob `5ac82d7fb6436b458b29647e4c929878557b1c6e` | Static initialization builds one immutable map for the lifetime of the defining class. It calls `PluginClassScanner`, resolves names via one-argument `Class.forName(className)` (defining loader), and instantiates each plugin with a no-arg constructor to obtain metadata. This is not descriptor-only discovery, cannot naturally represent multiple runtime generations, and may run provider constructors during catalog class initialization. |
+| `DefaultPluginFactory` | `.../plugin/factory/DefaultPluginFactory.java`, blob `91c8084f671027954375ff3cab784691f8ae26e5` | Constructor cache is **instance-owned**, not static. It strongly keys `Class` and stores `Constructor`; this retains the defining loader while that factory remains reachable. Retirement therefore requires factory/generation disposal or a cache design with explicit lifecycle; do not describe this as a process-global static cache. |
+| `BaseTemplater` | `.../runtime/templaters/BaseTemplater.java`, blob `dacefb8faec186176148ab2a0cbc5a538941d4c5` | `@Inject public static ScriptEngineFactory scriptEngineFactory` is mutable process-global injection and can couple otherwise separate runtime factories. This is a related P1 isolation seam, not itself the plugin-generation registry. |
+
+### Existing test coverage and exact gap
+
+- `PluginClassScannerTest`, blob `acb1d90457c8912f23f0078a9e0f73092178c221`, verifies discovery, sorted/unique names, fallback behavior, global cache reuse and global cache clear. It does not vary classloader identity or runtime generation.
+- `DefaultPluginRegistryTest`, blob `ee2dd3c932637c39bd25282505d06c940a286f64`, plus branch-contract tests `2fb498088b4f32563c185259e301df6069317be8` and `07de046e581e135ee41224bf3f15dec51f797ae3`, exercise sequential contracts; they do not establish atomic multi-index publication under concurrent registration.
+- `PluginMetadataCatalogTest` (`40efed43975105fc214357ba526c78d4615d9693`) and `PluginMetadataCatalogDynamicTest` (`c3582c89aad930e15c714b434b0a5c4aba4d6425`) exercise the static catalog and generated metadata, not per-runtime catalogs or constructor-free descriptor discovery.
+- `PluginPackageScannerClasspathTest` (`ff9c42f4bac2efdc6b97185c1358772daf628192`) and `PluginPackageScannerBug40Test` (`14eb31097231985f797d00db1122bd1712fea59f`) cover package/classpath discovery, not add/update/remove/re-add while sessions pin old generations.
+- `DefaultPluginFactoryTest` (`a33a410ecf034a08b37b4746799fdbe0d98be6f6`) does not prove that factories and their constructor caches retire with an old generation.
+
+### Required P0-06 acceptance refinements
+
+1. Use immutable candidate generation data containing descriptor identity, provider binding, artifact fingerprint, loader/module owner, validation result and provenance. Reject duplicate plugin IDs, XML QName/namespace/aliases, dependency/version conflicts before activation.
+2. Keep descriptor parsing/projection separate from implementation loading/constructor invocation. A descriptor-only test must use a provider constructor sentinel and prove zero loads/instantiations during metadata inspection.
+3. Bind each generation to its own loader/module owner. Never resolve an external provider by class name through the Core defining loader.
+4. Atomically publish one complete validated/authorized generation. Failed discovery, validation or activation leaves the last-known-good generation untouched.
+5. Pin every session to one generation. New sessions use the new generation; old sessions drain on their pinned generation. No mixed-generation lookup across parser, metadata, schema and execution.
+6. Retire old generation only after worker quiescence (#354), operation/resource leases drain (#355), subscribers/context are retired (#356/#357), and provider effects are settled (#358). Then close loader-owned resources and release strong references.
+7. Treat in-process classloaders as namespace/lifecycle boundaries, not security sandboxes. Untrusted providers require process isolation.
+
+### Deterministic test scenarios
+
+- Two isolated classloaders define the same binary plugin class name but different artifact fingerprints; each runtime resolves only its own provider.
+- Runtime A and B publish generations independently; A's update/removal cannot mutate B's snapshot or scanner cache.
+- A session pins generation G1, generation G2 is published, and the G1 session completes using only G1 while new sessions use G2.
+- Descriptor inspection leaves a constructor sentinel untouched; activation occurs only after compatibility, authorization and validation.
+- Failed G2 activation preserves G1 as last-known-good.
+- Remove/update waits for G1 sessions and resource leases; only after retirement can the loader become collectible (use WeakReference/ReferenceQueue with bounded, non-deterministic GC diagnostics, not as sole correctness assertion).
+- Same-ID/QName/alias/dependency collisions fail deterministically without partial index publication.
+
+### Evidence boundary and correction
+
+The `DefaultPluginFactory` constructor cache is per-factory, not static; the retention risk is conditional on the factory's lifetime. The `PluginPackageScanner` can be constructed with a non-global registry, so process-global mutation occurs only when wired to `CorePluginRegistry.getInstance()`; its source does not itself force that singleton. By contrast, `CorePluginRegistry` is unconditionally a process-wide singleton, `PluginClassScanner` and `PluginMetadataCatalog` have unconditional static state, and `BaseTemplater` has a static injected field.
+
+No runtime source was changed and no tests were run in this checkpoint.
