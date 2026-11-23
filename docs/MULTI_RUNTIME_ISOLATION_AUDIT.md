@@ -77,3 +77,21 @@ Additional source blobs:
 - `EventBusTypeListener.java`: `3b368eb75ce842f3db6a67b1e9424f644b341824`
 - `PostConstructListener.java`: `7d3a23788e96f4507d51f88c6dc5b21f1dc4e49b`
 - `DefaultHarvesterFactory.java`: `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`
+
+
+## Test-source coverage audit
+
+The focused Guice lifecycle test files exist, but their current assertions do not establish the multi-runtime contracts above:
+
+- `AttributeHolderScopeTest` verifies null/empty-scope failures, one enter/exit and same-instance nested stack restoration. It does not exercise two runtime identities sharing the same static scope, cross-injector provider resolution, concurrent/reused-thread behavior or `ThreadLocal.remove()`.
+- `ScrapingInterceptorTest` verifies rejection of a non-Harvester and basic helper callback iteration. It does not execute the interceptor's valid Harvester path, capture the injector used, or prove runtime A resolves its own scope/helper after runtime B is created.
+- `EventBusTypeListenerTest` invokes `hear()` for subscriber classes but its assertions are only `assertNotNull(listener)`; it does not capture/run the registered InjectionListener or verify which EventBus receives the subscriber.
+- `ScrapingAwareTypeListenerTest` similarly checks listener construction and calls `hear()`, but does not capture/run the InjectionListener or verify helper registration, unregistration or runtime teardown.
+
+These are coverage observations from test source, not test results. The source tests were not executed. The conformance matrix above must add observable assertions around actual injected listener callbacks and two independently built runtime/injector instances.
+
+Test-source blobs:
+- `AttributeHolderScopeTest.java`: `379404c1883a51b6e3c46363e27f1dc5590b5c3e`
+- `ScrapingInterceptorTest.java`: `3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff`
+- `EventBusTypeListenerTest.java`: `9eb438cdd6cc8cd44b2636f777f661d0a3ea4bde`
+- `ScrapingAwareTypeListenerTest.java`: `6d854e1107fc16d42b31f1207021e3d6e59faaae`
