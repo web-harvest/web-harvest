@@ -3341,3 +3341,53 @@ This pass follows the session and event-delivery paths from the public async ser
 Required tests: two sessions in one runtime share the same bus but retain isolated contexts; two runtimes use different buses and subscribers with no leakage; subscriber registration/unregistration and runtime shutdown are leak-free; concurrent event publication has defined ordering/isolation; service and Guice entry paths use the same composition contract; cancellation/timeout/shutdown prove worker and descendant quiescence; cooperative GRACE then KILL escalation is observable; non-cooperative in-process work is quarantined rather than falsely reported as killed; event subscriber exceptions cannot silently corrupt execution outcome.
 
 **Evidence limits and gate:** blobs above were fetched from PR #351 head `4b5f1f1604e92187112c9c3975cc768ab5ee19a9`. This is static source inspection; no tests/builds or concurrency experiments were run. It does not establish the precise internal thread-safety guarantees of every Guava version or prove a reproduced cross-runtime leak. No runtime/POM/test changes are made. Runtime implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
+
+## 15.75 CLI/IDE entry-point census and Guice scope ownership (2026-11-23)
+
+This pass extends the runtime audit across the actual CLI and IDE entry points and corrects the ownership picture for Guice scope. It also records the limits of the current repository-wide call-site evidence.
+
+### A. The three entry paths do not share one runtime composition
+
+| Entry path | Composition observed | Execution path / EventBus |
+|---|---|---|
+| CLI | `WebHarvestCLI` creates a Guice injector with `new ScraperModule(workingDir)`, resolves `Harvest` and obtains a `Harvester` | `ScrapingHarvester` enters Guice scraping scope, gets a scoped EventBus if available, and creates a session around that bus |
+| IDE | singleton `ExecutionManager` creates its own Guice injector with `ScraperModule(targetDir)`; job execution then directly constructs `ScraperContext`, `ScraperSessionImpl` and `Scraper` | a fresh EventBus is created per IDE job and shared by that job's context/session/Scraper; the Guice injector is used for ConfigFactory, but the execution path is not the Guice Harvester composition |
+| Async service API | `WebHarvestServiceImpl` owns an ExecutorService, SessionRegistry and EventBus | each service shares its bus across its sessions and creates `Scraper(eventBus)` directly |
+
+Source blobs: CLI `c094100d160ae02618604923a32a79a85de3bbb0`; IDE ExecutionManager `361911aa6b2769c1729f0d1f98969803d1c108f0`; ScrapingHarvester `2af32ca67c235e075c8cc613118814d54e555338`; WebHarvestServiceImpl `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`.
+
+The IDE creates a long-lived Guice injector for configuration and plugin injection, but its per-job EventBus is not obtained from that injector. Plugin subscriber registration still uses EventBusTypeListener -> static InjectorHelper -> the injector's scoped EventBus. Thus the bus visible to a plugin subscriber can differ from the bus placed into that IDE job's context/session. This is a concrete composition mismatch to test and remove; do not assume that the IDE's comment about a shared per-job bus proves that Guice-created subscribers are registered on that same instance.
+
+### B. ScraperModule shares a static scope object across injector instances
+
+- `ScraperModule` declares `private static final ScraperScope SCRAPER_SCOPE = new ScraperScope()` and binds that same object with `bindScope(ScrapingScope.class, SCRAPER_SCOPE)` and `bind(ScraperScope.class).toInstance(SCRAPER_SCOPE)`.
+- `ScraperScope` is an `AttributeHolderScope`. Its holder stack is a `ThreadLocal<Stack<AHT>>`, and each scope entry pushes an AttributeHolder onto that per-thread stack. The implementation synchronizes attribute creation on the holder's attribute lock.
+- Therefore the scope object itself is process/classloader-shared across all ScraperModule instances, while holder stacks are thread-local and nested. This is not proof that arbitrary cross-thread state is shared, nor proof of a reproduced data leak. It is, however, a shared mutable scope coordinator across otherwise independent Guice injectors. Nested execution across injectors on the same thread uses the same scope stack and is not injector-isolated by construction.
+- The static scope also has no runtime identity or owner. The new runtime must allocate scope state per runtime, and invocation/session scopes must be explicit descendants rather than one static module field.
+
+Source blobs: ScraperModule `d31a5e30b0949c752743123cbcfb4219ba60713e`; AttributeHolderScope `11a39c99e517ae9ae1ba09cf69a885b636465b64`; ScraperScope annotation `0931d3774374cf8ac26e298fdd19a4a58bd7a663`.
+
+### C. CLI and IDE are compatibility adapters, not separate target runtimes
+
+- The CLI currently depends on the Guice `Harvest/Harvester` facade. Preserve this public invocation behavior through an explicit legacy adapter over the canonical runtime composition.
+- The IDE's ExecutionManager has its own singleton lifetime, a five-thread executor and a long-lived Guice injector; it creates one EventBus per job and directly creates Scraper. Migrate it to a runtime/session factory rather than allowing it to construct partial compositions itself.
+- IDE PluginMetadataServlet remains another independent discovery consumer: it tries PluginMetadataCatalog, then falls back to a separately hard-coded CorePluginRegistry element list and reflective metadata extraction. Its output must become a projection of the same published plugin generation used for XML dispatch and runtime activation.
+- DatabasePluginRegistrar and ZipPluginRegistrar still accept and mutate CorePluginRegistry directly for optional XML elements. Preserve their opt-in semantics, but change their future contribution contract to validated optional provider contributions admitted into a candidate generation; do not auto-enable optional database/ZIP dependencies in Core.
+
+### D. DI call-site census: evidence boundary
+
+- The recursive repository tree at `a6e6540ca3a2a4da636cf5b7b2a5470bb3ac4a63` confirms the custom DI interface/implementation and their dedicated tests live in Core. Targeted source inspection of the CLI, IDE ExecutionManager, ScraperModule and optional database/ZIP registrar paths did not reveal an explicit call to `PluginDependencyInjector` or `@InjectDependency`.
+- The GitHub code-search connector returned no indexed matches for these identifiers; this is not evidence of zero references. The census is therefore not yet exhaustive across every Java file, reflection/configuration path, generated source, external embedding consumer or downstream binary.
+- Disposition remains: preserve the custom DI public contract until a complete source/API compatibility inventory is done. If retained, it must adapt to the canonical host-service resolver and must not own a second provider/singleton registry. If deprecated, document a compatibility window and migration guide.
+- Similarly, the Guice static injector is an active legacy compatibility dependency. It must not be silently removed before the CLI, IDE, public API and downstream compatibility paths have an explicit replacement.
+
+### E. Consolidated conformance gates
+
+1. Start two independent runtimes/injectors on the same thread and on separate threads; prove distinct scope ownership and no cross-runtime scoped-object or subscriber leakage.
+2. In IDE execution, assert that the EventBus used by Guice-created plugin subscribers is exactly the EventBus attached to the job context/session; then repeat for two simultaneous jobs.
+3. Run CLI, IDE and async service entry paths through one canonical runtime/session composition while preserving their existing public entry contracts.
+4. Verify nested scopes and nested execution across runtimes cannot accidentally reuse a foreign runtime's scope frame.
+5. Prove optional Database/ZIP contributions are absent by default, admitted only when explicitly supplied, and resolved from the same immutable generation as Core plugins.
+6. Complete an automated repository-wide Java call-site inventory for `PluginDependencyInjector`, `InjectDependency`, `InjectorHelper`, `DefaultPluginFactory`, `CorePluginRegistry` and `PluginRegistryHolder`; separately document external/public API compatibility assumptions.
+
+**Evidence limits and gate:** all findings are static source/tree inspection at PR head `a6e6540ca3a2a4da636cf5b7b2a5470bb3ac4a63`. No tests, builds or runtime experiments were run. The static ScraperScope instance is confirmed; a cross-runtime leak is a risk to prove, not a reproduced fact. The custom DI zero-call-site claim remains unproven. No runtime/POM/test changes are made. Implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
