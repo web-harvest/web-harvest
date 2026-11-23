@@ -899,3 +899,15 @@ The relative-source dispatch was traced to the concrete visitor implementation. 
 **Conclusion:** the current include mechanism supports contextual relative resolution for both file and URL sources, but it does not expose a policy-aware resolver contract or an include-chain budget in the inspected path. Recursive include is explicitly described as supported in the plugin Javadoc, so cycle detection and bounded depth are required correctness and availability controls, not merely hardening. A future resolver should track canonical source identity across the active include chain (with URL normalization rules), enforce maximum depth and aggregate source bytes, and apply the same host filesystem/network destination policy as direct resource access. Repeated non-cyclic includes may remain valid subject to explicit aggregate budgets.
 
 **Required conformance cases before release:** self-cycle; two-file cycle; longer cycle; valid repeated include; depth boundary and one-over-boundary; file traversal and symlink escape; URL redirect to disallowed/private destination; slow/unresponsive URL; oversized included source; deterministic failure with parent context restoration. Tests were inspected but not executed. No runtime code or tests changed.
+
+
+### 15.14 Include path helper semantics (2026-11-23)
+
+A final helper-level check inspected `CommonUtil.java` (blob `70b5297bdd1d11f2571ce6c367764c04b6ba4222`) to avoid overstating the path behavior:
+
+- `adaptFilename` only replaces backslashes with forward slashes.
+- `getAbsoluteFilename(workingPath, filePath)` returns an absolute input unchanged; otherwise it concatenates the working path and child path. It does not collapse `..` segments or canonicalize the resulting filesystem path. Therefore relative traversal and absolute-path escape are directly possible at this helper boundary; symlink escape also remains unchecked by the subsequently constructed `FileConfigSource`.
+- `fullUrl(pageUrl, link)` resolves relative and absolute-path URL references and normalizes literal `.`/`..` path segments. That normalization is URL syntax handling, not destination authorization: full URLs are returned unchanged, and no scheme/host/IP/port/redirect policy is applied here. Encoded path variants and redirect targets require enforcement at the actual connection boundary.
+- `IncludeVisitor` uses these helpers exactly as described in section 15.13.
+
+This narrows the earlier finding: URL dot-segment normalization exists; file path canonicalization/containment does not. Neither helper supplies the host-policy contract required by the dynamic platform. No runtime changes or tests were run.
