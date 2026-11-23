@@ -555,3 +555,27 @@ The conformance suite must use two independent loopback origins (different ports
 The source audit in PR #351 section 15.30 confirms `BaseTemplater.scriptEngineFactory` is a public static Guice-injected field read by static evaluation methods. `ScraperModule` installs it through static injection. Consequently, scripting configuration is shared process-wide rather than owned by a runtime/session, so independently embedded WebHarvest runtimes can overwrite or observe one another's engine factory.
 
 The neutral API must make scripting/templating services explicit dependencies of each runtime or execution context. Conformance must create two runtime instances with different engine providers and prove isolation under concurrent execution, reconfiguration and close; closing one runtime must not affect the other. No process-static service locator or static injection is allowed for runtime-specific services.
+
+
+## 7.8 Query, transformation and regex execution budgets
+
+The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), section 15.31, expands the execution-budget boundary beyond loops and transport:
+
+- **Nested dispatch:** function calls, conditional branches and regex result templates also create `DefaultPluginBodyExecutor` instances directly. All nested dispatch must inherit the exact parent registry generation, policy context, cancellation/deadline and resource budget. No plugin may construct a default executor that silently resolves against mutable global state.
+- **XPath/XQuery:** provide host-controlled query execution deadlines/cancellation, bounded input/result materialization and an explicit Saxon resource-resolution policy. Confirm the exact Saxon version's defaults and resolver APIs before asserting external-resource exploitability; absence of explicit configuration in current source is a gap to resolve, not proof of a specific vulnerability.
+- **XSLT:** preserve the existing secure-processing feature, disabled external URI resolution and disabled external entity/DTD processing. Add output-size and execution-time budgets without re-enabling external resources.
+- **HTML/JSON conversion:** bound source bytes, nesting/DOM depth, result bytes and processing time. These plugins currently materialize complete DOM/JSON objects and complete output strings.
+- **Regular expressions:** caller-controlled Java regex patterns over complete input strings need a ReDoS-safe execution policy. A session cancellation token cannot safely interrupt arbitrary catastrophic backtracking in `java.util.regex`; use a linear-time engine, restricted pattern language, or isolated bounded execution with explicit compatibility trade-offs.
+- **Shared budget:** all nested transformations consume one session budget (time, bytes, nodes/items, output, recursion/depth), not independent per-plugin ceilings that can be multiplied through nesting.
+
+## 9.9 Nested dispatch and transformation conformance
+
+- Reconcile the registry while a function call, conditional branch, regex result template, loop body/source and include are active; each active execution must stay on its pinned generation and new sessions see only the committed generation.
+- Assert that nested provider construction uses the runtime's neutral provider factory, never direct no-arg reflection, static injectors or a new default executor detached from the parent context.
+- Verify XSLT rejects DOCTYPE, external entities and external stylesheet/document URI resolution; preserve this behavior while adding bounded output and deadline controls.
+- Run XPath/XQuery against bounded local fixtures; verify deadline, cancellation, result-size limits and the configured Saxon resource resolver. Include explicit tests for `doc()`/external resource access according to the chosen host policy.
+- Exercise HTML/JSON conversion with oversized input, excessive nesting and output expansion; assert bounded failure without exhausting the host process.
+- Test regex patterns known to cause catastrophic backtracking against bounded fixtures; prove the selected policy terminates within a deterministic limit and preserves documented legacy pattern behavior.
+- Assert the shared budget is consumed across nested calls, rather than reset on each nested executor/plugin.
+
+Tests must run on the exact candidate commit. Source-level test presence or declared metadata is not acceptance evidence.
