@@ -1003,3 +1003,75 @@ Source references:
 **Important distinction for the future SPI:** root configuration and body execution are runtime protocol, not provider discovery. A future dynamic catalog must not manufacture descriptors for internal framework machinery or root document nodes. Conversely, the legacy `set-var` mapping is genuinely executable and must not disappear due to scanner fallback or metadata-audit omissions. `var` has legacy source documentation but no default registration; compatibility support must be described honestly as not enabled by default.
 
 **No implementation decision:** no class was deleted, moved, or modified; no XML behavior changed; no tests were run. Maintainer approval remains required for product classification and compatibility policy.
+
+
+### 15.19 Default Core mapping-to-test inventory (2026-11-23)
+
+The 44 default mappings were reconciled mechanically against the current `AllPluginsMetadataAuditTest` source and the current Git tree of Core test sources. The table records test-file presence only; it does **not** claim that every branch, XML execution path, or dynamic provider lifecycle is covered.
+
+| XML element | Registered class | Included in metadata audit | Class-named test source |
+|---|---|---:|---:|
+| `call` | `CallPlugin` | Yes | Present |
+| `call-param` | `CallParamPlugin` | Yes | Present |
+| `case` | `CasePlugin` | Yes | Present |
+| `catch` | `CatchPlugin` | Yes | Present |
+| `constant` | `ConstantPlugin` | Yes | Present |
+| `def` | `DefPlugin` | Yes | Present |
+| `else` | `ElsePlugin` | Yes | Present |
+| `empty` | `EmptyPlugin` | Yes | Present |
+| `exit` | `ExitPlugin` | Yes | Present |
+| `file` | `FilePlugin` | Yes | Present |
+| `function` | `FunctionPlugin` | Yes | Present |
+| `get` | `GetVarPlugin` | Yes | Present |
+| `html-to-xml` | `HtmlToXmlPlugin` | Yes | Present |
+| `http` | `HttpPlugin` | Yes | Present |
+| `http-header` | `HttpHeaderPlugin` | Yes | Present |
+| `http-param` | `HttpParamPlugin` | Yes | Present |
+| `if` | `IfPlugin` | Yes | Present |
+| `include` | `IncludePlugin` | Yes | Present |
+| `json-to-xml` | `JsonToXmlPlugin` | Yes | Present |
+| `loop` | `LoopPlugin` | Yes | Present |
+| `regexp` | `RegexpPlugin` | Yes | Present |
+| `regexp-pattern` | `RegexpPatternPlugin` | Yes | Present |
+| `regexp-result` | `RegexpResultPlugin` | Yes | Present |
+| `regexp-source` | `RegexpSourcePlugin` | Yes | Present |
+| `return` | `ReturnPlugin` | Yes | Present |
+| `script` | `ScriptPlugin` | Yes | Present |
+| `list` | `ListPlugin` | Yes | Present |
+| `log` | `LogPlugin` | Yes | Present |
+| `value-of` | `ValueOfPlugin` | Yes | Present |
+| `xml` | `XMLPlugin` | Yes | Present |
+| `set-var` | `SetVarPlugin` | **No** | Present |
+| `sleep` | `SleepPlugin` | Yes | Present |
+| `stylesheet` | `StylesheetPlugin` | Yes | Present |
+| `template` | `TemplatePlugin` | Yes | Present |
+| `text` | `TextPlugin` | Yes | Present |
+| `tokenize` | `TokenizePlugin` | Yes | Present |
+| `try` | `TryPlugin` | Yes | Present |
+| `while` | `WhilePlugin` | Yes | Present |
+| `xml-to-json` | `XmlToJsonPlugin` | Yes | Present |
+| `xpath` | `XPathPlugin` | Yes | Present |
+| `xquery` | `XQueryPlugin` | Yes | Present |
+| `xq-expression` | `XQExpressionPlugin` | Yes | Present |
+| `xq-param` | `XQParamPlugin` | Yes | Present |
+| `xslt` | `XsltPlugin` | Yes | Present |
+
+**Findings:**
+- The runtime registrar has 44 mappings; the metadata audit enumerates 43 classes and omits only `SetVarPlugin`.
+- All 44 mappings have at least one class-named test source in the current Core test tree. This is a useful baseline, not a passing test result and not proof of end-to-end runtime construction for each mapping.
+- The focused XML integration suite `CorePluginsIntegrationTest` directly exercises only a subset (constant, text, def, set-var, get, file, sleep, list, value-of); other plugin-specific and grouped integration tests exist separately.
+- `CorePluginAnnotationTest` explicitly checks category annotation values for only seven classes (HTTP, XPath, Def, Loop, Script, File, Log). It is not a completeness/parity contract for all 44 mappings.
+- Existing schema branch tests exercise some detail-node schemas independently. In particular, `DetailPluginSchemaBranchContractTest` covers HTTP parameter/header, XQuery parameter, template, value-of, config and call schemas; `NestedPluginSchemaBranchContractTest` covers HTTP, while, and text schemas; `CoreSchemaExtrasBranchContractTest` covers selected value/get/constant/text/sleep/catch/else/log/def/header schemas. Schema validation in isolation does not prove the parent-child execution contract.
+
+**Descriptor classification warning:** the 44-entry registry is an XML execution inventory, not a list of 44 independently installable extension capabilities. Several entries are subordinate XML constructs:
+- `call-param` belongs to function-call configuration.
+- `http-header` and `http-param` configure an HTTP request.
+- `regexp-pattern`, `regexp-source`, and `regexp-result` are detail constructs of regexp processing (their class documentation explicitly identifies the regexp parent).
+- `xq-expression` and `xq-param` are detail constructs of XQuery processing (their class documentation identifies the xquery parent).
+- `stylesheet` is a detail construct of XSLT processing (its class documentation identifies the xslt parent).
+
+These may need descriptors/schema fragments for validation and semantic projection, but must not automatically become independent top-level capabilities or separately loadable providers. Their parent-child contract belongs in the descriptor model. For `http-header`/`http-param` and `call-param`, parent binding should be confirmed from parser/runtime behavior before finalizing descriptor constraints; this pass establishes their role as request/call configuration constructs, not an independent external integration.
+
+**Next evidence gate:** trace the parser/validator/runtime handling for each subordinate construct and verify parent constraints and nested execution with source-backed fixtures. Then build the authoritative table across Core and optional modules, with separate columns for runtime mapping, discovery, descriptor, public semantic capability, compatibility, construction dependencies, and test level. Do not treat file names as test execution or test coverage percentages.
+
+**Evidence boundary:** source/test inventory only. No source, POM, runtime behavior, tests, or XML compatibility changed; no tests were run.
