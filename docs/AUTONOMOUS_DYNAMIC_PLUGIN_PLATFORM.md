@@ -736,3 +736,15 @@ A targeted source audit of resource-bearing built-ins shows distinct owners that
 - **Host scope:** services supplied by an embedding application remain host-owned unless the host explicitly transfers ownership. Runtime shutdown must not close them by default.
 
 A targeted scan did not find doCleanup() overrides in the resource-bearing built-in implementations inspected; this is not a repository-wide absence claim. Several built-ins release their operation resources in doExecute() finally blocks, independently of AbstractPlugin.doCleanup(). Therefore, lifecycle contracts must separately define per-invocation completion, session termination, provider prepare/rollback/final close, generation retirement and runtime shutdown. The conformance suite must assert that closing one scope cannot prematurely close resources owned by a wider scope, and that all resources are eventually released by their actual owner. Source inspection only; no tests run.
+
+
+## 7.18 The legacy PluginFactory/PluginRegistry path must not become a second lifecycle authority
+
+The repository contains a parallel legacy factory/registry API distinct from the active CorePluginRegistry + DefaultPluginBodyExecutor path:
+
+- DefaultPluginRegistry.registerPlugin(Class) reflectively constructs and retains a Plugin instance in its registry maps; lookups and metadata are based on that instance.
+- unregisterPlugin removes registry entries but does not call Plugin.cleanup() on the retained object.
+- DefaultPluginFactory uses the retained object to obtain its class, then reflectively constructs a separate instance (no-arg preferred, PluginMetadata constructor fallback) and optionally initializes it. It does not return an explicit disposal handle or define cleanup on failed initialization or caller completion.
+- The parallel DefaultPluginDependencyInjector injects annotated fields reflectively and maintains singleton/provider maps, but prior source audit established that this injector is not wired into the active body executor. It is not a substitute for the runtime-neutral host provider contract.
+
+This is not evidence that this factory is the active CLI execution path. The dynamic platform must make an explicit compatibility decision: retire this API, or adapt it as a facade over the same descriptor-only authoritative registry and provider/lifecycle model. It must not retain a second source of plugin identity, construction semantics or disposal ownership. Conformance should cover registry registration/unregistration, retained prototype disposal, factory-created instance ownership, failed preparation rollback and API parity. Source inspection only; tests not run.
