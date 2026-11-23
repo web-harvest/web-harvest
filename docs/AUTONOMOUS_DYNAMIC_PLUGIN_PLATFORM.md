@@ -1028,3 +1028,52 @@ This is a multi-runtime isolation defect even though the backing map is concurre
 - DefaultPluginRegistryTest.java: ee2dd3c932637c39bd25282505d06c940a286f64
 
 Source inspection only. No runtime implementation, POM changes, test execution or runtime reproduction is included in this checkpoint.
+
+## 7.26 Subscriber lifecycle, listener retention and lock-escaped registry views
+
+This section audits the lifecycle of Guice-managed EventBus subscribers and ScrapingAware callbacks, plus the generic registry locking decorator. These are distinct mechanisms from the service-level shared EventBus in sections 7.24–7.25; the legacy Guice scope must not be assumed to be the same EventBus instance as WebHarvestServiceImpl's injected service bus.
+
+### EventBusTypeListener: automatic registration has no matching retirement path
+
+- EventBusTypeListener detects any Guice-created type with a declared @Subscribe method and, in afterInjection(), resolves EventBus through the static InjectorHelper and calls register(instance). The listener stores no registration handle and defines no corresponding unregister path.
+- ScraperModule binds EventBus in ScrapingScope, while EventBusTypeListener resolves it from the current static Injector. This is the legacy Guice-scoped bus path. Its behavior depends on the active scope and injector; do not conflate it with WebHarvestServiceImpl's explicit service-owned EventBus injection.
+- A subscriber instance that outlives its intended scope can remain strongly reachable from the bus after its owner is retired. Conversely, an object injected when no ScrapingScope is active may fail to resolve the scoped EventBus. The inspected code has no explicit owner token, scope-close hook or deterministic registration cleanup.
+- EventBusTypeListener's class scan uses getDeclaredMethods(); inherited subscriber methods are not considered by that scan. This is a discovery correctness detail, separate from thread safety, and should be covered when defining the new subscriber registration contract.
+
+### ScrapingAwareHelper: confirmed mutable-list race and unbounded retention
+
+- ScraperModule binds one ScrapingAwareHelper instance into the injector. The helper stores listeners in a plain ArrayList.
+- ScrapingAwareTypeListener adds every injected ScrapingAware object to that helper. The helper's own source explicitly marks addListener as not thread-safe and has a TODO asking how to unregister listeners.
+- addListener() can race with onBeforeScraping()/onAfterScraping() iteration. ArrayList mutation during iteration can produce inconsistent callback delivery or ConcurrentModificationException. Concurrent invocations can also call the same listener instance simultaneously; no listener-level serialization contract is declared.
+- No removal method exists. The helper's strong references can retain transient or scope-bound instances beyond their intended lifetime, including objects whose dependencies/classloaders should otherwise be retired.
+- ScrapingInterceptor invokes onBeforeScraping() before entering its try/finally. If a listener throws during the before notification, callback execution is skipped and scope.exit() is not reached by that finally block. In the finally path, an exception from onAfterScraping() can also prevent scope.exit(). Lifecycle callbacks therefore need failure aggregation and unconditional scope cleanup, not just a concurrent collection.
+
+### LockedRegistry: lock does not protect an escaped live view
+
+- AbstractRegistry uses a plain HashMap and returns storage.keySet() directly from listBound().
+- LockedRegistry acquires its read lock while calling delegate.listBound(), but returns the delegate's live keySet after releasing the lock. A caller can iterate or mutate that view outside the decorator's lock, bypassing the lock entirely. Concurrent bind/unbind can therefore race with external iteration; callers can also remove bindings through the returned set without acquiring the write lock.
+- The decorator serializes access only while calls pass through its methods. It cannot make a mutable object safe after that object escapes. listBound() must return an immutable snapshot (or a documented snapshot copy) rather than a live backing view.
+
+### Required subscriber and callback lifecycle contract
+
+1. Every subscriber registration must be owned by an explicit runtime/scope/generation and return a registration token or close handle. Retirement must unregister exactly that instance from exactly that bus.
+2. Registration and retirement must be race-safe: no late subscriber publication after the owner enters closing; a registration racing with close must either be included in retirement or fail/undo itself.
+3. Keep the service-level EventBus shared as already decided. Do not introduce per-session buses as a workaround. Distinguish legacy Guice ScrapingScope buses from the service-level bus explicitly in composition and migration.
+4. Replace ScrapingAwareHelper's global mutable listener list with lifecycle-owned registrations and immutable callback snapshots. Define whether callbacks may execute concurrently; if not, serialize per listener/owner without globally serializing unrelated sessions.
+5. Callback failures must not skip mandatory scope/resource cleanup. Run teardown in an unconditional finally path and preserve all callback/cleanup failures in a structured result or suppressed-exception chain.
+6. Make generic registry enumeration return a detached immutable snapshot. No live HashMap keySet, values, entrySet or mutable nested collection may escape a lock boundary.
+7. Add deterministic tests for concurrent add/notify/remove; scope retirement and listener reachability; duplicate registration; callback exception before and after invocation; concurrent callbacks to one listener; subscriber unregister on scope/runtime close; registration racing with close; and listBound snapshot iteration during concurrent bind/unbind.
+
+### Exact inspected source blobs
+
+- EventBusTypeListener.java: 3b368eb75ce842f3db6a67b1e9424f644b341824
+- ScrapingAwareTypeListener.java: 4ed97073d64878be10cd4798c47b56ecd169f1cf
+- ScrapingInterceptor.java: 8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2
+- ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e
+- InjectorHelper.java: 24c114b24a3abc079a9d447b59155e3598f5abe7
+- AbstractRegistry.java: 9622bee0c049297ec0004ecb89673373f65d5fc8
+- LockedRegistry.java: d9beeadd2fdc63a3a1526899bd798973d0f37a16
+- EventBusTypeListenerTest.java: 9eb438cdd6cc8cd44b2636f777f661d0a3ea4bde
+- ScrapingAwareTypeListenerTest.java: 6d854e1107fc16d42b31f1207021e3d6e59faaae
+
+Source inspection only. No runtime implementation, test execution or leak/concurrency reproduction is included in this checkpoint.
