@@ -3538,7 +3538,7 @@ Source blob: `ScrapingInterceptor` `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`.
 | `PluginPackageScanner` | Accepts and mutates a `CorePluginRegistry` directly | Preserve legacy scan API only as a compatibility adapter; provider contributions must be validated before generation publication |
 | Database `StandaloneConnectionPool` | Registers itself on a session EventBus and handles session lifecycle events | Preserve scoped resource cleanup while moving registration to explicit subscription handles owned by the runtime/session |
 
-Source blobs: `DefaultPluginBodyExecutor` `0116211ed31986b757f6f9e4bb5689f199b54f69`; `Scraper` `eef7b989e6f44cddf0e99fb3967dcbde6e7a3de`; `DefaultHarvest` `f353bf980319e11e06045ceaeed688b27e57fa1d`; `PluginMetadataJsonGenerator` `<source inspected in the same baseline; see section 15.68>`; IDE `SchemaValidator` `b435fb62bce5d0d87981817a427ebc013cb93759`; `PluginPackageScanner` `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232`; Database `StandaloneConnectionPool` `<source inspected in the same baseline; see section 15.57>`.
+Source blobs: `DefaultPluginBodyExecutor` `0116211ed31986b757f6f9e4bb5689f199b54f69`; `Scraper` `eef7b989e6f44cddf0e99fb3967dcbde6e7a3de`; `DefaultHarvest` `f353bf980319e11e06045ceaeed688b27e57fa1d`; `PluginMetadataJsonGenerator` `efa2542b4000527272953a15429a6417def2d965`; IDE `SchemaValidator` `b435fb62bce5d0d87981817a427ebc013cb93759`; `PluginPackageScanner` `c0e6cbff6cb8c472f66c4a897263cb3c3c7f8232`; Database `StandaloneConnectionPool` `ab4a92fb63599e88a55821fe141bf5aa50327008`.
 
 ### C. EventBus immutability is documented but not enforced by ScraperContext
 
