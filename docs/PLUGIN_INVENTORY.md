@@ -868,3 +868,16 @@ This pass follows the concrete execution methods rather than relying on class na
 5. The findings above are not test results. Existing tests were not run in this audit; targeted positive and negative tests must be mapped before any implementation.
 
 **Evidence boundary:** the source blobs above were fetched from the current `main` tree. No runtime source, tests, POMs or behavior changed in this pass.
+
+
+### 15.12 Include source-resolution follow-up (2026-11-23)
+
+The underlying configuration-source layer was traced one level further:
+
+- `AbstractConfigSource.include(Location)` creates an `IncludeVisitor` from the location string and delegates to the concrete source's `visit` method (blob `61a59ff096c62e37a7d4c6445e212da868a49bff`). It contains no visible cycle/depth, root-containment or destination-policy enforcement itself.
+- `FileConfigSource.FileLocation.getReader()` opens the configured file with `FileInputStream` and UTF-8 decoding (blob `60313fb8f21db7630fa66dacf7a2dcfd4871eb98`). No canonicalization or symlink/root check is present in this class.
+- `URLConfigSource.URLLocation.getReader()` calls `url.openStream()` and decodes UTF-8 (blob `1579ea14f6e2f7b187cb88c65e97dd321c8a2e23`). This class exposes no explicit connect/read timeout, response-size bound, redirect validation or destination allowlist.
+
+The exact `IncludeVisitor` construction/dispatch policy and its relative-location semantics still need a dedicated call-site trace; do not infer that relative includes are constrained to the parent directory merely from the visitor abstraction. The evidence now establishes that both file and URL source implementations are capable of opening their respective underlying resources without policy parameters at this layer.
+
+**Design consequence:** included configuration loading must be routed through the same host-owned, policy-aware resource resolver as ordinary file/HTTP operations, with explicit source-type permissions, canonical path/destination checks, timeouts, byte limits, cycle/depth limits and execution-generation pinning. This remains an audit finding, not an implementation authorization. Tests were inspected only where noted; none were run in this pass.
