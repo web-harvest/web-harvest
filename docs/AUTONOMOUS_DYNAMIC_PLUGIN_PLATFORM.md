@@ -617,3 +617,21 @@ Conformance gaps to close:
 - No active runtime path reaches `InjectorHelper`, Guice `Injector`, static injection, or reflective no-argument construction.
 
 This is a source-backed migration blocker, not an implementation proposal to retrofit `DefaultPluginDependencyInjector` as-is. Its existing tests establish basic singleton/provider lookup and field injection for a simple test class; they do not establish constructor injection, superclass traversal, active-executor integration, container neutrality, isolation or lifecycle ownership. Tests were inspected, not executed.
+## 7.10 Public runtime implementation signatures still expose Guice
+
+The neutral Plugin interface does not by itself establish a container-neutral public embedding API. A source inspection of the public runtime implementation classes finds direct Guice types in public signatures and inheritance:
+
+- DefaultHarvesterFactory has a public @Inject constructor accepting Guice Provider<WebScraper>, Provider<EventBus> and ScraperScope, and its implementation stores those Guice providers.
+- ScrapingHarvester has a public @Inject constructor accepting Guice Provider<WebScraper> and Provider<EventBus>, plus ScraperScope. Its public class is part of the runtime implementation surface.
+- AttributeHolderScope is public and implements Guice Scope and Provider<AHT>; its public scope method accepts Guice Key<T> and Provider<T>.
+- ScraperModule is a Guice AbstractModule, requests static injection for InjectorHelper and BaseTemplater, and binds a static ScraperScope. It is a container adapter today, but the runtime factory/harvester constructors and public scope class also expose Guice directly.
+
+This refines the earlier interface-level observation: Harvest/Harvester and Plugin facade contracts may be neutral, but the current public implementation/composition seam is not. Embedders cannot use the current DefaultHarvesterFactory/ScrapingHarvester constructors or AttributeHolderScope without taking a Guice dependency. Treat these as migration seams, not as the future public neutral API.
+
+Required target: publish a small neutral runtime construction API whose public types use WebHarvest-owned provider/factory/lifecycle abstractions or host-supplied instances, and keep Guice Provider/Scope/Key/AbstractModule confined to an optional Guice adapter artifact. The plain-Java consumer fixture must compile and run without Guice on its compile or runtime classpath; a separate host-managed Guice fixture must demonstrate adapter interoperability. Do not merely relocate Guice types behind another public wrapper while leaving Guice mandatory in Core's transitive dependency graph.
+
+Source blobs on current main:
+- DefaultHarvesterFactory.java: 58bae4e22a82d89dac1c6e63e28ce5f3587e687e.
+- ScrapingHarvester.java: 2af32ca67c235e075c8cc613118814d54e555338.
+- AttributeHolderScope.java: 11a39c99e517ae9ae1ba09cf69a885b636465b64.
+- ScraperModule.java: d31a5e30b0949c752743123cbcfb4219ba60713e.
