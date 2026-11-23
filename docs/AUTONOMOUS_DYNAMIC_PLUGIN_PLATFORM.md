@@ -513,3 +513,20 @@ The external provider fixture and built-in Core compatibility suite must verify 
 - Execution-scoped exit, cancellation and runtime shutdown remain distinguishable and do not terminate the host JVM or unrelated sessions.
 
 Use deterministic fake/loopback services and failure injection. Tests must assert the effective policy at the transport/output boundary, not only that descriptor metadata declares a permission. No such implementation or passing test is claimed by this design document.
+
+
+## 7.7 Current Guice coupling is a migration blocker, not an adapter boundary
+
+The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), section 15.28, confirms that the current runtime composition path is Guice-specific: `DefaultHarvesterFactory` and `ScrapingHarvester` expose Guice `Provider`; `AttributeHolderScope` implements Guice `Scope` and exposes Guice `Key`/`Provider`; `ScraperModule` is an `AbstractModule` and performs static injection; `InjectorHelper` stores a process-static injector; and `DefaultPluginBodyExecutor` resolves providers through that global injector or deprecated no-arg reflection.
+
+An existing `PluginDependencyInjector` interface is not yet the active neutral seam: the default executor does not call it, and its reflection implementation performs field injection only, without constructor injection or lifecycle ownership. It must not be mistaken for the desired host composition API.
+
+Migration constraints:
+- Public Core/runtime/plugin contracts must not expose Guice types or require Guice to load and execute a Core-only plain-Java profile.
+- The runtime must be created through an explicit host-owned composition/factory contract. No process-static injector, static service locator or hidden second container is permitted.
+- Provider construction must be explicit and support constructor injection through a neutral factory/service bridge; adapters may delegate to host Guice/Spring/CDI but may not own an independent parallel object graph.
+- Scope semantics must be neutral and explicit (host/application, runtime, registry generation/provider, execution/session). A thread-local scope adapter may be an implementation detail, not the public lifecycle model; asynchronous execution must not accidentally lose or cross-contaminate scope context.
+- Runtime shutdown must stop admission, drain/cancel sessions, release provider-generation leases, close runtime-owned services exactly once, and never close host-owned objects.
+- Static injection into `BaseTemplater` must be replaced by explicit runtime/session scripting-service access so two runtimes in one JVM cannot overwrite each other's engine factory.
+
+The implementation plan must first inventory public signatures, dependency scopes, static state and construction call sites; then introduce neutral seams behind compatibility adapters. Do not remove Guice from the build or restructure POMs as an isolated cleanup before the plain-Java fixture and Guice adapter tests prove parity.
