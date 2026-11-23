@@ -65,7 +65,7 @@ A follow-up read of the actual Guice type listeners and interceptor confirms tha
 
 - `ScrapingInterceptor.invoke()` calls `InjectorHelper.getInjector()` and uses that injector to resolve `ScraperScope` and `ScrapingAwareHelper` before entering the scope. Therefore a method intercepted by runtime A can resolve scope/listener services from the most recently injected runtime B.
 - `EventBusTypeListener.afterInjection()` calls `InjectorHelper.getInjector().getInstance(EventBus.class).register(i)`. An object created by one injector can consequently be registered with the EventBus obtained from another runtime after the static injector reference has been overwritten.
-- `ScrapingModule` installs both listeners for each injector; their callback code does not capture the owning injector as an instance field. This makes the global lookup especially consequential for embedded multi-injector use.
+- `ScraperModule` installs both listeners for each injector; their callback code does not capture the owning injector as an instance field. This makes the global lookup especially consequential for embedded multi-injector use.
 - `ScrapingAwareTypeListener` adds detected instances to the injector-scoped `ScrapingAwareHelper`. That helper stores listeners in a mutable `ArrayList`; registration is explicitly marked not thread-safe, and there is no unregister operation. The source documentation itself notes the missing reverse process. Runtime disposal therefore needs listener deregistration and subscriber unregistration, not just injector garbage collection.
 - `EventBusTypeListener` registers subscribers but the inspected listener has no corresponding unregister/disposal callback. EventBus ownership and subscriber lifetime need an explicit runtime lifecycle contract.
 
