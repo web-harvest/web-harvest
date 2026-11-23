@@ -1371,3 +1371,43 @@ Source blob on current `main`:
 - `BaseTemplater.java`: `dacefb8faec186176148ab2a0cbc5a538941d4c5`.
 
 No runtime or test changes were made/run. The target is explicit runtime/session-scoped scripting service access through the neutral composition contract.
+
+
+### 15.31 Remaining Core execution paths: nested dispatch and transformation/query budgets (2026-11-23)
+
+This pass traced function invocation, branching, regular-expression result templates, XML/HTML conversion, XPath/XQuery and XSLT to identify additional runtime-generation and resource-control requirements.
+
+**Nested executor construction (additional call sites):**
+- `CallPlugin` directly constructs `CallParamPlugin` for each argument and creates a new `DefaultPluginBodyExecutor` to execute the selected function body.
+- `IfPlugin` constructs a new `DefaultPluginBodyExecutor` for selected true/else branches.
+- `RegexpPlugin` constructs new default executors for `regexp-result` bodies and for evaluating child text. These are additional generation-propagation seams beyond Include and Loop.
+- `TryPlugin` uses `AbstractPlugin.executeBody()` and therefore the normal injected body-executor path; it is not the same direct-construction gap in the inspected implementation.
+- `WhilePlugin` executes the body in a nested context, but evaluates conditions via `BaseTemplater` and `BaseTemplater.scriptEngineFactory` (the process-static service already recorded in 15.30). It caps iterations at 10,000 in the execution path; no shared deadline/aggregate resource budget is visible.
+
+The generation-pinning rule therefore applies to **every** nested dispatch path, including function bodies, selected conditional branches, regex result templates, loop source/body, and included configurations. Child plugin construction must use the runtime's provider factory and pinned registry generation, not ad hoc `new` calls or a global registry/injector.
+
+**Transformation/query paths:**
+- `XsltPlugin` explicitly enables `XMLConstants.FEATURE_SECURE_PROCESSING`, rejects external URI resolution on both `TransformerFactory` and `Transformer`, and disables DOCTYPE/external general/parameter entities/external DTD loading in its SAX source parser. This is positive source evidence for blocking external XSLT resources and XML external entities in this specific path.
+- XSLT output is accumulated in a `StringWriter`; no output-size ceiling is visible. No explicit execution deadline/cancellation hook is visible inside the transform call.
+- `XPathPlugin` constructs a fresh Saxon `Configuration` and builds a document from an in-memory `StringReader`; no explicit host-controlled Saxon resource resolver, query time budget or input/output limit is visible in the inspected path. CSS selection uses Jsoup and materializes all matching text results.
+- `XQueryPlugin` similarly constructs a fresh default Saxon `Configuration`, compiles and executes expressions, and builds XML node parameters from strings. No explicit host-controlled external-resource resolver, query deadline, cancellation or memory/result budget is visible in the inspected path. Do not infer exploitability solely from absence of an explicit resolver; verify the exact Saxon version defaults and supported resolver hooks before making a vulnerability claim.
+- `HtmlToXmlPlugin` parses full HTML strings into Jsoup DOMs and converts to full XML strings; fallback TagSoup writes to a `StringWriter`. No visible input-size, DOM-depth, output-size or processing-time budget in these paths.
+- `JsonToXmlPlugin` constructs full `JSONObject`/`JSONArray` instances and serializes full XML strings; no visible input-size, nesting-depth or output-size budget. Its JSON parse fallback currently creates a CDATA wrapper around an empty `rawContent` string rather than preserving the failed input; this is a compatibility/diagnostic behavior to test, not a security conclusion.
+- `RegexpPlugin` uses Java `Pattern`/`Matcher` with caller-provided patterns and complete input strings. No regex execution deadline or safe-engine policy is visible. Catastrophic backtracking is therefore a resource-exhaustion concern for untrusted patterns/input; use bounded execution or a linear-time engine/policy rather than assuming a loop budget can interrupt a Java regex call.
+
+**Required neutral host capabilities:** bounded transformation input/output, query execution deadline/cancellation and Saxon resource-resolution policy, HTML/JSON parse depth/size limits, regex execution policy, and a common execution budget shared with the surrounding session. XSLT's existing external-resource restrictions should be preserved as a compatibility/security invariant, not weakened during SPI migration.
+
+Source blobs on current `main`:
+- `CallPlugin.java`: `01238d278e4bbddb262c797f34a481dcd964e3c9`.
+- `IfPlugin.java`: `c3f6c65078763834114989db4f57d37308e4ee17`.
+- `RegexpPlugin.java`: `a860ab08554122680c4d5d5fde1be3d683139c6a`.
+- `WhilePlugin.java`: `0c2aeae8e7b0ebcbc72890639dab3ad002ba7ef7`.
+- `TryPlugin.java`: `f1363d5e880f424276deeabac1082750fe61a012`.
+- `XsltPlugin.java`: `c94b8e26dba566cb30bc12f6fc811bb1fcdc59b1`.
+- `XPathPlugin.java`: `e519eb21a2e6faeef43a9d23c219502ac7f7f2a6`.
+- `XQueryPlugin.java`: `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`.
+- `HtmlToXmlPlugin.java`: `ad3322118e453239fcf8d16646490070b2fc8ba2`.
+- `JsonToXmlPlugin.java`: `b10638356f38b7a7259454c6bd72f14f0380a5dd`.
+- `XMLPlugin.java`: `8a0d938bd16cbddaedcdfe832d7d5579f13636a6`.
+
+No runtime changes or tests were made/run. XSLT hardening above is a source-level observation, not a claim of broader XML parser safety across all Core paths.
