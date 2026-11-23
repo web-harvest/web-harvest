@@ -392,6 +392,24 @@ observable runtime behavior.
 
 ## 14. Optional-module execution and dependency evidence (2026-11-17)
 
+> **Historical snapshot warning (refreshed 2026-11-23):** This section preserves the
+> earlier 2026-11-17 evidence and must not be read as the latest runtime/test
+> status. Its FTP, Mail and WebBrowser coverage/lifecycle statements were made
+> against that earlier source snapshot. Section 12.6 is the later targeted
+> source-level review of current `main` for side effects and policy gaps. Where
+> the two sections differ, use the newer source audit and re-inspect exact
+> current source/test files before implementation. In particular, the earlier
+> claim that FTP integration coverage only checks resource existence is
+> superseded by the later inspection of MockFtpServer operation coverage; the
+> later review still does not establish all transport, timeout, size or
+> cancellation policy controls. Likewise, do not treat the earlier WebBrowser
+> static-client lifecycle description as a current finding without rechecking
+> current source.
+>
+> This section remains useful as a dated dependency/module-boundary baseline,
+> not as a current test coverage statement.
+
+
 A targeted source/POM/test audit covered Database, FTP, Mail, WebBrowser and ZIP. This is
 evidence for the module boundary review in Issue #93, not an approved Core
 membership decision.
