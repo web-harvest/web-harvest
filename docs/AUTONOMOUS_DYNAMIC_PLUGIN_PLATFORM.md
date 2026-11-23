@@ -456,3 +456,18 @@ The external fixture and Core compatibility suite must additionally prove:
 - an XML tree validated under generation N cannot execute under generation N+1 without explicit revalidation; a running session remains pinned to its original generation.
 
 Tests must include both positive legacy XML fixtures and negative malformed-tree/collision fixtures. They must assert not only validation results but also which provider instances were and were not constructed. These tests complement, rather than replace, the live add/update/remove/re-add lifecycle scenario in section 9.2.
+
+
+## 7.5 Host-effect services required by the current Core compatibility surface
+
+The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), section 15.24, confirms that several Core operations currently reach host effects without a complete policy-aware service contract. The neutral SPI and runtime design must not stop at declarative permission labels.
+
+The host composition API must provide explicit, policy-bearing services (or equivalent capabilities) for at least:
+
+- **Filesystem access:** canonicalized path resolution against host-granted roots; separate read/write/list/create permissions; symlink and race-safe handling; bounded bytes, entries and recursion; deterministic close/cancellation; structured policy-denial errors. A working-directory string alone is not a sandbox.
+- **Configuration inclusion:** a resolver that returns a typed source identity and applies policy after relative resolution. File and URL sources need distinct grants; outbound URL policy, redirect revalidation, connect/read timeouts, byte limits, include depth and cycle detection must be enforced at the resolved-source boundary. Nested included configuration must retain the same pinned registry generation and host policy context as its parent execution.
+- **Script execution:** an explicitly authorized engine/provider and host-object/capability view, with execution budgets, cancellation and lifecycle ownership. JSR-223 engine discovery must not implicitly authorize a language. Thread-local engine caches and provider classloader references must be retired with their owning runtime/provider generation. A fallback execution path must not silently bypass a denied or unavailable policy-aware engine.
+
+Descriptors may declare requested effects and resource ceilings, but the host grants and enforces them. Built-in Core operations and external providers must use the same service contracts; an extension must not gain a broader filesystem/network/script capability by calling JDK or third-party APIs directly.
+
+The compatibility plan must preserve existing XML behavior where explicitly approved, while restricted profiles can deny effects predictably and expose structured diagnostics. No service implementation or migration is claimed here; this is a required design input for #346, #349 and #350.
