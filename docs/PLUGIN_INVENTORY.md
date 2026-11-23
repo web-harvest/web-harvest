@@ -3065,3 +3065,48 @@ Then migrate in this order:
 Do not simply delete PluginRegistry because it is old, and do not simply bless PluginMetadataCatalog because it is newer. The catalog is the better starting point for read-only metadata projection, but its current class-scanning/instantiation mechanism must be replaced. The legacy registry/factory are compatibility surfaces to inventory and drain, not foundations for the new SPI.
 
 **Decision status: architectural recommendation for #346/#347; not implementation approval.** No production code, POM or tests were changed; no tests/builds were run for this audit.
+
+## 15.69 Cross-mechanism production call-site trace — registry/catalog/factory integration (2026-11-23)
+
+This is a focused production call-site trace on main baseline 1729bdf4620a66686d02605083e27e27d1ab3944. It is not yet the exhaustive repository-wide census required before deletion. Exact paths and inspected source blobs are recorded below.
+
+### A. The legacy registry is not merely an unused old interface
+
+- `PluginRegistryHolder` (blob `59e2a25008a3c348319c9c18d057e7dc513ff324`) owns a process-global static registry instance, supports global set/reset, scans the Core package and registers annotated classes. Its initialization catches failures and can return an empty registry. This is a second global discovery/registration path alongside the manual Core XML registrar and the metadata catalog.
+- `PluginMetadataJsonGenerator` (blob `efa2542b4000527272953a15429a6417def2d965`) still obtains `PluginRegistryHolder.getInstance()`, enumerates live plugin instances and reads `PluginMetadata`/visual metadata from them. This is a concrete production consumer of the legacy registry and cannot be migrated by simply deleting the registry classes.
+- `DefaultPluginFactory` (blob `91c8084f671027954375ff3cab784691f8ae26e5`) directly depends on `PluginRegistry`; ID/QName creation first looks up a registered instance and then reflectively constructs another instance from its class. This makes registry instance ownership part of factory behavior.
+- `PluginRegistryHolder` itself constructs `DefaultPluginRegistry` and registers discovered classes. The old registry therefore still has a live bootstrap path.
+
+### B. The newer catalog and the XML registry are coupled into the semantic path
+
+- `PluginDescriptorIndex` (blob `017a6011783c30d24a6b74d22628f3e010e9094b`) builds Stage-1 descriptors from `PluginMetadataCatalog.getAllDescriptors()`, but separately obtains runtime availability from `CorePluginRegistry`. Its resolution result therefore combines a metadata catalog snapshot with a different mutable XML registration state.
+- `CorePluginsRegistrar` (blob `7ddc5b26a33c5143ed893a513263718990fa515e`) manually registers 44 XML mappings into `CorePluginRegistry`, including the required legacy `set-var` mapping. Its `initialized` flag and reset/clear path are separate from `PluginRegistryHolder` and the catalog's static initialization.
+- `ScraperModule` (blob `d31a5e30b0949c752743123cbcfb4219ba60713e`) invokes `CorePluginsRegistrar.registerCorePlugins()` during Guice module configuration. This is the active wiring path for the XML map, not evidence that the other registries are unified.
+
+### C. IDE endpoint currently has a fallback that preserves competing authorities
+
+- `PluginMetadataServlet` (blob `48eb136bb1634b4bb419a42f4d2b490ac03adc44`) first queries `PluginMetadataCatalog`, then falls back to `CorePluginRegistry` if catalog loading fails. The fallback maintains a separately hard-coded element-name list and reconstructs metadata from registered classes.
+- Even on the catalog path, `buildMetadataFromDescriptor` loads `desc.getClassName()`, constructs a plugin instance and invokes metadata/schema extraction. Thus the endpoint is not yet a pure descriptor consumer; catalog-first does not mean descriptor-only.
+- The endpoint exposes catalog-derived and fallback-derived output paths. Those paths can diverge in coverage, schema and metadata behavior. They should converge on one generation-backed read model before fallback removal.
+
+### D. Current production consumer map (confirmed paths, not exhaustive)
+
+| Consumer / bootstrap | Current source of truth | Required target |
+|---|---|---|
+| PluginMetadataJsonGenerator | PluginRegistryHolder -> DefaultPluginRegistry live instances | Generation-backed read-only descriptor projection |
+| DefaultPluginFactory | PluginRegistry lookup + reflective constructor cache | Single host activation/instance manager |
+| PluginDescriptorIndex | PluginMetadataCatalog descriptors + CorePluginRegistry availability | One generation-pinned descriptor and availability view |
+| CorePluginsRegistrar / ScraperModule | Static CorePluginRegistry XML map | XML QName/alias bindings in the generation |
+| PluginMetadataServlet | Catalog path plus CorePluginRegistry fallback; further class construction | One generation-backed catalog API; no fallback authority or class loading |
+
+### E. Revised migration order and explicit non-goals
+
+1. Treat `PluginRegistryHolder` and `PluginRegistry` as active legacy production dependencies, not dead code.
+2. Add the remaining call-site inventory for factory construction, registry access, catalog reads, XML dispatch, DI wiring, IDE/CLI and optional modules, including tests and documented external APIs.
+3. Define one generation snapshot that owns descriptor identity, semantic projection inputs, QName/alias resolution, provider admission and availability for a specific version.
+4. Migrate semantic `PluginDescriptorIndex` so it is a projection/index of that same generation, not a second authority that consults a different global registry.
+5. Migrate IDE/metadata generators to generation-backed data and preserve their external JSON/XML response contracts; remove class-name reflection and legacy fallback only after parity tests.
+6. Migrate factory callers to one host activation manager and preserve constructor-injection support through a container-neutral host factory/service contract.
+7. Only then deprecate and remove `PluginRegistryHolder`, `PluginRegistry`, `DefaultPluginRegistry`, old `PluginFactory` implementations and `CorePluginRegistry`/registrar wiring in separate reviewed steps.
+
+**Important:** this trace confirms multiple simultaneously active authorities and a real fallback path. It does not yet prove every call site or public consumer. No source/POM/test changes were made; no tests/builds were run. Implementation remains blocked on #346 maintainer acceptance and the #93/#94 prerequisites.
