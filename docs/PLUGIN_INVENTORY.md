@@ -809,3 +809,23 @@ The POM also declares test-only SLF4J Simple, WireMock and Mockito; these are no
 **What this does not establish:** the table does not prove that each listed dependency is used by a particular plugin, that every dependency can be removed independently, or that any Core/extension membership decision has been approved. The next audit step is per-class import/call-site attribution for the dependency-heavy capabilities, followed by test coverage and compatibility mapping. No source or POM changes are authorized by this inventory.
 
 Evidence: `webharvest-core/pom.xml` fetched from the current `main` branch at the baseline above; the production Groovy dependencies are declared in the `groovy-production-runtime` profile. Test dependencies are separately scoped as `test`.
+
+
+### 15.9 Targeted Core implementation dependency/call-site samples (2026-11-23)
+
+The following source files were inspected directly to begin the per-class attribution requested by #93. The evidence below is intentionally limited to imports and visible integration seams; it is not yet a complete method-level call graph or proof that a host policy is enforced.
+
+| XML capability / class | Current source blob | Direct implementation dependencies or seams observed | Boundary question |
+|---|---|---|---|
+| `http` / `HttpPlugin` | `c6045d6c7638f3aa86c510240814633597b108ad` | Injects/uses the Core `HttpService` abstraction; imports Guice `@Inject`, response and service exception types, runtime context and templating. | Strong candidate for a policy-aware host service seam. Inspect the service interface, concrete binding and redirect/credential/timeout enforcement before claiming the abstraction is sufficient. |
+| `file` / `FilePlugin` | `8d78e797975ab236a47420d18f28600beaae04bf` | Imports injected `WorkingDir`, Guice, file/plugin exceptions, runtime variables and `FileListIterator`. | Determine whether WorkingDir constrains canonical paths and symlinks or merely supplies a base directory; enumerate all read/write/list operations and their limits. |
+| `include` / `IncludePlugin` | `ab06127f7f5402978937160a42455b4c0107dfab` | Uses `ConfigFactory`, `ConfigSource`, `Config`, `PluginConfigurationTree` and `DefaultPluginBodyExecutor`; no external library is visible in the import list. | Include is a configuration-loading/execution composition boundary. Confirm path resolution, include cycle/depth limits and whether it reuses the active registry generation. |
+| `script` / `ScriptPlugin` | `0bd1992d0739f43c9d550b302d4fa0a815e63995` | Delegates through Core `ScriptEngineFactory`, `ScriptSource` and `ScriptingLanguage`; imports Guice and runtime context. | Separate script-engine selection from host-object exposure and execution policy. Engine availability alone must not grant script permission. |
+| `xslt` / `XsltPlugin` | `c94b8e26dba566cb30bc12f6fc811bb1fcdc59b1` | Uses JAXP `TransformerFactory`, `Transformer`, SAX parser APIs and XML constants directly. | Confirm secure-processing and external document/stylesheet access restrictions at factory/resolver boundaries; a JAXP API dependency is not itself a sandbox. |
+| `xpath` / `XPathPlugin` | `e519eb21a2e6faeef43a9d23c219502ac7f7f2a6` | Imports Saxon query/configuration types, Jsoup DOM types and Core `XmlUtil`. | Confirm whether this class currently combines XPath and HTML selection concerns; split only after runtime behavior and XML compatibility are mapped. |
+| `xquery` / `XQueryPlugin` | `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1` | Uses Saxon `Configuration`, `DynamicQueryContext`, `StaticQueryContext`, `XQueryExpression`, Core `XmlUtil` and runtime values. | Define query function/module/external-resource policy and bounded execution/result semantics before classifying Saxon as a Core invariant or adapter dependency. |
+| `html-to-xml` / `HtmlToXmlPlugin` | `ad3322118e453239fcf8d16646490070b2fc8ba2` | Uses Jsoup parser/document/element/safelist APIs directly. | HTML parsing is a clear dependency-bearing conversion capability; preserve its XML output contract if implementation is later moved behind a provider boundary. |
+
+This sample reveals a useful distinction: some effects already have an injectable Core service seam (`HttpService`), while others directly use JAXP/third-party APIs or a narrow context object (`WorkingDir`, `ScriptEngineFactory`). It is premature to conclude that these seams are policy-complete. The next pass must inspect the corresponding service interfaces and Guice bindings, enumerate all call sites, and map the tests that assert path/network/script/query behavior.
+
+The import-level sample is a starting slice, not completion of the #93 per-plugin dependency/call-site matrix. No code, test or POM behavior changed.
