@@ -1339,3 +1339,25 @@ Source blobs on current `main`:
 - `DefaultPluginDependencyInjector.java`: `fe7aeacda9041c0aba88d4c15aea9c54d81d3431`.
 
 No runtime or tests changed/run. This is a source audit; no plain-Java, Guice or Spring embedding conformance test has been executed in this pass.
+
+
+### 15.29 HTTP redirect header forwarding and test-boundary audit (2026-11-23)
+
+A follow-up inspected the actual `HeaderPreservingInterceptor` and the current HTTP contract tests.
+
+- `HeaderPreservingInterceptor.process()` adds each configured default header to **every** request when that request does not already contain it. It does not inspect the request origin, redirect history, target scheme/host/port or whether the header is credential-bearing.
+- `HttpServiceImpl(boolean, Map<String,String>)` installs this interceptor as the first request interceptor. Its documented use cases include Authorization and API keys; the class Javadoc explicitly says these headers are applied to all initial and redirect requests.
+- This creates a confirmed cross-origin credential-forwarding hazard when a request redirects to another origin and a caller configures sensitive default headers. It is not proof that the default `ScraperModule` binding currently supplies such headers (it uses the no-arg constructor); it is a risk in the exposed constructor/service API and must be fixed before treating redirect behavior as safe.
+- `HttpServiceRedirectContractTest` uses a single loopback server and a same-origin relative redirect. It asserts that a configured `X-Api-Key` is present on the redirected request. It does not test cross-origin redirects or credential stripping.
+- `HttpPluginRequestContractIntegrationTest` injects a `RecordingHttpService` fake. Its PATCH test proves that the plugin forwards PATCH to an abstract service, not that the shipped `HttpServiceImpl` can execute PATCH. The unit test similarly mocks the service. This explains why the source-level mismatch between the plugin's eight advertised verbs and the concrete GET/POST-only transport is not exposed by those tests.
+- No inspected HTTP service test asserts response byte limits, connect/response deadlines, cancellation, redirect destination allowlists, or private/link-local target rejection.
+
+**Required correction/conformance:** redirect policy must be origin-aware. Authorization, cookies and configured secret headers must be stripped on cross-origin redirects by default, with narrowly scoped explicit policy for any exception. Tests need two distinct local origins (different ports are distinct origins), assert sensitive header removal, and exercise redirect chains. Transport-level method tests must instantiate the real service; plugin-level fake tests remain useful but are not transport conformance.
+
+Source blobs on current `main`:
+- `HeaderPreservingInterceptor.java`: `182181cc2652b68fbe6c769149d1bcdb622d57d1`.
+- `HttpServiceRedirectContractTest.java`: `f21c8c62ccca31e4b01891970244b1d9439b1b8f`.
+- `HttpPluginRequestContractIntegrationTest.java`: `6060347f1159bd07f6801d10e8dca746305c6446`.
+- `HttpPluginTest.java`: `1b66e0d035c378f30ab784d848aabf7eb29fb0ef`.
+
+Test sources were inspected, not executed. This is a confirmed code-path hazard for callers using sensitive default headers, not a claim that the no-arg default runtime binding currently injects secrets.
