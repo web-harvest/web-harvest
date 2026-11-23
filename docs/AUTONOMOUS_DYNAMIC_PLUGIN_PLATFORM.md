@@ -485,3 +485,15 @@ Therefore:
 - never treat URL normalization or a base URL as an SSRF control.
 
 The external fixture and built-in compatibility suite must include traversal, absolute-path, symlink, redirect-to-private-address, DNS/address-change and oversized recursive-list cases. This refines the requirements in 7.5; no implementation is present or claimed.
+
+
+## 7.6 Network, output, time and nested-execution host services
+
+The source audit in [PLUGIN_INVENTORY.md](PLUGIN_INVENTORY.md), sections 15.26–15.27, shows that host effects and nested execution need explicit neutral contracts beyond filesystem/include/script services.
+
+- **Network transport:** host-provided request service must accept a policy/deadline/cancellation context; validate initial and every redirect destination; enforce connect/response deadlines and streaming byte limits; expose supported HTTP methods honestly; define status and redirect/header/credential forwarding semantics; redact URL credentials/query values and response bodies from logs by default. A plugin-level timeout attribute that is not carried into the service is not enforcement.
+- **Nested execution:** include, loop source evaluation and loop body execution must inherit the exact parent session's immutable registry generation, host policy, cancellation token, deadline and resource budget. No nested `new DefaultPluginBodyExecutor()` may fall back to a process-global mutable registry. The nested operation must retain the parent's generation lease until completion.
+- **Output/logging:** standard output/error are host-owned process-global resources. Core logging/output plugins must route through a host output service with redaction and quotas, or be explicitly disabled in restricted profiles; they must not write directly to process streams behind the host's back.
+- **Time and control flow:** sleep must consume the same execution deadline/budget and remain interruptible. Loop iterations, materialized source items and accumulated output require bounded budgets. Negative/unbounded loop limits must be explicitly authorized or rejected by policy. Exit/stop outcomes must remain execution-scoped and distinct from host/runtime shutdown.
+
+These are capability contracts, not just descriptor labels. Built-in Core and external providers must receive the same host-controlled services, with lifecycle ownership defined by the neutral runtime API.
