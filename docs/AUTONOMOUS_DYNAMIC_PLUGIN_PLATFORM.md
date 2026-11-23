@@ -584,3 +584,36 @@ Tests must run on the exact candidate commit. Source-level test presence or decl
 ### 7.8.1 Loop limits are validated and enforced from one effective policy
 
 The source audit in PR #351 section 15.33 found that `WhilePlugin` validation accepts `maxloops` up to 1,000,000 while execution silently clamps to 10,000. Future validation must calculate the effective policy limit once and expose that same value to inspection, diagnostics and execution. A configuration that requests more than the host allows must either be rejected before execution with a structured policy diagnostic or explicitly normalized with a visible effective value; silent runtime clamping is not acceptable. The shared session budget remains authoritative across nested loops.
+
+## 7.9 Plugin construction and dependency injection: the existing neutral-looking SPI is not active
+
+The current source contains `org.webharvest.plugin.di.PluginDependencyInjector` and `DefaultPluginDependencyInjector`, but these types do not currently form the active plugin-construction path and must not be mistaken for an existing container-neutral runtime SPI.
+
+Source evidence on the inspected `main` baseline:
+
+- `DefaultPluginBodyExecutor.createChildPlugin()` resolves the implementation through the process-global `CorePluginRegistry`, then calls `InjectorHelper.getInjector()`. If a Guice injector is present it invokes `injector.getInstance(pluginClass)`; otherwise it falls back to deprecated no-argument reflective construction. It then calls `initialize()`. This active path imports Guice's `Injector` directly.
+- `InjectorHelper` stores the Guice `Injector` in a static field. `ScraperModule` requests static injection for that helper. The fallback is therefore not a host composition API; it is a second construction mode with a public no-argument-constructor constraint and no explicit dependency/lifecycle contract.
+- `PluginDependencyInjector` is a separate class-keyed registry of `DependencyProvider<T>` and singleton instances. Its default implementation scans only `plugin.getClass().getDeclaredFields()` for the project's own `@InjectDependency` annotation, resolves exact field types and sets fields reflectively. It does not traverse superclasses, support constructor injection, qualifiers/generic keys, explicit scopes beyond singleton/provider, lifecycle ownership/disposal, or participate automatically in `DefaultPluginBodyExecutor.createChildPlugin()`.
+- The project's `@InjectDependency` mechanism is distinct from Guice's `@Inject`. Current Core plugins use Guice field injection for runtime services, including `HttpPlugin.httpService`, `ScriptPlugin.scriptEngineFactory`, `FilePlugin.workingDir` (with `@WorkingDir`) and `IncludePlugin.configFactory`. The standalone `PluginDependencyInjector` therefore does not satisfy those dependencies on its own.
+- The public `Plugin` interface itself has no Guice types in its method signatures, but this does not make the runtime container-neutral: the default executor and composition path directly depend on Guice, and runtime-specific dependencies are also process-static in `InjectorHelper` and `BaseTemplater`.
+
+Required target:
+
+1. Make plugin creation an explicit runtime-owned neutral contract, e.g. a provider/factory receiving a plugin descriptor and a typed service-resolution context. Constructor injection must be first-class; no public no-argument constructor requirement.
+2. Keep the Core SPI free of Guice/Spring/CDI classes and annotations. The host may supply instances/factories directly; optional adapters may bridge Guice first and Spring next. WebHarvest must not create a second IoC container inside an embedding host.
+3. Resolve services by stable typed keys/requirements with explicit qualifiers and lifetime semantics; do not reduce the contract to raw `Class<?>` keys if that prevents qualified services or classloader-safe identity.
+4. Make provider construction, initialization, cleanup and failure rollback part of the same explicit lifecycle contract. Define ownership for host-, runtime-, generation-, session- and plugin-scoped dependencies; close only resources owned by the corresponding runtime.
+5. Remove process-global injector lookup from active dispatch. Every nested executor and plugin factory must receive the same runtime composition context and pinned registry generation.
+6. Preserve a simple plain-Java embedding path with no Guice dependency required to load, inspect, validate or execute a Core-only profile. Prove it in a clean consumer fixture; separately prove host-supplied Guice and Spring adapters without starting nested containers.
+
+Conformance gaps to close:
+
+- Plain Java host constructs and closes a Core-only runtime with constructor-injected plugins and no Guice classes on its runtime classpath.
+- A host-managed Guice injector and a host-managed Spring application context can each supply services to WebHarvest without WebHarvest creating or owning another container.
+- Two independent runtimes in one JVM use different providers/configuration concurrently; closing one does not affect the other.
+- Plugin constructor, initialization, execution, cleanup and failed-startup paths have deterministic ordering and exactly-once disposal.
+- A plugin requiring a qualified service receives the intended binding; missing/ambiguous bindings fail before execution with structured diagnostics.
+- Reconciliation and nested dispatch use the same runtime provider factory and pinned generation; a provider failure leaves the last-known-good generation active.
+- No active runtime path reaches `InjectorHelper`, Guice `Injector`, static injection, or reflective no-argument construction.
+
+This is a source-backed migration blocker, not an implementation proposal to retrofit `DefaultPluginDependencyInjector` as-is. Its existing tests establish basic singleton/provider lookup and field injection for a simple test class; they do not establish constructor injection, superclass traversal, active-executor integration, container neutrality, isolation or lifecycle ownership. Tests were inspected, not executed.
