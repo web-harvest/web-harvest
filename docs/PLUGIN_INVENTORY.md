@@ -911,3 +911,14 @@ A final helper-level check inspected `CommonUtil.java` (blob `70b5297bdd1d11f257
 - `IncludeVisitor` uses these helpers exactly as described in section 15.13.
 
 This narrows the earlier finding: URL dot-segment normalization exists; file path canonicalization/containment does not. Neither helper supplies the host-policy contract required by the dynamic platform. No runtime changes or tests were run.
+
+
+### 15.15 Include execution also exposes a Core-to-Guice construction seam (2026-11-23)
+
+The same Include path provides a concrete example for the container-neutral embedding work in #346:
+
+- `IncludePlugin.java` (blob `ab06127f7f5402978937160a42455b4c0107dfab`) imports Guice `@Inject` and uses field injection for `ConfigFactory`.
+- Its `doExecute` method cannot create/reload the included configuration without that injected factory and deliberately throws an `IncludeExecutionException` explaining that the configured Guice injector is required.
+- `DefaultConfigFactory.java` (blob `64e3b3ad284999dcf55d5aa4a71f380293f3ccf9`) itself imports Guice `@Inject`, `Provider` and `@Singleton`; it obtains a `ConfigParser` through a Guice Provider.
+
+**Conclusion:** the current Include execution path is not independently constructible through a plain-Java host composition path. This is a real Core migration seam, not proof that Guice must remain the public contract. The neutral runtime should own a configuration factory/parser service contract; plain Java composition should be able to provide it directly, while Guice/Spring adapters may bind it through their native container. Provider construction should not rely on private-field injection as the only supported path. Add a no-IoC embedded Include execution test to the container-neutral conformance suite, alongside equivalent Guice and future Spring adapter tests. No implementation or tests changed/run.
