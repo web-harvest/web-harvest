@@ -3205,3 +3205,55 @@ This pass follows the active XML path beyond registrar/bootstrap and into the ac
 6. Preserve all approved legacy XML names and aliases, including `set-var`; this finding is not authorization to change grammar compatibility.
 
 **Scope:** source-path inspection only, based on the exact main blobs above. No tests/builds or runtime experiments were run; no production/POM/test changes were made. The trace is still not the exhaustive census of all parser variants, CLI/IDE paths, optional modules or downstream API consumers. Runtime implementation/removal remains STOP pending #346 maintainer acceptance and the #93/#94 prerequisites.
+
+
+## 15.72 Plugin construction and dependency-injection authority audit — global injector, reflection fallback and dormant parallel injector (2026-11-23)
+
+This pass follows the concrete construction seam identified in 15.71. It distinguishes the currently active Guice path from the older standalone plugin-injection abstraction; these are not interchangeable implementations of one coherent lifecycle contract.
+
+### A. Active Core execution uses a process-global static Guice injector
+
+- `InjectorHelper` (main blob `24c114b24a3abc079a9d447b59155e3598f5abe7`) stores the Guice `Injector` in a private static field populated through `@Inject`. Its public API is a static nullable `getInjector()`; there is no instance/runtime key, installation handle, replacement protocol, clear/dispose operation, or ownership boundary.
+- `ScraperModule` (main blob `d31a5e30b0949c752743123cbcfb4219ba60713e`) installs it with `requestStaticInjection(InjectorHelper.class)`. This couples the static slot to Guice injector creation and makes it process-wide rather than scoped to a WebHarvest runtime/session.
+- `DefaultPluginBodyExecutor` (main blob `0116211ed31986b757f6f9e4bb5689f199b54f69`) calls `createChildPlugin`; that method resolves the class from `CorePluginRegistry.getInstance()`, then calls the static injector's `getInstance(pluginClass)`. If the static slot is null, it silently falls back to `pluginClass.newInstance()`.
+- The fallback is behaviorally significant: it does not provide Guice field/constructor/member injection, yet execution proceeds. A missing runtime composition is therefore converted into a different construction mode instead of a fail-fast configuration error. The two modes may produce different plugin behavior.
+- The static injector is also not demonstrably tied to the same registry, plugin generation, classloader, execution session or runtime that selected the plugin class. Multiple independent WebHarvest runtimes in one JVM can therefore share/overwrite one injection authority even when their configuration and provider sets should be isolated.
+
+### B. The current executor bypasses both legacy factory and PluginDependencyInjector
+
+- `DefaultPluginBodyExecutor.createChildPlugin` is the direct active Core creation path in the inspected implementation. It does not call `PluginFactory`/`DefaultPluginFactory`, and it does not call `PluginDependencyInjector`.
+- `DefaultPluginFactory` (main blob `91c8084f671027954375ff3cab784691f8ae26e5`) is a separate reflective constructor path. It owns a `PluginRegistry` reference and a per-factory `ConcurrentHashMap<Class<? extends Plugin>, Constructor<? extends Plugin>>` cache; it creates instances via no-arg or `PluginMetadata` constructors. That is a third construction policy, not the active Core body-execution policy.
+- Consequently, replacing `PluginRegistry`/factory alone would not change current Core execution. Conversely, routing execution through the existing factory without redesign would retain its registry dependency, reflection constructor policy and constructor cache, and would not automatically supply the runtime's Guice host services or generation/lifecycle handle.
+
+### C. PluginDependencyInjector is a separate reflection-based mechanism, not a Guice adapter
+
+- `PluginDependencyInjector` (main blob `12d72a925ed81cf34ce2c47de9020042749797b0`) defines field dependency injection plus provider/singleton registration and lookup.
+- `DefaultPluginDependencyInjector` (main blob `fe7aeacda9041c0aba88d4c15aea9c54d81d3431`) scans only the concrete plugin class's declared fields for `@InjectDependency`, resolves exact field types from its own provider/singleton maps and uses reflective field assignment. The shown implementation has no parent-class traversal, qualifier support, constructor injection, lifecycle integration, generation scope or host execution context.
+- The maps are instance-local, but the implementation's API has no explicit close/dispose or provider ownership protocol. Its singleton map is independent from Guice scopes and the active `InjectorHelper` injector.
+- The inspected `ScraperModule` contains no binding for `PluginDependencyInjector` or `DefaultPluginDependencyInjector`; the active executor does not invoke the interface. This establishes that this abstraction is not the construction path used by the inspected Core body executor. A repository-wide proof of zero other call sites remains open; do not delete it on this evidence alone.
+
+### D. Target: one runtime-owned activation boundary, not a fourth factory/registry
+
+The target must not preserve all three construction mechanisms and merely wrap them in a new facade. Define one host-owned provider activation/instance manager associated with a runtime and an admitted immutable registry generation:
+
+1. It accepts a canonical admitted provider binding from the generation-pinned dispatch path; it must not resolve names through a second mutable registry.
+2. It obtains the provider's implementation through the generation's managed classloader and a single explicit construction policy. Constructor/member injection and host-service access are declared and validated at admission; there is no silent reflection fallback.
+3. It supplies a runtime-scoped host-service/capability context and an invocation handle carrying the pinned generation, deadline, cancellation/GRACE/KILL state, resource registrar and effect journal as defined by the candidate SPI contract in 15.62.
+4. It owns provider and invocation lifecycle separately: instance reuse/concurrency policy is explicit; per-invocation cleanup is distinct from provider-generation disposal; generation leases prevent classloader retirement while invocations or retained instances remain.
+5. It exposes deterministic failure when required services or injection points cannot be satisfied. Optional legacy compatibility is an explicit adapter/profile, not an automatic fallback.
+6. Each runtime owns its own activation manager and service graph. No static injector, global mutable service locator or process-wide plugin-instance cache is permitted in the new kernel.
+
+### E. Migration and proof obligations
+
+| Existing mechanism | Required disposition |
+|---|---|
+| `InjectorHelper` static injector | Remove from new-kernel execution; retain only a temporary legacy bridge if external compatibility requires it, with explicit single-runtime limitation and deprecation |
+| `ScraperModule.requestStaticInjection(InjectorHelper.class)` | Replace with instance/runtime-owned composition and explicit constructor/member injection into runtime services |
+| Executor Guice-or-reflection branch | Replace with the single activation manager; fail closed when required construction dependencies are unavailable |
+| `DefaultPluginFactory` and constructor cache | Do not make it a second authority; migrate required compatibility behavior behind the activation manager, then deprecate/remove after call-site and downstream API census |
+| `PluginDependencyInjector` / `DefaultPluginDependencyInjector` | Establish actual production/test/downstream call sites first; if still required, implement as a compatibility adapter over the same host-service resolver, otherwise deprecate separately |
+| Guice integration | Treat Guice as an optional composition adapter for the legacy distribution, not as the new SPI/runtime ownership model or a mandatory Core dependency |
+
+Required tests include: two independent runtimes with different service bindings; no cross-runtime injector leakage; no reflection fallback when Guice/runtime composition is absent; deterministic missing-service failure; constructor/member injection parity for supported legacy plugins; no duplicate construction on a single activation; explicit prototype/singleton semantics; provider disposal only after all generation leases drain; and compatibility tests for any retained public factory/DI API.
+
+**Scope and evidence limits:** exact source blobs are recorded above at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. This is source inspection, not a runtime reproduction. The active Core executor and static Guice path are confirmed. The claim that `PluginDependencyInjector` has no other production/downstream use is NOT established; the full call-site census is still required. No tests/builds were run and no source/POM/workflow/runtime changes were made. Runtime implementation/removal remains STOP pending #346 acceptance and #93/#94 prerequisites.
