@@ -302,3 +302,122 @@ The test suite shows inconsistent ownership:
 Required tests: two concurrent sessions safely share the runtime-owned service; closing one session does not close the client; host shutdown prevents new work, drains/cancels active work and closes the client once; close is idempotent; failures during startup/shutdown clean up already-created resources; post-close use fails deterministically. Update test fixtures to close their runtime/injector owner rather than reaching into Guice for an implementation-specific service.
 
 This is a separate host lifecycle issue under #349, not a reason to change the plugin inventory or replace `Singleton` with `ScrapingScope` immediately. No runtime code or tests were changed/run in this audit.
+
+
+## 7.3 Container-neutral embedding and host IoC integration
+
+WebHarvest is an embeddable Java library/runtime. It must be usable inside an
+arbitrary Java application without requiring that application to adopt Guice,
+Spring, CDI, or any other specific IoC container. The embedding application
+owns its composition root and remains free to use its existing container—or
+plain Java construction where appropriate.
+
+**The Core/runtime/plugin contracts are container-neutral.** No public Core,
+runtime or plugin SPI contract may require Guice/Spring/CDI types, annotations,
+modules, scopes, injectors, bean factories or container-specific lifecycle
+callbacks. A container is an integration mechanism supplied by the host, not
+part of WebHarvest's product identity or runtime semantics.
+
+The architecture must separate four responsibilities:
+
+1. **WebHarvest runtime contract:** defines provider creation/activation,
+   required host services, execution/session contexts, registry generations,
+   lifecycle and disposal semantics without naming an IoC implementation.
+2. **Host composition contract:** lets the embedding application provide
+   services, factories and provider instances using its own container and
+   configuration. The host controls object construction and dependency
+   resolution.
+3. **Container adapters:** bridge the neutral contract to a specific container.
+   The existing Guice integration is the first compatibility adapter; a
+   Spring adapter is a sensible next integration target. CDI or other adapters
+   should be added when justified by real embedding demand, not by embedding
+   several containers into Core.
+4. **Standalone composition:** Core/runtime must also be constructible without
+   any external IoC framework, so small Java applications and tests are not
+   forced to install a container.
+
+### 7.3.1 Dependency and module boundaries
+
+- The Core artifact must not require Guice (or another IoC framework) merely to
+  load, inspect, validate or execute the supported Core-only profile.
+- Container-specific integration code belongs in separate adapter artifacts
+  or optional integration modules, not in the neutral Core API/SPI.
+- Plugin descriptors declare stable service/capability requirements and
+  provider lifecycle metadata; they do not declare Guice keys, Spring bean
+  names, CDI qualifiers or container-specific scopes.
+- The host adapter resolves those requirements against the host's own
+  composition root and supplies a neutral provider factory/service-access
+  contract to WebHarvest.
+- Do not start a second independent IoC container inside WebHarvest when the
+  host already has one. One host-owned composition graph should own the
+  WebHarvest runtime and its integrations.
+- A plugin may use constructor injection and need not expose a public
+  no-argument constructor. Its construction must be delegated to the host
+  factory/adapter after descriptor validation and host authorization.
+- A plain-Java factory is a first-class integration path, not a fallback with
+  reduced lifecycle guarantees.
+
+### 7.3.2 Explicit ownership and scopes
+
+The neutral lifecycle contract must distinguish and define at least:
+
+- **Host/application scope:** services shared with the embedding application;
+  their ultimate owner remains the host unless ownership is explicitly
+  transferred.
+- **WebHarvest runtime scope:** runtime-owned shared services and registries;
+  closed when the runtime owner is closed, not when one execution ends.
+- **Registry-generation scope:** provider handles and dependency/classloader
+  graph retained while any session pins that generation.
+- **Execution/session scope:** per-execution context, policy view, cancellation
+  and temporary resources; closing one session must not dispose host- or
+  runtime-scoped services.
+- **Provider scope:** provider-specific prepared resources, concurrency model
+  and close semantics, explicitly declared by the SPI.
+
+The host adapter maps these neutral lifetimes to its container's scopes where
+possible. If a container cannot express a required lifetime directly, the
+adapter must implement it explicitly; it must not silently approximate a
+runtime singleton with a per-session bean or let container shutdown race active
+sessions.
+
+The runtime owner must stop admission, apply the configured drain/cancel
+policy, retire generation leases, close runtime-owned resources exactly once,
+and leave host-owned services to the host. Shutdown and close operations must
+be idempotent and failure-reporting.
+
+### 7.3.3 Current migration boundary (not yet implemented)
+
+The current source is Guice-oriented: `ScraperModule` is the composition
+root, and the inspected runtime also includes Guice-specific factory/scope and
+plugin-injection paths (including `DefaultHarvesterFactory`,
+`ScrapingHarvester`, `AttributeHolderScope`, `DatabaseModule` and
+`PluginDependencyInjector`). The existing `HttpServiceImpl` singleton is
+per Guice injector, while its deterministic disposal is not owned by an
+explicit public runtime handle in the inspected CLI path.
+
+These are migration seams, not a reason to move the singleton blindly into
+session scope. First define the neutral host/runtime/session/provider lifecycle
+and service-resolution contracts; then adapt the existing Guice composition
+to those contracts. Preserve shared thread-safe services at runtime scope and
+keep execution-specific policy/cancellation in session scope.
+
+### 7.3.4 Mandatory embedding conformance
+
+The release conformance suite must prove the same Core/runtime and dynamic
+plugin behavior in these independent host arrangements:
+
+- a plain-Java host using explicit factories, with no IoC framework;
+- a Guice host adapter;
+- a Spring host adapter (once declared as a supported adapter).
+
+For each arrangement, verify Core-only startup, host service injection,
+constructor-injected external plugin activation, dynamic add/update/remove,
+generation pinning, concurrent sessions, cancellation, deterministic shutdown
+and resource ownership. The external plugin fixture must not compile against
+container-specific WebHarvest internals. The same neutral SPI and behavior
+must be used in every arrangement.
+
+This is a product-level embedding requirement, not a request to support every
+IoC framework with a bespoke adapter on day one. The neutral contract must
+permit arbitrary host containers; supported first-party adapters are delivered
+and tested as separate integrations.
