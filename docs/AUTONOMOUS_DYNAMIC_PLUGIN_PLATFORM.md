@@ -1217,3 +1217,49 @@ This is the active implementation queue derived from the source audits above. Pr
 - Then: inspect the tests that can be reused for P0 acceptance and map each backlog item to exact test classes/missing cases.
 - Then: publish a single traceability matrix linking each P0/P1 task to source evidence, issue, implementation boundary and acceptance test.
 - STOP: do not change runtime code, merge PR #352, close issues or publish a release until the maintainer decision gates are explicitly satisfied.
+
+## 8.1 Existing test coverage mapped to the prioritized backlog
+
+This is a source-level test inventory at baseline `1729bdf4620a66686d02605083e27e27d1ab3944`. It records what the inspected tests actually assert, not whether the suite currently passes. Test presence is not acceptance evidence for concurrency unless the test controls the relevant race and asserts the ownership/quiescence invariant.
+
+| Backlog | Existing test source | Current evidence | Missing acceptance coverage |
+|---|---|---|---|
+| P0-01 termination / GRACE-KILL | `WebHarvestServiceTest`, `ScraperSessionTest` | Basic session creation, status transitions, cancel status and shutdown API. Some waits use `Thread.sleep`. | Worker Future retention, child task exit, GRACE deadline, KILL escalation, non-cooperative worker quarantine, timeout executor shutdown, shutdown await result and proof of quiescence. |
+| P0-02 resource ledger / leases | `StandaloneConnectionPoolTest`, `WebBrowserPluginLifecycleTest` | Component-level pool/browser lifecycle behavior exists. | Same shared EventBus with sessions A/B; A terminal event must not close B; registration-vs-close race; in-flight lease drain; close-failure report. |
+| P0-03 subscriber lifecycle | `EventBusTypeListenerTest`, `ScrapingAwareTypeListenerTest`, `ScrapingInterceptorTest` | Helper callback invocation and listener-add smoke tests. | Actual EventBus registration/unregister, scope/runtime retirement, duplicate registration, concurrent callbacks, callback failure with guaranteed teardown and retention checks. |
+| P0-04 context/scope confinement | `ScraperContextTest`, `ScraperContextVariableScopeTest`, `ScraperContextExtendedTest` | Variable and nested-scope behavior under ordinary sequential tests. | Cross-thread access rejection or supported concurrency, interleaved nested contexts, executor context propagation, ThreadLocal removal, owner/generation mismatch. |
+| P0-05 interruption/deadline/effect disposition | HTTP/FTP/mail/JDBC/file plugin tests (individual module suites) | Functional plugin behavior; not sufficient evidence of bounded cancellation or commit disposition. | Controlled blocking operations, abort handles, propagated deadline, interruption preservation, `COMMIT_UNKNOWN` and no unsafe retry. |
+| P0-06 registry/generation isolation | `DefaultPluginRegistryTest`, `PluginClassScannerTest`, `PluginMetadataCatalogDynamicTest` | Sequential registry operations, scan/cache behavior and dynamic metadata catalog construction. | Atomic multi-index publication, concurrent ID/QName collision, two runtime registries, distinct classloaders, generation pinning/retirement and cache isolation. |
+| P1-02 script-engine isolation | `JSRScriptEngineFactoryTest`, `JSRScriptEngineAdapterTest`, `BaseTemplaterTest`, `BaseTemplaterStaticInjectionTest` | Provider availability, adapter delegation and variable copying/static injection behavior. | Same pooled worker executing A then B with interpreter globals/host objects; provider reset/dispose contract; independent runtime factories; concurrent use and generation retirement. |
+| P1-03 HTTP client lifecycle | `HttpServiceImplBasicTest`, `HttpServiceRedirectContractTest` | Injection, network request basics and redirect-header behavior. | Concurrent in-flight calls, close-vs-request race, runtime lease drain, request deadline/abort and close exactly once. |
+| P1-04 classloader/cache retirement | `PluginClassScannerTest`, `PluginMetadataCatalogDynamicTest`, `DefaultPluginRegistryTest` | Discovery/catalog behavior on the current classpath. | Two isolated classloaders, same plugin IDs/QNames, no cross-runtime static cache, factory/catalog retirement and classloader reclamation. |
+
+### Test-source observations that change priority
+
+- `SessionRegistryTest.testRegister_ReplaceExisting` explicitly asserts that duplicate session IDs replace the prior session. This is current tested behavior, not an incidental untested defect. The P0-04/P0-01 redesign must deliberately change the contract and update this test to assert rejection or identity-safe replacement semantics.
+- `WebHarvestServiceTest.testCancelSession_ExistingSession` uses a fixed sleep and accepts either cancellation or a terminal state. It does not establish that a worker stopped. Replace with latches and an observable worker-exit signal.
+- `ScraperSessionTest` has a test class comment mentioning thread safety, but its inspected tests primarily exercise state transitions and waiter behavior; they do not prove cancellation interrupts the executing worker.
+- `JSRScriptEngineFactoryTest` explicitly notes that little more can be tested for engine providers. Current tests prove provider availability, not same-thread cross-session interpreter isolation.
+- `DefaultPluginRegistryTest` covers duplicate ID sequentially and ordinary register/unregister; this does not cover simultaneous check-then-act or QName collisions across plugin IDs.
+
+### Immediate test implementation sequence after approval
+
+1. Build one deterministic test harness around `CountDownLatch`, barriers and explicit worker-exit futures; remove timing-only sleeps from cancellation acceptance tests.
+2. Add P0-01 and P0-02 end-to-end shared-bus tests first, because cancellation and resource closure can corrupt other active sessions.
+3. Add P0-03/P0-04 concurrency and scope-propagation tests, including executor thread reuse.
+4. Add P0-06 two-runtime/two-classloader fixture before changing discovery/cache implementation.
+5. Add P1 script-engine A→B contamination tests and HTTP close/drain tests.
+6. Keep existing sequential compatibility tests, but update tests whose current expectations intentionally conflict with the new ownership contract (notably duplicate session-ID replacement).
+
+### Exact inspected test blobs
+
+- WebHarvestServiceTest.java: 024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c
+- ScraperSessionTest.java: 31988741de660cb7455851e98ff75a706ea7d3dc
+- SessionRegistryTest.java: aea82998ecf4ac81a8d02765af3f36465c3f8083
+- JSRScriptEngineFactoryTest.java: a679c5b83865e146388721488431c9a93c2f05ee
+- JSRScriptEngineAdapterTest.java: d6b448f225d466ae86cfb54385b61719257b2afe
+- HttpServiceImplBasicTest.java: 3e4d6930be8c51c8b2ac4e7043227e8c827b9fcd
+- DefaultPluginRegistryTest.java: ee2dd3c932637c39bd25282505d06c940a286f64
+- ScrapingInterceptorTest.java: 3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff
+
+Source inspection only. No tests were executed as part of this inventory.
