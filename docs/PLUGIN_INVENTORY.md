@@ -2,8 +2,8 @@
 
 **Status:** Preliminary inventory baseline; not an approved Core membership list.
 **Baseline snapshot:** `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
-**Latest source audit:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944` (2026-11-23); the exact source/test blob IDs and discovery/semantic call-path findings are recorded in section 12. The optional-module side-effect review in section 12.6 is a source-level audit; tests were inspected but not executed.
-**Status:** This is still a preliminary inventory and decision package, not an approved Core membership list or a complete per-implementation acceptance matrix. Section 12 is the newer source-backed audit; earlier sections retain their historical snapshot context. Stage 1 descriptor projection and structural validation merged in PR #90 but do not change the manual Core mappings or parser/registry lifecycle described here.
+**Latest source audit:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944` (2026-11-23); the exact source/test blob IDs and discovery/semantic call-path findings are recorded in section 15. The optional-module side-effect review in section 12.6 is a source-level audit; tests were inspected but not executed.
+**Status:** This is still a preliminary inventory and decision package, not an approved Core membership list or a complete per-implementation acceptance matrix. Section 15 is the newer source-backed audit; earlier sections retain their historical snapshot context. Stage 1 descriptor projection and structural validation merged in PR #90 but do not change the manual Core mappings or parser/registry lifecycle described here.
 **Tracking:** [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93).
 **Purpose:** Reconcile runtime registration, metadata discovery and module ownership before making any plugin moves.
 
@@ -395,7 +395,7 @@ observable runtime behavior.
 > **Historical snapshot warning (refreshed 2026-11-23):** This section preserves the
 > earlier 2026-11-17 evidence and must not be read as the latest runtime/test
 > status. Its FTP, Mail and WebBrowser coverage/lifecycle statements were made
-> against that earlier source snapshot. Section 12.6 is the later targeted
+> against that earlier source snapshot. Section 15.6 is the later targeted
 > source-level review of current `main` for side effects and policy gaps. Where
 > the two sections differ, use the newer source audit and re-inspect exact
 > current source/test files before implementation. In particular, the earlier
@@ -513,13 +513,13 @@ Evidence links:
 - [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
 
 
-## 12. Plugin Platform release-gate audit — 2026-11-23
+## 15. Plugin Platform release-gate audit — 2026-11-23
 
 **Status:** Release-blocking architecture gap. This section records current-main source behavior; it is not an implementation claim or an approved SPI.
 
 **Related work:** [#93 inventory/decision](https://github.com/web-harvest/web-harvest/issues/93), [#94 unified plugin platform](https://github.com/web-harvest/web-harvest/issues/94), [#346 SPI/descriptors](https://github.com/web-harvest/web-harvest/issues/346), [#347 discovery/registry](https://github.com/web-harvest/web-harvest/issues/347), [#348 semantic projection](https://github.com/web-harvest/web-harvest/issues/348), [#349 policy/lifecycle](https://github.com/web-harvest/web-harvest/issues/349), [#350 conformance suite](https://github.com/web-harvest/web-harvest/issues/350), [release gate #88](https://github.com/web-harvest/web-harvest/issues/88).
 
-### 12.1 Current implementation facts
+### 15.1 Current implementation facts
 
 The following files were read from current `main`; blob IDs are included to make the audit reproducible:
 
@@ -535,7 +535,7 @@ The following files were read from current `main`; blob IDs are included to make
 | `OptionalPluginProfile.java` | `6c83ad1474553d9657ca8f44547e8808fd1f934a` | Hard-coded five-entry optional-extension profile with class-name presence probes |
 | `CorePlugin.java` | `073f25677e8a647a4a9bbd6de7ec456df521ae40` | Annotation Javadoc says Core plugins are always available, while actual annotation use spans optional modules and non-default/internal/legacy classes |
 
-### 12.2 Release-critical consequences
+### 15.2 Release-critical consequences
 
 1. **No general external provider discovery contract:** package roots are hard-coded. A third-party artifact in an unrelated package is not discovered by this scanner merely because it is on the classpath.
 2. **Discovery is not side-effect-free:** catalog initialization constructs each discovered implementation. A disabled provider could therefore execute constructor code before host activation policy; providers requiring host DI or a non-default constructor cannot participate cleanly.
@@ -546,7 +546,7 @@ The following files were read from current `main`; blob IDs are included to make
 
 These are source-backed architecture gaps. They do not establish a confirmed exploit or claim that the current Stage 1 XML inspector is defective within its narrower documented contract.
 
-### 12.3 Existing test coverage inspected (not executed in this audit)
+### 15.3 Existing test coverage inspected (not executed in this audit)
 
 - `PluginClassScannerTest` blob `acb1d90457c8912f23f0078a9e0f73092178c221`: covers sorting, unique names, cache, retry/fallback, optional-package absence and required-Core scan failure. It does not prove third-party artifact/provider discovery or registry parity.
 - `PluginMetadataCatalogTest` blob `40efed43975105fc214357ba526c78d4615d9693`: checks descriptor completeness and selected semantic/UI/schema projections. It does not assert constructor-free discovery, no-arg-free DI provider construction, duplicate-ID failure or host activation isolation.
@@ -556,7 +556,7 @@ These are source-backed architecture gaps. They do not establish a confirmed exp
 
 No tests were run as part of this read-only audit.
 
-### 12.4 Mandatory target behavior and tests
+### 15.4 Mandatory target behavior and tests
 
 The target pipeline is:
 
@@ -579,7 +579,7 @@ The conformance suite (#350) must prove:
 **Release rule:** no release GO until this suite passes against the exact candidate Core artifact, the independent fixture report and artifact hashes are attached to #94/#88, and the maintainer records explicit sign-off.
 
 
-### 12.5 Autonomous dynamic platform clarification (2026-11-23)
+### 15.5 Autonomous dynamic platform clarification (2026-11-23)
 
 The concise pipeline above is superseded by the more complete target contract in
 [Autonomous Dynamic Plugin Platform](AUTONOMOUS_DYNAMIC_PLUGIN_PLATFORM.md)
@@ -630,7 +630,7 @@ re-add, without restarting the host or editing Core source. Startup-only
 scanner tests do not satisfy this release gate.
 
 
-### 12.6 Optional extension side-effect and policy audit
+### 15.6 Optional extension side-effect and policy audit
 
 This is a source-level review of the current optional module implementations. It
 records observed behavior and missing host-policy contracts; it is not a claim
@@ -661,7 +661,7 @@ and #350 conformance acceptance, and must not be treated as a reason to activate
 an extension automatically when it is discovered.
 
 
-### 12.7 Core mapping role and host-effect crosswalk (proposal, not approval)
+### 15.7 Core mapping role and host-effect crosswalk (proposal, not approval)
 
 This crosswalk turns the 44-name runtime evidence matrix into descriptor/SPI
 inputs. It does **not** decide which capabilities belong in the minimal Core
