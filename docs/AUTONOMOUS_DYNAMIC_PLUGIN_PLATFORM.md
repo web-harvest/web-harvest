@@ -1194,7 +1194,7 @@ This is the active implementation queue derived from the source audits above. Pr
 2. **P0-02 — Session resource ledger and leases** (7.24, 8.3–8.4; #355): immutable runtime/session/generation owner; race-safe registration; lease acquisition/release; close-request/drain/closed/failed states; idempotent cleanup and failure report. Acceptance: session A terminal events never close B JDBC/browser/HTTP resources on the same shared EventBus.
 3. **P0-03 — Shared EventBus subscriber safety and lifecycle** (7.24, 7.26; #356): retain one shared service bus; make subscribers concurrent-safe, owner-aware and unregisterable; prevent late registration during retirement. Acceptance: concurrent A/B terminal events, registration-vs-close race, idempotent delivery and subscriber retirement tests.
 4. **P0-04 — Context confinement and asynchronous propagation** (7.27 and MULTI_RUNTIME_ISOLATION_AUDIT.md; #357): bind context to runtime/session/generation and one worker; explicitly propagate scope tokens across executor hops; clear ThreadLocal in finally; reject context reassignment and cross-thread mutable access. Acceptance: interleaved nested-context tests and executor reuse tests show no variable/scope bleed.
-5. **P0-05 — Interruption/deadline/effect disposition** (7.22–7.23, 7.28): preserve InterruptedException; propagate shared deadline and abort handles; record COMMIT_UNKNOWN for external side effects. Acceptance: controlled HTTP/FTP/SMTP/JDBC/file tests prove bounded cancellation and no unsafe automatic retry.
+5. **P0-05 — Interruption/deadline/effect disposition** (7.22–7.23, 7.28; #358): preserve InterruptedException; propagate shared deadline and abort handles; record COMMIT_UNKNOWN for external side effects. Acceptance: controlled HTTP/FTP/SMTP/JDBC/file tests prove bounded cancellation and no unsafe automatic retry.
 6. **P0-06 — Runtime-owned immutable plugin generation** (7.25–7.26, 7.28): atomically publish complete registry snapshots; scope caches/factories/catalogs to runtime and classloader generation; enforce ID/QName collisions; retire exact generation. Acceptance: two-runtime out-of-tree fixture with overlapping QNames and distinct plugin classloaders.
 
 ### P1 — required before production-grade dynamic plugin lifecycle
@@ -1214,7 +1214,8 @@ This is the active implementation queue derived from the source audits above. Pr
 ### Immediate next work order
 
 - Completed source-audit checkpoints: P0-01 through P0-04 are now mapped to dedicated issues #354–#357; P0-03/P0-04 source and existing-test gaps are documented in sections 7.26–7.27.
-- Next: audit P0-05 interruption/deadline propagation and external-effect disposition, then reconcile it with P0-01 termination and P0-02 resource leases.
+- Completed source audit/specification for P0-05 interruption/deadline propagation and external-effect disposition; dedicated work package #358 now depends on #354/#355 and coordinates with #356/#357.
+- Next: complete P0-06 immutable plugin-generation audit, focusing on registry publication, runtime/classloader-scoped caches and generation retirement; avoid duplicating sections 7.25/7.28 and identify the remaining unverified call paths.
 - Then: inspect reusable tests and map every P0 item to exact test classes and deterministic missing cases; publish one traceability matrix linking source evidence, issue, implementation boundary and acceptance test.
 - STOP: do not change runtime code, merge PR #352, close issues or publish a release until the maintainer decision gates are explicitly satisfied.
 
