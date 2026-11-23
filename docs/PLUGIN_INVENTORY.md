@@ -2369,3 +2369,57 @@ This is a source/test inspection finding, not a reproduced live race; no tests w
 - `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
 - `ScraperSessionTest.java`: `31988741de660cb7455851e98ff75a706ea7d3dc`.
 - `WebHarvestServiceTest.java`: `024d1aeb30dc1ec6a97cfd0d1afa847c0eccf07c`.
+
+
+### 15.56 Interruption propagation audit: selected plugins swallow stop signals (2026-11-23)
+
+The previous section established that the service/session layer does not retain a uniform execution handle. This follow-up checks whether interruption, when it does reach plugin code, is consistently propagated. It is not. The findings below are direct control-flow observations from the current `main` snapshot, not claims that every blocking operation is interruptible.
+
+#### Confirmed propagation paths
+
+- `DefaultPluginBodyExecutor.executeChildrenInternal()` explicitly rethrows `InterruptedException` and does not execute later siblings after interruption.
+- `IncludePlugin.doExecute()` catches `InterruptedException` separately, restores the thread interrupt flag, and rethrows; its `finally` restores the parent Config before the signal escapes.
+- `XPathPlugin.getXmlContent()` catches `InterruptedException` separately and rethrows it.
+- Existing `IncludePluginTest.shouldRestoreParentConfigWhenIncludedExecutionIsInterrupted`, `CasePluginTest.testCasePluginExecuteWithInterruptedException` and `TryPluginTest.testTryPluginExecuteWithInterruptedException` explicitly exercise interruption propagation/interrupt-flag restoration.
+
+These are useful compatibility behaviors to preserve, not proof that all plugin paths comply.
+
+#### Confirmed interruption-swallowing paths
+
+1. **File write body execution.** `FilePlugin.handleFileWrite()` calls `super.executeBody(context)` inside `catch (Exception)`. Since `InterruptedException` is an `Exception`, it is converted to `EmptyVariable.INSTANCE`; execution then continues into the binary/text write path. The caller may therefore write empty/fallback content after a child execution was interrupted. The outer file operation also catches broad `Exception` and returns an empty result. The top-level `FilePluginTest` exercises file operations but contains no interruption/cancellation assertion.
+2. **XQuery parameter child execution.** `XQueryPlugin.executeChildElements()` declares `throws InterruptedException`, calls `paramPlugin.execute(context)`, but catches broad `Exception` and returns `EmptyVariable.INSTANCE`. An interruption from a nested parameter plugin is therefore swallowed and XQuery processing may continue with an empty parameter value. The inspected `XQueryPluginTest` is only 25 lines and contains no interruption test; the other XQuery branch-contract tests were not shown to exercise interruption in this pass.
+3. **Regexp result-template execution.** `RegexpPlugin.processResultTemplate()` invokes `DefaultPluginBodyExecutor.executeBody()` inside `catch (Exception)`, then returns the original template on failure. An interruption in a nested `regexp-result` child is converted into fallback text; the outer matching loop may continue. By contrast, `extractChildText()` declares `InterruptedException` and is called before the main regex try/catch, so interruption in pattern/source child extraction can propagate. This is a split behavior within one plugin, not a blanket statement that all Regexp interruption is swallowed. The inspected Regexp test suite covers matching and templates but contains no interruption/cancellation assertions.
+4. **HTTP request/resource cancellation seam.** `HttpPlugin.doExecute()` catches broad `Exception` and wraps it as `IllegalStateException`. `HttpServiceImpl.executeRequest()` owns the synchronous `httpClient.execute(request)` call and response buffering, exposes no per-request cancellation handle to the plugin/runtime, and only closes the shared client through service-level `close()`. The inspected request config sets redirect behavior but does not configure a request/response timeout. This audit does not claim that Java thread interruption always aborts the underlying Apache request; rather, the host currently has no explicit request-scoped abort handle or verified cancellation/quiescence contract for it. Existing HTTP plugin/service tests inspected here contain no interruption or in-flight cancellation test.
+
+#### Consequence for GRACE/KILL and polymorphism
+
+A provider-neutral cancellation contract cannot rely only on `Thread.interrupt()` or on every provider author remembering to rethrow it. The host must own cancellation state and execution/resource handles; plugin adapters must preserve cancellation as a distinct control signal, never downgrade it to an ordinary empty value, fallback template, or partial side effect.
+
+The future SPI/adapter conformance contract should require:
+
+- cancellation is a distinct control outcome, not a normal provider failure/result;
+- broad exception handlers must detect and rethrow cancellation/interruption before fallback/error conversion;
+- resource-bearing operations register host-visible cancellable handles (HTTP request, file write transaction/temp-file strategy, browser operation, DB statement/connection, FTP transfer, etc.);
+- no irreversible commit/side effect after cancellation is observed; file writes should use a defined atomic/partial-write policy;
+- parent/child and nested parameter/template execution share the same cancellation token and monotonic deadline;
+- conformance tests inject interruption at every nested boundary and assert no fallback work, later sibling, file commit, request continuation, or generation-lease release before actual quiescence.
+
+**Evidence / coverage boundary:** source review only; no tests were executed. The audit confirms concrete catch blocks that swallow `InterruptedException` in File, XQuery and Regexp paths. It does not claim that all listed plugins or all Java blocking calls are non-interruptible.
+
+**Exact source/test blobs at `main` snapshot `1729bdf4620a66686d02605083e27e27d1ab3944`:**
+
+- `FilePlugin.java`: `8d78e797975ab236a47420d18f28600beaae04bf`.
+- `XQueryPlugin.java`: `b1f0ee00c16c9a37144e7e27cb46bfd57de6e9f1`.
+- `RegexpPlugin.java`: `a860ab08554122680c4d5d5fde1be3d683139c6a`.
+- `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`.
+- `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+- `IncludePlugin.java`: `ab06127f7f5402978937160a42455b4c0107dfab`.
+- `XPathPlugin.java`: `e519eb21a2e6faeef43a9d23c219502ac7f7f2a6`.
+- `FilePluginTest.java`: `2a1df9027b111dd412d41696542720a12b1a8e51`.
+- `RegexpPluginTest.java`: `a5615e591599468b0dc0a846e26341f2d834233b`.
+- `XQueryPluginTest.java`: `6be2233dd74f49716ccbda46156bb9441d6c469c`.
+- `HttpPluginTest.java`: `1b66e0d035c378f30ab784d848aabf7eb29fb0ef`.
+- `IncludePluginTest.java`: `65ce0add3fb45651913f9dea3000b1ec32f61b9a`.
+- `CasePluginTest.java`: `25021e40e0025aa4e19232ea364954f8278d6ac9`.
+- `TryPluginTest.java`: `3593103011139561cb2079eb1cc0a4e4a0ccdbdf`.
