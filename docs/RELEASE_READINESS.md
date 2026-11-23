@@ -171,3 +171,60 @@ The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is 
 - [#323](https://github.com/web-harvest/web-harvest/issues/323) owns distribution-specific CLI/IDE component manifests or CycloneDX SBOMs, class-to-origin correlation, aggregate SBOM delta classification, license/NOTICE reconciliation and deterministic CI assertions.
 - [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
 - No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
+
+
+## 2026-11-23 checkpoint — exact shaded distribution verification and mandatory plugin-platform gate
+
+**Source baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944` (the base of the current release-evidence and documentation PRs).  
+**Combined distribution candidate:** PR [#340](https://github.com/web-harvest/web-harvest/pull/340), head `788309118af09a4198f35044b0dc3ccc4a60b7e0`.  
+**Recommendation remains: NO-GO.** This is an exact-head technical evidence update, not a merge, legal approval or release authorization.
+
+### Exact-head technical verification — PR #340
+
+The combined shaded-distribution candidate passed the following checks on its exact head:
+
+- Java 17 full reactor, static analysis, Javadoc, packaged CLI/IDE smoke, shaded inventory and class-origin/provenance, CycloneDX validation and distribution-specific OSV — [run 45121496312](https://github.com/web-harvest/web-harvest/actions/runs/45121496312), SUCCESS.
+- Workflow configuration validation — [run 45121496291](https://github.com/web-harvest/web-harvest/actions/runs/45121496291), SUCCESS.
+- Aggregate base-vs-head production/test SBOM and OSV comparison — [run 45121496426](https://github.com/web-harvest/web-harvest/actions/runs/45121496426), SUCCESS.
+
+Retained artifacts inspected on this candidate:
+
+| Artifact | ID | SHA-256 |
+|---|---:|---|
+| `java17-reactor-diagnostics` | `14794145976` | `2dc996b40c7566979da67c8cb1e6dcd40bb759758f0a1696461ccb1acb0c63f8` |
+| `osv-cyclonedx-evidence` | `14794275559` | `d6803f899ee8ddf1fc8fb70dec870fa4a12b1f927cb2429177e90a584bfd9522` |
+
+### Distribution-specific results
+
+| Check | CLI | IDE |
+|---|---:|---:|
+| CycloneDX components / unique PURLs | 72 / 72 | 54 / 54 |
+| OSV packages scanned | 72 | 54 |
+| Exact BOM-to-scan PURL set equality | PASS | PASS |
+| Vulnerability findings | 0 | 0 |
+| Missing license entries in generated BOM | 0 | 0 |
+| Class-origin unmatched / ambiguous / differing-byte matches | 0 | 0 |
+
+Additional exact-artifact evidence:
+
+- CLI archive SHA-256: `04cdae0fe3a21e1279ad908757ff10b7f85c8d472f613acac2fa46f086502aa3`.
+- IDE archive SHA-256: `6b0275c508ed64f2f38257da0138a34fb1a08e1731270794a886d8c879a8904c`.
+- CLI class attribution: 21,591 classes = 20,307 exact-byte dependency matches + 1,280 separately mapped relocated Jetty classes + 4 first-party classes.
+- IDE class attribution: 17,535 classes = 17,512 exact-byte dependency matches + 23 first-party classes.
+- Jetty NOTICE payload is byte-identical in both archives; SHA-256 `ce642d8c8861ef05cf94c010a2d707425ed086d56641c127d0636fd0ac031e77`.
+- All eight generated Javadoc JARs contain `index.html`.
+- Aggregate production/test comparison: 85 production and 26 test packages on both base and head; all four scanner exit codes were zero; no new production or test-only findings were reported.
+
+**Evidence limits:** PURL membership and class-origin correlation do not prove package-content equivalence. A zero-finding OSV scan is not a legal opinion. The generated BOM's license fields and retained NOTICE bytes are technical evidence, not a maintainer/legal disposition of every shipped license obligation.
+
+### Remaining release blockers and decisions
+
+1. **Legal disposition — OPEN.** The Jetty Servlet API multi-license expression (Apache-2.0 / EPL-1.0 in the inspected dependency metadata), shipped license texts, NOTICE obligations and any required license selection still require explicit legal review/disposition. Do not infer approval from complete metadata or the presence of NOTICE files.
+2. **Publication scope — OPEN under #342.** Exact 2.3.1 GAVs and the root-parent publication strategy remain undecided. The root parent still needs a release-safe treatment of inherited retired OSSRH metadata and a clean-consumer resolution proof. CLI and IDE remain separate product distributions; extension publication is not implied by reactor membership.
+3. **Central bundle — BLOCKED under #341.** Do not implement until #342's exact scope is approved and the maintainer has been notified. Any future work remains non-upload only; no Portal credentials, signing keys or upload action.
+4. **Plugin platform — P0 release blocker.** #93 inventory/boundary approval and #346–#350 (versioned SPI, unified live registry, semantic parity, activation/policy/lifecycle isolation and independent out-of-tree conformance) are mandatory before release GO. Draft design/audit PRs #351 and #352 are documentation evidence only; they do not implement the platform.
+5. **Documentation integration — OPEN.** PR #343 clarifies Core / Control Plane / Data Plane / Packs-Kits boundaries. Its exact head `d424bfdcb5024977d569c07cfb54e0f844ad3959` passed Java 17 Reactor Static Analysis (run `45134034583`), Documentation Module CI (`45134034363`), OSV (`45134034353`) and Actions lockfile (`45134034681`). PR remains Draft/unmerged.
+
+### Decision
+
+**RELEASE = NO-GO.** The exact PR #340 candidate has strong technical distribution/SBOM/Javadoc evidence, but legal disposition, exact 2.3.1 publication scope and the mandatory plugin-platform implementation/conformance gate remain unresolved. PR #340 is Draft/unmerged. PR #343 is Draft/unmerged. No tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
