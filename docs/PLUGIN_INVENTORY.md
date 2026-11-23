@@ -1469,3 +1469,21 @@ The following classification is a source-backed product proposal, not a maintain
 **Not in the 44 mappings:** root `<config>` is handled by root configuration execution; `BodyProcessorPlugin` is an internal/removed historical class; `VarPlugin` is legacy/deprecated and not registered by the current registrar. `SetVarPlugin` is registered despite the scanner fallback metadata omission recorded in 15.19.
 
 Source blob: `CorePluginsRegistrar.java` `7ddc5b26a33c5143ed893a513263718990fa515e`.
+
+
+### 15.33 While maxloops validation/execution mismatch (2026-11-23)
+
+A focused source/test cross-check found a concrete contract mismatch in `WhilePlugin`:
+- Configuration validation accepts integer `maxloops` values from 1 through 1,000,000.
+- Runtime execution clamps the effective value to `Math.max(0, Math.min(maxLoops, 10_000))`.
+- Therefore values 10,001–1,000,000 pass validation but silently execute at most 10,000 iterations. The public schema/validation contract overstates the effective limit by 100x.
+- The execution path defaults a missing/invalid value to 1,000; invalid values can be silently defaulted when execution is invoked without prior validation, while the validator rejects malformed integers.
+- Existing `WhilePluginTest` has cases for small positive values, zero, negative and invalid input, but the inspected tests do not exercise the 10,000 vs 1,000,000 boundary. Test sources were inspected, not run.
+
+The future semantic validator must use one canonical typed limit and report the effective policy limit before execution. Either align validation/schema to the 10,000 runtime cap or deliberately raise the runtime cap under the shared host budget; do not silently accept a higher declared limit and clamp it later. Preserve legacy behavior only through an explicit compatibility rule.
+
+Source blobs on current `main`:
+- `WhilePlugin.java`: `0c2aeae8e7b0ebcbc72890639dab3ad002ba7ef7`.
+- `WhilePluginTest.java`: `85e2df9baf1f418dd61ef483b51902e0153164a3`.
+- `WhilePluginEnhancedTest.java`: `85ec8fdf51f99095bfef1ff172217cd75fe78d08`.
+- `WhilePluginMassiveTest.java`: `110db71e06f186cb2cbac66145ef71d7c8765a45`.
