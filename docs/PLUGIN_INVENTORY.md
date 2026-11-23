@@ -1361,3 +1361,13 @@ Source blobs on current `main`:
 - `HttpPluginTest.java`: `1b66e0d035c378f30ab784d848aabf7eb29fb0ef`.
 
 Test sources were inspected, not executed. This is a confirmed code-path hazard for callers using sensitive default headers, not a claim that the no-arg default runtime binding currently injects secrets.
+
+
+### 15.30 Static scripting service is process-wide, not runtime-scoped (2026-11-23)
+
+A direct source check of `BaseTemplater` confirms that `scriptEngineFactory` is a `public static` field annotated with Guice `@Inject`; all static evaluation methods read that field. `ScraperModule` installs it through `requestStaticInjection(BaseTemplater.class)`. Therefore scripting service selection is process-wide rather than attached to a specific WebHarvest runtime/session. Two embedded runtimes in the same JVM cannot safely select independent scripting factories through this field; the most recently established static injection is shared by all callers. This is a concrete multi-runtime isolation issue, not only a stylistic preference for avoiding static state.
+
+Source blob on current `main`:
+- `BaseTemplater.java`: `dacefb8faec186176148ab2a0cbc5a538941d4c5`.
+
+No runtime or test changes were made/run. The target is explicit runtime/session-scoped scripting service access through the neutral composition contract.
