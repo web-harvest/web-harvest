@@ -652,3 +652,17 @@ Evidence on current `main`:
 - `webharvest-core/pom.xml` blob `d6dd45ba5ee481b30fce3f07d4ce08a1b1ea45ed`: Guice dependency has no `<scope>` element.
 - Root `pom.xml` blob `dc944dc1a15a2c4eedecd270af2016a9ec03c0d4`: dependencyManagement pins Guice 5.1.0.
 - This is a POM/source inspection only; no dependency tree was resolved and no consumer fixture was built in this audit.
+## 7.12 Complete direct nested-executor construction call-site set
+
+A follow-up source search included fully-qualified construction expressions and found a further direct path missed by the abbreviated list in 7.8. The mapped Core source contains these direct constructions:
+
+- `CallPlugin`: function-body dispatch.
+- `IfPlugin`: selected conditional branch dispatch (fully-qualified `DefaultPluginBodyExecutor`).
+- `CasePlugin`: selected case/fallback branch dispatch.
+- `IncludePlugin`: included configuration children.
+- `LoopPlugin`: loop-body dispatch.
+- `RegexpPlugin`: two result/template dispatch paths.
+
+`TryPlugin` uses `AbstractPlugin.executeBody()` at the inspected call site and does not construct a separate executor there. The seven direct constructions across six plugin classes must all receive the same runtime composition context, provider factory, pinned registry generation, policy, cancellation/deadline and shared budget. This is a source-text call-site inventory, not bytecode/dataflow proof against indirect factories.
+
+Correction: earlier sections that listed only Call/If/Regexp or Call/Include/Loop/Regexp were incomplete. Use this six-class/seven-construction list as the current direct call-site inventory.
