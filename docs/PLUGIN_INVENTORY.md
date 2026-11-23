@@ -2486,3 +2486,53 @@ The same cancellation/exception review was extended across the five optional int
 - `MailPluginTest.java`: `fcd0b6c2a895a0a31fddd8443696cdb7e8de0462`.
 - `WebBrowserPluginLifecycleTest.java`: `572f475dacabb7f706ce150d945a6dd762a83114`.
 - `ZipPluginContractTest.java`: `0c1a161a913106db28f59c2c788fe628a26088f0`.
+
+
+### 15.58 External side-effect commit boundaries and honest cancellation outcomes (2026-11-23)
+
+This pass traces where selected Core and optional providers cross an externally visible side-effect boundary. The key design correction is that a stop request and a plugin exception do not establish whether an external effect was committed. The host must report execution termination separately from effect disposition.
+
+#### Source observations
+
+1. **Filesystem writes are direct, not staged.** `FilePlugin.handleFileWrite()` creates parent directories and opens the destination with `new FileOutputStream(file, append)`. With `append=false`, opening the stream truncates an existing destination before the write completes; with `append=true`, bytes are appended directly. There is no temporary sibling file, fsync/atomic rename, backup, or rollback protocol in this method. A write failure can therefore leave a truncated or partially modified destination. Its broad catches return `EmptyVariable`, so the caller does not receive a structured partial/indeterminate outcome.
+2. **FTP upload crosses a remote commit boundary inside `storeFile()`.** `FtpPutPlugin` sends the complete in-memory body through synchronous `FTPClient.storeFile(path, inputStream)`; it treats a false return as failure and disconnects in `finally`. It does not upload to a unique temporary remote name and rename after verification. If the control/data connection fails around the final server response, the client may not know whether the server retained all, some, or none of the destination. The code has no durable operation ID or reconciliation step. This is a protocol-dependent uncertainty, not a claim that every failed upload leaves a partial file.
+3. **Database update effects are delegated to JDBC/driver transaction defaults.** `DatabasePlugin.executeSql()` calls `executeUpdate()` and returns the row count; the plugin does not explicitly set auto-commit, begin/commit/rollback a transaction, set a savepoint, or call `Statement.cancel()`. `StandaloneConnectionPool` creates a DriverManager connection and does not configure transaction policy. Therefore the plugin itself cannot promise rollback on cancellation; the actual commit boundary depends on the supplied connection/driver state and SQL/database semantics. A timeout or lost response after an update must not be reported as a proven rollback.
+4. **SMTP send has an ambiguous acknowledgement boundary.** `MailPlugin` invokes synchronous `email.send()` and returns the message ID only on success. It has no idempotency key, durable send-operation record, or reconciliation mechanism. If the remote SMTP server accepts a message but the acknowledgement is lost or the caller is interrupted before observing success, retrying may duplicate delivery. The source does not prove whether a particular interrupted send was accepted.
+5. **HTTP POST has no idempotency/reconciliation contract.** `HttpServiceImpl.post()` builds a POST and calls the synchronous shared-client execution path; response content is buffered before the method returns. The request has no operation-scoped cancellation/abort handle or idempotency-key policy in the inspected service. If a connection fails after the server processes the request but before the response reaches the client, the outcome is indeterminate; blindly retrying may duplicate a non-idempotent operation. GET/POST method support is explicit in `request()`; no claim is made here about remote server semantics.
+6. **Browser JavaScript can initiate effects outside the host's direct resource model.** `WebBrowserPlugin.handleExecuteScript()` executes arbitrary page JavaScript on the current HtmlUnit page and waits for background JavaScript. The host currently has no operation record for individual network requests or script-triggered mutations. Closing the WebClient is not evidence that already-issued remote effects were rolled back.
+
+#### Required effect model for the polymorphic SPI
+
+Execution state and effect state must be separate dimensions. A provider-neutral result should carry at least:
+
+- execution: `RUNNING`, `STOP_REQUESTED`, `QUIESCENT`, `UNRESPONSIVE`;
+- effect disposition: `NOT_STARTED`, `COMMITTED`, `ABORTED`, `INDETERMINATE`, or `PARTIALLY_COMMITTED` where the provider can prove partial progress;
+- operation identity and correlation/idempotency key where the external system supports one;
+- last confirmed side-effect checkpoint, external acknowledgement and reconciliation capability;
+- retry policy: safe, unsafe, requires idempotency key, or requires manual reconciliation;
+- compensation action, if the provider explicitly supports one (compensation is not equivalent to rollback).
+
+The runtime must not collapse `INDETERMINATE` into `CANCELLED` or `FAILED`, and must not automatically retry a non-idempotent operation with an unknown commit result. KILL stops host execution/resources where possible; it does not reverse a database commit, retract an accepted email, undo an HTTP mutation, or delete a remote FTP object unless an explicit compensating operation is defined and itself confirmed.
+
+#### Conformance requirements
+
+- File: inject cancellation before open, after truncation, during write and after close; verify atomic staging/commit policy or report partial/indeterminate state. Test append and replace separately.
+- FTP: fake server drops control/data channel before transfer, mid-transfer, after final data close and before/after final reply; distinguish server-side temporary upload from final rename and reconcile remote state.
+- JDBC: fake driver blocks before execution, during execution and after update but before acknowledgement; test auto-commit true/false, explicit transaction, driver cancel support, commit/rollback result and unknown commit outcome.
+- SMTP: fake server drops connection before DATA, during DATA, after message terminator and before final 250 response; retries must not silently duplicate.
+- HTTP: fake server records POST then drops response; verify idempotency key/reconciliation and ensure runtime does not blindly retry.
+- Browser: script starts an external mutation then execution is cancelled; report the remote effect separately from local WebClient closure.
+- For every provider, assert the terminal execution state, effect disposition, resource quiescence, lease release and retry recommendation independently.
+
+**Evidence / coverage boundary:** source inspection only, using the exact blobs below. No fake server/driver, live network call, cancellation experiment, test suite or build was run. Statements about uncertain remote outcomes describe the absence of a client-side proof/reconciliation path and common request/acknowledgement boundaries; they do not assert a particular remote server's behavior.
+
+**Exact source blobs at `main` snapshot `1729bdf4620a66686d02605083e27e27d1ab3944`:**
+
+- `FilePlugin.java`: `8d78e797975ab236a47420d18f28600beaae04bf`.
+- `FtpPutPlugin.java`: `34061eb4fbc3a70f95d8d90a3a2faef611659f82`.
+- `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728`.
+- `StandaloneConnectionPool.java`: `ab4a92fb63599e88a55821fe141bf5aa50327008`.
+- `MailPlugin.java`: `083297481e7e218916a77f0dea2308c63bbac7e7`.
+- `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
+- `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`.
+- `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
