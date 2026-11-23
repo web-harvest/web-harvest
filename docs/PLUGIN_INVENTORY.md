@@ -2536,3 +2536,39 @@ The runtime must not collapse `INDETERMINATE` into `CANCELLED` or `FAILED`, and 
 - `HttpPlugin.java`: `c6045d6c7638f3aa86c510240814633597b108ad`.
 - `HttpServiceImpl.java`: `9e3dab1a40250f4d059ea812c74012d994873f0d`.
 - `WebBrowserPlugin.java`: `be7675390275b16ed63e5515a11969585acd2de6`.
+
+
+### 15.59 Deadline propagation and blocking-operation budget audit (2026-11-23)
+
+The side-effect audit is complemented by a check of whether the host can enforce one monotonic GRACE/KILL deadline across blocking provider operations. The inspected adapters do not currently accept or consume a shared execution deadline. Some have local timeouts; those are not equivalent to the host's remaining budget.
+
+| Provider path | Explicit timeout/budget visible in inspected code | Consequence for a shared stop deadline |
+|---|---|---|
+| HTTP (HttpServiceImpl) | RequestConfig sets redirects only; no connect, connection-request or response timeout is set here. | The host cannot derive or enforce a request deadline from this service API; library defaults must not be mistaken for the runtime's monotonic deadline. |
+| FTP (FtpClientFactory, FTP operations) | Factory only sets PASV response address policy. Plugin calls connect, storeFile, retrieveFile/listFiles without setting connect/data/control timeouts in the inspected adapter. | A GRACE budget cannot be propagated to the synchronous transfer through a provider-neutral handle; disconnect is currently in finally, after the operation returns. |
+| JDBC (DatabasePlugin) | No Statement.setQueryTimeout, Statement.cancel, or deadline argument in the inspected execution path. | Driver execution and result iteration can outlive the host's requested budget; interruption alone is not a portable JDBC cancellation proof. |
+| SMTP (MailPlugin) | Plugin sets host/port and message fields, then calls email.send(); no connection/read/write timeout is configured in this plugin path. | SMTP connect/send may consume time outside the host's remaining GRACE budget; no host-visible SMTP operation handle is retained. |
+| WebBrowser (WebBrowserPlugin) | HtmlUnit WebClient sets a fixed 30,000 ms request timeout. Separately, page/script paths call waitForBackgroundJavaScript(waitTime) and then Thread.sleep(waitTime). | Fixed per-request timeout is not derived from remaining session budget; sequential waits can exceed it, and interruption behavior differs between load and execute-script. |
+| File (FilePlugin) | No operation deadline or cancellation-aware stream wrapper in the inspected write path. | Large/slow filesystem writes have no host-visible bounded cancellation point; partial-write semantics remain as in 15.58. |
+
+The table records explicit configuration in the inspected adapter code, not undocumented defaults of Apache HttpClient, Commons Net, JDBC drivers, Commons Email or HtmlUnit. Those defaults vary by library/version/driver and must be measured or explicitly configured before a product guarantee is made.
+
+#### Required deadline model
+
+- Runtime creates one monotonic deadline at admission; children, nested providers, async descendants and resource handles receive the same deadline (or a stricter child deadline), never a fresh full timeout.
+- Every blocking operation declares a timeout/abort capability and applies the minimum of its configured cap and remaining host budget.
+- Deadline expiry first closes admission and requests cooperative cancellation; after grace budget, KILL escalation uses registered abort handles. It does not claim a hard stop for an in-process operation that ignores cancellation.
+- Time spent in cleanup is part of a separately defined bounded cleanup budget; cleanup cannot reset the operation deadline or block runtime shutdown indefinitely.
+- Provider result reports whether the operation observed deadline expiry, whether the worker became quiescent, and whether external effect disposition is known or indeterminate (15.58).
+- Test with an injected monotonic clock and deterministic fake endpoints/drivers; do not use wall-clock sleeps as the primary assertion. Verify nested operations consume one shared budget, cancellation begins at deadline, escalation occurs once, and shutdown reports unresponsive workers instead of waiting forever.
+
+**Evidence / coverage boundary:** source-only configuration review; no library-default assumptions, live network calls, fake servers, tests or builds were run.
+
+**Exact source blobs at main snapshot 1729bdf4620a66686d02605083e27e27d1ab3944:**
+
+- HttpServiceImpl.java: 9e3dab1a40250f4d059ea812c74012d994873f0d.
+- FtpClientFactory.java: acfb17feb4361527bf86db21642f77a96c2ddece.
+- DatabasePlugin.java: b3934d753f17f133bd582b50206db701af843728.
+- MailPlugin.java: 083297481e7e218916a77f0dea2308c63bbac7e7.
+- WebBrowserPlugin.java: be7675390275b16ed63e5515a11969585acd2de6.
+- FilePlugin.java: 8d78e797975ab236a47420d18f28600beaae04bf.
