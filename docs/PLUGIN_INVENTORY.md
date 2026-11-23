@@ -1312,3 +1312,30 @@ Source blobs on current `main`:
 - `ExitPlugin.java`: `b197f5580c2850795aadd15bfd0850af6458f074`.
 
 No tests were run and no runtime behavior changed. The absence of a policy hook in these inspected call sites is not a claim that the host OS cannot impose process-level limits; it means the Core/runtime API does not yet expose these as explicit per-execution host contracts.
+
+
+### 15.28 IoC-neutral embedding audit: current Core is still Guice-coupled
+
+The user requirement is an embeddable Java library that works in arbitrary host applications and does not impose an IoC container. The following source trace distinguishes the intended future contract from the current implementation.
+
+- `DefaultHarvesterFactory` imports Guice `Provider`, `@Inject` and `@Singleton`; its constructor requires Guice providers for `WebScraper` and `EventBus`, plus `ScraperScope`. It is bound by `ScraperModule` as the `HarvesterFactory` implementation.
+- `ScrapingHarvester` itself stores Guice `Provider<WebScraper>` and `Provider<EventBus>`, uses `ScraperScope`, and documents its constructor as Guice-aware. It manually enters/exits the scope around execution, but has no explicit runtime owner/close contract in this class.
+- `AttributeHolderScope` directly implements Guice `Scope` and `Provider`, and its API exposes Guice `Key`, `Provider` and `OutOfScopeException`. This is not a neutral scope abstraction that a Spring/CDI/plain-Java host can implement without Guice types.
+- `ScraperModule` is a Guice `AbstractModule`, registers static injection for `InjectorHelper` and `BaseTemplater`, and binds Core services, scopes, factories, HTTP transport and JSR-223 engine factory. The `HttpService` and `ScriptEngineFactory` bindings are injector singletons.
+- `InjectorHelper` stores a process-static Guice `Injector`. `DefaultPluginBodyExecutor.createChildPlugin()` consults the global `CorePluginRegistry`, then asks that global injector for the plugin instance; if absent it falls back to deprecated no-arg reflective construction. It does not call the existing `PluginDependencyInjector` abstraction.
+- `PluginDependencyInjector` is a potentially useful neutral seam, but `DefaultPluginDependencyInjector` is a separate field-injection container: it scans fields annotated with `@InjectDependency`, sets them accessible and injects registered singleton/provider values. It does not provide constructor injection, lifecycle scopes, close ownership or a host-container bridge. No use of it appears in the inspected default child-plugin construction path.
+- `ScraperModule` also uses static injection for `BaseTemplater`, so scripting factory access is not solely per-runtime composition; the static field can couple multiple embedded runtimes in one JVM.
+
+**Conclusion:** the present Core/runtime path is not yet IoC-neutral and does not provide a first-class plain-Java composition route. The existence of `PluginDependencyInjector` does not close this gap because the active executor bypasses it. The target neutral SPI must remove Guice types from public runtime/plugin contracts, replace global injector/static injection with explicit runtime-owned composition, and let optional adapters map neutral provider/lifecycle contracts to Guice, Spring or CDI. Host ownership and close/drain semantics must be explicit; simply swapping `@Inject` annotations or adding another container is insufficient.
+
+Source blobs on current `main`:
+- `DefaultHarvesterFactory.java`: `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`.
+- `ScrapingHarvester.java`: `2af32ca67c235e075c8cc613118814d54e555338`.
+- `AttributeHolderScope.java`: `11a39c99e517ae9ae1ba09cf69a885b636465b64`.
+- `ScraperModule.java`: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+- `InjectorHelper.java`: `24c114b24a3abc079a9d447b59155e3598f5abe7`.
+- `DefaultPluginBodyExecutor.java`: `0116211ed31986b757f6f9e4bb5689f199b54f69`.
+- `PluginDependencyInjector.java`: `12d72a925ed81cf34ce2c47de9020042749797b0`.
+- `DefaultPluginDependencyInjector.java`: `fe7aeacda9041c0aba88d4c15aea9c54d81d3431`.
+
+No runtime or tests changed/run. This is a source audit; no plain-Java, Guice or Spring embedding conformance test has been executed in this pass.
