@@ -28,6 +28,38 @@ Therefore WebHarvest must provide a supported **managed extension source**, such
 
 Built-in providers are supplied through the same generic pipeline. They may be part of the host's trusted default profile, but they must not require a second, manually maintained runtime registration mechanism.
 
+### 2.1 Managed artifact-source contract
+
+The concrete storage product may be a directory, local repository or remote
+artifact source, but every supported source must provide equivalent lifecycle
+semantics:
+
+- Artifacts are staged under temporary names and become candidates only after a
+  complete write, archive-integrity check and atomic promotion. The reconciler
+  never loads a JAR that is still being copied or modified in place.
+- The host computes a cryptographic content digest and copies/addresses the
+  candidate immutably (content-addressed storage or an equivalent immutable
+  snapshot). A mutable source path is not the identity of a loaded artifact.
+- Trust is evaluated separately from integrity. A digest identifies bytes; it
+  does not establish who produced them or whether the host trusts them. Apply
+  the host's configured signer/allowlist/provenance policy before activation.
+- File watcher notifications are hints only. Coalesce bursts, debounce incomplete
+  writes, serialize or compare-and-swap reconciliation, and periodically
+  rescan the complete source so missed/overflowed events cannot leave stale
+  state indefinitely.
+- Symlinks, path traversal, duplicate artifact identity, unsupported archive
+  formats, oversized archives and malformed metadata are rejected before
+  provider classes are loaded.
+- Removal from the source changes desired state; it does not immediately close a
+  ClassLoader still referenced by a published generation or active execution.
+- Diagnostics retain source identity, content digest, detection time and the
+  reconciliation result. Secrets and credential-bearing source URLs are redacted.
+
+The host must define whether a source is local-only or remote and how remote
+repository authentication, transport security, caching and offline operation
+work. These are host deployment policies, not permissions inferred from a
+plugin descriptor.
+
 ## 3. Provider descriptor and discovery
 
 Every provider supplies descriptor metadata that can be read without constructing its implementation. The descriptor contract must be versioned and cover at least:
@@ -62,6 +94,37 @@ A failed reconciliation must not partially mutate the active registry. The last-
 Duplicate IDs, QNames, namespace bindings or aliases are errors, never last-write-wins map updates. Broken or incompatible providers must not silently disappear while bootstrap/reconciliation reports success.
 
 Each generation exposes a stable generation ID or digest and provider/artifact provenance. Registry output must be deterministic regardless of artifact enumeration or JAR ordering.
+
+### 4.1 Reconciliation transaction and lifecycle phases
+
+Reconciliation is serialized per managed source (or uses an equivalent
+compare-and-swap protocol) so concurrent filesystem events cannot publish
+out-of-order snapshots. A candidate is built from a stable, immutable artifact
+set and has a deterministic input digest.
+
+Provider lifecycle must distinguish at least:
+
+1. **Describe:** read and validate artifact metadata without loading provider
+   implementation classes.
+2. **Authorize:** evaluate host trust, enablement and requested capabilities.
+3. **Create/prepare:** load and construct only authorized providers through the
+   host factory. Preparation may validate dependencies and allocate reversible,
+   host-owned resources, but must not perform irreversible business actions
+   such as sending mail, mutating remote data or starting unowned background
+   work.
+4. **Commit:** atomically publish one immutable generation containing the
+   descriptor set, provider handles, dispatch table and semantic/schema
+   projections. No consumer may observe a mixture of candidate and active
+   projections.
+5. **Rollback:** on any preparation/commit failure, close all candidate resources
+   and retain the last-known-good generation. Report the failed provider and
+   artifact; do not silently omit it and report success.
+
+Actual plugin business effects occur during an admitted execution through
+policy-aware host services, not during discovery or descriptor construction.
+The lifecycle SPI must define how a provider's prepared handle becomes usable at
+commit, how partial activation is rolled back, and how failure after publication
+is handled without admitting sessions to a half-ready generation.
 
 ## 5. One registry truth for semantics and execution
 
@@ -127,6 +190,28 @@ Dynamic update/removal must be safe while the host is serving work:
 - Repeated add/update/remove cycles must not leak classloaders, threads, file handles or static state.
 
 The contract must define behavior for dependency updates, incompatible replacement, provider ID reuse and removal of a provider required by another provider.
+
+### 7.1 Classloader and dependency graph rules
+
+A managed artifact is loaded through an owned classloader/module graph, never by
+mutating the host application classpath. The SPI/API packages and Java platform
+packages must resolve from the host/platform parent; an extension must not
+shadow or bundle a second incompatible copy of the WebHarvest SPI. Private
+implementation dependencies are resolved from the artifact's immutable,
+version-pinned dependency graph. Split packages, ambiguous class ownership and
+undeclared dependency access fail closed with diagnostics.
+
+The implementation may choose one classloader per artifact or a deterministic
+layered graph, but it must define dependency sharing and conflict resolution.
+A dependency update creates a new graph/generation; it must not mutate classes
+visible to an existing generation.
+
+Providers must not leave unowned threads, ThreadLocals, context-classloader
+references, shutdown hooks, global listeners, JDBC registrations or static
+callbacks that pin a retiring loader. The host lifecycle contract must account
+for these resources and test that they retire after all generation/session
+leases are released. ClassLoader.close() alone is not proof that a loader is
+collectible.
 
 ## 8. Observability and failure behavior
 
