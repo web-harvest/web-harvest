@@ -2,7 +2,7 @@
 
 **Status:** Preliminary inventory baseline; not an approved Core membership list.
 **Baseline snapshot:** `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
-**Latest source audit:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944` (2026-11-23); the exact source/test blob IDs and discovery/semantic call-path findings are recorded in section 15. The optional-module side-effect review in section 12.6 is a source-level audit; tests were inspected but not executed.
+**Latest source audit:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944` (2026-11-23); the exact source/test blob IDs and discovery/semantic call-path findings are recorded in section 15. The optional-module side-effect review in section 15.6 is a source-level audit; tests were inspected but not executed.
 **Status:** This is still a preliminary inventory and decision package, not an approved Core membership list or a complete per-implementation acceptance matrix. Section 15 is the newer source-backed audit; earlier sections retain their historical snapshot context. Stage 1 descriptor projection and structural validation merged in PR #90 but do not change the manual Core mappings or parser/registry lifecycle described here.
 **Tracking:** [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93).
 **Purpose:** Reconcile runtime registration, metadata discovery and module ownership before making any plugin moves.
@@ -404,7 +404,10 @@ observable runtime behavior.
 > later review still does not establish all transport, timeout, size or
 > cancellation policy controls. Likewise, do not treat the earlier WebBrowser
 > static-client lifecycle description as a current finding without rechecking
-> current source.
+> current source. The earlier DatabasePlugin named-connection validation defect
+> is also superseded: current validation conditionally accepts either named
+> connection mode or inline JDBC mode; ConnectionPlugin itself still requires
+> its own id/driver/url configuration.
 >
 > This section remains useful as a dated dependency/module-boundary baseline,
 > not as a current test coverage statement.
