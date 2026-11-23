@@ -3157,3 +3157,51 @@ This pass inspects targeted test sources on main baseline `1729bdf4620a66686d026
 ### F. Scope and gate
 
 This is a targeted test-source census, not a full repository-wide call-site or external API census. It covers the principal Core registry/factory/catalog/semantic test families and identifies the tests that currently codify legacy implementation choices. Remaining work includes production/test references in DI and parser internals, optional modules, IDE/CLI routes, reflection/configuration and downstream public API compatibility. No tests/builds were run and no source/POM/runtime behavior changed. Removal remains STOP until #346 is accepted, the #93/#94 prerequisites are met, and the full census plus migration/conformance plan is reviewed.
+
+
+## 15.71 XML parse-to-execution dispatch trace — parser bypasses registry, executor re-enters global registry (2026-11-23)
+
+This pass follows the active XML path beyond registrar/bootstrap and into the actual Core child-plugin construction path. It reveals a more consequential split than a simple pair of duplicate registries.
+
+### A. StreamingXmlParser currently does not resolve plugin identities
+
+- `StreamingXmlParser` (main blob `faad2801021009082cf8f2b72d3543f70aad1353`) creates a SAX handler with no registry/resolver dependency. Its constructor explicitly says no dependencies are needed.
+- In `ConfigurationTreeHandler.startElement`, it sets `ElementInfo elementInfo = null`; the resolver lookup is commented out. The code logs that non-`config` elements were not found and continues through a POC fallback, constructing `DefaultPluginConfiguration` from the raw local name and attributes.
+- It creates `PluginConfigurationTree` with `pluginClass == null` for this path. The parser therefore accepts/builds configuration nodes without validating that an executable plugin binding exists. Its own comments describe the registry lookup as future work.
+- `ScraperModule` binds `ConfigParser` to `StreamingXmlParser` (main blob `d31a5e30b0949c752743123cbcfb4219ba60713e`), so this is not merely an unused parser implementation: it is the configured parser path.
+
+### B. Execution later resolves against a different global authority
+
+- `DefaultPluginBodyExecutor` (main blob `0116211ed31986b757f6f9e4bb5689f199b54f69`) resolves each child by calling `CorePluginRegistry.getInstance().getPluginClass(elementName)`.
+- It then creates the implementation through the process-global `InjectorHelper.getInjector()` when available, otherwise `Class.newInstance()`, and calls `initialize(childConfig)`.
+- This path does not use `PluginFactory`, `PluginRegistry` or `PluginMetadataCatalog`. It directly combines the singleton XML registry with a global Guice injector/reflection fallback.
+- Consequently, the current configured parser and executor do not share a validated descriptor/binding result: parse accepts a raw name, while execution performs a later lookup in mutable global state. A plugin can be syntactically represented in the parsed tree yet fail only at execution because no class is registered; the tree's `pluginClass` field remains null on this path.
+
+### C. Optional modules extend the same mutable singleton by explicit registration
+
+- `DatabasePluginRegistrar` (main blob `662fdda827edfd9ee57bd5baf856ab7546db7ce2`) explicitly registers `connection` and `database` into a supplied `CorePluginRegistry`; its Javadoc requires application setup before execution.
+- `ZipPluginRegistrar` (main blob `d3a4fc70ad73d8c1563d99388c77ac7e45cc5c0c`) similarly registers `zip` and `zip-entry`.
+- Both APIs accept the mutable Core registry directly. They are extension seams, but not yet managed provider admission: no descriptor validation, provider identity, collision policy, immutable candidate generation, atomic publication, session pin or retirement lease is visible in these registrar contracts.
+- The optional registrars therefore need a compatibility adapter into the future generation manager; they must not be discarded or folded into mandatory Core dependencies. Their explicit optional-module boundary remains valid.
+
+### D. Updated authority/call-path map
+
+| Stage | Current implementation | Architectural defect / target |
+|---|---|---|
+| Parse/bootstrap | Guice binds `StreamingXmlParser`; parser has no registry and stores raw element name | Parse against one pinned generation and reject unknown/ambiguous QName before execution |
+| Parsed tree | `PluginConfigurationTree.pluginClass` is null in the configured parser path | Store canonical plugin identity/binding token, not an optional reflective class |
+| Dispatch | `DefaultPluginBodyExecutor` consults global `CorePluginRegistry` at execution time | Resolve through the same generation pinned at parse/session admission |
+| Construction | Global `InjectorHelper` or direct reflection | One host-owned activation manager with explicit lifecycle/resource scope |
+| Optional admission | Database/ZIP registrars mutate supplied Core registry | Candidate-generation contribution/validation/publication with optional module isolation |
+| Metadata/IDE | Catalog and servlet fallback use separate discovery/metadata paths (15.69) | Read-only projection of the same descriptor generation |
+
+### E. Concrete implications for migration and conformance
+
+1. Treat `CorePluginRegistry` as an active runtime dispatch authority, not merely a legacy registration utility.
+2. Do not migrate only the parser or only the executor. They must receive the same immutable generation token and canonical binding resolution result.
+3. Add tests proving unknown QName rejection at parse/admission (rather than delayed execution failure), namespace/alias canonicalization, optional-provider admission/removal, and parse/session G1 pinning while G2 is published.
+4. Add a dispatch test that proves provider construction uses the generation's admitted binding and one activation manager, with no fallback to a process-global injector or direct reflection.
+5. Preserve Database/ZIP optional module behavior through explicit provider contributions; test that absence of those modules does not make Core initialization fail and that their bindings are visible only after successful admission.
+6. Preserve all approved legacy XML names and aliases, including `set-var`; this finding is not authorization to change grammar compatibility.
+
+**Scope:** source-path inspection only, based on the exact main blobs above. No tests/builds or runtime experiments were run; no production/POM/test changes were made. The trace is still not the exhaustive census of all parser variants, CLI/IDE paths, optional modules or downstream API consumers. Runtime implementation/removal remains STOP pending #346 maintainer acceptance and the #93/#94 prerequisites.
