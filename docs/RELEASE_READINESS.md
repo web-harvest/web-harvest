@@ -135,6 +135,8 @@ The root `NOTICE` names a limited set of third-party components and then says â€
 
 ### Decision
 
+- The exact PR #340 Java 17 runner log reports Apache Maven **3.9.15**. Central Publishing Maven plugin 0.12.0's tagged README identifies a tested Maven range beginning at 3.9.16; #341 therefore requires an explicit supported Maven pin and retained version evidence for the bundle workflow. Existing general CI remains unchanged pending separate evidence.
+
 **RELEASE = NO-GO.** No release tag, GitHub Release, Maven publication, signing/credential change or website deployment has been performed or authorized.
 
 
