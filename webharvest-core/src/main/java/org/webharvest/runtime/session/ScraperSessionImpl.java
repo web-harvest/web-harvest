@@ -296,8 +296,8 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         if (handler != null) {
             handler.run();
         }
-        eventBus.post(new SessionCancelledEvent(this));
         signalCompletion();
+        eventBus.post(new SessionCancelledEvent(this));
         return true;
     }
     
@@ -341,17 +341,20 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * @throws IllegalArgumentException if context is null
      * @throws IllegalStateException if session is not in PENDING state
      */
-    public synchronized void markRunning(DynamicScopeContext context) {
+    public void markRunning(DynamicScopeContext context) {
         if (context == null) {
             throw new IllegalArgumentException("Context cannot be null");
         }
-        if (status != SessionStatus.PENDING) {
-            throw new IllegalStateException(
-                "Cannot mark as running from state: " + status);
+        synchronized (this) {
+            if (status != SessionStatus.PENDING) {
+                throw new IllegalStateException(
+                    "Cannot mark as running from state: " + status);
+            }
+
+            this.context = context;
+            this.status = SessionStatus.RUNNING;
         }
-        
-        this.context = context;
-        this.status = SessionStatus.RUNNING;
+        // Subscriber callbacks must not hold the session state monitor.
         eventBus.post(new SessionStartedEvent(this));
     }
     
@@ -362,16 +365,18 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * 
      * @throws IllegalStateException if session is not in RUNNING state
      */
-    public synchronized void markCompleted() {
-        if (status != SessionStatus.RUNNING) {
-            throw new IllegalStateException(
-                "Cannot mark as completed from state: " + status);
+    public void markCompleted() {
+        synchronized (this) {
+            if (status != SessionStatus.RUNNING) {
+                throw new IllegalStateException(
+                    "Cannot mark as completed from state: " + status);
+            }
+
+            status = SessionStatus.COMPLETED;
+            metrics.markEnded();
         }
-        
-        status = SessionStatus.COMPLETED;
-        metrics.markEnded();
-        eventBus.post(new SessionCompletedEvent(this));
         signalCompletion();
+        eventBus.post(new SessionCompletedEvent(this));
     }
     
     /**
@@ -382,23 +387,27 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * 
      * @param error the error that caused failure (may be null)
      */
-    public synchronized void markFailed(Throwable error) {
-        if (status.isTerminal()) {
-            // Already in terminal state, don't change
-            return;
+    public void markFailed(Throwable error) {
+        Throwable failure;
+        synchronized (this) {
+            if (status.isTerminal()) {
+                // Already in terminal state, don't change
+                return;
+            }
+
+            failure = error != null ? error
+                : new RuntimeException("Session failed with unknown error");
+            this.error = failure;
+            this.status = SessionStatus.FAILED;
+            metrics.markEnded();
         }
-        
-        this.error = error != null ? error : 
-            new RuntimeException("Session failed with unknown error");
-        this.status = SessionStatus.FAILED;
-        metrics.markEnded();
-        eventBus.post(new SessionFailedEvent(this, this.error));
         signalCompletion();
+        eventBus.post(new SessionFailedEvent(this, failure));
     }
     
     /**
      * Signals all threads waiting for completion.
-     * Must be called while holding the instance lock.
+     * Uses the independent completion condition; the session monitor is not required.
      */
     private void signalCompletion() {
         completionLock.lock();
