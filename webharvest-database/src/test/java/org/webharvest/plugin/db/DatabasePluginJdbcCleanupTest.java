@@ -126,7 +126,7 @@ public class DatabasePluginJdbcCleanupTest {
         when(resultSet.next()).thenThrow(queryFailure);
         doThrow(closeFailure).when(statement).close();
 
-        Throwable actual = invokeExecuteSql(connection, "SELECT 1");
+        Throwable actual = invokeExecuteSqlFailure(connection, "SELECT 1");
 
         assertSame(actual, queryFailure);
         assertEquals(actual.getSuppressed().length, 1);
