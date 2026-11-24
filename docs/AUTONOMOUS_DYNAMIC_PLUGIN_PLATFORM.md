@@ -141,6 +141,101 @@ The Semantic Model is dynamic: it describes what the current runtime generation 
 
 Every inspection/validation result identifies its registry generation. An execution pins a generation. If a caller attempts to execute against a different/stale generation, the host must reject or explicitly revalidate it. Existing sessions may continue on an older generation while new sessions use the latest one; no session may observe a mixture of generations.
 
+
+
+## 5.1 Separate semantic models and execution planning
+
+WebHarvest deliberately maintains separate models for runtime meaning and visual
+workflow documents. They have independent schemas, object graphs, owners,
+lifecycles and compatibility policies. Do not collapse them into one universal
+model merely to avoid explicit translation.
+
+### 5.1.1 Runtime Semantic Model
+
+The **Runtime Semantic Model** is Core-owned and describes executable meaning:
+stable logical capability identities, typed inputs and outputs, roles,
+preconditions, dependencies, composition constraints, side effects, permission
+requirements, resource requirements and compatibility. Its effective capability
+projection is derived from the exact immutable registry generation selected
+for the target runtime. Validation and dispatch must agree on that generation
+(#348).
+
+It is implementation-independent: semantic projection must not require loading
+provider implementation classes or depend on a specific IDE. Provider/artifact
+identity, logical capability identity and XML QName/grammar binding identity
+remain distinct.
+
+### 5.1.2 Runtime State & Health
+
+**Runtime State & Health** is mutable operational state, not part of a static
+descriptor or either semantic document model. It includes activation and
+authorization outcomes, observed provider/capability health, classified
+failures, quarantine, recovery probes and generation/session/resource state.
+
+There is one runtime-owned health/fault authority. It consumes bounded,
+redacted observations and classifies provider defects separately from invalid
+input, policy denial, dependency failure, host resource exhaustion, timeout,
+cancellation and unknown outcomes. Health is scoped narrowly (provider/artifact,
+capability and generation where applicable); a failure in one capability does
+not disable unrelated capabilities without shared-fault-domain evidence.
+Thresholds, hysteresis, cooldown and controlled probes prevent flapping.
+
+Agents and tooling receive a bounded read-only projection. They do not own or
+mutate health, activation, trust or authorization state. Health changes do not
+rewrite descriptors or visual documents. Safe substitution must verify
+semantic contracts, preconditions, permissions, resource/quality constraints
+and side-effect/idempotency status; name similarity alone is insufficient.
+Non-cooperative in-process code cannot be hard-killed safely; hard termination
+requires process/OS isolation.
+
+### 5.1.3 Execution Plan
+
+An **Execution Plan** is a concrete, runtime-scoped resolution for an execution:
+selected logical capabilities and provider bindings, data/control dependencies,
+resolved inputs, ordering, policy decisions, resource allocations, deadlines,
+generation identity and safe stop/compensation boundaries.
+
+It is not a registry, descriptor catalog or visual document. It is built against
+one pinned registry generation and the applicable host policy. Replanning or
+capability substitution creates an explicit revised plan; it must not silently
+change the meaning of already-started work. Retry/replacement is permitted only
+when idempotency or external-effect disposition is known sufficiently; otherwise
+execution stops at a safe boundary and reports uncertainty.
+
+### 5.1.4 Visual Flow Semantic Model
+
+The **Visual Flow Semantic Model** is a separate, tooling-neutral document model
+for visual editors and renderers. It describes visual nodes, edges, ports,
+groups, layout, annotations, presentation metadata and stable references to
+logical constructs. It must not depend on IDE classes, UI frameworks, runtime
+implementation classes, provider instances, classloaders, sessions, execution
+plans or mutable runtime health.
+
+The model must support multiple IDEs, headless editors, import/export tools and
+renderers. It can represent and reference runtime logical capabilities, but it
+does not own runtime enablement, authorization, provider lifecycle or execution
+semantics. Editing layout or annotations cannot mutate runtime descriptors or
+plans; runtime health/quarantine cannot rewrite the visual document.
+
+### 5.1.5 Explicit boundary and mapping contracts
+
+The Runtime Semantic Model and Visual Flow Semantic Model communicate only
+through explicit, versioned mapping/serialization contracts. Do not share
+mutable object graphs or lifecycle ownership. Preserve unknown visual metadata
+and unsupported constructs where safe; report lossy or unsupported conversion
+rather than silently changing execution semantics. XML remains a supported
+configuration/interchange adapter, not the canonical visual model or the
+ultimate semantic authority.
+
+Acceptance evidence must include:
+- runtime validation/dispatch parity against one exact registry generation;
+- visual-model round-trip and schema-evolution tests without loading provider
+  implementations or a specific IDE;
+- unknown-node/metadata preservation and explicit lossy-conversion diagnostics;
+- proof that visual edits cannot mutate runtime descriptors/plans;
+- proof that health/quarantine changes do not rewrite visual documents;
+- independent evolution/version compatibility tests for both models.
+
 ## 6. Activation, trust and permissions
 
 Discovery is not activation, and activation is not unrestricted authorization.
