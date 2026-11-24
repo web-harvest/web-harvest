@@ -231,4 +231,90 @@ public class StandaloneConnectionPoolTest {
         eventBus.post(new SessionCompletedEvent(ownerSession));
         assertTrue(physical.isClosed());
     }
+    @Test
+    public void attemptsEveryPhysicalCloseAndPreservesSubsequentFailures() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        String firstUrl = "jdbc:webharvest-test:first";
+        String secondUrl = "jdbc:webharvest-test:second";
+        Connection firstPhysical = mock(Connection.class);
+        Connection secondPhysical = mock(Connection.class);
+        java.sql.SQLException firstFailure = new java.sql.SQLException("first close failed");
+        java.sql.SQLException secondFailure = new java.sql.SQLException("second close failed");
+        org.mockito.Mockito.doThrow(firstFailure).when(firstPhysical).close();
+        org.mockito.Mockito.doThrow(secondFailure).when(secondPhysical).close();
+        FailingCloseDriver.connections.put(firstUrl, firstPhysical);
+        FailingCloseDriver.connections.put(secondUrl, secondPhysical);
+        try {
+            pool.getConnection(FailingCloseDriver.class.getName(), firstUrl, "user", "password");
+            pool.getConnection(FailingCloseDriver.class.getName(), secondUrl, "user", "password");
+
+            DatabaseException failure = expectDatabaseException(pool);
+
+            assertSame(failure.getCause(), firstFailure,
+                "The first physical close failure must remain the primary cause");
+            assertEquals(firstFailure.getSuppressed().length, 1);
+            assertSame(firstFailure.getSuppressed()[0], secondFailure,
+                "Later close failures must be retained as suppressed exceptions");
+            org.mockito.Mockito.verify(firstPhysical).close();
+            org.mockito.Mockito.verify(secondPhysical).close();
+            pool.closeAllConnections();
+        } finally {
+            FailingCloseDriver.connections.remove(firstUrl);
+            FailingCloseDriver.connections.remove(secondUrl);
+        }
+    }
+
+    private DatabaseException expectDatabaseException(StandaloneConnectionPool pool) {
+        try {
+            pool.closeAllConnections();
+            fail("Expected physical connection close failures to be reported");
+            return null;
+        } catch (DatabaseException expected) {
+            return expected;
+        }
+    }
+
+    /** Minimal JDBC driver seam for deterministic physical-close failure tests. */
+    public static final class FailingCloseDriver implements java.sql.Driver {
+        private static final java.util.Map<String, Connection> connections =
+            new java.util.concurrent.ConcurrentHashMap<String, Connection>();
+
+        @Override
+        public Connection connect(String url, java.util.Properties info) {
+            return acceptsURL(url) ? connections.get(url) : null;
+        }
+
+        @Override
+        public boolean acceptsURL(String url) {
+            return url != null && url.startsWith("jdbc:webharvest-test:");
+        }
+
+        @Override
+        public java.sql.DriverPropertyInfo[] getPropertyInfo(
+                String url, java.util.Properties info) {
+            return new java.sql.DriverPropertyInfo[0];
+        }
+
+        @Override
+        public int getMajorVersion() {
+            return 1;
+        }
+
+        @Override
+        public int getMinorVersion() {
+            return 0;
+        }
+
+        @Override
+        public boolean jdbcCompliant() {
+            return false;
+        }
+
+        @Override
+        public java.util.logging.Logger getParentLogger()
+                throws java.sql.SQLFeatureNotSupportedException {
+            throw new java.sql.SQLFeatureNotSupportedException();
+        }
+    }
+
 }
