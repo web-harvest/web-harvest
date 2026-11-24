@@ -43,6 +43,7 @@ import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.client.ClientContext;
 import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.resource.ExecutionResourceAccess.ResourceState;
 import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
 import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.runtime.session.ScraperSession;
@@ -626,7 +627,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             try {
                 for (org.webharvest.runtime.resource.LedgerExecutionResourceContext.DrainReport report
                     : resourceCoordinator.markOwnerQuiescentAndDrain(budget)) {
-                    if (report.getState() != org.webharvest.runtime.resource.ExecutionResourceAccess.ResourceState.CLOSED) {
+                    if (report.getState() != ResourceState.CLOSED) {
                         LOG.warn("Resource {} for session {} remains {} (active leases: {})",
                             report.getResourceId(), session.getSessionId(),
                             report.getState(), report.getActiveLeases());
