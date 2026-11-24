@@ -3885,3 +3885,40 @@ This makes CANCELLED mean “cancellation was accepted and terminal state publis
 **Migration dependency:** this strengthens #354 as the first implementation prerequisite. #355 must make resource close lease-aware and subordinate to quiescence; #356 subscriber disposal must also wait for callback drain. #358 must define cancellation request, deadline, late completion/failure and external-effect reporting. #347/#349 must not close artifact loaders until these guarantees exist.
 
 **Decision boundary:** documentation only. No runtime/session/database implementation, API changes, tests, POM changes, compatibility deletion, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+## 15.87 — Service admission, timeout executor and shutdown do not own the full task tree (2026-11-24)
+
+**Inspection baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`; source inspection only. No runtime race or test was executed for this section.
+
+### A. Submission ownership is lost at the service boundary
+
+`WebHarvestServiceImpl.executeAsync()` checks the volatile `shutdown` flag, creates and registers a session, then calls `executorService.submit(...)` without retaining the returned `Future`. The check and submit are not one atomic admission operation. A concurrent shutdown can begin between them; the executor may reject the submission after the session has already been registered, leaving a PENDING session with no execution task. The method also has no rollback/unregister path for submission rejection. The service therefore cannot reliably distinguish accepted-and-tracked work from rejected work, nor cancel/await the submitted worker by handle.
+
+`executeSession()` has no pre-body cancellation/admission gate. If a queued task is cancelled at the session level before it starts, the Runnable can still enter, construct context, and attempt `markRunning()`; the session rejects the transition because it is already terminal. The catch path calls `markFailed()`, which ignores terminal state. This avoids a successful execution transition but is not an explicit, tracked cancel-before-start protocol and does not establish task exit to the caller.
+
+### B. Per-session timeout creates an unowned nested executor
+
+`executeWithTimeout()` creates a new single-thread executor for each timed session, submits the actual scraper body to it, and waits on its Future. The executor is never shut down on success, exception, interruption or timeout. On timeout only `future.cancel(true)` is requested; the executor itself is neither shut down nor awaited. The outer service worker and inner scraper worker are therefore two separate execution tasks, while only the inner Future is locally visible and neither is retained in the session/service lifecycle model.
+
+The timeout uses `future.get(timeout.toMillis(), MILLISECONDS)`, then converts timeout to `TimeoutException`. It does not expose whether the inner worker actually exited after interruption. A non-cooperative scraper may continue after the outer `executeSession()` marks the session failed; because the nested executor is unowned, service shutdown cannot account for it. This is a lifecycle/ownership defect visible from source, not proof of a specific live thread leak under a particular executor implementation.
+
+### C. Shutdown reports completion without proving termination
+
+- `shutdown()` calls `executorService.shutdown()`, waits up to 60 seconds, ignores the boolean result of `awaitTermination`, and logs “shut down complete” even if the executor did not terminate before the timeout.
+- `shutdownNow()` first calls `session.cancel()` for each registered session, which synchronously publishes cancellation events, then calls `executorService.shutdownNow()`. It does not await executor termination or inspect returned queued tasks, and cannot reach the per-session timeout executors.
+- The service interface says graceful shutdown waits for all running sessions, but the implementation's fixed 60-second wait can expire without surfacing incomplete termination. The interface's immediate shutdown explicitly says it may not wait; neither API exposes a result distinguishing terminated from still-running/quarantined work.
+
+### D. Required proof obligations
+
+1. Introduce one admission coordinator/lock or equivalent atomic state transition so every submission is either rejected before registration or accepted with an execution handle atomically associated with its immutable runtime/session/execution identity.
+2. If executor submission fails, roll back registration and publish a truthful rejection outcome; never leave an unowned PENDING session.
+3. Retain outer and nested task handles, or eliminate the nested executor by applying timeout to the authoritative tracked task. All descendants must be registered under the same task tree and cancellation token/deadline.
+4. Define cancel-before-start: queued task cancellation prevents body entry and reaches an observed EXITED disposition; do not rely only on a terminal business status.
+5. On normal timeout completion, release/shut down any timeout-specific execution resource. On timeout expiry, request cancellation and await bounded quiescence; retain/quarantine if the task does not exit.
+6. `shutdown()` must report timeout/nontermination when `awaitTermination` is false and must not log success. `shutdownNow()` must report the tasks returned/not started and separately await/observe running worker exit within a documented budget.
+7. Make shutdown idempotent and serialize it with admission; cover executeAsync-vs-shutdown, executor rejection after registry registration, cancel-before-start, timeout success, timeout with interruption-ignoring plugin, graceful shutdown timeout, and immediate shutdown with queued/running tasks using barriers/latches rather than sleeps.
+
+**Dependency:** these findings are within #354's stated acceptance criteria (tracked task handles, atomic admission, timeout ownership and truthful shutdown). They must be resolved before #355 closes resources or #347/#349 retires generations. #358 owns shared deadline and late-effect reporting.
+
+**Decision boundary:** documentation only. No service/session implementation, API changes, tests, POM changes, compatibility deletion, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
