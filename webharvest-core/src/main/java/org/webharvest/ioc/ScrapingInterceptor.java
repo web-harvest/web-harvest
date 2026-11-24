@@ -94,18 +94,50 @@ public final class ScrapingInterceptor implements MethodInterceptor {
      * {@link ScrapingAware} listeners are notified about the lifecycle change.
      */
     // FIXME rbala Since we use injector directly then we can not test scope management on unit level!
-    private Object invoke(final Injector injector, final Harvester harvester,
+    Object invoke(final Injector injector, final Harvester harvester,
             final Callback callback) throws Throwable {
         final ScraperScope scope = injector.getInstance(ScraperScope.class);
         final ScrapingAwareHelper helper = injector
                 .getInstance(ScrapingAwareHelper.class);
         scope.enter(injector.getInstance(AttributeHolder.class));
-        helper.onBeforeScraping(harvester);
+
+        Throwable executionFailure = null;
         try {
+            helper.onBeforeScraping(harvester);
             return callback.execute();
+        } catch (Throwable failure) {
+            executionFailure = failure;
+            throw failure;
         } finally {
-            helper.onAfterScraping(harvester);
-            scope.exit();
+            Throwable cleanupFailure = null;
+            try {
+                // Run the after notification even when a before listener or the
+                // scraper callback fails, so partially initialized listeners
+                // get a best-effort opportunity to release their scope state.
+                helper.onAfterScraping(harvester);
+            } catch (Throwable failure) {
+                cleanupFailure = failure;
+            }
+
+            try {
+                scope.exit();
+            } catch (Throwable failure) {
+                if (cleanupFailure == null) {
+                    cleanupFailure = failure;
+                } else if (cleanupFailure != failure) {
+                    cleanupFailure.addSuppressed(failure);
+                }
+            }
+
+            if (cleanupFailure != null) {
+                if (executionFailure != null) {
+                    if (executionFailure != cleanupFailure) {
+                        executionFailure.addSuppressed(cleanupFailure);
+                    }
+                } else {
+                    throw cleanupFailure;
+                }
+            }
         }
     }
 
