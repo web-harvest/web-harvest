@@ -4154,6 +4154,58 @@ This finding strengthens #354 (worker/task ownership and quiescence), #355 (reso
 - `getSessionsByClientId` scans all registered sessions and materializes a new list through stream/filter/collector; `getAllSessions` allocates a new O(n) snapshot. Source blob: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`.
 - Because the service has no terminal-session cleanup, these O(n) operations become progressively more expensive as the registry accumulates completed sessions. A secondary client index is not an automatic fix: it adds consistency, synchronization and lifecycle obligations and must be justified by measurements.
 
+### Current implementation sequence — source-backed view
+
+The following is a **CURRENT IMPLEMENTATION** view of the inspected default service path, not the target contract. It deliberately shows the unbounded cached executor, discarded outer task handle, nested timeout executor and retained terminal session/context.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60"}}}%%
+sequenceDiagram
+  autonumber
+  actor Caller
+  participant Service as WebHarvestServiceImpl
+  participant Registry as SessionRegistryImpl
+  participant Session as ScraperSessionImpl
+  participant Pool as Cached Executor
+  participant Worker as Session Worker
+  participant TimeoutPool as Per-timeout Executor
+  participant Scraper
+
+  Caller->>Service: executeAsync(config, client, options)
+  Service->>Service: Check volatile shutdown flag
+  Service->>Session: Construct session (shared EventBus)
+  Session-->>Service: Publish SessionCreatedEvent
+  Service->>Registry: register(session)
+  Service->>Pool: submit(runnable)
+  Note over Service,Pool: Outer Future is discarded; no aggregate admission limit
+  Service-->>Caller: Return session handle
+
+  Pool->>Worker: Run session task
+  Worker->>Worker: Create ScraperContext; bind config, EventBus and session
+  Worker->>Session: markRunning(context)
+  alt No timeout configured
+    Worker->>Scraper: execute(context)
+  else Timeout configured
+    Worker->>TimeoutPool: Create single-thread executor and submit scraper
+    TimeoutPool->>Scraper: execute(context)
+    Worker->>TimeoutPool: Future.get(timeout)
+    alt Timeout expires
+      Worker->>TimeoutPool: Future.cancel(true)
+      Note over Worker,TimeoutPool: Executor is not shut down or awaited
+    else Scraper returns
+      TimeoutPool-->>Worker: Future completes
+    end
+  end
+  alt Execution returns
+    Worker->>Session: markCompleted()
+  else Execution throws
+    Worker->>Session: markFailed(error)
+  end
+  Note over Session,Registry: No terminal unregister in this service path; session retains Config, EventBus and context
+```
+
+The diagram is derived from `WebHarvestServiceImpl` blob `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec` and `ScraperSessionImpl` blob `78d07d1c485ea215d68d6d415f36b2be0c180a4f`. It does not prove a measured thread leak or retained-heap size; those remain benchmark questions.
+
 ### Required contract and evidence
 
 1. Define host-owned admission controls before task submission: maximum active sessions, bounded executor/queue or explicit rejection policy, per-client fairness/quotas where required, and a resource budget that accounts for nested work. Admission must be atomic with shutdown and session registration, as required by #354.
