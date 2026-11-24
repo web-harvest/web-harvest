@@ -53,9 +53,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * execution quiescence and active-use leases.
  *
  * <p>A registration is not a lease. Registration establishes ownership;
- * {@link Registration#acquire(ExecutionOwner)} grants one attributed bounded use; and
- * {@link Registration#drainAndClose(Duration)} closes only after the owner
- * has independently reported quiescence and every use lease has been released.</p>
+ * {@link Registration#acquire(ExecutionOwner)} grants one attributed bounded use.
+ * Generation resources additionally require a {@link GenerationPin} that spans
+ * the complete execution lifetime. Generation retirement stops new pins and
+ * drains every existing pin before any generation resource may close.</p>
  *
  * <p>RUNTIME resources are owned by the ledger runtime. GENERATION resources
  * are owned by a distinct {@link RegistryGenerationId}; their leases are
@@ -663,13 +664,17 @@ public final class ResourceLedger {
             }
         }
 
-        private static DrainResult snapshot(Entry entry) {
+        private DrainResult snapshot(Entry entry) {
             List<OutstandingLease> outstanding = new ArrayList<>();
             for (Map.Entry<Long, ExecutionOwner> lease : entry.activeLeases.entrySet()) {
                 outstanding.add(new OutstandingLease(lease.getKey(), lease.getValue()));
             }
-            return new DrainResult(entry.state, outstanding, entry.ownerQuiescent,
-                entry.abortInProgress, entry.abortFailure, entry.closeFailure);
+            int activeGenerationPins = entry.scope == Scope.GENERATION
+                ? ledger.getActiveGenerationPinCount(entry.generationId) : 0;
+            boolean ownerQuiescent = entry.scope == Scope.GENERATION
+                ? activeGenerationPins == 0 : entry.ownerQuiescent;
+            return new DrainResult(entry.state, outstanding, ownerQuiescent,
+                activeGenerationPins, entry.abortInProgress, entry.abortFailure, entry.closeFailure);
         }
 
         /**
@@ -784,16 +789,18 @@ public final class ResourceLedger {
         private final State state;
         private final List<OutstandingLease> outstandingLeases;
         private final boolean ownerQuiescent;
+        private final int activeGenerationPins;
         private final boolean abortInProgress;
         private final Throwable abortFailure;
         private final Throwable closeFailure;
 
         private DrainResult(State state, List<OutstandingLease> outstandingLeases,
-                            boolean ownerQuiescent, boolean abortInProgress,
-                            Throwable abortFailure, Throwable closeFailure) {
+                            boolean ownerQuiescent, int activeGenerationPins,
+                            boolean abortInProgress, Throwable abortFailure, Throwable closeFailure) {
             this.state = state;
             this.outstandingLeases = Collections.unmodifiableList(new ArrayList<>(outstandingLeases));
             this.ownerQuiescent = ownerQuiescent;
+            this.activeGenerationPins = activeGenerationPins;
             this.abortInProgress = abortInProgress;
             this.abortFailure = abortFailure;
             this.closeFailure = closeFailure;
@@ -813,6 +820,11 @@ public final class ResourceLedger {
 
         public boolean isOwnerQuiescent() {
             return ownerQuiescent;
+        }
+
+        /** Number of execution-wide pins still protecting this generation. */
+        public int getActiveGenerationPins() {
+            return activeGenerationPins;
         }
 
         public boolean isAbortInProgress() {
