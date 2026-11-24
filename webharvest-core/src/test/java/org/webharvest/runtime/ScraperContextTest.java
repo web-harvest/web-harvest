@@ -46,6 +46,7 @@ import static org.testng.Assert.assertTrue;
 import static org.unitils.reflectionassert.ReflectionAssert.assertReflectionEquals;
 
 import java.util.Arrays;
+import java.lang.reflect.Proxy;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.collections.IteratorUtils;
@@ -58,6 +59,7 @@ import org.unitils.inject.annotation.TestedObject;
 import org.unitils.mock.annotation.Dummy;
 import org.unitils.reflectionassert.ReflectionComparatorMode;
 import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -104,6 +106,31 @@ public class ScraperContextTest extends UnitilsTestNG {
             assertTrue(expected.getMessage().contains("already bound"));
         }
 
+        ScraperContext sessionFirst = new ScraperContext();
+        sessionFirst.setSession(sessionWithId("session-b"));
+        try {
+            sessionFirst.setExecutionOwner(owner);
+            throw new AssertionError("Expected owner/session mismatch to fail when owner is bound second");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("does not match"));
+        }
+
+        ScraperContext ownerFirst = new ScraperContext();
+        ownerFirst.setExecutionOwner(owner);
+        try {
+            ownerFirst.setSession(sessionWithId("session-b"));
+            throw new AssertionError("Expected owner/session mismatch to fail when session is bound second");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("does not match"));
+        }
+    }
+
+    private ScraperSession sessionWithId(String sessionId) {
+        return (ScraperSession) Proxy.newProxyInstance(
+            ScraperSession.class.getClassLoader(),
+            new Class<?>[] { ScraperSession.class },
+            (proxy, method, arguments) -> "getSessionId".equals(method.getName()) ? sessionId : null
+        );
     }
 
     @Test
