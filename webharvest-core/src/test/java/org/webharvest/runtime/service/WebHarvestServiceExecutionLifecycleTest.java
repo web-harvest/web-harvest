@@ -389,6 +389,38 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testGraceEscalatesToKillUnresponsiveAndLaterConfirmsWorkerExit() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            assertTrue(session.cancel());
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+
+            assertTrue(tracked.awaitExecutionUnresponsive(7000),
+                "The bounded GRACE period should escalate a non-cooperative worker");
+            assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.KILL_UNRESPONSIVE);
+            assertFalse(tracked.awaitExecutionCompletion(0));
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.WORKER_EXIT_CONFIRMED);
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowReportsUnresponsiveWorkerUntilItActuallyExits() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
