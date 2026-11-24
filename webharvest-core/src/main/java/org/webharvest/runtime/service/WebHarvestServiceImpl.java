@@ -69,6 +69,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
+    private final String runtimeId = UUID.randomUUID().toString();
+    private final AtomicLong executionGeneration = new AtomicLong();
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final Object admissionLock = new Object();
@@ -130,7 +132,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             String sessionId = UUID.randomUUID().toString();
-            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus);
+            ExecutionIdentity identity = new ExecutionIdentity(runtimeId, sessionId,
+                executionGeneration.incrementAndGet());
+            ScraperSessionImpl session = new ScraperSessionImpl(identity, clientId, config, eventBus);
             SessionTask task = new SessionTask(session, opts);
             session.attachCancellationHandler(task::requestCancellation);
             session.markExecutionQueued();
