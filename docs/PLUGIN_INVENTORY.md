@@ -3723,3 +3723,43 @@ This section resolves an important naming trap: the current types are overlappin
 - Two-runtime isolation, session generation pinning, provider invocation serialization, EventBus subscription disposal and GRACE/KILL quiescence tests remain mandatory under #94/#349/#350.
 
 **Disposition:** design-level consolidation only. This sharpens #346/#347/#348 and the earlier runtime/EventBus audit; it does not authorize deleting legacy classes, changing POMs, implementing the SPI or altering production dispatch. No tests/builds were run for this source audit.
+
+
+## 15.83 IDE metadata, schema and root-execution consumers — additional consolidation call sites (2026-11-24)
+
+This follow-up inspects the concrete IDE/API and runtime consumers that sit downstream of the mechanisms classified in 15.82. It is a targeted call-site audit against source tree `1729bdf4620a66686d02605083e27e27d1ab3944`, not an exhaustive grep of every Java file or downstream embedding repository.
+
+### A. Additional independent metadata/schema paths
+
+| Consumer | Observed source behavior | Consolidation consequence |
+|---|---|---|
+| `PluginMetadataServlet` | Primary metadata endpoint calls `PluginMetadataCatalog`, but catches catalog failure and falls back to `CorePluginRegistry`. Its descriptor-to-visual-metadata projection also calls `Class.forName(desc.getClassName())`, constructs a no-arg plugin and invokes `getMetadata()`. | This is not a descriptor-only projection. The fallback can silently switch the source and identity set depending on catalog failure; both branches must become views over one pinned generation and report its generation token. |
+| IDE `SchemaValidator` | Constructor captures global `CorePluginRegistry.getInstance()`; validation obtains plugin schema by constructing a plugin instance and invoking `getMetadata()`. | Structural validation is a separate registry/activation path and may execute constructors during validation. Replace with descriptor/schema projection from the exact generation used by inspection and execution; no implementation class loading for schema lookup. |
+| `XSDGenerator` | Generates XSD from `PluginMetadataCatalog.getAllDescriptors()`, not from the `PluginRegistry` supplied to `PluginSchemaPostProcessor`. | XSD source is catalog-owned while the postprocessor retains an independently supplied legacy registry dependency. Remove the split by making XSD a deterministic projection of the effective immutable generation. |
+| `PluginMetadataJsonGenerator` | Starts from `PluginRegistryHolder.getInstance()` and its instantiated plugin collection; semantic JSON projection later resolves descriptor class names with `Class.forName` and calls `PluginSemanticsResolver`. | The JSON generator is another legacy registry consumer and semantic projection can load implementation classes. It must consume generation descriptors only; any runtime-only enrichment must be explicitly separated and authorized. |
+
+### B. Additional runtime construction path
+
+`Scraper.execute()` has a non-`config` root branch that resolves the root element through global `CorePluginRegistry`, constructs the class directly with `Class.newInstance()`, initializes it and executes it. This bypasses `DefaultPluginBodyExecutor.createChildPlugin()` and its Guice injection path. The migration must cover root execution as well as child dispatch; replacing only the child executor leaves a second construction authority.
+
+The regular child path in `DefaultPluginBodyExecutor.createChildPlugin()` resolves from `CorePluginRegistry`, then obtains an instance from static `InjectorHelper.getInjector()` or falls back to reflection. This confirms that the current active dispatch path still depends on a global XML-name-to-class map and a process-global injector, rather than the metadata catalog or `PluginFactory`.
+
+### C. Concrete path-level evidence
+
+- `webharvest-ide/.../PluginMetadataServlet.java`: catalog-first/fallback-to-Core-registry endpoint; class loading and construction for visual metadata.
+- `webharvest-ide/.../SchemaValidator.java`: global Core registry plus constructor-based schema extraction.
+- `webharvest-core/.../plugin/metadata/XSDGenerator.java` and `plugin/schema/PluginSchemaPostProcessor.java`: catalog-derived XSD with a separately injected legacy registry.
+- `webharvest-core/.../plugin/metadata/PluginMetadataJsonGenerator.java`: static legacy registry holder plus implementation-class semantic resolution.
+- `webharvest-core/.../runtime/Scraper.java`: direct root-plugin construction outside the child executor path.
+- `webharvest-core/.../plugin/DefaultPluginBodyExecutor.java`: global registry lookup plus static Guice/reflection construction.
+
+### D. Updated consolidation proof obligations
+
+1. One test must force the IDE metadata catalog path to fail and prove that no fallback to a different registry/generation occurs; the endpoint must return a clear diagnostic or a consistent last-known-good projection.
+2. Metadata, XSD, JSON metadata, IDE schema validation, semantic inspection and runtime dispatch must all expose the same exact descriptor/binding set and generation token.
+3. Constructor/static-initializer sentinels must prove that metadata, schema, XSD and semantic projection do not load, instantiate or invoke provider implementation code.
+4. Root-plugin execution and child-plugin execution must use the same activation manager, dependency injection boundary, policy checks, generation pinning and lifecycle handling.
+5. Remove the stale split between the `PluginRegistry` constructor dependency of `PluginSchemaPostProcessor` and the catalog source actually used by `XSDGenerator`, but only after adapter compatibility tests exist.
+6. Preserve diagnostics when a descriptor or provider is unavailable; do not turn a catalog exception into an apparently successful but semantically different fallback payload.
+
+**Disposition:** additional source-derived architecture evidence only. This closes several concrete IDE/schema/JSON/root-execution call-site gaps in the targeted audit; it does not claim an exhaustive repository-wide or external-embedding census. No production code, tests, POMs or workflows changed; no tests/builds were run for this static inspection. Runtime implementation remains **STOP** pending explicit #346 acceptance and #94 integration authorization.
