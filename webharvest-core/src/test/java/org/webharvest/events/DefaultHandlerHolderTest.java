@@ -162,6 +162,24 @@ public class DefaultHandlerHolderTest {
     }
 
     @Test
+    public void sharedEventBusPostDispatchesThroughHarvesterRoute() {
+        EventBus sharedBus = new EventBus();
+        Provider<EventBus> sharedProvider = () -> sharedBus;
+        DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, sharedProvider);
+        sharedBus.register(dispatcher);
+
+        Harvester harvester = mock(Harvester.class);
+        RecordingHandler handler = new RecordingHandler();
+        dispatcher.register(handler);
+        when(registry.lookup(harvester)).thenReturn(sharedBus);
+
+        sharedBus.post(new TestHarvesterEvent(harvester));
+
+        assertEquals(handler.calls.get(), 1,
+            "The shared EventBus must dispatch through the active Harvester route");
+    }
+
+    @Test
     public void continuesDispatchAndAggregatesHandlerFailures() {
         Harvester harvester = mock(Harvester.class);
         when(registry.lookup(harvester)).thenReturn(eventBus);
