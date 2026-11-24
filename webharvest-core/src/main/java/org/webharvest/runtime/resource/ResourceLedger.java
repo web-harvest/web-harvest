@@ -147,6 +147,55 @@ public final class ResourceLedger {
     }
 
     /** Returns the number of retained registrations, including quarantined and failed closes. */
+    /**
+     * Marks all resources owned by the exact execution generation quiescent.
+     * Call only after the execution coordinator has observed worker and child
+     * operation exit; this method does not request close or abort.
+     *
+     * @return the number of registrations transitioned to owner-quiescent
+     */
+    public int markOwnerQuiescent(ExecutionOwner owner) {
+        Objects.requireNonNull(owner, "Execution owner cannot be null");
+        if (!runtimeId.equals(owner.getRuntimeId())) {
+            throw new IllegalArgumentException("Execution owner belongs to another runtime");
+        }
+        int marked = 0;
+        for (Entry entry : entries.values()) {
+            if (owner.equals(entry.owner)) {
+                synchronized (entry) {
+                    if (!entry.ownerQuiescent) {
+                        entry.ownerQuiescent = true;
+                        entry.notifyAll();
+                        marked++;
+                    }
+                }
+            }
+        }
+        return marked;
+    }
+
+    /**
+     * Marks all runtime-scoped resources quiescent after runtime execution has
+     * stopped and no runtime-owned operation can still use them.
+     *
+     * @return the number of registrations transitioned to owner-quiescent
+     */
+    public int markRuntimeQuiescent() {
+        int marked = 0;
+        for (Entry entry : entries.values()) {
+            if (entry.scope == Scope.RUNTIME) {
+                synchronized (entry) {
+                    if (!entry.ownerQuiescent) {
+                        entry.ownerQuiescent = true;
+                        entry.notifyAll();
+                        marked++;
+                    }
+                }
+            }
+        }
+        return marked;
+    }
+
     public int size() {
         return entries.size();
     }
