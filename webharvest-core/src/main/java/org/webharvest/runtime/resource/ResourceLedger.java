@@ -146,6 +146,7 @@ public final class ResourceLedger {
         return new Registration(this, entry);
     }
 
+    /** Returns the number of retained registrations, including quarantined and failed closes. */
     public int size() {
         return entries.size();
     }
