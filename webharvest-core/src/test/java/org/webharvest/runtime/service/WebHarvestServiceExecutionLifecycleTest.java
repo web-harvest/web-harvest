@@ -56,6 +56,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
 
@@ -284,6 +285,72 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testSubmitAndShutdownHaveAtomicAdmissionBoundary() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        CountDownLatch shutdownStarted = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        AtomicReference<ScraperSession> accepted = new AtomicReference<>();
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+
+        Thread submitter = new Thread(() -> {
+            try {
+                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        });
+        Thread shutdownThread = new Thread(() -> {
+            shutdownStarted.countDown();
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            }
+        });
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            shutdownThread.start();
+            assertTrue(shutdownStarted.await(5, TimeUnit.SECONDS));
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (shutdownThread.getState() != Thread.State.BLOCKED
+                && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertEquals(shutdownThread.getState(), Thread.State.BLOCKED,
+                "Shutdown must wait for the in-flight admission critical section");
+
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            assertFalse(submitter.isAlive());
+            assertFalse(shutdownThread.isAlive());
+            assertNull(submitFailure.get());
+            assertNull(shutdownFailure.get());
+
+            ScraperSession session = accepted.get();
+            assertNotNull(session, "The submission must be either accepted and tracked or rejected");
+            assertTrue(session.awaitCompletion(5000));
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertTrue(service.getSession(session.getSessionId()).isPresent());
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownTimeoutIsSurfacedAndDoesNotClaimSuccess() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
@@ -463,6 +530,31 @@ public class WebHarvestServiceExecutionLifecycleTest {
         @Override
         public void execute(Runnable command) {
             delegate.execute(command);
+        }
+    }
+
+    private static class BlockingSubmitExecutorService extends DelegatingExecutorService {
+        private final CountDownLatch entered;
+        private final CountDownLatch release;
+
+        private BlockingSubmitExecutorService(ExecutorService delegate,
+                                              CountDownLatch entered,
+                                              CountDownLatch release) {
+            super(delegate);
+            this.entered = entered;
+            this.release = release;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Submission gate interrupted", interrupted);
+            }
+            super.execute(command);
         }
     }
 
