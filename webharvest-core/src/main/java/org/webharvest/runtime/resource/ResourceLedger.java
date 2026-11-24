@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * execution quiescence and active-use leases.
  *
  * <p>A registration is not a lease. Registration establishes ownership;
- * {@link Registration#acquire()} grants one bounded use; and
+ * {@link Registration#acquire(ExecutionOwner)} grants one attributed bounded use; and
  * {@link Registration#drainAndClose(Duration)} closes only after the owner
  * has independently reported quiescence and every use lease has been released.</p>
  *
@@ -255,17 +255,12 @@ public final class ResourceLedger {
         }
 
         /**
-         * Acquires a use lease. The state check and lease increment share the
-         * same monitor as close admission, so no lease can escape CLOSE_REQUESTED.
+         * Acquires a use lease attributed to the actual execution owner.
+         * Every scope requires explicit attribution: a session-scoped
+         * registration must not silently attribute a foreign caller to its owner.
+         * The state check and lease insertion share the same monitor as close
+         * admission, so no lease can escape CLOSE_REQUESTED.
          */
-        public Lease acquire() {
-            if (entry.scope == Scope.RUNTIME) {
-                throw new IllegalStateException(
-                    "Runtime-scoped resources require the execution owner of each use");
-            }
-            return acquire(entry.owner);
-        }
-
         /**
          * Acquires a lease for an explicit execution owner. Runtime-scoped
          * resources use this overload so every in-flight consumer is reportable.
