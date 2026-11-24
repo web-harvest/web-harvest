@@ -165,11 +165,8 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertTrue(listener.closeAttempted.await(5, TimeUnit.SECONDS));
-            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSE_FAILED
-                && System.nanoTime() < closeDeadline) {
-                Thread.sleep(10);
-            }
+            // Wait for the worker-side resource drain to publish its terminal state.
+            service.shutdown();
 
             assertEquals(listener.closeCount.get(), 1);
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSE_FAILED);
