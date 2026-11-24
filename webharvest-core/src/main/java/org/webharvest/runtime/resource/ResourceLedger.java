@@ -132,8 +132,8 @@ public final class ResourceLedger {
      */
     public Registration registerOwned(String resourceId, Scope scope, ExecutionOwner owner,
                                        AbortAction abortAction, CloseAction closeAction) {
-        if (scope == Scope.RUNTIME) {
-            throw new IllegalArgumentException("Use registerRuntime for runtime-scoped resources");
+        if (scope == Scope.RUNTIME || scope == Scope.GENERATION) {
+            throw new IllegalArgumentException("Use the scope-specific registration method");
         }
         return register(resourceId, scope, owner, null, abortAction, closeAction);
     }
