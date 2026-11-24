@@ -69,7 +69,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
-    private final ScheduledExecutorService timeoutScheduler;
+    private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final Object admissionLock = new Object();
     private volatile boolean shutdown;
@@ -112,7 +112,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         this.executorService = executorService;
         this.sessionRegistry = sessionRegistry;
         this.eventBus = eventBus;
-        this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(new TimeoutThreadFactory());
+        this.timeoutScheduler = createTimeoutScheduler();
     }
 
     @Override
@@ -316,6 +316,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     @Override
     public boolean isShutdown() {
         return shutdown;
+    }
+
+    private static ScheduledThreadPoolExecutor createTimeoutScheduler() {
+        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(1, new TimeoutThreadFactory());
+        scheduler.setRemoveOnCancelPolicy(true);
+        scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        scheduler.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        return scheduler;
     }
 
     private final class SessionTask implements Runnable {
