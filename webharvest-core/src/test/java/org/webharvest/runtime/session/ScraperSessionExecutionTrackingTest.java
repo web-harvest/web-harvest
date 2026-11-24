@@ -45,8 +45,8 @@ import static org.testng.Assert.*;
 public class ScraperSessionExecutionTrackingTest {
 
     private ScraperSessionImpl createSession() {
-        return new ScraperSessionImpl("execution-test", null, Mockito.mock(org.webharvest.definition.Config.class),
-            new EventBus());
+        return new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), new EventBus());
     }
 
     @Test(groups = {"unit", "session"})
