@@ -463,6 +463,8 @@ public class ResourceLedgerTest {
         AtomicInteger closeCount = new AtomicInteger();
         ResourceLedger.Registration registration = ledger.registerGeneration(
             "provider-loader/generation-a", generationOne, null, closeCount::incrementAndGet);
+        ResourceLedger.GenerationPin pinA = ledger.pinGeneration(ownerA, generationOne);
+        ResourceLedger.GenerationPin pinB = ledger.pinGeneration(ownerB, generationOne);
 
         assertEquals(registration.getScope(), ResourceLedger.Scope.GENERATION);
         assertEquals(registration.getRegistryGenerationId(), generationOne);
@@ -470,29 +472,72 @@ public class ResourceLedgerTest {
         expectThrows(IllegalStateException.class, () -> registration.acquire(ownerA));
         expectThrows(IllegalArgumentException.class, () -> registration.acquire(ownerA, generationTwo));
         expectThrows(IllegalArgumentException.class,
-            () -> registration.acquire(new ExecutionOwner("runtime-b", "session-a", 1), generationOne));
+            () -> ledger.pinGeneration(new ExecutionOwner("runtime-b", "session-a", 1), generationOne));
+        expectThrows(IllegalStateException.class, () -> ledger.pinGeneration(ownerA, generationOne));
 
         ResourceLedger.Lease leaseA = registration.acquire(ownerA, generationOne);
         ResourceLedger.Lease leaseB = registration.acquire(ownerB, generationOne);
         registration.requestClose();
-        expectThrows(IllegalStateException.class, () -> registration.acquire(ownerA, generationOne));
-        registration.markOwnerQuiescent();
+        expectThrows(IllegalStateException.class,
+            () -> ledger.pinGeneration(new ExecutionOwner("runtime-a", "session-c", 3), generationOne));
 
         ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
         assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
         assertEquals(blocked.getActiveLeases(), 2);
-        assertEquals(blocked.getOutstandingLeases().size(), 2);
+        assertEquals(ledger.getActiveGenerationPinCount(generationOne), 2);
         assertEquals(closeCount.get(), 0);
 
         leaseA.close();
-        ResourceLedger.DrainResult oneRemaining = registration.drainAndClose(Duration.ZERO);
-        assertEquals(oneRemaining.getActiveLeases(), 1);
+        ResourceLedger.DrainResult oneLeaseRemaining = registration.drainAndClose(Duration.ZERO);
+        assertEquals(oneLeaseRemaining.getActiveLeases(), 1);
         assertEquals(closeCount.get(), 0);
 
         leaseB.close();
+        pinA.close();
+        assertEquals(ledger.getActiveGenerationPinCount(generationOne), 1);
+        assertFalse(registration.drainAndClose(Duration.ZERO).isClosed());
+        pinB.close();
+
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
         assertEquals(closeCount.get(), 1);
+        assertEquals(ledger.getActiveGenerationPinCount(generationOne), 0);
         registration.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testGenerationResourceStaysOpenForPinnedSessionWithoutResourceLease()
+        throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "snapshot-shared");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-b", 2);
+        AtomicInteger closeCount = new AtomicInteger();
+        ResourceLedger.Registration resource = ledger.registerGeneration(
+            "provider-loader", generation, null, closeCount::incrementAndGet);
+        ResourceLedger.GenerationPin pinA = ledger.pinGeneration(ownerA, generation);
+        ResourceLedger.GenerationPin pinB = ledger.pinGeneration(ownerB, generation);
+        ResourceLedger.Lease leaseA = resource.acquire(ownerA, generation);
+
+        ledger.beginGenerationRetirement(generation);
+        expectThrows(IllegalStateException.class,
+            () -> ledger.pinGeneration(new ExecutionOwner("runtime-a", "session-c", 3), generation));
+        expectThrows(IllegalStateException.class,
+            () -> ledger.registerGeneration("late-resource", generation, null, null));
+
+        assertFalse(resource.drainAndClose(Duration.ZERO).isClosed());
+        assertEquals(closeCount.get(), 0);
+
+        leaseA.close();
+        pinA.close();
+        assertEquals(ledger.getActiveGenerationPinCount(generation), 1);
+        assertFalse(resource.drainAndClose(Duration.ZERO).isClosed());
+        assertEquals(closeCount.get(), 0,
+            "A resource must remain open while any execution still pins its generation");
+
+        pinB.close();
+        assertTrue(resource.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertEquals(closeCount.get(), 1);
+        resource.close();
     }
 
     @Test(groups = {"unit", "runtime"})
@@ -520,7 +565,14 @@ public class ResourceLedgerTest {
             () -> ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerA, null, null));
 
         for (ResourceLedger.Registration registration : new ResourceLedger.Registration[] {
-            generationResourceOne, generationResourceTwo, sessionResourceA, sessionResourceB
+            generationResourceOne, generationResourceTwo
+        }) {
+            registration.requestClose();
+            assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+            registration.close();
+        }
+        for (ResourceLedger.Registration registration : new ResourceLedger.Registration[] {
+            sessionResourceA, sessionResourceB
         }) {
             registration.markOwnerQuiescent();
             assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
