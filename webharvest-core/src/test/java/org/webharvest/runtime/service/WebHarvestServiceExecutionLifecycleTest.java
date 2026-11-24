@@ -79,6 +79,37 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testServiceAssignsRuntimeScopedMonotonicExecutionOwners() throws InterruptedException {
+        WebHarvestServiceImpl firstRuntime = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), new EventBus());
+        WebHarvestServiceImpl secondRuntime = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), new EventBus());
+
+        try {
+            ScraperSession first = firstRuntime.executeAsync(Mockito.mock(Config.class), null, null);
+            ScraperSession second = firstRuntime.executeAsync(Mockito.mock(Config.class), null, null);
+            ScraperSession otherRuntime = secondRuntime.executeAsync(Mockito.mock(Config.class), null, null);
+
+            ExecutionTrackedSession firstTracked = (ExecutionTrackedSession) first;
+            ExecutionTrackedSession secondTracked = (ExecutionTrackedSession) second;
+            ExecutionTrackedSession otherTracked = (ExecutionTrackedSession) otherRuntime;
+
+            assertEquals(firstTracked.getExecutionOwner().getSessionId(), first.getSessionId());
+            assertEquals(secondTracked.getExecutionOwner().getSessionId(), second.getSessionId());
+            assertEquals(firstTracked.getExecutionOwner().getRuntimeId(),
+                secondTracked.getExecutionOwner().getRuntimeId());
+            assertEquals(firstTracked.getExecutionOwner().getExecutionGeneration(), 1L);
+            assertEquals(secondTracked.getExecutionOwner().getExecutionGeneration(), 2L);
+            assertNotEquals(firstTracked.getExecutionOwner().getRuntimeId(),
+                otherTracked.getExecutionOwner().getRuntimeId());
+            assertEquals(otherTracked.getExecutionOwner().getExecutionGeneration(), 1L);
+        } finally {
+            firstRuntime.shutdown();
+            secondRuntime.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownIsIdempotent() throws InterruptedException {
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             new InlineExecutorService(), new SessionRegistryImpl(), new EventBus());
