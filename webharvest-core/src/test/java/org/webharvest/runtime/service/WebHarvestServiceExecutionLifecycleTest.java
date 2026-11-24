@@ -318,6 +318,28 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testSuccessfulSessionRemovesCancelledDeadlineFromSchedulerQueue() throws InterruptedException {
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            SessionOptions options = SessionOptions.builder()
+                .timeout(Duration.ofMinutes(1))
+                .build();
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, options);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertEquals(service.getPendingTimeoutTaskCount(), 0,
+                "Cancelled deadline tasks must be removed instead of retaining completed sessions");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testTimeoutInterruptsWorkerAndWaitsForObservedExit() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
