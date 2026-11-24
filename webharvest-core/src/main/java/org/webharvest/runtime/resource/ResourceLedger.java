@@ -337,8 +337,9 @@ public final class ResourceLedger {
         }
 
         /**
-         * Records externally observed owner quiescence. This must not be called
-         * merely because cancellation was requested or business status is terminal.
+         * Records externally observed owner quiescence and closes lease admission
+         * if it is still open. This must not be called merely because cancellation
+         * was requested or business status is terminal.
          */
         public void markOwnerQuiescent() {
             synchronized (entry) {
