@@ -72,6 +72,7 @@ public class ScraperSessionExecutionTrackingTest {
         session.markExecutionInterruptRequested();
         assertEquals(session.getExecutionState(), ExecutionState.INTERRUPT_REQUESTED);
         session.markExecutionUnresponsive();
+        assertTrue(session.awaitExecutionUnresponsive(0));
         assertEquals(session.getExecutionState(), ExecutionState.UNRESPONSIVE);
         assertFalse(session.awaitExecutionCompletion(0));
 
@@ -123,6 +124,11 @@ public class ScraperSessionExecutionTrackingTest {
         ScraperSessionImpl session = createSession();
         session.markExecutionQueued();
         session.markExecutionQueued();
+    }
+
+    @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
+    public void testNegativeUnresponsiveWaitRejected() throws InterruptedException {
+        createSession().awaitExecutionUnresponsive(-1);
     }
 
     @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
