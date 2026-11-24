@@ -161,7 +161,8 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
     private List<Method> findSubscriberMethods(final EventHandler<?> handler) {
         final List<Method> methods = new ArrayList<Method>();
         for (Method method : handler.getClass().getMethods()) {
-            if (!method.isAnnotationPresent(Subscribe.class)) {
+            if (method.isBridge() || method.isSynthetic()
+                || !method.isAnnotationPresent(Subscribe.class)) {
                 continue;
             }
             if (method.getParameterTypes().length != 1) {
