@@ -227,6 +227,26 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testTimeoutDeadlineIsRetiredAfterSuccessfulCompletion() throws InterruptedException {
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl();
+        try {
+            SessionOptions options = SessionOptions.builder()
+                .timeout(Duration.ofMinutes(1))
+                .build();
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, options);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(session.awaitCompletion(5000));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.NOT_REQUESTED);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testTimeoutInterruptsWorkerAndWaitsForObservedExit() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
