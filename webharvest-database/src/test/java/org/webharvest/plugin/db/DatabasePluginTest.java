@@ -441,9 +441,15 @@ public class DatabasePluginTest {
             plugin.execute(managedContext);
             fail("Expected invalid SQL to fail");
         } catch (RuntimeException expected) {
-            assertTrue(expected.getMessage().contains("Database operation failed"));
-            assertTrue(expected.getCause() instanceof java.sql.SQLException,
-                "The original JDBC failure must remain available as the cause");
+            assertTrue(expected.getMessage().contains("Unexpected error in database plugin"));
+            Throwable cause = expected;
+            while (cause != null && !(cause instanceof java.sql.SQLException)) {
+                cause = cause instanceof java.lang.reflect.UndeclaredThrowableException
+                    ? ((java.lang.reflect.UndeclaredThrowableException) cause).getUndeclaredThrowable()
+                    : cause.getCause();
+            }
+            assertTrue(cause instanceof java.sql.SQLException,
+                "The original JDBC failure must remain reachable through the proxy wrapper");
         }
 
         assertEquals(ledger.size(), 0,
