@@ -37,7 +37,10 @@ import org.testng.annotations.Test;
 import org.webharvest.runtime.session.ExecutionOwner;
 
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
 
@@ -71,6 +74,60 @@ public class ResourceLedgerTest {
         registration.close();
         registration.close();
         assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testConcurrentAcquireAndCloseRequestHaveOneAtomicBoundary() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ResourceLedger.Registration registration = ledger.registerOwned(
+            "jdbc/race", ResourceLedger.Scope.SESSION,
+            new ExecutionOwner("runtime-a", "session-a", 1), null, null);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicReference<ResourceLedger.Lease> acquired = new AtomicReference<>();
+        AtomicReference<Throwable> unexpected = new AtomicReference<>();
+
+        Thread acquirer = new Thread(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                acquired.set(registration.acquire());
+            } catch (IllegalStateException closeWon) {
+                // Close admission won the same atomic boundary.
+            } catch (Throwable failure) {
+                unexpected.set(failure);
+            }
+        });
+        Thread closer = new Thread(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                registration.requestClose();
+            } catch (Throwable failure) {
+                unexpected.set(failure);
+            }
+        });
+
+        acquirer.start();
+        closer.start();
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        acquirer.join(5000);
+        closer.join(5000);
+
+        assertFalse(acquirer.isAlive());
+        assertFalse(closer.isAlive());
+        assertNull(unexpected.get());
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
+        assertEquals(registration.getActiveLeaseCount(), acquired.get() == null ? 0 : 1);
+        expectThrows(IllegalStateException.class, registration::acquire);
+
+        if (acquired.get() != null) {
+            acquired.get().close();
+        }
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        registration.close();
     }
 
     @Test(groups = {"unit", "runtime"})
