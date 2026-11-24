@@ -724,6 +724,15 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testExecutionOwnerRejectsInvalidIdentityComponents() {
+        expectThrows(IllegalArgumentException.class, () -> new ExecutionOwner(null, "session-a", 1));
+        expectThrows(IllegalArgumentException.class, () -> new ExecutionOwner("  ", "session-a", 1));
+        expectThrows(IllegalArgumentException.class, () -> new ExecutionOwner("runtime-a", null, 1));
+        expectThrows(IllegalArgumentException.class, () -> new ExecutionOwner("runtime-a", "  ", 1));
+        expectThrows(IllegalArgumentException.class, () -> new ExecutionOwner("runtime-a", "session-a", 0));
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testRegistryGenerationIdHasRuntimeScopedValueSemantics() {
         RegistryGenerationId first = new RegistryGenerationId("runtime-a", "snapshot-a");
         RegistryGenerationId same = new RegistryGenerationId("runtime-a", "snapshot-a");
