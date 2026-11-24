@@ -465,6 +465,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
             assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertTrue(executor.awaitWorkerTermination(5, TimeUnit.SECONDS));
             service.shutdown();
         } finally {
             listener.release.countDown();
@@ -652,6 +653,10 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 currentWorker.interrupt();
             }
             return Collections.emptyList();
+        }
+
+        boolean awaitWorkerTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return terminated.await(timeout, unit);
         }
 
         @Override
