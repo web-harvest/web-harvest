@@ -423,7 +423,7 @@ public class DatabasePlugin extends AbstractPlugin {
         return primary;
     }
 
-    private Variable executeSql(Connection connection, String sql) throws SQLException, PluginException {
+    private Variable executeSql(Connection connection, String sql) throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
         
@@ -461,7 +461,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 return new NodeVariable("Rows affected: " + rowsAffected);
             }
             
-        } catch (SQLException | PluginException failure) {
+        } catch (SQLException failure) {
             primaryFailure = failure;
             throw failure;
         } catch (RuntimeException | Error failure) {
