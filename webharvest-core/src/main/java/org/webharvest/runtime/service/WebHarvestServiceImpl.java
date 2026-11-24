@@ -185,6 +185,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             context.setConfig(session.getConfig());
             context.setEventBus(eventBus);
             context.setSession(session);
+            context.setExecutionOwner(session.getExecutionOwner());
 
             if (task.options.hasTimeout()) {
                 timeoutFuture = timeoutScheduler.schedule(
