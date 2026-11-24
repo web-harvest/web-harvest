@@ -60,6 +60,9 @@ import org.unitils.mock.annotation.Dummy;
 import org.unitils.reflectionassert.ReflectionComparatorMode;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.LedgerExecutionResourceContext;
+import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -131,6 +134,37 @@ public class ScraperContextTest extends UnitilsTestNG {
             new Class<?>[] { ScraperSession.class },
             (proxy, method, arguments) -> "getSessionId".equals(method.getName()) ? sessionId : null
         );
+    }
+
+    @Test
+    public void bindsResourceAccessOnlyForTheMatchingExecutionOwner() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        context.setExecutionOwner(owner);
+        LedgerExecutionResourceContext access = new LedgerExecutionResourceContext(
+            new ResourceLedger("runtime-a"), owner);
+
+        assertNull(context.getResourceAccess());
+        context.setResourceAccess(access);
+        assertSame(context.getResourceAccess(), access);
+
+        try {
+            context.setResourceAccess(access);
+            throw new AssertionError("Expected repeated resource access binding to fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("already bound"));
+        }
+
+        ScraperContext mismatched = new ScraperContext();
+        mismatched.setExecutionOwner(owner);
+        LedgerExecutionResourceContext foreign = new LedgerExecutionResourceContext(
+            new ResourceLedger("runtime-a"),
+            new ExecutionOwner("runtime-a", "session-b", 1L));
+        try {
+            mismatched.setResourceAccess(foreign);
+            throw new AssertionError("Expected mismatched resource owner to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("does not match"));
+        }
     }
 
     @Test
