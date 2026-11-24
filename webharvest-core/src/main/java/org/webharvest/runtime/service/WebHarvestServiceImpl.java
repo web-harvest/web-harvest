@@ -190,6 +190,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
             Scraper scraper = new Scraper(eventBus);
             scraper.execute(context);
+            if (Thread.currentThread().isInterrupted()
+                && !task.isCancellationRequested() && !task.isTimedOut()) {
+                throw new InterruptedException("Session worker was interrupted during scraper execution");
+            }
 
             if (task.isTimedOut()) {
                 throw new TimeoutException("Session execution exceeded timeout: " + task.options.getTimeout());
