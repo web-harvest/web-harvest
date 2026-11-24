@@ -55,7 +55,7 @@ public class ResourceLedgerTest {
 
         registration.requestClose();
         assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
-        assertThrows(IllegalStateException.class, registration::acquire);
+        expectThrows(IllegalStateException.class, registration::acquire);
 
         ResourceLedger.DrainResult timedOut = registration.drainAndClose(Duration.ZERO);
         assertEquals(timedOut.getState(), ResourceLedger.State.QUARANTINED);
@@ -134,7 +134,7 @@ public class ResourceLedgerTest {
         assertEquals(result.getState(), ResourceLedger.State.CLOSE_FAILED);
         assertSame(result.getCloseFailure(), closeFailure);
         assertEquals(ledger.size(), 1);
-        assertThrows(IllegalStateException.class, registration::close);
+        expectThrows(IllegalStateException.class, registration::close);
     }
 
     @Test(groups = {"unit", "runtime"})
@@ -142,9 +142,9 @@ public class ResourceLedgerTest {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ResourceLedger.Registration first = ledger.registerRuntime("shared-client", null, null);
 
-        assertThrows(IllegalStateException.class,
+        expectThrows(IllegalStateException.class,
             () -> ledger.registerRuntime("shared-client", null, null));
-        assertThrows(IllegalArgumentException.class,
+        expectThrows(IllegalArgumentException.class,
             () -> ledger.registerOwned("wrong-runtime", ResourceLedger.Scope.SESSION,
                 new ExecutionOwner("runtime-b", "session-b", 1), null, null));
 
@@ -158,6 +158,24 @@ public class ResourceLedgerTest {
         }
         first.close();
         assertEquals(ledger.size(), 0);
+    }
+
+    private static <T extends Throwable> T expectThrows(Class<T> expectedType,
+                                                              ThrowingRunnable action) {
+        try {
+            action.run();
+        } catch (Throwable failure) {
+            if (expectedType.isInstance(failure)) {
+                return expectedType.cast(failure);
+            }
+            throw new AssertionError("Unexpected exception type: " + failure.getClass(), failure);
+        }
+        throw new AssertionError("Expected exception of type " + expectedType.getName());
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRunnable {
+        void run() throws Exception;
     }
 
     @Test(groups = {"unit", "runtime"})
