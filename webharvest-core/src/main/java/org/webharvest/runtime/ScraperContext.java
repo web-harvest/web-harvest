@@ -36,6 +36,7 @@
 */
 package org.webharvest.runtime;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -52,6 +53,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.session.ExecutionContextCarrier;
+import org.webharvest.runtime.session.ExecutionIdentity;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
@@ -99,6 +102,8 @@ public class ScraperContext implements DynamicScopeContext {
     // These fields are set once during initialization and then immutable
     private EventBus eventBus;
     private ScraperSession session;
+    private ExecutionIdentity executionIdentity;
+    private Thread ownerThread;
 
     public ScraperContext() {
         scopeStack.push(new ScopeFrame());
@@ -117,6 +122,7 @@ public class ScraperContext implements DynamicScopeContext {
 
     @Override
     public void setLocalVar(String name, Variable variable) {
+        assertOwnerThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         Stack<Variable> variableValueStack = centralReferenceTable.get(name);
@@ -141,6 +147,7 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     @SuppressWarnings({"ConstantConditions"})
     public Variable replaceExistingVar(String name, Variable variable) {
+        assertOwnerThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         final Stack<Variable> variableValueStack = centralReferenceTable.get(name);
@@ -150,6 +157,7 @@ public class ScraperContext implements DynamicScopeContext {
 
     @Override
     public Variable getVar(String name) {
+        assertOwnerThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         final Stack<Variable> stack = centralReferenceTable.get(name);
@@ -166,17 +174,17 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     @SuppressWarnings({"unchecked"})
     public Iterator<KeyValuePair<Variable>> iterator() {
-        return IteratorUtils.transformedIterator(centralReferenceTable.entrySet().iterator(), new Transformer() {
-            @Override
-            public Object transform(Object input) {
-                final Map.Entry<String, Stack<Variable>> crtEntry = (Map.Entry<String, Stack<Variable>>) input;
-                return new KeyValuePair<Variable>(crtEntry.getKey(), crtEntry.getValue().peek());
-            }
-        });
+        assertOwnerThread();
+        java.util.List<KeyValuePair<Variable>> snapshot = new ArrayList<>();
+        for (Map.Entry<String, Stack<Variable>> entry : centralReferenceTable.entrySet()) {
+            snapshot.add(new KeyValuePair<Variable>(entry.getKey(), entry.getValue().peek()));
+        }
+        return snapshot.iterator();
     }
 
     @Override
     public <R> R executeWithinNewContext(Callable<R> callable) throws InterruptedException {
+        assertOwnerThread();
         try {
             scopeStack.push(new ScopeFrame());
             return callable.call();
@@ -210,6 +218,7 @@ public class ScraperContext implements DynamicScopeContext {
     }
 
     private Variable removeVarFromCRT(String varName) {
+        assertOwnerThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(varName);
         final Stack<Variable> stack = centralReferenceTable.get(varName);
@@ -225,6 +234,7 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     // TODO Add unit test
     public void setLocalVar(final Map<String, Object> map) {
+        assertOwnerThread();
         // FIXME rbala code moved from Scraper object. Refactore ASAP
         if (map != null) {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -239,6 +249,7 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     @Deprecated
     public ScriptingLanguage getScriptingLanguage() {
+        assertOwnerThread();
         return scriptingLanguage;
     }
 
@@ -248,6 +259,7 @@ public class ScraperContext implements DynamicScopeContext {
     @Override
     @Deprecated
     public void setScriptingLanguage(final ScriptingLanguage language) {
+        assertOwnerThread();
         this.scriptingLanguage = language;
     }
 
@@ -256,6 +268,7 @@ public class ScraperContext implements DynamicScopeContext {
      */
     @Override
     public String getCharset() {
+        assertOwnerThread();
         return charset;
     }
 
@@ -264,6 +277,7 @@ public class ScraperContext implements DynamicScopeContext {
      */
     @Override
     public void setCharset(final String charset) {
+        assertOwnerThread();
         this.charset = charset;
     }
 
@@ -272,12 +286,14 @@ public class ScraperContext implements DynamicScopeContext {
      */
     @Override
     public Config getConfig() {
+        assertOwnerThread();
         return config;
     }
 
     @Override
     @Deprecated
     public void setConfig(final Config config) {
+        assertOwnerThread();
         this.config = config;
     }
     
@@ -294,6 +310,10 @@ public class ScraperContext implements DynamicScopeContext {
      */
     @Override
     public void setEventBus(EventBus eventBus) {
+        assertOwnerThread();
+        if (this.eventBus != null && this.eventBus != eventBus) {
+            throw new IllegalStateException("EventBus is already bound to this scraper context");
+        }
         this.eventBus = eventBus;
     }
     
@@ -310,7 +330,44 @@ public class ScraperContext implements DynamicScopeContext {
      */
     @Override
     public void setSession(ScraperSession session) {
+        if (session == null) {
+            if (this.session != null) {
+                throw new IllegalStateException("A bound session cannot be cleared");
+            }
+            return;
+        }
+        if (this.session != null) {
+            if (this.session != session) {
+                throw new IllegalStateException("A scraper context cannot be rebound to another session");
+            }
+            assertOwnerThread();
+            return;
+        }
+        ExecutionIdentity identity = session.getExecutionIdentity();
+        java.util.Optional<ExecutionIdentity> currentIdentity = ExecutionContextCarrier.currentIdentity();
+        if (currentIdentity.isPresent() && !currentIdentity.get().equals(identity)) {
+            throw new IllegalStateException("Current execution identity does not match the session owner");
+        }
         this.session = session;
+        this.executionIdentity = identity;
+        this.ownerThread = Thread.currentThread();
+    }
+
+    @Override
+    public ExecutionIdentity getExecutionIdentity() {
+        return executionIdentity;
+    }
+
+    private void assertOwnerThread() {
+        if (session != null && ownerThread != Thread.currentThread()) {
+            throw new IllegalStateException("ScraperContext is confined to its session worker thread");
+        }
+        if (session != null) {
+            java.util.Optional<ExecutionIdentity> currentIdentity = ExecutionContextCarrier.currentIdentity();
+            if (currentIdentity.isPresent() && !executionIdentity.equals(currentIdentity.get())) {
+                throw new IllegalStateException("ScraperContext accessed under a different execution identity");
+            }
+        }
     }
 
 }
