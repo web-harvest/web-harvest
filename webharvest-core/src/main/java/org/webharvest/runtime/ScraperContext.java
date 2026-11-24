@@ -46,8 +46,6 @@ import java.util.concurrent.Callable;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.collections.IteratorUtils;
-import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
