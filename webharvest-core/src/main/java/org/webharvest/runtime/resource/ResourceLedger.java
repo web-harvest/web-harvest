@@ -277,8 +277,8 @@ public final class ResourceLedger {
         public void abort() {
             AbortAction action;
             synchronized (entry) {
-                if (entry.abortInvoked || entry.state == State.CLOSED
-                    || entry.state == State.CLOSE_FAILED) {
+                if (entry.abortInvoked || entry.state == State.DRAINING
+                    || entry.state == State.CLOSED || entry.state == State.CLOSE_FAILED) {
                     return;
                 }
                 entry.abortInvoked = true;
