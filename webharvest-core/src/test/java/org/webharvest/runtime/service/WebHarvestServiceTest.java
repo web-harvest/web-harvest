@@ -205,6 +205,42 @@ public class WebHarvestServiceTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testCancelDuringWorker_BusinessCompletionPrecedesQuiescence() throws InterruptedException {
+        service.shutdown();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        service = new WebHarvestServiceImpl(executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(mockConfig, null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS),
+                "Worker should reach the controlled blocking point");
+            assertTrue(session.cancel(), "Running session should accept cancellation");
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS),
+                "Cancellation should interrupt the active worker");
+            assertTrue(session.awaitCompletion(1000),
+                "Business cancellation should be observable independently");
+            assertFalse(tracked.awaitExecutionCompletion(50),
+                "Worker quiescence must remain pending while the worker is still blocked");
+            assertEquals(tracked.getExecutionState(), ExecutionState.INTERRUPT_REQUESTED);
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000),
+                "Worker exit should be observed after the blocking operation is released");
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+        }
+
+        service.shutdown();
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testCancelSession_NonExistent() {
         boolean cancelled = service.cancelSession("non-existent");
         
@@ -263,6 +299,27 @@ public class WebHarvestServiceTest {
         customService.shutdown();
     }
     
+    private static class BlockingStartedListener {
+        final CountDownLatch started = new CountDownLatch(1);
+        final CountDownLatch interrupted = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            started.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    release.await();
+                    waiting = false;
+                } catch (InterruptedException cancellation) {
+                    interrupted.countDown();
+                    // Deliberately remain active until the test releases this operation.
+                }
+            }
+        }
+    }
+
     /**
      * Event collector for testing.
      */
