@@ -138,4 +138,152 @@ public class ScrapingInterceptorTest {
         helper.onBeforeScraping(harvester);
         helper.onAfterScraping(harvester);
     }
+
+    @Test
+    public void scopeIsExitedWhenBeforeListenerFails() throws Throwable {
+        ScraperScope scope = new ScraperScope();
+        AttributeHolder holder = mock(AttributeHolder.class);
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        ScrapingAware listener = mock(ScrapingAware.class);
+        RuntimeException beforeFailure = new RuntimeException("before failed");
+        helper.addListener(listener);
+        doThrow(beforeFailure).when(listener).onBeforeScraping(harvester);
+        when(injector.getInstance(ScraperScope.class)).thenReturn(scope);
+        when(injector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(helper);
+        when(injector.getInstance(AttributeHolder.class)).thenReturn(holder);
+
+        try {
+            interceptor.invoke(injector, harvester, new ScrapingInterceptor.Callback() {
+                @Override
+                public Object execute() {
+                    fail("Callback must not run after before-listener failure");
+                    return null;
+                }
+            });
+            fail("Expected before-listener failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, beforeFailure);
+        }
+
+        verify(listener).onAfterScraping(harvester);
+        try {
+            scope.get();
+            fail("Scraping scope must be exited after before-listener failure");
+        } catch (com.google.inject.OutOfScopeException expected) {
+            // Expected: scope teardown ran.
+        }
+    }
+
+    @Test
+    public void scopeIsExitedWhenAfterListenerFails() throws Throwable {
+        ScraperScope scope = new ScraperScope();
+        AttributeHolder holder = mock(AttributeHolder.class);
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        ScrapingAware listener = mock(ScrapingAware.class);
+        RuntimeException afterFailure = new RuntimeException("after failed");
+        helper.addListener(listener);
+        doThrow(afterFailure).when(listener).onAfterScraping(harvester);
+        when(injector.getInstance(ScraperScope.class)).thenReturn(scope);
+        when(injector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(helper);
+        when(injector.getInstance(AttributeHolder.class)).thenReturn(holder);
+
+        try {
+            interceptor.invoke(injector, harvester, new ScrapingInterceptor.Callback() {
+                @Override
+                public Object execute() {
+                    return "completed";
+                }
+            });
+            fail("Expected after-listener failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, afterFailure);
+        }
+
+        try {
+            scope.get();
+            fail("Scraping scope must be exited after after-listener failure");
+        } catch (com.google.inject.OutOfScopeException expected) {
+            // Expected: scope teardown ran.
+        }
+    }
+
+    @Test
+    public void callbackFailureRemainsPrimaryWhenAfterListenerAlsoFails() throws Throwable {
+        ScraperScope scope = new ScraperScope();
+        AttributeHolder holder = mock(AttributeHolder.class);
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        ScrapingAware listener = mock(ScrapingAware.class);
+        RuntimeException callbackFailure = new RuntimeException("callback failed");
+        RuntimeException afterFailure = new RuntimeException("after failed");
+        helper.addListener(listener);
+        doThrow(afterFailure).when(listener).onAfterScraping(harvester);
+        when(injector.getInstance(ScraperScope.class)).thenReturn(scope);
+        when(injector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(helper);
+        when(injector.getInstance(AttributeHolder.class)).thenReturn(holder);
+
+        try {
+            interceptor.invoke(injector, harvester, new ScrapingInterceptor.Callback() {
+                @Override
+                public Object execute() {
+                    throw callbackFailure;
+                }
+            });
+            fail("Expected callback failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, callbackFailure);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertSame(actual.getSuppressed()[0], afterFailure);
+        }
+
+        try {
+            scope.get();
+            fail("Scraping scope must be exited when callback and after-listener fail");
+        } catch (com.google.inject.OutOfScopeException expected) {
+            // Expected: scope teardown ran.
+        }
+    }
+
+
+    @Test
+    public void identicalExecutionAndCleanupFailureDoesNotSelfSuppress() throws Throwable {
+        ScraperScope scope = new ScraperScope();
+        AttributeHolder holder = mock(AttributeHolder.class);
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        ScrapingAware listener = mock(ScrapingAware.class);
+        RuntimeException sharedFailure = new RuntimeException("shared failure");
+        helper.addListener(listener);
+        doThrow(sharedFailure).when(listener).onAfterScraping(harvester);
+        when(injector.getInstance(ScraperScope.class)).thenReturn(scope);
+        when(injector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(helper);
+        when(injector.getInstance(AttributeHolder.class)).thenReturn(holder);
+
+        try {
+            interceptor.invoke(injector, harvester, new ScrapingInterceptor.Callback() {
+                @Override
+                public Object execute() {
+                    throw sharedFailure;
+                }
+            });
+            fail("Expected shared failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, sharedFailure);
+            assertEquals(actual.getSuppressed().length, 0);
+        }
+
+        try {
+            scope.get();
+            fail("Scraping scope must be exited after identical failures");
+        } catch (com.google.inject.OutOfScopeException expected) {
+            // Expected: scope teardown ran.
+        }
+    }
+
 }
