@@ -478,6 +478,9 @@ public class ResourceLedgerTest {
         ResourceLedger.Lease leaseA = registration.acquire(ownerA, generationOne);
         ResourceLedger.Lease leaseB = registration.acquire(ownerB, generationOne);
         registration.requestClose();
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
+        expectThrows(IllegalStateException.class,
+            () -> registration.markOwnerQuiescent());
         expectThrows(IllegalStateException.class,
             () -> ledger.pinGeneration(new ExecutionOwner("runtime-a", "session-c", 3), generationOne));
 
@@ -524,7 +527,11 @@ public class ResourceLedgerTest {
         expectThrows(IllegalStateException.class,
             () -> ledger.registerGeneration("late-resource", generation, null, null));
 
+        ResourceLedger.Lease leaseDuringRetirement = resource.acquire(ownerA, generation);
+        assertEquals(resource.getState(), ResourceLedger.State.OPEN);
+        leaseDuringRetirement.close();
         assertFalse(resource.drainAndClose(Duration.ZERO).isClosed());
+        assertEquals(resource.getState(), ResourceLedger.State.QUARANTINED);
         assertEquals(closeCount.get(), 0);
 
         leaseA.close();
