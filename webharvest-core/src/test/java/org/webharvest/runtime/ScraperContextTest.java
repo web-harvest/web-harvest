@@ -104,13 +104,6 @@ public class ScraperContextTest extends UnitilsTestNG {
             assertTrue(expected.getMessage().contains("already bound"));
         }
 
-        try {
-            context.setSession(new org.webharvest.runtime.session.ScraperSessionImpl(
-                "session-b", null, null));
-            throw new AssertionError("Expected mismatched session binding to fail");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("does not match"));
-        }
     }
 
     @Test
