@@ -126,15 +126,15 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.started.await(5, TimeUnit.SECONDS));
 
             assertTrue(session.cancel());
-            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSE_REQUESTED,
-                "Cancellation must close resource admission before worker interruption");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "Cancellation must quarantine resources until the owner exits");
             assertEquals(listener.abortCount.get(), 1,
                 "Resource abort must be requested before the worker is interrupted");
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
             assertFalse(tracked.awaitExecutionCompletion(50),
                 "The non-cooperative callback must remain active after interruption");
-            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSE_REQUESTED,
-                "A resource must not close while its execution owner is still active");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "A resource must remain quarantined while its execution owner is still active");
             listener.release.countDown();
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertTrue(listener.closed.await(5, TimeUnit.SECONDS),
