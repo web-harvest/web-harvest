@@ -30,7 +30,7 @@ public class LedgerExecutionResourceContextTest {
         context.requestTermination();
         assertEquals(aborts.get(), 1);
         assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
-        expectThrows(IllegalStateException.class, resource::acquire);
+        expectThrows(IllegalStateException.class, () -> { resource.acquire(); });
         assertEquals(closes.get(), 0);
 
         LedgerExecutionResourceContext.DrainReport report =
@@ -84,6 +84,17 @@ public class LedgerExecutionResourceContextTest {
         assertEquals(ledger.size(), 0);
     }
 
+    private static void expectThrows(Class<? extends Throwable> expected, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable actual) {
+            assertTrue(expected.isInstance(actual),
+                "Expected " + expected.getName() + " but received " + actual.getClass().getName());
+            return;
+        }
+        fail("Expected " + expected.getName() + " to be thrown");
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void rejectsRegistrationAfterSessionTerminationAndForeignRuntimeOwner() {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
@@ -92,10 +103,10 @@ public class LedgerExecutionResourceContextTest {
 
         context.requestTermination();
         expectThrows(IllegalStateException.class,
-            () -> context.registerSessionResource("late", null, null));
+            () -> { context.registerSessionResource("late", null, null); });
 
         expectThrows(IllegalArgumentException.class,
-            () -> new LedgerExecutionResourceContext(ledger,
-                new ExecutionOwner("runtime-b", "session-b", 1)));
+            () -> { new LedgerExecutionResourceContext(ledger,
+                new ExecutionOwner("runtime-b", "session-b", 1)); });
     }
 }
