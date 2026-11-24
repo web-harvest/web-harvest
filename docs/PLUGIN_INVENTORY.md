@@ -4131,3 +4131,40 @@ This strengthens #356 (listener ownership and mandatory teardown) and #354 (work
 This finding strengthens #354 (worker/task ownership and quiescence), #355 (resource lease/drain), #357 (immutable context propagation), and #358 (cancellation/deadline/effect reporting). It also constrains #349: runtime state and context ownership must be per runtime/session/generation, not implicit process-global state. Registry identity semantics must be settled before session lifecycle becomes the foundation for generation retirement.
 
 **Decision boundary:** documentation and contract clarification only. No runtime/API/test/POM changes, merge or release. No concurrency tests or benchmarks executed. #346 remains unaccepted; runtime implementation remains STOP.
+
+## 15.94 — Default async admission, thread growth and terminal-session retention (2026-11-24)
+
+**Inspection baseline:** canonical application `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`. This section is source inspection only; no load, heap, thread-count or benchmark experiment was run.
+
+### Default execution admission has no configured concurrency bound
+
+- `WebHarvestServiceImpl()` constructs its default executor with `Executors.newCachedThreadPool(new SessionThreadFactory())`. The service source describes this as creating threads on demand and reusing idle threads; it supplies no maximum thread count, admission semaphore, bounded queue, per-client quota or back-pressure policy. Source blob: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`.
+- `executeAsync` checks a volatile `shutdown` flag, creates a session, registers it and submits a runnable. The default service therefore admits work without a runtime-level concurrency or resource budget. The check/register/submit sequence is also not atomic with shutdown; that lifecycle race is already tracked in section 15.87/#354 and is not duplicated as a separate finding here.
+- A burst of blocking or slow workflows can therefore cause the cached executor to create a large number of worker threads. This is a resource-exhaustion risk inferred from the unbounded default executor configuration, not a measured production incident. Per-session limits alone would not bound aggregate process threads.
+
+### Completed sessions retain execution graphs
+
+- `ScraperSessionImpl` stores `config` and `eventBus` in final fields and stores the execution `DynamicScopeContext` in a volatile field when `markRunning` is called. The inspected `markCompleted`, `markFailed` and `cancel` transitions do not clear or replace that context reference. Source blob: `78d07d1c485ea215d68d6d415f36b2be0c180a4f`.
+- `ScraperContext` holds its mutable variable table and scope stack, plus references to the session and EventBus. Source blob: `6273525f5566ef59575acb593dfec8f3ad3b5e21`. Thus, a retained terminal session can keep the context, configuration, variable values and associated object graph reachable; the session/context/EventBus reference cycle is collectible only when no longer rooted.
+- `SessionRegistryImpl` explicitly retains entries until `unregister` or `clear`; its own class documentation warns that applications must provide cleanup/TTL to avoid unbounded memory growth. `WebHarvestServiceImpl` exposes session listing and cancellation but the inspected implementation does not unregister terminal sessions or implement a retention policy. Source blobs: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124` and `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec`.
+- The retained graph may include the `Config`, context variables and any values reachable from them. Exact retained bytes and whether callers depend on post-terminal `getContext()` access require measurement/API-contract review; do not claim a measured leak or clear the context before defining that compatibility contract.
+
+### Registry query cost compounds with retention
+
+- `getSessionsByClientId` scans all registered sessions and materializes a new list through stream/filter/collector; `getAllSessions` allocates a new O(n) snapshot. Source blob: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`.
+- Because the service has no terminal-session cleanup, these O(n) operations become progressively more expensive as the registry accumulates completed sessions. A secondary client index is not an automatic fix: it adds consistency, synchronization and lifecycle obligations and must be justified by measurements.
+
+### Required contract and evidence
+
+1. Define host-owned admission controls before task submission: maximum active sessions, bounded executor/queue or explicit rejection policy, per-client fairness/quotas where required, and a resource budget that accounts for nested work. Admission must be atomic with shutdown and session registration, as required by #354.
+2. Define session retention separately from execution quiescence. A terminal business status is not proof that workers, descendants, callbacks or resource leases have drained. Do not evict a session or release its context/artifact references until the owner-defined safe boundary is reached.
+3. Specify which post-terminal data remains queryable. Prefer a bounded immutable terminal summary (identity, outcome, timestamps, metrics, redacted diagnostic) over retaining the full mutable execution context indefinitely, but preserve any explicit compatibility requirement for `getContext()`.
+4. Add deterministic tests for admission saturation, rejection rollback, shutdown races, terminal retention/eviction, context release after quiescence, and per-client listing under concurrent registration/removal.
+5. Benchmark representative active-session counts and registry sizes (for example 1/16/64/256 active and 100/1,000/10,000 retained sessions): worker-thread count, queue/rejection behavior, CPU, allocation rate for listing/snapshot calls, retained heap after terminal cleanup, and time to drain. Record JVM/runtime settings and repeatable workload shape.
+6. Do not introduce a global synchronized hot path or a secondary registry/index by intuition. Measure lock contention, allocation and retained heap first; preserve one authoritative owner for admission, retention and cleanup.
+
+### Dependency and decision
+
+This finding strengthens #354 (authoritative admission, task handles and quiescence), #355 (resource leases/drain), #357 (context propagation and captured-reference release), and #349 (runtime-owned resource and lifecycle policy). It is a scalability and retention contract gap, not authorization to implement before #346/#94 gates pass.
+
+**Decision boundary:** source-backed documentation only. No runtime/API/test/POM changes, no load or memory benchmark executed, no merge/release. #346 remains unaccepted; runtime implementation remains STOP.
