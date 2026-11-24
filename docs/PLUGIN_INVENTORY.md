@@ -3845,3 +3845,43 @@ ClassLoaderUtilTest covers valid and invalid class-name lookup, but does not exe
 **Migration order:** first make #354 worker/task quiescence truthful; then complete #355 resource lease/drain and #356 subscriber ownership; only then can #347/#349 own candidate loaders and generation retirement. #358 interruption/deadline/external-effect reporting must distinguish cancellation request from actual quiescence. The existing ClassLoaderUtil, scanner and global registry remain compatibility paths until every caller is migrated and adapter tests pass.
 
 **Decision boundary:** this is source-backed lifecycle evidence and a test contract only. It does not authorize changing ClassLoaderUtil, closing borrowed loaders, implementing the SPI/runtime, changing POMs, deleting compatibility code, merging PRs or releasing artifacts. #346 remains unaccepted and implementation remains STOP.
+
+
+## 15.86 — Cancellation state is not worker quiescence; terminal events can close live resources (2026-11-24)
+
+**Inspection baseline:** branch main at commit 1729bdf4620a66686d02605083e27e27d1ab3944. This is a source-contract audit; no runtime race was executed and no tests/builds were run.
+
+### A. The public wait contract reports a terminal state, not completed execution
+
+ScraperSessionImpl.cancel() synchronously changes any non-terminal session to CANCELLED, marks metrics ended, posts SessionCancelledEvent, signals the completion condition and returns. awaitCompletion() and its timeout overload wait only while status is not terminal. Therefore a caller can observe awaitCompletion() return immediately after cancellation even though the submitted worker, plugin call, descendant task or callback may still be executing.
+
+The interface documentation reinforces the ambiguity: ScraperSession.awaitCompletion() says it blocks until a terminal state, while cancel() says cancellation is cooperative and may take time to respond. Those are different lifecycle facts but the current API exposes only one terminal status/wait signal. No worker handle, cancellation acknowledgement, task-drain condition or quiescence wait is represented on the session.
+
+### B. Cancellation publishes resource cleanup before execution drain
+
+StandaloneConnectionPool.onExecutionCancelled(SessionCancelledEvent) calls closeAllConnections() directly from the synchronous Guava EventBus callback. ScraperSessionImpl.cancel() posts this event before returning. Since cancellation does not first stop admission and drain active work, the event can close a physical JDBC connection while a worker/plugin is still using the connection or while another call is in flight.
+
+This is a source-derived race window, not a claim that a specific production failure was reproduced. The pool itself documents that it is not thread-safe. Its synchronized close method does not coordinate with unsynchronized getConnection()/registry operations or with callers using a previously returned proxy. The proxy suppresses Connection.close(), but delegates all other methods directly to the physical connection; a close from the pool can therefore invalidate a connection still in use.
+
+### C. Post-cancellation worker outcomes are not represented truthfully
+
+After cancel() sets CANCELLED:
+- markCompleted() rejects the worker's later completion with IllegalStateException, because it accepts only RUNNING.
+- markFailed() silently returns for any terminal state, so a failure observed after cancellation is discarded from the session's error field/status.
+- The cancellation event has already triggered resource cleanup, independently of whether the worker has exited.
+
+This makes CANCELLED mean “cancellation was accepted and terminal state published”, not “execution stopped”. It also loses the distinction between cancellation requested, cancellation cooperatively observed, worker exited, descendants drained and resources safely released.
+
+### D. Required lifecycle model and proof obligations
+
+1. Separate cancellation requested from execution outcome and quiescence. A cancellation request must not itself publish a worker-exited signal or authorize resource/loader retirement.
+2. Retain an authoritative execution handle for every worker/task and descendant. Stop new task admission, request interruption/cancellation, then await a monotonic-deadline drain.
+3. Model outcomes after cancellation explicitly: completed-after-request, failed-after-request, interrupted, timed out, still-running/quarantined. Preserve the original failure and external-effect uncertainty rather than silently dropping it.
+4. Make resource cleanup a post-quiescence phase. A cancellation event may notify observers/request cleanup, but must not synchronously close resources still leased by active operations. JDBC operations and callbacks must hold resource leases until return.
+5. Distinguish awaitTerminalState from awaitQuiescence (or an equivalent explicit result-bearing API). A timeout must report that work remains active; it must not imply KILL succeeded.
+6. GRACE requests cooperative stop and waits for worker/task/resource/subscriber drain. KILL may terminate only an independently killable process/container; an unresponsive in-process provider is quarantined and its resources/classloader are not falsely reported as safely retired.
+7. Add latch-controlled tests: block a worker inside a JDBC operation, cancel concurrently, and assert the physical connection remains open until the operation exits; assert terminal-state wait can be distinguished from quiescence; cover failure and completion racing cancellation; assert no new child task is admitted after stop; verify deadline expiry reports still-running/quarantined; and verify resource/subscriber/generation release happens exactly once after drain.
+
+**Migration dependency:** this strengthens #354 as the first implementation prerequisite. #355 must make resource close lease-aware and subordinate to quiescence; #356 subscriber disposal must also wait for callback drain. #358 must define cancellation request, deadline, late completion/failure and external-effect reporting. #347/#349 must not close artifact loaders until these guarantees exist.
+
+**Decision boundary:** documentation only. No runtime/session/database implementation, API changes, tests, POM changes, compatibility deletion, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
