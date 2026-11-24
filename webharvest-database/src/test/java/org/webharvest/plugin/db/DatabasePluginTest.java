@@ -229,6 +229,45 @@ public class DatabasePluginTest {
     }
 
     @Test
+    public void failedManagedNamedConnectionAcquisitionReleasesItsOperationLease() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-failed-acquire-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        ConnectionPlugin connectionPlugin = new ConnectionPlugin();
+        DefaultPluginConfiguration connectionConfig = new DefaultPluginConfiguration(
+            "connection", CORE_NAMESPACE, "connection");
+        connectionConfig.setProperty("id", "unavailable");
+        connectionConfig.setProperty("driver", "org.h2.Driver");
+        connectionConfig.setProperty("url", "jdbc:missing-driver:test");
+        connectionPlugin.initialize(connectionConfig);
+        connectionPlugin.execute(managedContext);
+
+        DatabasePlugin databasePlugin = new DatabasePlugin();
+        DefaultPluginConfiguration databaseConfig = config();
+        databaseConfig.setProperty("connection", "unavailable");
+        databaseConfig.setProperty("sql", "SELECT 1");
+        databasePlugin.initialize(databaseConfig);
+
+        try {
+            databasePlugin.execute(managedContext);
+            fail("Expected named connection acquisition to fail");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Unexpected error")
+                || expected.getMessage().contains("Database operation failed"));
+        }
+
+        coordinator.requestTermination();
+        coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+        assertEquals(ledger.size(), 0,
+            "A failed JDBC acquisition must release its operation lease so owner drain can retire the pool");
+    }
+
+    @Test
     public void testUpdateReturnsAffectedRowCount() throws Exception {
         String url = "jdbc:h2:mem:db_update;DB_CLOSE_DELAY=-1";
         createFixture(url);
