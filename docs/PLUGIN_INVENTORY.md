@@ -3804,3 +3804,44 @@ Discovery must be side-effect-free and descriptor-based. Candidate classloaders 
 7. Prove old generation classloaders remain retained while sessions/tasks/callbacks/leases pin them, then retire exactly once after quiescence.
 
 **Decision boundary:** this section adds source evidence and test obligations only. #346 remains unaccepted; no SPI freeze, runtime implementation, legacy deletion, merge or release is authorized.
+
+## 15.85 — ClassLoader ownership, artifact lifetime and session/resource retention (2026-11-24)
+
+**Inspection baseline:** branch main at commit 1729bdf4620a66686d02605083e27e27d1ab3944. Source and test inspection only. No runtime experiment or build was run for this section.
+
+### A. Existing ClassLoader ownership is not a managed plugin-artifact lifecycle
+
+| Source | Observed behavior | Consequence |
+|---|---|---|
+| webharvest-core/.../utils/ClassLoaderUtil.java | Holds one process-static URLClassLoader rootClassLoader. First use scans the process working directory and adds every top-level JAR, then constructs a loader parented by the defining application loader. getPluginClass calls Class.forName(name, true, rootClassLoader), explicitly initializing the target class. No close, replacement, ownership token or shutdown hook exists in this utility. | This is a legacy ambient classpath loader, not per-artifact isolation. It cannot safely support hot replacement or deterministic retirement; its static reference keeps the loader reachable for process lifetime. Its eager initialization is unsuitable for descriptor-only discovery. |
+| webharvest-core/.../plugin/scanner/PluginPackageScanner.java | Uses the thread context loader first and the scanner's defining loader second (system loader only if both are absent). Enumerates package resources, associates discovered binary names with the exposing loader, calls Class.forName(name, false, loader), and writes discovered Class objects into the supplied CorePluginRegistry. | The scanner borrows loaders it does not own, but publishes classes into a process-global registry that has no removal/lease protocol. It does not stage or own artifacts and cannot coordinate loader close with active executions. |
+| webharvest-core/.../definition/CorePluginRegistry.java | Singleton map stores Class values. clear() removes map entries but does not close or otherwise retire their defining classloaders. | Clearing a registry is not unloading an artifact. Any other class, instance, callback, thread context, reflection cache or session reference may continue pinning its loader. |
+| webharvest-core/.../plugin/metadata/PluginMetadataCatalog.java | Static catalog loads classes with default Class.forName, constructs instances and stores descriptors containing implementation class names. | Catalog construction is another class-loading/instantiation path; a descriptor's class-name string is not itself a safe lifetime handle, and the catalog is not tied to an artifact owner or generation lease. |
+
+The package scanner also uses a single Map<String, ClassLoader> keyed by binary class name across all candidate loaders. If two loaders expose the same binary name, putIfAbsent keeps the first loader encountered (normally the thread context loader) without recording the second origin or reporting a conflict. This is not a provider-identity or artifact-collision policy.
+
+### B. Existing tests expose the distinction between closing a loader and retiring its classes
+
+PluginPackageScannerClasspathTest.discoversPluginClassFromJarPackageResource creates a child URLClassLoader in try-with-resources, scans a JAR, verifies that the registry stores a class defined by that child loader, and then exits the try block (closing the loader). The test's cleanup resets and re-registers the Core registry. It does not assert that the class was unloaded; the registry entry itself retains the Class until cleanup, and other references may retain it longer.
+
+ClassLoaderUtilTest covers valid and invalid class-name lookup, but does not exercise loader closure, repeated artifact replacement, isolation between two loaders exposing the same class name, or class unloading. These are coverage observations, not claims of a reproduced leak or failed unload.
+
+### C. Session and resource ownership must be joined to generation retirement
+
+- ScraperSessionImpl owns its configuration, context, EventBus and metrics, but currently has no explicit plugin-generation or artifact lease field. Its terminal status/wait contract therefore cannot, by itself, establish that a worker, descendant task or callback has stopped using provider classes.
+- SessionRegistryImpl retains session objects until explicit unregister/clear; removing a session from this map is only removal of one reference, not proof of execution quiescence or classloader retirement.
+- Database StandaloneConnectionPool demonstrates a useful explicit resource pattern: it registers itself on one session EventBus, rejects attachment to a second bus, and closes physical connections plus unregisters on completed, failed or cancelled events. However, the pool is documented as not thread-safe and this event callback is a terminal-event cleanup hook, not proof that all in-flight JDBC calls or plugin work have quiesced.
+
+### D. Required target contract and deterministic tests
+
+1. **Explicit ownership:** each admitted artifact gets a host-owned artifact handle containing canonical identity, verified bytes/digest, defining loader, close action and lifecycle state. Borrowed application/context loaders are never closed by the plugin manager.
+2. **No ambient discovery:** remove working-directory-wide JAR discovery from the new path. Discovery receives an explicit artifact set and creates an isolated candidate loader with a documented parent/API delegation policy.
+3. **No binary-name aliasing:** candidate inventory records provider identity, artifact identity, binary class name and loader identity separately. Same binary name from distinct artifacts is diagnosed; it is never silently deduplicated by name alone.
+4. **Prepare/publish/retire:** scan and validate candidates before publication. Failed preparation closes only candidate-owned resources and leaves the last-known-good generation untouched. Publication atomically swaps the generation; it does not close the previous generation.
+5. **Lease pinning:** every session pins one immutable generation before execution. Worker tasks, descendants, asynchronous callbacks and host-owned resources acquire scoped leases from that generation. A terminal status or session-registry removal must not release the generation while any worker/task/callback/resource lease remains.
+6. **Quiescence before close:** after admission is stopped and all leases drain, retire the generation exactly once, unregister generation-owned subscribers, close provider resources and then close only manager-owned URLClassLoaders. Non-cooperative in-process code is quarantined; do not claim it was killed or unload its classes.
+7. **Deterministic tests:** use two isolated JAR fixtures with colliding binary names; verify no cross-loader class identity confusion, duplicate-provider diagnostics, candidate rollback, generation pinning across replacement, lease drain under concurrent callbacks, exactly-once close, borrowed-loader non-closure, and no retirement while a JDBC/resource callback remains active. Add a close-tracking loader and a weak-reference/GC test only as a supplementary observation (GC assertions must not be the sole correctness oracle).
+
+**Migration order:** first make #354 worker/task quiescence truthful; then complete #355 resource lease/drain and #356 subscriber ownership; only then can #347/#349 own candidate loaders and generation retirement. #358 interruption/deadline/external-effect reporting must distinguish cancellation request from actual quiescence. The existing ClassLoaderUtil, scanner and global registry remain compatibility paths until every caller is migrated and adapter tests pass.
+
+**Decision boundary:** this is source-backed lifecycle evidence and a test contract only. It does not authorize changing ClassLoaderUtil, closing borrowed loaders, implementing the SPI/runtime, changing POMs, deleting compatibility code, merging PRs or releasing artifacts. #346 remains unaccepted and implementation remains STOP.
