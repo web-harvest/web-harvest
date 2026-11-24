@@ -3974,3 +3974,32 @@ A focused re-check of the P0-03 `LockedRegistry` finding establishes the concret
 This is part of #356's callback and mandatory teardown acceptance. It also depends on #354's worker/quiescence contract: listener disposal must not be used as a substitute for in-flight callback drain. Keep the shared service EventBus decision unchanged.
 
 **Decision boundary:** documentation only. No runtime implementation, API or test changes, POM changes, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+## 15.90 — Nested scope restoration is tested only on the normal LIFO path (2026-11-24)
+
+**Repository baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Evidence:** direct source and test inspection; no runtime experiment or test execution.
+
+### Verified behavior and test boundary
+
+- `AttributeHolderScope` stores a per-thread `Stack<AHT>`; `enter()` pushes a non-null holder, `get()` peeks, and `exit()` pops. This provides normal same-thread LIFO nesting. Source blob: `11a39c99e517ae9ae1ba09cf69a885b636465b64`.
+- `AttributeHolderScopeTest.supportsNestedScopes()` verifies A → B → A restoration on the successful path, then exits A. It does not inject exceptions at nested depth, combine nested scope with interceptor listener failures, or assert the stack is empty after all exceptional paths. Test blob: `379404c1883a51b6e3c46363e27f1dc5590b5c3e`.
+- `ScopeAttributeHolder` stores scoped values in a per-holder `HashMap` and returns that map as its synchronization lock. The Guice scoped provider synchronizes the compound get/contains/construct/put sequence on this lock. Source blob: `9267c320c96ee4b956eb0d24619b60aeaa258352`.
+- The scope stack is ThreadLocal, so this mechanism does not propagate scope to child/async threads. Any async descendant must receive an explicit immutable execution context or establish its own scope; it must not assume the parent's ThreadLocal is visible.
+- No defect in the normal LIFO push/pop implementation is claimed here. The concrete exceptional teardown defect remains the interceptor ordering recorded in 15.89: listener exceptions can bypass `scope.exit()`.
+
+### Required conformance coverage
+
+1. Nested A → B → C scopes restore B then A after normal exits.
+2. Body exception at B still restores A and leaves no active scope after A exits.
+3. Before/after listener exceptions at each depth cannot strand a nested scope; exactly-once exit is asserted.
+4. A second thread cannot observe the first thread's active holder through ThreadLocal; async propagation must be explicit and tested separately.
+5. A subsequent invocation on a reused executor thread sees no holder from a prior invocation, including after exceptional teardown.
+6. Scoped provider construction remains once-per-key-per-holder under concurrent access to the same holder, and distinct holders never share scoped instances.
+
+### Dependency and decision
+
+This is a test/conformance addition to #356 and the exceptional teardown work in 15.89. It does not authorize changing the legacy ThreadLocal model before the explicit async-context contract in #357 is accepted.
+
+**Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
