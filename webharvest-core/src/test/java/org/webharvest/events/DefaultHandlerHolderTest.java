@@ -13,9 +13,14 @@ import org.testng.annotations.Test;
 import org.webharvest.AlreadyBoundException;
 import org.webharvest.Harvester;
 import org.webharvest.Registry;
+import org.webharvest.ioc.ScraperModule;
 
 import com.google.common.eventbus.EventBus;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Key;
 import com.google.inject.Provider;
+import com.google.inject.TypeLiteral;
 
 /** Tests runtime-wide registration and Harvester-scoped event routing. */
 public class DefaultHandlerHolderTest {
@@ -177,6 +182,25 @@ public class DefaultHandlerHolderTest {
 
         assertEquals(handler.calls.get(), 1,
             "The shared EventBus must dispatch through the active Harvester route");
+    }
+
+    @Test
+    public void guiceRegistersDispatcherOnItsOwnRuntimeEventBus() throws AlreadyBoundException {
+        Injector injector = Guice.createInjector(new ScraperModule("target"));
+        EventBus runtimeBus = injector.getInstance(EventBus.class);
+        HandlerHolder injectedHolder = injector.getInstance(HandlerHolder.class);
+        @SuppressWarnings("unchecked")
+        Registry<Harvester, EventBus> runtimeRegistry =
+            injector.getInstance(Key.get(new TypeLiteral<Registry<Harvester, EventBus>>() { }));
+        Harvester harvester = mock(Harvester.class);
+        RecordingHandler handler = new RecordingHandler();
+        injectedHolder.register(handler);
+        runtimeRegistry.bind(harvester, runtimeBus);
+
+        runtimeBus.post(new TestHarvesterEvent(harvester));
+
+        assertEquals(handler.calls.get(), 1,
+            "The Guice type listener must register the dispatcher on this injector's bus");
     }
 
     @Test
