@@ -331,17 +331,30 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         @Override
         public void run() {
+            boolean skipExecution;
             synchronized (this) {
                 if (cancellationRequested || exited) {
-                    finishBeforeStart();
-                    return;
+                    exited = true;
+                    cancelEscalation();
+                    skipExecution = true;
+                } else {
+                    started = true;
+                    worker = Thread.currentThread();
+                    if (!session.markExecutionStarted()) {
+                        worker = null;
+                        exited = true;
+                        cancelEscalation();
+                        skipExecution = true;
+                    } else {
+                        skipExecution = false;
+                    }
                 }
-                started = true;
-                worker = Thread.currentThread();
-                if (!session.markExecutionStarted()) {
-                    finishBeforeStart();
-                    return;
-                }
+            }
+
+            if (skipExecution) {
+                executionTasks.remove(session.getSessionId(), this);
+                session.markExecutionExited();
+                return;
             }
 
             try {
@@ -352,8 +365,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     exited = true;
                     cancelEscalation();
                 }
-                session.markExecutionExited();
                 executionTasks.remove(session.getSessionId(), this);
+                // Publish quiescence only after task bookkeeping and lock release.
+                session.markExecutionExited();
             }
         }
 
@@ -493,8 +507,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
             exited = true;
             cancelEscalation();
-            session.markExecutionExited();
             executionTasks.remove(session.getSessionId(), this);
+            // The executor has confirmed that this task will never be entered.
+            session.markExecutionExited();
         }
     }
 
