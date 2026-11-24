@@ -98,6 +98,11 @@ public class ScraperSessionExecutionTrackingTest {
     }
 
     @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
+    public void testMarkRunningRejectsNullContext() {
+        createSession().markRunning(null);
+    }
+
+    @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
     public void testAttachNullCancellationHandlerRejected() {
         createSession().attachCancellationHandler(null);
     }
