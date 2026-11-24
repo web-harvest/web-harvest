@@ -475,6 +475,7 @@ public class ResourceLedgerTest {
         ResourceLedger.Lease leaseA = registration.acquire(ownerA, generationOne);
         ResourceLedger.Lease leaseB = registration.acquire(ownerB, generationOne);
         registration.requestClose();
+        expectThrows(IllegalStateException.class, () -> registration.acquire(ownerA, generationOne));
         registration.markOwnerQuiescent();
 
         ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
