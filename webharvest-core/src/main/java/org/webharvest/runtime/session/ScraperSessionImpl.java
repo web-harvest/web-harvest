@@ -38,6 +38,7 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.session.events.*;
 
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -103,6 +104,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     private final Config config;
     private final SessionMetrics metrics;
     private final EventBus eventBus;
+    private final ExecutionOwner executionOwner;
     
     private volatile SessionStatus status;
     private volatile DynamicScopeContext context;
@@ -138,6 +140,21 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * @throws IllegalArgumentException if any parameter is invalid
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config, EventBus eventBus) {
+        this(sessionId, clientId, config, eventBus,
+            new ExecutionOwner(UUID.randomUUID().toString(), sessionId, 1));
+    }
+
+    /**
+     * Creates a session with an explicit immutable runtime execution identity.
+     *
+     * @param sessionId unique identifier for this session
+     * @param clientId optional client identifier
+     * @param config configuration to execute
+     * @param eventBus shared runtime EventBus
+     * @param executionOwner immutable runtime/session/generation identity
+     */
+    public ScraperSessionImpl(String sessionId, String clientId, Config config,
+                              EventBus eventBus, ExecutionOwner executionOwner) {
         if (sessionId == null || sessionId.trim().isEmpty()) {
             throw new IllegalArgumentException("Session ID cannot be null or empty");
         }
@@ -147,12 +164,16 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         if (eventBus == null) {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
-        
+        if (executionOwner == null || !sessionId.equals(executionOwner.getSessionId())) {
+            throw new IllegalArgumentException("Execution owner must match the session ID");
+        }
+
         this.sessionId = sessionId;
         this.clientId = clientId;
         this.config = config;
         this.metrics = new SessionMetrics();
         this.eventBus = eventBus;
+        this.executionOwner = executionOwner;
         this.status = SessionStatus.PENDING;
         this.context = null;
         this.error = null;
@@ -164,6 +185,11 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         eventBus.post(new SessionCreatedEvent(this));
     }
     
+    @Override
+    public ExecutionOwner getExecutionOwner() {
+        return executionOwner;
+    }
+
     @Override
     public String getSessionId() {
         return sessionId;
