@@ -4086,3 +4086,48 @@ This finding strengthens #356 (scope/listener ownership and mandatory teardown),
 This strengthens #356 (listener ownership and mandatory teardown) and #354 (worker quiescence before releasing per-execution state), and must be reconciled with #357 (explicit execution context) before runtime ownership is migrated. It also reinforces the requirement that #347/#349 publish one authoritative runtime lifecycle rather than preserving parallel factory/AOP mechanisms.
 
 **Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. No tests or benchmarks executed. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+
+## 15.93 — Execution context confinement and session-registry identity races (2026-11-24)
+
+**Repository baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Evidence:** source inspection of the current production implementations and interface contracts; no concurrency stress test or heap/CPU benchmark executed.
+
+### Verified context ownership and mutation behavior
+
+- `DynamicScopeContext` documents that `setEventBus` and `setSession` are initialization-only, non-thread-safe setters that must run before the context is shared across threads. The same interface describes the references as immutable after initialization. Source blob: `f5ca038f25442f597986bf64ebc65e958b92a010`.
+- `ScraperContext` stores variable state in a mutable `HashMap<String, Stack<Variable>>`; each dynamic scope uses a mutable `ScopeFrame` with `HashSet` and `HashMap`, and the scope stack itself is mutable. Variable reads, writes, replacement, iteration and scope push/pop have no synchronization or thread-confinement guard. Source blob: `6273525f5566ef59575acb593dfec8f3ad3b5e21`.
+- `executeWithinNewContext` pushes a frame, calls user code, then pops and restores variable depths in `finally`. This provides a synchronous nested-scope restoration mechanism for the calling thread; it is not an async context propagation mechanism. Concurrent calls on the same context can interleave stack operations and mutate the same maps/stacks. This is a source-derived race risk, not a reproduced failure.
+- `iterator()` returns a transformed iterator over the live `centralReferenceTable.entrySet()`; it is not a detached snapshot. Concurrent mutation during iteration can therefore expose fail-fast behavior or inconsistent observations. No caller-visible snapshot contract is declared.
+- The implementation's `setEventBus` and `setSession` methods are plain assignments and accept repeated replacement, despite the interface's set-once initialization contract. There is no one-time binding check, owner identity check, or publication barrier in these setters. Correct safe publication remains a caller responsibility under the documented contract; a rebind or publication race is not proven to occur in production.
+- The context retains references to its session and EventBus for its lifetime. The expected lifetime and release point must be explicit when contexts are retained by async work, callbacks or plugin code.
+
+### Verified session-registry behavior
+
+- `SessionRegistryImpl.register(session)` uses `sessions.put(sessionId, session)`, silently replacing an existing session with the same ID. Source blob: `8813c995b6f2c7e4b4adb3a4a12d57cbb3c6c124`.
+- `unregister(sessionId)` removes by key only. If a stale owner unregisters after another session has replaced the same ID, it can remove the newer session. This interleaving follows from the implementation; it has not been reproduced in a stress test.
+- `getSessionsByClientId` scans all sessions and collects a new list on every call (O(n) time plus stream/filter/collector and result-list allocation). `getAllSessions` also allocates an O(n) snapshot. This is acceptable only with a bounded registry size and an understood query frequency; the implementation documentation itself requires explicit cleanup/TTL to avoid unbounded retention.
+- `ConcurrentHashMap` makes individual map operations thread-safe, but does not establish lifecycle ownership, duplicate-ID semantics, quiescence, or atomic multi-step register/unregister behavior.
+
+### Related resource-lifecycle interaction
+
+- `StandaloneConnectionPool` explicitly declares itself not thread-safe. Its session-event callbacks close physical JDBC connections on completed, failed or cancelled events, while the session terminal state is not proof of worker quiescence (see finding 15.86). Its registration/close methods are synchronized, but `getConnection` and registry operations are not. Source blob: `ab4a92fb63599e88a55821fe141bf5aa50327008`.
+- Consequently, do not treat a terminal session event as a general resource-drain signal. Resource release must be owned by the worker/session lifecycle after quiescence or an explicitly documented safe boundary; the existing connection-pool callback requires reconciliation with #355 and #354.
+
+### Required resolution and conformance evidence
+
+1. Define one authoritative execution-context ownership model: thread-confined mutable context, or immutable/copy-on-write snapshots for async propagation. Do not make the existing mutable context broadly synchronized without measuring lock contention and nested-scope cost.
+2. Make EventBus/session binding immutable after initialization in the authoritative runtime contract; enforce one-time binding or replace setters with constructor/factory binding in the future API. Preserve legacy methods only as adapters with explicit failure semantics.
+3. Define explicit context propagation across child tasks: which values are copied, shared immutable, or deliberately excluded; ensure child completion releases captured context references.
+4. Decide whether context iteration is a live internal traversal or a stable snapshot; encode that contract and test concurrent mutation accordingly.
+5. Define session-ID uniqueness and owner-safe removal. Reject duplicate registration or use identity-conditional removal; never let a stale session owner remove a replacement session.
+6. Establish bounded session retention and cleanup after quiescence. If client filtering is a hot path, evaluate an owner-maintained index only after profiling; do not add a second independently maintained index without clear ownership and consistency tests.
+7. Add tests for nested scopes A→B→C restoration, exceptions, executor-thread reuse, concurrent misuse detection/isolation, safe publication, one-time context binding, duplicate session IDs, stale unregister, snapshot iteration and cleanup.
+8. Measure allocations and CPU for nested scope depths 1/2/8/32, variable counts and session registry sizes; include allocation rate for `getAllSessions`/`getSessionsByClientId`, contention and retained heap after session cleanup.
+
+### Dependency and decision
+
+This finding strengthens #354 (worker/task ownership and quiescence), #355 (resource lease/drain), #357 (immutable context propagation), and #358 (cancellation/deadline/effect reporting). It also constrains #349: runtime state and context ownership must be per runtime/session/generation, not implicit process-global state. Registry identity semantics must be settled before session lifecycle becomes the foundation for generation retirement.
+
+**Decision boundary:** documentation and contract clarification only. No runtime/API/test/POM changes, merge or release. No concurrency tests or benchmarks executed. #346 remains unaccepted; runtime implementation remains STOP.
