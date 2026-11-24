@@ -206,6 +206,7 @@ public final class ResourceLedger {
             }
             long pinId = generation.nextPinId.incrementAndGet();
             generation.activePins.put(pinId, owner);
+            generation.activePinCount = generation.activePins.size();
             return new GenerationPin(this, generationId, pinId, owner);
         }
     }
@@ -222,9 +223,7 @@ public final class ResourceLedger {
 
     public int getActiveGenerationPinCount(RegistryGenerationId generationId) {
         GenerationEntry generation = generationEntry(generationId);
-        synchronized (generation) {
-            return generation.activePins.size();
-        }
+        return generation.activePinCount;
     }
 
     private void validateGenerationOwner(ExecutionOwner owner, RegistryGenerationId generationId) {
@@ -270,6 +269,7 @@ public final class ResourceLedger {
             if (!generation.activePins.remove(pinId, owner)) {
                 throw new IllegalStateException("Generation pin is not registered: " + pinId);
             }
+            generation.activePinCount = generation.activePins.size();
             generation.notifyAll();
         }
     }
@@ -331,6 +331,7 @@ public final class ResourceLedger {
     private static final class GenerationEntry {
         private final Map<Long, ExecutionOwner> activePins = new HashMap<>();
         private final AtomicLong nextPinId = new AtomicLong();
+        private volatile int activePinCount;
         private boolean retiring;
     }
 
