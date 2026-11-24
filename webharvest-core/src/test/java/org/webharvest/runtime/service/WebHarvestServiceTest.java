@@ -166,7 +166,8 @@ public class WebHarvestServiceTest {
     public void testCancelBeforeStart_ExecutionQuiescenceObserved() throws InterruptedException {
         service.shutdown();
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
         CountDownLatch blockerStarted = new CountDownLatch(1);
         CountDownLatch releaseBlocker = new CountDownLatch(1);
         boolean[] serviceOwnsExecutor = {false};
