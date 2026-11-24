@@ -149,6 +149,7 @@ public abstract class SessionEvent {
         return getClass().getSimpleName() + "{" +
                 "sessionId='" + getSessionId() + '\'' +
                 ", clientId='" + getClientId() + '\'' +
+                ", executionIdentity=" + executionIdentity +
                 ", timestamp=" + timestamp +
                 '}';
     }
