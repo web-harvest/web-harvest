@@ -467,7 +467,7 @@ public final class ResourceLedger {
         private Lease acquireGenerationValidated(ExecutionOwner useOwner) {
             GenerationEntry generation = ledger.generationEntry(entry.generationId);
             synchronized (generation) {
-                if (!generation.activePins.containsValue(useOwner)) {
+                if (!generation.activePins.containsKey(useOwner)) {
                     throw new IllegalStateException(
                         "Execution owner has no active pin for generation: " + useOwner);
                 }
