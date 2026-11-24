@@ -2,6 +2,7 @@
 
 **Status:** Target architecture and release acceptance contract; not a claim about current implementation.
 **Priority:** P0 — release-blocking.
+**Diagram visual language:** [WebHarvest Architecture Diagram Visual Language](ARCHITECTURE_DIAGRAM_STYLE.md) — evidence-backed and provisional until the production website cutover is approved.
 **Tracking:** [#94](https://github.com/web-harvest/web-harvest/issues/94), [#346](https://github.com/web-harvest/web-harvest/issues/346), [#347](https://github.com/web-harvest/web-harvest/issues/347), [#348](https://github.com/web-harvest/web-harvest/issues/348), [#349](https://github.com/web-harvest/web-harvest/issues/349), [#350](https://github.com/web-harvest/web-harvest/issues/350), [release gate #88](https://github.com/web-harvest/web-harvest/issues/88).
 
 ## 1. Product invariant
