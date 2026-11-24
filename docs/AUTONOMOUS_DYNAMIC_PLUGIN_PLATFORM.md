@@ -94,7 +94,7 @@ A failed reconciliation must not partially mutate the active registry. The last-
 
 Duplicate IDs, QNames, namespace bindings or aliases are errors, never last-write-wins map updates. Broken or incompatible providers must not silently disappear while bootstrap/reconciliation reports success.
 
-Each generation exposes a stable generation ID or digest and provider/artifact provenance. Registry output must be deterministic regardless of artifact enumeration or JAR ordering.
+Each generation exposes one immutable `RegistryGenerationId(runtimeId, generationLifetimeId)` and provider/artifact provenance. The generation-lifetime value must be unique among generations that may coexist in one runtime. A deterministic snapshot digest is useful provenance/input identity, but it is not by itself a safe owner identity when identical content can be published with distinct provider instances or ClassLoader lifetimes. The registry-generation manager assigns the lifetime ID and propagates that exact value through the immutable snapshot, validation/inspection results, Execution Plan and session pin. Registry output and snapshot digests must be deterministic regardless of artifact enumeration or JAR ordering.
 
 ### 4.1 Reconciliation transaction and lifecycle phases
 
@@ -1837,11 +1837,11 @@ The immutable execution identity is `(runtimeId, sessionId, executionGeneration)
 Ownership scopes remain distinct:
 
 - **Runtime owner:** executor/admission coordinator, the one shared service EventBus, runtime-scoped transports/services, registry-generation manager and runtime shutdown.
-- **Generation owner:** immutable descriptor/dispatch/semantic/schema snapshot, provider bindings, generation-scoped registrations and provider-owned resources. A generation belongs to exactly one runtime. Candidate generations have distinct provisional ownership before publication.
+- **Generation owner:** immutable descriptor/dispatch/semantic/schema snapshot, provider bindings, generation-scoped registrations and provider-owned resources. A generation belongs to exactly one runtime and is identified by `RegistryGenerationId(runtimeId, generationLifetimeId)`, distinct from `ExecutionOwner(runtimeId, sessionId, executionGeneration)`. The lifetime ID is unique among coexisting generations; candidate generations have distinct provisional ownership before publication.
 - **Session owner:** execution context, cancellation/deadline, pinned generation and session-scoped resources/subscriptions.
 - **Operation owner:** in-flight I/O/task handles, abort action, operation lease and external-effect disposition.
 
-The resource ledger therefore needs four resource scopes: RUNTIME, GENERATION, SESSION and OPERATION. GENERATION resources are keyed by runtime plus generation identity (not by session); candidate-generation resources remain provisional and are rolled back if preparation/activation fails. A published generation's resources close only during its retirement, after all sessions, tasks, callbacks and leases referencing it have drained. Runtime-scoped shared services (for example HTTP transport) remain open until runtime shutdown.
+The resource ledger therefore needs four resource scopes: RUNTIME, GENERATION, SESSION and OPERATION. GENERATION registrations are keyed by scope, local resource ID and exact `RegistryGenerationId`; the same local resource name may coexist in G1 and G2 during rolling publication. A generation-resource lease requires both the consuming `ExecutionOwner` and the exact pinned `RegistryGenerationId`. SESSION/OPERATION registrations are keyed by their exact execution owner, so local names may repeat across sessions without collision. Candidate-generation resources remain provisional and are rolled back if preparation/activation fails. A published generation's resources close only during its retirement, after all sessions, tasks, callbacks and leases referencing it have drained. Runtime-scoped shared services (for example HTTP transport) remain open until runtime shutdown.
 
 A shared service EventBus is deliberately runtime-scoped and remains shared by concurrent sessions. Ownership isolation is expressed by registration tokens and owner identity, not by allocating one bus per session. Runtime-scoped shared services must not be closed by a session terminal event.
 
