@@ -106,6 +106,8 @@ public class EventBusTypeListenerTest {
         EventBus secondBus = second.getInstance(EventBus.class);
         assertNotSame(firstBus, secondBus,
             "Each injector/runtime must own a distinct EventBus instance");
+        assertNotSame(first.getInstance(ScraperScope.class), second.getInstance(ScraperScope.class),
+            "Each injector/runtime must own a distinct scraping scope instance");
 
         Subscriber firstSubscriber = first.getInstance(Subscriber.class);
         Subscriber secondSubscriber = second.getInstance(Subscriber.class);
