@@ -82,6 +82,37 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testCreatedEventCancellationCancelsFutureBeforeWorkerEntry() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        eventBus.register(new CancelOnCreatedListener());
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertTrue(tracked.awaitExecutionCompletion(0));
+        } finally {
+            releaseBlocker.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testRejectedSubmissionRollsBackRegistryAndExitsSession() throws InterruptedException {
         EventBus eventBus = new EventBus();
         CapturingCreatedListener capture = new CapturingCreatedListener();
