@@ -4302,3 +4302,57 @@ This is a target architecture decision, not a claim that all current constructio
 This section reconciles the source audit with the agreed target direction. It strengthens #354 (truthful worker quiescence), #355 (resource leases and owner-safe drain), #356 (shared EventBus subscriber lifecycle), #357 (immutable runtime/session context identity) and #349 (runtime composition/lifecycle authority). The shared-bus decision is not a substitute for those contracts.
 
 **Evidence status:** source inspection only. No production/API/test/POM changes, no runtime reproduction, no concurrency/heap benchmark, no merge/release. #346 SPI acceptance and #94 integration gates remain mandatory; runtime implementation remains STOP.
+
+
+## 15.97 — Cancellation event is not execution quiescence; current JDBC cleanup conflates them (2026-11-24)
+
+This section connects the session state machine (#354), shared EventBus subscriber lifecycle (#356) and resource ledger (#355). It is a source-level finding against the audited baseline; no runtime reproduction or tests were run.
+
+### Current sequence
+
+1. `ScraperSessionImpl.cancel()` is synchronized. If the current status is non-terminal, it immediately sets `CANCELLED`, marks metrics ended, posts `SessionCancelledEvent(this)` on its EventBus and signals completion waiters. It does not interrupt, join or otherwise prove exit of the worker.
+2. `WebHarvestServiceImpl.executeAsync()` submits the worker but discards the returned `Future`; the service has no retained task handle with which to correlate cancellation and actual worker exit.
+3. `StandaloneConnectionPool` subscribes to the same service EventBus. Its cancellation handler calls `closeAllConnections()` unconditionally. It does not check the event's session identity and does not wait for active database operations to release their use of a connection.
+4. `DatabasePlugin` and `ConnectionPlugin` create separate pools and register them against the context EventBus. On the shared service path, all such subscribers receive every session terminal event.
+
+### Consequences
+
+- A cancellation request can trigger resource closure while the cancelled session's worker is still executing.
+- A session A cancellation event can close session B's pool because both pools subscribe to the shared runtime bus and the handler does not filter ownership.
+- `awaitCompletion()` can return after the business status is marked terminal even though execution work may remain active. This is not a worker-quiescence signal.
+- Therefore the current terminal event conflates a business outcome notification with a resource-retirement trigger. Neither the event nor terminal status proves safe closure.
+
+These are direct consequences of the inspected source paths, not a claim that a particular production incident or timing race has been reproduced.
+
+### Required state and event separation
+
+Keep the one shared EventBus per runtime. Define separate facts and transitions:
+
+- **Termination requested:** owner identity, requested mode (GRACE/KILL), reason and monotonic deadline.
+- **Business outcome:** completed, failed or cancelled; this may become known before the worker exits.
+- **Execution disposition:** queued/running/interruption requested/exited/unresponsive/quarantined. Only an observed worker/child exit establishes execution quiescence.
+- **Resource disposition:** close requested/draining/closed/close failed/quarantined, with active operation leases and unresolved uses accounted for.
+- **External-effect disposition:** not started/in progress/confirmed/failed/unknown where an operation may have committed outside the process.
+
+Events should carry immutable runtime/session/execution-generation identity. A cancellation notification may tell subscribers to stop admission or request abort, but must not itself authorize closing resources still held by active operations. The resource coordinator closes only after matching owner termination, operation lease drain and worker/child quiescence within the cleanup budget. If quiescence cannot be established, retain/quarantine resources and report the unresolved state.
+
+### Required deterministic regression tests
+
+1. Same shared bus, sessions A and B: cancel A while B holds an active JDBC operation; B's pool and connection remain usable.
+2. Cancel A while A's SQL operation is blocked: cancellation request is visible, but physical connection close waits for operation lease release or a truthful abort-and-exit result.
+3. Assert business cancellation can be observed before worker exit, while the separate execution-quiescence wait remains pending.
+4. Non-cooperative worker: KILL disposition is UNRESPONSIVE/QUARANTINED; no resource is reported safely closed while still in use.
+5. Concurrent terminal events and registration-vs-termination races do not close or unregister another owner’s resources.
+6. Repeated cancellation/terminal notification is idempotent; close failures and unresolved leases remain visible.
+
+Use latches/barriers and controlled JDBC fixtures, not timing-only sleeps.
+
+### Source evidence
+
+- `ScraperSessionImpl.java`: `78d07d1c485ea215d68d6d415f36b2be0c180a4f` — `cancel()` status/event/waiter sequence.
+- `WebHarvestServiceImpl.java`: `10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec` — shared service EventBus and discarded task handle.
+- `StandaloneConnectionPool.java`: `ab4a92fb63599e88a55821fe141bf5aa50327008` — terminal event handlers close all connections without owner filtering.
+- `DatabasePlugin.java`: `b3934d753f17f133bd582b50206db701af843728` — inline pool registration through context EventBus.
+- `ConnectionPlugin.java`: `edb6ed93584cb03d967c830d120848c7e891f481` — named pool registration through context EventBus.
+
+**Evidence status:** source inspection only. No production/API/test/POM changes, no test/build/concurrency execution. This strengthens #354/#355/#356 and does not authorize implementation before #346/#94 gates.
