@@ -33,6 +33,7 @@
 
 package org.webharvest.runtime.resource;
 
+import org.webharvest.runtime.registry.RegistryGenerationId;
 import org.webharvest.runtime.session.ExecutionOwner;
 
 import java.time.Duration;
@@ -56,10 +57,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@link Registration#drainAndClose(Duration)} closes only after the owner
  * has independently reported quiescence and every use lease has been released.</p>
  *
- * <p>For RUNTIME scope the ledger's runtime ID is the owner identity and the
- * session execution owner is absent. SESSION and OPERATION resources require
- * an {@link ExecutionOwner} belonging to this ledger's runtime. Operation
- * identity is represented by the resource ID within that execution owner.</p>
+ * <p>RUNTIME resources are owned by the ledger runtime. GENERATION resources
+ * are owned by a distinct {@link RegistryGenerationId}; their leases are
+ * attributed to sessions pinned to that exact generation. SESSION and OPERATION
+ * resources require an {@link ExecutionOwner} belonging to this runtime.</p>
  *
  * <p>This class does not infer worker exit from cancellation, interruption,
  * EventBus delivery or a terminal business status. The caller must invoke
@@ -70,6 +71,7 @@ public final class ResourceLedger {
 
     public enum Scope {
         RUNTIME,
+        GENERATION,
         SESSION,
         OPERATION
     }
@@ -112,7 +114,16 @@ public final class ResourceLedger {
      */
     public Registration registerRuntime(String resourceId, AbortAction abortAction,
                                          CloseAction closeAction) {
-        return register(resourceId, Scope.RUNTIME, null, abortAction, closeAction);
+        return register(resourceId, Scope.RUNTIME, null, null, abortAction, closeAction);
+    }
+
+    /**
+     * Registers a generation-scoped resource against the exact immutable
+     * registry generation. The generation belongs to this ledger's runtime.
+     */
+    public Registration registerGeneration(String resourceId, RegistryGenerationId generationId,
+                                           AbortAction abortAction, CloseAction closeAction) {
+        return register(resourceId, Scope.GENERATION, null, generationId, abortAction, closeAction);
     }
 
     /**
@@ -124,27 +135,39 @@ public final class ResourceLedger {
         if (scope == Scope.RUNTIME) {
             throw new IllegalArgumentException("Use registerRuntime for runtime-scoped resources");
         }
-        return register(resourceId, scope, owner, abortAction, closeAction);
+        return register(resourceId, scope, owner, null, abortAction, closeAction);
     }
 
     private Registration register(String resourceId, Scope scope, ExecutionOwner owner,
+                                  RegistryGenerationId generationId,
                                   AbortAction abortAction, CloseAction closeAction) {
         if (resourceId == null || resourceId.trim().isEmpty()) {
             throw new IllegalArgumentException("Resource ID cannot be null or empty");
         }
         Objects.requireNonNull(scope, "Scope cannot be null");
         if (scope == Scope.RUNTIME) {
+            if (owner != null || generationId != null) {
+                throw new IllegalArgumentException("Runtime resources use the ledger runtime owner");
+            }
+        } else if (scope == Scope.GENERATION) {
+            Objects.requireNonNull(generationId, "Registry generation ID cannot be null");
+            if (!runtimeId.equals(generationId.getRuntimeId())) {
+                throw new IllegalArgumentException("Registry generation belongs to another runtime");
+            }
             if (owner != null) {
-                throw new IllegalArgumentException("Runtime-scoped resources use the ledger runtime owner");
+                throw new IllegalArgumentException("Generation resources cannot use an execution owner");
             }
         } else {
             Objects.requireNonNull(owner, "Execution owner cannot be null");
             if (!runtimeId.equals(owner.getRuntimeId())) {
                 throw new IllegalArgumentException("Execution owner belongs to another runtime");
             }
+            if (generationId != null) {
+                throw new IllegalArgumentException("Session and operation resources cannot own a generation ID");
+            }
         }
 
-        Entry entry = new Entry(resourceId, scope, owner, abortAction, closeAction);
+        Entry entry = new Entry(resourceId, scope, owner, generationId, abortAction, closeAction);
         Entry existing = entries.putIfAbsent(resourceId, entry);
         if (existing != null) {
             throw new IllegalStateException("Resource ID is already registered: " + resourceId);
@@ -176,6 +199,7 @@ public final class ResourceLedger {
         private final String resourceId;
         private final Scope scope;
         private final ExecutionOwner owner;
+        private final RegistryGenerationId generationId;
         private final AbortAction abortAction;
         private final CloseAction closeAction;
         private State state = State.OPEN;
@@ -189,10 +213,11 @@ public final class ResourceLedger {
         private Throwable closeFailure;
 
         private Entry(String resourceId, Scope scope, ExecutionOwner owner,
-                      AbortAction abortAction, CloseAction closeAction) {
+                      RegistryGenerationId generationId, AbortAction abortAction, CloseAction closeAction) {
             this.resourceId = resourceId;
             this.scope = scope;
             this.owner = owner;
+            this.generationId = generationId;
             this.abortAction = abortAction;
             this.closeAction = closeAction;
         }
@@ -219,9 +244,14 @@ public final class ResourceLedger {
             return entry.scope;
         }
 
-        /** Null only for RUNTIME scope, whose owner is the ledger runtime ID. */
+        /** Null unless SESSION or OPERATION scope owns this exact execution. */
         public ExecutionOwner getExecutionOwner() {
             return entry.owner;
+        }
+
+        /** Non-null only for GENERATION scope. */
+        public RegistryGenerationId getRegistryGenerationId() {
+            return entry.generationId;
         }
 
         public State getState() {
@@ -267,12 +297,40 @@ public final class ResourceLedger {
          */
         public Lease acquire(ExecutionOwner useOwner) {
             Objects.requireNonNull(useOwner, "Lease execution owner cannot be null");
-            if (!ledger.runtimeId.equals(useOwner.getRuntimeId())) {
-                throw new IllegalArgumentException("Lease owner belongs to another runtime");
+            if (entry.scope == Scope.GENERATION) {
+                throw new IllegalStateException("Generation resource requires an explicit generation pin");
             }
+            validateRuntimeOwner(useOwner);
             if (entry.scope != Scope.RUNTIME && !entry.owner.equals(useOwner)) {
                 throw new IllegalArgumentException("Lease owner does not match resource owner");
             }
+            return acquireValidated(useOwner);
+        }
+
+        /**
+         * Acquires a generation-resource lease only when the execution is pinned
+         * to the exact generation that owns the resource.
+         */
+        public Lease acquire(ExecutionOwner useOwner, RegistryGenerationId pinnedGeneration) {
+            Objects.requireNonNull(useOwner, "Lease execution owner cannot be null");
+            Objects.requireNonNull(pinnedGeneration, "Pinned registry generation cannot be null");
+            if (entry.scope != Scope.GENERATION) {
+                throw new IllegalStateException("Explicit generation pin is valid only for GENERATION resources");
+            }
+            validateRuntimeOwner(useOwner);
+            if (!entry.generationId.equals(pinnedGeneration)) {
+                throw new IllegalArgumentException("Execution is pinned to a different registry generation");
+            }
+            return acquireValidated(useOwner);
+        }
+
+        private void validateRuntimeOwner(ExecutionOwner useOwner) {
+            if (!ledger.runtimeId.equals(useOwner.getRuntimeId())) {
+                throw new IllegalArgumentException("Lease owner belongs to another runtime");
+            }
+        }
+
+        private Lease acquireValidated(ExecutionOwner useOwner) {
             synchronized (entry) {
                 if (entry.state != State.OPEN) {
                     throw new IllegalStateException(
