@@ -192,7 +192,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             listener.release.countDown();
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
-            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.WORKER_EXIT_CONFIRMED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACEFUL);
         } finally {
             listener.release.countDown();
             service.shutdown();
@@ -410,6 +410,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             listener.release.countDown();
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.WORKER_EXIT_CONFIRMED);
         } finally {
             listener.release.countDown();
             service.shutdownNow();
