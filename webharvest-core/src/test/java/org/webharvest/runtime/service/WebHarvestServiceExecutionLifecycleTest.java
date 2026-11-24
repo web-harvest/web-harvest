@@ -155,16 +155,20 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
         ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
         ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
-        assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+        try {
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            service.shutdownNow();
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
+            assertFalse(tracked.awaitExecutionCompletion(0));
 
-        service.shutdownNow();
-        assertEquals(session.getStatus(), SessionStatus.CANCELLED);
-        assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
-        assertFalse(tracked.awaitExecutionCompletion(0));
-
-        listener.release.countDown();
-        assertTrue(tracked.awaitExecutionCompletion(5000));
-        assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
     }
 
     private static class CancelOnCreatedListener {
