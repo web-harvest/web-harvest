@@ -2848,13 +2848,13 @@ The following defaults are recommended to make maintainer review concrete. They 
 
 ### Suggested decision sequence
 
-1. Maintainer accepts/rejects the product-boundary proposal in 15.63 (#93).
-2. Maintainer accepts/revises these SPI defaults and the consolidated contract in 15.62 (#346).
+1. **Completed:** maintainer approved compatibility-first Decision A in #93 comment 7114474041 on 2026-11-23; see reconciliation in section 15.80.
+2. **Open:** maintainer accepts/revises these SPI defaults and the consolidated contract in sections 15.62/15.81 (#346).
 3. Only then create a minimal compiling descriptor/SPI prototype and an out-of-tree fixture; do not begin registry/runtime replacement in parallel.
 4. Validate the fixture against descriptor-only discovery, compatibility failures, host-policy denial and XML compatibility before authorizing #347–#350 implementation slices.
 5. Freeze the public API only after the fixture proves independent compilation and the compatibility policy is documented.
 
-**Decision status: REVIEW INPUT ONLY.** These defaults are recommendations, not maintainer decisions. No public API, descriptor schema, Java interface, module, POM, runtime code or test was created or changed.
+**Decision status: REVIEW INPUT ONLY.** These SPI defaults are recommendations, not maintainer decisions. The separate #93 product-boundary Decision A is approved; that approval does not accept these SPI defaults. No public API, descriptor schema, Java interface, module, POM, runtime code or test was created or changed.
 
 
 ## 15.65 P0 acceptance traceability and implementation entry gate (2026-11-23)
@@ -2888,6 +2888,8 @@ The audit PR is documentation and design evidence. It does not satisfy runtime a
 **Current decision: STOP before implementation; continue source/design review and maintainer decision preparation only.**
 
 ## 15.66 Minimal Core membership — explicit decision alternatives for #93 (2026-11-23)
+
+**Historical status note (2026-11-24):** the proposal-only status at the end of this original section is superseded by maintainer approval of Decision A in #93 comment 7114474041. See section 15.80 for the current gate status. The alternatives below are retained as decision history, not as an open request.
 
 Section 15.63 classifies every current XML mapping, but it intentionally leaves one product decision open: whether “Core” means the smallest execution kernel, or the compatibility distribution that ships the established XML surface. These are different boundaries and should not be collapsed into one package/module decision.
 
