@@ -487,6 +487,8 @@ public class ResourceLedgerTest {
         ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
         assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
         assertEquals(blocked.getActiveLeases(), 2);
+        assertEquals(blocked.getActiveGenerationPins(), 2);
+        assertFalse(blocked.isOwnerQuiescent());
         assertEquals(ledger.getActiveGenerationPinCount(generationOne), 2);
         assertEquals(closeCount.get(), 0);
 
@@ -501,7 +503,10 @@ public class ResourceLedgerTest {
         assertFalse(registration.drainAndClose(Duration.ZERO).isClosed());
         pinB.close();
 
-        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        ResourceLedger.DrainResult closed = registration.drainAndClose(Duration.ofSeconds(1));
+        assertTrue(closed.isClosed());
+        assertTrue(closed.isOwnerQuiescent());
+        assertEquals(closed.getActiveGenerationPins(), 0);
         assertEquals(closeCount.get(), 1);
         assertEquals(ledger.getActiveGenerationPinCount(generationOne), 0);
         registration.close();
