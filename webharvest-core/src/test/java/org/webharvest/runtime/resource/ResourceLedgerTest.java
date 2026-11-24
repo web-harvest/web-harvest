@@ -310,9 +310,9 @@ public class ResourceLedgerTest {
         expectThrows(IllegalArgumentException.class,
             () -> registration.drainAndClose(Duration.ofSeconds(Long.MAX_VALUE)));
 
-        registration.abort();
-        registration.abort();
         registration.requestClose();
+        registration.abort();
+        registration.abort();
         registration.markOwnerQuiescent();
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
@@ -321,6 +321,45 @@ public class ResourceLedgerTest {
         registration.close();
         assertEquals(closeCount.get(), 1);
         assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testAbortRequiresCloseAdmissionToBeStopped() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger abortCount = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "runtime-client", abortCount::incrementAndGet, null);
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        assertEquals(abortCount.get(), 0);
+        assertEquals(registration.getState(), ResourceLedger.State.OPEN);
+
+        registration.requestClose();
+        registration.abort();
+        registration.abort();
+        assertEquals(abortCount.get(), 1);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testAbortActionRestoresInterruptStatus() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "interruptible-client", () -> {
+                throw new InterruptedException("abort interrupted");
+            }, null);
+        AtomicReference<Boolean> interrupted = new AtomicReference<>(false);
+        registration.requestClose();
+
+        Thread aborter = new Thread(() -> {
+            registration.abort();
+            interrupted.set(Thread.currentThread().isInterrupted());
+        });
+        aborter.start();
+        aborter.join(5000);
+
+        assertFalse(aborter.isAlive());
+        assertTrue(interrupted.get());
+        assertTrue(registration.getAbortFailure() instanceof InterruptedException);
     }
 
     @Test(groups = {"unit", "runtime"})
