@@ -61,6 +61,30 @@ import static org.testng.Assert.*;
 /** Deterministic tests for service task ownership, deadlines and shutdown. */
 public class WebHarvestServiceExecutionLifecycleTest {
 
+    @Test(groups = {"unit", "service"}, expectedExceptions = IllegalArgumentException.class)
+    public void testServiceRejectsNullExecutor() {
+        new WebHarvestServiceImpl(null, new SessionRegistryImpl(), new EventBus());
+    }
+
+    @Test(groups = {"unit", "service"}, expectedExceptions = IllegalArgumentException.class)
+    public void testServiceRejectsNullRegistry() {
+        new WebHarvestServiceImpl(new InlineExecutorService(), null, new EventBus());
+    }
+
+    @Test(groups = {"unit", "service"}, expectedExceptions = IllegalArgumentException.class)
+    public void testServiceRejectsNullEventBus() {
+        new WebHarvestServiceImpl(new InlineExecutorService(), new SessionRegistryImpl(), null);
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownIsIdempotent() throws InterruptedException {
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), new EventBus());
+        service.shutdown();
+        service.shutdown();
+        assertTrue(service.isShutdown());
+    }
+
     @Test(groups = {"unit", "service"})
     public void testCancellationDuringSessionCreatedEventPreventsWorkerEntry() throws InterruptedException {
         EventBus eventBus = new EventBus();
@@ -102,6 +126,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
         try {
             assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            delegate.submit(() -> { });
             ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
@@ -141,6 +166,30 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(tracked.awaitExecutionCompletion(0));
         } finally {
             service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testCancellationBeforeFutureAttachmentInterruptsActiveWorker() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CancelAndHoldStartedListener listener = new CancelAndHoldStartedListener();
+        eventBus.register(listener);
+        ExecutorService executor = new StartAndCancelExecutorService(listener.cancelled);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertFalse(tracked.awaitExecutionCompletion(50),
+                "The worker remains active in its controlled callback after cancellation");
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+            service.shutdown();
         }
     }
 
@@ -267,6 +316,48 @@ public class WebHarvestServiceExecutionLifecycleTest {
                     interrupted.countDown();
                     // Remain active until the test releases this operation.
                 }
+            }
+        }
+    }
+
+    private static class CancelAndHoldStartedListener {
+        final CountDownLatch cancelled = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            event.getSession().cancel();
+            cancelled.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    release.await();
+                    waiting = false;
+                } catch (InterruptedException cancellation) {
+                    // Remain active until the test releases this operation.
+                }
+            }
+        }
+    }
+
+    private static class StartAndCancelExecutorService extends DelegatingExecutorService {
+        private final CountDownLatch cancellationObserved;
+
+        private StartAndCancelExecutorService(CountDownLatch cancellationObserved) {
+            super(java.util.concurrent.Executors.newSingleThreadExecutor());
+            this.cancellationObserved = cancellationObserved;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            super.execute(command);
+            try {
+                if (!cancellationObserved.await(5, TimeUnit.SECONDS)) {
+                    throw new RejectedExecutionException("Worker did not reach cancellation callback");
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Submission wait interrupted", interrupted);
             }
         }
     }
