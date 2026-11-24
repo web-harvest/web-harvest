@@ -225,6 +225,71 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testSubmitAndShutdownAreSerializedWithoutOrphanTask() throws InterruptedException {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch allowSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, allowSubmit);
+        SessionRegistryImpl registry = new SessionRegistryImpl();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(executor, registry, new EventBus());
+        java.util.concurrent.atomic.AtomicReference<ScraperSession> accepted =
+            new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> submitFailure =
+            new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> shutdownFailure =
+            new java.util.concurrent.atomic.AtomicReference<>();
+        CountDownLatch submitFinished = new CountDownLatch(1);
+        CountDownLatch shutdownAttempted = new CountDownLatch(1);
+        CountDownLatch shutdownFinished = new CountDownLatch(1);
+
+        Thread submitter = new Thread(() -> {
+            try {
+                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            } finally {
+                submitFinished.countDown();
+            }
+        }, "test-session-submitter");
+        Thread shutdown = new Thread(() -> {
+            shutdownAttempted.countDown();
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            } finally {
+                shutdownFinished.countDown();
+            }
+        }, "test-service-shutdown");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS),
+                "Submission must reach the executor while admission is held");
+            shutdown.start();
+            assertTrue(shutdownAttempted.await(5, TimeUnit.SECONDS));
+            allowSubmit.countDown();
+
+            assertTrue(submitFinished.await(5, TimeUnit.SECONDS));
+            assertTrue(shutdownFinished.await(5, TimeUnit.SECONDS));
+            assertNull(submitFailure.get());
+            assertNull(shutdownFailure.get());
+            assertNotNull(accepted.get());
+
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) accepted.get();
+            assertTrue(tracked.awaitExecutionCompletion(0));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(accepted.get().getStatus(), SessionStatus.COMPLETED);
+            assertSame(registry.getSession(accepted.get().getSessionId()).orElse(null), accepted.get());
+        } finally {
+            allowSubmit.countDown();
+            submitter.join(5000);
+            shutdown.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testRejectedSubmissionRollsBackRegistryAndExitsSession() throws InterruptedException {
         EventBus eventBus = new EventBus();
         CapturingCreatedListener capture = new CapturingCreatedListener();
@@ -530,6 +595,33 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 return false;
             }
             return super.awaitTermination(timeout, unit);
+        }
+    }
+
+    private static class BlockingSubmitExecutorService extends DelegatingExecutorService {
+        private final CountDownLatch submitEntered;
+        private final CountDownLatch allowSubmit;
+
+        private BlockingSubmitExecutorService(ExecutorService delegate,
+                                              CountDownLatch submitEntered,
+                                              CountDownLatch allowSubmit) {
+            super(delegate);
+            this.submitEntered = submitEntered;
+            this.allowSubmit = allowSubmit;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            submitEntered.countDown();
+            try {
+                if (!allowSubmit.await(5, TimeUnit.SECONDS)) {
+                    throw new RejectedExecutionException("Test submission gate timed out");
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new RejectedExecutionException("Test submission was interrupted", interrupted);
+            }
+            super.execute(command);
         }
     }
 
