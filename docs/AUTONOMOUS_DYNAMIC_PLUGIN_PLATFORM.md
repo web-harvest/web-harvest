@@ -236,6 +236,111 @@ Acceptance evidence must include:
 - proof that health/quarantine changes do not rewrite visual documents;
 - independent evolution/version compatibility tests for both models.
 
+
+
+### 5.1.6 Architecture diagrams
+
+The diagrams below are normative target-architecture views, not claims about the
+current implementation.
+
+#### Model boundaries and ownership
+
+```mermaid
+flowchart TB
+  subgraph VIS["Visual Flow Semantic Model — tooling-neutral"]
+    VDOC["Visual workflow document"]
+    VEDIT["IDE / headless editor / renderer"]
+    VDOC <--> VEDIT
+  end
+
+  MAP["Versioned mapping and serialization contract"]
+
+  subgraph RUN["Runtime — Core-owned"]
+    RSM["Runtime Semantic Model"]
+    GEN["Pinned immutable registry generation"]
+    PLAN["Execution Plan"]
+    EXEC["Execution engine"]
+    HEALTH["Runtime State & Health\n(single health/fault authority)"]
+    RSM --> GEN
+    GEN --> PLAN
+    PLAN --> EXEC
+    EXEC --> HEALTH
+  end
+
+  VDOC <--> MAP
+  MAP <--> RSM
+  HEALTH -->|"bounded read-only projection"| OBS["Agent / IDE diagnostics overlay"]
+  OBS -.->|"does not mutate document or runtime state"| VEDIT
+```
+
+The visual document and runtime model do not share mutable object graphs.
+Visual edits pass through an explicit mapping contract; runtime health is
+exposed as an observation/overlay and never becomes visual-document truth.
+
+#### Configure, plan and execute
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant Editor as IDE / Visual Editor
+  participant Doc as Visual Flow Semantic Model
+  participant Map as Versioned Mapping
+  participant Core as Runtime Semantic Model
+  participant Registry as Registry Generation
+  participant Planner as Execution Planner
+  participant Engine as Runtime Engine
+  participant Health as Runtime State & Health
+
+  User->>Editor: Edit workflow
+  Editor->>Doc: Update visual nodes, edges and layout
+  Editor->>Map: Request runtime projection
+  Map->>Core: Translate logical references and typed contracts
+  Core->>Registry: Resolve against selected generation
+  Registry-->>Core: Immutable capability projection
+  Core-->>Planner: Validated runtime semantics
+  Planner->>Registry: Pin generation identity
+  Planner->>Planner: Resolve providers, dependencies and policy
+  Planner-->>Editor: Plan summary / diagnostics
+  User->>Editor: Start execution
+  Editor->>Engine: Submit approved plan reference
+  Engine->>Registry: Verify pinned generation
+  Engine->>Health: Emit bounded execution observations
+  Engine-->>Editor: Execution events / progress
+  Health-->>Editor: Read-only health and fault projection
+  Note over Doc,Health: Health and execution state do not rewrite the visual document.
+```
+
+#### Fault isolation and safe capability substitution
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Engine as Runtime Engine
+  participant Health as Runtime State & Health
+  participant Plan as Execution Planner
+  participant Catalog as Runtime Capability Projection
+  participant Agent as Agent
+  participant Host as Host Policy / Resource Owner
+
+  Engine->>Health: Report bounded outcome and provenance
+  Health->>Health: Classify fault and evaluate threshold
+  alt Transient or non-provider failure
+    Health-->>Agent: Read-only diagnostic; no quarantine
+  else Confirmed capability/provider fault
+    Health->>Host: Stop new admission for narrow fault scope
+    Host->>Host: Drain in-flight work to safe boundary
+    Health-->>Agent: Quarantine state and bounded evidence
+    Agent->>Plan: Request repair proposal
+    Plan->>Catalog: Find semantically compatible capabilities
+    Catalog-->>Plan: Candidate contracts and constraints
+    Plan->>Host: Check trust, permissions, resources and effects
+    Host-->>Plan: Policy decision
+    Plan-->>Agent: Revised plan or safe-stop explanation
+  end
+  Note over Engine,Host: No retry or substitution when external-effect disposition is unknown.
+```
+
 ## 6. Activation, trust and permissions
 
 Discovery is not activation, and activation is not unrestricted authorization.
