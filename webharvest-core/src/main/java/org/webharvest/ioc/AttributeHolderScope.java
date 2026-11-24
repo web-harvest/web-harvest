@@ -56,12 +56,7 @@ import com.google.inject.Scope;
 public class AttributeHolderScope<AHT extends AttributeHolder>
         implements Scope, Provider<AHT> {
 
-    private final ThreadLocal<Stack<AHT>> holder =
-        new ThreadLocal<Stack<AHT>>() {
-            protected java.util.Stack<AHT> initialValue() {
-                return new Stack<AHT>();
-            };
-    };
+    private final ThreadLocal<Stack<AHT>> holder = new ThreadLocal<Stack<AHT>>();
 
     /**
      * Lets the current {@code Thread} enter this {@code Scope}.
@@ -74,7 +69,12 @@ public class AttributeHolderScope<AHT extends AttributeHolder>
             throw new IllegalArgumentException();
         }
 
-        this.holder.get().add(holder);
+        Stack<AHT> current = this.holder.get();
+        if (current == null) {
+            current = new Stack<AHT>();
+            this.holder.set(current);
+        }
+        current.add(holder);
     }
 
     /**
@@ -85,7 +85,11 @@ public class AttributeHolderScope<AHT extends AttributeHolder>
      */
     public void exit() throws OutOfScopeException {
         assertInScope();
-        this.holder.get().pop();
+        Stack<AHT> current = this.holder.get();
+        current.pop();
+        if (current.isEmpty()) {
+            this.holder.remove();
+        }
     }
 
     /**
@@ -139,7 +143,8 @@ public class AttributeHolderScope<AHT extends AttributeHolder>
     }
 
     private void assertInScope() throws OutOfScopeException {
-        if (holder.get().isEmpty()) {
+        Stack<AHT> current = holder.get();
+        if (current == null || current.isEmpty()) {
             throw new OutOfScopeException("not in "
                     + getClass().getSimpleName()); //NOI18N
         }
