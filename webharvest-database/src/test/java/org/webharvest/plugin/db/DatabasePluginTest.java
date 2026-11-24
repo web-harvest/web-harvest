@@ -223,6 +223,7 @@ public class DatabasePluginTest {
             "A close request must not close a named pool while an operation lease is active");
 
         activeUse.close();
+        activeUse.close(); // Lease close is deliberately idempotent for repeated cleanup paths.
         coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
         assertTrue(physical.isClosed());
         assertEquals(ledger.size(), 0);
