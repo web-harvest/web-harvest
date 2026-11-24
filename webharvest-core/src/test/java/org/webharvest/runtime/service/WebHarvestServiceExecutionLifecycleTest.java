@@ -134,6 +134,10 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertTrue(listener.closed.await(5, TimeUnit.SECONDS),
                 "Resource cleanup follows the observed execution-exit signal");
+            // The close callback signals from inside CloseAction, just before
+            // ResourceLedger publishes CLOSED. Executor termination is the
+            // deterministic boundary proving the worker-side drain has returned.
+            service.shutdown();
             assertEquals(listener.closeCount.get(), 1);
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         } finally {
