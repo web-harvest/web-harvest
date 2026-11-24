@@ -378,7 +378,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 return;
             }
 
-            try {
+            try (ExecutionContextCarrier.ScopeToken ignored =
+                     ExecutionContextCarrier.install(session.getExecutionIdentity())) {
                 executeSession(this);
             } finally {
                 synchronized (this) {
