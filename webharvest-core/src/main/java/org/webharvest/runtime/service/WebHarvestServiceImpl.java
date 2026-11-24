@@ -41,6 +41,7 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.client.ClientContext;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
@@ -51,6 +52,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Default implementation of {@link WebHarvestService}.
@@ -71,6 +73,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final EventBus eventBus;
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
+    private final String runtimeId = UUID.randomUUID().toString();
+    private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
     private volatile boolean shutdown;
 
@@ -130,7 +134,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             String sessionId = UUID.randomUUID().toString();
-            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus);
+            ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
+            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
             SessionTask task = new SessionTask(session, opts);
             session.attachCancellationHandler(task::requestCancellation);
             session.markExecutionQueued();
