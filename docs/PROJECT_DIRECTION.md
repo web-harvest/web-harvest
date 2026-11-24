@@ -187,6 +187,44 @@ Tracking: [Issue #93 — inventory and approve the built-in plugin set](https://
 
 **Exit gate:** end-to-end tests demonstrate semantic resolution, typed binding, compatibility rejection and deterministic execution. Do not claim this phase complete based only on scanning or descriptor parsing.
 
+### Phase F — Separate runtime semantics from visual flow documents
+
+Tracking: [#94](https://github.com/web-harvest/web-harvest/issues/94),
+[#346](https://github.com/web-harvest/web-harvest/issues/346),
+[#348](https://github.com/web-harvest/web-harvest/issues/348),
+[#349](https://github.com/web-harvest/web-harvest/issues/349) and
+[#350](https://github.com/web-harvest/web-harvest/issues/350).
+
+Maintain four explicit concepts with separate responsibilities:
+
+- **Runtime Semantic Model** — Core-owned executable meaning, logical
+  capabilities, typed contracts, preconditions, dependencies, side effects,
+  permissions and resource requirements. It is projected from the exact
+  immutable registry generation selected for the runtime.
+- **Runtime State & Health** — mutable runtime-owned activation, authorization,
+  health, classified faults, quarantine and recovery state. One authoritative
+  health/fault manager owns it; agents and tooling receive read-only projections.
+- **Execution Plan** — a concrete generation-pinned resolution of capabilities,
+  provider bindings, data/control dependencies, policy, resources, deadlines and
+  safe stop/effect boundaries.
+- **Visual Flow Semantic Model** — a tooling-neutral document model for nodes,
+  edges, ports, groups, layout and annotations. It is independent of any IDE,
+  runtime implementation, provider lifecycle and mutable health state.
+
+The Runtime Semantic Model and Visual Flow Semantic Model have independent
+schemas, object graphs and lifecycles. They communicate only through explicit,
+versioned mapping/serialization contracts; neither is a second plugin registry
+or an alternate source of runtime truth. XML remains a supported adapter and
+interchange format, not the visual model or the final semantic authority.
+
+**Exit gate:** runtime validation/dispatch parity for one exact registry
+generation; visual round-trip and schema-evolution tests without loading provider
+implementations or a specific IDE; preservation of unknown visual metadata;
+explicit diagnostics for lossy mappings; and tests proving visual edits cannot
+mutate runtime plans/descriptors and runtime health changes cannot rewrite visual
+documents. Safe capability substitution must respect semantic contracts,
+permissions, resource constraints and side-effect/idempotency state.
+
 ## 8. Quality and release policy
 
 - CI results must identify the exact commit SHA and workflow run.
