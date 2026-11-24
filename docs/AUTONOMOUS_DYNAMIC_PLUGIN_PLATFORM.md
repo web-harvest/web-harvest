@@ -238,6 +238,42 @@ Acceptance evidence must include:
 
 
 
+### 5.1.6 Architecture-diagram visual language
+
+Architecture diagrams are part of the WebHarvest product documentation and must
+use the visual language defined by the canonical website stylesheet:
+[web-harvest/website `css/enterprise.css`](https://github.com/web-harvest/website/blob/main/css/enterprise.css),
+blob `7ed70c03a9eb548f4e54f5419f27d8a63e112f55`. This is the migrated website
+source, not a claim that a new production website deployment has occurred.
+
+Use the website tokens by semantic role rather than decorating diagrams with
+arbitrary colors:
+
+| Role | Token / value | Diagram use |
+|---|---|---|
+| Primary text | `--gray-900` / `#111827` | Node and label text |
+| Secondary text | `--gray-600` / `#4B5563` | Supporting labels and notes |
+| Canvas / surface | `--bg-base` / `#FFFFFF`; `--bg-subtle` / `#F9FAFB` | White canvas, subtle grouping |
+| Borders / connectors | `--gray-200` / `#E5E7EB`; `--gray-500` / `#6B7280` | Node borders and relationship lines |
+| Brand / primary emphasis | `--purple` / `#7B1FA2` | Core-owned boundaries and structural anchors |
+| Brand / action emphasis | `--magenta` / `#D81B60` | Active transitions, selected paths and important interactions |
+| Attention / policy | `--yellow` / `#FFC107` | Decisions, warnings, policy gates and notes |
+| Positive / healthy | `--lime` / `#A4C639` | Success, healthy or completed states only |
+
+Use Inter (with system sans-serif fallbacks), a restrained neutral canvas,
+clear spacing and rounded, lightly bordered surfaces. The purple-to-magenta
+brand gradient belongs to large website surfaces; do not use it as a diagram
+background or behind small labels. Keep text contrast high and color redundant
+with labels, line styles or explicit state names so meaning never depends on
+color alone. Avoid rainbow node palettes, decorative shadows, and unnecessary
+icons.
+
+GitHub renders Mermaid rather than the website CSS itself, so each diagram
+declares a compact Mermaid theme using the same source tokens. These values are
+a presentation mapping, not a second design system. When the website tokens
+change, update this mapping and its source blob reference in the same change.
+Keep the diagram structure and semantic meaning independent of styling.
+
 ### 5.1.6 Architecture diagrams
 
 The diagrams below are normative target-architecture views, not claims about the
@@ -246,6 +282,7 @@ current implementation.
 #### Model boundaries and ownership
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","labelBoxBkgColor":"#F3F4F6","labelBoxBorderColor":"#D1D5DB","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60","sequenceNumberColor":"#FFFFFF"}}}%%
 flowchart TB
   subgraph VIS["Visual Flow Semantic Model — tooling-neutral"]
     VDOC["Visual workflow document"]
@@ -280,6 +317,7 @@ exposed as an observation/overlay and never becomes visual-document truth.
 #### Configure, plan and execute
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","labelBoxBkgColor":"#F3F4F6","labelBoxBorderColor":"#D1D5DB","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60","sequenceNumberColor":"#FFFFFF"}}}%%
 sequenceDiagram
   autonumber
   actor User
@@ -314,6 +352,7 @@ sequenceDiagram
 #### Fault isolation and safe capability substitution
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","labelBoxBkgColor":"#F3F4F6","labelBoxBorderColor":"#D1D5DB","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60","sequenceNumberColor":"#FFFFFF"}}}%%
 sequenceDiagram
   autonumber
   participant Engine as Runtime Engine
@@ -1049,6 +1088,7 @@ These diagrams describe the required target contract. They do not imply that the
 current implementation retains task handles or proves quiescence.
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","labelBoxBkgColor":"#F3F4F6","labelBoxBorderColor":"#D1D5DB","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60","sequenceNumberColor":"#FFFFFF"}}}%%
 stateDiagram-v2
   [*] --> ADMITTED
   ADMITTED --> RUNNING: worker starts
@@ -1067,6 +1107,7 @@ stateDiagram-v2
 ```
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif","primaryColor":"#FCE7F3","primaryTextColor":"#111827","primaryBorderColor":"#D81B60","secondaryColor":"#F3E8FF","secondaryTextColor":"#111827","secondaryBorderColor":"#7B1FA2","tertiaryColor":"#F9FAFB","tertiaryTextColor":"#111827","tertiaryBorderColor":"#D1D5DB","lineColor":"#6B7280","textColor":"#111827","mainBkg":"#FFFFFF","nodeBorder":"#D1D5DB","clusterBkg":"#F9FAFB","clusterBorder":"#E5E7EB","edgeLabelBackground":"#FFFFFF","actorBkg":"#F9FAFB","actorBorder":"#7B1FA2","actorTextColor":"#111827","actorLineColor":"#6B7280","signalColor":"#6B7280","signalTextColor":"#111827","labelBoxBkgColor":"#F3F4F6","labelBoxBorderColor":"#D1D5DB","noteBkgColor":"#FFF8DB","noteBorderColor":"#FFC107","noteTextColor":"#374151","activationBkgColor":"#FCE7F3","activationBorderColor":"#D81B60","sequenceNumberColor":"#FFFFFF"}}}%%
 sequenceDiagram
   autonumber
   actor Caller
