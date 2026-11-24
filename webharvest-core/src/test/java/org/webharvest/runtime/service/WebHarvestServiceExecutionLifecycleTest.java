@@ -114,6 +114,37 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testShutdownNowMarksExecutorDrainedQueuedTaskExited() throws InterruptedException {
+        java.util.concurrent.ThreadPoolExecutor delegate = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        delegate.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                new CountDownLatch(1).await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        ExecutorService wrappedExecutor = new DelegatingExecutorService(delegate);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            wrappedExecutor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            service.shutdownNow();
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertTrue(tracked.awaitExecutionCompletion(0));
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testRejectedSubmissionRollsBackRegistryAndExitsSession() throws InterruptedException {
         EventBus eventBus = new EventBus();
         CapturingCreatedListener capture = new CapturingCreatedListener();
@@ -237,6 +268,44 @@ public class WebHarvestServiceExecutionLifecycleTest {
                     // Remain active until the test releases this operation.
                 }
             }
+        }
+    }
+
+    private static class DelegatingExecutorService extends AbstractExecutorService {
+        private final ExecutorService delegate;
+
+        private DelegatingExecutorService(ExecutorService delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void shutdown() {
+            delegate.shutdown();
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            return delegate.shutdownNow();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return delegate.isShutdown();
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return delegate.isTerminated();
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return delegate.awaitTermination(timeout, unit);
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            delegate.execute(command);
         }
     }
 
