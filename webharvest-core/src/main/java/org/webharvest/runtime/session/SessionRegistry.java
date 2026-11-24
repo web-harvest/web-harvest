@@ -190,6 +190,7 @@ public interface SessionRegistry {
             throw new IllegalArgumentException("Session cannot be null");
         }
         Optional<ScraperSession> current = getSession(session.getSessionId());
+        // NOPMD - exact owner identity, not value equality, is required here.
         return current.isPresent() && current.get() == session
             && unregister(session.getSessionId());
     }
