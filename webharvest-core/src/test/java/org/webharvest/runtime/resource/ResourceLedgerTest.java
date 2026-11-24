@@ -541,6 +541,57 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testGenerationPinAdmissionIsAtomicWithRetirement() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "snapshot-race");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-race", 1);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicReference<ResourceLedger.GenerationPin> pin = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        Thread pinner = new Thread(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                pin.set(ledger.pinGeneration(owner, generation));
+            } catch (IllegalStateException retirementWon) {
+                // Retirement may win the same generation monitor.
+            } catch (Throwable unexpected) {
+                failure.set(unexpected);
+            }
+        });
+        Thread retirer = new Thread(() -> {
+            ready.countDown();
+            try {
+                start.await();
+                ledger.beginGenerationRetirement(generation);
+            } catch (Throwable unexpected) {
+                failure.set(unexpected);
+            }
+        });
+
+        pinner.start();
+        retirer.start();
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        pinner.join(5000);
+        retirer.join(5000);
+
+        assertFalse(pinner.isAlive());
+        assertFalse(retirer.isAlive());
+        assertNull(failure.get());
+        expectThrows(IllegalStateException.class,
+            () -> ledger.pinGeneration(new ExecutionOwner("runtime-a", "late-session", 2), generation));
+
+        if (pin.get() != null) {
+            assertEquals(ledger.getActiveGenerationPinCount(generation), 1);
+            pin.get().close();
+        }
+        assertEquals(ledger.getActiveGenerationPinCount(generation), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testSameLocalResourceIdCanCoexistAcrossOwnersAndGenerations()
         throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
