@@ -4256,3 +4256,49 @@ This finding strengthens #354 (authoritative admission, task handles and quiesce
 This finding strengthens #355 (resource/subscription leases and drain), #357 (runtime/session context ownership), #354 (no callback after worker quiescence), and #349 (runtime-owned lifecycle authority). It also constrains #94: a single EventBus instance is not itself the design objective; one explicit owner and deterministic subscription lifecycle are.
 
 **Decision boundary:** source-backed documentation only. No runtime/API/test/POM changes, no concurrency or heap tests executed, no merge/release. #346 remains unaccepted; runtime implementation remains STOP.
+
+ 
+## 15.96 — Shared EventBus decision, legacy bus divergence and cross-session resource dispatch (2026-11-24)
+
+**Inspection baseline:** canonical application main at 1729bdf4620a66686d02605083e27e27d1ab3944. This is a source-level audit; no runtime reproduction, concurrency test or benchmark was run. The target decision below supersedes any earlier wording that left per-session EventBus isolation as a possible target.
+
+### Architecture decision: one shared EventBus per runtime
+
+The intended runtime composition is now explicit:
+
+- One canonical, implementation-independent EventBus contract and one shared runtime-owned instance per runtime. All sessions, nested executions, services and components inside that runtime use it.
+- Independent runtime instances own independent instances. The bus is not process-static and is not shared accidentally through a static injector.
+- Per-session or per-subsystem EventBus instances are not an isolation strategy. Event ownership, correlation and resource isolation use immutable runtime/session/execution-generation identity and owner-bound registrations.
+- Future synchronous/asynchronous or local/distributed delivery implementations may implement the same contract. They do not introduce competing event APIs, registries or lifecycle authorities.
+- The runtime may adapt Guava EventBus for compatibility, but the canonical embedding/runtime contract must not require Guava types. A host-provided bus remains host-owned; WebHarvest owns only registrations it creates.
+
+This is a target architecture decision, not a claim that all current construction paths already comply.
+
+### Source-confirmed divergence in legacy construction paths
+
+- WebHarvestServiceImpl(ExecutorService) creates one new EventBus and stores it as a service field. Its executeAsync path passes that same instance to every ScraperSessionImpl, each ScraperContext, and each Scraper. Source blob: 10e60a93a70b417cdb55dd674ad2e5bc8f9bbdec.
+- The convenience ScraperSessionImpl(sessionId, clientId, config) constructor independently creates new EventBus. The overload accepting an EventBus allows explicit sharing, but the convenience constructor does not receive a runtime owner and silently creates a session-local bus. Source blob: 78d07d1c485ea215d68d6d415f36b2be0c180a4f.
+- The Guice ScraperModule path binds EventBus in ScrapingScope, while the IDE execution path described in section 15.75 creates a fresh bus for a job and Guice subscriber discovery resolves through the static injector. These are legacy composition seams, not separate target topologies. Source blobs and call-site details are recorded in sections 15.75 and 15.95.
+- Therefore the current system has a shared service path plus convenience/scoped paths that can create distinct buses. Migration must route CLI, IDE, service, direct API and nested execution through one explicit runtime composition root. A compatibility constructor may remain temporarily, but it must delegate to an explicit owner or be clearly marked legacy/deprecated; it must not silently establish a new authoritative bus.
+
+### Source-confirmed cross-session cleanup hazard on the shared service bus
+
+- StandaloneConnectionPool.registerForSession(eventBus) registers the pool as a subscriber on the supplied bus. Its onExecutionEnd(SessionCompletedEvent), onExecutionError(SessionFailedEvent) and onExecutionCancelled(SessionCancelledEvent) handlers each call closeAllConnections() without checking which session emitted the event. Source blob: ab4a92fb63599e88a55821fe141bf5aa50327008.
+- The service path deliberately shares one EventBus across sessions. Database plugin operations register their own pools on the context's bus (see section 15.74 and PR #352 section 7.24). Consequently, a terminal event from session A is delivered to pools registered by session B as well; the inspected pool handlers do not filter by session identity. This is a source-proven cross-session cleanup hazard, not a reproduced runtime incident.
+- The correct fix is not a private EventBus per session. Each registration must carry immutable owner identity and an explicit idempotent lease/registration handle; callbacks must validate runtimeId, sessionId and executionGeneration and coordinate close with operation leases and worker quiescence (#354/#355). Prefer a runtime-owned resource coordinator subscribing once and routing to the matching owner where that yields simpler ownership.
+- Guava EventBus delivery may be concurrent when different threads post events. A shared transport does not make subscriber state thread-safe; callback serialization, idempotence and per-owner synchronization must be explicit. Do not globally serialize unrelated sessions without measurements and a documented ordering need.
+
+### Required migration and verification
+
+1. Inventory every EventBus constructor/binding/provider and every runtime/session/context/scraper creation path; map each to its owning runtime composition root. Include direct constructors, CLI, IDE, service, tests, nested Include/Loop execution and embedding APIs.
+2. Introduce the neutral EventBus contract only as part of the accepted runtime/SPI architecture; keep Guava as an adapter, not a public mandatory type. Define publish, registration token, close semantics, delivery concurrency, ordering guarantees, subscriber failure handling and host ownership.
+3. Make one runtime-owned instance flow through all sessions and nested work. Independent runtimes must not share buses or injector state; no session/subsystem factory may silently allocate a new authoritative bus.
+4. Give each session-owned subscription/resource an owner identity and closeable handle. Reject stale-generation callbacks and make registration-vs-retirement atomic.
+5. Add deterministic shared-bus tests: session A completes/fails/cancels while session B holds an active JDBC operation; B's resource must remain open and usable. Also test two independent runtimes, CLI/IDE/service parity, nested execution identity, concurrent publish, registration-vs-close, no callbacks after owner retirement and host-owned bus preservation.
+6. Measure dispatch latency, callback contention, allocation, registration churn and retained subscribers under representative concurrent session counts. Do not add a global dispatch lock or per-session buses by intuition.
+
+### Decision boundary
+
+This section reconciles the source audit with the agreed target direction. It strengthens #354 (truthful worker quiescence), #355 (resource leases and owner-safe drain), #356 (shared EventBus subscriber lifecycle), #357 (immutable runtime/session context identity) and #349 (runtime composition/lifecycle authority). The shared-bus decision is not a substitute for those contracts.
+
+**Evidence status:** source inspection only. No production/API/test/POM changes, no runtime reproduction, no concurrency/heap benchmark, no merge/release. #346 SPI acceptance and #94 integration gates remain mandatory; runtime implementation remains STOP.
