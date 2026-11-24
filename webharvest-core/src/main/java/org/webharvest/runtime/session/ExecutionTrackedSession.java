@@ -44,6 +44,9 @@ package org.webharvest.runtime.session;
  */
 public interface ExecutionTrackedSession extends ScraperSession {
 
+    /** Returns the immutable runtime/session/generation owner identity. */
+    ExecutionOwner getExecutionOwner();
+
     /** Returns the latest observed worker execution state. */
     ExecutionState getExecutionState();
 
