@@ -171,7 +171,8 @@ public final class ResourceLedger {
         Entry entry = new Entry(key, resourceId, scope, owner, generationId, abortAction, closeAction);
         Entry existing = entries.putIfAbsent(key, entry);
         if (existing != null) {
-            throw new IllegalStateException("Resource ID is already registered: " + resourceId);
+            throw new IllegalStateException("Resource ID is already registered for this owner: "
+                + resourceId + " (" + scope + ')');
         }
         return new Registration(this, entry);
     }
