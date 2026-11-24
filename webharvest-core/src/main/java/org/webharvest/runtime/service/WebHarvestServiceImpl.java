@@ -41,6 +41,8 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.client.ClientContext;
+import org.webharvest.runtime.session.ExecutionContextCarrier;
+import org.webharvest.runtime.session.ExecutionIdentity;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
@@ -51,6 +53,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Default implementation of {@link WebHarvestService}.
