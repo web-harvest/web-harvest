@@ -84,8 +84,15 @@ public class AttributeHolderScope<AHT extends AttributeHolder>
      *      this {@code Scope}
      */
     public void exit() throws OutOfScopeException {
-        assertInScope();
-        this.holder.get().pop();
+        Stack<AHT> current = holder.get();
+        if (current.isEmpty()) {
+            holder.remove();
+            throw new OutOfScopeException("not in " + getClass().getSimpleName()); //NOI18N
+        }
+        current.pop();
+        if (current.isEmpty()) {
+            holder.remove();
+        }
     }
 
     /**
@@ -140,6 +147,7 @@ public class AttributeHolderScope<AHT extends AttributeHolder>
 
     private void assertInScope() throws OutOfScopeException {
         if (holder.get().isEmpty()) {
+            holder.remove();
             throw new OutOfScopeException("not in "
                     + getClass().getSimpleName()); //NOI18N
         }
