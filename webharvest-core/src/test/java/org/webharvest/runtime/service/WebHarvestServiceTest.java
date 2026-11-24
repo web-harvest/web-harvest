@@ -13,6 +13,7 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
+import org.webharvest.runtime.session.TerminationDisposition;
 import org.webharvest.runtime.session.events.*;
 
 import java.time.Duration;
@@ -228,6 +229,7 @@ public class WebHarvestServiceTest {
                 "Cancellation should interrupt the active worker");
             assertTrue(session.awaitCompletion(1000),
                 "Business cancellation should be observable independently");
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACE_IN_PROGRESS);
             assertFalse(tracked.awaitExecutionCompletion(50),
                 "Worker quiescence must remain pending while the worker is still blocked");
             assertEquals(tracked.getExecutionState(), ExecutionState.INTERRUPT_REQUESTED);
@@ -236,6 +238,7 @@ public class WebHarvestServiceTest {
             assertTrue(tracked.awaitExecutionCompletion(5000),
                 "Worker exit should be observed after the blocking operation is released");
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACEFUL);
         } finally {
             listener.release.countDown();
         }
