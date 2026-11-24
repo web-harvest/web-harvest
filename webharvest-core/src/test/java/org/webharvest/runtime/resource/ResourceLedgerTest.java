@@ -192,6 +192,7 @@ public class ResourceLedgerTest {
         assertEquals(closeCount.get(), 0);
 
         registration.markOwnerQuiescent();
+        expectThrows(IllegalStateException.class, registration::acquire);
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
         assertEquals(closeCount.get(), 1);
         registration.close();
@@ -309,6 +310,48 @@ public class ResourceLedgerTest {
         registration.close();
         assertEquals(closeCount.get(), 1);
         assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testDrainWaitsForInProgressAbortAction() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        CountDownLatch abortEntered = new CountDownLatch(1);
+        CountDownLatch releaseAbort = new CountDownLatch(1);
+        AtomicInteger closeCount = new AtomicInteger();
+        AtomicReference<Throwable> abortFailure = new AtomicReference<>();
+        ResourceLedger.Registration registration = ledger.registerOwned(
+            "ftp/operation", ResourceLedger.Scope.OPERATION,
+            new ExecutionOwner("runtime-a", "session-a", 1),
+            () -> {
+                abortEntered.countDown();
+                releaseAbort.await();
+            }, closeCount::incrementAndGet);
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+
+        Thread aborter = new Thread(() -> {
+            try {
+                registration.abort();
+            } catch (Throwable failure) {
+                abortFailure.set(failure);
+            }
+        });
+        aborter.start();
+        try {
+            assertTrue(abortEntered.await(5, TimeUnit.SECONDS));
+            ResourceLedger.DrainResult whileAborting = registration.drainAndClose(Duration.ZERO);
+            assertEquals(whileAborting.getState(), ResourceLedger.State.QUARANTINED);
+            assertEquals(closeCount.get(), 0);
+        } finally {
+            releaseAbort.countDown();
+        }
+        aborter.join(5000);
+
+        assertFalse(aborter.isAlive());
+        assertNull(abortFailure.get());
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertEquals(closeCount.get(), 1);
+        registration.close();
     }
 
     @Test(groups = {"unit", "runtime"})
