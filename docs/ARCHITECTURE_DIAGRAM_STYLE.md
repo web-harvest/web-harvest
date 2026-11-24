@@ -82,7 +82,7 @@ Use white as the canvas, subtle gray for grouped regions, gray-200/300 for bound
 
 ## 5. Mermaid theme baseline
 
-Use this base theme for new Mermaid diagrams, then add only diagram-specific overrides. The values mirror the inspected CSS tokens above.
+Use this base theme for new Mermaid diagrams, then add only diagram-specific overrides. The font, text, border and neutral values mirror the inspected CSS tokens above. The pale fills (`#FCE7F3`, `#F3E8FF`, `#FFF8DB`) are intentionally derived low-saturation tints of the observed magenta, purple and yellow accents; they are diagram-specific accessibility/readability choices, not literal CSS custom properties from the website.
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{
