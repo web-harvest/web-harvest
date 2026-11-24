@@ -132,6 +132,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.CANCELLED_BEFORE_START);
             assertTrue(tracked.awaitExecutionCompletion(0));
         } finally {
             releaseBlocker.countDown();
@@ -184,6 +185,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACE_IN_PROGRESS);
             assertFalse(tracked.awaitExecutionCompletion(50),
                 "The worker remains active in its controlled callback after cancellation");
             listener.release.countDown();
