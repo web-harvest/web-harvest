@@ -207,6 +207,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
             listener.lease.close();
             assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
+            // The close latch is signalled inside the callback, before CLOSED is published.
+            // Wait for the service executor to finish the drain before asserting final state.
+            service.shutdown();
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
             assertEquals(listener.closeCount.get(), 1);
         } finally {
