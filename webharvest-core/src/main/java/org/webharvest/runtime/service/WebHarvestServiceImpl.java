@@ -506,6 +506,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                                 session.markKillRequested();
                                 session.markExecutionUnresponsive();
                                 session.markKillUnresponsive();
+                                if (worker != null) {
+                                    worker.interrupt();
+                                }
                             }
                         }
                     }, CANCELLATION_GRACE_SECONDS, TimeUnit.SECONDS);
