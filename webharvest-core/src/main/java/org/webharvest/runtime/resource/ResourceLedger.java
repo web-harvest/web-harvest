@@ -301,6 +301,10 @@ public final class ResourceLedger {
         public void abort() {
             AbortAction action;
             synchronized (entry) {
+                if (entry.state == State.OPEN) {
+                    throw new IllegalStateException(
+                        "Resource close must be requested before abort: " + entry.resourceId);
+                }
                 if (entry.abortInvoked || entry.state == State.DRAINING
                     || entry.state == State.CLOSED || entry.state == State.CLOSE_FAILED) {
                     return;
@@ -317,6 +321,9 @@ public final class ResourceLedger {
             try {
                 action.abort();
             } catch (Throwable failure) {
+                if (failure instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
                 synchronized (entry) {
                     entry.abortFailure = failure;
                 }
@@ -396,6 +403,9 @@ public final class ResourceLedger {
                         entry.notifyAll();
                     }
                 } catch (Throwable failure) {
+                    if (failure instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
                     synchronized (entry) {
                         entry.closeFailure = failure;
                         entry.state = State.CLOSE_FAILED;
