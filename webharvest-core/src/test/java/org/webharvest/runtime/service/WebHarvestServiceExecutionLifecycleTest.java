@@ -43,6 +43,7 @@ import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
+import org.webharvest.runtime.session.TerminationDisposition;
 import org.webharvest.runtime.session.events.SessionCreatedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 
@@ -99,6 +100,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.CANCELLED_BEFORE_START);
             assertTrue(tracked.awaitExecutionCompletion(0));
         } finally {
             service.shutdown();
@@ -187,6 +189,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             listener.release.countDown();
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.WORKER_EXIT_CONFIRMED);
         } finally {
             listener.release.countDown();
             service.shutdown();
@@ -242,6 +245,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Deadline should interrupt the active worker");
             assertEquals(session.getStatus(), SessionStatus.RUNNING,
                 "A timeout request is not itself a terminal business result");
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACE_IN_PROGRESS);
             assertFalse(tracked.awaitExecutionCompletion(50),
                 "The worker is still executing its non-cooperative callback");
 
@@ -249,6 +253,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
             assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACEFUL);
             assertTrue(session.getError() instanceof TimeoutException);
         } finally {
             listener.release.countDown();
@@ -272,6 +277,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             service.shutdownNow();
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
             assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.KILL_UNRESPONSIVE);
             assertFalse(tracked.awaitExecutionCompletion(0));
 
             listener.release.countDown();
