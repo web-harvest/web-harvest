@@ -151,6 +151,18 @@ public class StandaloneConnectionPoolTest {
         }
     }
 
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void rejectsChangingOwnerOnTheSameEventBus() {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        EventBus eventBus = new EventBus();
+        pool.registerForSession(eventBus, "session-a");
+        try {
+            pool.registerForSession(eventBus, "session-b");
+        } finally {
+            pool.closeAllConnections();
+        }
+    }
+
     @Test
     public void sharedEventBusCompletionClosesOnlyTheMatchingSessionPool() throws Exception {
         EventBus eventBus = new EventBus();
