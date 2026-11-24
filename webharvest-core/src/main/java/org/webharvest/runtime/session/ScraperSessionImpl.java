@@ -99,6 +99,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ScraperSessionImpl implements ExecutionTrackedSession {
     
     private final String sessionId;
+    private final ExecutionIdentity executionIdentity;
     private final String clientId;
     private final Config config;
     private final SessionMetrics metrics;
@@ -125,7 +126,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * @throws IllegalArgumentException if sessionId is null/empty or config is null
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config) {
-        this(sessionId, clientId, config, new EventBus());
+        this(ExecutionIdentity.legacy(sessionId), clientId, config, new EventBus());
     }
     
     /**
@@ -138,8 +139,13 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * @throws IllegalArgumentException if any parameter is invalid
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config, EventBus eventBus) {
-        if (sessionId == null || sessionId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Session ID cannot be null or empty");
+        this(ExecutionIdentity.legacy(sessionId), clientId, config, eventBus);
+    }
+
+    /** Creates a session with an explicit runtime/session/generation identity. */
+    public ScraperSessionImpl(ExecutionIdentity executionIdentity, String clientId, Config config, EventBus eventBus) {
+        if (executionIdentity == null) {
+            throw new IllegalArgumentException("Execution identity cannot be null");
         }
         if (config == null) {
             throw new IllegalArgumentException("Config cannot be null");
@@ -148,7 +154,8 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
         
-        this.sessionId = sessionId;
+        this.sessionId = executionIdentity.getSessionId();
+        this.executionIdentity = executionIdentity;
         this.clientId = clientId;
         this.config = config;
         this.metrics = new SessionMetrics();
@@ -167,6 +174,11 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     @Override
     public String getSessionId() {
         return sessionId;
+    }
+
+    @Override
+    public ExecutionIdentity getExecutionIdentity() {
+        return executionIdentity;
     }
     
     @Override
