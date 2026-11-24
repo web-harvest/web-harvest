@@ -189,7 +189,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 throw new TimeoutException("Session execution exceeded timeout: " + task.options.getTimeout());
             }
 
-            session.markCompleted();
+            if (!task.completeSuccessfully()) {
+                throw new TimeoutException("Session execution exceeded timeout: " + task.options.getTimeout());
+            }
             LOG.info("Session {} completed successfully in {}",
                 session.getSessionId(), session.getMetrics().getDuration());
         } catch (InterruptedException interrupted) {
@@ -310,6 +312,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private boolean started;
         private boolean cancellationRequested;
         private boolean timedOut;
+        private boolean completionCommitted;
         private boolean exited;
 
         private SessionTask(ScraperSessionImpl session, SessionOptions options) {
@@ -380,7 +383,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         private synchronized void requestTimeout() {
-            if (exited || !started) {
+            if (exited || !started || completionCommitted) {
                 return;
             }
             timedOut = true;
@@ -397,6 +400,20 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         private synchronized boolean isTimedOut() {
             return timedOut;
+        }
+
+        /**
+         * Commits successful business completion while holding the same gate
+         * used by the timeout callback. A deadline cannot interrupt a worker
+         * after success has been committed.
+         */
+        private synchronized boolean completeSuccessfully() {
+            if (timedOut || cancellationRequested || exited) {
+                return false;
+            }
+            completionCommitted = true;
+            session.markCompleted();
+            return true;
         }
 
         private synchronized void scheduleUnresponsiveEscalation() {
