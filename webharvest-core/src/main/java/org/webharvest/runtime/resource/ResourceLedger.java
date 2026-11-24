@@ -323,14 +323,11 @@ public final class ResourceLedger {
 
         /**
          * Acquires a use lease attributed to the actual execution owner.
-         * Every scope requires explicit attribution: a session-scoped
+         * Every scope requires explicit attribution; a session-scoped
          * registration must not silently attribute a foreign caller to its owner.
-         * The state check and lease insertion share the same monitor as close
-         * admission, so no lease can escape CLOSE_REQUESTED.
-         */
-        /**
-         * Acquires a lease for an explicit execution owner. Runtime-scoped
-         * resources use this overload so every in-flight consumer is reportable.
+         * Runtime-scoped resources use this overload to report every consumer.
+         * The state check and lease insertion share the close-admission monitor,
+         * so no lease can escape CLOSE_REQUESTED.
          */
         public Lease acquire(ExecutionOwner useOwner) {
             Objects.requireNonNull(useOwner, "Lease execution owner cannot be null");
