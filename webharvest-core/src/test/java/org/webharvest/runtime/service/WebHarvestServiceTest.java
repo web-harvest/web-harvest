@@ -169,6 +169,7 @@ public class WebHarvestServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         CountDownLatch blockerStarted = new CountDownLatch(1);
         CountDownLatch releaseBlocker = new CountDownLatch(1);
+        boolean[] serviceOwnsExecutor = {false};
         executor.submit(() -> {
             blockerStarted.countDown();
             try {
@@ -182,6 +183,7 @@ public class WebHarvestServiceTest {
             assertTrue(blockerStarted.await(5, TimeUnit.SECONDS),
                 "The executor blocker should start before the session is submitted");
             service = new WebHarvestServiceImpl(executor, new SessionRegistryImpl(), new EventBus());
+            serviceOwnsExecutor[0] = true;
 
             ScraperSession session = service.executeAsync(mockConfig, null, null);
             assertTrue(session.cancel(), "Queued session should accept cancellation");
@@ -194,6 +196,9 @@ public class WebHarvestServiceTest {
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
         } finally {
             releaseBlocker.countDown();
+            if (!serviceOwnsExecutor[0]) {
+                executor.shutdownNow();
+            }
         }
 
         service.shutdown();
