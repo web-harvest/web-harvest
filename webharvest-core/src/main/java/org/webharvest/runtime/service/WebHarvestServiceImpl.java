@@ -190,7 +190,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             if (!task.completeSuccessfully()) {
-                throw new TimeoutException("Session execution exceeded timeout: " + task.options.getTimeout());
+                if (task.isTimedOut()) {
+                    throw new TimeoutException("Session execution exceeded timeout: " + task.options.getTimeout());
+                }
+                return;
             }
             LOG.info("Session {} completed successfully in {}",
                 session.getSessionId(), session.getMetrics().getDuration());
@@ -408,12 +411,19 @@ public class WebHarvestServiceImpl implements WebHarvestService {
          * after success has been committed.
          */
         private synchronized boolean completeSuccessfully() {
-            if (timedOut || cancellationRequested || exited) {
+            if (timedOut || cancellationRequested || exited || session.getStatus().isTerminal()) {
                 return false;
             }
-            completionCommitted = true;
-            session.markCompleted();
-            return true;
+            try {
+                session.markCompleted();
+                completionCommitted = true;
+                return true;
+            } catch (IllegalStateException concurrentTermination) {
+                if (session.getStatus().isTerminal()) {
+                    return false;
+                }
+                throw concurrentTermination;
+            }
         }
 
         private synchronized void scheduleUnresponsiveEscalation() {
