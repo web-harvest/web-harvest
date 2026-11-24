@@ -93,7 +93,7 @@ import com.google.inject.name.Names;
  */
 public final class ScraperModule extends AbstractModule {
 
-    private static final ScraperScope SCRAPER_SCOPE = new ScraperScope();
+    private final ScraperScope scraperScope = new ScraperScope();
 
     private final String workingDir;
 
@@ -174,8 +174,8 @@ public final class ScraperModule extends AbstractModule {
     }
     
     private void bindScopes() {
-        bindScope(ScrapingScope.class, SCRAPER_SCOPE);
-        bind(ScraperScope.class).toInstance(SCRAPER_SCOPE);
+        bindScope(ScrapingScope.class, scraperScope);
+        bind(ScraperScope.class).toInstance(scraperScope);
         
         bindListener(TypeMatchers.subclassesOf(ScrapingAware.class),
                 new ScrapingAwareTypeListener());
