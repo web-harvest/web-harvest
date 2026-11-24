@@ -182,13 +182,14 @@ public class ScrapingAwareHelperTest {
     }
 
     @Test
-    public void notificationContinuesAfterRuntimeExceptionAndPreservesFailures()
-        throws InterruptedException {
+    public void notificationContinuesAfterRuntimeExceptionAndPreservesFailures() {
         ScrapingInterceptor.ScrapingAwareHelper helper =
                 new ScrapingInterceptor.ScrapingAwareHelper();
         Harvester harvester = mock(Harvester.class);
         RuntimeException firstFailure = new IllegalStateException("first listener failed");
         RuntimeException secondFailure = new IllegalArgumentException("second listener failed");
+        RuntimeException afterFirstFailure = new IllegalStateException("first after-listener failed");
+        RuntimeException afterSecondFailure = new IllegalArgumentException("second after-listener failed");
         AtomicInteger laterListenerCalls = new AtomicInteger();
 
         helper.addListener(new ScrapingAware() {
@@ -199,7 +200,7 @@ public class ScrapingAwareHelperTest {
 
             @Override
             public void onAfterScraping(Harvester value) {
-                throw firstFailure;
+                throw afterFirstFailure;
             }
         });
         helper.addListener(new ScrapingAware() {
@@ -210,7 +211,7 @@ public class ScrapingAwareHelperTest {
 
             @Override
             public void onAfterScraping(Harvester value) {
-                throw secondFailure;
+                throw afterSecondFailure;
             }
         });
         helper.addListener(new ScrapingAware() {
@@ -239,9 +240,9 @@ public class ScrapingAwareHelperTest {
             helper.onAfterScraping(harvester);
             fail("Expected aggregated after-listener failure");
         } catch (RuntimeException actual) {
-            assertSame(actual, firstFailure);
+            assertSame(actual, afterFirstFailure);
             assertEquals(actual.getSuppressed().length, 1);
-            assertSame(actual.getSuppressed()[0], secondFailure);
+            assertSame(actual.getSuppressed()[0], afterSecondFailure);
         }
         assertEquals(laterListenerCalls.get(), 2);
     }
