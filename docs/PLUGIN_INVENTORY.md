@@ -3946,3 +3946,31 @@ A focused re-check of the P0-03 `LockedRegistry` finding establishes the concret
 **Dependency:** this is a concrete P0-03 acceptance item in #356. It should be fixed as part of the shared registry contract before registry consumers use snapshots for runtime/session/plugin generation lifecycle. No unrelated registry rewrite is implied.
 
 **Evidence boundary:** direct source and test inspection only. No runtime concurrency test or build was executed. Documentation only; no runtime/API/test/POM change, merge or release. #346 remains unaccepted; implementation remains STOP.
+
+
+## 15.89 — Scraping interceptor callback failures can bypass mandatory scope teardown (2026-11-24)
+
+**Repository baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Evidence:** direct source and test inspection; no runtime experiment or test execution.
+
+### Source trace
+
+- `ScrapingInterceptor.invoke(Injector, Harvester, Callback)` enters the `ScraperScope`, then calls `ScrapingAwareHelper.onBeforeScraping()` **before** entering the `try/finally` that protects the invocation. If any before-listener throws, the method exits without calling `onAfterScraping()` or `scope.exit()`. Source blob: `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`.
+- In the `finally`, `helper.onAfterScraping()` runs before `scope.exit()`. If an after-listener throws, `scope.exit()` is skipped. The callback's original exception can also be replaced by an after-listener exception rather than preserved as the primary failure with cleanup failures attached.
+- Both helper notification methods iterate the mutable listener list directly and stop at the first thrown exception. Later listeners do not receive the lifecycle notification. The list is an unsynchronized `ArrayList`; registration has no removal token or retirement boundary.
+- `ScrapingInterceptorTest` tests the helper methods and listener notification in isolation, but contains no interceptor-level test for before-listener failure, after-listener failure, callback failure combined with cleanup failure, or proof that scope exit always occurs. Test blob: `3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff`.
+
+### Required lifecycle semantics
+
+1. Once `scope.enter()` succeeds, `scope.exit()` must execute exactly once on every exit path, including before-listener, body and after-listener failures.
+2. Before/after listener delivery must define whether all listeners are attempted. For lifecycle cleanup, attempt every eligible after-listener even if an earlier one fails; preserve all failures.
+3. Preserve the primary body/before failure and attach teardown failures as suppressed/aggregated causes; do not silently replace the original failure.
+4. Snapshot the owner-bound listener registrations for one invocation. Registration/retirement must be atomic with respect to snapshot acquisition; do not iterate a mutable shared list concurrently.
+5. Define whether before-listeners successfully entered are paired with after-listeners in reverse order, and encode that contract in tests.
+6. Add interceptor-level deterministic tests for before failure, body failure, after failure, multiple failing listeners, nested scope restoration and exactly-once scope exit. Use a test seam for scope/helper acquisition rather than relying on static global Injector state.
+
+### Dependency
+
+This is part of #356's callback and mandatory teardown acceptance. It also depends on #354's worker/quiescence contract: listener disposal must not be used as a substitute for in-flight callback drain. Keep the shared service EventBus decision unchanged.
+
+**Decision boundary:** documentation only. No runtime implementation, API or test changes, POM changes, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
