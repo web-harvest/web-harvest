@@ -184,6 +184,10 @@ public final class ScrapingInterceptor implements MethodInterceptor {
     // TODO Missing unit test
     // TODO It is easy to register listener but how about unregistering it?
     // TODO Resolve duplication of methods with ScrapingAware
+    /**
+     * Thread-safe helper for snapshot-based scraping lifecycle notification.
+     * Concurrent scraping scopes may invoke the same listener concurrently.
+     */
     @Singleton
     public static class ScrapingAwareHelper {
 
@@ -286,6 +290,7 @@ public final class ScrapingInterceptor implements MethodInterceptor {
                 }
             }
 
+            /** Returns whether this exact registration token has been closed. */
             public boolean isClosed() {
                 return closed.get();
             }
