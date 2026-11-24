@@ -143,7 +143,7 @@ public class DefaultHandlerHolderTest {
         Harvester second = mock(Harvester.class);
         RecordingHandler handler = new RecordingHandler();
         holder.register(handler);
-        when(registry.lookup(first)).thenReturn(eventBus, null);
+        when(registry.lookup(first)).thenReturn(eventBus);
         when(registry.lookup(second)).thenReturn(eventBus);
 
         holder.onHarvesterEvent(new TestHarvesterEvent(first));
@@ -154,6 +154,7 @@ public class DefaultHandlerHolderTest {
             "Only matching event types on active harvester routes should be dispatched");
 
         holder.onAfterScraping(first);
+        doReturn(null).when(registry).lookup(first);
         holder.onHarvesterEvent(new TestHarvesterEvent(first));
         holder.onHarvesterEvent(new TestHarvesterEvent(second));
         assertEquals(handler.calls.get(), 3,
