@@ -38,9 +38,11 @@ import java.util.Objects;
 /**
  * Stable identity of one immutable registry generation within one runtime.
  *
- * <p>The opaque value may be a deterministic snapshot digest or a unique
- * publication identifier. It is deliberately distinct from an execution
- * generation, which identifies one session/task owner.</p>
+ * <p>The opaque value identifies one generation lifetime and must be unique
+ * among generations that may coexist in the same runtime. It may contain a
+ * snapshot digest, but a digest alone is insufficient if the same snapshot can
+ * be published with a distinct live provider/loader lifecycle. It is deliberately
+ * distinct from an execution generation, which identifies one session/task owner.</p>
  */
 public final class RegistryGenerationId {
 
