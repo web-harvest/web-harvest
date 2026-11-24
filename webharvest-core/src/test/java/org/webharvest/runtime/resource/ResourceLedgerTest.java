@@ -54,11 +54,11 @@ public class ResourceLedgerTest {
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         ResourceLedger.Registration registration = ledger.registerOwned(
             "jdbc/session-a", ResourceLedger.Scope.SESSION, owner, null, closeCount::incrementAndGet);
-        ResourceLedger.Lease lease = registration.acquire();
+        ResourceLedger.Lease lease = registration.acquire(owner);
 
         registration.requestClose();
         assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
-        expectThrows(IllegalStateException.class, registration::acquire);
+        expectThrows(IllegalStateException.class, () -> registration.acquire(owner));
 
         ResourceLedger.DrainResult timedOut = registration.drainAndClose(Duration.ZERO);
         assertEquals(timedOut.getState(), ResourceLedger.State.QUARANTINED);
@@ -91,7 +91,7 @@ public class ResourceLedgerTest {
             ready.countDown();
             try {
                 start.await();
-                acquired.set(registration.acquire());
+                acquired.set(registration.acquire(owner));
             } catch (IllegalStateException closeWon) {
                 // Close admission won the same atomic boundary.
             } catch (Throwable failure) {
@@ -139,7 +139,6 @@ public class ResourceLedgerTest {
         ResourceLedger.Registration registration = ledger.registerRuntime(
             "shared-http-client", null, closeCount::incrementAndGet);
 
-        expectThrows(IllegalStateException.class, registration::acquire);
         ResourceLedger.Lease leaseA = registration.acquire(ownerA);
         ResourceLedger.Lease leaseB = registration.acquire(ownerB);
         registration.requestClose();
