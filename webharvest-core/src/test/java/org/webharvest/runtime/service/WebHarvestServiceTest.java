@@ -166,8 +166,7 @@ public class WebHarvestServiceTest {
     public void testCancelBeforeStart_ExecutionQuiescenceObserved() throws InterruptedException {
         service.shutdown();
 
-        ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
-            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        ExecutorService executor = Executors.newSingleThreadExecutor();
         CountDownLatch blockerStarted = new CountDownLatch(1);
         CountDownLatch releaseBlocker = new CountDownLatch(1);
         boolean[] serviceOwnsExecutor = {false};
@@ -191,8 +190,11 @@ public class WebHarvestServiceTest {
             assertTrue(session.awaitCompletion(1000), "Business cancellation should be observable");
 
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
-            assertTrue(tracked.awaitExecutionCompletion(1000),
-                "A cancelled-before-start task must be known not to have entered the worker body");
+            assertFalse(tracked.awaitExecutionCompletion(50),
+                "A generic executor cannot prove that its queued task has been removed");
+            releaseBlocker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000),
+                "The queued cancellation gate must report exit after the task actually runs");
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
         } finally {
