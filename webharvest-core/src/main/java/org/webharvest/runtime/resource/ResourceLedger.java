@@ -64,9 +64,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * resources require an {@link ExecutionOwner} belonging to this runtime.</p>
  *
  * <p>This class does not infer worker exit from cancellation, interruption,
- * EventBus delivery or a terminal business status. The caller must invoke
- * {@link Registration#markOwnerQuiescent()} only after the execution
- * coordinator has observed the appropriate quiescence boundary.</p>
+ * EventBus delivery or a terminal business status. The caller must release a
+ * {@link GenerationPin} or invoke {@link Registration#markOwnerQuiescent()}
+ * only after the execution coordinator has observed the worker's actual exit.</p>
  */
 public final class ResourceLedger {
 
@@ -501,7 +501,11 @@ public final class ResourceLedger {
             }
         }
 
-        /** Atomically prevents new leases; it does not abort or close the resource. */
+        /**
+         * Stops new ownership admission without aborting or closing the resource.
+         * For GENERATION scope this retires the generation (rejecting new pins)
+         * while allowing already-pinned executions to continue acquiring leases.
+         */
         public void requestClose() {
             if (entry.scope == Scope.GENERATION) {
                 ledger.beginGenerationRetirement(entry.generationId);
