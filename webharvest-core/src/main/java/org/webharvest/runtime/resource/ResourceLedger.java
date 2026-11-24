@@ -97,6 +97,8 @@ public final class ResourceLedger {
 
     private final String runtimeId;
     private final ConcurrentHashMap<RegistrationKey, Entry> entries = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RegistryGenerationId, GenerationEntry> generations =
+        new ConcurrentHashMap<>();
 
     public ResourceLedger(String runtimeId) {
         if (runtimeId == null || runtimeId.trim().isEmpty()) {
@@ -169,12 +171,106 @@ public final class ResourceLedger {
 
         RegistrationKey key = new RegistrationKey(resourceId, scope, owner, generationId);
         Entry entry = new Entry(key, resourceId, scope, owner, generationId, abortAction, closeAction);
-        Entry existing = entries.putIfAbsent(key, entry);
+        Entry existing;
+        if (scope == Scope.GENERATION) {
+            GenerationEntry generation = generationEntry(generationId);
+            synchronized (generation) {
+                if (generation.retiring) {
+                    throw new IllegalStateException("Registry generation is retiring: " + generationId);
+                }
+                existing = entries.putIfAbsent(key, entry);
+            }
+        } else {
+            existing = entries.putIfAbsent(key, entry);
+        }
         if (existing != null) {
             throw new IllegalStateException("Resource ID is already registered for this owner: "
                 + resourceId + " (" + scope + ')');
         }
         return new Registration(this, entry);
+    }
+
+    /** Pins a generation for the full lifetime of one execution. Release only after worker exit is observed. */
+    public GenerationPin pinGeneration(ExecutionOwner owner, RegistryGenerationId generationId) {
+        Objects.requireNonNull(owner, "Execution owner cannot be null");
+        Objects.requireNonNull(generationId, "Registry generation ID cannot be null");
+        validateGenerationOwner(owner, generationId);
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            if (generation.retiring) {
+                throw new IllegalStateException("Registry generation no longer admits pins: " + generationId);
+            }
+            if (generation.activePins.containsValue(owner)) {
+                throw new IllegalStateException("Execution owner already pins this generation: " + owner);
+            }
+            long pinId = generation.nextPinId.incrementAndGet();
+            generation.activePins.put(pinId, owner);
+            return new GenerationPin(this, generationId, pinId, owner);
+        }
+    }
+
+    /** Stops new pins atomically; existing executions retain access until their pins are released. */
+    public void beginGenerationRetirement(RegistryGenerationId generationId) {
+        Objects.requireNonNull(generationId, "Registry generation ID cannot be null");
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            generation.retiring = true;
+            generation.notifyAll();
+        }
+    }
+
+    public int getActiveGenerationPinCount(RegistryGenerationId generationId) {
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            return generation.activePins.size();
+        }
+    }
+
+    private void validateGenerationOwner(ExecutionOwner owner, RegistryGenerationId generationId) {
+        if (!runtimeId.equals(owner.getRuntimeId())
+            || !runtimeId.equals(generationId.getRuntimeId())) {
+            throw new IllegalArgumentException("Execution owner and generation must belong to this runtime");
+        }
+    }
+
+    private GenerationEntry generationEntry(RegistryGenerationId generationId) {
+        if (!runtimeId.equals(generationId.getRuntimeId())) {
+            throw new IllegalArgumentException("Registry generation belongs to another runtime");
+        }
+        return generations.computeIfAbsent(generationId, ignored -> new GenerationEntry());
+    }
+
+    private boolean isGenerationRetiring(RegistryGenerationId generationId) {
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            return generation.retiring;
+        }
+    }
+
+    private boolean awaitGenerationPins(RegistryGenerationId generationId, long timeoutNanos,
+                                        long started) throws InterruptedException {
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            while (!generation.activePins.isEmpty()) {
+                long remaining = timeoutNanos - (System.nanoTime() - started);
+                if (remaining <= 0) {
+                    return false;
+                }
+                TimeUnit.NANOSECONDS.timedWait(generation, remaining);
+            }
+            return true;
+        }
+    }
+
+    private void releaseGenerationPin(RegistryGenerationId generationId, long pinId,
+                                      ExecutionOwner owner) {
+        GenerationEntry generation = generationEntry(generationId);
+        synchronized (generation) {
+            if (!generation.activePins.remove(pinId, owner)) {
+                throw new IllegalStateException("Generation pin is not registered: " + pinId);
+            }
+            generation.notifyAll();
+        }
     }
 
     /** Returns the number of retained registrations, including quarantined and failed closes. */
@@ -229,6 +325,12 @@ public final class ResourceLedger {
         public int hashCode() {
             return Objects.hash(resourceId, scope, owner, generationId);
         }
+    }
+
+    private static final class GenerationEntry {
+        private final Map<Long, ExecutionOwner> activePins = new HashMap<>();
+        private final AtomicLong nextPinId = new AtomicLong();
+        private boolean retiring;
     }
 
     private static final class Entry {
@@ -356,7 +458,27 @@ public final class ResourceLedger {
             if (!entry.generationId.equals(pinnedGeneration)) {
                 throw new IllegalArgumentException("Execution is pinned to a different registry generation");
             }
-            return acquireValidated(useOwner);
+            return acquireGenerationValidated(useOwner);
+        }
+
+        private Lease acquireGenerationValidated(ExecutionOwner useOwner) {
+            GenerationEntry generation = ledger.generationEntry(entry.generationId);
+            synchronized (generation) {
+                if (!generation.activePins.containsValue(useOwner)) {
+                    throw new IllegalStateException(
+                        "Execution owner has no active pin for generation: " + useOwner);
+                }
+                synchronized (entry) {
+                    if (entry.state != State.OPEN && entry.state != State.QUARANTINED) {
+                        throw new IllegalStateException(
+                            "Generation resource no longer admits pinned use: " + entry.resourceId
+                                + " (" + entry.state + ')');
+                    }
+                    long leaseId = entry.nextLeaseId.incrementAndGet();
+                    entry.activeLeases.put(leaseId, useOwner);
+                    return new Lease(entry, leaseId, useOwner);
+                }
+            }
         }
 
         private void validateRuntimeOwner(ExecutionOwner useOwner) {
@@ -379,6 +501,10 @@ public final class ResourceLedger {
 
         /** Atomically prevents new leases; it does not abort or close the resource. */
         public void requestClose() {
+            if (entry.scope == Scope.GENERATION) {
+                ledger.beginGenerationRetirement(entry.generationId);
+                return;
+            }
             synchronized (entry) {
                 if (entry.state == State.OPEN) {
                     entry.state = State.CLOSE_REQUESTED;
@@ -394,7 +520,9 @@ public final class ResourceLedger {
         public void abort() {
             AbortAction action;
             synchronized (entry) {
-                if (entry.state == State.OPEN) {
+                if (entry.state == State.OPEN
+                    && (entry.scope != Scope.GENERATION
+                        || !ledger.isGenerationRetiring(entry.generationId))) {
                     throw new IllegalStateException(
                         "Resource close must be requested before abort: " + entry.resourceId);
                 }
@@ -437,6 +565,10 @@ public final class ResourceLedger {
          * was requested or business status is terminal.
          */
         public void markOwnerQuiescent() {
+            if (entry.scope == Scope.GENERATION) {
+                throw new IllegalStateException(
+                    "Generation quiescence is established by releasing all generation pins");
+            }
             synchronized (entry) {
                 if (entry.state == State.OPEN) {
                     entry.state = State.CLOSE_REQUESTED;
@@ -465,16 +597,33 @@ public final class ResourceLedger {
                 throw new IllegalArgumentException("Timeout is too large", overflow);
             }
 
-            requestClose();
-            boolean performClose = false;
             long started = System.nanoTime();
+            if (entry.scope == Scope.GENERATION) {
+                ledger.beginGenerationRetirement(entry.generationId);
+                if (!ledger.awaitGenerationPins(entry.generationId, timeoutNanos, started)) {
+                    synchronized (entry) {
+                        if (entry.state == State.OPEN || entry.state == State.CLOSE_REQUESTED) {
+                            entry.state = State.QUARANTINED;
+                        }
+                        return snapshot(entry);
+                    }
+                }
+                synchronized (entry) {
+                    if (entry.state == State.OPEN || entry.state == State.QUARANTINED) {
+                        entry.state = State.CLOSE_REQUESTED;
+                    }
+                }
+            } else {
+                requestClose();
+            }
+            boolean performClose = false;
             synchronized (entry) {
                 if (entry.state == State.CLOSED || entry.state == State.CLOSE_FAILED
                     || entry.state == State.DRAINING) {
                     return snapshot(entry);
                 }
-                while (!entry.ownerQuiescent || !entry.activeLeases.isEmpty()
-                    || entry.abortInProgress) {
+                while ((entry.scope != Scope.GENERATION && !entry.ownerQuiescent)
+                    || !entry.activeLeases.isEmpty() || entry.abortInProgress) {
                     long remaining = timeoutNanos - (System.nanoTime() - started);
                     if (remaining <= 0) {
                         entry.state = State.QUARANTINED;
