@@ -328,6 +328,29 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testUnrequestedWorkerInterruptDoesNotBecomeSuccessfulCompletion() throws InterruptedException {
+        Config config = Mockito.mock(Config.class);
+        Mockito.when(config.getConfigurationTree()).thenAnswer(invocation -> {
+            Thread.currentThread().interrupt();
+            return null;
+        });
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            ScraperSession session = service.executeAsync(config, null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertTrue(session.getError() instanceof InterruptedException);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testFatalWorkerFailureMarksBusinessSessionFailedBeforeExit() throws InterruptedException {
         Config config = Mockito.mock(Config.class);
         AssertionError fatal = new AssertionError("fatal plugin failure");
