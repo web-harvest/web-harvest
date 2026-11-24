@@ -236,6 +236,27 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testLedgerMarksOnlyExactExecutionOwnerAndRuntimeResourcesQuiescent() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-a", 2);
+        ResourceLedger.Registration a = ledger.registerOwned(
+            "a", ResourceLedger.Scope.SESSION, ownerA, null, null);
+        ResourceLedger.Registration b = ledger.registerOwned(
+            "b", ResourceLedger.Scope.OPERATION, ownerB, null, null);
+        ResourceLedger.Registration runtime = ledger.registerRuntime("runtime-client", null, null);
+
+        assertEquals(ledger.markOwnerQuiescent(ownerA), 1);
+        assertTrue(a.isOwnerQuiescent());
+        assertFalse(b.isOwnerQuiescent());
+        assertFalse(runtime.isOwnerQuiescent());
+        assertEquals(ledger.markRuntimeQuiescent(), 1);
+        assertTrue(runtime.isOwnerQuiescent());
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.markOwnerQuiescent(new ExecutionOwner("runtime-b", "session-a", 1)));
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testStaleRegistrationTokenCannotRetireReplacement() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ResourceLedger.Registration old = ledger.registerRuntime("client", null, null);
