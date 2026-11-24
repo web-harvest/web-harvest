@@ -148,7 +148,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 executionTasks.remove(sessionId, task);
                 task.rejectBeforeStart();
                 if (registered) {
-                    sessionRegistry.unregister(session);
+                    sessionRegistry.unregisterIfOwner(session);
                 }
                 session.markFailed(submissionFailure);
                 throw new IllegalStateException("Session submission was rejected", submissionFailure);
