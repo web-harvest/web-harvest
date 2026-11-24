@@ -426,17 +426,28 @@ public class DatabasePluginTest {
     @Test
     public void sqlExecutionFailureIsReportedAndInlineResourceIsCleanedUp() throws Exception {
         String url = "jdbc:h2:mem:db_invalid_sql;DB_CLOSE_DELAY=-1";
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-invalid-sql-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
         DatabasePlugin plugin = new DatabasePlugin();
         plugin.initialize(inlineConfig(url, "SELEC deliberately_invalid_sql"));
 
         try {
-            plugin.execute(context);
+            plugin.execute(managedContext);
             fail("Expected invalid SQL to fail");
         } catch (RuntimeException expected) {
             assertTrue(expected.getMessage().contains("Database operation failed"));
             assertTrue(expected.getCause() instanceof java.sql.SQLException,
                 "The original JDBC failure must remain available as the cause");
         }
+
+        assertEquals(ledger.size(), 0,
+            "The inline operation resource must be retired even when SQL execution fails");
     }
 
 
