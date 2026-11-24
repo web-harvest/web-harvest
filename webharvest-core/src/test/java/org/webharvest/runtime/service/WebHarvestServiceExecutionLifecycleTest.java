@@ -683,6 +683,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         private final java.util.concurrent.atomic.AtomicInteger closeCount =
             new java.util.concurrent.atomic.AtomicInteger();
         private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
 
         @Subscribe
         public void onSessionStarted(SessionStartedEvent event) {
@@ -691,6 +692,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
                     closeCount.incrementAndGet();
                     closed.countDown();
                 });
+            // The callback models an active I/O operation, so it must hold a lease.
+            // Without it the ledger is allowed to close the resource immediately after abort.
+            lease = resource.acquire();
             started.countDown();
             boolean waiting = true;
             while (waiting) {
@@ -702,6 +706,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
                     // Keep the simulated I/O operation active until explicitly released.
                 }
             }
+            lease.close();
         }
     }
 
