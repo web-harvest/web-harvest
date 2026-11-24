@@ -262,6 +262,44 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testShutdownTimeoutIsSurfacedAndDoesNotClaimSuccess() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        FirstWaitTimesOutExecutorService executor = new FirstWaitTimesOutExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor());
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            try {
+                service.shutdown();
+                fail("Shutdown must surface an executor that did not terminate");
+            } catch (IllegalStateException expected) {
+                assertTrue(expected.getMessage().contains("did not terminate"));
+            }
+
+            assertTrue(service.isShutdown());
+            assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.NOT_REQUESTED);
+            assertEquals(session.getStatus(), SessionStatus.RUNNING);
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            service.shutdown();
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowReportsUnresponsiveWorkerUntilItActuallyExits() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
@@ -403,6 +441,23 @@ public class WebHarvestServiceExecutionLifecycleTest {
         @Override
         public void execute(Runnable command) {
             delegate.execute(command);
+        }
+    }
+
+    private static class FirstWaitTimesOutExecutorService extends DelegatingExecutorService {
+        private boolean firstWait = true;
+
+        private FirstWaitTimesOutExecutorService(ExecutorService delegate) {
+            super(delegate);
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            if (firstWait) {
+                firstWait = false;
+                return false;
+            }
+            return super.awaitTermination(timeout, unit);
         }
     }
 
