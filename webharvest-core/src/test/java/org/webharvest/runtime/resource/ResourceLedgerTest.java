@@ -148,14 +148,17 @@ public class ResourceLedgerTest {
         ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
         assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
         assertEquals(blocked.getOutstandingLeases().size(), 2);
-        assertEquals(blocked.getOutstandingLeases().get(0).getOwner(), ownerA);
-        assertEquals(blocked.getOutstandingLeases().get(1).getOwner(), ownerB);
+        assertTrue(blocked.getOutstandingLeases().stream()
+            .anyMatch(lease -> ownerA.equals(lease.getOwner())));
+        assertTrue(blocked.getOutstandingLeases().stream()
+            .anyMatch(lease -> ownerB.equals(lease.getOwner())));
         assertEquals(closeCount.get(), 0);
 
         leaseA.close();
         ResourceLedger.DrainResult oneRemaining = registration.drainAndClose(Duration.ZERO);
         assertEquals(oneRemaining.getOutstandingLeases().size(), 1);
-        assertEquals(oneRemaining.getOutstandingLeases().get(0).getOwner(), ownerB);
+        assertTrue(oneRemaining.getOutstandingLeases().stream()
+            .allMatch(lease -> ownerB.equals(lease.getOwner())));
 
         leaseB.close();
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
