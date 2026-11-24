@@ -33,6 +33,7 @@
 
 package org.webharvest.runtime.session.events;
 
+import org.webharvest.runtime.session.ExecutionIdentity;
 import org.webharvest.runtime.session.ScraperSession;
 
 import java.time.Instant;
@@ -80,6 +81,7 @@ import java.time.Instant;
 public abstract class SessionEvent {
     
     private final ScraperSession session;
+    private final ExecutionIdentity executionIdentity;
     private final Instant timestamp;
     
     /**
@@ -93,6 +95,7 @@ public abstract class SessionEvent {
             throw new IllegalArgumentException("Session cannot be null");
         }
         this.session = session;
+        this.executionIdentity = session.getExecutionIdentity();
         this.timestamp = Instant.now();
     }
     
@@ -105,6 +108,15 @@ public abstract class SessionEvent {
         return session;
     }
     
+    /**
+     * Returns the immutable runtime/session/generation identity captured at event creation.
+     *
+     * @return the execution identity
+     */
+    public ExecutionIdentity getExecutionIdentity() {
+        return executionIdentity;
+    }
+
     /**
      * Returns the session ID for convenience.
      * 
