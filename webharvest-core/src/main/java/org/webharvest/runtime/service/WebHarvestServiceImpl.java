@@ -263,7 +263,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean terminated = executorService.awaitTermination(
             SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         if (!terminated) {
-            markActiveTasksUnresponsive();
+            markActiveTasksUnresponsive(false);
             throw new IllegalStateException(
                 "WebHarvestService did not terminate within " + SHUTDOWN_TIMEOUT_SECONDS
                     + " seconds; active workers remain unresponsive");
@@ -278,7 +278,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             shutdown = true;
             for (SessionTask task : executionTasks.values()) {
                 task.session.cancel();
-                task.requestCancellation();
+                task.requestKill();
             }
             List<Runnable> neverStarted = executorService.shutdownNow();
             for (Runnable pending : neverStarted) {
@@ -296,14 +296,20 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             terminated = false;
         }
         if (!terminated) {
-            markActiveTasksUnresponsive();
+            markActiveTasksUnresponsive(true);
         }
         timeoutScheduler.shutdownNow();
     }
 
-    private void markActiveTasksUnresponsive() {
+    private void markActiveTasksUnresponsive(boolean killRequested) {
         for (SessionTask task : executionTasks.values()) {
+            if (killRequested) {
+                task.session.markKillRequested();
+            }
             task.session.markExecutionUnresponsive();
+            if (killRequested) {
+                task.session.markKillUnresponsive();
+            }
         }
     }
 
@@ -388,6 +394,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 return;
             }
             cancellationRequested = true;
+            session.markGracefulTerminationRequested();
             if (!started) {
                 removeQueuedFuture();
                 return;
@@ -429,11 +436,31 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
+        private synchronized void requestKill() {
+            if (exited) {
+                return;
+            }
+            session.markKillRequested();
+            if (!started) {
+                removeQueuedFuture();
+                return;
+            }
+            session.markExecutionInterruptRequested();
+            if (worker != null) {
+                worker.interrupt();
+            }
+            if (future != null) {
+                future.cancel(true);
+            }
+            scheduleUnresponsiveEscalation();
+        }
+
         private synchronized void requestTimeout() {
             if (exited || !started || completionCommitted) {
                 return;
             }
             timedOut = true;
+            session.markGracefulTerminationRequested();
             session.markExecutionInterruptRequested();
             if (worker != null) {
                 worker.interrupt();
@@ -476,7 +503,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     escalationFuture = timeoutScheduler.schedule(() -> {
                         synchronized (SessionTask.this) {
                             if (!exited) {
+                                session.markKillRequested();
                                 session.markExecutionUnresponsive();
+                                session.markKillUnresponsive();
                             }
                         }
                     }, CANCELLATION_GRACE_SECONDS, TimeUnit.SECONDS);
