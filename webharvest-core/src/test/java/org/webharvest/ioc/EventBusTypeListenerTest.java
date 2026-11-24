@@ -15,6 +15,9 @@ import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.InjectionListener;
 import com.google.inject.spi.TypeEncounter;
+import org.webharvest.definition.Config;
+import org.webharvest.runtime.service.WebHarvestService;
+import org.webharvest.runtime.session.events.SessionCreatedEvent;
 
 /** Tests injector-local EventBus subscriber registration. */
 public class EventBusTypeListenerTest {
@@ -68,6 +71,29 @@ public class EventBusTypeListenerTest {
 
         verify(encounter, never()).getProvider(EventBus.class);
         verify(encounter, never()).register(any(InjectionListener.class));
+    }
+
+    static class SessionCreatedCollector {
+        private final AtomicInteger received = new AtomicInteger();
+
+        @Subscribe
+        public void onSessionCreated(SessionCreatedEvent event) {
+            received.incrementAndGet();
+        }
+    }
+
+    @Test
+    public void injectedSessionServicePublishesOnTheRuntimeOwnedEventBus() {
+        Injector injector = Guice.createInjector(new ScraperModule("target"));
+        SessionCreatedCollector collector = injector.getInstance(SessionCreatedCollector.class);
+        WebHarvestService service = injector.getInstance(WebHarvestService.class);
+        try {
+            service.executeAsync(org.mockito.Mockito.mock(Config.class), null, null);
+            assertEquals(collector.received.get(), 1,
+                "SessionCreatedEvent must be published on the same injector-owned bus");
+        } finally {
+            service.shutdownNow();
+        }
     }
 
     @Test
