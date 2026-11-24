@@ -503,8 +503,8 @@ public class ResourceLedgerTest {
 
         assertEquals(first, same);
         assertEquals(first.hashCode(), same.hashCode());
-        assertNotEquals(first, otherRuntime);
-        assertNotEquals(first, otherSnapshot);
+        assertFalse(first.equals(otherRuntime));
+        assertFalse(first.equals(otherSnapshot));
         assertEquals(first.getRuntimeId(), "runtime-a");
         assertEquals(first.getValue(), "snapshot-a");
         assertTrue(first.toString().contains("snapshot-a"));
