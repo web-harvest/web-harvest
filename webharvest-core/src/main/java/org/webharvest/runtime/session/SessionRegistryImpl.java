@@ -132,7 +132,10 @@ public class SessionRegistryImpl implements SessionRegistry {
         if (session == null) {
             throw new IllegalArgumentException("Session cannot be null");
         }
-        sessions.put(session.getSessionId(), session);
+        ScraperSession existing = sessions.putIfAbsent(session.getSessionId(), session);
+        if (existing != null) {
+            throw new IllegalStateException("Session ID is already registered: " + session.getSessionId());
+        }
     }
     
     @Override
@@ -171,6 +174,14 @@ public class SessionRegistryImpl implements SessionRegistry {
             throw new IllegalArgumentException("Session ID cannot be null");
         }
         return sessions.remove(sessionId) != null;
+    }
+
+    @Override
+    public boolean unregister(ScraperSession session) {
+        if (session == null) {
+            throw new IllegalArgumentException("Session cannot be null");
+        }
+        return sessions.remove(session.getSessionId(), session);
     }
     
     @Override
