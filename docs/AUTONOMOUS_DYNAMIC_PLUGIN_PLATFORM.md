@@ -1042,6 +1042,70 @@ The platform must separate **termination request**, **session outcome**, and **e
 4. A hard-kill guarantee for arbitrary/non-cooperative providers requires process isolation. The host may report `KILLED` only after the worker process has exited and its owned resources have been reconciled.
 5. Preserve the distinction between execution termination and external-effect disposition. Do not infer rollback, exactly-once behavior or retry safety from a worker exit or interrupt.
 
+
+### GRACE/KILL lifecycle diagrams
+
+These diagrams describe the required target contract. They do not imply that the
+current implementation retains task handles or proves quiescence.
+
+```mermaid
+stateDiagram-v2
+  [*] --> ADMITTED
+  ADMITTED --> RUNNING: worker starts
+  ADMITTED --> STOP_REQUESTED: cancel before start
+  RUNNING --> STOP_REQUESTED: GRACE requested
+  STOP_REQUESTED --> DRAINING: close admission / propagate deadline
+  DRAINING --> QUIESCENT: worker + descendants + leases drained
+  DRAINING --> UNRESPONSIVE: GRACE deadline expires
+  UNRESPONSIVE --> KILL_ESCALATION: host policy permits escalation
+  KILL_ESCALATION --> QUIESCENT: cooperative exit verified
+  KILL_ESCALATION --> QUARANTINED: in-process worker still alive
+  KILL_ESCALATION --> PROCESS_EXITED: isolated worker process exits
+  PROCESS_EXITED --> QUIESCENT: owned resources reconciled
+  QUIESCENT --> [*]
+  QUARANTINED --> [*]: report incomplete termination; retain leases
+```
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Caller
+  participant Session as Session Controller
+  participant Tasks as Task/Worker Owner
+  participant Child as Descendant Operations
+  participant Leases as Resource Lease Owner
+  participant Runtime as Runtime / Provider
+
+  Caller->>Session: request GRACE(deadline)
+  Session->>Tasks: atomically close admission
+  Session->>Runtime: propagate cancellation + deadline
+  Tasks->>Child: stop new child admission; signal active children
+  Runtime-->>Tasks: cooperative completion / abort outcome
+  Tasks->>Tasks: await worker and descendants
+  Tasks->>Leases: drain owner-bound leases
+  Leases-->>Tasks: released or unresolved lease report
+  alt All work and leases quiescent before deadline
+    Tasks-->>Session: quiescence proven
+    Session-->>Caller: outcome + TERMINATED_GRACEFULLY
+  else GRACE deadline expires
+    Tasks-->>Session: worker/lease still active
+    Session->>Tasks: KILL escalation per host policy
+    alt Isolated process exits and resources reconcile
+      Tasks-->>Session: process exit + resource reconciliation
+      Session-->>Caller: KILLED with effect disposition
+    else In-process worker remains alive
+      Tasks->>Runtime: quarantine; deny new admission
+      Tasks-->>Session: UNRESPONSIVE; retain unsafe-to-close leases
+      Session-->>Caller: incomplete termination + unresolved effects
+    end
+  end
+```
+
+The critical invariant is that **terminal business outcome is not equivalent
+to quiescence**. Resource release and generation/classloader retirement follow
+proven quiescence or an explicitly documented safe boundary, never merely a
+CANCELLED/FAILED status or event callback.
+
 ### Required implementation and conformance gates
 
 - One authoritative task handle per session, covering the actual execution (including timeout/delegated execution); no detached per-session executor.
