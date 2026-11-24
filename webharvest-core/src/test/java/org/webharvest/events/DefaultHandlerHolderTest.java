@@ -1,269 +1,262 @@
 package org.webharvest.events;
 
-import com.google.common.eventbus.EventBus;
-import com.google.inject.Provider;
+import static org.mockito.Mockito.*;
+import static org.testng.Assert.*;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.AlreadyBoundException;
 import org.webharvest.Harvester;
 import org.webharvest.Registry;
 
-import static org.mockito.Mockito.*;
-import static org.testng.Assert.*;
+import com.google.common.eventbus.EventBus;
+import com.google.inject.Provider;
 
-/**
- * Tests for DefaultHandlerHolder - event bus management.
- * 
- * @author Robert Bala
- * @since 2.2.0
- */
+/** Tests runtime-wide registration and Harvester-scoped event routing. */
 public class DefaultHandlerHolderTest {
 
+    static class TestHarvesterEvent implements HarvesterEvent {
+        private final Harvester harvester;
+
+        TestHarvesterEvent(Harvester harvester) {
+            this.harvester = harvester;
+        }
+
+        @Override
+        public Harvester getHarvester() {
+            return harvester;
+        }
+    }
+
+    static class OtherHarvesterEvent implements HarvesterEvent {
+        private final Harvester harvester;
+
+        OtherHarvesterEvent(Harvester harvester) {
+            this.harvester = harvester;
+        }
+
+        @Override
+        public Harvester getHarvester() {
+            return harvester;
+        }
+    }
+
+    static class RecordingHandler implements EventHandler<TestHarvesterEvent> {
+        private final AtomicInteger calls = new AtomicInteger();
+
+        @Override
+        @com.google.common.eventbus.Subscribe
+        public void handle(TestHarvesterEvent event) {
+            calls.incrementAndGet();
+        }
+    }
+
     private DefaultHandlerHolder holder;
-    private Registry<Harvester, EventBus> mockRegistry;
-    private Provider<EventBus> mockProvider;
-    private EventBus mockEventBus;
-    private Harvester mockHarvester;
+    private Registry<Harvester, EventBus> registry;
+    private Provider<EventBus> provider;
+    private EventBus eventBus;
 
     @BeforeMethod
     public void setUp() {
-        mockRegistry = mock(Registry.class);
-        mockProvider = mock(Provider.class);
-        mockEventBus = mock(EventBus.class);
-        mockHarvester = mock(Harvester.class);
-        
-        when(mockProvider.get()).thenReturn(mockEventBus);
-        
-        holder = new DefaultHandlerHolder(mockRegistry, mockProvider);
+        registry = mock(Registry.class);
+        provider = mock(Provider.class);
+        eventBus = mock(EventBus.class);
+        when(provider.get()).thenReturn(eventBus);
+        holder = new DefaultHandlerHolder(registry, provider);
     }
 
-    // ========== Constructor Tests ==========
-
     @Test
-    public void testConstructor() {
-        assertNotNull(holder);
-    }
-
-    // Constructor null checks removed - Guice handles dependency injection
-
-    // ========== register() Tests ==========
-
-    @Test
-    public void testRegisterHandler() {
-        EventHandler<?> handler = mock(EventHandler.class);
+    public void registerRetainsHandlerWithoutPerSessionBusRegistration() {
+        RecordingHandler handler = new RecordingHandler();
         holder.register(handler);
-        // Should not throw
-    }
 
-    @Test
-    public void testRegisterMultipleHandlers() {
-        EventHandler<?> handler1 = mock(EventHandler.class);
-        EventHandler<?> handler2 = mock(EventHandler.class);
-        EventHandler<?> handler3 = mock(EventHandler.class);
-        
-        holder.register(handler1);
-        holder.register(handler2);
-        holder.register(handler3);
-        // Should not throw
+        verifyNoInteractions(eventBus);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testRegisterNullHandlerThrows() {
+    public void registerRejectsNullHandler() {
         holder.register(null);
     }
 
     @Test
-    public void testRegisterHandlerExceptionMessage() {
-        try {
-            holder.register(null);
-            fail("Should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Handler is required"));
-        }
-    }
+    public void beforeScrapingBindsHarvesterToSharedRuntimeBus() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
 
-    // ========== onBeforeScraping() Tests ==========
+        holder.onBeforeScraping(harvester);
 
-    @Test
-    public void testOnBeforeScrapingRegistersHandlers() throws AlreadyBoundException {
-        EventHandler<?> handler = mock(EventHandler.class);
-        holder.register(handler);
-        
-        holder.onBeforeScraping(mockHarvester);
-        
-        verify(mockEventBus).register(handler);
-        verify(mockRegistry).bind(mockHarvester, mockEventBus);
-    }
-
-    @Test
-    public void testOnBeforeScrapingRegistersMultipleHandlers() throws AlreadyBoundException {
-        EventHandler<?> handler1 = mock(EventHandler.class);
-        EventHandler<?> handler2 = mock(EventHandler.class);
-        
-        holder.register(handler1);
-        holder.register(handler2);
-        
-        holder.onBeforeScraping(mockHarvester);
-        
-        verify(mockEventBus).register(handler1);
-        verify(mockEventBus).register(handler2);
-        verify(mockRegistry).bind(mockHarvester, mockEventBus);
+        verify(provider).get();
+        verify(registry).bind(harvester, eventBus);
+        verifyNoInteractions(eventBus);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testOnBeforeScrapingWithNullHarvesterThrows() {
+    public void beforeScrapingRejectsNullHarvester() {
         holder.onBeforeScraping(null);
     }
 
     @Test
-    public void testOnBeforeScrapingNullHarvesterMessage() {
+    public void beforeScrapingWrapsDuplicateHarvesterBinding() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        doThrow(new AlreadyBoundException("duplicate")).when(registry).bind(harvester, eventBus);
+
         try {
-            holder.onBeforeScraping(null);
-            fail("Should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Harvester is required"));
+            holder.onBeforeScraping(harvester);
+            fail("Expected duplicate binding failure");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("already has an active event route"));
         }
     }
 
-    @Test(expectedExceptions = RuntimeException.class)
-    public void testOnBeforeScrapingAlreadyBoundThrows() throws AlreadyBoundException {
-        doThrow(new AlreadyBoundException("test")).when(mockRegistry).bind(any(), any());
-        
-        holder.onBeforeScraping(mockHarvester);
-    }
-
     @Test
-    public void testOnBeforeScrapingGetsEventBusFromProvider() throws AlreadyBoundException {
-        holder.onBeforeScraping(mockHarvester);
-        
-        verify(mockProvider).get();
-    }
+    public void afterScrapingUnbindsOnlyTheHarvesterRoute() {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
 
-    // ========== onAfterScraping() Tests ==========
+        holder.onAfterScraping(harvester);
 
-    @Test
-    public void testOnAfterScrapingUnregistersHandlers() {
-        EventHandler<?> handler = mock(EventHandler.class);
-        holder.register(handler);
-        
-        when(mockRegistry.lookup(mockHarvester)).thenReturn(mockEventBus);
-        
-        holder.onAfterScraping(mockHarvester);
-        
-        verify(mockEventBus).unregister(handler);
-        verify(mockRegistry).unbind(mockHarvester);
-    }
-
-    @Test
-    public void testOnAfterScrapingUnregistersMultipleHandlers() {
-        EventHandler<?> handler1 = mock(EventHandler.class);
-        EventHandler<?> handler2 = mock(EventHandler.class);
-        
-        holder.register(handler1);
-        holder.register(handler2);
-        
-        when(mockRegistry.lookup(mockHarvester)).thenReturn(mockEventBus);
-        
-        holder.onAfterScraping(mockHarvester);
-        
-        verify(mockEventBus).unregister(handler1);
-        verify(mockEventBus).unregister(handler2);
-        verify(mockRegistry).unbind(mockHarvester);
+        verify(registry).lookup(harvester);
+        verify(registry).unbind(harvester);
+        verifyNoInteractions(eventBus);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testOnAfterScrapingWithNullHarvesterThrows() {
+    public void afterScrapingRejectsNullHarvester() {
         holder.onAfterScraping(null);
     }
 
-    @Test
-    public void testOnAfterScrapingNullHarvesterMessage() {
-        try {
-            holder.onAfterScraping(null);
-            fail("Should throw IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Harvester is required"));
-        }
-    }
-
     @Test(expectedExceptions = IllegalStateException.class)
-    public void testOnAfterScrapingWithoutEventBusThrows() {
-        when(mockRegistry.lookup(mockHarvester)).thenReturn(null);
-        
-        holder.onAfterScraping(mockHarvester);
+    public void afterScrapingRejectsUnknownHarvester() {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(null);
+
+        holder.onAfterScraping(harvester);
     }
 
     @Test
-    public void testOnAfterScrapingWithoutEventBusMessage() {
-        when(mockRegistry.lookup(mockHarvester)).thenReturn(null);
-        
+    public void dispatchesOnlyMatchingEventTypesForActiveHarvesterRoutes() {
+        Harvester first = mock(Harvester.class);
+        Harvester second = mock(Harvester.class);
+        RecordingHandler handler = new RecordingHandler();
+        holder.register(handler);
+        when(registry.lookup(first)).thenReturn(eventBus, null);
+        when(registry.lookup(second)).thenReturn(eventBus);
+
+        holder.onHarvesterEvent(new TestHarvesterEvent(first));
+        holder.onHarvesterEvent(new OtherHarvesterEvent(first));
+        holder.onHarvesterEvent(new TestHarvesterEvent(second));
+
+        assertEquals(handler.calls.get(), 2,
+            "Only matching event types on active harvester routes should be dispatched");
+
+        holder.onAfterScraping(first);
+        holder.onHarvesterEvent(new TestHarvesterEvent(first));
+        holder.onHarvesterEvent(new TestHarvesterEvent(second));
+        assertEquals(handler.calls.get(), 3,
+            "Ending one session route must not disable another active session");
+    }
+
+    @Test
+    public void continuesDispatchAndAggregatesHandlerFailures() {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        RuntimeException firstFailure = new IllegalStateException("first");
+        RuntimeException secondFailure = new IllegalArgumentException("second");
+        AtomicInteger laterCalls = new AtomicInteger();
+
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                throw firstFailure;
+            }
+        });
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                throw secondFailure;
+            }
+        });
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                laterCalls.incrementAndGet();
+            }
+        });
+
         try {
-            holder.onAfterScraping(mockHarvester);
-            fail("Should throw IllegalStateException");
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().contains("Could not find") || 
-                      e.getMessage().contains("Cound not find")); // Typo in original code
+            holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+            fail("Expected aggregated handler failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, firstFailure);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertSame(actual.getSuppressed()[0], secondFailure);
         }
-    }
-
-    // ========== Lifecycle Tests ==========
-
-    @Test
-    public void testCompleteLifecycle() throws AlreadyBoundException {
-        EventHandler<?> handler = mock(EventHandler.class);
-        holder.register(handler);
-        
-        when(mockRegistry.lookup(mockHarvester)).thenReturn(mockEventBus);
-        
-        // Before scraping
-        holder.onBeforeScraping(mockHarvester);
-        verify(mockEventBus).register(handler);
-        verify(mockRegistry).bind(mockHarvester, mockEventBus);
-        
-        // After scraping
-        holder.onAfterScraping(mockHarvester);
-        verify(mockEventBus).unregister(handler);
-        verify(mockRegistry).unbind(mockHarvester);
+        assertEquals(laterCalls.get(), 1);
     }
 
     @Test
-    public void testMultipleScrapingCycles() throws AlreadyBoundException {
-        EventHandler<?> handler = mock(EventHandler.class);
-        holder.register(handler);
-        
-        Harvester harvester1 = mock(Harvester.class);
-        Harvester harvester2 = mock(Harvester.class);
-        
-        EventBus eventBus1 = mock(EventBus.class);
-        EventBus eventBus2 = mock(EventBus.class);
-        
-        when(mockProvider.get()).thenReturn(eventBus1, eventBus2);
-        when(mockRegistry.lookup(harvester1)).thenReturn(eventBus1);
-        when(mockRegistry.lookup(harvester2)).thenReturn(eventBus2);
-        
-        // Cycle 1
-        holder.onBeforeScraping(harvester1);
-        holder.onAfterScraping(harvester1);
-        
-        // Cycle 2
-        holder.onBeforeScraping(harvester2);
-        holder.onAfterScraping(harvester2);
-        
-        verify(eventBus1).register(handler);
-        verify(eventBus1).unregister(handler);
-        verify(eventBus2).register(handler);
-        verify(eventBus2).unregister(handler);
+    public void sameHandlerMayReceiveEventsFromIndependentSessionsConcurrently()
+        throws InterruptedException {
+        Harvester first = mock(Harvester.class);
+        Harvester second = mock(Harvester.class);
+        when(registry.lookup(first)).thenReturn(eventBus);
+        when(registry.lookup(second)).thenReturn(eventBus);
+        CountDownLatch entered = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger active = new AtomicInteger();
+        AtomicInteger maximum = new AtomicInteger();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                int current = active.incrementAndGet();
+                maximum.accumulateAndGet(current, Math::max);
+                entered.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                } finally {
+                    active.decrementAndGet();
+                }
+            }
+        });
+
+        Thread one = new Thread(() -> dispatch(holder, new TestHarvesterEvent(first), failure));
+        Thread two = new Thread(() -> dispatch(holder, new TestHarvesterEvent(second), failure));
+        one.start();
+        two.start();
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS),
+                "Both sessions should dispatch concurrently to the shared handler");
+        } finally {
+            release.countDown();
+        }
+        one.join(5000);
+        two.join(5000);
+
+        assertFalse(one.isAlive());
+        assertFalse(two.isAlive());
+        assertNull(failure.get());
+        assertEquals(maximum.get(), 2);
     }
 
-    @Test
-    public void testNoHandlersRegistered() throws AlreadyBoundException {
-        // No handlers registered
-        holder.onBeforeScraping(mockHarvester);
-        
-        // Should still bind event bus
-        verify(mockRegistry).bind(mockHarvester, mockEventBus);
-        // But no handler registrations
-        verify(mockEventBus, never()).register(any());
+    private static void dispatch(DefaultHandlerHolder holder, HarvesterEvent event,
+                                 AtomicReference<Throwable> failure) {
+        try {
+            holder.onHarvesterEvent(event);
+        } catch (Throwable unexpected) {
+            failure.set(unexpected);
+        }
     }
 }
-
