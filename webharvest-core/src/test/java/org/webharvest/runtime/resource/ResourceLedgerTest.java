@@ -709,6 +709,21 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testExecutionOwnerHasExactRuntimeSessionAndGenerationValueSemantics() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 7);
+        ExecutionOwner same = new ExecutionOwner("runtime-a", "session-a", 7);
+
+        assertTrue(owner.equals(owner));
+        assertEquals(owner, same);
+        assertEquals(owner.hashCode(), same.hashCode());
+        assertFalse(owner.equals(null));
+        assertFalse(owner.equals("runtime-a/session-a/7"));
+        assertFalse(owner.equals(new ExecutionOwner("runtime-b", "session-a", 7)));
+        assertFalse(owner.equals(new ExecutionOwner("runtime-a", "session-b", 7)));
+        assertFalse(owner.equals(new ExecutionOwner("runtime-a", "session-a", 8)));
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testRegistryGenerationIdHasRuntimeScopedValueSemantics() {
         RegistryGenerationId first = new RegistryGenerationId("runtime-a", "snapshot-a");
         RegistryGenerationId same = new RegistryGenerationId("runtime-a", "snapshot-a");
