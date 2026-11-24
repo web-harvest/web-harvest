@@ -332,7 +332,9 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
             }
             status = SessionStatus.CANCELLED;
             metrics.markEnded();
-            if (terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
+            if (executionState == ExecutionState.NOT_SUBMITTED) {
+                terminationDisposition = TerminationDisposition.CANCELLED_BEFORE_START;
+            } else if (terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
                 terminationDisposition = TerminationDisposition.GRACE_IN_PROGRESS;
             }
             handler = cancellationHandler;
