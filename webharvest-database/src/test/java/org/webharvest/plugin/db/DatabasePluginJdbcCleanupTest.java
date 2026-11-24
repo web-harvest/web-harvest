@@ -50,8 +50,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.fail;
 
 /**
  * Focused tests for JDBC statement/result-set cleanup and failure precedence.
@@ -64,7 +62,12 @@ public class DatabasePluginJdbcCleanupTest {
         SQLException failure = new SQLException("prepare failed");
         when(connection.prepareStatement("SELECT 1")).thenThrow(failure);
 
-        assertSame(invokeExecuteSql(connection, "SELECT 1"), failure);
+        try {
+            invokeExecuteSql(connection, "SELECT 1");
+            throw new AssertionError("Expected prepare failure");
+        } catch (SQLException actual) {
+            assertSame(actual, failure);
+        }
     }
 
     @Test
