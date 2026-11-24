@@ -84,7 +84,7 @@ public class SessionRegistryTest {
         ScraperSession stale = createSession("session-1", "client-2");
         registry.register(original);
 
-        assertFalse(registry.unregister(stale));
+        assertFalse(registry.unregisterIfOwner(stale));
         assertSame(registry.getSession("session-1").orElse(null), original);
         assertEquals(registry.size(), 1);
     }
