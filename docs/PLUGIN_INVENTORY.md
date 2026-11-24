@@ -4003,3 +4003,50 @@ This is part of #356's callback and mandatory teardown acceptance. It also depen
 This is a test/conformance addition to #356 and the exceptional teardown work in 15.89. It does not authorize changing the legacy ThreadLocal model before the explicit async-context contract in #357 is accepted.
 
 **Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+## 15.91 — Guice scope and injector state are JVM-global across runtime instances (2026-11-24)
+
+**Repository baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Evidence:** direct source inspection; no runtime multi-injector experiment, heap analysis, benchmark or test execution.
+
+### A. One static scope instance is shared by every ScraperModule
+
+`ScraperModule` declares `private static final ScraperScope SCRAPER_SCOPE = new ScraperScope()`. Every module instance binds both the Guice scope and `ScraperScope.class` to that same object. This makes the `AttributeHolderScope` ThreadLocal stack JVM/classloader-wide for all Guice injectors that use this module, rather than owned by one runtime/injector. Source blob: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+
+The stack is thread-local, but that does not provide runtime isolation: two injectors executing on the same thread share the same stack. Nested work in runtime B can therefore sit above runtime A's holder, and after B exits the A holder becomes current again. This is LIFO behavior across injector boundaries, not a separately owned scope per runtime. Whether a particular production entry path nests independent injectors on one thread still requires call-path/runtime verification; the shared ownership itself is directly established by the static field and binding.
+
+### B. Static InjectorHelper is overwritten by each injector and retains the last injector
+
+`InjectorHelper.injector` is a static field populated through Guice static injection. `ScrapingInterceptor.invoke()` obtains its injector through `InjectorHelper.getInjector()`, rather than from the interceptor/proxy/runtime that owns the invocation. `EventBusTypeListener` also obtains its EventBus through that same global accessor. Source blobs: `24c114b24a3abc079a9d447b59155e3598f5abe7`, `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`, and `[EventBusTypeListener source]`.
+
+Consequences:
+- When a second Guice injector performs static injection, it replaces the global reference. Calls associated with an earlier injector can subsequently resolve scope/helper/EventBus services from the later injector.
+- The static reference strongly retains the last Injector and, transitively, its object graph and potentially plugin/application classloaders. There is no observed clear/dispose path in this class. This is a process-lifetime retention risk; actual retained size and unloadability require heap/classloader diagnostics.
+- Concurrent injector creation or replacement and invocation has no explicit ownership or synchronization protocol. The field is neither volatile nor scoped to a runtime; the global lookup can race with injector replacement.
+- Event subscriber registration can be routed to a different injector's EventBus than the one that constructed/injected the subscriber.
+
+This is a concrete architectural ownership defect, but cross-runtime misrouting and retained heap impact are source-derived risks, not claims of a reproduced production incident.
+
+### C. Scope stack has avoidable per-thread retention and synchronization cost
+
+`AttributeHolderScope` uses `ThreadLocal<Stack<AHT>>`. The ThreadLocal initial value allocates a Stack when accessed; `exit()` pops the holder but never calls `ThreadLocal.remove()` when the stack becomes empty. Consequently, every long-lived thread that touches the scope retains its ThreadLocal entry and empty Stack for the lifetime of that thread. The retained empty stack is small and bounded per touched thread, but it is avoidable; if exceptional teardown skips `exit()`, the stack instead retains the holder and everything reachable from its scoped attribute map. Source blob: `11a39c99e517ae9ae1ba09cf69a885b636465b64`.
+
+`java.util.Stack` synchronizes its stack operations even though this stack is already thread-confined. This is a plausible unnecessary per-enter/exit synchronization cost, not a measured bottleneck. The scoped provider also synchronizes the complete get/contains/construct/put sequence on the holder's attribute map for every scoped lookup. That protects once-per-key construction when a holder is shared, but serializes all scoped-key lookups on that holder; the contention trade-off needs measurement under realistic concurrent access. `ScopeAttributeHolder` source blob: `9267c320c96ee4b956eb0d24619b60aeaa258352`.
+
+### D. Required architecture and verification
+
+1. Make scope state owned by an explicit runtime/Guice adapter instance, never a static module field. Define whether nested scopes may cross runtime boundaries; default to rejecting cross-runtime holder entry unless an explicit bridge is used.
+2. Remove the global Injector lookup from invocation and type-listener paths. Bind the correct runtime-owned scope, helper and EventBus through the injector/adapter that created the object. Define deterministic disposal and ensure no static reference retains an injector or provider classloader.
+3. Make scope teardown exception-safe (15.89) and remove the ThreadLocal entry when the outermost frame exits. Preserve a bounded, explicit empty-state invariant.
+4. Evaluate replacing synchronized `Stack` with a thread-confined deque/stack abstraction only after profiling. Do not weaken synchronization around holder attributes until the shared-holder concurrency contract is explicit.
+5. Add deterministic tests with two independent injectors on the same thread and on different threads: scope isolation, nested cross-runtime rejection/behavior, interceptor routing, subscriber EventBus ownership, injector replacement and disposal.
+6. Add executor-thread reuse tests proving no holder or scoped object survives a completed/failed invocation; include a before-listener failure to expose retained frames.
+7. Add a microbenchmark or JMH profile for depth 1/2/8/32 and representative scoped-key counts; measure enter/exit, provider lookup, allocation rate and contention with one vs multiple threads. Add heap/classloader-retention checks around runtime disposal; distinguish the bounded empty ThreadLocal Stack from leaked holder graphs.
+8. Record memory/CPU budgets and concurrency assumptions in the runtime contract. Optimize only from repeatable measurements, not intuition.
+
+### Dependency and decision
+
+This finding strengthens #356 (scope/listener ownership and mandatory teardown), #357 (explicit execution-context propagation), and #354 (worker/thread reuse and quiescence). Runtime/injector ownership must be correct before #347/#349 introduce generation retirement; otherwise a static injector or stranded scope frame can pin retired generations. The container-neutral #346 SPI must describe runtime/provider lifetimes independently of Guice scopes.
+
+**Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. No performance claim is made without measurements. #346 remains unaccepted; runtime implementation remains STOP.
