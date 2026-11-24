@@ -112,6 +112,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     private final Condition completionCondition;
     private final CountDownLatch executionCompletion = new CountDownLatch(1);
     private volatile ExecutionState executionState = ExecutionState.NOT_SUBMITTED;
+    private volatile TerminationDisposition terminationDisposition = TerminationDisposition.NOT_REQUESTED;
     private volatile Runnable cancellationHandler;
     
     /**
@@ -236,6 +237,31 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         return true;
     }
 
+    /** Records the start of cooperative termination. */
+    public synchronized void markGracefulTerminationRequested() {
+        if (executionState != ExecutionState.EXITED
+            && terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
+            terminationDisposition = TerminationDisposition.GRACE_IN_PROGRESS;
+        }
+    }
+
+    /** Records an in-process kill escalation request; this does not kill a Java thread. */
+    public synchronized void markKillRequested() {
+        if (executionState != ExecutionState.EXITED
+            && (terminationDisposition == TerminationDisposition.NOT_REQUESTED
+                || terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS)) {
+            terminationDisposition = TerminationDisposition.KILL_IN_PROGRESS;
+        }
+    }
+
+    /** Records that in-process escalation did not make the worker exit. */
+    public synchronized void markKillUnresponsive() {
+        if (executionState != ExecutionState.EXITED
+            && terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS) {
+            terminationDisposition = TerminationDisposition.KILL_UNRESPONSIVE;
+        }
+    }
+
     /** Records an interrupt request without claiming that the worker has exited. */
     public synchronized void markExecutionInterruptRequested() {
         if (executionState != ExecutionState.EXITED) {
@@ -252,13 +278,31 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
 
     /** Records observed worker exit. This is the only transition proving quiescence. */
     public synchronized void markExecutionExited() {
+        ExecutionState previousState = executionState;
         executionState = ExecutionState.EXITED;
+        if (previousState == ExecutionState.NOT_SUBMITTED || previousState == ExecutionState.QUEUED) {
+            if (terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS
+                || terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS
+                || terminationDisposition == TerminationDisposition.KILL_UNRESPONSIVE) {
+                terminationDisposition = TerminationDisposition.CANCELLED_BEFORE_START;
+            }
+        } else if (terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS) {
+            terminationDisposition = TerminationDisposition.GRACEFUL;
+        } else if (terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS
+            || terminationDisposition == TerminationDisposition.KILL_UNRESPONSIVE) {
+            terminationDisposition = TerminationDisposition.WORKER_EXIT_CONFIRMED;
+        }
         executionCompletion.countDown();
     }
 
     @Override
     public ExecutionState getExecutionState() {
         return executionState;
+    }
+
+    @Override
+    public TerminationDisposition getTerminationDisposition() {
+        return terminationDisposition;
     }
 
     @Override
@@ -288,6 +332,9 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
             }
             status = SessionStatus.CANCELLED;
             metrics.markEnded();
+            if (terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
+                terminationDisposition = TerminationDisposition.GRACE_IN_PROGRESS;
+            }
             handler = cancellationHandler;
         }
 
