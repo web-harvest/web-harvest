@@ -100,8 +100,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 secondTracked.getExecutionOwner().getRuntimeId());
             assertEquals(firstTracked.getExecutionOwner().getExecutionGeneration(), 1L);
             assertEquals(secondTracked.getExecutionOwner().getExecutionGeneration(), 2L);
-            assertNotEquals(firstTracked.getExecutionOwner().getRuntimeId(),
-                otherTracked.getExecutionOwner().getRuntimeId());
+            assertFalse(firstTracked.getExecutionOwner().getRuntimeId().equals(
+                otherTracked.getExecutionOwner().getRuntimeId()),
+                "Independent runtime instances must have distinct owner identities");
             assertEquals(otherTracked.getExecutionOwner().getExecutionGeneration(), 1L);
         } finally {
             firstRuntime.shutdown();
