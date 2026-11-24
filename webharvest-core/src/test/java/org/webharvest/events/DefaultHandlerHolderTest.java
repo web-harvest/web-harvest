@@ -225,15 +225,19 @@ public class DefaultHandlerHolderTest {
         throws InterruptedException {
         Harvester first = mock(Harvester.class);
         Harvester second = mock(Harvester.class);
-        when(registry.lookup(first)).thenReturn(eventBus);
-        when(registry.lookup(second)).thenReturn(eventBus);
+        EventBus sharedBus = new EventBus();
+        DefaultHandlerHolder dispatcher =
+            new DefaultHandlerHolder(registry, () -> sharedBus);
+        sharedBus.register(dispatcher);
+        when(registry.lookup(first)).thenReturn(sharedBus);
+        when(registry.lookup(second)).thenReturn(sharedBus);
         CountDownLatch entered = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger active = new AtomicInteger();
         AtomicInteger maximum = new AtomicInteger();
         AtomicReference<Throwable> failure = new AtomicReference<>();
 
-        holder.register(new EventHandler<TestHarvesterEvent>() {
+        dispatcher.register(new EventHandler<TestHarvesterEvent>() {
             @Override
             @com.google.common.eventbus.Subscribe
             public void handle(TestHarvesterEvent event) {
@@ -251,8 +255,8 @@ public class DefaultHandlerHolderTest {
             }
         });
 
-        Thread one = new Thread(() -> dispatch(holder, new TestHarvesterEvent(first), failure));
-        Thread two = new Thread(() -> dispatch(holder, new TestHarvesterEvent(second), failure));
+        Thread one = new Thread(() -> post(sharedBus, new TestHarvesterEvent(first), failure));
+        Thread two = new Thread(() -> post(sharedBus, new TestHarvesterEvent(second), failure));
         one.start();
         two.start();
         try {
@@ -270,10 +274,10 @@ public class DefaultHandlerHolderTest {
         assertEquals(maximum.get(), 2);
     }
 
-    private static void dispatch(DefaultHandlerHolder holder, HarvesterEvent event,
-                                 AtomicReference<Throwable> failure) {
+    private static void post(EventBus eventBus, HarvesterEvent event,
+                             AtomicReference<Throwable> failure) {
         try {
-            holder.onHarvesterEvent(event);
+            eventBus.post(event);
         } catch (Throwable unexpected) {
             failure.set(unexpected);
         }
