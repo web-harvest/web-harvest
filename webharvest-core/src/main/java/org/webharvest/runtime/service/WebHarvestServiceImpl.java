@@ -71,7 +71,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
-    private final ScheduledExecutorService timeoutScheduler;
+    private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
     private final AtomicLong executionGeneration = new AtomicLong();
@@ -116,7 +116,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         this.executorService = executorService;
         this.sessionRegistry = sessionRegistry;
         this.eventBus = eventBus;
-        this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(new TimeoutThreadFactory());
+        this.timeoutScheduler = new ScheduledThreadPoolExecutor(1, new TimeoutThreadFactory());
+        this.timeoutScheduler.setRemoveOnCancelPolicy(true);
+        this.timeoutScheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     }
 
     @Override
@@ -325,6 +327,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 task.session.markKillUnresponsive();
             }
         }
+    }
+
+    int getPendingTimeoutTaskCount() {
+        return timeoutScheduler.getQueue().size();
     }
 
     @Override
