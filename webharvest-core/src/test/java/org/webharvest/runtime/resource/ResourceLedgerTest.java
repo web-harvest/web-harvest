@@ -34,6 +34,7 @@
 package org.webharvest.runtime.resource;
 
 import org.testng.annotations.Test;
+import org.webharvest.runtime.registry.RegistryGenerationId;
 import org.webharvest.runtime.session.ExecutionOwner;
 
 import java.time.Duration;
@@ -449,6 +450,87 @@ public class ResourceLedgerTest {
         assertEquals(closeCount.get(), 1);
         assertEquals(registration.getState(), ResourceLedger.State.CLOSED);
         registration.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testGenerationResourcesRequireExactPinnedGenerationAndDrainAllSessions()
+        throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generationOne = new RegistryGenerationId("runtime-a", "snapshot-a");
+        RegistryGenerationId generationTwo = new RegistryGenerationId("runtime-a", "snapshot-b");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-b", 2);
+        AtomicInteger closeCount = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerGeneration(
+            "provider-loader/generation-a", generationOne, null, closeCount::incrementAndGet);
+
+        assertEquals(registration.getScope(), ResourceLedger.Scope.GENERATION);
+        assertEquals(registration.getRegistryGenerationId(), generationOne);
+        assertNull(registration.getExecutionOwner());
+        expectThrows(IllegalStateException.class, () -> registration.acquire(ownerA));
+        expectThrows(IllegalArgumentException.class, () -> registration.acquire(ownerA, generationTwo));
+        expectThrows(IllegalArgumentException.class,
+            () -> registration.acquire(new ExecutionOwner("runtime-b", "session-a", 1), generationOne));
+
+        ResourceLedger.Lease leaseA = registration.acquire(ownerA, generationOne);
+        ResourceLedger.Lease leaseB = registration.acquire(ownerB, generationOne);
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+
+        ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
+        assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
+        assertEquals(blocked.getActiveLeases(), 2);
+        assertEquals(blocked.getOutstandingLeases().size(), 2);
+        assertEquals(closeCount.get(), 0);
+
+        leaseA.close();
+        ResourceLedger.DrainResult oneRemaining = registration.drainAndClose(Duration.ZERO);
+        assertEquals(oneRemaining.getActiveLeases(), 1);
+        assertEquals(closeCount.get(), 0);
+
+        leaseB.close();
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertEquals(closeCount.get(), 1);
+        registration.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testRegistryGenerationIdHasRuntimeScopedValueSemantics() {
+        RegistryGenerationId first = new RegistryGenerationId("runtime-a", "snapshot-a");
+        RegistryGenerationId same = new RegistryGenerationId("runtime-a", "snapshot-a");
+        RegistryGenerationId otherRuntime = new RegistryGenerationId("runtime-b", "snapshot-a");
+        RegistryGenerationId otherSnapshot = new RegistryGenerationId("runtime-a", "snapshot-b");
+
+        assertEquals(first, same);
+        assertEquals(first.hashCode(), same.hashCode());
+        assertNotEquals(first, otherRuntime);
+        assertNotEquals(first, otherSnapshot);
+        assertEquals(first.getRuntimeId(), "runtime-a");
+        assertEquals(first.getValue(), "snapshot-a");
+        assertTrue(first.toString().contains("snapshot-a"));
+
+        expectThrows(IllegalArgumentException.class, () -> new RegistryGenerationId(null, "snapshot"));
+        expectThrows(IllegalArgumentException.class, () -> new RegistryGenerationId("runtime-a", " "));
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testGenerationRegistrationRejectsForeignRuntimeAndWrongRegistrationPath() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId foreign = new RegistryGenerationId("runtime-b", "snapshot-b");
+        RegistryGenerationId local = new RegistryGenerationId("runtime-a", "snapshot-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.registerGeneration("foreign-generation", foreign, null, null));
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.registerOwned("generation-via-execution-owner", ResourceLedger.Scope.GENERATION,
+                owner, null, null));
+        expectThrows(NullPointerException.class,
+            () -> ledger.registerGeneration("missing-generation", null, null, null));
+
+        ResourceLedger.Registration registration =
+            ledger.registerGeneration("local-generation", local, null, null);
+        assertEquals(registration.getRegistryGenerationId(), local);
     }
 
     private static <T extends Throwable> T expectThrows(Class<T> expectedType,
