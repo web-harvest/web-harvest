@@ -2863,7 +2863,7 @@ This matrix maps the current documentation evidence to the actual acceptance cri
 
 | Gate / issue | Evidence now available | Still missing before acceptance | Current disposition |
 |---|---|---|---|
-| #93 — inventory and Core boundary | Sections 15.32, 15.45–15.50 and 15.63: exact 44-name registrar inventory, ten optional entry points, three additional Core-package classes, source/POM boundary and proposed destination for every candidate; CORE_PLUGIN_RUNTIME_EVIDENCE.md test map. | Maintainer decision on minimal Core membership; explicit compatibility profile/default enablement; approval of optional integration boundary and set-var; confirmation whether any current Core host-effect capability is optional by default. | **STOP — proposal ready for review, not approved.** |
+| #93 — inventory and Core boundary | Complete 57-candidate source census, 44-name compatibility map, 10 optional entry points, destination/call-site/test evidence; explicit maintainer Decision A in comment 7114474041. | No remaining #93 product-boundary decision. Implementation remains gated independently by #346 SPI acceptance and #94 integration. | **DECISION A APPROVED — inventory/boundary gate complete; issue retained as traceability record.** |
 | #346 — descriptor and SPI | Sections 15.50, 15.60–15.62 and 15.64: required descriptor fields, provider/runtime boundary, lifecycle, compatibility, conservative defaults, trust and permission model. | Maintainer acceptance; actual versioned schema and Java API; serialization/canonicalization and compatibility tests; compiling built-in and external examples; explicit public binary-compatibility policy. | **STOP — design candidate only.** |
 | #347 — discovery and registry | Sections 15.51–15.53 and 15.62: current registry/scanner defects; descriptor-first discovery; immutable generations, atomic publication, last-known-good, generation pinning and retirement contract. | Implementation against accepted SPI; managed artifact source/reconciliation; real add/update/remove/re-add; atomic rollback; two-runtime and classloader/resource-drain conformance. | **STOP — no implementation authorized.** |
 | #348 — semantic/runtime parity | Sections 15.32, 15.62 and 15.63: executable vs declarative XML roles; one-generation projection principle; exact 44-name compatibility evidence. | Registry-backed Semantic Model/catalog/inspection/validation; snapshot token in inspection and validation; exact set-equality tests across descriptor, semantic, schema, validation and dispatch; external enabled/disabled fixture. | **STOP — contract only.** |
@@ -2934,7 +2934,7 @@ For #93 closure, maintainers need to record all of the following explicitly:
 - #349 must enforce policy at host-service boundaries regardless of whether a capability ships in Core or a separate artifact.
 - #350 must test the selected compatibility distribution and Core-only profile separately where both are supported.
 
-**Decision status: PROPOSAL ONLY — no maintainer choice is inferred.** This section clarifies the decision required to close #93; it does not authorize module moves, POM changes, provider removal, SPI implementation or release work. Source inventory and design only; no tests/builds run for this documentation update.
+**Decision status: Decision A APPROVED (maintainer comment 7114474041, 2026-11-23).** This supersedes the proposal-only status recorded when this section was first written. It does not authorize module moves, POM changes, provider removal, SPI implementation or release work. Source inventory and design only; no tests/builds run for this documentation update.
 
 
 ## 15.67 Source-level SPI boundary audit — existing contracts versus target boundary (2026-11-23)
@@ -3553,3 +3553,47 @@ Source blobs: `DynamicScopeContext` `f5ca038f25442f597986bf64ebc65e958b92a010`; 
 This pass fetched and inspected targeted production files at main baseline `1729bdf4620a66686d02605083e27e27d1ab3944`, including Core IoC/runtime/plugin packages, the IDE execution/validation/metadata paths and the Database integration. It is not a claim that every one of the 352 production Java files or external embedding consumers has been exhaustively call-site scanned. GitHub code search returned no indexed results for the custom DI identifiers, so those zero-result searches are not treated as proof of absence.
 
 Before any compatibility adapter is removed, complete a reproducible repository-wide source-reference inventory for the named APIs and their reflective/configuration entry points, then add a public API/downstream consumer review. No runtime/POM/test changes are made; tests/builds/runtime experiments were not executed. Implementation remains STOP pending #346 acceptance and #93/#94 prerequisites.
+
+
+## 15.80 Reconciliation of approved Core boundary with downstream architecture gates (2026-11-24)
+
+A status reconciliation is required because sections 15.65–15.66 were written before the maintainer recorded Decision A. Their original “proposal only / STOP” status is historical and is superseded by the explicit approval below.
+
+### A. #93 is approved at the product-boundary level
+
+Maintainer decision [#93 comment 7114474041](https://github.com/web-harvest/web-harvest/issues/93#issuecomment-7114474041), dated 2026-11-23, explicitly approves Decision A:
+
+- Preserve all 44 existing Core XML names and aliases, including `set-var`.
+- Retain the compatibility distribution while distinguishing 15 logical execution/value/context identities, 13 declarative/parent-consumed grammar identities and 16 current Core capability identities.
+- Keep Database, FTP, Mail, WebBrowser and ZIP outside mandatory Core dependencies.
+- Build the new execution kernel, versioned SPI/descriptors, immutable registry generations, host-service/policy boundaries and lifecycle model as new contracts; legacy internals are compatibility adapters, not the architecture blueprint.
+- Do not silently remove/redefine XML identities; incompatible changes require a separate migration/deprecation decision.
+
+Therefore #93's inventory, classification, compatibility baseline and optional integration boundary are approved. The earlier #93 STOP statements in sections 15.65–15.66 are superseded for this product decision. #93 remains open as a traceability record; no automatic issue closure is performed.
+
+### B. What Decision A does not approve
+
+Decision A is deliberately narrower than the remaining architecture/implementation gates:
+
+- It does **not** approve the public/stable SPI, descriptor schema or Java API in #346.
+- It does **not** authorize runtime implementation, POM changes, module moves, package extraction or release.
+- It does **not** imply that all 16 host-effect capabilities must be authorized by every host. Compatibility availability and host policy authorization remain separate.
+- It does **not** waive the autonomous add/update/remove/re-add, generation pinning, rollback, resource drain, subscriber lifecycle, GRACE/KILL or out-of-tree conformance requirements.
+
+### C. Current gate disposition
+
+| Work item | Correct status after Decision A | Next gate |
+|---|---|---|
+| #93 inventory/product boundary | **APPROVED / COMPLETE** | Retain evidence and compatibility traceability |
+| #346 versioned SPI/descriptors | **OPEN / DESIGN ACCEPTANCE REQUIRED** | Resolve descriptor identity, schema, compatibility, provider lifecycle and host boundary; maintainer acceptance |
+| #347 authoritative dynamic registry | **OPEN / IMPLEMENTATION BLOCKED** | Depends on accepted #346 and #94; implement one generation manager, not competing registries |
+| #348 semantic/runtime parity | **OPEN / BLOCKED** | Same-generation projection and validation/dispatch proof |
+| #349 host policy/lifecycle | **OPEN / BLOCKED** | Service enforcement, resource/worker/subscriber lifecycle and truthful termination |
+| #350 independent conformance | **OPEN / BLOCKED** | Out-of-tree live lifecycle fixture and release evidence |
+| #94 parent architecture | **OPEN / DESIGN INTEGRATION REQUIRED** | Reconcile #352 architecture with #351 source evidence and cross-P0 lifecycle contracts |
+
+### D. EventBus/runtime evidence is already integrated in the parent design
+
+PR #352 sections 7.26–7.27 and 8.7 explicitly incorporate the findings in PR #351 sections 15.74–15.79: subscriber registration ownership, the ScrapingAware listener race/retention, exception-safe scope teardown, the shared service EventBus versus legacy Guice scope buses, context confinement, runtime/session/generation identity and the normative retirement order. These are cross-cutting runtime requirements, not a reason to add a second EventBus or another lifecycle coordinator.
+
+Evidence boundary: this is a decision/status reconciliation using the explicit maintainer comment and current draft architecture documents. It is not implementation or runtime verification. No source, tests or POMs changed.
