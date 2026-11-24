@@ -61,7 +61,7 @@ import org.unitils.reflectionassert.ReflectionComparatorMode;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
-import org.webharvest.runtime.resource.LedgerExecutionResourceContext;
+import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
 import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
@@ -140,8 +140,9 @@ public class ScraperContextTest extends UnitilsTestNG {
     public void bindsResourceAccessOnlyForTheMatchingExecutionOwner() {
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
         context.setExecutionOwner(owner);
-        LedgerExecutionResourceContext access = new LedgerExecutionResourceContext(
+        LedgerExecutionResourceCoordinator coordinator = new LedgerExecutionResourceCoordinator(
             new ResourceLedger("runtime-a"), owner);
+        ExecutionResourceAccess access = coordinator.getAccess();
 
         assertNull(context.getResourceAccess());
         context.setResourceAccess(access);
@@ -156,9 +157,9 @@ public class ScraperContextTest extends UnitilsTestNG {
 
         ScraperContext mismatched = new ScraperContext();
         mismatched.setExecutionOwner(owner);
-        LedgerExecutionResourceContext foreign = new LedgerExecutionResourceContext(
+        ExecutionResourceAccess foreign = new LedgerExecutionResourceCoordinator(
             new ResourceLedger("runtime-a"),
-            new ExecutionOwner("runtime-a", "session-b", 1L));
+            new ExecutionOwner("runtime-a", "session-b", 1L)).getAccess();
         try {
             mismatched.setResourceAccess(foreign);
             throw new AssertionError("Expected mismatched resource owner to fail");
