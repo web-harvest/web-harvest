@@ -390,7 +390,10 @@ public class DatabasePlugin extends AbstractPlugin {
             try {
                 if (namedConnectionLease != null) {
                     namedConnectionLease.close();
-                } else if (!connectionId.isEmpty()
+                }
+                // Legacy contexts have no ledger lease to retire the named pool.
+                // Keep the historical physical-connection cleanup in that mode.
+                if (!connectionId.isEmpty()
                     && context.getResourceAccess() == null
                     && (context.getEventBus() == null || context.getSession() == null)) {
                     ConnectionPlugin.closeNamedConnection(context, connectionId);
