@@ -4050,3 +4050,39 @@ This is a concrete architectural ownership defect, but cross-runtime misrouting 
 This finding strengthens #356 (scope/listener ownership and mandatory teardown), #357 (explicit execution-context propagation), and #354 (worker/thread reuse and quiescence). Runtime/injector ownership must be correct before #347/#349 introduce generation retirement; otherwise a static injector or stranded scope frame can pin retired generations. The container-neutral #346 SPI must describe runtime/provider lifetimes independently of Guice scopes.
 
 **Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. No performance claim is made without measurements. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+## 15.92 — Default Harvester construction bypasses the Scraping AOP lifecycle (2026-11-24)
+
+**Repository baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Evidence:** direct production and test-source inspection; no live Guice/AOP integration experiment.
+
+### Verified construction and execution paths
+
+- `ScraperModule.bindInterceptors()` binds `ScrapingInterceptor` to methods annotated with `@Scraping`. The interceptor is responsible for entering a scope and notifying the injector-owned `ScrapingAwareHelper` before and after invocation. Source blob: `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`.
+- The active `DefaultHarvesterFactory.create(config)` implementation returns `new ScrapingHarvester(...)` directly. It does not ask Guice for an AOP-enhanced instance and does not create a proxy. Source blob: `58bae4e22a82d89dac1c6e63e28ce5f3587e687e`.
+- `ScrapingHarvester.execute()` is annotated `@Scraping`, but also manually creates a `ScopeAttributeHolder`, calls `scraperScope.enter()`, and exits it in its own `finally`. It does not call `ScrapingAwareHelper.onBeforeScraping/onAfterScraping`. Source blob: `2af32ca67c235e075c8cc613118814d54e555338`.
+- Therefore, on the default factory path, the manual scope is active, but the Guice method interceptor and its listener notifications are bypassed. The annotation alone does not activate AOP on an object constructed with `new`. This is a concrete path-level discrepancy; whether another production caller independently constructs an AOP-managed Harvester does not change the default factory behavior.
+- `DefaultHarvesterFactoryTest` verifies direct factory creation and scope entry/exit, but does not assert listener notifications or prove an AOP proxy exists. `ScrapingHarvesterTest` also constructs the class directly. `ScrapingInterceptorTest` tests helper callbacks in isolation and does not exercise a real Guice-created Harvester through the factory. Test blobs: `3cbf093051577ef6d6bc4cd0f12d598e15cd1a4e`, `f303a444624bf123136280b81f7a7e2a9dfa6553`, `3eb90ecee27a679f956f22fcde4c8b0cc99ab4ff`.
+
+### Consequences and cost boundary
+
+1. The scope lifecycle and the listener lifecycle are not one guaranteed operation on the default path. Any `ScrapingAware` component relying on before/after notifications may not receive them for factory-created harvesters.
+2. The code currently maintains two lifecycle mechanisms: manual scope ownership in `ScrapingHarvester` and AOP-managed scope/listener ownership in `ScrapingInterceptor`. Future changes can fix one path while leaving the other inconsistent.
+3. The manual path allocates one `ScopeAttributeHolder` per execute call and stores scoped objects in its map until the invocation exits and references become unreachable. This is expected per-execution allocation, not itself a leak. The key requirement is to release all references after quiescence and avoid duplicate holder creation if a future construction path combines manual and AOP ownership.
+4. Do not add a second scope entry or listener callback blindly: first decide which single lifecycle owner is authoritative, then migrate callers and preserve compatibility semantics.
+
+### Required resolution and tests
+
+1. Choose one owner for Harvester lifecycle: either construct the Harvester through a verified Guice AOP path, or remove reliance on interception and invoke a shared explicit lifecycle coordinator from the factory/manual execution path. Do not keep two independent implementations.
+2. Ensure before/after listener semantics are explicit, exactly-once, exception-safe and tied to the same runtime-owned scope/holder.
+3. Add a real injector integration test that obtains a Harvester through the production factory, verifies whether it is proxied/intercepted, and asserts exactly-once before/after callbacks plus scope restoration on success and failure.
+4. Add a control test for direct construction and document whether it is supported; direct construction must not silently claim interceptor semantics.
+5. Measure per-execution holder/map allocation and retention under repeated execution and executor-thread reuse. Include listener count and scoped-object count; verify no holder graph remains reachable after completed/failed invocation.
+6. Keep the performance target proportional: one holder per logical execution scope, no duplicate nested holder for the same lifecycle, no global synchronization added to the hot path.
+
+### Dependency and decision
+
+This strengthens #356 (listener ownership and mandatory teardown) and #354 (worker quiescence before releasing per-execution state), and must be reconciled with #357 (explicit execution context) before runtime ownership is migrated. It also reinforces the requirement that #347/#349 publish one authoritative runtime lifecycle rather than preserving parallel factory/AOP mechanisms.
+
+**Decision boundary:** documentation only. No runtime/API/test/POM changes, merge or release. No tests or benchmarks executed. #346 remains unaccepted; runtime implementation remains STOP.
