@@ -79,6 +79,7 @@ public class ResourceLedgerTest {
     @Test(groups = {"unit", "runtime"})
     public void testConcurrentAcquireAndCloseRequestHaveOneAtomicBoundary() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         ResourceLedger.Registration registration = ledger.registerOwned(
             "jdbc/race", ResourceLedger.Scope.SESSION,
             new ExecutionOwner("runtime-a", "session-a", 1), null, null);
@@ -193,6 +194,7 @@ public class ResourceLedgerTest {
     @Test(groups = {"unit", "runtime"})
     public void testOwnerQuiescenceIsRequiredEvenWhenNoLeaseIsActive() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         AtomicInteger closeCount = new AtomicInteger();
         ResourceLedger.Registration registration = ledger.registerOwned(
             "browser/session-a", ResourceLedger.Scope.SESSION,
