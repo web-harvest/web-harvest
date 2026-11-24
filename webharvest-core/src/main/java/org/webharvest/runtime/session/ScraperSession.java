@@ -116,6 +116,15 @@ public interface ScraperSession {
      * @return the session ID (never null)
      */
     String getSessionId();
+
+    /**
+     * Returns the immutable execution owner identity. Legacy implementations
+     * receive a compatibility identity; runtime-managed sessions should
+     * override this with their runtime and generation identity.
+     */
+    default ExecutionIdentity getExecutionIdentity() {
+        return ExecutionIdentity.legacy(getSessionId());
+    }
     
     /**
      * Returns the client identifier associated with this session.
