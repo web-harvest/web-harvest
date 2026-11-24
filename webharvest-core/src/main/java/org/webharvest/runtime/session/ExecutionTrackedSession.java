@@ -54,6 +54,15 @@ public interface ExecutionTrackedSession extends ScraperSession {
     void awaitExecutionCompletion() throws InterruptedException;
 
     /**
+     * Blocks until an unresponsive execution state is observed or the timeout expires.
+     *
+     * @param timeoutMillis maximum time to wait, in milliseconds
+     * @return true only if UNRESPONSIVE was observed
+     * @throws IllegalArgumentException if timeoutMillis is negative
+     */
+    boolean awaitExecutionUnresponsive(long timeoutMillis) throws InterruptedException;
+
+    /**
      * Blocks until worker exit is observed or the timeout expires.
      *
      * @return true only when worker exit has been observed
