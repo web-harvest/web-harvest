@@ -471,7 +471,8 @@ public final class ResourceLedger {
                         "Execution owner has no active pin for generation: " + useOwner);
                 }
                 synchronized (entry) {
-                    if (entry.state != State.OPEN && entry.state != State.QUARANTINED) {
+                    if (entry.state != State.OPEN && entry.state != State.CLOSE_REQUESTED
+                        && entry.state != State.QUARANTINED) {
                         throw new IllegalStateException(
                             "Generation resource no longer admits pinned use: " + entry.resourceId
                                 + " (" + entry.state + ')');
@@ -509,6 +510,12 @@ public final class ResourceLedger {
         public void requestClose() {
             if (entry.scope == Scope.GENERATION) {
                 ledger.beginGenerationRetirement(entry.generationId);
+                synchronized (entry) {
+                    if (entry.state == State.OPEN) {
+                        entry.state = State.CLOSE_REQUESTED;
+                    }
+                    entry.notifyAll();
+                }
                 return;
             }
             synchronized (entry) {
@@ -605,7 +612,7 @@ public final class ResourceLedger {
 
             long started = System.nanoTime();
             if (entry.scope == Scope.GENERATION) {
-                ledger.beginGenerationRetirement(entry.generationId);
+                requestClose();
                 if (!ledger.awaitGenerationPins(entry.generationId, timeoutNanos, started)) {
                     synchronized (entry) {
                         if (entry.state == State.OPEN || entry.state == State.CLOSE_REQUESTED) {
