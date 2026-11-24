@@ -47,6 +47,9 @@ public interface ExecutionTrackedSession extends ScraperSession {
     /** Returns the latest observed worker execution state. */
     ExecutionState getExecutionState();
 
+    /** Returns the termination disposition, independently of business outcome. */
+    TerminationDisposition getTerminationDisposition();
+
     /** Blocks until the worker is known to have exited. */
     void awaitExecutionCompletion() throws InterruptedException;
 
