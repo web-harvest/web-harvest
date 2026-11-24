@@ -239,7 +239,7 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
             }
         }
 
-        private DrainReport drain(Duration budget) throws InterruptedException {
+        protected final DrainReport drain(Duration budget) throws InterruptedException {
             ResourceLedger.DrainResult result = registration.drainAndClose(budget);
             if (result.isClosed()) {
                 registration.close();
