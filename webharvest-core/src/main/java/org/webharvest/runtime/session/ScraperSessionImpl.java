@@ -38,6 +38,8 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.session.events.*;
 
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -95,13 +97,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * @see SessionStatus
  * @see SessionMetrics
  */
-public class ScraperSessionImpl implements ScraperSession {
+public class ScraperSessionImpl implements ExecutionTrackedSession {
     
     private final String sessionId;
     private final String clientId;
     private final Config config;
     private final SessionMetrics metrics;
     private final EventBus eventBus;
+    private final ExecutionOwner executionOwner;
     
     private volatile SessionStatus status;
     private volatile DynamicScopeContext context;
@@ -109,6 +112,10 @@ public class ScraperSessionImpl implements ScraperSession {
     
     private final ReentrantLock completionLock;
     private final Condition completionCondition;
+    private final CountDownLatch executionCompletion = new CountDownLatch(1);
+    private volatile ExecutionState executionState = ExecutionState.NOT_SUBMITTED;
+    private volatile TerminationDisposition terminationDisposition = TerminationDisposition.NOT_REQUESTED;
+    private volatile Runnable cancellationHandler;
     
     /**
      * Creates a new session instance.
@@ -132,6 +139,21 @@ public class ScraperSessionImpl implements ScraperSession {
      * @throws IllegalArgumentException if any parameter is invalid
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config, EventBus eventBus) {
+        this(sessionId, clientId, config, eventBus,
+            new ExecutionOwner(UUID.randomUUID().toString(), sessionId, 1));
+    }
+
+    /**
+     * Creates a session with an explicit immutable runtime execution identity.
+     *
+     * @param sessionId unique session identifier
+     * @param clientId optional client identifier
+     * @param config configuration to execute
+     * @param eventBus shared runtime EventBus
+     * @param executionOwner immutable runtime/session/generation identity
+     */
+    public ScraperSessionImpl(String sessionId, String clientId, Config config,
+                              EventBus eventBus, ExecutionOwner executionOwner) {
         if (sessionId == null || sessionId.trim().isEmpty()) {
             throw new IllegalArgumentException("Session ID cannot be null or empty");
         }
@@ -141,12 +163,16 @@ public class ScraperSessionImpl implements ScraperSession {
         if (eventBus == null) {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
-        
+        if (executionOwner == null || !sessionId.equals(executionOwner.getSessionId())) {
+            throw new IllegalArgumentException("Execution owner must match the session ID");
+        }
+
         this.sessionId = sessionId;
         this.clientId = clientId;
         this.config = config;
         this.metrics = new SessionMetrics();
         this.eventBus = eventBus;
+        this.executionOwner = executionOwner;
         this.status = SessionStatus.PENDING;
         this.context = null;
         this.error = null;
@@ -193,16 +219,160 @@ public class ScraperSessionImpl implements ScraperSession {
         return error;
     }
     
-    @Override
-    public synchronized boolean cancel() {
-        if (status.isTerminal()) {
+    /**
+     * Attaches the service-owned task cancellation callback. If cancellation
+     * happened during session-created event delivery, the callback is invoked
+     * immediately after attachment.
+     */
+    public void attachCancellationHandler(Runnable handler) {
+        if (handler == null) {
+            throw new IllegalArgumentException("Cancellation handler cannot be null");
+        }
+        boolean invoke;
+        synchronized (this) {
+            if (cancellationHandler != null) {
+                throw new IllegalStateException("Cancellation handler already attached");
+            }
+            cancellationHandler = handler;
+            invoke = status == SessionStatus.CANCELLED;
+        }
+        if (invoke) {
+            handler.run();
+        }
+    }
+
+    /** Marks the service-owned task as accepted by the execution coordinator. */
+    public synchronized void markExecutionQueued() {
+        if (executionState != ExecutionState.NOT_SUBMITTED) {
+            throw new IllegalStateException("Execution was already submitted");
+        }
+        executionState = ExecutionState.QUEUED;
+    }
+
+    /** Returns true only when the queued task may enter its execution body. */
+    public synchronized boolean markExecutionStarted() {
+        if (executionState != ExecutionState.QUEUED || status.isTerminal()) {
             return false;
         }
-        
-        status = SessionStatus.CANCELLED;
-        metrics.markEnded();
-        eventBus.post(new SessionCancelledEvent(this));
+        executionState = ExecutionState.RUNNING;
+        return true;
+    }
+
+    /** Records the start of cooperative termination. */
+    public synchronized void markGracefulTerminationRequested() {
+        if (executionState != ExecutionState.EXITED
+            && terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
+            terminationDisposition = TerminationDisposition.GRACE_IN_PROGRESS;
+        }
+    }
+
+    /** Records an in-process kill escalation request; this does not kill a Java thread. */
+    public synchronized void markKillRequested() {
+        if (executionState != ExecutionState.EXITED
+            && (terminationDisposition == TerminationDisposition.NOT_REQUESTED
+                || terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS)) {
+            terminationDisposition = TerminationDisposition.KILL_IN_PROGRESS;
+        }
+    }
+
+    /** Records that in-process escalation did not make the worker exit. */
+    public synchronized void markKillUnresponsive() {
+        if (executionState != ExecutionState.EXITED
+            && terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS) {
+            terminationDisposition = TerminationDisposition.KILL_UNRESPONSIVE;
+        }
+    }
+
+    /** Records an interrupt request without claiming that the worker has exited. */
+    public synchronized void markExecutionInterruptRequested() {
+        if (executionState != ExecutionState.EXITED) {
+            executionState = ExecutionState.INTERRUPT_REQUESTED;
+        }
+    }
+
+    /** Records that the worker did not respond within the bounded grace period. */
+    public synchronized void markExecutionUnresponsive() {
+        if (executionState != ExecutionState.EXITED) {
+            executionState = ExecutionState.UNRESPONSIVE;
+        }
+    }
+
+    /** Records observed worker exit. This is the only transition proving quiescence. */
+    public synchronized void markExecutionExited() {
+        ExecutionState previousState = executionState;
+        executionState = ExecutionState.EXITED;
+        if (previousState == ExecutionState.NOT_SUBMITTED || previousState == ExecutionState.QUEUED) {
+            if (terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS
+                || terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS
+                || terminationDisposition == TerminationDisposition.KILL_UNRESPONSIVE) {
+                terminationDisposition = TerminationDisposition.CANCELLED_BEFORE_START;
+            }
+        } else if (terminationDisposition == TerminationDisposition.GRACE_IN_PROGRESS) {
+            terminationDisposition = TerminationDisposition.GRACEFUL;
+        } else if (terminationDisposition == TerminationDisposition.KILL_IN_PROGRESS
+            || terminationDisposition == TerminationDisposition.KILL_UNRESPONSIVE) {
+            terminationDisposition = TerminationDisposition.WORKER_EXIT_CONFIRMED;
+        }
+        executionCompletion.countDown();
+    }
+
+    @Override
+    public ExecutionOwner getExecutionOwner() {
+        return executionOwner;
+    }
+
+    @Override
+    public ExecutionState getExecutionState() {
+        return executionState;
+    }
+
+    @Override
+    public TerminationDisposition getTerminationDisposition() {
+        return terminationDisposition;
+    }
+
+    @Override
+    public void awaitExecutionCompletion() throws InterruptedException {
+        if (executionState != ExecutionState.NOT_SUBMITTED) {
+            executionCompletion.await();
+        }
+    }
+
+    @Override
+    public boolean awaitExecutionCompletion(long timeoutMillis) throws InterruptedException {
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("Timeout cannot be negative: " + timeoutMillis);
+        }
+        if (executionState == ExecutionState.NOT_SUBMITTED || executionState == ExecutionState.EXITED) {
+            return true;
+        }
+        return executionCompletion.await(timeoutMillis, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public boolean cancel() {
+        Runnable handler;
+        synchronized (this) {
+            if (status.isTerminal()) {
+                return false;
+            }
+            status = SessionStatus.CANCELLED;
+            metrics.markEnded();
+            if (executionState == ExecutionState.NOT_SUBMITTED) {
+                terminationDisposition = TerminationDisposition.CANCELLED_BEFORE_START;
+            } else if (terminationDisposition == TerminationDisposition.NOT_REQUESTED) {
+                terminationDisposition = TerminationDisposition.GRACE_IN_PROGRESS;
+            }
+            handler = cancellationHandler;
+        }
+
+        // Request worker interruption before notifying EventBus subscribers.
+        // Neither this callback nor the event proves worker quiescence.
+        if (handler != null) {
+            handler.run();
+        }
         signalCompletion();
+        eventBus.post(new SessionCancelledEvent(this));
         return true;
     }
     
@@ -246,17 +416,20 @@ public class ScraperSessionImpl implements ScraperSession {
      * @throws IllegalArgumentException if context is null
      * @throws IllegalStateException if session is not in PENDING state
      */
-    public synchronized void markRunning(DynamicScopeContext context) {
+    public void markRunning(DynamicScopeContext context) {
         if (context == null) {
             throw new IllegalArgumentException("Context cannot be null");
         }
-        if (status != SessionStatus.PENDING) {
-            throw new IllegalStateException(
-                "Cannot mark as running from state: " + status);
+        synchronized (this) {
+            if (status != SessionStatus.PENDING) {
+                throw new IllegalStateException(
+                    "Cannot mark as running from state: " + status);
+            }
+
+            this.context = context;
+            this.status = SessionStatus.RUNNING;
         }
-        
-        this.context = context;
-        this.status = SessionStatus.RUNNING;
+        // Subscriber callbacks must not hold the session state monitor.
         eventBus.post(new SessionStartedEvent(this));
     }
     
@@ -267,16 +440,18 @@ public class ScraperSessionImpl implements ScraperSession {
      * 
      * @throws IllegalStateException if session is not in RUNNING state
      */
-    public synchronized void markCompleted() {
-        if (status != SessionStatus.RUNNING) {
-            throw new IllegalStateException(
-                "Cannot mark as completed from state: " + status);
+    public void markCompleted() {
+        synchronized (this) {
+            if (status != SessionStatus.RUNNING) {
+                throw new IllegalStateException(
+                    "Cannot mark as completed from state: " + status);
+            }
+
+            status = SessionStatus.COMPLETED;
+            metrics.markEnded();
         }
-        
-        status = SessionStatus.COMPLETED;
-        metrics.markEnded();
-        eventBus.post(new SessionCompletedEvent(this));
         signalCompletion();
+        eventBus.post(new SessionCompletedEvent(this));
     }
     
     /**
@@ -287,23 +462,27 @@ public class ScraperSessionImpl implements ScraperSession {
      * 
      * @param error the error that caused failure (may be null)
      */
-    public synchronized void markFailed(Throwable error) {
-        if (status.isTerminal()) {
-            // Already in terminal state, don't change
-            return;
+    public void markFailed(Throwable error) {
+        Throwable failure;
+        synchronized (this) {
+            if (status.isTerminal()) {
+                // Already in terminal state, don't change
+                return;
+            }
+
+            failure = error != null ? error
+                : new RuntimeException("Session failed with unknown error");
+            this.error = failure;
+            this.status = SessionStatus.FAILED;
+            metrics.markEnded();
         }
-        
-        this.error = error != null ? error : 
-            new RuntimeException("Session failed with unknown error");
-        this.status = SessionStatus.FAILED;
-        metrics.markEnded();
-        eventBus.post(new SessionFailedEvent(this, this.error));
         signalCompletion();
+        eventBus.post(new SessionFailedEvent(this, failure));
     }
     
     /**
      * Signals all threads waiting for completion.
-     * Must be called while holding the instance lock.
+     * Uses the independent completion condition; the session monitor is not required.
      */
     private void signalCompletion() {
         completionLock.lock();
