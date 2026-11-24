@@ -120,7 +120,7 @@ public class ResourceLedgerTest {
         assertNull(unexpected.get());
         assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
         assertEquals(registration.getActiveLeaseCount(), acquired.get() == null ? 0 : 1);
-        expectThrows(IllegalStateException.class, registration::acquire);
+        expectThrows(IllegalStateException.class, () -> registration.acquire(owner));
 
         if (acquired.get() != null) {
             acquired.get().close();
@@ -187,7 +187,7 @@ public class ResourceLedgerTest {
 
         registration.markOwnerQuiescent();
         assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
-        expectThrows(IllegalStateException.class, registration::acquire);
+        expectThrows(IllegalStateException.class, () -> registration.acquire(owner));
     }
 
     @Test(groups = {"unit", "runtime"})
@@ -203,7 +203,7 @@ public class ResourceLedgerTest {
         assertEquals(closeCount.get(), 0);
 
         registration.markOwnerQuiescent();
-        expectThrows(IllegalStateException.class, registration::acquire);
+        expectThrows(IllegalStateException.class, () -> registration.acquire(owner));
         assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
         assertEquals(closeCount.get(), 1);
         registration.close();
