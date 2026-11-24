@@ -353,6 +353,7 @@ public class ResourceLedgerTest {
             assertTrue(abortEntered.await(5, TimeUnit.SECONDS));
             ResourceLedger.DrainResult whileAborting = registration.drainAndClose(Duration.ZERO);
             assertEquals(whileAborting.getState(), ResourceLedger.State.QUARANTINED);
+            assertTrue(whileAborting.isAbortInProgress());
             assertEquals(closeCount.get(), 0);
         } finally {
             releaseAbort.countDown();
