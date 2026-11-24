@@ -41,7 +41,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.client.ClientContext;
-import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
