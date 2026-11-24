@@ -95,7 +95,7 @@ public class DatabasePluginJdbcCleanupTest {
         doThrow(resultSetCloseFailure).when(resultSet).close();
         doThrow(statementCloseFailure).when(statement).close();
 
-        Throwable actual = invokeExecuteSql(connection, "SELECT 1");
+        Throwable actual = invokeExecuteSqlFailure(connection, "SELECT 1");
 
         assertSame(actual, resultSetCloseFailure);
         assertEquals(actual.getSuppressed().length, 1);
@@ -173,12 +173,10 @@ public class DatabasePluginJdbcCleanupTest {
     private static Throwable invokeExecuteSqlFailure(Connection connection, String sql) {
         try {
             invokeExecuteSql(connection, sql);
-            throw new AssertionError("Expected executeSql to fail");
-        } catch (InvocationTargetException failure) {
-            return failure.getCause();
         } catch (Throwable failure) {
             return failure;
         }
+        throw new AssertionError("Expected executeSql to fail");
     }
 
     private static Object invokeExecuteSql(Connection connection, String sql) throws Throwable {
