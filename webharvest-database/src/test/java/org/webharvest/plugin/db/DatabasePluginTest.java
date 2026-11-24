@@ -423,6 +423,23 @@ public class DatabasePluginTest {
         plugin.execute(context);
     }
 
+    @Test
+    public void sqlExecutionFailureIsReportedAndInlineResourceIsCleanedUp() throws Exception {
+        String url = "jdbc:h2:mem:db_invalid_sql;DB_CLOSE_DELAY=-1";
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELEC deliberately_invalid_sql"));
+
+        try {
+            plugin.execute(context);
+            fail("Expected invalid SQL to fail");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Database operation failed"));
+            assertTrue(expected.getCause() instanceof java.sql.SQLException,
+                "The original JDBC failure must remain available as the cause");
+        }
+    }
+
+
     private static void createFixture(String url) throws Exception {
         Class.forName("org.h2.Driver");
         try (Connection connection = DriverManager.getConnection(url, "sa", "");
