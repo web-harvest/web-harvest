@@ -3597,3 +3597,80 @@ Decision A is deliberately narrower than the remaining architecture/implementati
 PR #352 sections 7.26–7.27 and 8.7 explicitly incorporate the findings in PR #351 sections 15.74–15.79: subscriber registration ownership, the ScrapingAware listener race/retention, exception-safe scope teardown, the shared service EventBus versus legacy Guice scope buses, context confinement, runtime/session/generation identity and the normative retirement order. These are cross-cutting runtime requirements, not a reason to add a second EventBus or another lifecycle coordinator.
 
 Evidence boundary: this is a decision/status reconciliation using the explicit maintainer comment and current draft architecture documents. It is not implementation or runtime verification. No source, tests or POMs changed.
+
+
+## 15.81 #346 SPI acceptance proposal — separate provider manifest, capability descriptors and XML grammar (2026-11-24)
+
+With #93 Decision A approved, the SPI can now be reviewed against a stable compatibility/product boundary. This section turns the existing #346 requirements and the descriptor/grammar findings in PR #352 section 7.4 into a concrete, deliberately small contract proposal. It is still a proposal for maintainer acceptance; no Java API or schema is implemented here.
+
+### A. Do not make one descriptor represent three different identities
+
+The source inventory exposes three independent concepts:
+
+1. **Provider/artifact identity** — who supplies code, from which immutable artifact/version/digest, and through which provider entry point.
+2. **Capability identity** — the stable logical function/capability exposed to the runtime and Semantic Model. One provider may supply multiple capabilities; one capability identity must not be inferred from a Java class name.
+3. **XML grammar/binding identity** — a qualified XML element (namespace URI + local name), explicit aliases and its grammar role. A declarative child node can exist without any executable provider.
+
+The proposed manifest therefore has one provider envelope and a collection of component declarations. Each component is either:
+- an executable capability descriptor with a provider binding; or
+- a declarative grammar descriptor with no provider implementation binding; or
+- an explicit compatibility alias/binding to a canonical identity.
+
+Do not require one JAR, provider factory or Java class per XML name. In particular, the 13 parent-consumed/declarative identities must not become dummy independently activated providers merely to fit a one-class/one-plugin model. Preserve the dual-use `xml` behavior as one canonical identity with separately declared roles/bindings, not duplicate provider IDs.
+
+### B. Proposed minimal manifest shape (logical fields, not frozen JSON syntax)
+
+| Layer | Required data | Important rule |
+|---|---|---|
+| Manifest envelope | descriptor schema version; provider ID; provider version; SPI compatibility range; Core compatibility range; artifact coordinates (if available), immutable digest, provenance/signature evidence | Schema, SPI, provider and artifact versions are distinct. Digest is byte identity, not trust. |
+| Provider entry point | opaque implementation binding/entry-point name; provider lifecycle contract version; declared supported concurrency mode | The string is inert descriptor data during discovery. Resolve/load only after host compatibility and authorization. No public no-arg constructor requirement. |
+| Capability component | stable plugin/capability ID; role; semantic capability IDs; input/output contracts; composition constraints; dependencies/conflicts | Provider ID and capability ID are separate. Multiple components may be supplied by one provider. |
+| XML binding | namespace URI + local name; explicit aliases; compatibility/version applicability; executable/declarative/root/detail role | QName is a binding, not the capability identity. Alias collision is validated before publication. |
+| Configuration grammar | declarative schema; required/allowed children; cardinality/order; direct-parent and ancestor-context constraints; raw/evaluated/body-consumption semantics | Do not reduce ancestor-sensitive constraints to a flat parent-name list. Do not call provider code to obtain schemas. |
+| Host policy | namespaced required permissions and resource budgets; optional capabilities | Discovery does not authorize. Unknown permissions fail closed; actual host services enforce policy. |
+| Provenance/diagnostics | artifact source, digest, signer/attestation evidence, descriptor origin and stable diagnostic location | Trust decision belongs to host policy, not a descriptor assertion. |
+
+### C. Lifecycle and concurrency contract
+
+Keep the public Java boundary smaller than the internal ownership model:
+
+- One provider entry point/factory per provider manifest (which may expose several capabilities).
+- Provider preparation receives a restricted candidate context; it may allocate candidate-owned resources but may not perform irreversible business effects or publish globally.
+- Commit occurs only as part of atomic generation publication. Failed preparation/commit rolls back only candidate-owned resources and preserves the last-known-good generation.
+- A provider instance is not implicitly a singleton or per-call object. The descriptor declares a supported concurrency mode; conservative default is serialized invocation per provider instance. The host activation manager owns construction, invocation admission, lifecycle and close.
+- Every invocation receives an immutable execution context carrying runtime/session/generation identity, host services, policy, cancellation/deadline and shared budgets. No Guice, Spring, Core legacy classes, static service locator or mutable registry handle appears in the neutral SPI.
+- Resource ownership and termination handles remain narrow host-owned value contracts. Do not add a second provider registry, service container, EventBus or shutdown coordinator inside the SPI.
+
+### D. Versioning and compatibility rules
+
+1. Descriptor schema version, SPI version, provider implementation version and Core compatibility range are independent fields with independent validation.
+2. Unsupported schema/SPI major versions fail closed. Minor compatibility is allowed only where the relevant contract explicitly guarantees it; do not infer binary compatibility from Maven version ranges.
+3. Canonical serialization and ordering are defined before digest/signature verification. Artifact digest covers immutable bytes; descriptor canonicalization is separately deterministic.
+4. Unknown optional extension fields may be preserved/ignored only under a declared forward-compatibility rule. Unknown mandatory fields or permission identifiers fail closed.
+5. Provider/capability IDs are stable reverse-DNS identifiers. XML QNames and aliases are explicit bindings; Java package/class renames do not change public identity.
+6. The host allowlist/policy decides trust and enablement. Signatures and provenance are evidence, not authorization; no trust-on-first-use.
+7. The current 44 XML compatibility bindings are represented explicitly. No alias is inferred from class names or automatically generated from plugin IDs.
+
+### E. Acceptance tests required before freezing names or publishing the SPI
+
+- JSON Schema positive/negative fixtures for envelope, executable capability, declarative grammar and alias forms; unknown mandatory field/schema major fails closed.
+- Canonical serialization/hash stability across property ordering, array ordering rules and equivalent descriptor input; artifact digest and descriptor digest are not conflated.
+- One provider manifest exposes multiple capabilities; declarative grammar descriptors require no implementation binding and do not load/instantiate a provider.
+- Constructor/static-initializer sentinel proves descriptor discovery, catalog, schema and semantic projection do not load or instantiate implementation classes.
+- Duplicate provider ID, capability ID, QName, namespace binding, alias, dependency cycle and incompatible version fail deterministically without partial publication.
+- A provider is denied before class loading when trust/policy/compatibility fails; signature evidence alone cannot authorize it.
+- Provider prepare failure preserves the last-known-good generation and closes only candidate-owned resources.
+- Serialized default invocation and explicitly declared concurrent invocation have separate conformance tests.
+- A minimal built-in provider and an independent out-of-tree provider compile against the same neutral SPI without `webharvest-core`, Guice or Spring on their compile classpath.
+- Legacy XML compatibility fixture covers all 44 approved names/aliases, including `set-var`, and parent-consumed grammar semantics.
+
+### F. Maintainer decisions requested in #346
+
+1. Accept/revise the three-identity model (provider, capability, XML grammar/binding).
+2. Accept/revise the provider-manifest plus component-descriptor packaging model.
+3. Accept/revise JSON as the descriptor wire format and independent schema versioning.
+4. Accept/revise reverse-DNS identity, digest/provenance/trust separation and fail-closed major compatibility.
+5. Accept/revise the neutral provider entry point, candidate prepare/commit/rollback and serialized default concurrency contract.
+6. Confirm that this is design acceptance only; public SPI stability follows the compiling out-of-tree fixture and compatibility policy, not this comment alone.
+
+**Gate:** #93 Decision A is approved. #346 remains STOP until these SPI decisions are explicitly accepted and the minimal compiling fixture passes. #347–#350 runtime implementation remains blocked. No source, tests, POMs, workflows or runtime code changed; no tests/builds were run.
