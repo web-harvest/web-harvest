@@ -191,6 +191,32 @@ public class ConnectionPluginTest {
     }
 
     @Test
+    public void legacyNamedLookupRejectsMissingFactory() {
+        try {
+            ConnectionPlugin.getNamedConnection(context, "missing");
+            fail("Expected a missing named connection to be rejected");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("not found"));
+        } catch (Exception unexpected) {
+            fail("Unexpected checked exception", unexpected);
+        }
+    }
+
+    @Test
+    public void legacyNamedLookupRejectsVariableOfAnotherType() {
+        context.setLocalVar("webharvest_db_factory_wrongType",
+                new org.webharvest.runtime.variables.NodeVariable("not a connection"));
+        try {
+            ConnectionPlugin.getNamedConnection(context, "wrongType");
+            fail("Expected a non-connection variable to be rejected");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("not a database connection"));
+        } catch (Exception unexpected) {
+            fail("Unexpected checked exception", unexpected);
+        }
+    }
+
+    @Test
     public void registersNamedPoolWithSessionEventBusAndReleasesPhysicalConnection() throws Exception {
         EventBus eventBus = new EventBus();
         context.setEventBus(eventBus);
