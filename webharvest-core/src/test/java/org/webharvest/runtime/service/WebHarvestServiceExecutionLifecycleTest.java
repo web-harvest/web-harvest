@@ -126,7 +126,6 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
         try {
             assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
-            delegate.submit(() -> { });
             ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
             assertEquals(session.getStatus(), SessionStatus.CANCELLED);
@@ -157,6 +156,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
         try {
             assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            delegate.submit(() -> { });
             ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
             ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
 
