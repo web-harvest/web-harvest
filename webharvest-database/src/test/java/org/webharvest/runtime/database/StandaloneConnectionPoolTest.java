@@ -264,6 +264,48 @@ public class StandaloneConnectionPoolTest {
         }
     }
 
+    @Test
+    public void detachesSessionAfterPhysicalCloseFailureAndCanBeReassigned() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        EventBus originalBus = new EventBus();
+        String failingUrl = "jdbc:webharvest-test:session-close-failure";
+        Connection failingPhysical = mock(Connection.class);
+        java.sql.SQLException closeFailure = new java.sql.SQLException("session close failed");
+        org.mockito.Mockito.doThrow(closeFailure).when(failingPhysical).close();
+        FailingCloseDriver.connections.put(failingUrl, failingPhysical);
+        try {
+            pool.getConnection(FailingCloseDriver.class.getName(), failingUrl, "user", "password");
+            pool.registerForSession(originalBus, "original-session");
+
+            ScraperSession originalSession = mock(ScraperSession.class);
+            when(originalSession.getSessionId()).thenReturn("original-session");
+            originalBus.post(new SessionCompletedEvent(originalSession));
+
+            org.mockito.Mockito.verify(failingPhysical).close();
+
+            EventBus replacementBus = new EventBus();
+            String replacementUrl = "jdbc:h2:mem:pool_reassigned;DB_CLOSE_DELAY=-1";
+            Connection replacement = pool.getConnection(DRIVER, replacementUrl, "sa", "");
+            Connection replacementPhysical = ((ConnectionProxy) replacement).getTargetConnection();
+            pool.registerForSession(replacementBus, "replacement-session");
+
+            ScraperSession staleSession = mock(ScraperSession.class);
+            when(staleSession.getSessionId()).thenReturn("original-session");
+            originalBus.post(new SessionCompletedEvent(staleSession));
+            assertFalse(replacementPhysical.isClosed(),
+                "A stale event bus must not retain ownership after failed physical cleanup");
+
+            ScraperSession replacementSession = mock(ScraperSession.class);
+            when(replacementSession.getSessionId()).thenReturn("replacement-session");
+            replacementBus.post(new SessionCompletedEvent(replacementSession));
+            assertTrue(replacementPhysical.isClosed(),
+                "The reassigned owner must still be able to retire its connection");
+        } finally {
+            FailingCloseDriver.connections.remove(failingUrl);
+            pool.closeAllConnections();
+        }
+    }
+
     private DatabaseException expectDatabaseException(StandaloneConnectionPool pool) {
         try {
             pool.closeAllConnections();
