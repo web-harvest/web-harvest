@@ -169,17 +169,18 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             context.setEventBus(eventBus);
             context.setSession(session);
 
-            session.markRunning(context);
-            if (task.isCancellationRequested() || Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException("Session cancellation requested before scraper entry");
-            }
-
             if (task.options.hasTimeout()) {
                 timeoutFuture = timeoutScheduler.schedule(
                     task::requestTimeout,
                     task.options.getTimeout().toMillis(),
                     TimeUnit.MILLISECONDS
                 );
+            }
+
+            session.markRunning(context);
+            if (task.isCancellationRequested() || task.isTimedOut()
+                || Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException("Session cancellation or deadline reached before scraper entry");
             }
 
             Scraper scraper = new Scraper(eventBus);
