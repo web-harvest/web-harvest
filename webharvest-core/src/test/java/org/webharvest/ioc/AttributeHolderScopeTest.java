@@ -93,6 +93,23 @@ public class AttributeHolderScopeTest {
     }
 
     @Test
+    public void removesEmptyThreadScopeAndCanEnterAgain() {
+        scope.enter(mockHolder);
+        scope.exit();
+
+        try {
+            scope.get();
+            fail("Scope must be empty after the final exit");
+        } catch (OutOfScopeException expected) {
+            // Expected; the empty ThreadLocal stack is removed by the scope.
+        }
+
+        scope.enter(mockOtherHolder);
+        assertSame(mockOtherHolder, scope.get());
+        scope.exit();
+    }
+
+    @Test
     public void supportsNestedScopes() {
         
         scope.enter(mockHolder);
