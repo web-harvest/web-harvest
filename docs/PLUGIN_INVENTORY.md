@@ -3763,3 +3763,44 @@ The regular child path in `DefaultPluginBodyExecutor.createChildPlugin()` resolv
 6. Preserve diagnostics when a descriptor or provider is unavailable; do not turn a catalog exception into an apparently successful but semantically different fallback payload.
 
 **Disposition:** additional source-derived architecture evidence only. This closes several concrete IDE/schema/JSON/root-execution call-site gaps in the targeted audit; it does not claim an exhaustive repository-wide or external-embedding census. No production code, tests, POMs or workflows changed; no tests/builds were run for this static inspection. Runtime implementation remains **STOP** pending explicit #346 acceptance and #94 integration authorization.
+
+
+## 15.84 — Discovery/scanner and optional-registration convergence audit
+
+**Inspection baseline:** `1729bdf4620a66686d02605083e27e27d1ab3944`. Static source/test inspection only; no production code, tests, build files or workflows changed, and no tests were run for this section.
+
+### Confirmed source paths
+
+1. **Runtime Core registration remains a process-global mutable map.** `CorePluginRegistry` is a singleton with one `ConcurrentHashMap<String, Class<? extends Plugin>>`, keyed only by XML local element name. `registerMapping` performs an unconditional `put`: duplicate names silently replace the previous class. There is no provider identity, namespace-aware key, generation, origin/provenance, collision diagnostic or unregister token. `clear()` clears the global map.
+2. **Core bootstrap is a separate static registration authority.** `CorePluginsRegistrar` maintains its own static `initialized` flag and manually writes the 44 approved Core XML mappings into the singleton. Its synchronization protects this registrar method, not all registry writers. The flag and map are separate state; direct registry clear/mutation can desynchronize them. The 44-name compatibility contract remains intact and must be represented in the new descriptor set.
+3. **Optional modules have additional manual writers.** `DatabasePluginRegistrar` adds `connection` and `database`; `ZipPluginRegistrar` adds `zip` and `zip-entry`. They preserve the approved optional-module boundary but write directly to the same legacy Core registry. These are compatibility entrypoints to adapt, not evidence that optional integrations should become mandatory Core dependencies.
+4. **There are two independent classpath-discovery implementations.**
+   - `PluginClassScanner` scans six hard-coded package roots (Core, FTP, Mail, DB, ZIP, WebBrowser) for IDE/catalog metadata. It has a process-static successful-result cache and a complete hard-coded fallback class-name list. Its fallback policy discards partial scan results on failure; absent optional packages are allowed. This scanner does not register runtime XML mappings.
+   - `PluginPackageScanner` is opt-in through explicit package arguments or `webharvest.plugin.packages`. It enumerates package resources across candidate classloaders and directly mutates the supplied `CorePluginRegistry`. It uses `Class.forName(name, false, loader)`, then annotation/type inspection. Per-class load/inspection failures are skipped and logged; package enumeration failure is logged and swallowed. This path has no generation transaction, collision report or removal/reconciliation contract.
+5. **The former static metadata index remains a third source of class knowledge.** `PluginClassIndex` contains a separate literal list of Core and optional implementation class names. Its comments describe IDE metadata discovery. The newer scanner's own fallback list duplicates this knowledge in another form.
+6. **Metadata discovery is not implementation-independent.** `PluginMetadataCatalog` initializes a static catalog by calling `PluginClassScanner`, loading implementation classes with `Class.forName`, constructing plugin instances and querying metadata/semantic/UI hooks. Therefore a package scan/cache is effectively a static catalog snapshot, not a descriptor-only view of a versioned runtime generation.
+
+### What existing tests establish — and what they do not
+
+- `PluginClassScannerTest` covers non-empty Core discovery, complete fallback after a scan failure, absent optional package behavior, retry after fallback, cache behavior, sorting, uniqueness and cache clearing.
+- It does **not** establish runtime registration parity, optional artifact lifecycle, namespace-aware collision handling, duplicate provider identity behavior, loader ownership/unloading, package-scanner failure atomicity, or reconciliation of additions/replacements/removals.
+- The current test that checks extension names only asserts a Core-size lower bound; it does not prove each optional module is present or absent under controlled classpath fixtures.
+- The inspected test tree contains no corresponding `PluginPackageScannerTest` at this baseline. This is a test inventory observation, not proof that no indirect coverage exists elsewhere.
+
+### Architectural consequence
+
+The target platform needs one artifact/provider discovery pipeline and one authoritative generation manager. The Core registrar, DB/ZIP registrars, package scanner, metadata scanner and legacy class index must become thin compatibility adapters or be retired after call-site migration. They must not independently scan, publish, cache or overwrite effective runtime capability state.
+
+Discovery must be side-effect-free and descriptor-based. Candidate classloaders belong to the managed artifact/generation owner; a failed candidate scan must not partially mutate the active generation. Duplicate provider IDs, XML QNames and aliases must fail with explicit diagnostics rather than last-write-wins behavior. Optional integrations remain optional by host policy and artifact availability.
+
+### Required proof obligations before implementation/retirement
+
+1. Compare the exact 44 approved Core XML names and all optional DB/ZIP/FTP/Mail/WebBrowser bindings against the accepted descriptor inventory; preserve every existing XML identity and alias.
+2. Add controlled duplicate-ID, duplicate-QName, alias-collision and same-local-name/different-namespace fixtures; assert deterministic fail-closed diagnostics.
+3. Exercise missing, malformed, partially readable and replaced artifacts; assert no partial publication and preservation of the last-known-good generation.
+4. Prove descriptor/catalog/schema/semantic/runtime projections share one generation token and do not initialize or instantiate provider implementation classes during discovery.
+5. Prove optional-module absence is represented as unavailable/disabled, not as a failed Core bootstrap or a silently incomplete successful catalog.
+6. Prove package/classpath compatibility adapters cannot mutate a published generation and are removable only after their callers and compatibility tests have migrated.
+7. Prove old generation classloaders remain retained while sessions/tasks/callbacks/leases pin them, then retire exactly once after quiescence.
+
+**Decision boundary:** this section adds source evidence and test obligations only. #346 remains unaccepted; no SPI freeze, runtime implementation, legacy deletion, merge or release is authorized.
