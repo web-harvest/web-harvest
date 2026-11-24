@@ -281,7 +281,6 @@ public class ScrapingInterceptorTest {
         }
     }
 
-
     @Test
     public void identicalExecutionAndCleanupFailureDoesNotSelfSuppress() throws Throwable {
         ScraperScope scope = new ScraperScope();
