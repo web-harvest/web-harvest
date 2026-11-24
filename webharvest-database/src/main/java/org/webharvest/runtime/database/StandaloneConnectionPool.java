@@ -60,9 +60,11 @@ import com.google.common.eventbus.Subscribe;
  * it is discouraged to use {@link StandaloneConnectionPool} as an
  * application-wide singleton having long lifecycle.
  * <p>
- * This implementation is not thread-safe and does not provide advanced
- * connection pooling features. It can not execute interval connection
- * validation, does not support connection retrieval and so forth. Additionally,
+ * Registry access and pool lifecycle transitions are serialized. Connections
+ * returned to callers are not protected against concurrent JDBC operations,
+ * and this class does not provide advanced connection pooling features. It
+ * can not execute interval connection validation, does not support connection
+ * retrieval and so forth. Additionally,
  * in case of having too long lifecycle it is vulnerable for connection
  * timeouts. For production deployments you should certainly use another
  * {@link ConnectionFactory} implementation.
@@ -155,8 +157,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
             try {
                 registry.bind(connectionKey, connection);
             } catch (AlreadyBoundException e) {
-                throw new RuntimeException(e); // not possible in the single
-            }                                  // threaded environment
+                throw new RuntimeException(e); // serialized by this pool's monitor
         }
 
         return connection;
