@@ -217,6 +217,95 @@ public class ResourceLedgerTest {
         assertEquals(ledger.size(), 0);
     }
 
+    @Test(groups = {"unit", "runtime"})
+    public void testRejectsInvalidLedgerAndRegistrationInputs() {
+        expectThrows(IllegalArgumentException.class, () -> new ResourceLedger(null));
+        expectThrows(IllegalArgumentException.class, () -> new ResourceLedger("  "));
+
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.registerRuntime(null, null, null));
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.registerOwned("", ResourceLedger.Scope.SESSION, owner, null, null));
+        expectThrows(NullPointerException.class,
+            () -> ledger.registerOwned("null-scope", null, owner, null, null));
+        expectThrows(NullPointerException.class,
+            () -> ledger.registerOwned("missing-owner", ResourceLedger.Scope.SESSION, null, null, null));
+        expectThrows(IllegalArgumentException.class,
+            () -> ledger.registerOwned("runtime-scope", ResourceLedger.Scope.RUNTIME, owner, null, null));
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testDrainBudgetValidationAndRepeatedSuccessfulDrain() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger closeCount = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "runtime-client", null, closeCount::incrementAndGet);
+
+        expectThrows(NullPointerException.class, () -> registration.drainAndClose(null));
+        expectThrows(IllegalArgumentException.class,
+            () -> registration.drainAndClose(Duration.ofNanos(-1)));
+        expectThrows(IllegalArgumentException.class,
+            () -> registration.drainAndClose(Duration.ofSeconds(Long.MAX_VALUE)));
+
+        registration.abort();
+        registration.abort();
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        registration.abort();
+        registration.close();
+        registration.close();
+        assertEquals(closeCount.get(), 1);
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testConcurrentDrainInvokesCloseOnceAndDoesNotAbortDuringClose() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        CountDownLatch closeEntered = new CountDownLatch(1);
+        CountDownLatch releaseClose = new CountDownLatch(1);
+        AtomicInteger abortCount = new AtomicInteger();
+        AtomicInteger closeCount = new AtomicInteger();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "runtime-client",
+            abortCount::incrementAndGet,
+            () -> {
+                closeCount.incrementAndGet();
+                closeEntered.countDown();
+                releaseClose.await();
+            });
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+
+        Thread closer = new Thread(() -> {
+            try {
+                registration.drainAndClose(Duration.ofSeconds(5));
+            } catch (Throwable unexpected) {
+                failure.set(unexpected);
+            }
+        });
+        closer.start();
+        try {
+            assertTrue(closeEntered.await(5, TimeUnit.SECONDS));
+            assertEquals(registration.getState(), ResourceLedger.State.DRAINING);
+            registration.abort();
+            assertEquals(abortCount.get(), 0);
+        } finally {
+            releaseClose.countDown();
+        }
+        closer.join(5000);
+
+        assertFalse(closer.isAlive());
+        assertNull(failure.get());
+        assertEquals(closeCount.get(), 1);
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSED);
+        registration.close();
+    }
+
     private static <T extends Throwable> T expectThrows(Class<T> expectedType,
                                                               ThrowingRunnable action) {
         try {
