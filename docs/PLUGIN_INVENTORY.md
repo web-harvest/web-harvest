@@ -4018,7 +4018,7 @@ The stack is thread-local, but that does not provide runtime isolation: two inje
 
 ### B. Static InjectorHelper is overwritten by each injector and retains the last injector
 
-`InjectorHelper.injector` is a static field populated through Guice static injection. `ScrapingInterceptor.invoke()` obtains its injector through `InjectorHelper.getInjector()`, rather than from the interceptor/proxy/runtime that owns the invocation. `EventBusTypeListener` also obtains its EventBus through that same global accessor. Source blobs: `24c114b24a3abc079a9d447b59155e3598f5abe7`, `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`, and `[EventBusTypeListener source]`.
+`InjectorHelper.injector` is a static field populated through Guice static injection. `ScrapingInterceptor.invoke()` obtains its injector through `InjectorHelper.getInjector()`, rather than from the interceptor/proxy/runtime that owns the invocation. `EventBusTypeListener` also obtains its EventBus through that same global accessor. Source blobs: `24c114b24a3abc079a9d447b59155e3598f5abe7`, `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`, and `3b368eb75ce842f3db6a67b1e9424f644b341824`.
 
 Consequences:
 - When a second Guice injector performs static injection, it replaces the global reference. Calls associated with an earlier injector can subsequently resolve scope/helper/EventBus services from the later injector.
