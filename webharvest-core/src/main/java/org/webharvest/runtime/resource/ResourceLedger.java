@@ -519,10 +519,10 @@ public final class ResourceLedger {
          */
         public void abort() {
             AbortAction action;
+            boolean generationRetiring = entry.scope == Scope.GENERATION
+                && ledger.isGenerationRetiring(entry.generationId);
             synchronized (entry) {
-                if (entry.state == State.OPEN
-                    && (entry.scope != Scope.GENERATION
-                        || !ledger.isGenerationRetiring(entry.generationId))) {
+                if (entry.state == State.OPEN && !generationRetiring) {
                     throw new IllegalStateException(
                         "Resource close must be requested before abort: " + entry.resourceId);
                 }
@@ -679,6 +679,51 @@ public final class ResourceLedger {
         @Override
         public void close() {
             ledger.retire(entry);
+        }
+    }
+
+    /**
+     * First-class execution ownership of one immutable registry generation.
+     * Closing this token declares that the owning worker has actually exited.
+     */
+    public static final class GenerationPin implements AutoCloseable {
+        private final ResourceLedger ledger;
+        private final RegistryGenerationId generationId;
+        private final long pinId;
+        private final ExecutionOwner owner;
+        private final AtomicBoolean released = new AtomicBoolean();
+
+        private GenerationPin(ResourceLedger ledger, RegistryGenerationId generationId,
+                              long pinId, ExecutionOwner owner) {
+            this.ledger = ledger;
+            this.generationId = generationId;
+            this.pinId = pinId;
+            this.owner = owner;
+        }
+
+        public RegistryGenerationId getRegistryGenerationId() {
+            return generationId;
+        }
+
+        public ExecutionOwner getOwner() {
+            return owner;
+        }
+
+        public boolean isReleased() {
+            return released.get();
+        }
+
+        @Override
+        public void close() {
+            if (!released.compareAndSet(false, true)) {
+                return;
+            }
+            try {
+                ledger.releaseGenerationPin(generationId, pinId, owner);
+            } catch (RuntimeException failure) {
+                released.set(false);
+                throw failure;
+            }
         }
     }
 
