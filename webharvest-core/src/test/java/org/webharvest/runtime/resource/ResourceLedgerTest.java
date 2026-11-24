@@ -131,6 +131,52 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testRuntimeResourceReportsOutstandingLeaseOwners() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-b", 2);
+        AtomicInteger closeCount = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "shared-http-client", null, closeCount::incrementAndGet);
+
+        expectThrows(IllegalStateException.class, registration::acquire);
+        ResourceLedger.Lease leaseA = registration.acquire(ownerA);
+        ResourceLedger.Lease leaseB = registration.acquire(ownerB);
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+
+        ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
+        assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
+        assertEquals(blocked.getOutstandingLeases().size(), 2);
+        assertEquals(blocked.getOutstandingLeases().get(0).getOwner(), ownerA);
+        assertEquals(blocked.getOutstandingLeases().get(1).getOwner(), ownerB);
+        assertEquals(closeCount.get(), 0);
+
+        leaseA.close();
+        ResourceLedger.DrainResult oneRemaining = registration.drainAndClose(Duration.ZERO);
+        assertEquals(oneRemaining.getOutstandingLeases().size(), 1);
+        assertEquals(oneRemaining.getOutstandingLeases().get(0).getOwner(), ownerB);
+
+        leaseB.close();
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertEquals(closeCount.get(), 1);
+        registration.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testSessionResourceRejectsLeaseFromDifferentExecutionOwner() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-b", 2);
+        ResourceLedger.Registration registration = ledger.registerOwned(
+            "session-resource", ResourceLedger.Scope.SESSION, ownerA, null, null);
+
+        expectThrows(IllegalArgumentException.class, () -> registration.acquire(ownerB));
+        ResourceLedger.Lease lease = registration.acquire(ownerA);
+        lease.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testOwnerQuiescenceIsRequiredEvenWhenNoLeaseIsActive() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         AtomicInteger closeCount = new AtomicInteger();
