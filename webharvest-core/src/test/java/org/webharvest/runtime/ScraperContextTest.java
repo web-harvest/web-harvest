@@ -53,11 +53,13 @@ import org.apache.commons.collections.IteratorUtils;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.mockito.Mockito;
 import org.unitils.UnitilsTestNG;
 import org.unitils.inject.annotation.InjectInto;
 import org.unitils.inject.annotation.TestedObject;
 import org.unitils.mock.annotation.Dummy;
 import org.unitils.reflectionassert.ReflectionComparatorMode;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
@@ -92,6 +94,31 @@ public class ScraperContextTest extends UnitilsTestNG {
     @AfterMethod
     public void after() {
         this.context = null;
+    }
+
+    @Test
+    public void legacyDynamicScopeContextDefaultsRemainBackwardCompatible() {
+        DynamicScopeContext legacyContext =
+            Mockito.mock(DynamicScopeContext.class, Mockito.CALLS_REAL_METHODS);
+
+        assertNull(legacyContext.getExecutionOwner());
+        assertNull(legacyContext.getResourceAccess());
+        legacyContext.setExecutionOwner(null);
+        legacyContext.setResourceAccess(null);
+
+        try {
+            legacyContext.setExecutionOwner(new ExecutionOwner("runtime-a", "session-a", 1L));
+            throw new AssertionError("Legacy context must reject unsupported execution-owner binding");
+        } catch (UnsupportedOperationException expected) {
+            assertTrue(expected.getMessage().contains("does not support"));
+        }
+
+        try {
+            legacyContext.setResourceAccess(Mockito.mock(ExecutionResourceAccess.class));
+            throw new AssertionError("Legacy context must reject unsupported resource-access binding");
+        } catch (UnsupportedOperationException expected) {
+            assertTrue(expected.getMessage().contains("does not support"));
+        }
     }
 
     @Test

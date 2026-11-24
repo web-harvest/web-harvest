@@ -78,8 +78,9 @@ public class StandaloneConnectionPoolTest {
         Connection physical = ((ConnectionProxy) connection).getTargetConnection();
         ScraperSession session = mock(ScraperSession.class);
         when(session.getMetrics()).thenReturn(mock(SessionMetrics.class));
+        when(session.getSessionId()).thenReturn("pool_completed_session");
         EventBus eventBus = new EventBus();
-        pool.registerForSession(eventBus);
+        pool.registerForSession(eventBus, "pool_completed_session");
 
         eventBus.post(new SessionCompletedEvent(session));
 
@@ -93,9 +94,11 @@ public class StandaloneConnectionPoolTest {
                 "jdbc:h2:mem:pool_failed;DB_CLOSE_DELAY=-1", "sa", "");
         Connection physical = ((ConnectionProxy) connection).getTargetConnection();
         EventBus eventBus = new EventBus();
-        pool.registerForSession(eventBus);
+        ScraperSession session = mock(ScraperSession.class);
+        when(session.getSessionId()).thenReturn("pool_failed_session");
+        pool.registerForSession(eventBus, "pool_failed_session");
 
-        eventBus.post(new SessionFailedEvent(mock(ScraperSession.class),
+        eventBus.post(new SessionFailedEvent(session,
                 new IllegalStateException("expected test failure")));
 
         assertTrue(physical.isClosed());
@@ -108,9 +111,11 @@ public class StandaloneConnectionPoolTest {
                 "jdbc:h2:mem:pool_cancelled;DB_CLOSE_DELAY=-1", "sa", "");
         Connection physical = ((ConnectionProxy) connection).getTargetConnection();
         EventBus eventBus = new EventBus();
-        pool.registerForSession(eventBus);
+        ScraperSession session = mock(ScraperSession.class);
+        when(session.getSessionId()).thenReturn("pool_cancelled_session");
+        pool.registerForSession(eventBus, "pool_cancelled_session");
 
-        eventBus.post(new SessionCancelledEvent(mock(ScraperSession.class)));
+        eventBus.post(new SessionCancelledEvent(session));
 
         assertTrue(physical.isClosed());
     }
@@ -120,12 +125,17 @@ public class StandaloneConnectionPoolTest {
         new StandaloneConnectionPool().registerForSession(null);
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void rejectsOwnerlessEventBusRegistration() {
+        new StandaloneConnectionPool().registerForSession(new EventBus());
+    }
+
     @Test
     public void repeatedRegistrationWithSameEventBusIsIdempotent() throws Exception {
         StandaloneConnectionPool pool = new StandaloneConnectionPool();
         EventBus eventBus = new EventBus();
-        pool.registerForSession(eventBus);
-        pool.registerForSession(eventBus);
+        pool.registerForSession(eventBus, "same-session");
+        pool.registerForSession(eventBus, "same-session");
         pool.closeAllConnections();
         pool.closeAllConnections();
     }
@@ -133,12 +143,40 @@ public class StandaloneConnectionPoolTest {
     @Test(expectedExceptions = IllegalStateException.class)
     public void rejectsRegistrationWithDifferentEventBus() {
         StandaloneConnectionPool pool = new StandaloneConnectionPool();
-        pool.registerForSession(new EventBus());
+        pool.registerForSession(new EventBus(), "session-a");
         try {
-            pool.registerForSession(new EventBus());
+            pool.registerForSession(new EventBus(), "session-a");
         } finally {
             pool.closeAllConnections();
         }
+    }
+
+    @Test
+    public void sharedEventBusCompletionClosesOnlyTheMatchingSessionPool() throws Exception {
+        EventBus eventBus = new EventBus();
+        StandaloneConnectionPool firstPool = new StandaloneConnectionPool();
+        StandaloneConnectionPool secondPool = new StandaloneConnectionPool();
+        Connection first = firstPool.getConnection(DRIVER,
+            "jdbc:h2:mem:pool_session_a;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection second = secondPool.getConnection(DRIVER,
+            "jdbc:h2:mem:pool_session_b;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection firstPhysical = ((ConnectionProxy) first).getTargetConnection();
+        Connection secondPhysical = ((ConnectionProxy) second).getTargetConnection();
+
+        firstPool.registerForSession(eventBus, "session-a");
+        secondPool.registerForSession(eventBus, "session-b");
+
+        ScraperSession sessionA = mock(ScraperSession.class);
+        when(sessionA.getSessionId()).thenReturn("session-a");
+        eventBus.post(new SessionCompletedEvent(sessionA));
+
+        assertTrue(firstPhysical.isClosed(), "Session A must close its own pool");
+        assertFalse(secondPhysical.isClosed(), "Session A must not close session B's pool");
+
+        ScraperSession sessionB = mock(ScraperSession.class);
+        when(sessionB.getSessionId()).thenReturn("session-b");
+        eventBus.post(new SessionCompletedEvent(sessionB));
+        assertTrue(secondPhysical.isClosed());
     }
 
     @Test

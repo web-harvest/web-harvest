@@ -37,6 +37,8 @@ import org.testng.annotations.Test;
 import org.webharvest.runtime.registry.RegistryGenerationId;
 import org.webharvest.runtime.session.ExecutionOwner;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -66,6 +68,7 @@ public class ResourceLedgerTest {
         assertEquals(timedOut.getActiveLeases(), 1);
         assertEquals(closeCount.get(), 0);
 
+        lease.close();
         lease.close();
         registration.markOwnerQuiescent();
         ResourceLedger.DrainResult drained = registration.drainAndClose(Duration.ofSeconds(1));
@@ -327,7 +330,24 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
-    public void testAbortRequiresCloseAdmissionToBeStopped() {
+    public void testCloseActionErrorIsRetainedAndRethrown() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "fatal-close", null, () -> {
+                throw new AssertionError("fatal close");
+            });
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+
+        expectThrows(AssertionError.class,
+            () -> registration.drainAndClose(Duration.ofSeconds(1)));
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSE_FAILED);
+        assertTrue(registration.getCloseFailure() instanceof AssertionError);
+        assertEquals(ledger.size(), 1);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testAbortRequiresCloseAdmissionToBeStopped() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         AtomicInteger abortCount = new AtomicInteger();
         ResourceLedger.Registration registration = ledger.registerRuntime(
@@ -341,6 +361,19 @@ public class ResourceLedgerTest {
         registration.abort();
         registration.abort();
         assertEquals(abortCount.get(), 1);
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        registration.close();
+
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "abort-during-retirement");
+        AtomicInteger generationAbortCount = new AtomicInteger();
+        ResourceLedger.Registration generationResource = ledger.registerGeneration(
+            "generation-resource", generation, generationAbortCount::incrementAndGet, null);
+        ledger.beginGenerationRetirement(generation);
+        generationResource.abort();
+        assertEquals(generationAbortCount.get(), 1);
+        assertTrue(generationResource.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        generationResource.close();
     }
 
     @Test(groups = {"unit", "runtime"})
@@ -465,6 +498,9 @@ public class ResourceLedgerTest {
             "provider-loader/generation-a", generationOne, null, closeCount::incrementAndGet);
         ResourceLedger.GenerationPin pinA = ledger.pinGeneration(ownerA, generationOne);
         ResourceLedger.GenerationPin pinB = ledger.pinGeneration(ownerB, generationOne);
+        ExecutionOwner unpinnedOwner = new ExecutionOwner("runtime-a", "session-unpinned", 3);
+        expectThrows(IllegalStateException.class,
+            () -> registration.acquire(unpinnedOwner, generationOne));
 
         assertEquals(registration.getScope(), ResourceLedger.Scope.GENERATION);
         assertEquals(registration.getRegistryGenerationId(), generationOne);
@@ -483,6 +519,8 @@ public class ResourceLedgerTest {
             () -> registration.markOwnerQuiescent());
         expectThrows(IllegalStateException.class,
             () -> ledger.pinGeneration(new ExecutionOwner("runtime-a", "session-c", 3), generationOne));
+        ResourceLedger.Lease leaseDuringRetirement = registration.acquire(ownerA, generationOne);
+        leaseDuringRetirement.close();
 
         ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
         assertEquals(blocked.getState(), ResourceLedger.State.QUARANTINED);
@@ -498,6 +536,7 @@ public class ResourceLedgerTest {
         assertEquals(closeCount.get(), 0);
 
         leaseB.close();
+        pinA.close();
         pinA.close();
         assertEquals(ledger.getActiveGenerationPinCount(generationOne), 1);
         assertFalse(registration.drainAndClose(Duration.ZERO).isClosed());
@@ -604,6 +643,26 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testRegistrationKeyEqualityIdentityTypeAndScopeGuards() throws Exception {
+        Class<?> keyType = Class.forName(ResourceLedger.class.getName() + "$RegistrationKey");
+        Constructor<?> constructor = keyType.getDeclaredConstructor(
+            String.class, ResourceLedger.Scope.class, ExecutionOwner.class, RegistryGenerationId.class);
+        constructor.setAccessible(true);
+        Method equals = keyType.getDeclaredMethod("equals", Object.class);
+        equals.setAccessible(true);
+
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        Object sessionKey = constructor.newInstance(
+            "same-id", ResourceLedger.Scope.SESSION, owner, null);
+        Object operationKey = constructor.newInstance(
+            "same-id", ResourceLedger.Scope.OPERATION, owner, null);
+
+        assertTrue((Boolean) equals.invoke(sessionKey, sessionKey));
+        assertFalse((Boolean) equals.invoke(sessionKey, new Object()));
+        assertFalse((Boolean) equals.invoke(sessionKey, operationKey));
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testSameLocalResourceIdCanCoexistAcrossOwnersAndGenerations()
         throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
@@ -620,8 +679,13 @@ public class ResourceLedgerTest {
             ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerA, null, null);
         ResourceLedger.Registration sessionResourceB =
             ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerB, null, null);
+        // "Aa" and "BB" have the same String hash; this exercises unequal composite keys in one map bucket.
+        ResourceLedger.Registration collisionResourceA =
+            ledger.registerOwned("Aa", ResourceLedger.Scope.SESSION, ownerA, null, null);
+        ResourceLedger.Registration collisionResourceB =
+            ledger.registerOwned("BB", ResourceLedger.Scope.SESSION, ownerA, null, null);
 
-        assertEquals(ledger.size(), 4);
+        assertEquals(ledger.size(), 6);
         expectThrows(IllegalStateException.class,
             () -> ledger.registerGeneration("provider-loader", generationOne, null, null));
         expectThrows(IllegalStateException.class,
@@ -635,7 +699,7 @@ public class ResourceLedgerTest {
             registration.close();
         }
         for (ResourceLedger.Registration registration : new ResourceLedger.Registration[] {
-            sessionResourceA, sessionResourceB
+            sessionResourceA, sessionResourceB, collisionResourceA, collisionResourceB
         }) {
             registration.markOwnerQuiescent();
             assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
