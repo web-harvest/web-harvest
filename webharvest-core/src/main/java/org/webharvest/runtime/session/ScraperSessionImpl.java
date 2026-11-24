@@ -111,6 +111,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     private final ReentrantLock completionLock;
     private final Condition completionCondition;
     private final CountDownLatch executionCompletion = new CountDownLatch(1);
+    private final CountDownLatch executionUnresponsive = new CountDownLatch(1);
     private volatile ExecutionState executionState = ExecutionState.NOT_SUBMITTED;
     private volatile TerminationDisposition terminationDisposition = TerminationDisposition.NOT_REQUESTED;
     private volatile Runnable cancellationHandler;
@@ -273,6 +274,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     public synchronized void markExecutionUnresponsive() {
         if (executionState != ExecutionState.EXITED) {
             executionState = ExecutionState.UNRESPONSIVE;
+            executionUnresponsive.countDown();
         }
     }
 
@@ -303,6 +305,14 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     @Override
     public TerminationDisposition getTerminationDisposition() {
         return terminationDisposition;
+    }
+
+    @Override
+    public boolean awaitExecutionUnresponsive(long timeoutMillis) throws InterruptedException {
+        if (timeoutMillis < 0) {
+            throw new IllegalArgumentException("Timeout cannot be negative: " + timeoutMillis);
+        }
+        return executionUnresponsive.await(timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     @Override
