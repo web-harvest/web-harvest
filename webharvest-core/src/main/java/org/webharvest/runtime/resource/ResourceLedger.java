@@ -183,6 +183,7 @@ public final class ResourceLedger {
         private final AtomicLong nextLeaseId = new AtomicLong();
         private boolean ownerQuiescent;
         private boolean abortInvoked;
+        private boolean abortInProgress;
         private boolean registrationRetired;
         private Throwable abortFailure;
         private Throwable closeFailure;
@@ -311,6 +312,9 @@ public final class ResourceLedger {
                 }
                 entry.abortInvoked = true;
                 action = entry.abortAction;
+                if (action != null) {
+                    entry.abortInProgress = true;
+                }
             }
             if (action == null) {
                 return;
@@ -324,6 +328,11 @@ public final class ResourceLedger {
                 if (failure instanceof Error) {
                     throw (Error) failure;
                 }
+            } finally {
+                synchronized (entry) {
+                    entry.abortInProgress = false;
+                    entry.notifyAll();
+                }
             }
         }
 
@@ -333,6 +342,9 @@ public final class ResourceLedger {
          */
         public void markOwnerQuiescent() {
             synchronized (entry) {
+                if (entry.state == State.OPEN) {
+                    entry.state = State.CLOSE_REQUESTED;
+                }
                 entry.ownerQuiescent = true;
                 entry.notifyAll();
             }
@@ -365,7 +377,8 @@ public final class ResourceLedger {
                     || entry.state == State.DRAINING) {
                     return snapshot(entry);
                 }
-                while (!entry.ownerQuiescent || !entry.activeLeases.isEmpty()) {
+                while (!entry.ownerQuiescent || !entry.activeLeases.isEmpty()
+                    || entry.abortInProgress) {
                     long remaining = timeoutNanos - (System.nanoTime() - started);
                     if (remaining <= 0) {
                         entry.state = State.QUARANTINED;
