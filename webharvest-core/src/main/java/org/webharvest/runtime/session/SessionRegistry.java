@@ -185,7 +185,7 @@ public interface SessionRegistry {
      * @return true only if that exact instance was removed
      * @throws IllegalArgumentException if session is null
      */
-    default boolean unregister(ScraperSession session) {
+    default boolean unregisterIfOwner(ScraperSession session) {
         if (session == null) {
             throw new IllegalArgumentException("Session cannot be null");
         }
