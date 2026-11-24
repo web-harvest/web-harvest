@@ -3922,3 +3922,27 @@ The timeout uses `future.get(timeout.toMillis(), MILLISECONDS)`, then converts t
 **Dependency:** these findings are within #354's stated acceptance criteria (tracked task handles, atomic admission, timeout ownership and truthful shutdown). They must be resolved before #355 closes resources or #347/#349 retires generations. #358 owns shared deadline and late-effect reporting.
 
 **Decision boundary:** documentation only. No service/session implementation, API changes, tests, POM changes, compatibility deletion, merge or release. #346 remains unaccepted; runtime implementation remains STOP.
+
+
+## 15.88 — LockedRegistry leaks a live mutable delegate view beyond its lock (2026-11-24)
+
+**Inspection baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.
+
+A focused re-check of the P0-03 `LockedRegistry` finding establishes the concrete delegate path and explains why the current test misses it:
+
+1. `AbstractRegistry.listBound()` returns `storage.keySet()` directly. That is a live view backed by its mutable `HashMap`, not a snapshot. Blob: `9622bee0c049297ec0004ecb89673373f65d5fc8`.
+2. `LockedRegistry.listBound()` acquires its read lock, calls `delegate.listBound()`, returns that exact Set, and releases the lock in `finally`. The caller therefore retains a view whose later iteration, `remove()`, `clear()` or other supported mutation happens outside the decorator's lock. Blob: `d9beeadd2fdc63a3a1526899bd798973d0f37a16`.
+3. `Registry.listBound()` documents only a Set of registered names; it does not promise snapshot or immutability semantics. Blob: `0c98d8bfd164ce945a09fd5d604cceee43e65d5a`.
+4. `LockedRegistryTest` uses a private mock whose `listBound()` explicitly returns `new HashSet<>(storage.keySet())`. The test therefore exercises a safer delegate than production `AbstractRegistry` and cannot detect the escaped-view defect. Blob: `7121a6e4d3a415e56c2713159eb67cc67323baa0`.
+
+**Concrete consequences:** callers can mutate the underlying registry without acquiring the decorator's write lock, and can iterate a live HashMap view while another thread binds/unbinds. This defeats the advertised locking boundary. It is not merely that a snapshot is absent: the returned Set is also a mutation capability that bypasses the wrapper.
+
+**Required contract and tests:**
+- Define `listBound()` as a detached, immutable snapshot at the Registry interface boundary, not only in selected implementations.
+- Ensure `LockedRegistry` returns a defensive snapshot while holding its read lock; do not expose the delegate's collection.
+- Add a test using the real `AbstractRegistry` delegate: mutate the returned Set and prove the registry is unchanged; retain a snapshot while concurrent bind/unbind proceeds and prove its contents remain stable.
+- Verify callers cannot mutate registry state through any collection-returning API; review other wrappers/decorators for the same escape pattern.
+
+**Dependency:** this is a concrete P0-03 acceptance item in #356. It should be fixed as part of the shared registry contract before registry consumers use snapshots for runtime/session/plugin generation lifecycle. No unrelated registry rewrite is implied.
+
+**Evidence boundary:** direct source and test inspection only. No runtime concurrency test or build was executed. Documentation only; no runtime/API/test/POM change, merge or release. #346 remains unaccepted; implementation remains STOP.
