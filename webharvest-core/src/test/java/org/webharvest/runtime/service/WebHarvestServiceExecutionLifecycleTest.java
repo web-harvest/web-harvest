@@ -437,6 +437,42 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testShutdownTimeoutIsSurfacedAndLateWorkerExitRemainsObservable() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        NonTerminatingExecutorService executor = new NonTerminatingExecutorService();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            try {
+                service.shutdown();
+                fail("Shutdown must surface an executor that has not terminated");
+            } catch (IllegalStateException expected) {
+                assertTrue(expected.getMessage().contains("did not terminate"));
+            }
+
+            assertEquals(tracked.getExecutionState(), ExecutionState.UNRESPONSIVE);
+            assertFalse(tracked.awaitExecutionCompletion(0),
+                "A failed shutdown wait must not claim worker quiescence");
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            service.shutdown();
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowReportsUnresponsiveWorkerUntilItActuallyExits() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
@@ -595,6 +631,54 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 return false;
             }
             return super.awaitTermination(timeout, unit);
+        }
+    }
+
+    private static class NonTerminatingExecutorService extends AbstractExecutorService {
+        private final CountDownLatch terminated = new CountDownLatch(1);
+        private volatile boolean shutdown;
+        private volatile Thread worker;
+
+        @Override
+        public void shutdown() {
+            shutdown = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdown = true;
+            Thread currentWorker = worker;
+            if (currentWorker != null) {
+                currentWorker.interrupt();
+            }
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return terminated.getCount() == 0;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return isTerminated();
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            worker = new Thread(() -> {
+                try {
+                    command.run();
+                } finally {
+                    terminated.countDown();
+                }
+            }, "test-non-terminating-worker");
+            worker.start();
         }
     }
 
