@@ -3676,3 +3676,50 @@ Keep the public Java boundary smaller than the internal ownership model:
 6. Confirm that this is design acceptance only; public SPI stability follows the compiling out-of-tree fixture and compatibility policy, not this comment alone.
 
 **Gate:** #93 Decision A is approved. #346 remains STOP until these SPI decisions are explicitly accepted and the minimal compiling fixture passes. #347–#350 runtime implementation remains blocked. No source, tests, POMs, workflows or runtime code changed; no tests/builds were run.
+
+
+## 15.82 Plugin mechanism consolidation — classify by responsibility before retiring legacy paths (2026-11-24)
+
+This section resolves an important naming trap: the current types are overlapping in *authority and data*, but they do not all implement the same responsibility. Consolidation must produce one authoritative runtime generation and one activation authority; it must not mechanically delete every class whose name contains “registry”, “factory” or “catalog”.
+
+**Evidence baseline:** source tree at `1729bdf4620a66686d02605083e27e27d1ab3944` (main). The following are source findings, not runtime measurements.
+
+### A. Current mechanisms and their actual responsibilities
+
+| Mechanism | Observed responsibility | Source-derived limitation | Target disposition |
+|---|---|---|---|
+| `PluginFactory` / `DefaultPluginFactory` | Legacy object-construction API; accepts implementation `Class`, plugin ID or namespace/element; caches reflective constructors in a `ConcurrentHashMap`. | ID/QName creation first asks the legacy `PluginRegistry` for an already-instantiated plugin and then recreates its Java class. The active `DefaultPluginBodyExecutor` path previously traced does not use this factory. | Retain temporarily as a compatibility adapter; route through the one host activation manager or deprecate after call-site migration. Never make it a peer authority. |
+| `PluginRegistry` / `DefaultPluginRegistry` | Mutable instance store and lookup indexes for plugin instances, metadata, namespace/element, category and namespace. | Registration by class eagerly calls `Class.newInstance()`; several concurrent maps coexist with mutable `ArrayList` values for category/namespace. ConcurrentHashMap does not make those lists or compound registration/unregistration atomic. | Replace as a mutable global/runtime registry with a compatibility facade over immutable generation snapshots. Do not assume it is safe for concurrent mutation merely because its maps are concurrent. |
+| `PluginRegistryHolder` | Static singleton holder; lazily scans `org.webharvest.plugin.core` for `@CorePlugin` classes and registers them into a new `DefaultPluginRegistry`. | Separate classpath-discovery and registration path, process-global lifetime, and eager provider instantiation through the registry. | Legacy bootstrap adapter only; discovery must contribute validated descriptors to a candidate generation, not instantiate/register independently. |
+| `PluginMetadataCatalog` | Static metadata/UI/schema catalog; builds `PluginDescriptor` objects by scanning class names, `Class.forName`, constructor invocation and metadata/semantic callbacks. | It is not descriptor-only discovery: implementation loading, construction and provider callbacks occur during catalog generation. Static catalog state is not tied to a runtime or registry generation. | Replace its data source with validated descriptor values from the authoritative generation. Preserve UI/schema projection as a read-only view; do not elevate this catalog into the activation registry. |
+| `PluginDescriptorIndex` | Semantic QName/local-name resolution index built from catalog descriptors; reports ambiguity and optional-profile state. | `fromCatalog()` consumes the static catalog and consults `CorePluginRegistry` live for runtime availability. It therefore combines a separate metadata source with a second dispatch registry rather than pinning one generation. | Keep the semantic resolution responsibility, but build it from the same immutable generation/snapshot token used by parsing, inspection, validation and execution. |
+| `CorePluginRegistry` / `CorePluginsRegistrar` | Actual legacy XML dispatch map: XML local name to Core plugin class; manual registrar currently records 44 compatibility names, including `set-var`. | Independent process-global mutable singleton; keyed by local name only; it is the path used by the body executor and queried by semantic availability. | Migrate the 44 approved XML bindings into generation-owned QName/alias descriptors. Retain only a compatibility facade during transition; no silent loss of any binding. |
+
+### B. Important distinctions and consequences
+
+1. **There is no single “newest registry” among these types.** `PluginMetadataCatalog` is the newest-looking metadata projection, not a runtime plugin registry and not a safe source of provider admission. Its current implementation explicitly loads and instantiates plugin classes.
+2. **The active execution path matters more than class names.** The traced body executor resolves through `CorePluginRegistry` and static injector/reflection composition; it bypasses `PluginFactory` and the `PluginRegistry` instance store. Replacing only the factory or catalog would therefore leave the actual dispatch authority untouched.
+3. **Semantic indexing is a distinct concern, not a second activation manager.** Keep QName resolution, ambiguity diagnostics and grammar projection, but feed them from the exact immutable generation pinned by a parse/session.
+4. **Thread safety is a compound-operation property.** `ConcurrentHashMap` protects individual map operations; it does not make the mutable lists in `DefaultPluginRegistry` safe, make multi-index updates atomic, or make provider instances/context objects thread-safe. The target generation is built privately, validated as a whole and published atomically; readers use immutable snapshots.
+5. **No immediate deletion is justified by this audit.** The factory, holder, registry, catalog and index have distinct compatibility consumers. Before removal, complete the call-site and downstream-embedding census, add adapter-level compatibility tests, and prove the new generation covers parser, dispatch, Semantic Model, IDE metadata/schema and optional integrations.
+
+### C. Consolidated target — one authority, projections and adapters
+
+- **One authority:** runtime-owned immutable, versioned registry generation containing provider manifests, capability descriptors, XML QName/alias bindings, grammar and availability/policy facts.
+- **One activation authority:** runtime-owned activation manager bound to that generation; it alone performs provider admission, class loading, construction, invocation and lifecycle.
+- **Read-only projections:** Semantic Model/QName index, IDE metadata/UI/schema and diagnostics are derived from the same generation. They cannot independently discover or instantiate providers.
+- **Compatibility adapters:** legacy `PluginFactory`, `PluginRegistry`, `PluginRegistryHolder`, `CorePluginRegistry` and `CorePluginsRegistrar` become thin adapters only while old callers remain. Their independent mutation paths are retired after measured call-site migration.
+- **Atomic publication:** candidate descriptor validation and provider preparation happen off to the side; a complete generation is published once. Existing sessions pin their generation; failed candidates leave the last-known-good generation intact.
+- **Thread-safety contract:** concurrent reads of an immutable generation; serialized default invocation per provider instance unless explicitly declared otherwise; explicit host-owned lifecycle and resource/subscriber cleanup. A thread-safe EventBus is shared within a runtime, not globally across unrelated runtimes; mutable session contexts remain session-confined.
+
+### D. Required proof before implementation/removal
+
+- Exact call-site inventory for every legacy mechanism, including IDE, CLI, async service, optional Database/ZIP and external embedders.
+- One test proving parser, semantic resolution, inspection/validation and executor all use the same pinned generation and exact 44 XML bindings.
+- Descriptor-only discovery sentinel proving no implementation class loading/initialization/construction before compatibility and policy admission.
+- Concurrent registration/build attempts prove candidate isolation and atomic publication; readers never observe partial indexes.
+- Registry adapter tests prove old public entry points retain behavior during migration; no adapter creates a second store or activation path.
+- Concurrent access tests cover compound registration/list updates in any temporary legacy adapter; do not treat ConcurrentHashMap as sufficient evidence.
+- Two-runtime isolation, session generation pinning, provider invocation serialization, EventBus subscription disposal and GRACE/KILL quiescence tests remain mandatory under #94/#349/#350.
+
+**Disposition:** design-level consolidation only. This sharpens #346/#347/#348 and the earlier runtime/EventBus audit; it does not authorize deleting legacy classes, changing POMs, implementing the SPI or altering production dispatch. No tests/builds were run for this source audit.
