@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -99,6 +100,7 @@ public class ScraperContext implements DynamicScopeContext {
     // These fields are set once during initialization and then immutable
     private EventBus eventBus;
     private ScraperSession session;
+    private volatile ExecutionOwner executionOwner;
 
     public ScraperContext() {
         scopeStack.push(new ScopeFrame());
@@ -304,12 +306,37 @@ public class ScraperContext implements DynamicScopeContext {
     public ScraperSession getSession() {
         return session;
     }
+
+    /** Returns the immutable owner bound before this context is published. */
+    @Override
+    public ExecutionOwner getExecutionOwner() {
+        return executionOwner;
+    }
+
+    /** Binds this context exactly once to its service-managed execution owner. */
+    @Override
+    public synchronized void setExecutionOwner(ExecutionOwner owner) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Execution owner cannot be null");
+        }
+        if (executionOwner != null) {
+            throw new IllegalStateException("Execution owner is already bound to this context");
+        }
+        if (session != null && !session.getSessionId().equals(owner.getSessionId())) {
+            throw new IllegalArgumentException("Execution owner session does not match context session");
+        }
+        executionOwner = owner;
+    }
     
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setSession(ScraperSession session) {
+    public synchronized void setSession(ScraperSession session) {
+        if (executionOwner != null && session != null
+            && !session.getSessionId().equals(executionOwner.getSessionId())) {
+            throw new IllegalArgumentException("Context session does not match its execution owner");
+        }
         this.session = session;
     }
 
