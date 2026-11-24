@@ -180,6 +180,18 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testOwnerQuiescenceClosesLeaseAdmission() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        ResourceLedger.Registration registration = ledger.registerOwned(
+            "session-resource", ResourceLedger.Scope.SESSION, owner, null, null);
+
+        registration.markOwnerQuiescent();
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSE_REQUESTED);
+        expectThrows(IllegalStateException.class, registration::acquire);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testOwnerQuiescenceIsRequiredEvenWhenNoLeaseIsActive() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         AtomicInteger closeCount = new AtomicInteger();
