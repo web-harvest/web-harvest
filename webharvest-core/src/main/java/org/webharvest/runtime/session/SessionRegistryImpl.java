@@ -177,7 +177,7 @@ public class SessionRegistryImpl implements SessionRegistry {
     }
 
     @Override
-    public boolean unregister(ScraperSession session) {
+    public boolean unregisterIfOwner(ScraperSession session) {
         if (session == null) {
             throw new IllegalArgumentException("Session cannot be null");
         }
