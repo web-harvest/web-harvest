@@ -45,11 +45,7 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
-import org.webharvest.runtime.session.SessionStatus;
-import org.webharvest.runtime.tracking.TokenTracker;
-import org.webharvest.runtime.tracking.TokenTrackerImpl;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,14 +74,28 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final Object admissionLock = new Object();
     private volatile boolean shutdown;
 
+    /** Creates a service using the default cached session executor. */
     public WebHarvestServiceImpl() {
         this(Executors.newCachedThreadPool(new SessionThreadFactory()));
     }
 
+    /**
+     * Creates a service with a caller-supplied session executor.
+     * The service owns its shutdown lifecycle after construction.
+     *
+     * @param executorService executor used for session workers
+     */
     public WebHarvestServiceImpl(ExecutorService executorService) {
         this(executorService, new SessionRegistryImpl(), new EventBus());
     }
 
+    /**
+     * Creates a service with explicit runtime-owned session components.
+     *
+     * @param executorService executor used for session workers
+     * @param sessionRegistry registry owned by this service runtime
+     * @param eventBus shared runtime EventBus
+     */
     public WebHarvestServiceImpl(ExecutorService executorService,
                                  SessionRegistry sessionRegistry,
                                  EventBus eventBus) {
