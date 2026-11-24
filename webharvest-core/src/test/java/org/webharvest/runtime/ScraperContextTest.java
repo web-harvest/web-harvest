@@ -57,6 +57,7 @@ import org.unitils.inject.annotation.InjectInto;
 import org.unitils.inject.annotation.TestedObject;
 import org.unitils.mock.annotation.Dummy;
 import org.unitils.reflectionassert.ReflectionComparatorMode;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ListVariable;
 import org.webharvest.runtime.variables.NodeVariable;
@@ -86,6 +87,30 @@ public class ScraperContextTest extends UnitilsTestNG {
     @AfterMethod
     public void after() {
         this.context = null;
+    }
+
+    @Test
+    public void bindsExecutionOwnerExactlyOnceAndRejectsMismatchedSession() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+
+        assertNull(context.getExecutionOwner());
+        context.setExecutionOwner(owner);
+        assertSame(owner, context.getExecutionOwner());
+
+        try {
+            context.setExecutionOwner(owner);
+            throw new AssertionError("Expected repeated execution-owner binding to fail");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("already bound"));
+        }
+
+        try {
+            context.setSession(new org.webharvest.runtime.session.ScraperSessionImpl(
+                "session-b", null, null));
+            throw new AssertionError("Expected mismatched session binding to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("does not match"));
+        }
     }
 
     @Test
