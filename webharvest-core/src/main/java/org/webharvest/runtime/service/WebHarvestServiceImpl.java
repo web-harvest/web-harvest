@@ -280,7 +280,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 task.session.cancel();
                 task.requestCancellation();
             }
-            executorService.shutdownNow();
+            List<Runnable> neverStarted = executorService.shutdownNow();
+            for (Runnable pending : neverStarted) {
+                for (SessionTask task : executionTasks.values()) {
+                    task.markRemovedBeforeStart(pending);
+                }
+            }
         }
 
         boolean terminated;
@@ -357,9 +362,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             if (!cancellationRequested || exited) {
                 return;
             }
-            if (!started && future.cancel(false)) {
-                finishBeforeStart();
-            } else if (started) {
+            if (!started) {
+                removeQueuedFuture();
+            } else {
                 future.cancel(true);
             }
         }
@@ -370,20 +375,43 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
             cancellationRequested = true;
             if (!started) {
-                if (future != null && future.cancel(false)) {
-                    finishBeforeStart();
-                    return;
-                }
-            } else {
-                session.markExecutionInterruptRequested();
-                if (worker != null) {
-                    worker.interrupt();
-                }
-                if (future != null) {
-                    future.cancel(true);
-                }
+                removeQueuedFuture();
+                return;
+            }
+
+            session.markExecutionInterruptRequested();
+            if (worker != null) {
+                worker.interrupt();
+            }
+            if (future != null) {
+                future.cancel(true);
             }
             scheduleUnresponsiveEscalation();
+        }
+
+        /**
+         * Removes a queued FutureTask only when the executor confirms it is
+         * still in a ThreadPoolExecutor queue. A successful remove proves it
+         * cannot enter the worker body; generic executors must run the
+         * cancellation gate and report exit from the task itself.
+         */
+        private boolean removeQueuedFuture() {
+            if (future instanceof Runnable && executorService instanceof ThreadPoolExecutor) {
+                boolean removed = ((ThreadPoolExecutor) executorService).remove((Runnable) future);
+                if (removed) {
+                    future.cancel(false);
+                    finishBeforeStart();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private synchronized void markRemovedBeforeStart(Runnable pending) {
+            if (future == pending && !started && !exited) {
+                future.cancel(false);
+                finishBeforeStart();
+            }
         }
 
         private synchronized void requestTimeout() {
