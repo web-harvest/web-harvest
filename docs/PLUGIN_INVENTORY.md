@@ -4220,3 +4220,39 @@ The diagram is derived from `WebHarvestServiceImpl` blob `10e60a93a70b417cdb55dd
 This finding strengthens #354 (authoritative admission, task handles and quiescence), #355 (resource leases/drain), #357 (context propagation and captured-reference release), and #349 (runtime-owned resource and lifecycle policy). It is a scalability and retention contract gap, not authorization to implement before #346/#94 gates pass.
 
 **Decision boundary:** source-backed documentation only. No runtime/API/test/POM changes, no load or memory benchmark executed, no merge/release. #346 remains unaccepted; runtime implementation remains STOP.
+
+## 15.95 — Injector-managed subscriber ownership and EventBus lifetime mismatch (2026-11-24)
+
+**Inspection baseline:** canonical application `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`. Source inspection only; no multi-injector, GC/heap or concurrent registration experiment was run.
+
+### Two independent automatic subscription paths
+
+- `ScraperModule.bindScopes()` binds `EventBus` in `ScrapingScope`, so the bus is scoped to a scraping execution. It also installs `EventBusTypeListener` on every Guice type and `ScrapingAwareTypeListener` for `ScrapingAware` implementations. Source blob: `d31a5e30b0949c752743123cbcfb4219ba60713e`.
+- `EventBusTypeListener` detects a declared `@Subscribe` method and, after injection, obtains the bus through the process-static `InjectorHelper.getInjector()` and registers the instance. It does not retain a registration token, unregister on object disposal, or associate the subscription with a runtime/scope owner. Source blob: `3b368eb75ce842f3db6a67b1e9424f644b341824`.
+- `ScrapingAwareTypeListener` independently adds every injected `ScrapingAware` object to `ScrapingAwareHelper`; its own class documentation explicitly states there is no reverse registration process. Source blob: `4ed97073d64878be10cd4798c47b56ecd169f1cf`.
+- `ScrapingAwareHelper` is bound as an injector instance and holds listeners in a mutable `ArrayList`; `addListener`, `onBeforeScraping` and `onAfterScraping` are unsynchronized, and there is no remove/close token. Source blob: `8de38b972d5c6eb41cc00e9c38ebe0f584e8c9e2`.
+
+### Lifetime and concurrency implications
+
+- The automatic `@Subscribe` registration path resolves the scoped EventBus through the static injector rather than an explicit owner passed to the listener. The target scope may be unavailable at injection time or may not be the execution bus intended for the object; exact behavior depends on which types are injected and whether a scope is active. Treat this as an ownership ambiguity requiring injector-level tests, not a claim that every injection currently fails.
+- Guava EventBus subscriber registration holds subscriber references until unregister. Because `EventBusTypeListener` has no matching retirement path, subscribers registered on a long-lived bus can retain their object graphs beyond the intended component lifetime. Whether this happens in a given production path depends on which scoped bus is resolved and how the injector is used; heap retention was not measured.
+- The two type listeners create separate lifecycle paths: EventBus subscription and ScrapingAware callback registration. They have different owners and neither exposes a common registration handle or deterministic disposal contract.
+- `DefaultHandlerHolder` is another, separate subscription mechanism. It is injector-bound as a singleton; it stores handlers in a mutable `LinkedList` without synchronization. `onBeforeScraping` registers every handler on the current scoped EventBus and binds the Harvester→EventBus association; `onAfterScraping` unregisters and unbinds. Source blobs: `d31a5e30b0949c752743123cbcfb4219ba60713e` and `70e95fb913dbce81ace132fe056e9d55cae04cde`. Concurrent handler registration while a scope iterates the list can race; no registration freeze/snapshot contract exists.
+- This means the runtime currently has multiple subscriber ownership models: automatic Guice type-listener registration, ScrapingAware callback registration, and explicit HandlerHolder registration. They should not be collapsed mechanically; first map every consumer and preserve the intended scope semantics.
+
+### Required resolution and conformance evidence
+
+1. Establish one runtime-owned subscription lifecycle contract with explicit owner identity (runtime, scope/session and generation as applicable), a closeable registration handle, deterministic unregister, and defined behavior when the owner is already closing.
+2. Resolve EventBus from the same explicit runtime/scope owner that performs registration. Remove process-static injector lookup from the authoritative path; compatibility facades may delegate only after consumer migration.
+3. Define subscriber lifetime for singleton, runtime-scoped, session-scoped and short-lived objects. A singleton subscriber must not accidentally bind to a transient execution bus; a short-lived subscriber must not remain rooted by a long-lived bus.
+4. Unify the lifecycle authority without forcing every event into one bus: distinguish event transport/topology from subscription ownership. Preserve any deliberate per-session EventBus isolation and the async service's shared-bus semantics until tests establish the intended contract.
+5. Replace implicit permanent `ScrapingAwareHelper` registration with owner-bound registration handles and deterministic retirement. Snapshot listeners for one notification cycle; define whether additions/removals take effect immediately or on the next cycle.
+6. Define whether `DefaultHandlerHolder.register` is startup-only/frozen or dynamically concurrent. If dynamic, use an owner-managed snapshot/update strategy and test it; do not add synchronization to the hot event path without measuring contention.
+7. Add tests for two independent injectors/runtimes, injection inside and outside an active scope, singleton vs scoped subscribers, duplicate registration, disposal/unregister, executor reuse, concurrent add/remove during notification, and no callbacks after owner close.
+8. Measure subscriber count, registration/unregistration allocation, event dispatch latency, contention and retained heap after runtime/session disposal. Use weak-reference/heap evidence to verify that retired subscribers and their classloaders are collectible.
+
+### Dependency and decision
+
+This finding strengthens #355 (resource/subscription leases and drain), #357 (runtime/session context ownership), #354 (no callback after worker quiescence), and #349 (runtime-owned lifecycle authority). It also constrains #94: a single EventBus instance is not itself the design objective; one explicit owner and deterministic subscription lifecycle are.
+
+**Decision boundary:** source-backed documentation only. No runtime/API/test/POM changes, no concurrency or heap tests executed, no merge/release. #346 remains unaccepted; runtime implementation remains STOP.
