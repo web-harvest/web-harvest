@@ -422,7 +422,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         private synchronized void markRemovedBeforeStart(Runnable pending) {
-            if (future == pending && !started && !exited) {
+            // shutdownNow() returns only tasks that have not commenced execution.
+            if (future == pending) {
                 future.cancel(false);
                 finishBeforeStart();
             }
@@ -502,9 +503,6 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         private void finishBeforeStart() {
-            if (exited) {
-                return;
-            }
             exited = true;
             cancelEscalation();
             executionTasks.remove(session.getSessionId(), this);
