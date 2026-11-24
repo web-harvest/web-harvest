@@ -422,7 +422,7 @@ public final class ResourceLedger {
                 outstanding.add(new OutstandingLease(lease.getKey(), lease.getValue()));
             }
             return new DrainResult(entry.state, outstanding, entry.ownerQuiescent,
-                entry.abortFailure, entry.closeFailure);
+                entry.abortInProgress, entry.abortFailure, entry.closeFailure);
         }
 
         /**
@@ -492,14 +492,17 @@ public final class ResourceLedger {
         private final State state;
         private final List<OutstandingLease> outstandingLeases;
         private final boolean ownerQuiescent;
+        private final boolean abortInProgress;
         private final Throwable abortFailure;
         private final Throwable closeFailure;
 
         private DrainResult(State state, List<OutstandingLease> outstandingLeases,
-                            boolean ownerQuiescent, Throwable abortFailure, Throwable closeFailure) {
+                            boolean ownerQuiescent, boolean abortInProgress,
+                            Throwable abortFailure, Throwable closeFailure) {
             this.state = state;
             this.outstandingLeases = Collections.unmodifiableList(new ArrayList<>(outstandingLeases));
             this.ownerQuiescent = ownerQuiescent;
+            this.abortInProgress = abortInProgress;
             this.abortFailure = abortFailure;
             this.closeFailure = closeFailure;
         }
@@ -518,6 +521,10 @@ public final class ResourceLedger {
 
         public boolean isOwnerQuiescent() {
             return ownerQuiescent;
+        }
+
+        public boolean isAbortInProgress() {
+            return abortInProgress;
         }
 
         public Throwable getAbortFailure() {
