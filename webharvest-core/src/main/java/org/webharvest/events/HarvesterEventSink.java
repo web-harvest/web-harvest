@@ -42,15 +42,11 @@ import com.google.common.eventbus.EventBus;
 import com.google.inject.Inject;
 
 /**
- * Implementation of {@link EventSink} intended to guarantee scraping scope's
- * events delivery. Published {@link HarvesterEvent} is routed to appropriate
- * scope's {@link EventBus} that is associated with it. The scope resolution
- * takes place on {@link Registry} that binds {@link Harvester} scope's with
- * instance of {@link EventBus} which lives in this scope. In case it is not
- * possible to particular {@link EventBus} (it has not been registered yet or
- * for whatever reason) then the {@link IllegalStateException} is thrown. For
- * multi-threded environment the appropriate type of {@link Registry} needs to
- * be injected.
+ * Implementation of {@link EventSink} for Harvester-scoped events on the
+ * runtime-shared {@link EventBus}. The registry records which Harvesters have
+ * an active execution route to that runtime bus. Publishing an event for an
+ * inactive or unknown Harvester fails with {@link IllegalStateException}.
+ * The registry implementation must be thread-safe for concurrent sessions.
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
