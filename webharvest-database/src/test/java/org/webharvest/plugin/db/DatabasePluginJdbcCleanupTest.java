@@ -62,12 +62,7 @@ public class DatabasePluginJdbcCleanupTest {
         SQLException failure = new SQLException("prepare failed");
         when(connection.prepareStatement("SELECT 1")).thenThrow(failure);
 
-        try {
-            invokeExecuteSql(connection, "SELECT 1");
-            throw new AssertionError("Expected prepare failure");
-        } catch (SQLException actual) {
-            assertSame(actual, failure);
-        }
+        assertSame(invokeExecuteSqlFailure(connection, "SELECT 1"), failure);
     }
 
     @Test
@@ -80,7 +75,7 @@ public class DatabasePluginJdbcCleanupTest {
         when(statement.executeQuery()).thenThrow(queryFailure);
         doThrow(closeFailure).when(statement).close();
 
-        Throwable actual = invokeExecuteSql(connection, "SELECT 1");
+        Throwable actual = invokeExecuteSqlFailure(connection, "SELECT 1");
 
         assertSame(actual, queryFailure);
         assertEquals(actual.getSuppressed().length, 1);
@@ -116,7 +111,7 @@ public class DatabasePluginJdbcCleanupTest {
         when(statement.executeUpdate()).thenReturn(0);
         doThrow(closeFailure).when(statement).close();
 
-        assertSame(invokeExecuteSql(connection, "UPDATE sample SET value = 1"), closeFailure);
+        assertSame(invokeExecuteSqlFailure(connection, "UPDATE sample SET value = 1"), closeFailure);
     }
 
     @Test
@@ -172,6 +167,18 @@ public class DatabasePluginJdbcCleanupTest {
         assertSame(primary.getSuppressed()[0], secondary);
         assertSame(method.invoke(plugin, primary, primary), primary);
         assertEquals(primary.getSuppressed().length, 1);
+    }
+
+
+    private static Throwable invokeExecuteSqlFailure(Connection connection, String sql) {
+        try {
+            invokeExecuteSql(connection, sql);
+            throw new AssertionError("Expected executeSql to fail");
+        } catch (InvocationTargetException failure) {
+            return failure.getCause();
+        } catch (Throwable failure) {
+            return failure;
+        }
     }
 
     private static Object invokeExecuteSql(Connection connection, String sql) throws Throwable {
