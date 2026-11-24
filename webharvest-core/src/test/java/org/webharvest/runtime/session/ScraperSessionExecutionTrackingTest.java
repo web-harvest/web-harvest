@@ -54,6 +54,7 @@ public class ScraperSessionExecutionTrackingTest {
         ExecutionTrackedSession session = createSession();
 
         assertEquals(session.getExecutionState(), ExecutionState.NOT_SUBMITTED);
+        assertEquals(session.getTerminationDisposition(), TerminationDisposition.NOT_REQUESTED);
         session.awaitExecutionCompletion();
         assertTrue(session.awaitExecutionCompletion(0));
     }
@@ -88,6 +89,7 @@ public class ScraperSessionExecutionTrackingTest {
         AtomicInteger cancellations = new AtomicInteger();
 
         assertTrue(session.cancel());
+        assertEquals(session.getTerminationDisposition(), TerminationDisposition.CANCELLED_BEFORE_START);
         session.attachCancellationHandler(cancellations::incrementAndGet);
         assertEquals(cancellations.get(), 1);
 
@@ -95,6 +97,8 @@ public class ScraperSessionExecutionTrackingTest {
         assertFalse(session.markExecutionStarted());
         assertEquals(session.getExecutionState(), ExecutionState.QUEUED);
         assertFalse(session.cancel());
+        session.markExecutionExited();
+        assertEquals(session.getTerminationDisposition(), TerminationDisposition.CANCELLED_BEFORE_START);
     }
 
     @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
