@@ -495,6 +495,40 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testSameLocalResourceIdCanCoexistAcrossOwnersAndGenerations()
+        throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generationOne = new RegistryGenerationId("runtime-a", "publication-1");
+        RegistryGenerationId generationTwo = new RegistryGenerationId("runtime-a", "publication-2");
+        ExecutionOwner ownerA = new ExecutionOwner("runtime-a", "session-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner("runtime-a", "session-b", 2);
+
+        ResourceLedger.Registration generationResourceOne =
+            ledger.registerGeneration("provider-loader", generationOne, null, null);
+        ResourceLedger.Registration generationResourceTwo =
+            ledger.registerGeneration("provider-loader", generationTwo, null, null);
+        ResourceLedger.Registration sessionResourceA =
+            ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerA, null, null);
+        ResourceLedger.Registration sessionResourceB =
+            ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerB, null, null);
+
+        assertEquals(ledger.size(), 4);
+        expectThrows(IllegalStateException.class,
+            () -> ledger.registerGeneration("provider-loader", generationOne, null, null));
+        expectThrows(IllegalStateException.class,
+            () -> ledger.registerOwned("jdbc/pool", ResourceLedger.Scope.SESSION, ownerA, null, null));
+
+        for (ResourceLedger.Registration registration : new ResourceLedger.Registration[] {
+            generationResourceOne, generationResourceTwo, sessionResourceA, sessionResourceB
+        }) {
+            registration.markOwnerQuiescent();
+            assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+            registration.close();
+        }
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testRegistryGenerationIdHasRuntimeScopedValueSemantics() {
         RegistryGenerationId first = new RegistryGenerationId("runtime-a", "snapshot-a");
         RegistryGenerationId same = new RegistryGenerationId("runtime-a", "snapshot-a");
