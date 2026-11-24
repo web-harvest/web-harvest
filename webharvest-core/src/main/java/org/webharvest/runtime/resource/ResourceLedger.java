@@ -96,7 +96,7 @@ public final class ResourceLedger {
     }
 
     private final String runtimeId;
-    private final ConcurrentHashMap<String, Entry> entries = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RegistrationKey, Entry> entries = new ConcurrentHashMap<>();
 
     public ResourceLedger(String runtimeId) {
         if (runtimeId == null || runtimeId.trim().isEmpty()) {
@@ -167,8 +167,9 @@ public final class ResourceLedger {
             }
         }
 
-        Entry entry = new Entry(resourceId, scope, owner, generationId, abortAction, closeAction);
-        Entry existing = entries.putIfAbsent(resourceId, entry);
+        RegistrationKey key = new RegistrationKey(resourceId, scope, owner, generationId);
+        Entry entry = new Entry(key, resourceId, scope, owner, generationId, abortAction, closeAction);
+        Entry existing = entries.putIfAbsent(key, entry);
         if (existing != null) {
             throw new IllegalStateException("Resource ID is already registered: " + resourceId);
         }
@@ -192,10 +193,45 @@ public final class ResourceLedger {
             }
             entry.registrationRetired = true;
         }
-        entries.remove(entry.resourceId, entry);
+        entries.remove(entry.key, entry);
+    }
+
+    /** Composite ownership key; the same local resource ID may exist in different owners/generations. */
+    private static final class RegistrationKey {
+        private final String resourceId;
+        private final Scope scope;
+        private final ExecutionOwner owner;
+        private final RegistryGenerationId generationId;
+
+        private RegistrationKey(String resourceId, Scope scope, ExecutionOwner owner,
+                                RegistryGenerationId generationId) {
+            this.resourceId = resourceId;
+            this.scope = scope;
+            this.owner = owner;
+            this.generationId = generationId;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof RegistrationKey)) {
+                return false;
+            }
+            RegistrationKey that = (RegistrationKey) other;
+            return resourceId.equals(that.resourceId) && scope == that.scope
+                && Objects.equals(owner, that.owner) && Objects.equals(generationId, that.generationId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(resourceId, scope, owner, generationId);
+        }
     }
 
     private static final class Entry {
+        private final RegistrationKey key;
         private final String resourceId;
         private final Scope scope;
         private final ExecutionOwner owner;
@@ -212,8 +248,9 @@ public final class ResourceLedger {
         private Throwable abortFailure;
         private Throwable closeFailure;
 
-        private Entry(String resourceId, Scope scope, ExecutionOwner owner,
+        private Entry(RegistrationKey key, String resourceId, Scope scope, ExecutionOwner owner,
                       RegistryGenerationId generationId, AbortAction abortAction, CloseAction closeAction) {
+            this.key = key;
             this.resourceId = resourceId;
             this.scope = scope;
             this.owner = owner;
