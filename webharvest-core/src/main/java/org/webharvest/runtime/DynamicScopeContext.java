@@ -46,6 +46,7 @@ import com.google.common.eventbus.EventBus;
 import org.webharvest.definition.Config;
 // REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.session.ExecutionIdentity;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
@@ -135,6 +136,12 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * @see org.webharvest.runtime.session.ScraperSession
      */
     ScraperSession getSession();
+
+    /** Returns the immutable owner identity bound to this context, or null for legacy contexts. */
+    default ExecutionIdentity getExecutionIdentity() {
+        ScraperSession currentSession = getSession();
+        return currentSession == null ? null : currentSession.getExecutionIdentity();
+    }
     
     /**
      * Sets the EventBus for this context.
