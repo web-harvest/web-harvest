@@ -36,10 +36,16 @@ package org.webharvest.runtime.resource;
 import org.webharvest.runtime.session.ExecutionOwner;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Runtime-owned registry for resources whose closure must be coordinated with
@@ -173,7 +179,8 @@ public final class ResourceLedger {
         private final AbortAction abortAction;
         private final CloseAction closeAction;
         private State state = State.OPEN;
-        private int activeLeases;
+        private final Map<Long, ExecutionOwner> activeLeases = new HashMap<>();
+        private final AtomicLong nextLeaseId = new AtomicLong();
         private boolean ownerQuiescent;
         private boolean abortInvoked;
         private boolean registrationRetired;
@@ -224,7 +231,7 @@ public final class ResourceLedger {
 
         public int getActiveLeaseCount() {
             synchronized (entry) {
-                return entry.activeLeases;
+                return entry.activeLeases.size();
             }
         }
 
@@ -251,13 +258,33 @@ public final class ResourceLedger {
          * same monitor as close admission, so no lease can escape CLOSE_REQUESTED.
          */
         public Lease acquire() {
+            if (entry.scope == Scope.RUNTIME) {
+                throw new IllegalStateException(
+                    "Runtime-scoped resources require the execution owner of each use");
+            }
+            return acquire(entry.owner);
+        }
+
+        /**
+         * Acquires a lease for an explicit execution owner. Runtime-scoped
+         * resources use this overload so every in-flight consumer is reportable.
+         */
+        public Lease acquire(ExecutionOwner useOwner) {
+            Objects.requireNonNull(useOwner, "Lease execution owner cannot be null");
+            if (!ledger.runtimeId.equals(useOwner.getRuntimeId())) {
+                throw new IllegalArgumentException("Lease owner belongs to another runtime");
+            }
+            if (entry.scope != Scope.RUNTIME && !entry.owner.equals(useOwner)) {
+                throw new IllegalArgumentException("Lease owner does not match resource owner");
+            }
             synchronized (entry) {
                 if (entry.state != State.OPEN) {
                     throw new IllegalStateException(
                         "Resource no longer admits use: " + entry.resourceId + " (" + entry.state + ')');
                 }
-                entry.activeLeases++;
-                return new Lease(entry);
+                long leaseId = entry.nextLeaseId.incrementAndGet();
+                entry.activeLeases.put(leaseId, useOwner);
+                return new Lease(entry, leaseId, useOwner);
             }
         }
 
@@ -338,7 +365,7 @@ public final class ResourceLedger {
                     || entry.state == State.DRAINING) {
                     return snapshot(entry);
                 }
-                while (!entry.ownerQuiescent || entry.activeLeases != 0) {
+                while (!entry.ownerQuiescent || !entry.activeLeases.isEmpty()) {
                     long remaining = timeoutNanos - (System.nanoTime() - started);
                     if (remaining <= 0) {
                         entry.state = State.QUARANTINED;
@@ -376,7 +403,11 @@ public final class ResourceLedger {
         }
 
         private static DrainResult snapshot(Entry entry) {
-            return new DrainResult(entry.state, entry.activeLeases, entry.ownerQuiescent,
+            List<OutstandingLease> outstanding = new ArrayList<>();
+            for (Map.Entry<Long, ExecutionOwner> lease : entry.activeLeases.entrySet()) {
+                outstanding.add(new OutstandingLease(lease.getKey(), lease.getValue()));
+            }
+            return new DrainResult(entry.state, outstanding, entry.ownerQuiescent,
                 entry.abortFailure, entry.closeFailure);
         }
 
@@ -392,10 +423,22 @@ public final class ResourceLedger {
 
     public static final class Lease implements AutoCloseable {
         private final Entry entry;
+        private final long leaseId;
+        private final ExecutionOwner owner;
         private final AtomicBoolean released = new AtomicBoolean();
 
-        private Lease(Entry entry) {
+        private Lease(Entry entry, long leaseId, ExecutionOwner owner) {
             this.entry = entry;
+            this.leaseId = leaseId;
+            this.owner = owner;
+        }
+
+        public long getLeaseId() {
+            return leaseId;
+        }
+
+        public ExecutionOwner getOwner() {
+            return owner;
         }
 
         @Override
@@ -404,26 +447,44 @@ public final class ResourceLedger {
                 return;
             }
             synchronized (entry) {
-                if (entry.activeLeases <= 0) {
-                    throw new IllegalStateException("Resource lease accounting underflow");
+                if (entry.activeLeases.remove(leaseId) == null) {
+                    throw new IllegalStateException("Resource lease is not registered: " + leaseId);
                 }
-                entry.activeLeases--;
                 entry.notifyAll();
             }
         }
     }
 
+    /** Immutable diagnostic identity for a lease still using a resource. */
+    public static final class OutstandingLease {
+        private final long leaseId;
+        private final ExecutionOwner owner;
+
+        private OutstandingLease(long leaseId, ExecutionOwner owner) {
+            this.leaseId = leaseId;
+            this.owner = owner;
+        }
+
+        public long getLeaseId() {
+            return leaseId;
+        }
+
+        public ExecutionOwner getOwner() {
+            return owner;
+        }
+    }
+
     public static final class DrainResult {
         private final State state;
-        private final int activeLeases;
+        private final List<OutstandingLease> outstandingLeases;
         private final boolean ownerQuiescent;
         private final Throwable abortFailure;
         private final Throwable closeFailure;
 
-        private DrainResult(State state, int activeLeases, boolean ownerQuiescent,
-                            Throwable abortFailure, Throwable closeFailure) {
+        private DrainResult(State state, List<OutstandingLease> outstandingLeases,
+                            boolean ownerQuiescent, Throwable abortFailure, Throwable closeFailure) {
             this.state = state;
-            this.activeLeases = activeLeases;
+            this.outstandingLeases = Collections.unmodifiableList(new ArrayList<>(outstandingLeases));
             this.ownerQuiescent = ownerQuiescent;
             this.abortFailure = abortFailure;
             this.closeFailure = closeFailure;
@@ -434,7 +495,11 @@ public final class ResourceLedger {
         }
 
         public int getActiveLeases() {
-            return activeLeases;
+            return outstandingLeases.size();
+        }
+
+        public List<OutstandingLease> getOutstandingLeases() {
+            return outstandingLeases;
         }
 
         public boolean isOwnerQuiescent() {
