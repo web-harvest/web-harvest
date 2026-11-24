@@ -8,7 +8,7 @@
 
 WebHarvest must have **one runtime-owned plugin registry authority**. It publishes immutable generations. Every execution captures exactly one generation and resolves every plugin through that captured generation.
 
-The canonical abstraction should evolve the existing `PluginRegistry` contract rather than introduce a parallel registry family:
+The candidate direction is to evolve the existing `PluginRegistry` contract rather than introduce a parallel registry family. This choice must be reconciled with the approved descriptor/SPI and Core inventory under #93/#94 before implementation; this document is a review proposal, not permission to bypass those architecture gates:
 
 - `PluginRegistry` becomes the runtime-facing registry/publication API.
 - `DefaultPluginRegistry` becomes its implementation, with mutable registration confined to a builder/staging phase and immutable published snapshots.
@@ -249,4 +249,4 @@ Each slice must have focused tests and full Core/reactor quality gates. No step 
 
 ## 11. Verification boundary
 
-This document is based on source inspection of `main`. It does not claim that the target design has been implemented, tested, or approved by CI. Implementation remains gated by #377 and the dependent lifecycle/resource contracts.
+This document is based on source inspection of `main`. It does not claim that the target design has been implemented, tested, or approved by CI. Implementation remains gated by #93/#94 (Core inventory and descriptor/SPI approval), #377 (generation ownership), #349 (activation/lifecycle policy), and the dependent execution/resource contracts.
