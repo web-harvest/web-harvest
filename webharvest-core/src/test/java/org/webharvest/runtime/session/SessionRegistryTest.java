@@ -62,18 +62,31 @@ public class SessionRegistryTest {
     }
     
     @Test(groups = {"unit", "session"})
-    public void testRegister_ReplaceExisting() {
+    public void testRegister_DuplicateIdRejectedWithoutReplacing() {
         ScraperSession session1 = createSession("session-1", "client-1");
-        ScraperSession session2 = createSession("session-1", "client-2"); // Same ID
-        
+        ScraperSession session2 = createSession("session-1", "client-2");
+
         registry.register(session1);
-        registry.register(session2);
-        
-        Optional<ScraperSession> found = registry.getSession("session-1");
-        assertTrue(found.isPresent());
-        assertEquals(found.get().getClientId(), "client-2", 
-            "Should have replaced with second session");
-        assertEquals(registry.size(), 1, "Should have only one session");
+        try {
+            registry.register(session2);
+            fail("Duplicate session IDs must be rejected");
+        } catch (IllegalStateException expected) {
+            // Expected: the original owner remains registered.
+        }
+
+        assertSame(registry.getSession("session-1").orElse(null), session1);
+        assertEquals(registry.size(), 1);
+    }
+
+    @Test(groups = {"unit", "session"})
+    public void testUnregister_StaleSessionCannotRemoveCurrentOwner() {
+        ScraperSession original = createSession("session-1", "client-1");
+        ScraperSession stale = createSession("session-1", "client-2");
+        registry.register(original);
+
+        assertFalse(registry.unregister(stale));
+        assertSame(registry.getSession("session-1").orElse(null), original);
+        assertEquals(registry.size(), 1);
     }
     
     @Test(groups = {"unit", "session"})
