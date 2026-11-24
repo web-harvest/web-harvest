@@ -98,6 +98,7 @@ public final class ResourceLedger {
 
     private final String runtimeId;
     private final ConcurrentHashMap<RegistrationKey, Entry> entries = new ConcurrentHashMap<>();
+    // Retired entries remain as tombstones so a stale generation ID can never be re-pinned.
     private final ConcurrentHashMap<RegistryGenerationId, GenerationEntry> generations =
         new ConcurrentHashMap<>();
 
@@ -573,9 +574,10 @@ public final class ResourceLedger {
         }
 
         /**
-         * Records externally observed owner quiescence and closes lease admission
-         * if it is still open. This must not be called merely because cancellation
-         * was requested or business status is terminal.
+         * Records externally observed quiescence for RUNTIME, SESSION or OPERATION
+         * ownership and closes lease admission if it is still open. GENERATION
+         * resources use generation-wide pins instead. This must not be called merely
+         * because cancellation was requested or business status is terminal.
          */
         public void markOwnerQuiescent() {
             if (entry.scope == Scope.GENERATION) {
@@ -592,8 +594,9 @@ public final class ResourceLedger {
         }
 
         /**
-         * Stops admission, waits up to the supplied budget for both owner
-         * quiescence and lease drain, then invokes close exactly once.
+         * Stops admission, waits up to the supplied budget for the appropriate
+         * ownership boundary (owner quiescence or all generation pins) and lease
+         * drain, then invokes close exactly once.
          *
          * <p>Timeout retains the resource in QUARANTINED state. A later call may
          * complete the drain after the owner and all leases become quiescent.</p>
