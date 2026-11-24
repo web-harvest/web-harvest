@@ -184,4 +184,39 @@ public class StandaloneConnectionPoolTest {
         new StandaloneConnectionPool().closeAllConnections();
     }
 
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void rejectsNullSessionIdForOwnerRegistration() {
+        new StandaloneConnectionPool().registerForSession(new EventBus(), null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void rejectsBlankSessionIdForOwnerRegistration() {
+        new StandaloneConnectionPool().registerForSession(new EventBus(), "  ");
+    }
+
+    @Test
+    public void ignoresCompletionFailureAndCancellationFromOtherSessions() throws Exception {
+        EventBus eventBus = new EventBus();
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        Connection connection = pool.getConnection(DRIVER,
+            "jdbc:h2:mem:pool_non_owner_events;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+        pool.registerForSession(eventBus, "owner-session");
+
+        ScraperSession otherSession = mock(ScraperSession.class);
+        when(otherSession.getSessionId()).thenReturn("different-session");
+        eventBus.post(new SessionCompletedEvent(otherSession));
+        eventBus.post(new SessionFailedEvent(otherSession,
+            new IllegalStateException("non-owner failure")));
+        eventBus.post(new SessionCancelledEvent(otherSession));
+
+        assertFalse(physical.isClosed(),
+            "Events from another session must not close this pool's physical connection");
+
+        ScraperSession ownerSession = mock(ScraperSession.class);
+        when(ownerSession.getSessionId()).thenReturn("owner-session");
+        eventBus.post(new SessionCompletedEvent(ownerSession));
+        assertTrue(physical.isClosed());
+    }
 }
