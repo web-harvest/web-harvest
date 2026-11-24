@@ -27,7 +27,6 @@ import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
 import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.EventBus;
 
 import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
