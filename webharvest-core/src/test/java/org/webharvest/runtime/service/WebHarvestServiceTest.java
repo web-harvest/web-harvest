@@ -7,6 +7,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.client.ClientContext;
+import org.webharvest.runtime.session.ExecutionState;
+import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
@@ -18,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -159,6 +162,43 @@ public class WebHarvestServiceTest {
             "Should cancel or already be terminal");
     }
     
+    @Test(groups = {"unit", "service"})
+    public void testCancelBeforeStart_ExecutionQuiescenceObserved() throws InterruptedException {
+        service.shutdown();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS),
+                "The executor blocker should start before the session is submitted");
+            service = new WebHarvestServiceImpl(executor, new SessionRegistryImpl(), new EventBus());
+
+            ScraperSession session = service.executeAsync(mockConfig, null, null);
+            assertTrue(session.cancel(), "Queued session should accept cancellation");
+            assertTrue(session.awaitCompletion(1000), "Business cancellation should be observable");
+
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(tracked.awaitExecutionCompletion(1000),
+                "A cancelled-before-start task must be known not to have entered the worker body");
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+        } finally {
+            releaseBlocker.countDown();
+        }
+
+        service.shutdown();
+    }
+
     @Test(groups = {"unit", "service"})
     public void testCancelSession_NonExistent() {
         boolean cancelled = service.cancelSession("non-existent");
