@@ -641,7 +641,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 }
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
-                LOG.warn("Interrupted while draining resources for session {}", session.getSessionId(), interrupted);
+                LOG.warn("Interrupted while draining resources for session {} (owner {})",
+                    session.getSessionId(), session.getExecutionOwner(), interrupted);
+            } catch (RuntimeException | Error drainFailure) {
+                // submit() wraps task failures in FutureTask; without this log, a fatal
+                // cleanup failure can be retained by an unread Future and become invisible.
+                // Keep the failure visible with its owner identity, then preserve propagation.
+                LOG.error("Fatal resource drain failure for session {} (owner {})",
+                    session.getSessionId(), session.getExecutionOwner(), drainFailure);
+                throw drainFailure;
             }
         }
     }
