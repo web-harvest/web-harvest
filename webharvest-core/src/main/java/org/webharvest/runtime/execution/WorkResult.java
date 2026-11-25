@@ -4,10 +4,12 @@
  */
 package org.webharvest.runtime.execution;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-/** Immutable aggregate of all terminal partition outcomes for one work plan. */
+/** Immutable aggregate of terminal partition outcomes in original plan order. */
 public final class WorkResult<R> {
 
     public enum Status {
@@ -17,10 +19,14 @@ public final class WorkResult<R> {
         CANCELLED
     }
 
+    private final String planId;
     private final Status status;
     private final List<PartitionOutcome<R>> outcomes;
 
-    public WorkResult(List<PartitionOutcome<R>> outcomes) {
+    public WorkResult(String planId, List<PartitionOutcome<R>> outcomes) {
+        if (planId == null || planId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Plan ID cannot be null or empty");
+        }
         Objects.requireNonNull(outcomes, "Partition outcomes cannot be null");
         if (outcomes.isEmpty()) {
             throw new IllegalArgumentException("A work result must contain partition outcomes");
@@ -29,8 +35,13 @@ public final class WorkResult<R> {
         boolean succeeded = false;
         boolean unsuccessful = false;
         boolean failed = false;
+        Set<String> partitionIds = new HashSet<>();
         for (PartitionOutcome<R> outcome : snapshot) {
             Objects.requireNonNull(outcome, "Partition outcome cannot be null");
+            if (!partitionIds.add(outcome.getPartitionId())) {
+                throw new IllegalArgumentException(
+                    "Duplicate partition outcome: " + outcome.getPartitionId());
+            }
             if (outcome.getStatus() == PartitionOutcome.Status.SUCCEEDED) {
                 succeeded = true;
             } else {
@@ -48,7 +59,12 @@ public final class WorkResult<R> {
         } else {
             status = Status.CANCELLED;
         }
+        this.planId = planId;
         this.outcomes = snapshot;
+    }
+
+    public String getPlanId() {
+        return planId;
     }
 
     public Status getStatus() {
