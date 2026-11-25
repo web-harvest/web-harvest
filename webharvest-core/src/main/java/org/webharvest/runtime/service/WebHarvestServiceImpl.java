@@ -504,9 +504,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private final ScraperSessionImpl session;
         private final SessionOptions options;
         private final LedgerExecutionResourceCoordinator resourceCoordinator;
+        private final AtomicBoolean submissionResolved = new AtomicBoolean();
+        private final CountDownLatch taskCompletion = new CountDownLatch(1);
         private Future<?> future;
         private ScheduledFuture<?> escalationFuture;
         private Thread worker;
+        private Thread cleanupThread;
         private boolean started;
         private boolean cancellationRequested;
         private boolean timedOut;
@@ -524,15 +527,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         public void run() {
             boolean skipExecution;
             synchronized (this) {
+                worker = Thread.currentThread();
                 if (cancellationRequested || exited) {
                     exited = true;
                     cancelEscalation();
                     skipExecution = true;
                 } else {
                     started = true;
-                    worker = Thread.currentThread();
                     if (!session.markExecutionStarted()) {
-                        worker = null;
                         exited = true;
                         cancelEscalation();
                         skipExecution = true;
@@ -543,55 +545,117 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             if (skipExecution) {
-                executionTasks.remove(session.getSessionId(), this);
-                session.markExecutionExited();
-                drainResources(Duration.ZERO);
+                try {
+                    session.markExecutionExited();
+                    drainResources(Duration.ZERO);
+                } finally {
+                    completeTaskRun();
+                }
                 return;
             }
 
             try {
                 executeSession(this);
             } finally {
-                synchronized (this) {
-                    worker = null;
-                    exited = true;
-                    cancelEscalation();
+                try {
+                    synchronized (this) {
+                        exited = true;
+                        cancelEscalation();
+                    }
+                    // Worker exit and resource drain are separate lifecycle facts.
+                    session.markExecutionExited();
+                    drainResources(RESOURCE_DRAIN_BUDGET);
+                } finally {
+                    completeTaskRun();
                 }
-                executionTasks.remove(session.getSessionId(), this);
-                // Publish quiescence only after task bookkeeping and lock release.
-                session.markExecutionExited();
-                drainResources(RESOURCE_DRAIN_BUDGET);
             }
         }
 
-        private synchronized void attachFuture(Future<?> submittedFuture) {
-            future = submittedFuture;
-            if (!cancellationRequested || exited) {
-                return;
+        private boolean attachFuture(Future<?> submittedFuture) {
+            boolean finishBeforeStart = false;
+            boolean cancelRunningFuture = false;
+            synchronized (this) {
+                future = submittedFuture;
+                if (cancellationRequested && !exited) {
+                    if (!started) {
+                        finishBeforeStart = removeQueuedFutureLocked() && claimBeforeStartExitLocked();
+                    } else {
+                        cancelRunningFuture = true;
+                    }
+                }
             }
-            if (!started) {
-                removeQueuedFuture();
-            } else {
-                future.cancel(true);
+            if (cancelRunningFuture) {
+                submittedFuture.cancel(true);
             }
+            return finishBeforeStart;
+        }
+
+        private void resolveSubmission() {
+            if (submissionResolved.compareAndSet(false, true)) {
+                synchronized (admissionLock) {
+                    if (pendingSubmissions <= 0) {
+                        throw new IllegalStateException("Submission reservation underflow for session "
+                            + session.getSessionId());
+                    }
+                    pendingSubmissions--;
+                    admissionLock.notifyAll();
+                }
+                finalizeTimeoutSchedulerIfQuiescent();
+            }
+        }
+
+        private synchronized boolean isCurrentTaskThread() {
+            Thread current = Thread.currentThread();
+            return taskCompletion.getCount() > 0
+                && (worker == current || cleanupThread == current);
+        }
+
+        private synchronized boolean hasWorkerExited() {
+            return exited;
+        }
+
+        private boolean isTaskCompleted() {
+            return taskCompletion.getCount() == 0;
+        }
+
+        private boolean awaitTaskCompletion(long timeout, TimeUnit unit) throws InterruptedException {
+            return taskCompletion.await(timeout, unit);
+        }
+
+        private void completeTaskRun() {
+            synchronized (this) {
+                worker = null;
+                cleanupThread = null;
+            }
+            taskCompletion.countDown();
+            executionTasks.remove(session.getSessionId(), this);
+            finalizeTimeoutSchedulerIfQuiescent();
         }
 
         private void requestCancellation() {
             boolean startedExecution;
+            boolean finishBeforeStart = false;
             synchronized (this) {
                 if (exited) {
                     return;
                 }
                 cancellationRequested = true;
                 session.markGracefulTerminationRequested();
-                if (!started && removeQueuedFuture()) {
-                    return;
+                if (!started && removeQueuedFutureLocked()) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                    startedExecution = false;
+                } else {
+                    startedExecution = started;
                 }
-                startedExecution = started;
             }
 
-            // Close admission and abort I/O before interrupting the worker, so
-            // a fast worker exit cannot race ahead of resource abort dispatch.
+            if (finishBeforeStart) {
+                finishBeforeStart();
+                return;
+            }
+
+            // Abort I/O before interrupting the worker so it cannot exit before
+            // resource termination has been requested.
             requestResourceTermination();
             if (startedExecution) {
                 synchronized (this) {
@@ -609,43 +673,58 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        /**
-         * Removes a queued FutureTask only when the executor confirms it is
-         * still in a ThreadPoolExecutor queue. A successful remove proves it
-         * cannot enter the worker body; generic executors must run the
-         * cancellation gate and report exit from the task itself.
-         */
-        private boolean removeQueuedFuture() {
+        private boolean removeQueuedFutureLocked() {
             if (future instanceof Runnable && executorService instanceof ThreadPoolExecutor) {
                 boolean removed = ((ThreadPoolExecutor) executorService).remove((Runnable) future);
                 if (removed) {
                     future.cancel(false);
-                    finishBeforeStart();
                     return true;
                 }
             }
             return false;
         }
 
-        private synchronized void markRemovedBeforeStart(Runnable pending) {
-            // shutdownNow() returns only tasks that have not commenced execution.
-            if (future == pending) {
-                future.cancel(false);
+        private boolean claimBeforeStartExitLocked() {
+            if (started || exited) {
+                return false;
+            }
+            exited = true;
+            cancelEscalation();
+            return true;
+        }
+
+        private void markRemovedBeforeStart(Runnable pending) {
+            boolean finishBeforeStart = false;
+            synchronized (this) {
+                if (future == pending && !started && !exited) {
+                    future.cancel(false);
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                }
+            }
+            if (finishBeforeStart) {
                 finishBeforeStart();
             }
         }
 
         private void requestKill() {
             boolean startedExecution;
+            boolean finishBeforeStart = false;
             synchronized (this) {
                 if (exited) {
                     return;
                 }
                 session.markKillRequested();
-                if (!started && removeQueuedFuture()) {
-                    return;
+                if (!started && removeQueuedFutureLocked()) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                    startedExecution = false;
+                } else {
+                    startedExecution = started;
                 }
-                startedExecution = started;
+            }
+
+            if (finishBeforeStart) {
+                finishBeforeStart();
+                return;
             }
 
             requestResourceTermination();
@@ -757,22 +836,34 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        private synchronized void rejectBeforeStart() {
-            cancellationRequested = true;
-            if (!started && !exited) {
-                finishBeforeStart();
-            } else if (!exited && worker != null) {
-                worker.interrupt();
+        private boolean rejectBeforeStart() {
+            boolean finishBeforeStart = false;
+            Thread workerToInterrupt = null;
+            synchronized (this) {
+                cancellationRequested = true;
+                if (!started && !exited) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                } else if (!exited) {
+                    workerToInterrupt = worker;
+                }
             }
+            if (workerToInterrupt != null) {
+                workerToInterrupt.interrupt();
+            }
+            return finishBeforeStart;
         }
 
         private void finishBeforeStart() {
-            exited = true;
-            cancelEscalation();
-            executionTasks.remove(session.getSessionId(), this);
-            // The executor has confirmed that this task will never be entered.
-            session.markExecutionExited();
-            drainResources(Duration.ZERO);
+            synchronized (this) {
+                cleanupThread = Thread.currentThread();
+            }
+            try {
+                // The executor has confirmed that this task will never be entered.
+                session.markExecutionExited();
+                drainResources(Duration.ZERO);
+            } finally {
+                completeTaskRun();
+            }
         }
 
         private void drainResources(Duration budget) {
