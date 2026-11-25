@@ -584,6 +584,66 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownWaitsForInlineResourceDrainAfterSessionExit() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingCloseRegistrationListener listener = new BlockingCloseRegistrationListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        CountDownLatch shutdownFinished = new CountDownLatch(1);
+
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable unexpected) {
+                failure.compareAndSet(null, unexpected);
+            }
+        }, "caller-runs-resource-drain");
+        Thread shutdownThread = new Thread(() -> {
+            try {
+                service.shutdown();
+            } catch (Throwable unexpected) {
+                failure.compareAndSet(null, unexpected);
+            } finally {
+                shutdownFinished.countDown();
+            }
+        }, "graceful-shutdown-resource-drain");
+
+        try {
+            submitter.start();
+            assertTrue(listener.closeStarted.await(5, TimeUnit.SECONDS));
+            assertNotNull(listener.session);
+            assertTrue(((ExecutionTrackedSession) listener.session).awaitExecutionCompletion(0),
+                "Session worker exit is observed before physical resource close finishes");
+
+            shutdownThread.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (shutdownThread.getState() != Thread.State.WAITING
+                && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
+                "Service shutdown must also wait for the task's resource-drain callback");
+            assertEquals(shutdownFinished.getCount(), 1L);
+
+            listener.releaseClose.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            assertFalse(submitter.isAlive());
+            assertFalse(shutdownThread.isAlive());
+            assertNull(failure.get());
+        } finally {
+            listener.releaseClose.countDown();
+            submitter.join(5000);
+            if (shutdownThread.getState() != Thread.State.NEW) {
+                shutdownThread.join(5000);
+            }
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowCancellationSubscriberRunsOutsideAdmissionLock() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener worker = new BlockingStartedListener();
@@ -788,6 +848,22 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 Thread.currentThread().interrupt();
                 failure.set(interrupted);
             }
+        }
+    }
+
+    private static class BlockingCloseRegistrationListener {
+        private final CountDownLatch closeStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseClose = new CountDownLatch(1);
+        private volatile ScraperSession session;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            session = event.getSession();
+            session.getContext().getResourceAccess().registerSessionResource(
+                "test/blocking-close", null, () -> {
+                    closeStarted.countDown();
+                    releaseClose.await();
+                });
         }
     }
 
