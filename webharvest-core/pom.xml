@@ -32,10 +32,6 @@
                     <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
                     <properties>
                         <property>
-                            <name>surefire.testng.verbose</name>
-                            <value>10</value>
-                        </property>
-                        <property>
                             <name>listener</name>
                             <value>org.webharvest.test.CoreTestInvocationTraceListener</value>
                         </property>
