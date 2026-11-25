@@ -355,3 +355,33 @@ The initial synchronous streaming design is retained, with the following impleme
 Required deterministic tests before executor implementation: serialization within one plan; no serialization coupling between independent plans; producer blocking until handler release; callback failure mapping under both failure policies; cancellation while callback is blocked with lease retention until actual worker exit; per-partition order; and no plan completion before callback/worker exit. Use latches/barriers rather than timing sleeps.
 
 The finite-plan size limit is enforced by the service-owned admission layer, not by the Core `WorkPlan` constructor: the complete partition count must be checked against the configured cap before any partition starts. Admission rejection must expose enough diagnostics to identify the configured limit. `WorkPlan` snapshots the descriptor list, but `WorkPartition` payloads remain caller-owned and are not deep-copied; callers must provide immutable payloads or guarantee no mutation for the plan lifetime.
+
+
+### 12.7 Coordinator observability and EventBus integration
+
+The execution coordinator is both the authority for child-work lifecycle and the source of structured operational events. Observability is a first-class architecture requirement: it provides useful structured logging immediately and enables future metrics, tracing and telemetry without coupling Core or adapters to a monitoring vendor.
+
+The implementation must first reconcile the existing event abstractions and runtime wiring. Core already contains `org.webharvest.events.EventSink` / `HarvesterEvent` and `HarvesterEventSink`; session lifecycle events use the runtime-shared Guava EventBus. The coordinator must use the established runtime event route where appropriate, not introduce a second unrelated bus. The exact event API and class hierarchy remain subject to inspection/API review.
+
+Candidate immutable control-plane events include:
+- plan admitted/rejected, including plan ID, canonical owner, partition count, effective limits and bounded rejection reason;
+- partition queued/started/exited/confirmed-removed-before-start, including plan/partition IDs, queue wait, execution duration and terminal outcome;
+- cancellation requested/observed, clearly distinguishing the request from actual worker exits;
+- plan terminal outcome, emitted only after all children are terminal;
+- session children drained, before session-owner quiescence;
+- sampled admission-pressure snapshots/counters, rather than one event for every repeated rejection.
+
+Event envelopes should carry canonical `ExecutionOwner` and applicable runtime/session/plan/partition identity, immutable payloads, an `Instant` timestamp and a monotonic per-runtime sequence (or equivalent ordered event ID). Wall-clock timestamps alone do not establish cross-thread ordering. Do not place SQL text, credentials, row contents, arbitrary adapter payloads or unbounded user strings in event payloads or metric labels.
+
+Events are observational: subscriber, logger or exporter failures must not corrupt admission, cancellation, worker-exit bookkeeping, lease retention or quiescence. Current EventBus delivery may invoke subscribers synchronously. Therefore capture immutable event data while holding internal locks if needed, release coordinator/plan/session/ledger locks, and only then publish. Never invoke subscriber code while holding lifecycle locks.
+
+Avoid per-row/per-item lifecycle events. Prefer bounded-cardinality counters and duration measurements for admission pressure, queue wait, active/running/queued children, output-handler blocking, cancellation-to-exit latency, active resource leases and resource drain. ResourceLedger remains authoritative for resource states; the coordinator reports task lifecycle and correlates resource outcomes without duplicating resource ownership.
+
+The observable lifecycle should allow reconstruction of this order:
+`admission-stop/cancellation-request -> child cancellation requests -> actual child exits or confirmed pre-start removals -> plan terminal -> session children drained -> session owner quiescence -> resource lease drain -> physical close or close failure`.
+
+Business session completion, worker exit, plan completion, owner quiescence, lease drain and physical close are distinct facts. A plan terminal event must not imply that its JDBC resources are already closed. EventBus delivery is in-process and best-effort; it is not durable event sourcing or an exactly-once telemetry transport.
+
+The synchronous `PartitionEmitter` remains the data-plane backpressure mechanism. Lifecycle events must not create an unbounded side queue. If asynchronous telemetry export is introduced later, it requires a separately bounded queue, explicit drop/sampling policy, overflow counters and shutdown-drain semantics. A slow exporter must not become an unbounded memory sink or prevent worker-exit bookkeeping.
+
+No event classes, telemetry queue or exporter are implied by this design section. Add them only after the existing EventSink/EventBus route and deterministic lifecycle ordering tests have been reviewed.
