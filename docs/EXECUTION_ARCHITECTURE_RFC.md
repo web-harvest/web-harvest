@@ -254,3 +254,76 @@ P1 activities may be parallelized only where they do not change the same code or
 The database module boundary is already in the correct direction. The missing piece is not moving JDBC code again; it is introducing the smallest technology-neutral execution SPI in Core before Database and other adapters begin depending on ad-hoc concurrency APIs.
 
 The next implementation step is therefore the Core contract, not a parallel JDBC implementation.
+
+## 12. Concrete Core API proposal (under review)
+
+Source inspection on the active integration base supports a narrow capability API rather than exposing an executor:
+
+- `ExecutionOwner` is already the immutable runtime/session/generation identity and remains canonical.
+- `ExecutionResourceAccess` is already the plugin-facing, owner-bound resource capability. The host-side coordinator and ledger must remain hidden from adapter code.
+- `WebHarvestService` is the session-level API; partition work should be an optional capability of a managed execution, not a second public session service.
+- `ScraperContext` cannot be shared by workers, and neither `executeWithinNewContext` nor `NestedContextFactory` provides a safe fork.
+
+### 12.1 Proposed package and contracts
+
+Proposed package: `org.webharvest.runtime.execution`.
+
+The following names and signatures are candidates for review, not published API yet:
+
+```java
+public interface ExecutionWorkAccess {
+    ExecutionOwner getOwner();
+
+    <P, R> WorkExecution<R> submit(
+        WorkPlan<P> plan,
+        WorkExecutionPolicy policy,
+        PartitionTask<P, R> task);
+}
+
+public interface PartitionTask<P, R> {
+    R execute(WorkPartition<P> partition, PartitionContext context) throws Exception;
+}
+
+public interface WorkExecution<R> {
+    boolean requestCancellation();
+    CompletionStage<WorkResult<R>> completion();
+}
+```
+
+Supporting immutable value types:
+- `WorkPlan<P>`: stable plan identity and finite, immutable partition descriptors. The initial contract should bound/validate plan size; a future lazy partition source requires its own bounded producer/admission contract and is not silently implied by `Iterable`.
+- `WorkPartition<P>`: stable ID unique within the plan plus opaque adapter-owned payload. Core does not parse SQL, file paths, HTTP requests or vendor expressions.
+- `WorkExecutionPolicy`: requested in-flight limit and explicit failure/admission policy. Runtime, session and adapter budgets may reduce effective concurrency; expose the effective limit in execution metadata/outcome.
+- `PartitionContext`: partition identity, canonical session owner, cancellation signal, tracing/correlation metadata and owner-bound `ExecutionResourceAccess`. It must not expose the parent `DynamicScopeContext`.
+- `WorkResult<R>` and `PartitionOutcome<R>`: immutable aggregate and per-partition outcomes, including partial success and unknown outcome. They must not imply cross-partition atomicity.
+
+The `ExecutionWorkAccess` capability should be optional on service-managed contexts, with legacy/third-party contexts retaining a null/default-unsupported behavior, following the compatibility pattern already used for resource access. It must not expose `ExecutorService`, thread creation, or host lifecycle authority.
+
+### 12.2 Context and streaming boundaries
+
+The first SPI must not claim to clone the current variable context. `PartitionContext` initially carries immutable execution metadata and explicit adapter inputs only. If worker-side template evaluation requires parent variables, define and test an immutable input-snapshot contract—including mutable `Variable` aliasing—before exposing it.
+
+Streaming output is separate from `WorkResult`; it must use an execution-scoped bounded sink/consumer contract. The exact push/backpressure shape (blocking bounded emit vs asynchronous demand) remains an explicit API decision and must be resolved before publishing that interface. Do not put an unbounded row collection into the result.
+
+### 12.3 Lifecycle obligations
+
+The runtime implementation behind `ExecutionWorkAccess` must:
+1. register a child before it can run and attribute it to the existing session `ExecutionOwner`;
+2. enforce runtime-wide bounded admission and per-session fairness without reusing the session executor as an implicit partition pool;
+3. stop child admission and fan out cancellation when the parent is terminating;
+4. distinguish queued work positively removed before start from work that actually started;
+5. retain resource leases until each worker's actual exit;
+6. complete the public `WorkExecution` only after every admitted child has exited or has been confirmed removed before start;
+7. allow the root session to publish owner quiescence and drain resources only after all children are terminal.
+
+The parent must not occupy a worker from the same bounded pool while synchronously waiting for its children. Child identity is for partition outcomes/metrics; it does not replace the session owner.
+
+### 12.4 Decisions still open before implementation
+
+- Confirm the optional context capability and exact compatibility behavior.
+- Confirm the finite-plan size bound and how admission/backpressure are surfaced to the submitter.
+- Choose the streaming sink's push/backpressure contract.
+- Specify immutable worker-input snapshots only if an actual first adapter requires parent-variable evaluation.
+- Decide whether the first implementation is contracts plus deterministic tests only, or also a sequential reference coordinator.
+
+This proposal is tracked for review in [Issue #383](https://github.com/web-harvest/web-harvest/issues/383). It is not authorization to implement concurrent workers or parallel JDBC. Add the public contracts only after the remaining API decisions are resolved.
