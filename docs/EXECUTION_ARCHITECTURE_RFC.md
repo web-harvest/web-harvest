@@ -462,4 +462,9 @@ PR #385 adds deterministic tests for:
 - a `SessionCancelledEvent` subscriber that re-enters service admission during `shutdownNow()`;
 - the existing submit-vs-shutdown race, now asserting that shutdown waits without owning `admissionLock`.
 
-No local Maven suite was run. The FTP workflow is running as a Core dependency/compile gate; the full Semantic Core workflow's current pull-request base filter does not include `runtime/execution-resource-context`, so full Core test execution remains an explicit validation gap until that workflow is triggered on the integration base or the PR is rebased onto an eligible base. Keep PR #385 Draft and do not merge before exact-head CI and review.
+No local Maven suite was run. Exact PR-head CI at `fbc781a877bb6e0e1645b2c89f3f262c05847b58`:
+
+- FTP Module Coverage CI run [#329](https://github.com/web-harvest/web-harvest/actions/runs/45591547786): **success**. Its Maven invocation uses `-Pskip-core-tests-in-reactor`; Core production and test sources are compiled as reactor dependencies, but Core Surefire/Failsafe tests are deliberately skipped. FTP coverage gate also passed.
+- Dependency lockfile verification run [#738](https://github.com/web-harvest/web-harvest/actions/runs/45591547758): **success**.
+
+The full Semantic Core workflow did not trigger because its pull-request base filter does not include `runtime/execution-resource-context`. Therefore the new lifecycle tests have compiled but have not yet executed in CI. This remains an explicit validation gap. Keep PR #385 Draft and do not merge before full Core tests and review.
