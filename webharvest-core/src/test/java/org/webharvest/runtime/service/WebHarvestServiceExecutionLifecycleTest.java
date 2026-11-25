@@ -191,6 +191,55 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testRuntimeCloseFailureIsRetainedInDrainReport() throws InterruptedException,
+        java.util.concurrent.ExecutionException {
+        EventBus eventBus = new EventBus();
+        RuntimeCloseFailureListener listener = new RuntimeCloseFailureListener();
+        eventBus.register(listener);
+        CapturingInlineExecutorService executor = new CapturingInlineExecutorService();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertNotNull(executor.submittedFuture);
+            assertNull(executor.submittedFuture.get(),
+                "A non-fatal close failure is recorded in the drain report, not thrown from the task");
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertNotNull(listener.resource);
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSE_FAILED);
+            assertSame(listener.resource.getCloseFailure(), listener.closeFailure);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testAbortFailureIsRetainedEvenWhenResourceCloseSucceeds() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        AbortFailureResourceListener listener = new AbortFailureResourceListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            assertTrue(session.cancel());
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertNotNull(listener.resource);
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(listener.closeCount.get(), 1);
+            assertTrue(listener.resource.getAbortFailure() instanceof IllegalStateException,
+                "Abort failure must remain observable even when the later close succeeds");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testSessionResourcesAreClosedAfterObservedWorkerExit() throws InterruptedException {
         EventBus eventBus = new EventBus();
         SessionResourceRegistrationListener listener = new SessionResourceRegistrationListener();
@@ -617,6 +666,43 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 }
             }
             lease.close();
+        }
+    }
+
+    private static class RuntimeCloseFailureListener {
+        private final IllegalStateException closeFailure =
+            new IllegalStateException("recoverable resource close failure");
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/runtime-close-failure", null, () -> {
+                    throw closeFailure;
+                });
+        }
+    }
+
+    private static class AbortFailureResourceListener {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch interrupted = new CountDownLatch(1);
+        private final java.util.concurrent.atomic.AtomicInteger closeCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/abort-failure",
+                () -> { throw new IllegalStateException("resource abort failure"); },
+                closeCount::incrementAndGet);
+            started.countDown();
+            try {
+                new CountDownLatch(1).await();
+            } catch (InterruptedException expected) {
+                interrupted.countDown();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
