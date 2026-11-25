@@ -373,6 +373,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
+        if (hasCurrentTaskThread(tasks)) {
+            LOG.info("shutdownNow initiated from a session task; finalization is deferred until task cleanup completes");
+            return;
+        }
+
         boolean interrupted = false;
         boolean submissionsSettled = false;
         boolean executorTerminated = false;
