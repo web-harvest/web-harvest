@@ -354,9 +354,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         boolean executorTerminated = executorService.awaitTermination(
             remainingNanos(deadline), TimeUnit.NANOSECONDS);
-        boolean taskRunsCompleted = executorTerminated && awaitTaskRunsComplete(tasks, deadline, false);
+        boolean taskRunsCompleted = executorTerminated && awaitTaskRunsComplete(tasks, deadline);
         if (!executorTerminated || !taskRunsCompleted) {
-            markTasksUnresponsive(tasks, false, false);
+            markTasksUnresponsive(tasks, false);
             logIncompleteShutdown("worker exit or resource drain", tasks);
             throw new IllegalStateException("WebHarvestService did not terminate all accepted worker and "
                 + "resource-drain paths within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
@@ -416,7 +416,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 executorTerminated = executorService.awaitTermination(
                     remainingNanos(deadline), TimeUnit.NANOSECONDS);
                 if (executorTerminated) {
-                    taskRunsCompleted = awaitTaskRunsComplete(tasks, deadline, true);
+                    taskRunsCompleted = awaitTaskRunsComplete(tasks, deadline);
                 }
             }
         } catch (InterruptedException interruption) {
@@ -424,7 +424,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         if (!submissionsSettled || !executorTerminated || !taskRunsCompleted) {
-            markTasksUnresponsive(tasks, true, true);
+            markTasksUnresponsive(tasks, true);
             logIncompleteShutdown(!submissionsSettled ? "submission dispatch"
                 : !executorTerminated ? "executor termination" : "worker exit or resource drain", tasks);
         } else {
@@ -462,12 +462,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         return Math.max(0L, deadline - System.nanoTime());
     }
 
-    private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long deadline,
-                                          boolean skipCurrentTaskThread) throws InterruptedException {
+    private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long deadline)
+            throws InterruptedException {
         for (SessionTask task : tasks) {
-            if (skipCurrentTaskThread && task.isCurrentTaskThread()) {
-                continue;
-            }
             long remaining = remainingNanos(deadline);
             if (remaining == 0 || !task.awaitTaskCompletion(remaining, TimeUnit.NANOSECONDS)) {
                 return false;
@@ -485,11 +482,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         return false;
     }
 
-    private void markTasksUnresponsive(List<SessionTask> tasks,
-                                       boolean killRequested, boolean skipCurrentTaskThread) {
+    private void markTasksUnresponsive(List<SessionTask> tasks, boolean killRequested) {
         for (SessionTask task : tasks) {
-            if ((skipCurrentTaskThread && task.isCurrentTaskThread())
-                || !task.hasWorkerStarted() || task.hasWorkerExited()) {
+            if (!task.hasWorkerStarted() || task.hasWorkerExited()) {
                 continue;
             }
             if (killRequested) {
