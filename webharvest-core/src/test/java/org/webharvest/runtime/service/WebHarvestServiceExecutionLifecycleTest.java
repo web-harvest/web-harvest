@@ -783,9 +783,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             submitter.join(5000);
-            if (shutdownThread.getState() != Thread.State.NEW) {
-                shutdownThread.join(5000);
-            }
+            shutdownThread.join(5000);
             service.shutdownNow();
         }
     }
@@ -795,8 +793,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
         EventBus eventBus = new EventBus();
         BlockingCloseRegistrationListener listener = new BlockingCloseRegistrationListener();
         eventBus.register(listener);
+        CountDownLatch executorTerminationObserved = new CountDownLatch(1);
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
-            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+            new SignallingInlineExecutorService(executorTerminationObserved), new SessionRegistryImpl(), eventBus);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         CountDownLatch shutdownFinished = new CountDownLatch(1);
 
