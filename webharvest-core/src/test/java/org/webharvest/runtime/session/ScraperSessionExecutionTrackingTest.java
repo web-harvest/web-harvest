@@ -34,8 +34,10 @@
 package org.webharvest.runtime.session;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
+import org.webharvest.runtime.session.events.SessionCancelledEvent;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -141,4 +143,34 @@ public class ScraperSessionExecutionTrackingTest {
         new ScraperSessionImpl("execution-test", null,
             Mockito.mock(org.webharvest.definition.Config.class), null);
     }
+    @Test(groups = {"unit", "session"})
+    public void testCancellationHandlerFailureStillSignalsAndPublishesCancellation() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        AtomicInteger cancellationEvents = new AtomicInteger();
+        eventBus.register(new Object() {
+            @Subscribe
+            public void onCancelled(SessionCancelledEvent event) {
+                cancellationEvents.incrementAndGet();
+            }
+        });
+        ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), eventBus);
+        session.attachCancellationHandler(() -> {
+            throw new IllegalStateException("resource abort failed");
+        });
+
+        try {
+            session.cancel();
+            fail("The cancellation handler failure should remain observable");
+        } catch (IllegalStateException expected) {
+            assertEquals(expected.getMessage(), "resource abort failed");
+        }
+
+        assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+        assertTrue(session.awaitCompletion(0),
+            "The terminal session state must remain observable after handler failure");
+        assertEquals(cancellationEvents.get(), 1,
+            "Cancellation event publication must still be attempted after handler failure");
+    }
+
 }
