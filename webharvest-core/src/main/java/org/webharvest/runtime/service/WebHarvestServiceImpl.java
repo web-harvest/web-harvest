@@ -321,14 +321,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
             tasks = new ArrayList<>(executionTasks.values());
         }
+        boolean calledFromWorker = hasCurrentWorker(tasks);
         executorService.shutdown();
         if (interrupted) {
             Thread.currentThread().interrupt();
             throw new InterruptedException("Interrupted while waiting for accepted sessions to reach the executor");
         }
 
-        boolean terminated = executorService.awaitTermination(
-            SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        boolean terminated = calledFromWorker
+            || executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         boolean tasksExited = terminated
             && awaitTaskRunsComplete(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
         if (!terminated || !tasksExited) {
@@ -358,6 +359,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             tasks = new ArrayList<>(executionTasks.values());
         }
 
+        boolean calledFromWorker = hasCurrentWorker(tasks);
+
         // Cancellation invokes resource abort actions and synchronous EventBus
         // subscribers. Never run those callbacks while holding admissionLock
         // or while carrying an interrupt flag from the admission wait.
@@ -372,12 +375,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        boolean terminated;
-        try {
-            terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException interruption) {
-            interrupted = true;
-            terminated = false;
+        boolean terminated = calledFromWorker;
+        if (!calledFromWorker) {
+            try {
+                terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+                terminated = false;
+            }
         }
         boolean tasksExited = false;
         if (terminated) {
@@ -395,6 +400,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (interrupted) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private boolean hasCurrentWorker(List<SessionTask> tasks) {
+        for (SessionTask task : tasks) {
+            if (task.isCurrentWorker()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long timeout,
