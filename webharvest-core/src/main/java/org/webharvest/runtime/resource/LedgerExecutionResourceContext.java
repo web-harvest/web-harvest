@@ -179,8 +179,13 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
         }
 
         if (fatalFailure != null) {
-            if (interruption != null && fatalFailure != interruption) {
-                fatalFailure.addSuppressed(interruption);
+            if (interruption != null) {
+                if (fatalFailure != interruption) {
+                    fatalFailure.addSuppressed(interruption);
+                }
+                // A fatal cleanup failure takes precedence, but it must not
+                // consume the caller's interruption signal.
+                Thread.currentThread().interrupt();
             }
             if (fatalFailure instanceof Error) {
                 throw (Error) fatalFailure;
