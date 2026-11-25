@@ -385,3 +385,52 @@ Business session completion, worker exit, plan completion, owner quiescence, lea
 The synchronous `PartitionEmitter` remains the data-plane backpressure mechanism. Lifecycle events must not create an unbounded side queue. If asynchronous telemetry export is introduced later, it requires a separately bounded queue, explicit drop/sampling policy, overflow counters and shutdown-drain semantics. A slow exporter must not become an unbounded memory sink or prevent worker-exit bookkeeping.
 
 No event classes, telemetry queue or exporter are implied by this design section. Add them only after the existing EventSink/EventBus route and deterministic lifecycle ordering tests have been reviewed.
+
+
+## 12.8 Source-level integration findings and deterministic race-test matrix
+
+The following inspection was performed on the active integration branch at `runtime/execution-resource-context`, commit `007207821a19ad45e722f0e9029ae9472e3c6f10` (service source blob `56115f508489076d5430a9a1c3c2675c3836d7e6`; session source blob `1e2b7f35222e5dbd0153b5499140ec0e6956074b`). These observations are branch-specific and must not be read as claims about `main` before the stack is integrated.
+
+### Existing event route — reuse the bus, not the Harvester EventSink
+
+- `WebHarvestServiceImpl` receives one Guava `EventBus` and passes that same instance to each `ScraperSessionImpl` (service constructor and `executeSession`). This is the existing runtime/session event route.
+- `ScraperSessionImpl` posts `SessionCreatedEvent`, `SessionStartedEvent`, `SessionCompletedEvent`, `SessionFailedEvent` and `SessionCancelledEvent` to that bus. The latter four state-transition posts happen after the session's intrinsic state monitor is released. Cancellation invokes the service cancellation handler before posting `SessionCancelledEvent`; the event therefore reports a business cancellation request/state, not worker exit.
+- `EventSink` / `HarvesterEventSink` is not a suitable direct publisher for coordinator events in its current form. It accepts only `HarvesterEvent`, whose contract requires a `Harvester` route; `HarvesterEventSink` resolves the bus through a Harvester-to-EventBus registry. Runtime/session/plan/partition events are owned by `ExecutionOwner`, not by a Harvester route. Do not force a fake Harvester identity or add a second EventBus.
+- Recommended direction: add typed immutable execution-lifecycle events and publish them to the already-injected runtime EventBus through a narrow publisher seam. Include canonical owner/runtime/session/plan/partition identity and a monotonic sequence. The sequence records logical event order; concurrent publishers may still deliver callbacks in a different order unless a serialized dispatcher is deliberately added. Version one must document this distinction rather than imply globally ordered callback delivery.
+- Guava EventBus delivery is synchronous. Publish only after state mutation and lock release. A slow observer may delay the publishing thread, so lifecycle state and lease bookkeeping must already be terminal before publishing a terminal child event. If future telemetry/export requires asynchronous delivery, it needs a separately bounded queue, explicit drop/sampling and overflow accounting; it must not become an unbounded side channel.
+
+### Lock-scope findings — a pre-existing issue to resolve before coordinator implementation
+
+1. `executeAsync` holds `admissionLock` while constructing `ScraperSessionImpl`. The session constructor synchronously posts `SessionCreatedEvent`. Therefore a subscriber callback currently executes while the service admission lock is held. A slow or re-entrant subscriber can delay or interfere with unrelated session admission. This is a concrete exception to the otherwise useful pattern of posting session transition events after releasing the session monitor.
+2. The normal started-task path releases the `SessionTask` monitor before calling `session.markExecutionExited()` and `drainResources(...)`. Preserve that separation when adding child-drain coordination.
+3. The confirmed-pre-start paths need a separate lock-scope correction. `attachFuture`, `markRemovedBeforeStart` and `rejectBeforeStart` are synchronized or invoke removal while holding the `SessionTask` monitor; `removeQueuedFuture` and those paths call `finishBeforeStart`. `finishBeforeStart` calls `drainResources(Duration.ZERO)`. Resource draining can invoke adapter-supplied physical close callbacks. In `shutdownNow`, the caller also holds `admissionLock` while requesting task termination and processing never-started tasks. Consequently a pre-start close callback can run while the `SessionTask` monitor is held and, on the shutdown path, while `admissionLock` is held as well.
+4. This must be corrected before introducing a child registry: under-lock work should only atomically claim the pre-start terminal transition and capture the required actions. Resource abort/close callbacks, EventBus publication, waits and other external code must run after both service/task locks are released. Keep the exactly-once race between worker start and confirmed queue removal; do not infer removal merely from `Future.cancel(false)`.
+
+This is an inspection finding, not a production-code change. Track it as a lifecycle blocker and add a deterministic regression test before coordinator implementation.
+
+### Required deterministic race-test matrix
+
+Use `CountDownLatch`, barriers, explicit futures and state assertions; do not use timing-only sleeps.
+
+| Race / condition | Deterministic setup | Required invariant |
+|---|---|---|
+| Session-created observer vs admission | Block a `SessionCreatedEvent` subscriber while another thread submits a session | Observer delivery must not hold `admissionLock`; unrelated admission/shutdown must not depend on observer completion |
+| Queue removal vs worker start | Gate executor worker immediately before task entry; race cancellation/removal against start | Exactly one path claims start or confirmed pre-start removal; execution completion is signalled once |
+| Pre-start close callback re-entry | Make a resource close callback wait for a second thread to call a service operation requiring admission | No resource close callback runs while `admissionLock` or `SessionTask` monitor is held |
+| Admission vs session stop | Race whole-plan reservation with session cancellation/quiescence | Plan is either atomically admitted before stop and fully tracked, or rejected; no late child escapes the registry |
+| Child queued cancellation | Hold all worker slots, queue children, cancel plan and confirm queue removal | A queued child is terminal only after positive removal or after its wrapper enters and reports exit |
+| Running child cancellation | Block adapter callback on a latch; request cancellation and interrupt | Cancellation request is not worker exit; child lease remains held until callback unwinds |
+| Streaming backpressure | Block synchronous output handler; request cancellation from another thread | Output callback remains bounded/synchronous; no completion, lease release or owner quiescence before callback/worker exit |
+| Last child vs root completion | Release final child and root completion concurrently using a barrier | Root publishes children-drained/quiescence only after every admitted child is terminal |
+| Observer failure / slow observer | Install throwing and latch-blocked subscribers | Observer failure cannot alter work outcome, admission, lease retention or child terminal state; no internal lock is held during delivery |
+| Failure plus cancellation | Make adapter fail while cancellation is requested | One stable terminal outcome; preserve primary task failure and record cancellation as a request/competing signal, not a fabricated successful abort |
+| Runtime shutdown vs queued/running work | Gate one queued and one running child, then invoke shutdown | Stop admission first; positively remove queued work or await actual exits; drain before closing service-owned workers; never shut down host-owned resources |
+| Resource drain / close failure | Keep a lease active, then release it; separately inject close failure | Lease drain follows actual use; `CLOSE_FAILED` remains visible and is not reported as closed |
+
+### Lifecycle transition contract for the future coordinator
+
+The coordinator's child state machine must distinguish at least: `RESERVED`, `QUEUED`, `RUNNING`, `CANCEL_REQUESTED`, `EXITED`, `REMOVED_BEFORE_START`, and `UNKNOWN/UNRESPONSIVE`. Only `EXITED` or positively confirmed `REMOVED_BEFORE_START` is terminal for child-drain accounting. A cancelled Future, interrupt request, adapter abort request, session business terminal state, or observer event is not by itself terminal evidence.
+
+For each plan, atomic reservation must occur against both the session's admission state and runtime/session budgets. Session stop closes plan admission before child cancellation fan-out. Child completion must be recorded before any terminal event is published. The root session may proceed to owner quiescence only after the child registry reports zero non-terminal admitted children. ResourceLedger remains the authority for lease and physical resource state.
+
+No coordinator, child registry, event classes, queue or telemetry exporter are implemented by this section. It is a source-backed design gate.
