@@ -38,7 +38,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,9 +60,10 @@ import com.google.inject.Provider;
  * Runtime-wide handler catalogue and HarvesterEvent router.
  *
  * <p>Handlers are retained once per runtime. The shared runtime EventBus
- * delivers HarvesterEvents to this dispatcher, which forwards each event only
- * to handlers whose subscriber method accepts its type while the event's
- * Harvester is still bound to this runtime.</p>
+ * delivers HarvesterEvents to this dispatcher, which admits each dispatch only
+ * while the event's Harvester route is active. Dispatches admitted before route
+ * closure may finish after unbinding; the route remains reserved until those
+ * dispatch leases drain, so the same Harvester cannot be rebound prematurely.</p>
  *
  * <p>Independent sessions may dispatch concurrently. Handlers must therefore
  * be safe for concurrent calls, as they were when registered on separate
@@ -73,6 +77,8 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         new CopyOnWriteArrayList<HandlerRegistration>();
     private final Registry<Harvester, EventBus> registry;
     private final Provider<EventBus> provider;
+    private final ConcurrentMap<Harvester, HarvesterRoute> routes =
+        new ConcurrentHashMap<Harvester, HarvesterRoute>();
 
     @Inject
     public DefaultHandlerHolder(final Registry<Harvester, EventBus> registry,
@@ -95,9 +101,15 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
             throw new IllegalArgumentException("Harvester is required");
         }
         final EventBus eventBus = provider.get();
+        final HarvesterRoute route = new HarvesterRoute(harvester, eventBus);
+        if (routes.putIfAbsent(harvester, route) != null) {
+            throw new IllegalStateException("Harvester already has an active or draining event route");
+        }
         try {
             registry.bind(harvester, eventBus);
         } catch (AlreadyBoundException e) {
+            route.closeAdmission();
+            routes.remove(harvester, route);
             throw new IllegalStateException("Harvester already has an active event route", e);
         }
         LOG.debug("Bound harvester [{}] to runtime EventBus [{}]", harvester, eventBus);
@@ -112,7 +124,20 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         if (eventBus == null) {
             throw new IllegalStateException("Could not find active EventBus route for harvester");
         }
-        registry.unbind(harvester);
+        final HarvesterRoute route = routes.get(harvester);
+        if (route != null && route.eventBus != eventBus) {
+            throw new IllegalStateException("Harvester route does not match its registered EventBus");
+        }
+        if (route != null) {
+            route.closeAdmission();
+        }
+        try {
+            registry.unbind(harvester);
+        } finally {
+            if (route != null && route.isDrained()) {
+                routes.remove(harvester, route);
+            }
+        }
         LOG.debug("Unbound harvester [{}] from runtime EventBus [{}]", harvester, eventBus);
     }
 
@@ -127,34 +152,46 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         if (event == null || event.getHarvester() == null) {
             return;
         }
+        final HarvesterRoute route = routes.get(event.getHarvester());
+        if (route == null) {
+            return;
+        }
         final EventBus activeBus = registry.lookup(event.getHarvester());
-        if (activeBus == null || activeBus != provider.get()) {
+        if (activeBus == null || activeBus != route.eventBus) {
+            return;
+        }
+        final DispatchLease lease = route.acquire();
+        if (lease == null) {
             return;
         }
 
-        Throwable firstFailure = null;
-        for (HandlerRegistration registration : handlers) {
-            for (Method method : registration.subscriberMethods) {
-                if (!method.getParameterTypes()[0].isAssignableFrom(event.getClass())) {
-                    continue;
+        try {
+            Throwable firstFailure = null;
+            for (HandlerRegistration registration : handlers) {
+                for (Method method : registration.subscriberMethods) {
+                    if (!method.getParameterTypes()[0].isAssignableFrom(event.getClass())) {
+                        continue;
+                    }
+                    try {
+                        method.invoke(registration.handler, event);
+                    } catch (IllegalAccessException failure) {
+                        firstFailure = appendFailure(firstFailure, failure);
+                    } catch (InvocationTargetException failure) {
+                        firstFailure = appendFailure(firstFailure, failure.getCause());
+                    }
                 }
-                try {
-                    method.invoke(registration.handler, event);
-                } catch (IllegalAccessException failure) {
-                    firstFailure = appendFailure(firstFailure, failure);
-                } catch (InvocationTargetException failure) {
-                    firstFailure = appendFailure(firstFailure, failure.getCause());
+            }
+            if (firstFailure != null) {
+                if (firstFailure instanceof RuntimeException) {
+                    throw (RuntimeException) firstFailure;
                 }
+                if (firstFailure instanceof Error) {
+                    throw (Error) firstFailure;
+                }
+                throw new IllegalStateException("Harvester event handler dispatch failed", firstFailure);
             }
-        }
-        if (firstFailure != null) {
-            if (firstFailure instanceof RuntimeException) {
-                throw (RuntimeException) firstFailure;
-            }
-            if (firstFailure instanceof Error) {
-                throw (Error) firstFailure;
-            }
-            throw new IllegalStateException("Harvester event handler dispatch failed", firstFailure);
+        } finally {
+            lease.close();
         }
     }
 
@@ -184,6 +221,62 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         }
         first.addSuppressed(next);
         return first;
+    }
+
+    /**
+     * One Harvester-to-runtime-bus generation. Admission closes atomically;
+     * already-admitted dispatches retain leases until their callbacks finish.
+     */
+    private final class HarvesterRoute {
+        private final Harvester harvester;
+        private final EventBus eventBus;
+        private boolean accepting = true;
+        private int activeDispatches;
+
+        private HarvesterRoute(Harvester harvester, EventBus eventBus) {
+            this.harvester = harvester;
+            this.eventBus = eventBus;
+        }
+
+        private synchronized DispatchLease acquire() {
+            if (!accepting) {
+                return null;
+            }
+            activeDispatches++;
+            return new DispatchLease(this);
+        }
+
+        private synchronized void closeAdmission() {
+            accepting = false;
+        }
+
+        private synchronized boolean release() {
+            if (activeDispatches <= 0) {
+                throw new IllegalStateException("Harvester dispatch lease released without admission");
+            }
+            activeDispatches--;
+            return !accepting && activeDispatches == 0;
+        }
+
+        private synchronized boolean isDrained() {
+            return activeDispatches == 0;
+        }
+    }
+
+    private final class DispatchLease implements AutoCloseable {
+        private final HarvesterRoute route;
+        private final AtomicBoolean released = new AtomicBoolean();
+
+        private DispatchLease(HarvesterRoute route) {
+            this.route = route;
+        }
+
+        @Override
+        public void close() {
+            if (released.compareAndSet(false, true) && route.release()) {
+                routes.remove(route.harvester, route);
+            }
+        }
     }
 
     private static final class HandlerRegistration {
