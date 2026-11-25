@@ -731,6 +731,39 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testShutdownNowDoesNotMarkWorkerUnresponsiveWhenOnlyResourceDrainIsBlocked()
+            throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingCloseResourceListener listener = new BlockingCloseResourceListener();
+        eventBus.register(listener);
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.closeEntered.await(5, TimeUnit.SECONDS),
+                "The worker should have exited execution and entered resource drain");
+
+            service.shutdownNow();
+
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED,
+                "A blocked resource close is not an unresponsive execution worker");
+            assertFalse(tracked.awaitExecutionCompletion(0),
+                "The service task remains incomplete until resource cleanup returns");
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testGraceEscalatesToKillUnresponsiveAndLaterConfirmsWorkerExit() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
@@ -842,6 +875,28 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 }
             }
             lease.close();
+        }
+    }
+
+    private static class BlockingCloseResourceListener {
+        private final CountDownLatch closeEntered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/blocking-resource-close", null, () -> {
+                    closeEntered.countDown();
+                    boolean waiting = true;
+                    while (waiting) {
+                        try {
+                            release.await();
+                            waiting = false;
+                        } catch (InterruptedException expected) {
+                            // Keep close blocked to distinguish resource drain from worker execution.
+                        }
+                    }
+                });
         }
     }
 
