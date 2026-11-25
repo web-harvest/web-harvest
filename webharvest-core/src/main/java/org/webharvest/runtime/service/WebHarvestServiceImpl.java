@@ -190,15 +190,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         try {
             // Reserve under admissionLock, but call arbitrary executor code outside it.
             // The wrapper resolves the reservation even for direct/CallerRuns executors.
-            Future<?> future = executorService.submit(() -> {
+            FutureTask<Void> submittedTask = new FutureTask<>(() -> {
                 task.resolveSubmission();
                 task.run();
+                return null;
             });
-            boolean finishBeforeStart = task.attachFuture(future);
+            task.attachFuture(submittedTask);
+            executorService.execute(submittedTask);
             task.resolveSubmission();
-            if (finishBeforeStart) {
-                task.finishBeforeStart();
-            }
             LOG.info("Accepted session {} for client {}", sessionId, clientId);
             return session;
         } catch (RuntimeException submissionFailure) {
@@ -880,6 +879,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             synchronized (this) {
                 cancellationRequested = true;
                 if (!started && !exited) {
+                    if (future != null) {
+                        future.cancel(false);
+                    }
                     finishBeforeStart = claimBeforeStartExitLocked();
                 } else if (!exited) {
                     workerToInterrupt = worker;
