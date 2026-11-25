@@ -59,6 +59,7 @@ import org.unitils.inject.annotation.TestedObject;
 import org.unitils.mock.annotation.Dummy;
 import org.unitils.reflectionassert.ReflectionComparatorMode;
 import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
@@ -126,6 +127,135 @@ public class ScraperContextTest extends UnitilsTestNG {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("does not match"));
         }
+    }
+
+
+    @Test
+    public void rejectsTrackedSessionWithDifferentRuntimeWhenOwnerBoundFirst() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        ExecutionTrackedSession foreign = trackedSessionWithOwner(
+            new ExecutionOwner("runtime-b", "session-a", 1L));
+        context.setExecutionOwner(owner);
+
+        try {
+            context.setSession(foreign);
+            throw new AssertionError("Expected tracked runtime mismatch to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("identity"));
+        }
+    }
+
+    @Test
+    public void rejectsTrackedSessionWithDifferentGenerationWhenOwnerBoundFirst() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        ExecutionTrackedSession foreign = trackedSessionWithOwner(
+            new ExecutionOwner("runtime-a", "session-a", 2L));
+        context.setExecutionOwner(owner);
+
+        try {
+            context.setSession(foreign);
+            throw new AssertionError("Expected tracked generation mismatch to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("identity"));
+        }
+    }
+
+    @Test
+    public void rejectsDifferentOwnerWhenTrackedSessionBoundFirst() {
+        ExecutionOwner trackedOwner = new ExecutionOwner("runtime-b", "session-a", 1L);
+        context.setSession(trackedSessionWithOwner(trackedOwner));
+
+        try {
+            context.setExecutionOwner(new ExecutionOwner("runtime-a", "session-a", 1L));
+            throw new AssertionError("Expected owner/runtime mismatch to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("tracked session identity"));
+        }
+    }
+
+    @Test
+    public void rejectsDifferentGenerationWhenTrackedSessionBoundFirst() {
+        ExecutionOwner trackedOwner = new ExecutionOwner("runtime-a", "session-a", 2L);
+        context.setSession(trackedSessionWithOwner(trackedOwner));
+
+        try {
+            context.setExecutionOwner(new ExecutionOwner("runtime-a", "session-a", 1L));
+            throw new AssertionError("Expected owner/generation mismatch to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("tracked session identity"));
+        }
+    }
+
+    @Test
+    public void acceptsTrackedSessionWithExactOwnerInEitherBindingOrder() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        ScraperContext ownerFirst = new ScraperContext();
+        ownerFirst.setExecutionOwner(owner);
+        ownerFirst.setSession(trackedSessionWithOwner(owner));
+
+        ScraperContext sessionFirst = new ScraperContext();
+        sessionFirst.setSession(trackedSessionWithOwner(owner));
+        sessionFirst.setExecutionOwner(owner);
+
+        assertSame(ownerFirst.getExecutionOwner(), owner);
+        assertSame(sessionFirst.getExecutionOwner(), owner);
+    }
+
+    @Test
+    public void allowsClearingSessionAfterOwnerBinding() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        context.setExecutionOwner(owner);
+        context.setSession(null);
+        assertNull(context.getSession());
+    }
+
+    @Test
+    public void rejectsNullExecutionOwner() {
+        try {
+            context.setExecutionOwner(null);
+            throw new AssertionError("Expected null execution owner to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("cannot be null"));
+        }
+    }
+
+    @Test
+    public void rejectsNullResourceAccess() {
+        try {
+            context.setResourceAccess(null);
+            throw new AssertionError("Expected null resource access to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("cannot be null"));
+        }
+    }
+
+    @Test
+    public void rejectsResourceAccessBeforeOwnerBinding() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1L);
+        ExecutionResourceAccess access = new LedgerExecutionResourceCoordinator(
+            new ResourceLedger("runtime-a"), owner).getAccess();
+
+        try {
+            context.setResourceAccess(access);
+            throw new AssertionError("Expected resource access without an owner to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("owner"));
+        }
+    }
+
+    private ExecutionTrackedSession trackedSessionWithOwner(ExecutionOwner owner) {
+        return (ExecutionTrackedSession) Proxy.newProxyInstance(
+            ExecutionTrackedSession.class.getClassLoader(),
+            new Class<?>[] {ExecutionTrackedSession.class},
+            (proxy, method, arguments) -> {
+                if ("getSessionId".equals(method.getName())) {
+                    return owner.getSessionId();
+                }
+                if ("getExecutionOwner".equals(method.getName())) {
+                    return owner;
+                }
+                return null;
+            });
     }
 
     private ScraperSession sessionWithId(String sessionId) {
