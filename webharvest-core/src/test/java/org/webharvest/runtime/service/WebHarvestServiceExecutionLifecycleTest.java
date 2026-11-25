@@ -185,8 +185,6 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertEquals(session.getStatus(), SessionStatus.COMPLETED,
                 "A post-execution cleanup failure must not rewrite the business outcome");
             assertEquals(listener.resource.getCloseFailure(), listener.fatalFailure);
-        } catch (java.util.concurrent.ExecutionException impossible) {
-            throw new AssertionError("Unexpected checked execution failure", impossible);
         } finally {
             service.shutdown();
         }
