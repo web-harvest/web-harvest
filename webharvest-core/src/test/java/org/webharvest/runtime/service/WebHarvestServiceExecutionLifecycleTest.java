@@ -60,6 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
@@ -566,67 +567,127 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
-    public void testSubmitAndShutdownHaveAtomicAdmissionBoundary() throws InterruptedException {
-        EventBus eventBus = new EventBus();
+    public void testSubmitDoesNotHoldAdmissionLockAndShutdownWaitsForReservation() throws InterruptedException {
         CountDownLatch submitEntered = new CountDownLatch(1);
         CountDownLatch releaseSubmit = new CountDownLatch(1);
-        CountDownLatch shutdownStarted = new CountDownLatch(1);
         BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
             java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
-            executor, new SessionRegistryImpl(), eventBus);
-        AtomicReference<ScraperSession> accepted = new AtomicReference<>();
+            executor, new SessionRegistryImpl(), new EventBus());
         AtomicReference<Throwable> submitFailure = new AtomicReference<>();
         AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+        AtomicReference<Throwable> rejectedAdmission = new AtomicReference<>();
 
         Thread submitter = new Thread(() -> {
             try {
-                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+                service.executeAsync(Mockito.mock(Config.class), null, null);
             } catch (Throwable failure) {
                 submitFailure.set(failure);
             }
-        });
+        }, "blocked-executor-submission");
         Thread shutdownThread = new Thread(() -> {
-            shutdownStarted.countDown();
             try {
                 service.shutdown();
             } catch (Throwable failure) {
                 shutdownFailure.set(failure);
             }
-        });
+        }, "bounded-graceful-shutdown");
 
         try {
             submitter.start();
             assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
             shutdownThread.start();
-            assertTrue(shutdownStarted.await(5, TimeUnit.SECONDS));
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.BLOCKED
-                && System.nanoTime() < deadline) {
+            while (!service.isShutdown() && System.nanoTime() < deadline) {
                 Thread.yield();
             }
-            assertEquals(shutdownThread.getState(), Thread.State.BLOCKED,
-                "Shutdown must wait for the in-flight admission critical section");
+            assertTrue(service.isShutdown(), "Shutdown must close admission before waiting for dispatch");
+
+            Thread admissionProbe = new Thread(() -> {
+                try {
+                    service.executeAsync(Mockito.mock(Config.class), null, null);
+                } catch (Throwable failure) {
+                    rejectedAdmission.set(failure);
+                }
+            }, "post-shutdown-admission-probe");
+            admissionProbe.start();
+            admissionProbe.join(1000);
+            assertFalse(admissionProbe.isAlive(),
+                "A blocked executor submission must not hold admissionLock");
+            assertTrue(rejectedAdmission.get() instanceof IllegalStateException,
+                "New submissions must be rejected promptly after admission closes");
 
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
             assertFalse(submitter.isAlive());
             assertFalse(shutdownThread.isAlive());
-            assertNull(submitFailure.get());
+            assertTrue(submitFailure.get() instanceof IllegalStateException,
+                "The submission racing executor shutdown must be rejected and resolved");
             assertNull(shutdownFailure.get());
-
-            ScraperSession session = accepted.get();
-            assertNotNull(session, "The submission must be either accepted and tracked or rejected");
-            assertTrue(session.awaitCompletion(5000));
-            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
-            assertTrue(tracked.awaitExecutionCompletion(5000));
-            assertTrue(service.getSession(session.getSessionId()).isPresent());
         } finally {
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowCancelsActiveTaskWhileAnotherSubmissionIsBlocked() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        CountDownLatch secondSubmitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSecondSubmit = new CountDownLatch(1);
+        BlockSecondSubmitExecutorService executor = new BlockSecondSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            secondSubmitEntered, releaseSecondSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> secondSubmitFailure = new AtomicReference<>();
+        Thread secondSubmitter = null;
+        ScraperSession activeSession = null;
+
+        try {
+            activeSession = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession activeTracked = (ExecutionTrackedSession) activeSession;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            secondSubmitter = new Thread(() -> {
+                try {
+                    service.executeAsync(Mockito.mock(Config.class), null, null);
+                } catch (Throwable failure) {
+                    secondSubmitFailure.set(failure);
+                }
+            }, "blocked-second-submission");
+            secondSubmitter.start();
+            assertTrue(secondSubmitEntered.await(5, TimeUnit.SECONDS));
+
+            service.shutdownNow();
+
+            assertEquals(activeSession.getStatus(), SessionStatus.CANCELLED);
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS),
+                "shutdownNow must interrupt the active worker without waiting for the blocked submitter");
+            assertEquals(activeTracked.getExecutionState(), ExecutionState.UNRESPONSIVE,
+                "The active non-cooperative worker remains explicitly unresponsive");
+
+            releaseSecondSubmit.countDown();
+            secondSubmitter.join(5000);
+            assertFalse(secondSubmitter.isAlive());
+            assertTrue(secondSubmitFailure.get() instanceof IllegalStateException,
+                "The in-flight submission must settle as rejected after executor shutdown");
+
+            listener.release.countDown();
+            assertTrue(activeTracked.awaitExecutionCompletion(5000));
+            assertEquals(activeTracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            releaseSecondSubmit.countDown();
+            listener.release.countDown();
+            if (secondSubmitter != null) {
+                secondSubmitter.join(5000);
+            }
             service.shutdownNow();
         }
     }
@@ -1014,6 +1075,34 @@ public class WebHarvestServiceExecutionLifecycleTest {
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
                 throw new RejectedExecutionException("Submission gate interrupted", interrupted);
+            }
+            super.execute(command);
+        }
+    }
+
+    private static class BlockSecondSubmitExecutorService extends DelegatingExecutorService {
+        private final AtomicInteger submissions = new AtomicInteger();
+        private final CountDownLatch secondEntered;
+        private final CountDownLatch releaseSecond;
+
+        private BlockSecondSubmitExecutorService(ExecutorService delegate,
+                                                 CountDownLatch secondEntered,
+                                                 CountDownLatch releaseSecond) {
+            super(delegate);
+            this.secondEntered = secondEntered;
+            this.releaseSecond = releaseSecond;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (submissions.incrementAndGet() == 2) {
+                secondEntered.countDown();
+                try {
+                    releaseSecond.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new RejectedExecutionException("Second submission gate interrupted", interrupted);
+                }
             }
             super.execute(command);
         }
