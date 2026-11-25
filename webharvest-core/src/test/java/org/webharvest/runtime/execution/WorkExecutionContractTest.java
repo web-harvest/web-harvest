@@ -69,6 +69,13 @@ public class WorkExecutionContractTest {
         assertUnsupportedOperation(() -> result.getOutcomes().clear());
     }
 
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testWorkResultRejectsDuplicatePartitionOutcomes() {
+        new WorkResult<>("duplicate", Arrays.asList(
+            new PartitionOutcome<>("same", PartitionOutcome.Status.SUCCEEDED, "one", null),
+            new PartitionOutcome<>("same", PartitionOutcome.Status.SUCCEEDED, "two", null)));
+    }
+
     @Test(groups = {"unit", "execution"})
     public void testScraperContextBindsWorkCapabilityOnlyForMatchingOwner() {
         ExecutionOwner owner = new ExecutionOwner("runtime", "session", 1);
