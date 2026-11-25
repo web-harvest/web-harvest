@@ -149,8 +149,8 @@ public class LedgerExecutionResourceContextTest {
         assertEquals(later.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         assertEquals(laterCloses.get(), 1);
         assertEquals(secondFailure.getState(), ExecutionResourceAccess.ResourceState.CLOSE_FAILED);
-        assertEquals(ledger.size(), 2,
-            "Both failed registrations remain retained for diagnostics");
+        assertEquals(ledger.size(), 3,
+            "All failed registrations remain retained for diagnostics");
     }
 
     @Test(groups = {"unit", "runtime"})
