@@ -221,7 +221,9 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
     }
 
     private Throwable appendFailure(final Throwable first, final Throwable next) {
-        if (next == null || next == first) {
+        // Every call site supplies a Throwable from a catch clause; null is not
+        // a possible dispatch failure and does not need a separate branch.
+        if (next == first) {
             return first;
         }
         if (first == null) {
