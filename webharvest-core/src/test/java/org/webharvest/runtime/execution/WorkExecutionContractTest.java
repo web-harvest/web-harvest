@@ -356,6 +356,21 @@ public class WorkExecutionContractTest {
         assertEquals(result.getStatus(), WorkResult.Status.PARTIALLY_SUCCEEDED);
     }
 
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testScraperContextRejectsNullWorkCapability() {
+        ScraperContext context = new ScraperContext();
+        context.setExecutionOwner(new ExecutionOwner("runtime", "session", 1));
+        context.setExecutionWorkAccess(null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testScraperContextRequiresOwnerBeforeBindingWorkCapability() {
+        ExecutionWorkAccess workAccess = Mockito.mock(ExecutionWorkAccess.class);
+        Mockito.when(workAccess.getOwner()).thenReturn(new ExecutionOwner("runtime", "session", 1));
+        new ScraperContext().setExecutionWorkAccess(workAccess);
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
