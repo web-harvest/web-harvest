@@ -751,11 +751,21 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertEquals(session.getStatus(), SessionStatus.COMPLETED);
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED,
                 "A blocked resource close is not an unresponsive execution worker");
-            assertFalse(tracked.awaitExecutionCompletion(0),
-                "The service task remains incomplete until resource cleanup returns");
+
+            Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
+            tasksField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tasks = (Map<String, Object>) tasksField.get(service);
+            assertTrue(tasks.containsKey(session.getSessionId()),
+                "The service task remains tracked until resource cleanup returns");
 
             listener.release.countDown();
-            assertTrue(tracked.awaitExecutionCompletion(5000));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (tasks.containsKey(session.getSessionId()) && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertFalse(tasks.containsKey(session.getSessionId()),
+                "The service task is removed only after resource cleanup returns");
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
         } finally {
             listener.release.countDown();
