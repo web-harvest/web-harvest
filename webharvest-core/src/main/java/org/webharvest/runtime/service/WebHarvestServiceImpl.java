@@ -43,11 +43,15 @@ import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.client.ClientContext;
 import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.resource.ExecutionResourceAccess.ResourceState;
+import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
+import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,6 +72,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private static final Logger LOG = LoggerFactory.getLogger(WebHarvestServiceImpl.class);
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
     private static final long CANCELLATION_GRACE_SECONDS = 5;
+    private static final Duration RESOURCE_DRAIN_BUDGET = Duration.ofSeconds(5);
 
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
@@ -75,6 +80,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
+    private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId);
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
     private volatile boolean shutdown;
@@ -148,7 +154,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             String sessionId = UUID.randomUUID().toString();
             ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
             ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
-            SessionTask task = new SessionTask(session, opts);
+            LedgerExecutionResourceCoordinator resourceCoordinator =
+                new LedgerExecutionResourceCoordinator(resourceLedger, owner);
+            SessionTask task = new SessionTask(session, opts, resourceCoordinator);
             session.attachCancellationHandler(task::requestCancellation);
             session.markExecutionQueued();
 
@@ -186,6 +194,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             context.setEventBus(eventBus);
             context.setSession(session);
             context.setExecutionOwner(session.getExecutionOwner());
+            context.setResourceAccess(task.resourceCoordinator.getAccess());
 
             if (task.options.hasTimeout()) {
                 timeoutFuture = timeoutScheduler.schedule(
@@ -347,6 +356,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final class SessionTask implements Runnable {
         private final ScraperSessionImpl session;
         private final SessionOptions options;
+        private final LedgerExecutionResourceCoordinator resourceCoordinator;
         private Future<?> future;
         private ScheduledFuture<?> escalationFuture;
         private Thread worker;
@@ -356,9 +366,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private boolean completionCommitted;
         private boolean exited;
 
-        private SessionTask(ScraperSessionImpl session, SessionOptions options) {
+        private SessionTask(ScraperSessionImpl session, SessionOptions options,
+                            LedgerExecutionResourceCoordinator resourceCoordinator) {
             this.session = session;
             this.options = options;
+            this.resourceCoordinator = resourceCoordinator;
         }
 
         @Override
@@ -386,6 +398,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             if (skipExecution) {
                 executionTasks.remove(session.getSessionId(), this);
                 session.markExecutionExited();
+                drainResources(Duration.ZERO);
                 return;
             }
 
@@ -400,6 +413,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 executionTasks.remove(session.getSessionId(), this);
                 // Publish quiescence only after task bookkeeping and lock release.
                 session.markExecutionExited();
+                drainResources(RESOURCE_DRAIN_BUDGET);
             }
         }
 
@@ -415,25 +429,37 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        private synchronized void requestCancellation() {
-            if (exited) {
-                return;
-            }
-            cancellationRequested = true;
-            session.markGracefulTerminationRequested();
-            if (!started) {
-                removeQueuedFuture();
-                return;
+        private void requestCancellation() {
+            boolean startedExecution;
+            synchronized (this) {
+                if (exited) {
+                    return;
+                }
+                cancellationRequested = true;
+                session.markGracefulTerminationRequested();
+                if (!started && removeQueuedFuture()) {
+                    return;
+                }
+                startedExecution = started;
             }
 
-            session.markExecutionInterruptRequested();
-            if (worker != null) {
-                worker.interrupt();
+            // Close admission and abort I/O before interrupting the worker, so
+            // a fast worker exit cannot race ahead of resource abort dispatch.
+            requestResourceTermination();
+            if (startedExecution) {
+                synchronized (this) {
+                    if (!exited) {
+                        session.markExecutionInterruptRequested();
+                        if (worker != null) {
+                            worker.interrupt();
+                        }
+                        if (future != null) {
+                            future.cancel(true);
+                        }
+                        scheduleUnresponsiveEscalation();
+                    }
+                }
             }
-            if (future != null) {
-                future.cancel(true);
-            }
-            scheduleUnresponsiveEscalation();
         }
 
         /**
@@ -462,36 +488,64 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        private synchronized void requestKill() {
-            if (exited) {
-                return;
+        private void requestKill() {
+            boolean startedExecution;
+            synchronized (this) {
+                if (exited) {
+                    return;
+                }
+                session.markKillRequested();
+                if (!started && removeQueuedFuture()) {
+                    return;
+                }
+                startedExecution = started;
             }
-            session.markKillRequested();
-            if (!started) {
-                removeQueuedFuture();
-                return;
+
+            requestResourceTermination();
+            if (startedExecution) {
+                synchronized (this) {
+                    if (!exited) {
+                        session.markExecutionInterruptRequested();
+                        if (worker != null) {
+                            worker.interrupt();
+                        }
+                        if (future != null) {
+                            future.cancel(true);
+                        }
+                        scheduleUnresponsiveEscalation();
+                    }
+                }
             }
-            session.markExecutionInterruptRequested();
-            if (worker != null) {
-                worker.interrupt();
-            }
-            if (future != null) {
-                future.cancel(true);
-            }
-            scheduleUnresponsiveEscalation();
         }
 
-        private synchronized void requestTimeout() {
-            if (exited || !started || completionCommitted) {
-                return;
+        private void requestTimeout() {
+            synchronized (this) {
+                if (exited || !started || completionCommitted) {
+                    return;
+                }
+                timedOut = true;
+                session.markGracefulTerminationRequested();
             }
-            timedOut = true;
-            session.markGracefulTerminationRequested();
-            session.markExecutionInterruptRequested();
-            if (worker != null) {
-                worker.interrupt();
+
+            requestResourceTermination();
+            synchronized (this) {
+                if (!exited && started && !completionCommitted) {
+                    session.markExecutionInterruptRequested();
+                    if (worker != null) {
+                        worker.interrupt();
+                    }
+                    scheduleUnresponsiveEscalation();
+                }
             }
-            scheduleUnresponsiveEscalation();
+        }
+
+        private void requestResourceTermination() {
+            try {
+                resourceCoordinator.requestTermination();
+            } catch (RuntimeException | Error failure) {
+                // The ledger retains abort failures per resource; cancellation must still proceed.
+                LOG.warn("Resource abort request failed for session {}", session.getSessionId(), failure);
+            }
         }
 
         private synchronized boolean isCancellationRequested() {
@@ -566,6 +620,39 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             executionTasks.remove(session.getSessionId(), this);
             // The executor has confirmed that this task will never be entered.
             session.markExecutionExited();
+            drainResources(Duration.ZERO);
+        }
+
+        private void drainResources(Duration budget) {
+            try {
+                for (org.webharvest.runtime.resource.LedgerExecutionResourceContext.DrainReport report
+                    : resourceCoordinator.markOwnerQuiescentAndDrain(budget)) {
+                    if (report.getState() != ResourceState.CLOSED) {
+                        LOG.warn("Resource {} for session {} remains {} (active leases: {})",
+                            report.getResourceId(), session.getSessionId(),
+                            report.getState(), report.getActiveLeases());
+                    }
+                    // Abort failure remains operationally relevant even when the
+                    // resource's subsequent close succeeds and reaches CLOSED.
+                    if (report.getAbortFailure() != null) {
+                        LOG.warn("Resource abort failed for {}", report.getResourceId(), report.getAbortFailure());
+                    }
+                    if (report.getCloseFailure() != null) {
+                        LOG.warn("Resource close failed for {}", report.getResourceId(), report.getCloseFailure());
+                    }
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                LOG.warn("Interrupted while draining resources for session {} (owner {})",
+                    session.getSessionId(), session.getExecutionOwner(), interrupted);
+            } catch (RuntimeException | Error drainFailure) {
+                // submit() wraps task failures in FutureTask; without this log, a fatal
+                // cleanup failure can be retained by an unread Future and become invisible.
+                // Keep the failure visible with its owner identity, then preserve propagation.
+                LOG.error("Fatal resource drain failure for session {} (owner {})",
+                    session.getSessionId(), session.getExecutionOwner(), drainFailure);
+                throw drainFailure;
+            }
         }
     }
 
