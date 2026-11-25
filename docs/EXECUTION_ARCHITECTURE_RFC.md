@@ -85,6 +85,23 @@ Before implementation, define an explicit per-partition execution context:
 
 The existing synchronous plugin contract remains valid. Parallel work should be an opt-in execution capability, not a silent change to the semantics of `Plugin.execute(context)` or `<loop>`.
 
+
+## 5.1 Executor topology and admission (important implementation constraint)
+
+The current `WebHarvestServiceImpl` default session executor is created with `Executors.newCachedThreadPool`; the service can also receive a host-supplied `ExecutorService`. This is the existing session-execution mechanism, not a safe implicit budget for future partition workers.
+
+Do not simply submit child partitions to the session executor and synchronously wait for them: a bounded shared pool can starve or deadlock when parent session tasks occupy its workers. Conversely, creating a separate fixed-size pool per session multiplies the effective concurrency by the number of sessions and defeats a runtime-wide resource budget.
+
+The SPI design must therefore explicitly decide:
+- a runtime-wide bounded partition-work admission budget, distinct from session admission;
+- per-session/per-operation sub-budgets so one large session cannot monopolize all workers;
+- non-blocking completion/continuation or another starvation-safe coordination model;
+- host executor injection and ownership/shutdown semantics;
+- queue bounds and rejection/backpressure behavior;
+- interaction with JDBC connection-pool limits and other adapter resource budgets.
+
+The contract must not promise a concurrency level that the runtime cannot admit. Effective concurrency is the minimum of requested policy and available runtime/session/adapter budgets. A caller-supplied executor's capacity and ownership must not be guessed.
+
 ## 6. Adapter responsibilities
 
 The Core contract owns generic work lifecycle and policy. Adapters own technology-specific planning and execution.
