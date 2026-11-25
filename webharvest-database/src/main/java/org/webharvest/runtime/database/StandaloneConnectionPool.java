@@ -159,6 +159,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
             } catch (AlreadyBoundException e) {
                 throw new RuntimeException(e); // serialized by this pool's monitor
             }
+        }
 
         return connection;
     }
