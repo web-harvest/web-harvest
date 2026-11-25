@@ -371,6 +371,33 @@ public class WorkExecutionContractTest {
         new ScraperContext().setExecutionWorkAccess(workAccess);
     }
 
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkExecutionPolicyAcceptsPositiveBoundedConcurrency() {
+        WorkExecutionPolicy policy = new WorkExecutionPolicy(3, WorkFailurePolicy.FAIL_FAST);
+
+        assertEquals(policy.getMaxConcurrentPartitions(), 3);
+        assertEquals(policy.getFailurePolicy(), WorkFailurePolicy.FAIL_FAST);
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkPartitionAllowsEmptyOpaquePayload() {
+        WorkPartition<String> partition = new WorkPartition<>("p1", "");
+
+        assertEquals(partition.getPartitionId(), "p1");
+        assertEquals(partition.getPayload(), "");
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testPartitionOutcomeAllowsUnknownWithoutFailureDetail() {
+        PartitionOutcome<String> outcome =
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.UNKNOWN, null, null);
+
+        assertEquals(outcome.getStatus(), PartitionOutcome.Status.UNKNOWN);
+        assertNull(outcome.getFailure());
+        assertNull(outcome.getResult());
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
