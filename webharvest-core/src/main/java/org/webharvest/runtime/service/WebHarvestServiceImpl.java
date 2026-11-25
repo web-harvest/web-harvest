@@ -879,10 +879,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             synchronized (this) {
                 cancellationRequested = true;
                 if (!started && !exited) {
-                    if (future != null) {
-                        future.cancel(false);
+                    // A custom executor may throw after it has already started the
+                    // FutureTask. Claim pre-start exit only when cancellation wins.
+                    boolean cancelledBeforeStart = future == null || future.cancel(false);
+                    if (cancelledBeforeStart) {
+                        finishBeforeStart = claimBeforeStartExitLocked();
                     }
-                    finishBeforeStart = claimBeforeStartExitLocked();
                 } else if (!exited) {
                     workerToInterrupt = worker;
                 }
