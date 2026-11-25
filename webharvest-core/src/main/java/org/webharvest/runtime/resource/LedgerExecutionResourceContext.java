@@ -199,7 +199,12 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
 
         @Override
         public Lease acquire() {
-            return new LeaseHandle(this, registration.acquire(owner));
+            synchronized (gate) {
+                if (lifecycle != Lifecycle.OPEN) {
+                    throw new IllegalStateException("Execution no longer admits resource leases");
+                }
+                return new LeaseHandle(this, registration.acquire(owner));
+            }
         }
 
         @Override
