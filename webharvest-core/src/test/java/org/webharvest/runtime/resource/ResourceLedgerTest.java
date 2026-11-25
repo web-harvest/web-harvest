@@ -513,6 +513,37 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void testPinnedGenerationCanAcquireAfterResourceCloseRequestAndQuarantine()
+        throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "snapshot-close-requested");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-pinned", 1);
+        AtomicInteger closeCount = new AtomicInteger();
+        ResourceLedger.Registration resource = ledger.registerGeneration(
+            "provider-loader", generation, null, closeCount::incrementAndGet);
+        ResourceLedger.GenerationPin pin = ledger.pinGeneration(owner, generation);
+
+        resource.requestClose();
+        assertEquals(resource.getState(), ResourceLedger.State.CLOSE_REQUESTED);
+
+        ResourceLedger.DrainResult quarantined = resource.drainAndClose(Duration.ZERO);
+        assertEquals(quarantined.getState(), ResourceLedger.State.QUARANTINED);
+        assertFalse(quarantined.isOwnerQuiescent());
+        assertEquals(closeCount.get(), 0);
+
+        // Retirement rejects new generation pins, but an execution already
+        // pinned to this exact generation must be able to finish its work.
+        ResourceLedger.Lease lease = resource.acquire(owner, generation);
+        assertEquals(resource.getActiveLeaseCount(), 1);
+        lease.close();
+
+        pin.close();
+        assertTrue(resource.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        assertEquals(closeCount.get(), 1);
+        resource.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testGenerationResourceStaysOpenForPinnedSessionWithoutResourceLease()
         throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
