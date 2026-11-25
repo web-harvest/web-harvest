@@ -716,13 +716,18 @@ public class WebHarvestServiceImpl implements WebHarvestService {
          * used by the timeout callback. A deadline cannot interrupt a worker
          * after success has been committed.
          */
-        private synchronized boolean completeSuccessfully() {
-            if (timedOut || cancellationRequested || exited || session.getStatus().isTerminal()) {
-                return false;
-            }
-            try {
-                session.markCompleted();
+        private boolean completeSuccessfully() {
+            synchronized (this) {
+                if (timedOut || cancellationRequested || exited || session.getStatus().isTerminal()) {
+                    return false;
+                }
+                // Commit against the timeout gate before publishing SessionCompletedEvent.
                 completionCommitted = true;
+            }
+
+            try {
+                // EventBus subscribers must not run while the SessionTask monitor is held.
+                session.markCompleted();
                 return true;
             } catch (IllegalStateException concurrentTermination) {
                 if (session.getStatus().isTerminal()) {
