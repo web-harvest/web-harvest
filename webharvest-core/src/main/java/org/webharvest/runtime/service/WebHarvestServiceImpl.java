@@ -340,10 +340,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             throw new InterruptedException("Interrupted while waiting for accepted sessions to reach the executor");
         }
 
-        boolean terminated = calledFromWorker
-            || executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        if (calledFromWorker) {
+            // A worker cannot wait for sibling tasks on the same executor: with
+            // a single-thread executor those tasks cannot start until this worker
+            // returns. Final shutdown is completed by the last task's drain path.
+            LOG.info("WebHarvestService shutdown initiated by a session worker; deferring finalization");
+            return;
+        }
+
+        boolean terminated = executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         boolean tasksExited = terminated
-            && awaitTaskRunsComplete(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
+            && awaitTaskRunsComplete(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, false);
         if (!terminated || !tasksExited) {
             markTasksUnresponsive(tasks, false, true);
             logIncompleteTaskCleanup(tasks);
@@ -608,6 +615,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
             taskCompletion.countDown();
             executionTasks.remove(session.getSessionId(), this);
+            // Once admission is closed, an empty task map means every accepted
+            // worker and its resource-drain callbacks have returned. This also
+            // finalizes shutdown initiated reentrantly by a session worker.
+            if (shutdown && executionTasks.isEmpty()) {
+                timeoutScheduler.shutdownNow();
+            }
         }
 
         private void requestCancellation() {
