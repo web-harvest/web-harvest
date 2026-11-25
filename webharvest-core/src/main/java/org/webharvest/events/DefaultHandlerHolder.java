@@ -108,9 +108,17 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         try {
             registry.bind(harvester, eventBus);
         } catch (AlreadyBoundException e) {
+            // The route is not active until registry binding succeeds, so no
+            // dispatch lease can exist on this failed startup generation.
             route.closeAdmission();
+            route.markUnbound();
             routes.remove(harvester, route);
             throw new IllegalStateException("Harvester already has an active event route", e);
+        }
+        if (!route.activate()) {
+            // Teardown won a concurrent onBefore/onAfter race while registry
+            // binding was in progress. onAfterScraping owns unbinding/draining.
+            throw new IllegalStateException("Harvester route was closed while it was being bound");
         }
         LOG.debug("Bound harvester [{}] to runtime EventBus [{}]", harvester, eventBus);
     }
@@ -125,18 +133,18 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
             throw new IllegalStateException("Could not find active EventBus route for harvester");
         }
         final HarvesterRoute route = routes.get(harvester);
-        if (route != null && route.eventBus != eventBus) {
+        if (route == null) {
+            throw new IllegalStateException("No owned event route exists for harvester");
+        }
+        if (route.eventBus != eventBus) {
             throw new IllegalStateException("Harvester route does not match its registered EventBus");
         }
-        if (route != null) {
-            route.closeAdmission();
-        }
-        try {
-            registry.unbind(harvester);
-        } finally {
-            if (route != null && route.isDrained()) {
-                routes.remove(harvester, route);
-            }
+        route.closeAdmission();
+        registry.unbind(harvester);
+        // Keep the closed generation reserved until registry unbind has
+        // completed and all previously admitted dispatch leases have drained.
+        if (route.markUnbound()) {
+            routes.remove(harvester, route);
         }
         LOG.debug("Unbound harvester [{}] from runtime EventBus [{}]", harvester, eventBus);
     }
@@ -230,7 +238,8 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
     private final class HarvesterRoute {
         private final Harvester harvester;
         private final EventBus eventBus;
-        private boolean accepting = true;
+        private RouteState state = RouteState.STARTING;
+        private boolean unbound;
         private int activeDispatches;
 
         private HarvesterRoute(Harvester harvester, EventBus eventBus) {
@@ -238,8 +247,16 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
             this.eventBus = eventBus;
         }
 
+        private synchronized boolean activate() {
+            if (state != RouteState.STARTING) {
+                return false;
+            }
+            state = RouteState.ACTIVE;
+            return true;
+        }
+
         private synchronized DispatchLease acquire() {
-            if (!accepting) {
+            if (state != RouteState.ACTIVE) {
                 return null;
             }
             activeDispatches++;
@@ -247,7 +264,12 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
         }
 
         private synchronized void closeAdmission() {
-            accepting = false;
+            state = RouteState.CLOSED;
+        }
+
+        private synchronized boolean markUnbound() {
+            unbound = true;
+            return isReleasable();
         }
 
         private synchronized boolean release() {
@@ -255,11 +277,17 @@ public final class DefaultHandlerHolder implements HandlerHolder, ScrapingAware 
                 throw new IllegalStateException("Harvester dispatch lease released without admission");
             }
             activeDispatches--;
-            return !accepting && activeDispatches == 0;
+            return isReleasable();
         }
 
-        private synchronized boolean isDrained() {
-            return activeDispatches == 0;
+        private boolean isReleasable() {
+            return state == RouteState.CLOSED && unbound && activeDispatches == 0;
+        }
+
+        private enum RouteState {
+            STARTING,
+            ACTIVE,
+            CLOSED
         }
     }
 
