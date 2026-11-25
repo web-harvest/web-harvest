@@ -712,6 +712,41 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testWorkerInitiatedShutdownDoesNotBlockQueuedSiblingOnSingleThreadExecutor()
+        throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener();
+        eventBus.register(listener);
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        listener.service = service;
+
+        try {
+            ScraperSession first = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            // The first worker is held inside SessionStartedEvent, so this
+            // second accepted task is deterministically queued behind it.
+            ScraperSession second = service.executeAsync(Mockito.mock(Config.class), null, null);
+            listener.allowShutdown.countDown();
+
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
+                "Worker-initiated shutdown must return instead of waiting for its queued sibling");
+            assertNull(listener.shutdownFailure.get());
+
+            assertTrue(first.awaitCompletion(5000));
+            assertTrue(second.awaitCompletion(5000));
+            assertTrue(((ExecutionTrackedSession) first).awaitExecutionCompletion(5000));
+            assertTrue(((ExecutionTrackedSession) second).awaitExecutionCompletion(5000));
+            assertTrue(service.isShutdown());
+        } finally {
+            listener.allowShutdown.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testGracefulShutdownWaitsForInlineWorkerExitAfterExecutorTerminates() throws InterruptedException {
         EventBus eventBus = new EventBus();
         FirstStartedBlockingListener listener = new FirstStartedBlockingListener();
@@ -998,6 +1033,31 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 release.await();
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private static class WorkerInitiatedShutdownListener {
+        private final AtomicBoolean first = new AtomicBoolean(true);
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch allowShutdown = new CountDownLatch(1);
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private final AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+        private volatile WebHarvestServiceImpl service;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            if (!first.compareAndSet(true, false)) {
+                return;
+            }
+            started.countDown();
+            try {
+                allowShutdown.await();
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.compareAndSet(null, failure);
+            } finally {
+                shutdownReturned.countDown();
             }
         }
     }
