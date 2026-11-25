@@ -333,8 +333,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             && awaitTaskExits(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
         if (!terminated || !tasksExited) {
             markTasksUnresponsive(tasks, false, true);
+            logIncompleteTaskCleanup(tasks);
             throw new IllegalStateException(
-                "WebHarvestService did not observe all accepted workers exit within "
+                "WebHarvestService did not observe all accepted task and resource-drain paths finish within "
                     + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
         }
         timeoutScheduler.shutdownNow();
@@ -388,6 +389,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
         if (!terminated || !tasksExited) {
             markTasksUnresponsive(tasks, true, true);
+            logIncompleteTaskCleanup(tasks);
         }
         timeoutScheduler.shutdownNow();
         if (interrupted) {
@@ -426,6 +428,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             task.session.markExecutionUnresponsive();
             if (killRequested) {
                 task.session.markKillUnresponsive();
+            }
+        }
+    }
+
+    private void logIncompleteTaskCleanup(List<SessionTask> tasks) {
+        for (SessionTask task : tasks) {
+            if (!task.isTaskCompleted()) {
+                LOG.warn("Session {} has not completed its service task/resource-drain path (execution state: {})",
+                    task.session.getSessionId(), task.session.getExecutionState());
             }
         }
     }
@@ -543,6 +554,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         private boolean awaitTaskCompletion(long timeoutMillis) throws InterruptedException {
             return taskCompletion.await(timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+
+        private boolean isTaskCompleted() {
+            return taskCompletion.getCount() == 0;
         }
 
         private void completeTaskRun() {
