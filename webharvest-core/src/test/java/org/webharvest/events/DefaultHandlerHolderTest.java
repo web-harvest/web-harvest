@@ -662,6 +662,39 @@ public class DefaultHandlerHolderTest {
         assertEquals(laterCalls.get(), 1);
     }
 
+    @Test
+    public void wrapsCheckedHandlerFailuresAfterContinuingDispatch() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
+        Exception checked = new Exception("checked handler failure");
+        AtomicInteger laterCalls = new AtomicInteger();
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                DefaultHandlerHolderTest.<RuntimeException>sneakyThrow(checked);
+            }
+        });
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) { laterCalls.incrementAndGet(); }
+        });
+        try {
+            holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+            fail("Expected checked handler failure to be wrapped");
+        } catch (IllegalStateException actual) {
+            assertSame(actual.getCause(), checked);
+        }
+        assertEquals(laterCalls.get(), 1);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void sneakyThrow(Throwable failure) throws T {
+        throw (T) failure;
+    }
+
     private static void post(EventBus eventBus, HarvesterEvent event,
                              AtomicReference<Throwable> failure) {
         try {
