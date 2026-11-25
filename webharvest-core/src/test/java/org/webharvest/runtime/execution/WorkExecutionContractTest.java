@@ -198,6 +198,158 @@ public class WorkExecutionContractTest {
         assertEquals(result.getStatus(), WorkResult.Status.FAILED);
     }
 
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkPartitionRejectsNullIdentifier() {
+        try {
+            new WorkPartition<>(null, "payload");
+            fail("Expected null partition ID to fail");
+        } catch (IllegalArgumentException expected) {
+            // Expected.
+        }
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testWorkPartitionRejectsBlankIdentifier() {
+        new WorkPartition<>("  ", "payload");
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkPartitionRejectsNullPayload() {
+        new WorkPartition<>("partition", null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testWorkPlanRejectsNullIdentifier() {
+        new WorkPlan<>(null, Collections.singletonList(new WorkPartition<>("p1", "payload")));
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testWorkPlanRejectsBlankIdentifier() {
+        new WorkPlan<>("  ", Collections.singletonList(new WorkPartition<>("p1", "payload")));
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkPlanRejectsNullPartitionList() {
+        new WorkPlan<String>("plan", null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkPlanRejectsNullPartitionEntry() {
+        new WorkPlan<String>("plan", Collections.singletonList(null));
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkExecutionPolicyRejectsNullFailurePolicy() {
+        new WorkExecutionPolicy(1, null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRejectsNullIdentifier() {
+        new PartitionOutcome<>("", PartitionOutcome.Status.SUCCEEDED, "result", null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRejectsBlankIdentifier() {
+        new PartitionOutcome<>("  ", PartitionOutcome.Status.SUCCEEDED, "result", null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testPartitionOutcomeRejectsNullStatus() {
+        new PartitionOutcome<String>("p1", null, null, null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRequiresFailureForFailedStatus() {
+        new PartitionOutcome<>("p1", PartitionOutcome.Status.FAILED, null, null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRejectsFailureForCancelledStatus() {
+        new PartitionOutcome<>("p1", PartitionOutcome.Status.CANCELLED, null,
+            new IllegalStateException("unexpected failure"));
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRejectsResultForNonSuccessfulStatus() {
+        new PartitionOutcome<>("p1", PartitionOutcome.Status.FAILED, "unexpected result",
+            new IllegalStateException("partition failed"));
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testPartitionOutcomeAllowsUnknownFailureForDiagnostics() {
+        IllegalStateException failure = new IllegalStateException("outcome unavailable");
+        PartitionOutcome<String> outcome =
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.UNKNOWN, null, failure);
+
+        assertSame(outcome.getFailure(), failure);
+        assertNull(outcome.getResult());
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkResultRejectsNullPlan() {
+        new WorkResult<String>(null, Collections.emptyList());
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkResultRejectsNullOutcomeList() {
+        WorkPlan<String> plan = new WorkPlan<>("plan",
+            Collections.singletonList(new WorkPartition<>("p1", "payload")));
+        new WorkResult<String>(plan, null);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
+    public void testWorkResultRejectsNullOutcomeEntry() {
+        WorkPlan<String> plan = new WorkPlan<>("plan",
+            Collections.singletonList(new WorkPartition<>("p1", "payload")));
+        new WorkResult<String>(plan, Collections.singletonList(null));
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testWorkResultRejectsTooManyOutcomes() {
+        WorkPlan<String> plan = new WorkPlan<>("plan",
+            Collections.singletonList(new WorkPartition<>("p1", "payload")));
+        new WorkResult<>(plan, Arrays.asList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.SUCCEEDED, "one", null),
+            new PartitionOutcome<>("extra", PartitionOutcome.Status.SUCCEEDED, "two", null)));
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultReportsSuccessWhenAllPartitionsSucceed() {
+        WorkPlan<String> plan = new WorkPlan<>("success", Arrays.asList(
+            new WorkPartition<>("p1", "range-1"),
+            new WorkPartition<>("p2", "range-2")));
+        WorkResult<String> result = new WorkResult<>(plan, Arrays.asList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.SUCCEEDED, "one", null),
+            new PartitionOutcome<>("p2", PartitionOutcome.Status.SUCCEEDED, "two", null)));
+
+        assertEquals(result.getStatus(), WorkResult.Status.SUCCEEDED);
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultTreatsUnknownOutcomeAsFailure() {
+        WorkPlan<String> plan = new WorkPlan<>("unknown", Collections.singletonList(
+            new WorkPartition<>("p1", "range-1")));
+        WorkResult<String> result = new WorkResult<>(plan, Collections.singletonList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.UNKNOWN, null,
+                new IllegalStateException("outcome unavailable"))));
+
+        assertEquals(result.getStatus(), WorkResult.Status.FAILED);
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultReportsPartialSuccessWithUnknownOutcome() {
+        WorkPlan<String> plan = new WorkPlan<>("partial-unknown", Arrays.asList(
+            new WorkPartition<>("p1", "range-1"),
+            new WorkPartition<>("p2", "range-2")));
+        WorkResult<String> result = new WorkResult<>(plan, Arrays.asList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.SUCCEEDED, "one", null),
+            new PartitionOutcome<>("p2", PartitionOutcome.Status.UNKNOWN, null,
+                new IllegalStateException("outcome unavailable"))));
+
+        assertEquals(result.getStatus(), WorkResult.Status.PARTIALLY_SUCCEEDED);
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
