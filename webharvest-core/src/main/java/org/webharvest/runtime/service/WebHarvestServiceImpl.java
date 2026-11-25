@@ -330,7 +330,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean terminated = executorService.awaitTermination(
             SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         boolean tasksExited = terminated
-            && awaitTaskExits(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
+            && awaitTaskRunsComplete(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
         if (!terminated || !tasksExited) {
             markTasksUnresponsive(tasks, false, true);
             logIncompleteTaskCleanup(tasks);
@@ -382,7 +382,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean tasksExited = false;
         if (terminated) {
             try {
-                tasksExited = awaitTaskExits(tasks, 1, TimeUnit.SECONDS, true);
+                tasksExited = awaitTaskRunsComplete(tasks, 1, TimeUnit.SECONDS, true);
             } catch (InterruptedException interruption) {
                 interrupted = true;
             }
@@ -397,7 +397,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
-    private boolean awaitTaskExits(List<SessionTask> tasks, long timeout,
+    private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long timeout,
                                    TimeUnit unit, boolean skipCurrentWorker) throws InterruptedException {
         long deadline = System.nanoTime() + unit.toNanos(timeout);
         for (SessionTask task : tasks) {
