@@ -120,12 +120,14 @@ public class DefaultHandlerHolderTest {
     }
 
     @Test
-    public void afterScrapingUnbindsOnlyTheHarvesterRoute() {
+    public void afterScrapingUnbindsOnlyTheHarvesterRoute() throws AlreadyBoundException {
         Harvester harvester = mock(Harvester.class);
         when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
 
         holder.onAfterScraping(harvester);
 
+        verify(registry).bind(harvester, eventBus);
         verify(registry).lookup(harvester);
         verify(registry).unbind(harvester);
         verifyNoInteractions(eventBus);
