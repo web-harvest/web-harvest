@@ -149,6 +149,31 @@ public class WorkExecutionContractTest {
         context.setExecutionWorkAccess(workAccess);
     }
 
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testScraperContextRejectsWorkCapabilityFromDifferentRuntimeWithSameSessionId() {
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session", 1);
+        ExecutionWorkAccess workAccess = Mockito.mock(ExecutionWorkAccess.class);
+        Mockito.when(workAccess.getOwner()).thenReturn(
+            new ExecutionOwner("runtime-b", "session", 1));
+
+        ScraperContext context = new ScraperContext();
+        context.setExecutionOwner(owner);
+        context.setExecutionWorkAccess(workAccess);
+    }
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testScraperContextRejectsWorkCapabilityFromDifferentGenerationWithSameSessionId() {
+        ExecutionOwner owner = new ExecutionOwner("runtime", "session", 1);
+        ExecutionWorkAccess workAccess = Mockito.mock(ExecutionWorkAccess.class);
+        Mockito.when(workAccess.getOwner()).thenReturn(
+            new ExecutionOwner("runtime", "session", 2));
+
+        ScraperContext context = new ScraperContext();
+        context.setExecutionOwner(owner);
+        context.setExecutionWorkAccess(workAccess);
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
