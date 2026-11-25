@@ -126,10 +126,20 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.started.await(5, TimeUnit.SECONDS));
 
             assertTrue(session.cancel());
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "Cancellation must quarantine resources until the owner exits");
             assertEquals(listener.abortCount.get(), 1,
                 "Resource abort must be requested before the worker is interrupted");
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+            assertFalse(tracked.awaitExecutionCompletion(0),
+                "The non-cooperative callback must remain active after interruption");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "A resource must remain quarantined while its execution owner is still active");
+
+            listener.release.countDown();
             assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertTrue(listener.closed.await(5, TimeUnit.SECONDS),
+                "Resource cleanup follows the observed execution-exit signal");
             assertEquals(listener.closeCount.get(), 1);
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         } finally {
@@ -535,23 +545,36 @@ public class WebHarvestServiceExecutionLifecycleTest {
         private final CountDownLatch started = new CountDownLatch(1);
         private final CountDownLatch interrupted = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
+        private final CountDownLatch closed = new CountDownLatch(1);
         private final java.util.concurrent.atomic.AtomicInteger abortCount =
             new java.util.concurrent.atomic.AtomicInteger();
         private final java.util.concurrent.atomic.AtomicInteger closeCount =
             new java.util.concurrent.atomic.AtomicInteger();
         private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
 
         @Subscribe
         public void onSessionStarted(SessionStartedEvent event) {
             resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
-                "test/cancellable-session-resource", abortCount::incrementAndGet, closeCount::incrementAndGet);
+                "test/cancellable-session-resource", abortCount::incrementAndGet, () -> {
+                    closeCount.incrementAndGet();
+                    closed.countDown();
+                });
+            // Model active I/O: cancellation must abort it, but the lease stays held
+            // until the simulated operation explicitly exits.
+            lease = resource.acquire();
             started.countDown();
-            try {
-                release.await();
-            } catch (InterruptedException expected) {
-                interrupted.countDown();
-                Thread.currentThread().interrupt();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    release.await();
+                    waiting = false;
+                } catch (InterruptedException expected) {
+                    interrupted.countDown();
+                    // Keep the simulated I/O operation active until explicitly released.
+                }
             }
+            lease.close();
         }
     }
 
