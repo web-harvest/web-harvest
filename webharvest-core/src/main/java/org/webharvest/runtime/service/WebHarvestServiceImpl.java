@@ -52,10 +52,12 @@ import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -83,6 +85,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId);
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
+    private int pendingSubmissions;
     private volatile boolean shutdown;
 
     /**
@@ -146,38 +149,75 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         SessionOptions opts = options != null ? options : SessionOptions.DEFAULT;
         String clientId = client != null ? client.getClientId() : null;
 
+        String sessionId = UUID.randomUUID().toString();
+        ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
+
+        // Session construction publishes SessionCreatedEvent synchronously.
+        // Keep subscriber callbacks outside admissionLock.
+        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
+        LedgerExecutionResourceCoordinator resourceCoordinator =
+            new LedgerExecutionResourceCoordinator(resourceLedger, owner);
+        SessionTask task = new SessionTask(session, opts, resourceCoordinator);
+        session.attachCancellationHandler(task::requestCancellation);
+
+        boolean registered = false;
+        RuntimeException admissionFailure = null;
         synchronized (admissionLock) {
             if (shutdown) {
-                throw new IllegalStateException("Service is shut down");
-            }
-
-            String sessionId = UUID.randomUUID().toString();
-            ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
-            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
-            LedgerExecutionResourceCoordinator resourceCoordinator =
-                new LedgerExecutionResourceCoordinator(resourceLedger, owner);
-            SessionTask task = new SessionTask(session, opts, resourceCoordinator);
-            session.attachCancellationHandler(task::requestCancellation);
-            session.markExecutionQueued();
-
-            boolean registered = false;
-            try {
-                sessionRegistry.register(session);
-                registered = true;
-                executionTasks.put(sessionId, task);
-                Future<?> future = executorService.submit(task);
-                task.attachFuture(future);
-                LOG.info("Accepted session {} for client {}", sessionId, clientId);
-                return session;
-            } catch (RuntimeException submissionFailure) {
-                executionTasks.remove(sessionId, task);
-                task.rejectBeforeStart();
-                if (registered) {
-                    sessionRegistry.unregisterIfOwner(session);
+                admissionFailure = new IllegalStateException("Service is shut down");
+            } else {
+                try {
+                    session.markExecutionQueued();
+                    sessionRegistry.register(session);
+                    registered = true;
+                    executionTasks.put(sessionId, task);
+                    pendingSubmissions++;
+                } catch (RuntimeException failure) {
+                    admissionFailure = failure;
                 }
-                session.markFailed(submissionFailure);
-                throw new IllegalStateException("Session submission was rejected", submissionFailure);
             }
+        }
+
+        if (admissionFailure != null) {
+            boolean finishBeforeStart = task.rejectBeforeStart();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            session.markFailed(admissionFailure);
+            throw admissionFailure;
+        }
+
+        try {
+            // Resolve the in-flight submission reservation when the executor
+            // actually enters the wrapper (including direct/CallerRuns executors),
+            // or when submit returns for a queued task. This lets shutdown wait
+            // for dispatch without holding admissionLock across user execution.
+            Future<?> future = executorService.submit(() -> {
+                task.resolveSubmission();
+                task.run();
+            });
+            boolean finishBeforeStart = task.attachFuture(future);
+            task.resolveSubmission();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            LOG.info("Accepted session {} for client {}", sessionId, clientId);
+            return session;
+        } catch (RuntimeException submissionFailure) {
+            boolean finishBeforeStart = task.rejectBeforeStart();
+            if (registered) {
+                sessionRegistry.unregisterIfOwner(session);
+            }
+            // Resolve dispatch before running any close callback. Keep the task
+            // registered until completeTaskRun observes the end of resource drain.
+            task.resolveSubmission();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            session.markFailed(submissionFailure);
+            throw new IllegalStateException("Session submission was rejected", submissionFailure);
+        } finally {
+            task.resolveSubmission();
         }
     }
 
@@ -280,20 +320,43 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdown() throws InterruptedException {
+        boolean interrupted = false;
+        List<SessionTask> tasks;
         synchronized (admissionLock) {
-            if (!shutdown) {
-                shutdown = true;
-                executorService.shutdown();
+            shutdown = true;
+            while (pendingSubmissions > 0) {
+                try {
+                    admissionLock.wait();
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
             }
+            tasks = new ArrayList<>(executionTasks.values());
+        }
+        boolean calledFromWorker = hasCurrentWorker(tasks);
+        executorService.shutdown();
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Interrupted while waiting for accepted sessions to reach the executor");
         }
 
-        boolean terminated = executorService.awaitTermination(
-            SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        if (!terminated) {
-            markActiveTasksUnresponsive(false);
+        if (calledFromWorker) {
+            // A worker cannot wait for sibling tasks on the same executor: with
+            // a single-thread executor those tasks cannot start until this worker
+            // returns. Final shutdown is completed by the last task's drain path.
+            LOG.info("WebHarvestService shutdown initiated by a session worker; deferring finalization");
+            return;
+        }
+
+        boolean terminated = executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        boolean tasksExited = terminated
+            && awaitTaskRunsComplete(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, false);
+        if (!terminated || !tasksExited) {
+            markTasksUnresponsive(tasks, false, true);
+            logIncompleteTaskCleanup(tasks);
             throw new IllegalStateException(
-                "WebHarvestService did not terminate within " + SHUTDOWN_TIMEOUT_SECONDS
-                    + " seconds; active workers remain unresponsive");
+                "WebHarvestService did not observe all accepted task and resource-drain paths finish within "
+                    + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
         }
         timeoutScheduler.shutdownNow();
         LOG.info("WebHarvestService shut down after all accepted tasks exited");
@@ -301,41 +364,112 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdownNow() {
+        boolean interrupted = false;
+        List<SessionTask> tasks;
         synchronized (admissionLock) {
             shutdown = true;
-            for (SessionTask task : executionTasks.values()) {
-                task.session.cancel();
-                task.requestKill();
-            }
-            List<Runnable> neverStarted = executorService.shutdownNow();
-            for (Runnable pending : neverStarted) {
-                for (SessionTask task : executionTasks.values()) {
-                    task.markRemovedBeforeStart(pending);
+            while (pendingSubmissions > 0) {
+                try {
+                    admissionLock.wait();
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
                 }
             }
+            tasks = new ArrayList<>(executionTasks.values());
         }
 
-        boolean terminated;
-        try {
-            terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            terminated = false;
+        boolean calledFromWorker = hasCurrentWorker(tasks);
+
+        // Cancellation invokes resource abort actions and synchronous EventBus
+        // subscribers. Never run those callbacks while holding admissionLock
+        // or while carrying an interrupt flag from the admission wait.
+        for (SessionTask task : tasks) {
+            task.session.cancel();
+            task.requestKill();
         }
-        if (!terminated) {
-            markActiveTasksUnresponsive(true);
+        List<Runnable> neverStarted = executorService.shutdownNow();
+        for (Runnable pending : neverStarted) {
+            for (SessionTask task : tasks) {
+                task.markRemovedBeforeStart(pending);
+            }
+        }
+
+        boolean terminated = calledFromWorker;
+        if (!calledFromWorker) {
+            try {
+                terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+                terminated = false;
+            }
+        }
+        boolean tasksExited = false;
+        if (terminated) {
+            try {
+                tasksExited = awaitTaskRunsComplete(tasks, 1, TimeUnit.SECONDS, true);
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
+        }
+        if (!terminated || !tasksExited) {
+            markTasksUnresponsive(tasks, true, true);
+            logIncompleteTaskCleanup(tasks);
         }
         timeoutScheduler.shutdownNow();
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
-    private void markActiveTasksUnresponsive(boolean killRequested) {
-        for (SessionTask task : executionTasks.values()) {
+    private boolean hasCurrentWorker(List<SessionTask> tasks) {
+        for (SessionTask task : tasks) {
+            if (task.isCurrentWorker()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long timeout,
+                                   TimeUnit unit, boolean skipCurrentTaskThread) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        for (SessionTask task : tasks) {
+            if (skipCurrentTaskThread && task.isCurrentTaskThread()) {
+                continue;
+            }
+            long remainingNanos = deadline - System.nanoTime();
+            if (remainingNanos <= 0) {
+                return false;
+            }
+            long remainingMillis = Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos));
+            if (!task.awaitTaskCompletion(remainingMillis)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void markTasksUnresponsive(List<SessionTask> tasks,
+                                       boolean killRequested, boolean skipCurrentTaskThread) {
+        for (SessionTask task : tasks) {
+            if (skipCurrentTaskThread && task.isCurrentTaskThread()) {
+                continue;
+            }
             if (killRequested) {
                 task.session.markKillRequested();
             }
             task.session.markExecutionUnresponsive();
             if (killRequested) {
                 task.session.markKillUnresponsive();
+            }
+        }
+    }
+
+    private void logIncompleteTaskCleanup(List<SessionTask> tasks) {
+        for (SessionTask task : tasks) {
+            if (!task.isTaskCompleted()) {
+                LOG.warn("Session {} has not completed its service task/resource-drain path (execution state: {})",
+                    task.session.getSessionId(), task.session.getExecutionState());
             }
         }
     }
@@ -357,9 +491,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private final ScraperSessionImpl session;
         private final SessionOptions options;
         private final LedgerExecutionResourceCoordinator resourceCoordinator;
+        private final AtomicBoolean submissionResolved = new AtomicBoolean();
+        private final CountDownLatch taskCompletion = new CountDownLatch(1);
         private Future<?> future;
         private ScheduledFuture<?> escalationFuture;
         private Thread worker;
+        private Thread cleanupThread;
         private boolean started;
         private boolean cancellationRequested;
         private boolean timedOut;
@@ -378,6 +515,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             boolean skipExecution;
             synchronized (this) {
                 if (cancellationRequested || exited) {
+                    worker = Thread.currentThread();
                     exited = true;
                     cancelEscalation();
                     skipExecution = true;
@@ -385,7 +523,6 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     started = true;
                     worker = Thread.currentThread();
                     if (!session.markExecutionStarted()) {
-                        worker = null;
                         exited = true;
                         cancelEscalation();
                         skipExecution = true;
@@ -396,51 +533,116 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             if (skipExecution) {
-                executionTasks.remove(session.getSessionId(), this);
-                session.markExecutionExited();
-                drainResources(Duration.ZERO);
+                try {
+                    session.markExecutionExited();
+                    drainResources(Duration.ZERO);
+                } finally {
+                    completeTaskRun();
+                }
                 return;
             }
 
             try {
                 executeSession(this);
             } finally {
-                synchronized (this) {
-                    worker = null;
-                    exited = true;
-                    cancelEscalation();
+                try {
+                    synchronized (this) {
+                        exited = true;
+                        cancelEscalation();
+                    }
+                    // Publish owner quiescence only after task bookkeeping and lock release.
+                    session.markExecutionExited();
+                    drainResources(RESOURCE_DRAIN_BUDGET);
+                } finally {
+                    // Keep the task registered and its worker identity visible until
+                    // resource-drain callbacks have returned.
+                    completeTaskRun();
                 }
-                executionTasks.remove(session.getSessionId(), this);
-                // Publish quiescence only after task bookkeeping and lock release.
-                session.markExecutionExited();
-                drainResources(RESOURCE_DRAIN_BUDGET);
             }
         }
 
-        private synchronized void attachFuture(Future<?> submittedFuture) {
-            future = submittedFuture;
-            if (!cancellationRequested || exited) {
-                return;
+        private boolean attachFuture(Future<?> submittedFuture) {
+            boolean finishBeforeStart = false;
+            boolean cancelRunningFuture = false;
+            synchronized (this) {
+                future = submittedFuture;
+                if (cancellationRequested && !exited) {
+                    if (!started) {
+                        finishBeforeStart = removeQueuedFutureLocked() && claimBeforeStartExitLocked();
+                    } else {
+                        cancelRunningFuture = true;
+                    }
+                }
             }
-            if (!started) {
-                removeQueuedFuture();
-            } else {
-                future.cancel(true);
+
+            if (cancelRunningFuture) {
+                submittedFuture.cancel(true);
+            }
+            return finishBeforeStart;
+        }
+
+        private void resolveSubmission() {
+            if (submissionResolved.compareAndSet(false, true)) {
+                synchronized (admissionLock) {
+                    pendingSubmissions--;
+                    admissionLock.notifyAll();
+                }
+            }
+        }
+
+        private synchronized boolean isCurrentWorker() {
+            return worker == Thread.currentThread() && taskCompletion.getCount() > 0;
+        }
+
+        private synchronized boolean isCurrentTaskThread() {
+            Thread current = Thread.currentThread();
+            return taskCompletion.getCount() > 0
+                && (worker == current || cleanupThread == current);
+        }
+
+        private boolean awaitTaskCompletion(long timeoutMillis) throws InterruptedException {
+            return taskCompletion.await(timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+
+        private boolean isTaskCompleted() {
+            return taskCompletion.getCount() == 0;
+        }
+
+        private void completeTaskRun() {
+            synchronized (this) {
+                worker = null;
+                cleanupThread = null;
+            }
+            taskCompletion.countDown();
+            executionTasks.remove(session.getSessionId(), this);
+            // Once admission is closed, an empty task map means every accepted
+            // worker and its resource-drain callbacks have returned. This also
+            // finalizes shutdown initiated reentrantly by a session worker.
+            if (shutdown && executionTasks.isEmpty()) {
+                timeoutScheduler.shutdownNow();
             }
         }
 
         private void requestCancellation() {
             boolean startedExecution;
+            boolean finishBeforeStart = false;
             synchronized (this) {
                 if (exited) {
                     return;
                 }
                 cancellationRequested = true;
                 session.markGracefulTerminationRequested();
-                if (!started && removeQueuedFuture()) {
-                    return;
+                if (!started && removeQueuedFutureLocked()) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                    startedExecution = false;
+                } else {
+                    startedExecution = started;
                 }
-                startedExecution = started;
+            }
+
+            if (finishBeforeStart) {
+                finishBeforeStart();
+                return;
             }
 
             // Close admission and abort I/O before interrupting the worker, so
@@ -468,37 +670,60 @@ public class WebHarvestServiceImpl implements WebHarvestService {
          * cannot enter the worker body; generic executors must run the
          * cancellation gate and report exit from the task itself.
          */
-        private boolean removeQueuedFuture() {
+        private boolean removeQueuedFutureLocked() {
             if (future instanceof Runnable && executorService instanceof ThreadPoolExecutor) {
                 boolean removed = ((ThreadPoolExecutor) executorService).remove((Runnable) future);
                 if (removed) {
                     future.cancel(false);
-                    finishBeforeStart();
                     return true;
                 }
             }
             return false;
         }
 
-        private synchronized void markRemovedBeforeStart(Runnable pending) {
-            // shutdownNow() returns only tasks that have not commenced execution.
-            if (future == pending) {
-                future.cancel(false);
+        /** Claims the never-started exit while holding this task's monitor. */
+        private boolean claimBeforeStartExitLocked() {
+            if (started || exited) {
+                return false;
+            }
+            exited = true;
+            cancelEscalation();
+            return true;
+        }
+
+        private void markRemovedBeforeStart(Runnable pending) {
+            boolean finishBeforeStart = false;
+            synchronized (this) {
+                // shutdownNow() returns only tasks that have not commenced execution.
+                if (future == pending && !started && !exited) {
+                    future.cancel(false);
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                }
+            }
+            if (finishBeforeStart) {
                 finishBeforeStart();
             }
         }
 
         private void requestKill() {
             boolean startedExecution;
+            boolean finishBeforeStart = false;
             synchronized (this) {
                 if (exited) {
                     return;
                 }
                 session.markKillRequested();
-                if (!started && removeQueuedFuture()) {
-                    return;
+                if (!started && removeQueuedFutureLocked()) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                    startedExecution = false;
+                } else {
+                    startedExecution = started;
                 }
-                startedExecution = started;
+            }
+
+            if (finishBeforeStart) {
+                finishBeforeStart();
+                return;
             }
 
             requestResourceTermination();
@@ -561,13 +786,18 @@ public class WebHarvestServiceImpl implements WebHarvestService {
          * used by the timeout callback. A deadline cannot interrupt a worker
          * after success has been committed.
          */
-        private synchronized boolean completeSuccessfully() {
-            if (timedOut || cancellationRequested || exited || session.getStatus().isTerminal()) {
-                return false;
-            }
-            try {
-                session.markCompleted();
+        private boolean completeSuccessfully() {
+            synchronized (this) {
+                if (timedOut || cancellationRequested || exited || session.getStatus().isTerminal()) {
+                    return false;
+                }
+                // Commit against the timeout gate before publishing SessionCompletedEvent.
                 completionCommitted = true;
+            }
+
+            try {
+                // EventBus subscribers must not run while the SessionTask monitor is held.
+                session.markCompleted();
                 return true;
             } catch (IllegalStateException concurrentTermination) {
                 if (session.getStatus().isTerminal()) {
@@ -605,22 +835,35 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
 
-        private synchronized void rejectBeforeStart() {
-            cancellationRequested = true;
-            if (!started && !exited) {
-                finishBeforeStart();
-            } else if (!exited && worker != null) {
-                worker.interrupt();
+        private boolean rejectBeforeStart() {
+            boolean finishBeforeStart = false;
+            Thread workerToInterrupt = null;
+            synchronized (this) {
+                cancellationRequested = true;
+                if (!started && !exited) {
+                    finishBeforeStart = claimBeforeStartExitLocked();
+                } else if (!exited) {
+                    workerToInterrupt = worker;
+                }
             }
+
+            if (workerToInterrupt != null) {
+                workerToInterrupt.interrupt();
+            }
+            return finishBeforeStart;
         }
 
         private void finishBeforeStart() {
-            exited = true;
-            cancelEscalation();
-            executionTasks.remove(session.getSessionId(), this);
-            // The executor has confirmed that this task will never be entered.
-            session.markExecutionExited();
-            drainResources(Duration.ZERO);
+            synchronized (this) {
+                cleanupThread = Thread.currentThread();
+            }
+            try {
+                // The executor has confirmed that this task will never be entered.
+                session.markExecutionExited();
+                drainResources(Duration.ZERO);
+            } finally {
+                completeTaskRun();
+            }
         }
 
         private void drainResources(Duration budget) {
