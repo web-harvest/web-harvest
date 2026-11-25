@@ -550,7 +550,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
             tasksField.setAccessible(true);
             @SuppressWarnings("unchecked")
-            Map<String, Object> tasks = (java.util.Map<String, Object>) tasksField.get(service);
+            Map<String, Object> tasks = (Map<String, Object>) tasksField.get(service);
             Object task = tasks.get(listener.session.getSessionId());
             assertNotNull(task, "The completing task remains registered during event delivery");
 
