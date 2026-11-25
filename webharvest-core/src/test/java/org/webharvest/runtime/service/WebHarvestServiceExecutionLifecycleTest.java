@@ -837,9 +837,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.releaseClose.countDown();
             submitter.join(5000);
-            if (shutdownThread.getState() != Thread.State.NEW) {
-                shutdownThread.join(5000);
-            }
+            shutdownThread.join(5000);
             service.shutdownNow();
         }
     }
