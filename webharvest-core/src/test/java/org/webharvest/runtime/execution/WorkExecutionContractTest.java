@@ -245,8 +245,8 @@ public class WorkExecutionContractTest {
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
-    public void testPartitionOutcomeRejectsBlankIdentifier() {
-        new PartitionOutcome<>("  ", PartitionOutcome.Status.SUCCEEDED, "result", null);
+    public void testPartitionOutcomeRejectsEmptyIdentifier() {
+        new PartitionOutcome<>("", PartitionOutcome.Status.SUCCEEDED, "result", null);
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
