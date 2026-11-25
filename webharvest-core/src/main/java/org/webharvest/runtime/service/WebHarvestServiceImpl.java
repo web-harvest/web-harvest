@@ -202,6 +202,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             if (registered) {
                 sessionRegistry.unregisterIfOwner(session);
             }
+            // Do not make shutdown wait for synchronous failure observers.
+            task.resolveSubmission();
             session.markFailed(submissionFailure);
             throw new IllegalStateException("Session submission was rejected", submissionFailure);
         } finally {
