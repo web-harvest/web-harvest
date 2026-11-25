@@ -4,6 +4,8 @@
 **Scope:** Core execution contracts and technology adapters, with JDBC as the first consumer  
 **Related work:** PR #381 (JDBC resource leases), Issue #382 (DatabasePlugin decomposition)
 
+> **Evidence baseline:** lifecycle implementation details in sections 5.1–5.2 were inspected on the active integration base used by PR #381 (`007207821a19ad45e722f0e9029ae9472e3c6f10`), not assumed to be present on `main` yet. PR #381 is still open and Draft. Treat `ExecutionOwner`, `ExecutionResourceAccess`, `ResourceLedger`, and the corresponding session execution tracking as the lifecycle foundation being integrated; do not imply that the main branch already contains all of it.
+
 ## 1. Decision
 
 WebHarvest should provide a technology-neutral Core capability for planning and executing bounded units of work. Database/JDBC is an adapter and an early consumer, not the owner of the scheduler or the generic partition execution model.
