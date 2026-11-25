@@ -436,3 +436,30 @@ The coordinator's child state machine must distinguish at least: `RESERVED`, `QU
 For each plan, atomic reservation must occur against both the session's admission state and runtime/session budgets. Session stop closes plan admission before child cancellation fan-out. Child completion must be recorded before any terminal event is published. The root session may proceed to owner quiescence only after the child registry reports zero non-terminal admitted children. ResourceLedger remains the authority for lease and physical resource state.
 
 No coordinator, child registry, event classes, queue or telemetry exporter are implemented by this section. It is a source-backed design gate.
+
+
+## 12.9 Admission-lock correction — implementation slice
+
+Implementation proposal: [PR #385 — Release admission lock before callbacks and execution](https://github.com/web-harvest/web-harvest/pull/385). The draft branch is based on integration commit `007207821a19ad45e722f0e9029ae9472e3c6f10`; do not infer that it is already present on `main`.
+
+The implementation introduces a per-session, exactly-once submission reservation:
+
+1. Construct the session and synchronously publish `SessionCreatedEvent` before acquiring `admissionLock`. The session is not yet accepted or visible in the service registry. A subscriber may cancel it; attaching the service cancellation handler immediately afterward observes that state and dispatches cancellation.
+2. Under `admissionLock`, atomically check shutdown, transition execution to QUEUED, register the session and task, and increment `pendingSubmissions`. No EventBus callback, executor submission, resource callback or wait occurs in this section.
+3. Call `executorService.submit` outside the lock with a wrapper. The reservation is resolved exactly once either when the wrapper enters (including direct executors and `CallerRunsPolicy`) or when `submit` returns and the returned Future has been attached. If submission rejects, rollback and session failure publication occur outside the lock.
+4. Graceful shutdown closes admission, waits for unresolved dispatch reservations using monitor wait (which releases the lock), then shuts down the executor outside the lock. If interrupted during reservation drain, it still completes the drain and shuts down the executor before restoring interruption and throwing.
+5. Immediate shutdown closes admission and snapshots active tasks under the lock, waits for unresolved dispatch reservations, then performs cancellation fan-out, resource abort actions, synchronous EventBus delivery, executor shutdown and confirmed queue-removal reconciliation outside the lock. Interrupt status is restored only after callback and shutdown processing.
+
+Important semantic boundary: a session whose `SessionCreatedEvent` subscriber is still running has not yet been admitted. If shutdown closes admission before that callback returns, the call is rejected and its execution handle is terminalized; it is not represented as accepted service work. This avoids making shutdown or unrelated admission wait on observer callbacks.
+
+The reservation is released at wrapper entry rather than after the task finishes. At that point the task is already executing and is present in the task registry; executor shutdown can safely wait for it (graceful) or cancel it (immediate). If the wrapper has not entered, the submit-return path attaches the Future before releasing the reservation, so shutdown cannot race an accepted but undiscoverable queued Future.
+
+### Required exact-head validation
+
+PR #385 adds deterministic tests for:
+- a blocked `SessionCreatedEvent` subscriber while another session is admitted and shutdown completes;
+- a direct executor blocked inside `SessionStartedEvent`, while another session is admitted;
+- a `SessionCancelledEvent` subscriber that re-enters service admission during `shutdownNow()`;
+- the existing submit-vs-shutdown race, now asserting that shutdown waits without owning `admissionLock`.
+
+No local Maven suite was run. The FTP workflow is running as a Core dependency/compile gate; the full Semantic Core workflow's current pull-request base filter does not include `runtime/execution-resource-context`, so full Core test execution remains an explicit validation gap until that workflow is triggered on the integration base or the PR is rebased onto an eligible base. Keep PR #385 Draft and do not merge before exact-head CI and review.
