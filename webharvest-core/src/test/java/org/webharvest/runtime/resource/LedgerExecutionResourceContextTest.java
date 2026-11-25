@@ -131,6 +131,9 @@ public class LedgerExecutionResourceContextTest {
             "fatal-second", null, () -> {
                 throw secondary;
             });
+        context.registerSessionResource("same-fatal-third", null, () -> {
+            throw fatal;
+        });
         AtomicInteger laterCloses = new AtomicInteger();
         ExecutionResourceAccess.ResourceHandle later = context.registerSessionResource(
             "ready-third", null, laterCloses::incrementAndGet);
@@ -221,6 +224,9 @@ public class LedgerExecutionResourceContextTest {
         }, null);
         context.registerSessionResource("second-error", () -> {
             throw second;
+        }, null);
+        context.registerSessionResource("same-first-error", () -> {
+            throw first;
         }, null);
 
         try {
