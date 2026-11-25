@@ -102,6 +102,13 @@ The SPI design must therefore explicitly decide:
 
 The contract must not promise a concurrency level that the runtime cannot admit. Effective concurrency is the minimum of requested policy and available runtime/session/adapter budgets. A caller-supplied executor's capacity and ownership must not be guessed.
 
+
+## 5.2 Context isolation: current implementation is not a worker fork
+
+Inspection of `DynamicScopeContext` and `ScraperContext` confirms that `executeWithinNewContext(Callable)` is a lexical scope operation on the same context instance, not a context clone or concurrent worker fork. `ScraperContext` mutates a shared `scopeStack`, `centralReferenceTable`, and ordinary `HashMap`/stack structures. It must not be used to create parallel partition contexts.
+
+The SPI therefore needs a separately designed context-fork/worker-input contract. It must define which values are shared read-only, which values are copied or isolated, how mutable `Variable` instances are treated, how system/config/session metadata is inherited, and how results are returned without concurrent writes into the parent variable table. Do not add a shallow-copy helper and call it thread-safe without proving the mutability and aliasing rules of the complete variable graph.
+
 ## 6. Adapter responsibilities
 
 The Core contract owns generic work lifecycle and policy. Adapters own technology-specific planning and execution.
