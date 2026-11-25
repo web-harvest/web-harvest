@@ -464,7 +464,7 @@ PR #385 adds deterministic tests for:
 - graceful shutdown waiting for a blocking resource-close callback after session worker exit has already been observed;
 - the existing submit-vs-shutdown race, now asserting that shutdown waits without owning `admissionLock`.
 
-No local Maven suite was run. The earlier exact PR-head CI at `fbc781a877bb6e0e1645b2c89f3f262c05847b58` passed the FTP dependency/compile gate and lockfile verification. The latest implementation adds task-completion tracking through resource drain; its exact-head CI is pending. The earlier runs:
+No local Maven suite was run. The earlier exact PR-head CI at `fbc781a877bb6e0e1645b2c89f3f262c05847b58` passed the FTP dependency/compile gate and lockfile verification. The latest implementation adds task-completion tracking through resource drain; its exact-head CI is pending. To close the full-test gap on this integration stack, PR #385 also adds a `core-runtime-integration` job to `.github/workflows/ftp-coverage.yml`, running full `webharvest-core -am verify` for pull requests targeting `runtime/**`. The earlier runs:
 
 - FTP Module Coverage CI run [#329](https://github.com/web-harvest/web-harvest/actions/runs/45591547786): **success**. Its Maven invocation uses `-Pskip-core-tests-in-reactor`; Core production and test sources are compiled as reactor dependencies, but Core Surefire/Failsafe tests are deliberately skipped. FTP coverage gate also passed.
 - Dependency lockfile verification run [#738](https://github.com/web-harvest/web-harvest/actions/runs/45591547758): **success**.
