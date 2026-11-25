@@ -158,7 +158,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
                 registry.bind(connectionKey, connection);
             } catch (AlreadyBoundException e) {
                 throw new RuntimeException(e); // serialized by this pool's monitor
-        }
+            }
 
         return connection;
     }
