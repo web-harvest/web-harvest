@@ -174,6 +174,30 @@ public class WorkExecutionContractTest {
         context.setExecutionWorkAccess(workAccess);
     }
 
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultReportsCancellationWhenNoPartitionSucceeded() {
+        WorkPlan<String> plan = new WorkPlan<>("cancelled", Arrays.asList(
+            new WorkPartition<>("p1", "range-1"),
+            new WorkPartition<>("p2", "range-2")));
+        WorkResult<String> result = new WorkResult<>(plan, Arrays.asList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.CANCELLED, null, null),
+            new PartitionOutcome<>("p2", PartitionOutcome.Status.NOT_STARTED, null, null)));
+
+        assertEquals(result.getStatus(), WorkResult.Status.CANCELLED);
+    }
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultReportsFailureWhenAllPartitionsFail() {
+        WorkPlan<String> plan = new WorkPlan<>("failed", Collections.singletonList(
+            new WorkPartition<>("p1", "range-1")));
+        WorkResult<String> result = new WorkResult<>(plan, Collections.singletonList(
+            new PartitionOutcome<>("p1", PartitionOutcome.Status.FAILED, null,
+                new IllegalStateException("partition failed"))));
+
+        assertEquals(result.getStatus(), WorkResult.Status.FAILED);
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
