@@ -624,6 +624,44 @@ public class DefaultHandlerHolderTest {
         }
     }
 
+    @Test
+    public void rejectsDispatchWhenRegistryBusChangesAfterRouteActivation() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
+        doReturn(new EventBus()).when(registry).lookup(harvester);
+        RecordingHandler handler = new RecordingHandler();
+        holder.register(handler);
+        holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+        assertEquals(handler.calls.get(), 0);
+    }
+
+    @Test
+    public void rethrowsFatalHandlerErrorsAfterContinuingDispatch() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
+        AssertionError fatal = new AssertionError("fatal handler");
+        AtomicInteger laterCalls = new AtomicInteger();
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) { throw fatal; }
+        });
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) { laterCalls.incrementAndGet(); }
+        });
+        try {
+            holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+            fail("Expected fatal handler error");
+        } catch (AssertionError actual) {
+            assertSame(actual, fatal);
+        }
+        assertEquals(laterCalls.get(), 1);
+    }
+
     private static void post(EventBus eventBus, HarvesterEvent event,
                              AtomicReference<Throwable> failure) {
         try {
