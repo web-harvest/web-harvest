@@ -16,7 +16,13 @@ public interface ExecutionWorkAccess {
     ExecutionOwner getOwner();
 
     /**
-     * Atomically admits a complete finite plan or rejects it before any partition starts.
+     * Atomically admits the complete finite plan or rejects it before any partition starts.
+     *
+     * <p>Plan admission is all-or-nothing; after admission, the scheduler may start
+     * partitions incrementally within the effective concurrency limit. The
+     * {@link WorkFailurePolicy} controls scheduling after admission: FAIL_FAST stops
+     * starting not-yet-started partitions after the first failure, and those partitions
+     * are reported as NOT_STARTED.</p>
      *
      * @throws WorkAdmissionException when runtime, session or plan admission limits are reached
      */
@@ -26,11 +32,12 @@ public interface ExecutionWorkAccess {
         PartitionTask<P, R> task);
 
     /**
-     * Atomically admits a streaming plan or rejects it before any partition starts.
+     * Atomically admits the complete streaming plan or rejects it before any partition starts.
      *
      * <p>Output callbacks are serialized and execute on the producing worker. A slow
      * callback provides synchronous backpressure. The callback must not wait for this
-     * work execution to complete.</p>
+     * work execution to complete. Plan admission is all-or-nothing; FAIL_FAST controls
+     * scheduling of not-yet-started partitions after admission, not plan admission.</p>
      *
      * @throws WorkAdmissionException when runtime, session or plan admission limits are reached
      */
