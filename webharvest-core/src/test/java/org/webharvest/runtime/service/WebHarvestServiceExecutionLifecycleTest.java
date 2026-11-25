@@ -404,7 +404,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(shutdownStarted.await(5, TimeUnit.SECONDS));
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.BLOCKED
+            while (shutdownThread.getState() != Thread.State.WAITING
                 && System.nanoTime() < deadline) {
                 Thread.yield();
             }
