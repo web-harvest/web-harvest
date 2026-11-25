@@ -32,8 +32,7 @@ public class WorkExecutionContractTest {
         assertEquals(plan.getPartitionCount(), 2);
         assertEquals(plan.getPartitions().get(0).getPartitionId(), "north");
         assertEquals(plan.getPartitions().get(1).getPartitionId(), "south");
-        assertThrows(UnsupportedOperationException.class,
-            () -> plan.getPartitions().clear());
+        assertUnsupportedOperation(() -> plan.getPartitions().clear());
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
@@ -66,8 +65,7 @@ public class WorkExecutionContractTest {
         assertEquals(result.getOutcomes().get(0).getResult(), "written-1");
         assertEquals(result.getOutcomes().get(1).getStatus(), PartitionOutcome.Status.FAILED);
         assertEquals(result.getOutcomes().get(2).getStatus(), PartitionOutcome.Status.NOT_STARTED);
-        assertThrows(UnsupportedOperationException.class,
-            () -> result.getOutcomes().clear());
+        assertUnsupportedOperation(() -> result.getOutcomes().clear());
     }
 
     @Test(groups = {"unit", "execution"})
@@ -105,5 +103,14 @@ public class WorkExecutionContractTest {
         context.setExecutionOwner(owner);
         context.setExecutionWorkAccess(workAccess);
         context.setExecutionWorkAccess(workAccess);
+    }
+
+    private void assertUnsupportedOperation(Runnable action) {
+        try {
+            action.run();
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException expected) {
+            // Expected: the public collection view is immutable.
+        }
     }
 }
