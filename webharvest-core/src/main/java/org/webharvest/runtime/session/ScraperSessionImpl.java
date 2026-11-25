@@ -376,13 +376,28 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
             handler = cancellationHandler;
         }
 
-        // Request worker interruption before notifying EventBus subscribers.
-        // Neither this callback nor the event proves worker quiescence.
+        // Cancellation callbacks and EventBus subscribers are external code.
+        // A callback failure must not strand waiters after the terminal state
+        // transition has already committed.
+        Throwable failure = null;
         if (handler != null) {
-            handler.run();
+            try {
+                handler.run();
+            } catch (Throwable handlerFailure) {
+                failure = handlerFailure;
+            }
         }
-        signalCompletion();
-        eventBus.post(new SessionCancelledEvent(this));
+        try {
+            signalCompletion();
+        } catch (Throwable completionFailure) {
+            failure = combineFailures(failure, completionFailure);
+        }
+        try {
+            eventBus.post(new SessionCancelledEvent(this));
+        } catch (Throwable eventFailure) {
+            failure = combineFailures(failure, eventFailure);
+        }
+        rethrowCancellationFailure(failure);
         return true;
     }
     
@@ -490,6 +505,29 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         eventBus.post(new SessionFailedEvent(this, failure));
     }
     
+
+    private static Throwable combineFailures(Throwable primary, Throwable secondary) {
+        if (primary == null) {
+            return secondary;
+        }
+        if (primary != secondary) {
+            primary.addSuppressed(secondary);
+        }
+        return primary;
+    }
+
+    private static void rethrowCancellationFailure(Throwable failure) {
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        if (failure instanceof Error) {
+            throw (Error) failure;
+        }
+        if (failure != null) {
+            throw new IllegalStateException("Cancellation notification failed", failure);
+        }
+    }
+
     /**
      * Signals all threads waiting for completion.
      * Uses the independent completion condition; the session monitor is not required.
