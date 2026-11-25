@@ -259,6 +259,138 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testQueuedCancellationRunsResourceCloseOutsideTaskMonitor() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor executor = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.execute(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            CountDownLatch closeCompleted = new CountDownLatch(1);
+            AtomicReference<Throwable> callbackFailure =
+                registerCloseCallbackMonitorProbe(service, session, closeCompleted, false);
+
+            assertTrue(session.cancel());
+            assertTrue(closeCompleted.await(5, TimeUnit.SECONDS),
+                "Queued-session resource close callback must finish");
+            assertNull(callbackFailure.get(),
+                "Resource close callback must be able to acquire the SessionTask monitor");
+            assertTrue(((ExecutionTrackedSession) session).awaitExecutionCompletion(0));
+        } finally {
+            releaseBlocker.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowRemovalRunsResourceCloseOutsideTaskMonitor() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor delegate = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        delegate.execute(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new DelegatingExecutorService(delegate), new SessionRegistryImpl(), new EventBus());
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            CountDownLatch closeCompleted = new CountDownLatch(1);
+            AtomicReference<Throwable> callbackFailure =
+                registerCloseCallbackMonitorProbe(service, session, closeCompleted, false);
+
+            service.shutdownNow();
+            assertTrue(closeCompleted.await(5, TimeUnit.SECONDS),
+                "shutdownNow-removed resource close callback must finish");
+            assertNull(callbackFailure.get(),
+                "shutdownNow resource close callback must run outside the SessionTask monitor");
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+        } finally {
+            releaseBlocker.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testFutureAttachmentRemovalRunsResourceCloseOutsideTaskMonitor() throws Exception {
+        QueueThenBlockThreadPoolExecutor executor = new QueueThenBlockThreadPoolExecutor();
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.execute(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+        executor.blockNextSubmission();
+
+        EventBus eventBus = new EventBus();
+        CapturingCreatedListener capture = new CapturingCreatedListener();
+        eventBus.register(capture);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        AtomicReference<ScraperSession> submitted = new AtomicReference<>();
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        Thread submitter = new Thread(() -> {
+            try {
+                submitted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "future-attachment-submit");
+
+        try {
+            submitter.start();
+            assertTrue(executor.queued.await(5, TimeUnit.SECONDS),
+                "The submitted Future must be queued before cancellation");
+            ScraperSession session = capture.session;
+            assertNotNull(session);
+            CountDownLatch closeCompleted = new CountDownLatch(1);
+            AtomicReference<Throwable> callbackFailure =
+                registerCloseCallbackMonitorProbe(service, session, closeCompleted, true);
+
+            assertTrue(session.cancel());
+            executor.releaseSubmission.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertNull(submitFailure.get());
+            assertSame(submitted.get(), session);
+            assertTrue(closeCompleted.await(5, TimeUnit.SECONDS),
+                "Future-attachment resource close callback must finish");
+            assertNull(callbackFailure.get(),
+                "Future-attachment close callback must run outside the SessionTask monitor");
+            assertTrue(((ExecutionTrackedSession) session).awaitExecutionCompletion(0));
+        } finally {
+            executor.releaseSubmission.countDown();
+            releaseBlocker.countDown();
+            submitter.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testCancellationBeforeFutureAttachmentInterruptsActiveWorker() throws InterruptedException {
         EventBus eventBus = new EventBus();
         CancelAndHoldStartedListener listener = new CancelAndHoldStartedListener();
@@ -980,6 +1112,70 @@ public class WebHarvestServiceExecutionLifecycleTest {
         }
     }
 
+    private static AtomicReference<Throwable> registerCloseCallbackMonitorProbe(
+        WebHarvestServiceImpl service, ScraperSession session, CountDownLatch closeCompleted,
+        boolean reenterShutdownNow) throws Exception {
+        Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
+        tasksField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> tasks = (Map<String, Object>) tasksField.get(service);
+        Object task = tasks.get(session.getSessionId());
+        assertNotNull(task, "The queued task must remain registered while its resource is registered");
+
+        Field coordinatorField = task.getClass().getDeclaredField("resourceCoordinator");
+        coordinatorField.setAccessible(true);
+        org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator coordinator =
+            (org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator) coordinatorField.get(task);
+        AtomicReference<Throwable> callbackFailure = new AtomicReference<>();
+        ExecutionResourceAccess access = coordinator.getAccess();
+        access.registerSessionResource("close-monitor-probe-" + session.getSessionId(), null, () -> {
+            CountDownLatch monitorAcquired = new CountDownLatch(1);
+            Thread probe = new Thread(() -> {
+                synchronized (task) {
+                    monitorAcquired.countDown();
+                }
+            }, "resource-close-task-monitor-probe");
+            probe.start();
+            try {
+                if (!monitorAcquired.await(2, TimeUnit.SECONDS)) {
+                    callbackFailure.compareAndSet(null, new AssertionError(
+                        "SessionTask monitor remained held while resource close callback was running"));
+                }
+                probe.join(2000);
+                if (probe.isAlive()) {
+                    callbackFailure.compareAndSet(null, new AssertionError(
+                        "SessionTask monitor probe did not terminate"));
+                }
+
+                if (reenterShutdownNow && callbackFailure.get() == null) {
+                    Field pendingField = WebHarvestServiceImpl.class.getDeclaredField("pendingSubmissions");
+                    pendingField.setAccessible(true);
+                    int pendingSubmissions = pendingField.getInt(service);
+                    java.lang.reflect.Method currentTaskMethod =
+                        task.getClass().getDeclaredMethod("isCurrentTaskThread");
+                    currentTaskMethod.setAccessible(true);
+                    boolean currentTaskThread = (Boolean) currentTaskMethod.invoke(task);
+                    if (pendingSubmissions != 0 || !currentTaskThread) {
+                        callbackFailure.compareAndSet(null, new AssertionError(
+                            "Reentrant shutdown must see a resolved submission and the current cleanup thread"));
+                    } else {
+                        long startedAt = System.nanoTime();
+                        service.shutdownNow();
+                        if (System.nanoTime() - startedAt > TimeUnit.MILLISECONDS.toNanos(950)) {
+                            callbackFailure.compareAndSet(null, new AssertionError(
+                                "Reentrant shutdownNow waited for its own task/resource-drain completion"));
+                        }
+                    }
+                }
+            } catch (Throwable failure) {
+                callbackFailure.compareAndSet(null, failure);
+            } finally {
+                closeCompleted.countDown();
+            }
+        });
+        return callbackFailure;
+    }
+
     private static class CancelOnCreatedListener {
         @Subscribe
         public void onCreated(SessionCreatedEvent event) {
@@ -1055,6 +1251,35 @@ public class WebHarvestServiceExecutionLifecycleTest {
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
                 throw new RejectedExecutionException("Submission wait interrupted", interrupted);
+            }
+        }
+    }
+
+    private static class QueueThenBlockThreadPoolExecutor
+        extends java.util.concurrent.ThreadPoolExecutor {
+        private final CountDownLatch queued = new CountDownLatch(1);
+        private final CountDownLatch releaseSubmission = new CountDownLatch(1);
+        private final AtomicBoolean blockNextSubmission = new AtomicBoolean();
+
+        private QueueThenBlockThreadPoolExecutor() {
+            super(1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        }
+
+        private void blockNextSubmission() {
+            blockNextSubmission.set(true);
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            super.execute(command);
+            if (blockNextSubmission.compareAndSet(true, false)) {
+                queued.countDown();
+                try {
+                    releaseSubmission.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new RejectedExecutionException("Submission gate interrupted", interrupted);
+                }
             }
         }
     }
