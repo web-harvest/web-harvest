@@ -134,8 +134,14 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Resource abort must be requested before the worker is interrupted");
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
             assertTrue(tracked.awaitExecutionCompletion(5000));
+            long resourceCloseDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < resourceCloseDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
+                "Worker exit is observable before the resource ledger publishes its final CLOSED state");
             assertEquals(listener.closeCount.get(), 1);
-            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         } finally {
             listener.release.countDown();
             service.shutdown();
@@ -893,7 +899,8 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 service.shutdown();
                 fail("Shutdown must surface an executor that did not terminate");
             } catch (IllegalStateException expected) {
-                assertTrue(expected.getMessage().contains("did not terminate"));
+                assertTrue(expected.getMessage().contains("did not observe all accepted task"),
+                    "Shutdown failure must explain that accepted task/resource-drain completion was not observed");
             }
 
             assertTrue(service.isShutdown());
