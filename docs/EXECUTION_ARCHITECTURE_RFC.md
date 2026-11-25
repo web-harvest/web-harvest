@@ -109,6 +109,68 @@ Inspection of `DynamicScopeContext` and `ScraperContext` confirms that `executeW
 
 The SPI therefore needs a separately designed context-fork/worker-input contract. It must define which values are shared read-only, which values are copied or isolated, how mutable `Variable` instances are treated, how system/config/session metadata is inherited, and how results are returned without concurrent writes into the parent variable table. Do not add a shallow-copy helper and call it thread-safe without proving the mutability and aliasing rules of the complete variable graph.
 
+
+## 5.3 Sequence sketches
+
+These diagrams describe intended responsibility and lifecycle boundaries, not implemented behavior.
+
+### Partitioned read
+
+```mermaid
+sequenceDiagram
+    participant P as Database Adapter / Planner
+    participant C as Core Work Coordinator
+    participant W as Partition Worker
+    participant D as JDBC Adapter
+    participant S as Result Sink
+    P->>C: submit immutable plan + policy
+    C->>C: admit within runtime/session budgets
+    loop admitted partitions
+        C->>W: execute partition with isolated context
+        W->>D: acquire owner-attributed connection lease
+        D->>D: execute partition query
+        loop rows
+            D->>S: emit bounded row/batch
+            S-->>D: demand / capacity
+        end
+        D->>W: partition outcome
+        W->>W: release lease after JDBC use ends
+        W-->>C: worker exit + outcome
+    end
+    C->>P: aggregate outcome / completion handle
+```
+
+Cancellation path: Core requests cancellation of outstanding workers; JDBC adapters may attempt statement cancellation. The coordinator must still observe each worker's actual exit before marking its owner quiescent and draining its leases. A cancellation request or Future cancellation alone is not worker-exit evidence.
+
+### Parallel write
+
+```mermaid
+sequenceDiagram
+    participant P as Database Adapter / Planner
+    participant C as Core Work Coordinator
+    participant W as Partition Worker
+    participant D as JDBC Adapter
+    P->>C: submit write plan + policy
+    C->>C: bounded admission
+    loop admitted write partitions
+        C->>W: execute batch partition
+        W->>D: acquire independent connection lease
+        D->>D: begin partition transaction
+        D->>D: execute JDBC batch
+        alt partition succeeds
+            D->>D: commit
+            D-->>W: committed outcome
+        else partition fails
+            D->>D: rollback if transaction remains active
+            D-->>W: failed/unknown outcome
+        end
+        W->>W: release lease after JDBC use ends
+        W-->>C: worker exit + partition outcome
+    end
+    C->>P: aggregate outcomes (may be partial success)
+```
+
+The aggregate write outcome must not imply a global transaction. A commit whose acknowledgement is lost may have an unknown outcome; retry safety requires an adapter/application idempotency contract.
 ## 6. Adapter responsibilities
 
 The Core contract owns generic work lifecycle and policy. Adapters own technology-specific planning and execution.
