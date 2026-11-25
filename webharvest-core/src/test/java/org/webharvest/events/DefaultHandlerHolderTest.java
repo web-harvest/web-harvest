@@ -5,6 +5,7 @@ import static org.testng.Assert.*;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -13,6 +14,7 @@ import org.testng.annotations.Test;
 import org.webharvest.AlreadyBoundException;
 import org.webharvest.Harvester;
 import org.webharvest.Registry;
+import org.webharvest.ScrapingAware;
 import org.webharvest.ioc.ScraperModule;
 
 import com.google.common.eventbus.EventBus;
@@ -150,6 +152,8 @@ public class DefaultHandlerHolderTest {
         holder.register(handler);
         when(registry.lookup(first)).thenReturn(eventBus);
         when(registry.lookup(second)).thenReturn(eventBus);
+        holder.onBeforeScraping(first);
+        holder.onBeforeScraping(second);
 
         holder.onHarvesterEvent(new TestHarvesterEvent(first));
         holder.onHarvesterEvent(new OtherHarvesterEvent(first));
@@ -177,6 +181,7 @@ public class DefaultHandlerHolderTest {
         RecordingHandler handler = new RecordingHandler();
         dispatcher.register(handler);
         when(registry.lookup(harvester)).thenReturn(sharedBus);
+        dispatcher.onBeforeScraping(harvester);
 
         sharedBus.post(new TestHarvesterEvent(harvester));
 
@@ -195,7 +200,7 @@ public class DefaultHandlerHolderTest {
         Harvester harvester = mock(Harvester.class);
         RecordingHandler handler = new RecordingHandler();
         injectedHolder.register(handler);
-        runtimeRegistry.bind(harvester, runtimeBus);
+        ((ScrapingAware) injectedHolder).onBeforeScraping(harvester);
 
         runtimeBus.post(new TestHarvesterEvent(harvester));
 
@@ -207,6 +212,7 @@ public class DefaultHandlerHolderTest {
     public void continuesDispatchAndAggregatesHandlerFailures() {
         Harvester harvester = mock(Harvester.class);
         when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
         RuntimeException firstFailure = new IllegalStateException("first");
         RuntimeException secondFailure = new IllegalArgumentException("second");
         AtomicInteger laterCalls = new AtomicInteger();
@@ -255,6 +261,8 @@ public class DefaultHandlerHolderTest {
         sharedBus.register(dispatcher);
         when(registry.lookup(first)).thenReturn(sharedBus);
         when(registry.lookup(second)).thenReturn(sharedBus);
+        dispatcher.onBeforeScraping(first);
+        dispatcher.onBeforeScraping(second);
         CountDownLatch entered = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger active = new AtomicInteger();
@@ -296,6 +304,100 @@ public class DefaultHandlerHolderTest {
         assertFalse(two.isAlive());
         assertNull(failure.get());
         assertEquals(maximum.get(), 2);
+    }
+
+
+    @Test
+    public void closesRouteAdmissionBeforeUnbindAndDrainsExistingDispatchLeases()
+        throws InterruptedException {
+        EventBus sharedBus = new EventBus();
+        DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, () -> sharedBus);
+        sharedBus.register(dispatcher);
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(sharedBus);
+        dispatcher.onBeforeScraping(harvester);
+
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger calls = new AtomicInteger();
+        dispatcher.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                calls.incrementAndGet();
+                entered.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                }
+            }
+        });
+
+        Thread admittedDispatch = new Thread(
+            () -> sharedBus.post(new TestHarvesterEvent(harvester)));
+        admittedDispatch.start();
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            dispatcher.onAfterScraping(harvester);
+
+            // The old route remains reserved while its admitted callback drains,
+            // but no new callback can acquire a dispatch lease after close.
+            sharedBus.post(new TestHarvesterEvent(harvester));
+            assertEquals(calls.get(), 1);
+        } finally {
+            release.countDown();
+        }
+        admittedDispatch.join(5000);
+        assertFalse(admittedDispatch.isAlive());
+
+        // Once the final lease drains, the same Harvester may start a new route.
+        dispatcher.onBeforeScraping(harvester);
+        dispatcher.onAfterScraping(harvester);
+    }
+
+    @Test
+    public void dispatchThatLookedUpRouteBeforeTeardownCannotAcquireAfterClose()
+        throws InterruptedException {
+        EventBus sharedBus = new EventBus();
+        DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, () -> sharedBus);
+        Harvester harvester = mock(Harvester.class);
+        dispatcher.onBeforeScraping(harvester);
+
+        CountDownLatch lookupEntered = new CountDownLatch(1);
+        CountDownLatch releaseLookup = new CountDownLatch(1);
+        AtomicBoolean blockFirstLookup = new AtomicBoolean(true);
+        when(registry.lookup(harvester)).thenAnswer(invocation -> {
+            if (blockFirstLookup.compareAndSet(true, false)) {
+                lookupEntered.countDown();
+                releaseLookup.await();
+            }
+            return sharedBus;
+        });
+
+        AtomicInteger calls = new AtomicInteger();
+        dispatcher.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                calls.incrementAndGet();
+            }
+        });
+
+        Thread dispatch = new Thread(() -> dispatcher.onHarvesterEvent(new TestHarvesterEvent(harvester)));
+        dispatch.start();
+        try {
+            assertTrue(lookupEntered.await(5, TimeUnit.SECONDS));
+            dispatcher.onAfterScraping(harvester);
+        } finally {
+            releaseLookup.countDown();
+        }
+        dispatch.join(5000);
+
+        assertFalse(dispatch.isAlive());
+        assertEquals(calls.get(), 0,
+            "A dispatch that only observed the route before teardown must be rejected after admission closes");
     }
 
     private static void post(EventBus eventBus, HarvesterEvent event,
