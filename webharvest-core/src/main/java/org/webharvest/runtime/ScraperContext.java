@@ -56,6 +56,7 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.execution.ExecutionWorkAccess;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -104,6 +105,7 @@ public class ScraperContext implements DynamicScopeContext {
     private ScraperSession session;
     private volatile ExecutionOwner executionOwner;
     private volatile ExecutionResourceAccess resourceAccess;
+    private volatile ExecutionWorkAccess executionWorkAccess;
 
     public ScraperContext() {
         scopeStack.push(new ScopeFrame());
@@ -354,6 +356,27 @@ public class ScraperContext implements DynamicScopeContext {
             throw new IllegalArgumentException("Resource access owner does not match context execution owner");
         }
         this.resourceAccess = resourceAccess;
+    }
+
+    /** Returns the optional bounded work capability bound to this execution. */
+    @Override
+    public ExecutionWorkAccess getExecutionWorkAccess() {
+        return executionWorkAccess;
+    }
+
+    /** Binds one work capability whose immutable owner must match this context. */
+    @Override
+    public synchronized void setExecutionWorkAccess(ExecutionWorkAccess workAccess) {
+        if (workAccess == null) {
+            throw new IllegalArgumentException("Execution work access cannot be null");
+        }
+        if (executionWorkAccess != null) {
+            throw new IllegalStateException("Execution work access is already bound to this context");
+        }
+        if (executionOwner == null || !executionOwner.equals(workAccess.getOwner())) {
+            throw new IllegalArgumentException("Work access owner does not match context execution owner");
+        }
+        executionWorkAccess = workAccess;
     }
     
     /**
