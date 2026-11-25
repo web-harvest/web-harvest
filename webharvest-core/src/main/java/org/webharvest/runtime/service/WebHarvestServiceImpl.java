@@ -192,8 +192,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             // Reserve under admissionLock, but call arbitrary executor code outside it.
             // The wrapper resolves the reservation even for direct/CallerRuns executors.
             FutureTask<Void> submittedTask = new FutureTask<>(() -> {
-                task.resolveSubmission();
-                task.run();
+                try {
+                    task.run();
+                } finally {
+                    task.resolveSubmission();
+                }
                 return null;
             });
             task.attachFuture(submittedTask);
