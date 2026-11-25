@@ -57,6 +57,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
@@ -407,8 +408,8 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 && System.nanoTime() < deadline) {
                 Thread.yield();
             }
-            assertEquals(shutdownThread.getState(), Thread.State.BLOCKED,
-                "Shutdown must wait for the in-flight admission critical section");
+            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
+                "Shutdown waits for the in-flight executor dispatch without holding admissionLock");
 
             releaseSubmit.countDown();
             submitter.join(5000);
@@ -428,6 +429,129 @@ public class WebHarvestServiceExecutionLifecycleTest {
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testCreatedEventSubscriberDoesNotHoldAdmissionLockOrBlockShutdown() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        FirstCreatedBlockingListener listener = new FirstCreatedBlockingListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<ScraperSession> firstSession = new AtomicReference<>();
+        AtomicReference<Throwable> firstFailure = new AtomicReference<>();
+        CountDownLatch shutdownFinished = new CountDownLatch(1);
+
+        Thread firstSubmitter = new Thread(() -> {
+            try {
+                firstSession.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                firstFailure.set(failure);
+            }
+        }, "blocked-session-created-submit");
+        Thread shutdownThread = new Thread(() -> {
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                firstFailure.compareAndSet(null, failure);
+            } finally {
+                shutdownFinished.countDown();
+            }
+        }, "shutdown-during-created-callback");
+
+        try {
+            firstSubmitter.start();
+            assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
+
+            ScraperSession second = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertNotNull(second);
+            assertTrue(((ExecutionTrackedSession) second).awaitExecutionCompletion(0));
+
+            shutdownThread.start();
+            assertTrue(shutdownFinished.await(5, TimeUnit.SECONDS),
+                "Shutdown must not wait for a SessionCreatedEvent subscriber that has not been admitted");
+
+            listener.release.countDown();
+            firstSubmitter.join(5000);
+            assertFalse(firstSubmitter.isAlive());
+            assertNull(firstSession.get(), "The first session must be rejected after shutdown closes admission");
+            assertTrue(firstFailure.get() instanceof IllegalStateException);
+            assertTrue(firstFailure.get().getMessage().contains("shut down"));
+        } finally {
+            listener.release.countDown();
+            firstSubmitter.join(5000);
+            if (shutdownThread.getState() != Thread.State.NEW) {
+                shutdownThread.join(5000);
+            }
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testInlineExecutorRunsScraperOutsideAdmissionLock() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        FirstStartedBlockingListener listener = new FirstStartedBlockingListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> firstFailure = new AtomicReference<>();
+        Thread firstSubmitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                firstFailure.set(failure);
+            }
+        }, "inline-session-worker");
+
+        try {
+            firstSubmitter.start();
+            assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
+
+            ScraperSession second = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertNotNull(second,
+                "A direct executor must not run scraper callbacks while admissionLock is held");
+            assertTrue(((ExecutionTrackedSession) second).awaitExecutionCompletion(0));
+
+            listener.release.countDown();
+            firstSubmitter.join(5000);
+            assertFalse(firstSubmitter.isAlive());
+            assertNull(firstFailure.get());
+        } finally {
+            listener.release.countDown();
+            firstSubmitter.join(5000);
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowCancellationSubscriberRunsOutsideAdmissionLock() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener worker = new BlockingStartedListener();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+        AdmissionProbeCancelledListener probe = new AdmissionProbeCancelledListener(service);
+        eventBus.register(worker);
+        eventBus.register(probe);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(worker.started.await(5, TimeUnit.SECONDS));
+
+            service.shutdownNow();
+
+            assertTrue(probe.admissionRejected.await(5, TimeUnit.SECONDS),
+                "A cancellation subscriber must be able to call back into service admission");
+            assertNull(probe.failure.get());
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+
+            worker.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+        } finally {
+            worker.release.countDown();
             service.shutdownNow();
         }
     }
@@ -528,6 +652,84 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             service.shutdownNow();
+        }
+    }
+
+    private static class FirstCreatedBlockingListener {
+        private final AtomicBoolean first = new AtomicBoolean(true);
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onCreated(SessionCreatedEvent event) {
+            if (first.compareAndSet(true, false)) {
+                entered.countDown();
+                awaitRelease();
+            }
+        }
+
+        private void awaitRelease() {
+            try {
+                release.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private static class FirstStartedBlockingListener {
+        private final AtomicBoolean first = new AtomicBoolean(true);
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            if (first.compareAndSet(true, false)) {
+                entered.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    private static class AdmissionProbeCancelledListener {
+        private final WebHarvestServiceImpl service;
+        private final CountDownLatch admissionRejected = new CountDownLatch(1);
+        private final AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        private AdmissionProbeCancelledListener(WebHarvestServiceImpl service) {
+            this.service = service;
+        }
+
+        @Subscribe
+        public void onCancelled(org.webharvest.runtime.session.events.SessionCancelledEvent event) {
+            Thread probe = new Thread(() -> {
+                try {
+                    service.executeAsync(Mockito.mock(Config.class), null, null);
+                    failure.set(new AssertionError("Admission unexpectedly succeeded after shutdown"));
+                } catch (IllegalStateException expected) {
+                    if (!expected.getMessage().contains("shut down")) {
+                        failure.set(expected);
+                    }
+                } catch (Throwable unexpected) {
+                    failure.set(unexpected);
+                } finally {
+                    admissionRejected.countDown();
+                }
+            }, "cancel-event-admission-probe");
+            probe.start();
+            try {
+                if (!admissionRejected.await(5, TimeUnit.SECONDS)) {
+                    failure.set(new AssertionError(
+                        "Admission remained blocked while the cancellation subscriber was running"));
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                failure.set(interrupted);
+            }
         }
     }
 
