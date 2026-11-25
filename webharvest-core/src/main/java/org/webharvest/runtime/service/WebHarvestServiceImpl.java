@@ -197,6 +197,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 return null;
             });
             task.attachFuture(submittedTask);
+            if (session.getStatus().isTerminal() || task.isCancellationRequested()) {
+                boolean finishBeforeStart = task.rejectBeforeStart();
+                if (finishBeforeStart) {
+                    task.finishBeforeStart();
+                }
+                task.resolveSubmission();
+                return session;
+            }
             executorService.execute(submittedTask);
             task.resolveSubmission();
             LOG.info("Accepted session {} for client {}", sessionId, clientId);
