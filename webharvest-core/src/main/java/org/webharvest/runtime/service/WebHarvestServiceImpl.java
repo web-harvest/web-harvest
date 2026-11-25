@@ -87,6 +87,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final Object admissionLock = new Object();
     private int pendingSubmissions;
     private boolean executorShutdownInitiated;
+    private final CountDownLatch executorShutdownCompleted = new CountDownLatch(1);
     private volatile boolean shutdown;
 
     /**
@@ -336,6 +337,13 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 + getPendingSubmissionCount() + " accepted submission(s) not yet dispatched");
         }
         shutdownExecutorWhenReady();
+        long shutdownSignalBudget = remainingNanos(deadline);
+        if (shutdownSignalBudget == 0
+            || !executorShutdownCompleted.await(shutdownSignalBudget, TimeUnit.NANOSECONDS)) {
+            logIncompleteShutdown("executor shutdown signal", tasks);
+            throw new IllegalStateException("WebHarvestService shutdown signal was not completed "
+                + "within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
+        }
 
         boolean executorTerminated = executorService.awaitTermination(
             remainingNanos(deadline), TimeUnit.NANOSECONDS);
@@ -368,7 +376,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             task.requestKill();
         }
 
-        List<Runnable> neverStarted = executorService.shutdownNow();
+        List<Runnable> neverStarted;
+        try {
+            neverStarted = executorService.shutdownNow();
+        } finally {
+            executorShutdownCompleted.countDown();
+        }
         for (Runnable pending : neverStarted) {
             for (SessionTask task : tasks) {
                 task.markRemovedBeforeStart(pending);
@@ -502,7 +515,13 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
         if (initiateShutdown) {
-            executorService.shutdown();
+            try {
+                executorService.shutdown();
+            } catch (RuntimeException failure) {
+                LOG.error("Supplied executor failed while initiating graceful shutdown", failure);
+            } finally {
+                executorShutdownCompleted.countDown();
+            }
         }
     }
 
