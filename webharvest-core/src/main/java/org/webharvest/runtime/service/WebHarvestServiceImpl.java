@@ -631,12 +631,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                         LOG.warn("Resource {} for session {} remains {} (active leases: {})",
                             report.getResourceId(), session.getSessionId(),
                             report.getState(), report.getActiveLeases());
-                        if (report.getAbortFailure() != null) {
-                            LOG.warn("Resource abort failed for {}", report.getResourceId(), report.getAbortFailure());
-                        }
-                        if (report.getCloseFailure() != null) {
-                            LOG.warn("Resource close failed for {}", report.getResourceId(), report.getCloseFailure());
-                        }
+                    }
+                    // Abort failure remains operationally relevant even when the
+                    // resource's subsequent close succeeds and reaches CLOSED.
+                    if (report.getAbortFailure() != null) {
+                        LOG.warn("Resource abort failed for {}", report.getResourceId(), report.getAbortFailure());
+                    }
+                    if (report.getCloseFailure() != null) {
+                        LOG.warn("Resource close failed for {}", report.getResourceId(), report.getCloseFailure());
                     }
                 }
             } catch (InterruptedException interrupted) {
