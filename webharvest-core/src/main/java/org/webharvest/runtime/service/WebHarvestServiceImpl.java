@@ -379,10 +379,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             terminated = false;
         }
         boolean tasksExited = false;
-        try {
-            tasksExited = awaitTaskExits(tasks, 1, TimeUnit.SECONDS, true);
-        } catch (InterruptedException interruption) {
-            interrupted = true;
+        if (terminated) {
+            try {
+                tasksExited = awaitTaskExits(tasks, 1, TimeUnit.SECONDS, true);
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
         }
         if (!terminated || !tasksExited) {
             markTasksUnresponsive(tasks, true, true);
