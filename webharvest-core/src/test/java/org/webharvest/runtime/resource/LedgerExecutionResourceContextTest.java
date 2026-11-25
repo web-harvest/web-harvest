@@ -123,24 +123,31 @@ public class LedgerExecutionResourceContextTest {
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
         AssertionError fatal = new AssertionError("first close failed");
+        AssertionError secondary = new AssertionError("second close failed");
         context.registerSessionResource("fatal-first", null, () -> {
             throw fatal;
         });
+        ExecutionResourceAccess.ResourceHandle secondFailure = context.registerSessionResource(
+            "fatal-second", null, () -> {
+                throw secondary;
+            });
         AtomicInteger laterCloses = new AtomicInteger();
         ExecutionResourceAccess.ResourceHandle later = context.registerSessionResource(
-            "ready-second", null, laterCloses::incrementAndGet);
+            "ready-third", null, laterCloses::incrementAndGet);
 
         try {
             context.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
             fail("Expected the fatal close failure to be rethrown");
         } catch (AssertionError actual) {
             assertSame(actual, fatal);
-            assertEquals(actual.getSuppressed().length, 0);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertSame(actual.getSuppressed()[0], secondary);
         }
         assertEquals(later.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         assertEquals(laterCloses.get(), 1);
-        assertEquals(ledger.size(), 1,
-            "The failed registration remains retained for diagnostics");
+        assertEquals(secondFailure.getState(), ExecutionResourceAccess.ResourceState.CLOSE_FAILED);
+        assertEquals(ledger.size(), 2,
+            "Both failed registrations remain retained for diagnostics");
     }
 
     @Test(groups = {"unit", "runtime"})
