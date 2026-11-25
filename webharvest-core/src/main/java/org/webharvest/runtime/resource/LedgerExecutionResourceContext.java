@@ -127,11 +127,6 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
             snapshot = new ArrayList<>(registrations);
         }
 
-        for (Handle handle : snapshot) {
-            handle.markOwnerQuiescent();
-        }
-
-        final long started = System.nanoTime();
         final long budgetNanos;
         try {
             budgetNanos = budget.toNanos();
@@ -139,10 +134,52 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
             throw new IllegalArgumentException("Drain budget is too large", overflow);
         }
 
-        List<DrainReport> reports = new ArrayList<>();
+        // Establish the ownership boundary for every registration before any
+        // potentially blocking drain begins.
         for (Handle handle : snapshot) {
-            long remaining = Math.max(0L, budgetNanos - (System.nanoTime() - started));
-            reports.add(handle.drain(Duration.ofNanos(remaining)));
+            handle.markOwnerQuiescent();
+        }
+
+        final long started = System.nanoTime();
+        List<DrainReport> reports = new ArrayList<>();
+        InterruptedException interruption = null;
+        Throwable fatalFailure = null;
+        for (Handle handle : snapshot) {
+            long remaining = interruption == null
+                ? Math.max(0L, budgetNanos - (System.nanoTime() - started)) : 0L;
+            try {
+                reports.add(handle.drain(Duration.ofNanos(remaining)));
+            } catch (InterruptedException failure) {
+                // Do not abandon later registrations. Their zero-budget drain
+                // still closes resources that are already fully quiescent.
+                if (interruption == null) {
+                    interruption = failure;
+                } else {
+                    interruption.addSuppressed(failure);
+                }
+            } catch (Throwable failure) {
+                if (fatalFailure == null) {
+                    fatalFailure = failure;
+                } else if (fatalFailure != failure) {
+                    fatalFailure.addSuppressed(failure);
+                }
+            }
+        }
+
+        if (fatalFailure != null) {
+            if (interruption != null && fatalFailure != interruption) {
+                fatalFailure.addSuppressed(interruption);
+            }
+            if (fatalFailure instanceof Error) {
+                throw (Error) fatalFailure;
+            }
+            if (fatalFailure instanceof RuntimeException) {
+                throw (RuntimeException) fatalFailure;
+            }
+            throw new IllegalStateException("Resource drain failed", fatalFailure);
+        }
+        if (interruption != null) {
+            throw interruption;
         }
         return Collections.unmodifiableList(reports);
     }
