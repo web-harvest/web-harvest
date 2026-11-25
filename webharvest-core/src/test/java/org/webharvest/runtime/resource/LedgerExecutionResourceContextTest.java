@@ -252,8 +252,14 @@ public class LedgerExecutionResourceContextTest {
         ExecutionResourceAccess.ResourceHandle existing =
             context.registerSessionResource("existing", null, null);
 
-        expectThrows(IllegalArgumentException.class,
-            () -> context.markOwnerQuiescentAndDrain(Duration.ofSeconds(Long.MAX_VALUE)));
+        expectThrows(IllegalArgumentException.class, () -> {
+            try {
+                context.markOwnerQuiescentAndDrain(Duration.ofSeconds(Long.MAX_VALUE));
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Budget validation must not interrupt the caller", interrupted);
+            }
+        });
 
         assertEquals(existing.getState(), ExecutionResourceAccess.ResourceState.OPEN,
             "An invalid budget must not partially transition existing registrations");
