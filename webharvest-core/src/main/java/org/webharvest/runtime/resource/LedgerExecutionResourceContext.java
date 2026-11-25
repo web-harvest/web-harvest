@@ -121,17 +121,20 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
         if (budget.isNegative()) {
             throw new IllegalArgumentException("Drain budget cannot be negative");
         }
-        final List<Handle> snapshot;
-        synchronized (gate) {
-            lifecycle = Lifecycle.QUIESCENT;
-            snapshot = new ArrayList<>(registrations);
-        }
-
+        // Validate and normalize the complete budget before changing lifecycle
+        // state. Duration.toNanos() can overflow; a rejected budget must leave
+        // the facade OPEN so a later valid drain can establish quiescence.
         final long budgetNanos;
         try {
             budgetNanos = budget.toNanos();
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Drain budget is too large", overflow);
+        }
+
+        final List<Handle> snapshot;
+        synchronized (gate) {
+            lifecycle = Lifecycle.QUIESCENT;
+            snapshot = new ArrayList<>(registrations);
         }
 
         // Establish the ownership boundary for every registration before any
