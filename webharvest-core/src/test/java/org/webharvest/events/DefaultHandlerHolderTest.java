@@ -397,6 +397,154 @@ public class DefaultHandlerHolderTest {
             "A dispatch that only observed the route before teardown must be rejected after admission closes");
     }
 
+
+    @Test
+    public void doesNotAdmitEventsUntilRegistryBindingHasSucceeded() throws InterruptedException {
+        EventBus sharedBus = new EventBus();
+        DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, () -> sharedBus);
+        Harvester harvester = mock(Harvester.class);
+        RecordingHandler handler = new RecordingHandler();
+        dispatcher.register(handler);
+        when(registry.lookup(harvester)).thenReturn(sharedBus);
+
+        CountDownLatch bindEntered = new CountDownLatch(1);
+        CountDownLatch releaseBind = new CountDownLatch(1);
+        AtomicReference<Throwable> bindFailure = new AtomicReference<>();
+        doAnswer(invocation -> {
+            bindEntered.countDown();
+            if (!releaseBind.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to release registry bind");
+            }
+            throw new AlreadyBoundException("duplicate binding");
+        }).when(registry).bind(harvester, sharedBus);
+
+        Thread binder = new Thread(() -> {
+            try {
+                dispatcher.onBeforeScraping(harvester);
+            } catch (Throwable failure) {
+                bindFailure.set(failure);
+            }
+        }, "harvester-route-bind");
+
+        binder.start();
+        try {
+            assertTrue(bindEntered.await(5, TimeUnit.SECONDS),
+                "Registry binding should be held while the route is still STARTING");
+
+            // Simulate a registry mapping that already points at this shared bus.
+            // A route visible in STARTING state must not dispatch through it.
+            dispatcher.onHarvesterEvent(new TestHarvesterEvent(harvester));
+            assertEquals(handler.calls.get(), 0,
+                "Events must not be admitted before this route's registry bind succeeds");
+        } finally {
+            releaseBind.countDown();
+            binder.join(5000);
+        }
+
+        assertFalse(binder.isAlive());
+        assertTrue(bindFailure.get() instanceof IllegalStateException);
+        assertEquals(handler.calls.get(), 0);
+        verify(registry, never()).unbind(harvester);
+    }
+
+    @Test
+    public void keepsClosedRouteReservedUntilUnbindAndDispatchDrainBothComplete()
+        throws InterruptedException {
+        EventBus sharedBus = new EventBus();
+        DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, () -> sharedBus);
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(sharedBus);
+        dispatcher.onBeforeScraping(harvester);
+
+        CountDownLatch dispatchEntered = new CountDownLatch(1);
+        CountDownLatch releaseDispatch = new CountDownLatch(1);
+        dispatcher.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) {
+                dispatchEntered.countDown();
+                try {
+                    releaseDispatch.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                }
+            }
+        });
+
+        CountDownLatch unbindEntered = new CountDownLatch(1);
+        CountDownLatch releaseUnbind = new CountDownLatch(1);
+        AtomicBoolean blockFirstUnbind = new AtomicBoolean(true);
+        AtomicReference<Throwable> teardownFailure = new AtomicReference<>();
+        doAnswer(invocation -> {
+            if (blockFirstUnbind.compareAndSet(true, false)) {
+                unbindEntered.countDown();
+                if (!releaseUnbind.await(5, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to release registry unbind");
+                }
+            }
+            return null;
+        }).when(registry).unbind(harvester);
+
+        Thread dispatch = new Thread(
+            () -> dispatcher.onHarvesterEvent(new TestHarvesterEvent(harvester)),
+            "harvester-route-dispatch");
+        Thread teardown = new Thread(() -> {
+            try {
+                dispatcher.onAfterScraping(harvester);
+            } catch (Throwable failure) {
+                teardownFailure.set(failure);
+            }
+        }, "harvester-route-teardown");
+
+        dispatch.start();
+        try {
+            assertTrue(dispatchEntered.await(5, TimeUnit.SECONDS));
+            teardown.start();
+            assertTrue(unbindEntered.await(5, TimeUnit.SECONDS),
+                "Teardown must close route admission before entering registry unbind");
+
+            // Let the last admitted dispatch drain while unbind is still blocked.
+            releaseDispatch.countDown();
+            dispatch.join(5000);
+            assertFalse(dispatch.isAlive());
+
+            try {
+                dispatcher.onBeforeScraping(harvester);
+                fail("The old route must remain reserved until registry unbind returns");
+            } catch (IllegalStateException expected) {
+                assertTrue(expected.getMessage().contains("active or draining"));
+            }
+        } finally {
+            releaseDispatch.countDown();
+            releaseUnbind.countDown();
+            dispatch.join(5000);
+            teardown.join(5000);
+        }
+
+        assertFalse(teardown.isAlive());
+        assertNull(teardownFailure.get());
+
+        // The route is reusable only after both unbind and dispatch drain complete.
+        dispatcher.onBeforeScraping(harvester);
+        dispatcher.onAfterScraping(harvester);
+    }
+
+    @Test
+    public void afterScrapingDoesNotUnbindARegistryEntryWithoutAnOwnedRoute() {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+
+        try {
+            holder.onAfterScraping(harvester);
+            fail("A handler holder must not unbind a route it does not own");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("No owned event route"));
+        }
+
+        verify(registry, never()).unbind(harvester);
+    }
+
     private static void post(EventBus eventBus, HarvesterEvent event,
                              AtomicReference<Throwable> failure) {
         try {
