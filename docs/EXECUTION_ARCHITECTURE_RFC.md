@@ -467,10 +467,11 @@ PR #385 adds deterministic tests for:
 - graceful shutdown waiting for a blocking resource-close callback after session worker exit has already been observed;
 - the existing submit-vs-shutdown race, now asserting that shutdown waits without owning `admissionLock`.
 
-No local Maven suite was run. PR #385 head `1f7d2522fb93789cea06e3f0244e5dcda6c74942` adds task-completion tracking through resource drain and a `core-runtime-integration` job to `.github/workflows/ftp-coverage.yml`, running full `webharvest-core -am verify` for pull requests targeting `runtime/**`. The current exact-head checks are:
+No local Maven suite was run. PR #385 latest head is `4dee8d511bdf64188003532480ddb7f0c51d957d`. It adds task-completion tracking through resource drain and a `core-runtime-integration` job to `.github/workflows/ftp-coverage.yml`, running full `webharvest-core -am verify` for pull requests targeting `runtime/**`. Exact checks:
 
-- FTP Module Coverage CI run [#344](https://github.com/web-harvest/web-harvest/actions/runs/45594084791): FTP job **success** (instruction coverage 90.9%, branch coverage 81.4%). The separate full Core job's first attempt failed before reactor build because Maven Central returned HTTP 429 resolving `maven-pmd-plugin:3.21.2`; no Core tests ran in that attempt. Only the failed Core job was rerun; retry is in progress.
-- Dependency lockfile verification run [#760](https://github.com/web-harvest/web-harvest/actions/runs/45594085133): **success**.
+- Latest FTP Module Coverage CI run [#345](https://github.com/web-harvest/web-harvest/actions/runs/45595003890): FTP and full Core jobs are currently running on the latest head.
+- Previous FTP job in run [#344](https://github.com/web-harvest/web-harvest/actions/runs/45594084791): **success** (instruction coverage 90.9%, branch coverage 81.4%). The full Core attempt failed before reactor build because Maven Central returned HTTP 429 resolving `maven-pmd-plugin:3.21.2`; its retry was superseded by the deterministic test-state correction.
+- Dependency lockfile verification run [#762](https://github.com/web-harvest/web-harvest/actions/runs/45595006007): **success**.
 - Earlier FTP/Core dependency compile gate run [#329](https://github.com/web-harvest/web-harvest/actions/runs/45591547786): **success**. That invocation used `-Pskip-core-tests-in-reactor`; Core production and test sources compiled, but Core Surefire/Failsafe tests were skipped.
 
-The standard Semantic Core workflow still does not trigger for this base branch, but the new runtime-specific job now supplies the missing full Core verify gate. Until its retry succeeds, the new lifecycle tests remain unexecuted in CI. Keep PR #385 Draft and do not merge before full Core tests and review.
+The standard Semantic Core workflow still does not trigger for this base branch, but the new runtime-specific job supplies the missing full Core verify gate. The new lifecycle tests remain unvalidated by a completed full Core run until run #345 finishes. Keep PR #385 Draft and do not merge before full Core tests and review.
