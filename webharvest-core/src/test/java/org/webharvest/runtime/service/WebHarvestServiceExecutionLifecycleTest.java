@@ -732,7 +732,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
     @Test(groups = {"unit", "service"})
     public void testShutdownNowDoesNotMarkWorkerUnresponsiveWhenOnlyResourceDrainIsBlocked()
-            throws InterruptedException {
+            throws Exception {
         EventBus eventBus = new EventBus();
         BlockingCloseResourceListener listener = new BlockingCloseResourceListener();
         eventBus.register(listener);
