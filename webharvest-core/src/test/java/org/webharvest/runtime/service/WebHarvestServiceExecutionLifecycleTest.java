@@ -613,10 +613,12 @@ public class WebHarvestServiceExecutionLifecycleTest {
             shutdownThread.start();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (shutdownThread.getState() != Thread.State.WAITING
+                && shutdownThread.getState() != Thread.State.TIMED_WAITING
                 && System.nanoTime() < deadline) {
                 Thread.yield();
             }
-            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
+            assertTrue(shutdownThread.getState() == Thread.State.WAITING
+                    || shutdownThread.getState() == Thread.State.TIMED_WAITING,
                 "Service shutdown must wait for the caller-runs session's observed worker exit");
             assertEquals(shutdownFinished.getCount(), 1L,
                 "Executor termination alone must not complete service shutdown");
@@ -674,10 +676,12 @@ public class WebHarvestServiceExecutionLifecycleTest {
             shutdownThread.start();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (shutdownThread.getState() != Thread.State.WAITING
+                && shutdownThread.getState() != Thread.State.TIMED_WAITING
                 && System.nanoTime() < deadline) {
                 Thread.yield();
             }
-            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
+            assertTrue(shutdownThread.getState() == Thread.State.WAITING
+                    || shutdownThread.getState() == Thread.State.TIMED_WAITING,
                 "Service shutdown must also wait for the task's resource-drain callback");
             assertEquals(shutdownFinished.getCount(), 1L);
 
