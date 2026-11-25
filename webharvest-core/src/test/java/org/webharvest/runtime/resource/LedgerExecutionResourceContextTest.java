@@ -89,7 +89,7 @@ public class LedgerExecutionResourceContextTest {
 
 
     @Test(groups = {"unit", "runtime"})
-    public void requestTerminationIsIdempotent() {
+    public void requestTerminationIsIdempotent() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
@@ -107,7 +107,7 @@ public class LedgerExecutionResourceContextTest {
     }
 
     @Test(groups = {"unit", "runtime"})
-    public void requestTerminationAttemptsEveryAbortAndPreservesFatalFailures() {
+    public void requestTerminationAttemptsEveryAbortAndPreservesFatalFailures() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
         LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
