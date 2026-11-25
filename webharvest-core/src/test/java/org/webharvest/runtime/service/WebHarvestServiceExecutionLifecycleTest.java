@@ -141,6 +141,14 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.closed.await(5, TimeUnit.SECONDS),
                 "Resource cleanup follows the observed execution-exit signal");
             assertEquals(listener.closeCount.get(), 1);
+            // The close callback signals before drainAndClose publishes CLOSED.
+            // Wait for the ledger's post-callback state transition rather than
+            // racing that final publication.
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         } finally {
             listener.release.countDown();
