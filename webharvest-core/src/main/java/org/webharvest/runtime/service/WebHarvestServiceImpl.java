@@ -52,10 +52,12 @@ import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -83,6 +85,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId);
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
+    private int pendingSubmissions;
     private volatile boolean shutdown;
 
     /**
@@ -145,39 +148,73 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         SessionOptions opts = options != null ? options : SessionOptions.DEFAULT;
         String clientId = client != null ? client.getClientId() : null;
+        String sessionId = UUID.randomUUID().toString();
+        ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
 
+        // Session construction publishes SessionCreatedEvent synchronously; never
+        // invoke that subscriber code while holding the admission lock.
+        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
+        LedgerExecutionResourceCoordinator resourceCoordinator =
+            new LedgerExecutionResourceCoordinator(resourceLedger, owner);
+        SessionTask task = new SessionTask(session, opts, resourceCoordinator);
+        session.attachCancellationHandler(task::requestCancellation);
+
+        RuntimeException admissionFailure = null;
+        boolean registered = false;
         synchronized (admissionLock) {
             if (shutdown) {
-                throw new IllegalStateException("Service is shut down");
-            }
-
-            String sessionId = UUID.randomUUID().toString();
-            ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
-            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
-            LedgerExecutionResourceCoordinator resourceCoordinator =
-                new LedgerExecutionResourceCoordinator(resourceLedger, owner);
-            SessionTask task = new SessionTask(session, opts, resourceCoordinator);
-            session.attachCancellationHandler(task::requestCancellation);
-            session.markExecutionQueued();
-
-            boolean registered = false;
-            try {
-                sessionRegistry.register(session);
-                registered = true;
-                executionTasks.put(sessionId, task);
-                Future<?> future = executorService.submit(task);
-                task.attachFuture(future);
-                LOG.info("Accepted session {} for client {}", sessionId, clientId);
-                return session;
-            } catch (RuntimeException submissionFailure) {
-                executionTasks.remove(sessionId, task);
-                task.rejectBeforeStart();
-                if (registered) {
-                    sessionRegistry.unregisterIfOwner(session);
+                admissionFailure = new IllegalStateException("Service is shut down");
+            } else {
+                try {
+                    session.markExecutionQueued();
+                    sessionRegistry.register(session);
+                    registered = true;
+                    executionTasks.put(sessionId, task);
+                    pendingSubmissions++;
+                } catch (RuntimeException failure) {
+                    admissionFailure = failure;
                 }
-                session.markFailed(submissionFailure);
-                throw new IllegalStateException("Session submission was rejected", submissionFailure);
             }
+        }
+
+        if (admissionFailure != null) {
+            boolean finishBeforeStart = task.rejectBeforeStart();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            session.markFailed(admissionFailure);
+            throw admissionFailure;
+        }
+
+        try {
+            // Reserve under admissionLock, but call arbitrary executor code outside it.
+            // The wrapper resolves the reservation even for direct/CallerRuns executors.
+            Future<?> future = executorService.submit(() -> {
+                task.resolveSubmission();
+                task.run();
+            });
+            boolean finishBeforeStart = task.attachFuture(future);
+            task.resolveSubmission();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            LOG.info("Accepted session {} for client {}", sessionId, clientId);
+            return session;
+        } catch (RuntimeException submissionFailure) {
+            boolean finishBeforeStart = task.rejectBeforeStart();
+            if (registered) {
+                sessionRegistry.unregisterIfOwner(session);
+            }
+            task.resolveSubmission();
+            if (finishBeforeStart) {
+                task.finishBeforeStart();
+            }
+            if (!session.getStatus().isTerminal()) {
+                session.markFailed(submissionFailure);
+            }
+            throw new IllegalStateException("Session submission was rejected", submissionFailure);
+        } finally {
+            task.resolveSubmission();
         }
     }
 
@@ -280,62 +317,172 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdown() throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT_SECONDS);
+        List<SessionTask> tasks;
         synchronized (admissionLock) {
-            if (!shutdown) {
-                shutdown = true;
-                executorService.shutdown();
-            }
+            shutdown = true;
+            tasks = new ArrayList<>(executionTasks.values());
+        }
+        executorService.shutdown();
+
+        if (hasCurrentTaskThread(tasks)) {
+            LOG.info("Shutdown initiated from a session task; finalization is deferred until task cleanup completes");
+            return;
         }
 
-        boolean terminated = executorService.awaitTermination(
-            SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        if (!terminated) {
-            markActiveTasksUnresponsive(false);
-            throw new IllegalStateException(
-                "WebHarvestService did not terminate within " + SHUTDOWN_TIMEOUT_SECONDS
-                    + " seconds; active workers remain unresponsive");
+        if (!awaitPendingSubmissions(deadline)) {
+            logIncompleteShutdown("submission dispatch", tasks);
+            throw new IllegalStateException("WebHarvestService shutdown deadline expired with "
+                + getPendingSubmissionCount() + " accepted submission(s) not yet dispatched");
         }
-        timeoutScheduler.shutdownNow();
-        LOG.info("WebHarvestService shut down after all accepted tasks exited");
+
+        boolean executorTerminated = executorService.awaitTermination(
+            remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        boolean taskRunsCompleted = executorTerminated && awaitTaskRunsComplete(tasks, deadline, false);
+        if (!executorTerminated || !taskRunsCompleted) {
+            markTasksUnresponsive(tasks, false, false);
+            logIncompleteShutdown("worker exit or resource drain", tasks);
+            throw new IllegalStateException("WebHarvestService did not observe all accepted worker and "
+                + "resource-drain paths complete within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
+        }
+
+        finalizeTimeoutSchedulerIfQuiescent();
+        LOG.info("WebHarvestService shut down after all accepted tasks and resource-drain paths completed");
     }
 
     @Override
     public void shutdownNow() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+        List<SessionTask> tasks;
         synchronized (admissionLock) {
             shutdown = true;
-            for (SessionTask task : executionTasks.values()) {
-                task.session.cancel();
-                task.requestKill();
+            tasks = new ArrayList<>(executionTasks.values());
+        }
+
+        // Cancellation callbacks and resource abort actions may be user code.
+        // Fan them out without holding admissionLock, before waiting for submitters.
+        for (SessionTask task : tasks) {
+            task.session.cancel();
+            task.requestKill();
+        }
+
+        List<Runnable> neverStarted = executorService.shutdownNow();
+        for (Runnable pending : neverStarted) {
+            for (SessionTask task : tasks) {
+                task.markRemovedBeforeStart(pending);
             }
-            List<Runnable> neverStarted = executorService.shutdownNow();
-            for (Runnable pending : neverStarted) {
-                for (SessionTask task : executionTasks.values()) {
-                    task.markRemovedBeforeStart(pending);
+        }
+
+        boolean interrupted = false;
+        boolean submissionsSettled = false;
+        boolean executorTerminated = false;
+        boolean taskRunsCompleted = false;
+        try {
+            submissionsSettled = awaitPendingSubmissions(deadline);
+            if (submissionsSettled) {
+                executorTerminated = executorService.awaitTermination(
+                    remainingNanos(deadline), TimeUnit.NANOSECONDS);
+                if (executorTerminated) {
+                    taskRunsCompleted = awaitTaskRunsComplete(tasks, deadline, true);
                 }
             }
+        } catch (InterruptedException interruption) {
+            interrupted = true;
         }
 
-        boolean terminated;
-        try {
-            terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
+        if (!submissionsSettled || !executorTerminated || !taskRunsCompleted) {
+            markTasksUnresponsive(tasks, true, true);
+            logIncompleteShutdown(!submissionsSettled ? "submission dispatch"
+                : !executorTerminated ? "executor termination" : "worker exit or resource drain", tasks);
+        } else {
+            finalizeTimeoutSchedulerIfQuiescent();
+        }
+
+        if (interrupted) {
             Thread.currentThread().interrupt();
-            terminated = false;
+            LOG.warn("shutdownNow was interrupted; shutdown remains in progress");
         }
-        if (!terminated) {
-            markActiveTasksUnresponsive(true);
-        }
-        timeoutScheduler.shutdownNow();
     }
 
-    private void markActiveTasksUnresponsive(boolean killRequested) {
-        for (SessionTask task : executionTasks.values()) {
+    private boolean awaitPendingSubmissions(long deadline) throws InterruptedException {
+        synchronized (admissionLock) {
+            while (pendingSubmissions > 0) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) {
+                    return false;
+                }
+                long millis = TimeUnit.NANOSECONDS.toMillis(remaining);
+                int nanos = (int) (remaining - TimeUnit.MILLISECONDS.toNanos(millis));
+                admissionLock.wait(millis, nanos);
+            }
+            return true;
+        }
+    }
+
+    private int getPendingSubmissionCount() {
+        synchronized (admissionLock) {
+            return pendingSubmissions;
+        }
+    }
+
+    private static long remainingNanos(long deadline) {
+        return Math.max(0L, deadline - System.nanoTime());
+    }
+
+    private boolean awaitTaskRunsComplete(List<SessionTask> tasks, long deadline,
+                                          boolean skipCurrentTaskThread) throws InterruptedException {
+        for (SessionTask task : tasks) {
+            if (skipCurrentTaskThread && task.isCurrentTaskThread()) {
+                continue;
+            }
+            long remaining = remainingNanos(deadline);
+            if (remaining == 0 || !task.awaitTaskCompletion(remaining, TimeUnit.NANOSECONDS)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasCurrentTaskThread(List<SessionTask> tasks) {
+        for (SessionTask task : tasks) {
+            if (task.isCurrentTaskThread()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void markTasksUnresponsive(List<SessionTask> tasks,
+                                       boolean killRequested, boolean skipCurrentTaskThread) {
+        for (SessionTask task : tasks) {
+            if ((skipCurrentTaskThread && task.isCurrentTaskThread()) || task.hasWorkerExited()) {
+                continue;
+            }
             if (killRequested) {
                 task.session.markKillRequested();
             }
             task.session.markExecutionUnresponsive();
             if (killRequested) {
                 task.session.markKillUnresponsive();
+            }
+        }
+    }
+
+    private void logIncompleteShutdown(String stage, List<SessionTask> tasks) {
+        LOG.warn("WebHarvestService shutdown incomplete at stage {}; pending submissions: {}",
+            stage, getPendingSubmissionCount());
+        for (SessionTask task : tasks) {
+            if (!task.isTaskCompleted()) {
+                LOG.warn("Session {} remains in service cleanup (worker exited: {}, execution state: {})",
+                    task.session.getSessionId(), task.hasWorkerExited(), task.session.getExecutionState());
+            }
+        }
+    }
+
+    private void finalizeTimeoutSchedulerIfQuiescent() {
+        synchronized (admissionLock) {
+            if (shutdown && pendingSubmissions == 0 && executionTasks.isEmpty()) {
+                timeoutScheduler.shutdownNow();
             }
         }
     }
