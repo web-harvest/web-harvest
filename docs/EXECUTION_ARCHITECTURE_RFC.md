@@ -173,6 +173,20 @@ sequenceDiagram
 ```
 
 The aggregate write outcome must not imply a global transaction. A commit whose acknowledgement is lost may have an unknown outcome; retry safety requires an adapter/application idempotency contract.
+
+## 5.4 Parent/child task lifecycle
+
+The current service observes the session task's exit and only then calls `markOwnerQuiescentAndDrain`. Partition workers introduce a task tree beneath that session task. The root task must not publish session-owner quiescence while any admitted child worker can still use a session-owned resource.
+
+The runtime contract must therefore track every admitted child to a terminal worker-exit fact, including queued tasks that are positively removed before start. On cancellation:
+1. stop admitting new child work;
+2. request cancellation/adapter abort for every admitted child;
+3. retain each child's resource leases until that child actually exits;
+4. observe all child exits (or confirmed pre-start removal);
+5. only then allow the root session task to publish owner quiescence and drain session resources.
+
+The parent must not block a worker from the same bounded pool while waiting for children. Completion coordination must be starvation-safe. A child task identity is useful for partition-level metrics and outcomes, but it must not be confused with or replace the immutable session `ExecutionOwner` used by the current resource ledger.
+
 ## 6. Adapter responsibilities
 
 The Core contract owns generic work lifecycle and policy. Adapters own technology-specific planning and execution.
