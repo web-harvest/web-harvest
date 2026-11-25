@@ -407,7 +407,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 return false;
             }
             long remainingMillis = Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos));
-            if (!task.session.awaitExecutionCompletion(remainingMillis)) {
+            if (!task.awaitTaskCompletion(remainingMillis)) {
                 return false;
             }
         }
@@ -448,6 +448,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private final SessionOptions options;
         private final LedgerExecutionResourceCoordinator resourceCoordinator;
         private final AtomicBoolean submissionResolved = new AtomicBoolean();
+        private final CountDownLatch taskCompletion = new CountDownLatch(1);
         private Future<?> future;
         private ScheduledFuture<?> escalationFuture;
         private Thread worker;
@@ -487,24 +488,34 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
 
             if (skipExecution) {
-                executionTasks.remove(session.getSessionId(), this);
-                session.markExecutionExited();
-                drainResources(Duration.ZERO);
+                try {
+                    executionTasks.remove(session.getSessionId(), this);
+                    session.markExecutionExited();
+                    drainResources(Duration.ZERO);
+                } finally {
+                    taskCompletion.countDown();
+                }
                 return;
             }
 
             try {
                 executeSession(this);
             } finally {
-                synchronized (this) {
-                    worker = null;
-                    exited = true;
-                    cancelEscalation();
+                try {
+                    synchronized (this) {
+                        worker = null;
+                        exited = true;
+                        cancelEscalation();
+                    }
+                    executionTasks.remove(session.getSessionId(), this);
+                    // Publish owner quiescence only after task bookkeeping and lock release.
+                    session.markExecutionExited();
+                    drainResources(RESOURCE_DRAIN_BUDGET);
+                } finally {
+                    // The executor may not track caller-runs work; service shutdown
+                    // waits for this signal, which includes resource-drain callbacks.
+                    taskCompletion.countDown();
                 }
-                executionTasks.remove(session.getSessionId(), this);
-                // Publish quiescence only after task bookkeeping and lock release.
-                session.markExecutionExited();
-                drainResources(RESOURCE_DRAIN_BUDGET);
             }
         }
 
@@ -531,6 +542,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         private synchronized boolean isCurrentWorker() {
             return !exited && worker == Thread.currentThread();
+        }
+
+        private boolean awaitTaskCompletion(long timeoutMillis) throws InterruptedException {
+            return taskCompletion.await(timeoutMillis, TimeUnit.MILLISECONDS);
         }
 
         private void requestCancellation() {
@@ -722,9 +737,13 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             exited = true;
             cancelEscalation();
             executionTasks.remove(session.getSessionId(), this);
-            // The executor has confirmed that this task will never be entered.
-            session.markExecutionExited();
-            drainResources(Duration.ZERO);
+            try {
+                // The executor has confirmed that this task will never be entered.
+                session.markExecutionExited();
+                drainResources(Duration.ZERO);
+            } finally {
+                taskCompletion.countDown();
+            }
         }
 
         private void drainResources(Duration budget) {
