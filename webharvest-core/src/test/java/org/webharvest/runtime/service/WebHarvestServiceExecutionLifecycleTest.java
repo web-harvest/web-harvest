@@ -33,6 +33,7 @@
 
 package org.webharvest.runtime.service;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import org.mockito.Mockito;
@@ -995,6 +996,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         private final CountDownLatch release = new CountDownLatch(1);
 
         @Subscribe
+        @AllowConcurrentEvents
         public void onCreated(SessionCreatedEvent event) {
             if (first.compareAndSet(true, false)) {
                 entered.countDown();
