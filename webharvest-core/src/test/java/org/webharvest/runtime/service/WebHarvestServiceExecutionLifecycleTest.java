@@ -60,6 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -737,6 +738,154 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownFromSessionWorkerDefersFinalization() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        GracefulShutdownFromStartedListener listener = new GracefulShutdownFromStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+        listener.service = service;
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS));
+            assertTrue(session.awaitCompletion(5000));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertTrue(service.isShutdown());
+            service.shutdown();
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testForcedShutdownFromSessionWorkerDefersFinalization() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        ForcedShutdownFromStartedListener listener = new ForcedShutdownFromStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+        listener.service = service;
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertTrue(service.isShutdown());
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownInterruptionPropagatesAndReservationStillResolves()
+            throws InterruptedException {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<ScraperSession> accepted = new AtomicReference<>();
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+
+        Thread submitter = new Thread(() -> {
+            try {
+                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "interruptible-blocked-submission");
+        Thread shutdownThread = new Thread(() -> {
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            }
+        }, "interrupted-graceful-shutdown");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            shutdownThread.start();
+            awaitTimedWaiting(shutdownThread);
+            shutdownThread.interrupt();
+            shutdownThread.join(5000);
+            assertFalse(shutdownThread.isAlive());
+            assertTrue(shutdownFailure.get() instanceof InterruptedException,
+                "Graceful shutdown must propagate interruption instead of continuing to wait");
+
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertNull(submitFailure.get());
+            assertNotNull(accepted.get());
+            assertTrue(accepted.get().awaitCompletion(5000));
+            service.shutdown();
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowInterruptionRestoresInterruptAndResolvesReservation()
+            throws InterruptedException {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        AtomicBoolean interruptRestored = new AtomicBoolean();
+
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "forced-interruptible-submission");
+        Thread shutdownThread = new Thread(() -> {
+            service.shutdownNow();
+            interruptRestored.set(Thread.currentThread().isInterrupted());
+        }, "interrupted-forced-shutdown");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            shutdownThread.start();
+            awaitTimedWaiting(shutdownThread);
+            shutdownThread.interrupt();
+            shutdownThread.join(5000);
+            assertFalse(shutdownThread.isAlive());
+            assertTrue(interruptRestored.get(),
+                "shutdownNow must restore the caller's interrupt flag");
+
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertTrue(submitFailure.get() instanceof IllegalStateException);
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowDoesNotMarkWorkerUnresponsiveWhenOnlyResourceDrainIsBlocked()
             throws Exception {
         EventBus eventBus = new EventBus();
@@ -837,6 +986,45 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             service.shutdownNow();
+        }
+    }
+
+    private static void awaitTimedWaiting(Thread thread) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (thread.getState() != Thread.State.TIMED_WAITING && System.nanoTime() < deadline) {
+            Thread.yield();
+        }
+        assertEquals(thread.getState(), Thread.State.TIMED_WAITING,
+            "The shutdown thread should be waiting on the pending-submission condition");
+    }
+
+    private static class GracefulShutdownFromStartedListener {
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private volatile WebHarvestServiceImpl service;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                service.shutdown();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } finally {
+                shutdownReturned.countDown();
+            }
+        }
+    }
+
+    private static class ForcedShutdownFromStartedListener {
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private volatile WebHarvestServiceImpl service;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                service.shutdownNow();
+            } finally {
+                shutdownReturned.countDown();
+            }
         }
     }
 
