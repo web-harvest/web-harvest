@@ -48,9 +48,11 @@ import org.webharvest.runtime.session.events.SessionCreatedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -526,6 +528,58 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testSessionCompletedSubscriberRunsOutsideSessionTaskMonitor() throws Exception {
+        EventBus eventBus = new EventBus();
+        BlockingCompletedListener listener = new BlockingCompletedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "inline-session-completion");
+
+        try {
+            submitter.start();
+            assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
+
+            Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
+            tasksField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> tasks = (java.util.Map<String, Object>) tasksField.get(service);
+            Object task = tasks.get(listener.session.getSessionId());
+            assertNotNull(task, "The completing task remains registered during event delivery");
+
+            CountDownLatch taskMonitorAcquired = new CountDownLatch(1);
+            Thread monitorProbe = new Thread(() -> {
+                synchronized (task) {
+                    taskMonitorAcquired.countDown();
+                }
+            }, "session-task-monitor-probe");
+            monitorProbe.start();
+
+            assertTrue(taskMonitorAcquired.await(5, TimeUnit.SECONDS),
+                "SessionCompletedEvent subscribers must not run while holding the SessionTask monitor");
+
+            listener.release.countDown();
+            submitter.join(5000);
+            monitorProbe.join(5000);
+            assertFalse(submitter.isAlive());
+            assertFalse(monitorProbe.isAlive());
+            assertNull(submitFailure.get());
+            assertEquals(listener.session.getStatus(), SessionStatus.COMPLETED);
+        } finally {
+            listener.release.countDown();
+            submitter.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testGracefulShutdownWaitsForInlineWorkerExitAfterExecutorTerminates() throws InterruptedException {
         EventBus eventBus = new EventBus();
         FirstStartedBlockingListener listener = new FirstStartedBlockingListener();
@@ -770,6 +824,23 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             service.shutdownNow();
+        }
+    }
+
+    private static class BlockingCompletedListener {
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+        private volatile ScraperSession session;
+
+        @Subscribe
+        public void onCompleted(org.webharvest.runtime.session.events.SessionCompletedEvent event) {
+            session = event.getSession();
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
