@@ -54,12 +54,13 @@ public class WorkExecutionContractTest {
 
     @Test(groups = {"unit", "execution"})
     public void testWorkResultReportsPartialSuccessWithoutImplyingAtomicity() {
-        WorkResult<String> result = new WorkResult<>(Arrays.asList(
+        WorkResult<String> result = new WorkResult<>("write-1", Arrays.asList(
             new PartitionOutcome<>("p1", PartitionOutcome.Status.SUCCEEDED, "written-1", null),
             new PartitionOutcome<>("p2", PartitionOutcome.Status.FAILED, null,
                 new IllegalStateException("partition failed")),
             new PartitionOutcome<>("p3", PartitionOutcome.Status.NOT_STARTED, null, null)));
 
+        assertEquals(result.getPlanId(), "write-1");
         assertEquals(result.getStatus(), WorkResult.Status.PARTIALLY_SUCCEEDED);
         assertEquals(result.getOutcomes().size(), 3);
         assertEquals(result.getOutcomes().get(0).getResult(), "written-1");
