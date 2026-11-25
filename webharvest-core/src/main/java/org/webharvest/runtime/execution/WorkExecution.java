@@ -16,6 +16,9 @@ public interface WorkExecution<R> {
      */
     boolean requestCancellation();
 
+    /** Returns the admitted concurrency ceiling after runtime/session limits are applied. */
+    int getEffectiveMaxConcurrentPartitions();
+
     /**
      * Completes only after every admitted worker has exited or queued work has
      * been positively removed before start. It does not mean resource close succeeded.
