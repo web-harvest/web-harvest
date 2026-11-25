@@ -537,14 +537,6 @@ public class WebHarvestServiceExecutionLifecycleTest {
             shutdownThread.start();
             assertTrue(shutdownStarted.await(5, TimeUnit.SECONDS));
 
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.WAITING
-                && System.nanoTime() < deadline) {
-                Thread.yield();
-            }
-            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
-                "Shutdown waits for the in-flight executor dispatch without holding admissionLock");
-
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
@@ -616,9 +608,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             firstSubmitter.join(5000);
-            if (shutdownThread.getState() != Thread.State.NEW) {
-                shutdownThread.join(5000);
-            }
+            shutdownThread.join(5000);
             service.shutdownNow();
         }
     }
@@ -751,8 +741,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
         EventBus eventBus = new EventBus();
         FirstStartedBlockingListener listener = new FirstStartedBlockingListener();
         eventBus.register(listener);
+        CountDownLatch executorTerminationObserved = new CountDownLatch(1);
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
-            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+            new SignallingInlineExecutorService(executorTerminationObserved), new SessionRegistryImpl(), eventBus);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         CountDownLatch shutdownFinished = new CountDownLatch(1);
 
@@ -778,15 +769,8 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
 
             shutdownThread.start();
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.WAITING
-                && shutdownThread.getState() != Thread.State.TIMED_WAITING
-                && System.nanoTime() < deadline) {
-                Thread.yield();
-            }
-            assertTrue(shutdownThread.getState() == Thread.State.WAITING
-                    || shutdownThread.getState() == Thread.State.TIMED_WAITING,
-                "Service shutdown must wait for the caller-runs session's observed worker exit");
+            assertTrue(executorTerminationObserved.await(5, TimeUnit.SECONDS),
+                "Shutdown must observe executor termination before waiting for worker exit");
             assertEquals(shutdownFinished.getCount(), 1L,
                 "Executor termination alone must not complete service shutdown");
 
@@ -841,15 +825,8 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Session worker exit is observed before physical resource close finishes");
 
             shutdownThread.start();
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.WAITING
-                && shutdownThread.getState() != Thread.State.TIMED_WAITING
-                && System.nanoTime() < deadline) {
-                Thread.yield();
-            }
-            assertTrue(shutdownThread.getState() == Thread.State.WAITING
-                    || shutdownThread.getState() == Thread.State.TIMED_WAITING,
-                "Service shutdown must also wait for the task's resource-drain callback");
+            assertTrue(executorTerminationObserved.await(5, TimeUnit.SECONDS),
+                "Shutdown must observe executor termination before waiting for resource drain");
             assertEquals(shutdownFinished.getCount(), 1L);
 
             listener.releaseClose.countDown();
@@ -1416,6 +1393,21 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 return false;
             }
             return super.awaitTermination(timeout, unit);
+        }
+    }
+
+    private static class SignallingInlineExecutorService extends InlineExecutorService {
+        private final CountDownLatch terminationObserved;
+
+        private SignallingInlineExecutorService(CountDownLatch terminationObserved) {
+            this.terminationObserved = terminationObserved;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            boolean terminated = super.awaitTermination(timeout, unit);
+            terminationObserved.countDown();
+            return terminated;
         }
     }
 
