@@ -4,10 +4,8 @@
  */
 package org.webharvest.runtime.execution;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Immutable aggregate of exactly one terminal outcome per partition, in original plan order.
@@ -26,24 +24,31 @@ public final class WorkResult<R> {
     private final Status status;
     private final List<PartitionOutcome<R>> outcomes;
 
-    public WorkResult(String planId, List<PartitionOutcome<R>> outcomes) {
-        if (planId == null || planId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Plan ID cannot be null or empty");
-        }
+    /**
+     * Creates a result whose outcomes must exactly match the plan's partition IDs and order.
+     *
+     * @param plan the immutable plan that was admitted
+     * @param outcomes exactly one terminal outcome for each plan partition, in plan order
+     */
+    public WorkResult(WorkPlan<?> plan, List<PartitionOutcome<R>> outcomes) {
+        Objects.requireNonNull(plan, "Work plan cannot be null");
         Objects.requireNonNull(outcomes, "Partition outcomes cannot be null");
-        if (outcomes.isEmpty()) {
-            throw new IllegalArgumentException("A work result must contain partition outcomes");
+        if (outcomes.size() != plan.getPartitionCount()) {
+            throw new IllegalArgumentException(
+                "Expected " + plan.getPartitionCount() + " partition outcomes but received " + outcomes.size());
         }
+
         List<PartitionOutcome<R>> snapshot = List.copyOf(outcomes);
         boolean succeeded = false;
         boolean unsuccessful = false;
         boolean failed = false;
-        Set<String> partitionIds = new HashSet<>();
-        for (PartitionOutcome<R> outcome : snapshot) {
-            Objects.requireNonNull(outcome, "Partition outcome cannot be null");
-            if (!partitionIds.add(outcome.getPartitionId())) {
+        for (int i = 0; i < snapshot.size(); i++) {
+            PartitionOutcome<R> outcome = Objects.requireNonNull(snapshot.get(i), "Partition outcome cannot be null");
+            String expectedPartitionId = plan.getPartitions().get(i).getPartitionId();
+            if (!expectedPartitionId.equals(outcome.getPartitionId())) {
                 throw new IllegalArgumentException(
-                    "Duplicate partition outcome: " + outcome.getPartitionId());
+                    "Outcome at index " + i + " must match plan partition " + expectedPartitionId
+                        + " but was " + outcome.getPartitionId());
             }
             if (outcome.getStatus() == PartitionOutcome.Status.SUCCEEDED) {
                 succeeded = true;
@@ -62,7 +67,7 @@ public final class WorkResult<R> {
         } else {
             status = Status.CANCELLED;
         }
-        this.planId = planId;
+        this.planId = plan.getPlanId();
         this.outcomes = snapshot;
     }
 
