@@ -8,7 +8,10 @@ import org.testng.annotations.Test;
 import org.webharvest.runtime.session.ExecutionOwner;
 
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
 
@@ -109,4 +112,56 @@ public class LedgerExecutionResourceContextTest {
             () -> { new LedgerExecutionResourceContext(ledger,
                 new ExecutionOwner("runtime-b", "session-b", 1)); });
     }
+    @Test(groups = {"unit", "runtime"})
+    public void requestTerminationClosesFacadeLeaseAdmissionBeforeAbortCallbacks() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        CountDownLatch firstAbortEntered = new CountDownLatch(1);
+        CountDownLatch releaseFirstAbort = new CountDownLatch(1);
+        AtomicReference<Throwable> terminationFailure = new AtomicReference<>();
+
+        context.registerSessionResource("first", () -> {
+            firstAbortEntered.countDown();
+            if (!releaseFirstAbort.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to release the first abort callback");
+            }
+        }, null);
+        ExecutionResourceAccess.ResourceHandle second = context.registerSessionResource("second", null, null);
+
+        Thread terminator = new Thread(() -> {
+            try {
+                context.requestTermination();
+            } catch (Throwable failure) {
+                terminationFailure.set(failure);
+            }
+        }, "resource-termination-test");
+
+        terminator.start();
+        try {
+            assertTrue(firstAbortEntered.await(5, TimeUnit.SECONDS),
+                "The first abort callback must block before the second lease admission is attempted");
+
+            ExecutionResourceAccess.Lease unexpectedLease = null;
+            try {
+                unexpectedLease = second.acquire();
+            } catch (IllegalStateException expected) {
+                // Facade-level admission is already closed, even though the second
+                // registration has not yet received its individual close request.
+            }
+            if (unexpectedLease != null) {
+                unexpectedLease.close();
+                fail("A later registration must not admit a lease during termination fan-out");
+            }
+        } finally {
+            releaseFirstAbort.countDown();
+            terminator.join(5000);
+        }
+
+        assertFalse(terminator.isAlive(), "Termination should finish after the blocked callback is released");
+        assertNull(terminationFailure.get(), "Termination should not fail");
+        assertEquals(second.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(ledger.size(), 0);
+    }
+
 }
