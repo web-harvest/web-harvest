@@ -26,7 +26,8 @@ public final class CoreTestInvocationTraceListener implements IInvokedMethodList
 
     private void trace(String phase, IInvokedMethod method, ITestResult result) {
         String kind = method.isTestMethod() ? "TEST" : "CONFIG";
-        String qualifiedName = method.getTestMethod().getQualifiedName();
+        String qualifiedName = method.getTestMethod().getTestClass().getName()
+            + "#" + method.getTestMethod().getMethodName();
         System.err.println("[WH-TEST-TRACE] " + phase + " " + kind + " " + qualifiedName
             + " status=" + result.getStatus()
             + " thread=" + Thread.currentThread().getName());
