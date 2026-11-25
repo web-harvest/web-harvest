@@ -86,6 +86,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
     private int pendingSubmissions;
+    private boolean executorShutdownInitiated;
     private volatile boolean shutdown;
 
     /**
@@ -190,8 +191,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             // Reserve under admissionLock, but call arbitrary executor code outside it.
             // The wrapper resolves the reservation even for direct/CallerRuns executors.
             Future<?> future = executorService.submit(() -> {
-                task.resolveSubmission();
-                task.run();
+                try {
+                    task.run();
+                } finally {
+                    task.resolveSubmission();
+                }
             });
             boolean finishBeforeStart = task.attachFuture(future);
             task.resolveSubmission();
@@ -323,7 +327,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             shutdown = true;
             tasks = new ArrayList<>(executionTasks.values());
         }
-        executorService.shutdown();
+        shutdownExecutorWhenReady();
 
         if (hasCurrentTaskThread(tasks)) {
             LOG.info("Shutdown initiated from a session task; finalization is deferred until task cleanup completes");
@@ -335,6 +339,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             throw new IllegalStateException("WebHarvestService shutdown deadline expired with "
                 + getPendingSubmissionCount() + " accepted submission(s) not yet dispatched");
         }
+        shutdownExecutorWhenReady();
 
         boolean executorTerminated = executorService.awaitTermination(
             remainingNanos(deadline), TimeUnit.NANOSECONDS);
@@ -356,6 +361,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         List<SessionTask> tasks;
         synchronized (admissionLock) {
             shutdown = true;
+            executorShutdownInitiated = true;
             tasks = new ArrayList<>(executionTasks.values());
         }
 
@@ -491,6 +497,19 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
+    private void shutdownExecutorWhenReady() {
+        boolean initiateShutdown = false;
+        synchronized (admissionLock) {
+            if (shutdown && pendingSubmissions == 0 && !executorShutdownInitiated) {
+                executorShutdownInitiated = true;
+                initiateShutdown = true;
+            }
+        }
+        if (initiateShutdown) {
+            executorService.shutdown();
+        }
+    }
+
     private void finalizeTimeoutSchedulerIfQuiescent() {
         synchronized (admissionLock) {
             if (shutdown && pendingSubmissions == 0 && executionTasks.isEmpty()) {
@@ -612,6 +631,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     pendingSubmissions--;
                     admissionLock.notifyAll();
                 }
+                shutdownExecutorWhenReady();
                 finalizeTimeoutSchedulerIfQuiescent();
             }
         }
