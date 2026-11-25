@@ -7,7 +7,9 @@ package org.webharvest.runtime.execution;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.session.ExecutionOwner;
 
-/** Worker-scoped immutable execution metadata and cancellation/resource capabilities. */
+/**
+ * Worker-scoped immutable execution metadata and cancellation/resource capabilities.
+ */
 public interface PartitionContext {
 
     /** Returns the stable plan identifier. */
@@ -19,7 +21,15 @@ public interface PartitionContext {
     /** Returns the canonical session owner shared by all partitions of this plan. */
     ExecutionOwner getOwner();
 
-    /** Returns resource access bound to {@link #getOwner()}. */
+    /**
+     * Returns the owner-bound resource facade shared by partitions of this execution.
+     *
+     * <p>Concurrent partitions may call this facade concurrently; implementations used
+     * for partition execution must support concurrent calls. Adapters must use unique
+     * resource IDs. Use operation resources for partition-local lifetimes. Session
+     * resources are owner-scoped and may be shared across partitions; an individual
+     * partition must not treat them as partition-local or close them on its own exit.</p>
+     */
     ExecutionResourceAccess getResourceAccess();
 
     /** Returns whether cancellation or fail-fast termination has been requested. */
