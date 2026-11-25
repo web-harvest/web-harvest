@@ -738,6 +738,105 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testWorkerMarksExecutionExitedWhenSessionTurnsTerminalBeforeEntry()
+            throws InterruptedException {
+        ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session)
+                .markFailed(new IllegalStateException("terminal transition before worker entry"));
+
+            releaseBlocker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            releaseBlocker.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testSuccessfulCompletionGateRejectsExternallyTerminalSession() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            IllegalStateException externalFailure =
+                new IllegalStateException("session terminated while scraper was entering");
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session).markFailed(externalFailure);
+            listener.release.countDown();
+
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertSame(session.getError(), externalFailure);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testPendingSubmissionWaitHonorsExpiredMonotonicDeadline() throws Exception {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "deadline-expired-submission");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            java.lang.reflect.Method awaitPending = WebHarvestServiceImpl.class
+                .getDeclaredMethod("awaitPendingSubmissions", long.class);
+            awaitPending.setAccessible(true);
+            Object result = awaitPending.invoke(service, System.nanoTime() - 1L);
+            assertEquals(result, Boolean.FALSE,
+                "An expired monotonic deadline must not wait for the blocked executor call");
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertNull(submitFailure.get());
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testGracefulShutdownFromSessionWorkerDefersFinalization() throws InterruptedException {
         EventBus eventBus = new EventBus();
         GracefulShutdownFromStartedListener listener = new GracefulShutdownFromStartedListener();
