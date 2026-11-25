@@ -308,13 +308,22 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdown() throws InterruptedException {
+        boolean interrupted = false;
         synchronized (admissionLock) {
             shutdown = true;
             while (pendingSubmissions > 0) {
-                admissionLock.wait();
+                try {
+                    admissionLock.wait();
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
             }
         }
         executorService.shutdown();
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Interrupted while waiting for accepted sessions to reach the executor");
+        }
 
         boolean terminated = executorService.awaitTermination(
             SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -330,10 +339,23 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdownNow() {
-        List<SessionTask> tasks = closeAdmissionAndSnapshotTasks();
+        boolean interrupted = false;
+        List<SessionTask> tasks;
+        synchronized (admissionLock) {
+            shutdown = true;
+            while (pendingSubmissions > 0) {
+                try {
+                    admissionLock.wait();
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+            tasks = new ArrayList<>(executionTasks.values());
+        }
 
         // Cancellation invokes resource abort actions and synchronous EventBus
-        // subscribers. Never run those callbacks while holding admissionLock.
+        // subscribers. Never run those callbacks while holding admissionLock
+        // or while carrying an interrupt flag from the admission wait.
         for (SessionTask task : tasks) {
             task.session.cancel();
             task.requestKill();
@@ -348,34 +370,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean terminated;
         try {
             terminated = executorService.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
+        } catch (InterruptedException interruption) {
+            interrupted = true;
             terminated = false;
         }
         if (!terminated) {
             markActiveTasksUnresponsive(true);
         }
         timeoutScheduler.shutdownNow();
-    }
-
-    private List<SessionTask> closeAdmissionAndSnapshotTasks() {
-        boolean interrupted = false;
-        List<SessionTask> tasks;
-        synchronized (admissionLock) {
-            shutdown = true;
-            while (pendingSubmissions > 0) {
-                try {
-                    admissionLock.wait();
-                } catch (InterruptedException interruption) {
-                    interrupted = true;
-                }
-            }
-            tasks = new ArrayList<>(executionTasks.values());
-        }
         if (interrupted) {
             Thread.currentThread().interrupt();
         }
-        return tasks;
     }
 
     private void markActiveTasksUnresponsive(boolean killRequested) {
