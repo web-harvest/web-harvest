@@ -52,10 +52,12 @@ import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -83,6 +85,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId);
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
+    private int pendingSubmissions;
     private volatile boolean shutdown;
 
     /**
@@ -146,38 +149,63 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         SessionOptions opts = options != null ? options : SessionOptions.DEFAULT;
         String clientId = client != null ? client.getClientId() : null;
 
+        String sessionId = UUID.randomUUID().toString();
+        ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
+
+        // Session construction publishes SessionCreatedEvent synchronously.
+        // Keep subscriber callbacks outside admissionLock.
+        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
+        LedgerExecutionResourceCoordinator resourceCoordinator =
+            new LedgerExecutionResourceCoordinator(resourceLedger, owner);
+        SessionTask task = new SessionTask(session, opts, resourceCoordinator);
+        session.attachCancellationHandler(task::requestCancellation);
+
+        boolean registered = false;
+        RuntimeException admissionFailure = null;
         synchronized (admissionLock) {
             if (shutdown) {
-                throw new IllegalStateException("Service is shut down");
-            }
-
-            String sessionId = UUID.randomUUID().toString();
-            ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
-            ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
-            LedgerExecutionResourceCoordinator resourceCoordinator =
-                new LedgerExecutionResourceCoordinator(resourceLedger, owner);
-            SessionTask task = new SessionTask(session, opts, resourceCoordinator);
-            session.attachCancellationHandler(task::requestCancellation);
-            session.markExecutionQueued();
-
-            boolean registered = false;
-            try {
-                sessionRegistry.register(session);
-                registered = true;
-                executionTasks.put(sessionId, task);
-                Future<?> future = executorService.submit(task);
-                task.attachFuture(future);
-                LOG.info("Accepted session {} for client {}", sessionId, clientId);
-                return session;
-            } catch (RuntimeException submissionFailure) {
-                executionTasks.remove(sessionId, task);
-                task.rejectBeforeStart();
-                if (registered) {
-                    sessionRegistry.unregisterIfOwner(session);
+                admissionFailure = new IllegalStateException("Service is shut down");
+            } else {
+                try {
+                    session.markExecutionQueued();
+                    sessionRegistry.register(session);
+                    registered = true;
+                    executionTasks.put(sessionId, task);
+                    pendingSubmissions++;
+                } catch (RuntimeException failure) {
+                    admissionFailure = failure;
                 }
-                session.markFailed(submissionFailure);
-                throw new IllegalStateException("Session submission was rejected", submissionFailure);
             }
+        }
+
+        if (admissionFailure != null) {
+            task.rejectBeforeStart();
+            session.markFailed(admissionFailure);
+            throw admissionFailure;
+        }
+
+        try {
+            // Resolve the in-flight submission reservation when the executor
+            // actually enters the wrapper (including direct/CallerRuns executors),
+            // or when submit returns for a queued task. This lets shutdown wait
+            // for dispatch without holding admissionLock across user execution.
+            Future<?> future = executorService.submit(() -> {
+                task.resolveSubmission();
+                task.run();
+            });
+            task.attachFuture(future);
+            LOG.info("Accepted session {} for client {}", sessionId, clientId);
+            return session;
+        } catch (RuntimeException submissionFailure) {
+            executionTasks.remove(sessionId, task);
+            task.rejectBeforeStart();
+            if (registered) {
+                sessionRegistry.unregisterIfOwner(session);
+            }
+            session.markFailed(submissionFailure);
+            throw new IllegalStateException("Session submission was rejected", submissionFailure);
+        } finally {
+            task.resolveSubmission();
         }
     }
 
@@ -281,11 +309,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     @Override
     public void shutdown() throws InterruptedException {
         synchronized (admissionLock) {
-            if (!shutdown) {
-                shutdown = true;
-                executorService.shutdown();
+            shutdown = true;
+            while (pendingSubmissions > 0) {
+                admissionLock.wait();
             }
         }
+        executorService.shutdown();
 
         boolean terminated = executorService.awaitTermination(
             SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -301,17 +330,18 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     @Override
     public void shutdownNow() {
-        synchronized (admissionLock) {
-            shutdown = true;
-            for (SessionTask task : executionTasks.values()) {
-                task.session.cancel();
-                task.requestKill();
-            }
-            List<Runnable> neverStarted = executorService.shutdownNow();
-            for (Runnable pending : neverStarted) {
-                for (SessionTask task : executionTasks.values()) {
-                    task.markRemovedBeforeStart(pending);
-                }
+        List<SessionTask> tasks = closeAdmissionAndSnapshotTasks();
+
+        // Cancellation invokes resource abort actions and synchronous EventBus
+        // subscribers. Never run those callbacks while holding admissionLock.
+        for (SessionTask task : tasks) {
+            task.session.cancel();
+            task.requestKill();
+        }
+        List<Runnable> neverStarted = executorService.shutdownNow();
+        for (Runnable pending : neverStarted) {
+            for (SessionTask task : tasks) {
+                task.markRemovedBeforeStart(pending);
             }
         }
 
@@ -326,6 +356,26 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             markActiveTasksUnresponsive(true);
         }
         timeoutScheduler.shutdownNow();
+    }
+
+    private List<SessionTask> closeAdmissionAndSnapshotTasks() {
+        boolean interrupted = false;
+        List<SessionTask> tasks;
+        synchronized (admissionLock) {
+            shutdown = true;
+            while (pendingSubmissions > 0) {
+                try {
+                    admissionLock.wait();
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+            tasks = new ArrayList<>(executionTasks.values());
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        return tasks;
     }
 
     private void markActiveTasksUnresponsive(boolean killRequested) {
@@ -357,6 +407,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         private final ScraperSessionImpl session;
         private final SessionOptions options;
         private final LedgerExecutionResourceCoordinator resourceCoordinator;
+        private final AtomicBoolean submissionResolved = new AtomicBoolean();
         private Future<?> future;
         private ScheduledFuture<?> escalationFuture;
         private Thread worker;
@@ -426,6 +477,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 removeQueuedFuture();
             } else {
                 future.cancel(true);
+            }
+        }
+
+        private void resolveSubmission() {
+            if (submissionResolved.compareAndSet(false, true)) {
+                synchronized (admissionLock) {
+                    pendingSubmissions--;
+                    admissionLock.notifyAll();
+                }
             }
         }
 
