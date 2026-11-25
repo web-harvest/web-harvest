@@ -194,9 +194,6 @@ public class DefaultHandlerHolderTest {
         Injector injector = Guice.createInjector(new ScraperModule("target"));
         EventBus runtimeBus = injector.getInstance(EventBus.class);
         HandlerHolder injectedHolder = injector.getInstance(HandlerHolder.class);
-        @SuppressWarnings("unchecked")
-        Registry<Harvester, EventBus> runtimeRegistry =
-            injector.getInstance(Key.get(new TypeLiteral<Registry<Harvester, EventBus>>() { }));
         Harvester harvester = mock(Harvester.class);
         RecordingHandler handler = new RecordingHandler();
         injectedHolder.register(handler);
