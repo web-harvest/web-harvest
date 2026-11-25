@@ -49,6 +49,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.execution.ExecutionWorkAccess;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
@@ -165,6 +166,18 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
     default void setResourceAccess(ExecutionResourceAccess resourceAccess) {
         if (resourceAccess != null) {
             throw new UnsupportedOperationException("This context does not support resource access");
+        }
+    }
+
+    /** Returns the optional bounded work capability for this managed execution. */
+    default ExecutionWorkAccess getExecutionWorkAccess() {
+        return null;
+    }
+
+    /** Binds the service-owned work capability before this context is published. */
+    default void setExecutionWorkAccess(ExecutionWorkAccess workAccess) {
+        if (workAccess != null) {
+            throw new UnsupportedOperationException("This context does not support bounded work execution");
         }
     }
     
