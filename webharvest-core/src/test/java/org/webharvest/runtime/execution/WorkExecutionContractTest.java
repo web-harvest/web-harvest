@@ -398,6 +398,21 @@ public class WorkExecutionContractTest {
         assertNull(outcome.getResult());
     }
 
+
+    @Test(groups = {"unit", "execution"})
+    public void testWorkResultTakesImmutableOutcomeSnapshot() {
+        WorkPlan<String> plan = new WorkPlan<>("snapshot",
+            Collections.singletonList(new WorkPartition<>("p1", "range-1")));
+        List<PartitionOutcome<String>> outcomes = new ArrayList<>();
+        outcomes.add(new PartitionOutcome<>("p1", PartitionOutcome.Status.SUCCEEDED, "done", null));
+
+        WorkResult<String> result = new WorkResult<>(plan, outcomes);
+        outcomes.clear();
+
+        assertEquals(result.getOutcomes().size(), 1);
+        assertEquals(result.getOutcomes().get(0).getResult(), "done");
+    }
+
     private void assertUnsupportedOperation(Runnable action) {
         try {
             action.run();
