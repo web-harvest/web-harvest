@@ -4,11 +4,15 @@
  */
 package org.webharvest.runtime.execution;
 
-/** Controls whether independent partitions continue after a partition fails. */
+/** Controls scheduling of not-yet-started partitions after a partition fails. */
 public enum WorkFailurePolicy {
-    /** Stop admitting pending partitions after the first failure; let running work exit. */
+    /**
+     * Stop scheduling partitions that have not started after the first failure.
+     * Report each such partition as NOT_STARTED; already-started partitions are
+     * allowed to reach their own terminal outcomes.
+     */
     FAIL_FAST,
 
-    /** Continue admitting remaining partitions and report every partition outcome. */
+    /** Schedule all admitted partitions despite earlier failures and report every outcome. */
     CONTINUE
 }
