@@ -548,6 +548,82 @@ public class DefaultHandlerHolderTest {
         verify(registry, never()).unbind(harvester);
     }
 
+    @Test
+    public void ignoresNullEventsAndEventsWithoutAnOwnedActiveRoute() throws AlreadyBoundException {
+        holder.onHarvesterEvent(null);
+        holder.onHarvesterEvent(new TestHarvesterEvent(null));
+        Harvester harvester = mock(Harvester.class);
+        holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
+        doReturn(null).when(registry).lookup(harvester);
+        holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+        verify(registry, atLeastOnce()).lookup(harvester);
+    }
+
+    @Test
+    public void rejectsDuplicateRouteAndMismatchedRegistryBus() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        holder.onBeforeScraping(harvester);
+        try {
+            holder.onBeforeScraping(harvester);
+            fail("Expected duplicate route rejection");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("active or draining"));
+        }
+        when(registry.lookup(harvester)).thenReturn(new EventBus());
+        try {
+            holder.onAfterScraping(harvester);
+            fail("Expected registry bus mismatch rejection");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("does not match"));
+        }
+        verify(registry, never()).unbind(harvester);
+    }
+
+    @Test
+    public void skipsNonSubscriberHandlersAndAvoidsSelfSuppression() throws AlreadyBoundException {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        holder.onBeforeScraping(harvester);
+        holder.register(new EventHandler<TestHarvesterEvent>() {
+            @Override
+            public void handle(TestHarvesterEvent event) { }
+        });
+        RuntimeException shared = new IllegalStateException("shared");
+        for (int i = 0; i < 2; i++) {
+            holder.register(new EventHandler<TestHarvesterEvent>() {
+                @Override
+                @com.google.common.eventbus.Subscribe
+                public void handle(TestHarvesterEvent event) { throw shared; }
+            });
+        }
+        try {
+            holder.onHarvesterEvent(new TestHarvesterEvent(harvester));
+            fail("Expected handler failure");
+        } catch (RuntimeException actual) {
+            assertSame(actual, shared);
+            assertEquals(actual.getSuppressed().length, 0);
+        }
+    }
+
+    @Test
+    public void rejectsSubscriberMethodsWithMultipleParameters() {
+        EventHandler<TestHarvesterEvent> invalid = new EventHandler<TestHarvesterEvent>() {
+            @Override
+            @com.google.common.eventbus.Subscribe
+            public void handle(TestHarvesterEvent event) { }
+            @com.google.common.eventbus.Subscribe
+            public void invalid(TestHarvesterEvent event, Object ignored) { }
+        };
+        try {
+            holder.register(invalid);
+            fail("Expected invalid subscriber signature");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("exactly one parameter"));
+        }
+    }
+
     private static void post(EventBus eventBus, HarvesterEvent event,
                              AtomicReference<Throwable> failure) {
         try {
