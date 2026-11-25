@@ -309,6 +309,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     @Override
     public void shutdown() throws InterruptedException {
         boolean interrupted = false;
+        List<SessionTask> tasks;
         synchronized (admissionLock) {
             shutdown = true;
             while (pendingSubmissions > 0) {
@@ -318,6 +319,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     interrupted = true;
                 }
             }
+            tasks = new ArrayList<>(executionTasks.values());
         }
         executorService.shutdown();
         if (interrupted) {
@@ -327,11 +329,13 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
         boolean terminated = executorService.awaitTermination(
             SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        if (!terminated) {
-            markActiveTasksUnresponsive(false);
+        boolean tasksExited = terminated
+            && awaitTaskExits(tasks, SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS, true);
+        if (!terminated || !tasksExited) {
+            markTasksUnresponsive(tasks, false, true);
             throw new IllegalStateException(
-                "WebHarvestService did not terminate within " + SHUTDOWN_TIMEOUT_SECONDS
-                    + " seconds; active workers remain unresponsive");
+                "WebHarvestService did not observe all accepted workers exit within "
+                    + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
         }
         timeoutScheduler.shutdownNow();
         LOG.info("WebHarvestService shut down after all accepted tasks exited");
@@ -374,8 +378,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             interrupted = true;
             terminated = false;
         }
-        if (!terminated) {
-            markActiveTasksUnresponsive(true);
+        boolean tasksExited = false;
+        try {
+            tasksExited = awaitTaskExits(tasks, 1, TimeUnit.SECONDS, true);
+        } catch (InterruptedException interruption) {
+            interrupted = true;
+        }
+        if (!terminated || !tasksExited) {
+            markTasksUnresponsive(tasks, true, true);
         }
         timeoutScheduler.shutdownNow();
         if (interrupted) {
@@ -383,8 +393,31 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
-    private void markActiveTasksUnresponsive(boolean killRequested) {
-        for (SessionTask task : executionTasks.values()) {
+    private boolean awaitTaskExits(List<SessionTask> tasks, long timeout,
+                                   TimeUnit unit, boolean skipCurrentWorker) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        for (SessionTask task : tasks) {
+            if (skipCurrentWorker && task.isCurrentWorker()) {
+                continue;
+            }
+            long remainingNanos = deadline - System.nanoTime();
+            if (remainingNanos <= 0) {
+                return false;
+            }
+            long remainingMillis = Math.max(1L, TimeUnit.NANOSECONDS.toMillis(remainingNanos));
+            if (!task.session.awaitExecutionCompletion(remainingMillis)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void markTasksUnresponsive(List<SessionTask> tasks,
+                                       boolean killRequested, boolean skipCurrentWorker) {
+        for (SessionTask task : tasks) {
+            if (skipCurrentWorker && task.isCurrentWorker()) {
+                continue;
+            }
             if (killRequested) {
                 task.session.markKillRequested();
             }
@@ -492,6 +525,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     admissionLock.notifyAll();
                 }
             }
+        }
+
+        private synchronized boolean isCurrentWorker() {
+            return !exited && worker == Thread.currentThread();
         }
 
         private void requestCancellation() {
