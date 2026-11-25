@@ -137,7 +137,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
             long resourceCloseDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
                 && System.nanoTime() < resourceCloseDeadline) {
-                Thread.yield();
+                TimeUnit.MILLISECONDS.sleep(1);
             }
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
                 "Worker exit is observable before the resource ledger publishes its final CLOSED state");
