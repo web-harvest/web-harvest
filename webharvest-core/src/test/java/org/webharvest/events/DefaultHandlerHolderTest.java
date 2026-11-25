@@ -449,7 +449,7 @@ public class DefaultHandlerHolderTest {
 
     @Test
     public void keepsClosedRouteReservedUntilUnbindAndDispatchDrainBothComplete()
-        throws InterruptedException {
+        throws AlreadyBoundException, InterruptedException {
         EventBus sharedBus = new EventBus();
         DefaultHandlerHolder dispatcher = new DefaultHandlerHolder(registry, () -> sharedBus);
         Harvester harvester = mock(Harvester.class);
