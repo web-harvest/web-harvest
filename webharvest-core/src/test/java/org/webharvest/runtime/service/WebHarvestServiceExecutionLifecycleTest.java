@@ -230,6 +230,11 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
             assertTrue(tracked.awaitExecutionCompletion(5000));
             assertNotNull(listener.resource);
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
             assertEquals(listener.closeCount.get(), 1);
             assertTrue(listener.resource.getAbortFailure() instanceof IllegalStateException,
