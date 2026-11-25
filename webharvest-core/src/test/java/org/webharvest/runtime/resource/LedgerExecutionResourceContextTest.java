@@ -244,11 +244,28 @@ public class LedgerExecutionResourceContextTest {
         context.markOwnerQuiescentAndDrain(Duration.ofNanos(-1));
     }
 
-    @Test(groups = {"unit", "runtime"}, expectedExceptions = IllegalArgumentException.class)
-    public void rejectsOwnerDrainBudgetThatOverflowsNanoseconds() throws InterruptedException {
-        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(
-            new ResourceLedger("runtime-a"), new ExecutionOwner("runtime-a", "session-a", 1));
-        context.markOwnerQuiescentAndDrain(Duration.ofSeconds(Long.MAX_VALUE));
+    @Test(groups = {"unit", "runtime"})
+    public void rejectsOverflowingDrainBudgetWithoutChangingLifecycleOrAdmission() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        ExecutionResourceAccess.ResourceHandle existing =
+            context.registerSessionResource("existing", null, null);
+
+        expectThrows(IllegalArgumentException.class,
+            () -> context.markOwnerQuiescentAndDrain(Duration.ofSeconds(Long.MAX_VALUE)));
+
+        assertEquals(existing.getState(), ExecutionResourceAccess.ResourceState.OPEN,
+            "An invalid budget must not partially transition existing registrations");
+        ExecutionResourceAccess.ResourceHandle admittedAfterRejectedDrain =
+            context.registerSessionResource("admitted-after-rejection", null, null);
+        ExecutionResourceAccess.Lease lease = admittedAfterRejectedDrain.acquire();
+        lease.close();
+
+        context.markOwnerQuiescentAndDrain(Duration.ZERO);
+        assertEquals(existing.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(admittedAfterRejectedDrain.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(ledger.size(), 0);
     }
 
     private static void expectThrows(Class<? extends Throwable> expected, Runnable action) {
