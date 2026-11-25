@@ -245,13 +245,19 @@ public class WorkExecutionContractTest {
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
-    public void testPartitionOutcomeRejectsNullIdentifier() {
-        new PartitionOutcome<>("", PartitionOutcome.Status.SUCCEEDED, "result", null);
+    public void testPartitionOutcomeRejectsBlankIdentifier() {
+        new PartitionOutcome<>("  ", PartitionOutcome.Status.SUCCEEDED, "result", null);
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
     public void testPartitionOutcomeRejectsBlankIdentifier() {
         new PartitionOutcome<>("  ", PartitionOutcome.Status.SUCCEEDED, "result", null);
+    }
+
+
+    @Test(groups = {"unit", "execution"}, expectedExceptions = IllegalArgumentException.class)
+    public void testPartitionOutcomeRejectsNullIdentifier() {
+        new PartitionOutcome<String>(null, PartitionOutcome.Status.SUCCEEDED, "result", null);
     }
 
     @Test(groups = {"unit", "execution"}, expectedExceptions = NullPointerException.class)
