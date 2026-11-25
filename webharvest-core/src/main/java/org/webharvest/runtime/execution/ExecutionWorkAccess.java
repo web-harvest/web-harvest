@@ -35,9 +35,11 @@ public interface ExecutionWorkAccess {
      * Atomically admits the complete streaming plan or rejects it before any partition starts.
      *
      * <p>Output callbacks are serialized and execute on the producing worker. A slow
-     * callback provides synchronous backpressure. The callback must not wait for this
-     * work execution to complete. Plan admission is all-or-nothing; FAIL_FAST controls
-     * scheduling of not-yet-started partitions after admission, not plan admission.</p>
+     * callback provides synchronous backpressure. If the handler throws, that exception
+     * fails the emitting partition and is reflected in its terminal outcome; the selected
+     * failure policy then controls scheduling of not-yet-started partitions. The callback
+     * must not wait for this work execution to complete. Plan admission is all-or-nothing;
+     * FAIL_FAST controls scheduling after admission, not plan admission.</p>
      *
      * @throws WorkAdmissionException when runtime, session or plan admission limits are reached
      */
