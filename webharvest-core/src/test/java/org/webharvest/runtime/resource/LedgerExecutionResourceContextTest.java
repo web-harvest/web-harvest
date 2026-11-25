@@ -87,6 +87,108 @@ public class LedgerExecutionResourceContextTest {
         assertEquals(ledger.size(), 0);
     }
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void requestTerminationIsIdempotent() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        AtomicInteger aborts = new AtomicInteger();
+        ExecutionResourceAccess.ResourceHandle resource =
+            context.registerSessionResource("idempotent", aborts::incrementAndGet, null);
+
+        context.requestTermination();
+        context.requestTermination();
+
+        assertEquals(aborts.get(), 1);
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+        context.markOwnerQuiescentAndDrain(Duration.ZERO);
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void requestTerminationAttemptsEveryAbortAndPreservesFatalFailures() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        AssertionError first = new AssertionError("first abort failed");
+        AssertionError second = new AssertionError("second abort failed");
+        context.registerSessionResource("first-error", () -> {
+            throw first;
+        }, null);
+        context.registerSessionResource("second-error", () -> {
+            throw second;
+        }, null);
+
+        try {
+            context.requestTermination();
+            fail("Expected fatal abort failure to be rethrown after fan-out");
+        } catch (AssertionError expected) {
+            assertSame(expected, first);
+            assertEquals(expected.getSuppressed().length, 1);
+            assertSame(expected.getSuppressed()[0], second);
+        }
+
+        context.markOwnerQuiescentAndDrain(Duration.ZERO);
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void sessionLeaseReleaseBeforeQuiescenceDoesNotDrainResource() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        AtomicInteger closes = new AtomicInteger();
+        ExecutionResourceAccess.ResourceHandle resource =
+            context.registerSessionResource("early-release", null, closes::incrementAndGet);
+        ExecutionResourceAccess.Lease lease = resource.acquire();
+
+        lease.close();
+
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.OPEN);
+        assertEquals(closes.get(), 0);
+        context.markOwnerQuiescentAndDrain(Duration.ZERO);
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(closes.get(), 1);
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void leaseAndOperationCloseAreIdempotent() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        AtomicInteger closes = new AtomicInteger();
+
+        ExecutionResourceAccess.OperationResource resource =
+            context.registerOperationResource("idempotent-operation", null, closes::incrementAndGet);
+        ExecutionResourceAccess.Lease lease = resource.acquire();
+
+        resource.close();
+        resource.close();
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+        assertEquals(closes.get(), 0);
+
+        lease.close();
+        lease.close();
+        assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(closes.get(), 1);
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"}, expectedExceptions = IllegalArgumentException.class)
+    public void rejectsNegativeOwnerDrainBudget() throws InterruptedException {
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(
+            new ResourceLedger("runtime-a"), new ExecutionOwner("runtime-a", "session-a", 1));
+        context.markOwnerQuiescentAndDrain(Duration.ofNanos(-1));
+    }
+
+    @Test(groups = {"unit", "runtime"}, expectedExceptions = IllegalArgumentException.class)
+    public void rejectsOwnerDrainBudgetThatOverflowsNanoseconds() throws InterruptedException {
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(
+            new ResourceLedger("runtime-a"), new ExecutionOwner("runtime-a", "session-a", 1));
+        context.markOwnerQuiescentAndDrain(Duration.ofSeconds(Long.MAX_VALUE));
+    }
+
     private static void expectThrows(Class<? extends Throwable> expected, Runnable action) {
         try {
             action.run();
