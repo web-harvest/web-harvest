@@ -45,6 +45,7 @@ import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
 import org.webharvest.runtime.session.TerminationDisposition;
 import org.webharvest.runtime.session.events.SessionCreatedEvent;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
@@ -239,6 +240,44 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertEquals(listener.closeCount.get(), 1);
             assertTrue(listener.resource.getAbortFailure() instanceof IllegalStateException,
                 "Abort failure must remain observable even when the later close succeeds");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testInterruptedDrainKeepsLeasedResourceQuarantinedUntilLeaseRelease() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        InterruptDuringDrainListener listener = new InterruptDuringDrainListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(session.awaitCompletion(5000));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertNotNull(listener.resource);
+            assertNotNull(listener.lease);
+
+            long quarantineDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.QUARANTINED
+                && System.nanoTime() < quarantineDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.resource.getActiveLeaseCount(), 1,
+                "Interrupted drain must not close a resource while its lease is active");
+
+            listener.lease.close();
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
+                "Lease release must retry the now-quiescent resource drain");
         } finally {
             service.shutdown();
         }
@@ -671,6 +710,23 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 }
             }
             lease.close();
+        }
+    }
+
+    private static class InterruptDuringDrainListener {
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/interrupted-drain", null, () -> { });
+            lease = resource.acquire();
+        }
+
+        @Subscribe
+        public void onSessionCompleted(SessionCompletedEvent event) {
+            Thread.currentThread().interrupt();
         }
     }
 
