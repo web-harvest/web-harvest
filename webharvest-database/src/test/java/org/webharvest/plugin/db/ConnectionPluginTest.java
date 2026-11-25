@@ -4,9 +4,12 @@
 
 package org.webharvest.plugin.db;
 
+import java.time.Duration;
+
 import com.google.common.eventbus.EventBus;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.webharvest.definition.Config;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
@@ -16,13 +19,10 @@ import org.webharvest.runtime.database.ConnectionProxy;
 import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
 import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.runtime.session.ExecutionOwner;
-import org.webharvest.definition.Config;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 
-import static org.testng.Assert.*;
 import static org.mockito.Mockito.mock;
-
-import java.time.Duration;
+import static org.testng.Assert.*;
 
 /**
  * Unit tests for ConnectionPlugin.
