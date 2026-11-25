@@ -104,6 +104,115 @@ public class ScraperSessionExecutionTrackingTest {
         assertEquals(session.getTerminationDisposition(), TerminationDisposition.CANCELLED_BEFORE_START);
     }
 
+
+    @Test(groups = {"unit", "session"})
+    public void testCancellationEventFailureIsReportedAfterCompletionSignal() {
+        IllegalStateException eventFailure = new IllegalStateException("event publication failed");
+        EventBus eventBus = eventBusFailingOnCancellation(eventFailure);
+        ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), eventBus);
+
+        try {
+            session.cancel();
+            fail("The EventBus publication failure should remain observable");
+        } catch (IllegalStateException expected) {
+            assertSame(expected, eventFailure);
+        }
+
+        assertTrue(session.awaitCompletion(0),
+            "The terminal completion signal must precede EventBus failure propagation");
+        assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+    }
+
+    @Test(groups = {"unit", "session"})
+    public void testCancellationHandlerFailureRemainsPrimaryAndEventFailureIsSuppressed() {
+        IllegalStateException handlerFailure = new IllegalStateException("abort failed");
+        IllegalArgumentException eventFailure = new IllegalArgumentException("event publication failed");
+        EventBus eventBus = eventBusFailingOnCancellation(eventFailure);
+        ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), eventBus);
+        session.attachCancellationHandler(() -> {
+            throw handlerFailure;
+        });
+
+        try {
+            session.cancel();
+            fail("The cancellation handler failure should remain observable");
+        } catch (IllegalStateException expected) {
+            assertSame(expected, handlerFailure);
+            assertEquals(expected.getSuppressed().length, 1);
+            assertSame(expected.getSuppressed()[0], eventFailure);
+        }
+
+        assertTrue(session.awaitCompletion(0));
+        assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+    }
+
+    @Test(groups = {"unit", "session"})
+    public void testSameCancellationFailureIsNotAddedAsItsOwnSuppressedException() {
+        IllegalStateException sharedFailure = new IllegalStateException("shared cancellation failure");
+        EventBus eventBus = eventBusFailingOnCancellation(sharedFailure);
+        ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), eventBus);
+        session.attachCancellationHandler(() -> {
+            throw sharedFailure;
+        });
+
+        try {
+            session.cancel();
+            fail("The cancellation failure should remain observable");
+        } catch (IllegalStateException expected) {
+            assertSame(expected, sharedFailure);
+            assertEquals(expected.getSuppressed().length, 0);
+        }
+
+        assertTrue(session.awaitCompletion(0));
+    }
+
+    @Test(groups = {"unit", "session"})
+    public void testCancellationHandlerErrorStillPublishesAndSignalsCompletion() {
+        AssertionError handlerFailure = new AssertionError("fatal abort failure");
+        EventBus eventBus = new EventBus();
+        AtomicInteger cancellationEvents = new AtomicInteger();
+        eventBus.register(new Object() {
+            @Subscribe
+            public void onCancelled(SessionCancelledEvent event) {
+                cancellationEvents.incrementAndGet();
+            }
+        });
+        ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
+            Mockito.mock(org.webharvest.definition.Config.class), eventBus);
+        session.attachCancellationHandler(() -> {
+            throw handlerFailure;
+        });
+
+        try {
+            session.cancel();
+            fail("The cancellation handler Error should remain observable");
+        } catch (AssertionError expected) {
+            assertSame(expected, handlerFailure);
+        }
+
+        assertTrue(session.awaitCompletion(0));
+        assertEquals(cancellationEvents.get(), 1);
+        assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+    }
+
+    private EventBus eventBusFailingOnCancellation(Throwable failure) {
+        return new EventBus() {
+            @Override
+            public void post(Object event) {
+                if (event instanceof SessionCancelledEvent) {
+                    if (failure instanceof Error) {
+                        throw (Error) failure;
+                    }
+                    throw (RuntimeException) failure;
+                }
+                super.post(event);
+            }
+        };
+    }
+
     @Test(groups = {"unit", "session"}, expectedExceptions = IllegalArgumentException.class)
     public void testMarkRunningRejectsNullContext() {
         createSession().markRunning(null);
