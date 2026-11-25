@@ -526,6 +526,64 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownWaitsForInlineWorkerExitAfterExecutorTerminates() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        FirstStartedBlockingListener listener = new FirstStartedBlockingListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        CountDownLatch shutdownFinished = new CountDownLatch(1);
+
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable unexpected) {
+                failure.compareAndSet(null, unexpected);
+            }
+        }, "caller-runs-session");
+        Thread shutdownThread = new Thread(() -> {
+            try {
+                service.shutdown();
+            } catch (Throwable unexpected) {
+                failure.compareAndSet(null, unexpected);
+            } finally {
+                shutdownFinished.countDown();
+            }
+        }, "graceful-shutdown-caller-runs");
+
+        try {
+            submitter.start();
+            assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
+
+            shutdownThread.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (shutdownThread.getState() != Thread.State.WAITING
+                && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertEquals(shutdownThread.getState(), Thread.State.WAITING,
+                "Service shutdown must wait for the caller-runs session's observed worker exit");
+            assertEquals(shutdownFinished.getCount(), 1L,
+                "Executor termination alone must not complete service shutdown");
+
+            listener.release.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            assertFalse(submitter.isAlive());
+            assertFalse(shutdownThread.isAlive());
+            assertNull(failure.get());
+        } finally {
+            listener.release.countDown();
+            submitter.join(5000);
+            if (shutdownThread.getState() != Thread.State.NEW) {
+                shutdownThread.join(5000);
+            }
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowCancellationSubscriberRunsOutsideAdmissionLock() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener worker = new BlockingStartedListener();
