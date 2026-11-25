@@ -16,7 +16,10 @@ public interface WorkExecution<R> {
      */
     boolean requestCancellation();
 
-    /** Returns the admitted concurrency ceiling after runtime/session limits are applied. */
+    /**
+     * Returns the admitted concurrency ceiling after runtime/session limits are applied.
+     * The number of workers actively running may be lower at any moment.
+     */
     int getEffectiveMaxConcurrentPartitions();
 
     /**
