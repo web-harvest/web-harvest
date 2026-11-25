@@ -4,7 +4,6 @@
  */
 package org.webharvest.runtime.execution;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -49,7 +48,7 @@ public final class WorkResult<R> {
         } else {
             status = Status.CANCELLED;
         }
-        this.outcomes = Collections.unmodifiableList(snapshot);
+        this.outcomes = snapshot;
     }
 
     public Status getStatus() {
