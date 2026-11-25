@@ -574,13 +574,14 @@ public class WebHarvestServiceExecutionLifecycleTest {
             java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<ScraperSession> accepted = new AtomicReference<>();
         AtomicReference<Throwable> submitFailure = new AtomicReference<>();
         AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
         AtomicReference<Throwable> rejectedAdmission = new AtomicReference<>();
 
         Thread submitter = new Thread(() -> {
             try {
-                service.executeAsync(Mockito.mock(Config.class), null, null);
+                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
             } catch (Throwable failure) {
                 submitFailure.set(failure);
             }
@@ -623,9 +624,14 @@ public class WebHarvestServiceExecutionLifecycleTest {
             shutdownThread.join(5000);
             assertFalse(submitter.isAlive());
             assertFalse(shutdownThread.isAlive());
-            assertTrue(submitFailure.get() instanceof IllegalStateException,
-                "The submission racing executor shutdown must be rejected and resolved");
+            assertNull(submitFailure.get(),
+                "A reservation accepted before shutdown must be allowed to reach the executor");
             assertNull(shutdownFailure.get());
+            assertNotNull(accepted.get());
+            assertTrue(accepted.get().awaitCompletion(5000));
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) accepted.get();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(accepted.get().getStatus(), SessionStatus.COMPLETED);
         } finally {
             releaseSubmit.countDown();
             submitter.join(5000);
