@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/** Immutable aggregate of terminal partition outcomes in original plan order. */
+/**
+ * Immutable aggregate of exactly one terminal outcome per partition, in original plan order.
+ * The aggregate status does not imply a transaction spanning multiple partitions.
+ */
 public final class WorkResult<R> {
 
     public enum Status {
