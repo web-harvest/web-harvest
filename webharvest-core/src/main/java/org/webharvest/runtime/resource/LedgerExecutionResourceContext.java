@@ -150,12 +150,21 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
             try {
                 reports.add(handle.drain(Duration.ofNanos(remaining)));
             } catch (InterruptedException failure) {
-                // Do not abandon later registrations. Their zero-budget drain
-                // still closes resources that are already fully quiescent.
+                // Normalize this registration to a terminal diagnostic state
+                // (CLOSED or QUARANTINED) before continuing with later handles.
                 if (interruption == null) {
                     interruption = failure;
                 } else {
                     interruption.addSuppressed(failure);
+                }
+                try {
+                    reports.add(handle.drain(Duration.ZERO));
+                } catch (Throwable retryFailure) {
+                    if (fatalFailure == null) {
+                        fatalFailure = retryFailure;
+                    } else if (fatalFailure != retryFailure) {
+                        fatalFailure.addSuppressed(retryFailure);
+                    }
                 }
             } catch (Throwable failure) {
                 if (fatalFailure == null) {
