@@ -107,7 +107,7 @@ public class DefaultHandlerHolderTest {
     }
 
     @Test
-    public void teardownDuringRegistryBindPreventsRouteActivation() {
+    public void teardownDuringRegistryBindPreventsRouteActivation() throws AlreadyBoundException {
         Harvester harvester = mock(Harvester.class);
         when(registry.lookup(harvester)).thenReturn(eventBus);
         doAnswer(invocation -> {
