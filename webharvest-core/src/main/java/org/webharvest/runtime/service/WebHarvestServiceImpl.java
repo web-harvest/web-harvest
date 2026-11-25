@@ -373,7 +373,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             }
         }
         for (SessionTask task : tasks) {
-            task.session.cancel();
+            if (!task.isCompletionCommitted()) {
+                task.session.cancel();
+            }
         }
 
         if (hasCurrentTaskThread(tasks)) {
@@ -624,6 +626,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             return started;
         }
 
+        private synchronized boolean isCompletionCommitted() {
+            return completionCommitted;
+        }
+
         private synchronized boolean hasWorkerExited() {
             return exited;
         }
@@ -724,7 +730,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             boolean startedExecution;
             boolean finishBeforeStart = false;
             synchronized (this) {
-                if (exited) {
+                if (exited || completionCommitted) {
                     return;
                 }
                 cancellationRequested = true;
