@@ -290,20 +290,23 @@ public interface WorkExecution<R> {
 }
 ```
 
-Supporting immutable value types:
-- `WorkPlan<P>`: stable plan identity and finite, immutable partition descriptors. The initial contract should bound/validate plan size; a future lazy partition source requires its own bounded producer/admission contract and is not silently implied by `Iterable`.
+Supporting immutable value types and callbacks:
+- `WorkPlan<P>`: stable plan identity and finite, immutable partition descriptors. The initial contract bounds/validates plan size; a future lazy partition source requires its own bounded producer/admission contract and is not silently implied by `Iterable`.
 - `WorkPartition<P>`: stable ID unique within the plan plus opaque adapter-owned payload. Core does not parse SQL, file paths, HTTP requests or vendor expressions.
-- `WorkExecutionPolicy`: requested in-flight limit and explicit failure/admission policy. Runtime, session and adapter budgets may reduce effective concurrency; expose the effective limit in execution metadata/outcome.
-- `PartitionContext`: partition identity, canonical session owner, cancellation signal, tracing/correlation metadata and owner-bound `ExecutionResourceAccess`. It must not expose the parent `DynamicScopeContext`.
-- `WorkResult<R>` and `PartitionOutcome<R>`: immutable aggregate and per-partition outcomes, including partial success and unknown outcome. They must not imply cross-partition atomicity.
+- `WorkExecutionPolicy`: requested in-flight limit and explicit fail-fast/continue policy. Runtime, session and adapter budgets may reduce concurrency; `WorkExecution` exposes the effective admitted ceiling.
+- `ExecutionWorkAccess`: optional owner-bound submission capability; exposes neither `ExecutorService` nor thread creation nor host lifecycle authority.
+- `PartitionContext`: canonical session owner, owner-bound `ExecutionResourceAccess` and cooperative cancellation checks. It must not expose the parent `DynamicScopeContext`.
+- `PartitionTask` / `StreamingPartitionTask`: adapter callbacks for result-only or streaming partitions.
+- `WorkExecution`: cancellation request and completion stage, where completion follows actual worker exit or positively confirmed pre-start removal.
+- `WorkResult<R>` and `PartitionOutcome<R>`: immutable aggregate and per-partition outcomes, including partial success and unknown outcome. Results carry the plan ID and preserve original plan order; they must not imply cross-partition atomicity.
 
-The `ExecutionWorkAccess` capability should be optional on service-managed contexts, with legacy/third-party contexts retaining a null/default-unsupported behavior, following the compatibility pattern already used for resource access. It must not expose `ExecutorService`, thread creation, or host lifecycle authority.
+The `ExecutionWorkAccess` capability is optional on service-managed contexts. Legacy/third-party contexts retain null/default-unsupported behavior, following the compatibility pattern already used for resource access. The managed context binds it once and verifies the existing immutable `ExecutionOwner`.
 
 ### 12.2 Context and streaming boundaries
 
-The first SPI must not claim to clone the current variable context. `PartitionContext` initially carries immutable execution metadata and explicit adapter inputs only. If worker-side template evaluation requires parent variables, define and test an immutable input-snapshot contract—including mutable `Variable` aliasing—before exposing it.
+The first SPI does not claim to clone the current variable context. `PartitionContext` carries execution metadata and explicit adapter inputs only. If worker-side template evaluation requires parent variables, define and test an immutable input-snapshot contract—including mutable `Variable` aliasing—before exposing it.
 
-Streaming output is separate from `WorkResult`; it must use an execution-scoped bounded sink/consumer contract. The exact push/backpressure shape (blocking bounded emit vs asynchronous demand) remains an explicit API decision and must be resolved before publishing that interface. Do not put an unbounded row collection into the result.
+Streaming output is separate from `WorkResult`. The proposed first contract uses `PartitionEmitter<T>` and a supplied `PartitionOutputHandler<T>`: emission is synchronous, handler calls are serialized by the runtime, and the handler runs on the producing worker. A slow handler therefore applies natural backpressure without a result buffer or per-plan output executor. Per-partition emission order is preserved; cross-partition order is unspecified. The handler must not synchronously wait for the same `WorkExecution` to complete. This callback contract must be validated for cancellation and handler failure before any executor implementation.
 
 ### 12.3 Lifecycle obligations
 
@@ -331,3 +334,8 @@ The following choices are recommended as the smallest safe first version:
 The atomic plan-admission rule deliberately avoids a half-started plan when the queue is saturated. It also means the initial finite-plan cap is a real API limit, not an implied promise to handle arbitrarily large partition counts. The cap must be configurable by the runtime and visible in admission diagnostics.
 
 These are recommended decisions for review in [Issue #383](https://github.com/web-harvest/web-harvest/issues/383), not authorization to implement concurrent workers or parallel JDBC.
+
+
+### 12.5 Initial Core SPI implementation branch
+
+The first contract-only implementation is tracked in [PR #384](https://github.com/web-harvest/web-harvest/pull/384), targeting the active `runtime/execution-resource-context` integration branch so it does not absorb or merge the JDBC lifecycle work in PR #381. It adds the public descriptor, policy, task, context, execution, outcome and streaming callback types, plus optional `DynamicScopeContext` capability binding. It intentionally contains no scheduler, executor, queue, child registry or parallel JDBC implementation. CI must pass on the corrected PR head before this API is treated as stable.
