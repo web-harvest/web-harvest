@@ -455,7 +455,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private void markTasksUnresponsive(List<SessionTask> tasks,
                                        boolean killRequested, boolean skipCurrentTaskThread) {
         for (SessionTask task : tasks) {
-            if ((skipCurrentTaskThread && task.isCurrentTaskThread()) || task.hasWorkerExited()) {
+            if ((skipCurrentTaskThread && task.isCurrentTaskThread())
+                || !task.hasWorkerStarted() || task.hasWorkerExited()) {
                 continue;
             }
             if (killRequested) {
@@ -608,6 +609,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             Thread current = Thread.currentThread();
             return taskCompletion.getCount() > 0
                 && (worker == current || cleanupThread == current);
+        }
+
+        private synchronized boolean hasWorkerStarted() {
+            return started;
         }
 
         private synchronized boolean hasWorkerExited() {
