@@ -106,7 +106,7 @@ public class ScraperSessionExecutionTrackingTest {
 
 
     @Test(groups = {"unit", "session"})
-    public void testCancellationEventFailureIsReportedAfterCompletionSignal() {
+    public void testCancellationEventFailureIsReportedAfterCompletionSignal() throws InterruptedException {
         IllegalStateException eventFailure = new IllegalStateException("event publication failed");
         EventBus eventBus = eventBusFailingOnCancellation(eventFailure);
         ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
@@ -125,7 +125,7 @@ public class ScraperSessionExecutionTrackingTest {
     }
 
     @Test(groups = {"unit", "session"})
-    public void testCancellationHandlerFailureRemainsPrimaryAndEventFailureIsSuppressed() {
+    public void testCancellationHandlerFailureRemainsPrimaryAndEventFailureIsSuppressed() throws InterruptedException {
         IllegalStateException handlerFailure = new IllegalStateException("abort failed");
         IllegalArgumentException eventFailure = new IllegalArgumentException("event publication failed");
         EventBus eventBus = eventBusFailingOnCancellation(eventFailure);
@@ -149,7 +149,7 @@ public class ScraperSessionExecutionTrackingTest {
     }
 
     @Test(groups = {"unit", "session"})
-    public void testSameCancellationFailureIsNotAddedAsItsOwnSuppressedException() {
+    public void testSameCancellationFailureIsNotAddedAsItsOwnSuppressedException() throws InterruptedException {
         IllegalStateException sharedFailure = new IllegalStateException("shared cancellation failure");
         EventBus eventBus = eventBusFailingOnCancellation(sharedFailure);
         ScraperSessionImpl session = new ScraperSessionImpl("execution-test", null,
@@ -170,7 +170,7 @@ public class ScraperSessionExecutionTrackingTest {
     }
 
     @Test(groups = {"unit", "session"})
-    public void testCancellationHandlerErrorStillPublishesAndSignalsCompletion() {
+    public void testCancellationHandlerErrorStillPublishesAndSignalsCompletion() throws InterruptedException {
         AssertionError handlerFailure = new AssertionError("fatal abort failure");
         EventBus eventBus = new EventBus();
         AtomicInteger cancellationEvents = new AtomicInteger();
