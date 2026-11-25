@@ -157,6 +157,42 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testFatalResourceDrainFailureRemainsObservableThroughSubmittedFuture() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        FatalCloseResourceListener listener = new FatalCloseResourceListener();
+        eventBus.register(listener);
+        CapturingInlineExecutorService executor = new CapturingInlineExecutorService();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(tracked.awaitExecutionCompletion(0),
+                "Worker exit is published before resource draining");
+            assertNotNull(listener.resource, "SessionStarted must register the test resource");
+            assertNotNull(executor.submittedFuture, "The executor must retain the submitted Future");
+
+            try {
+                executor.submittedFuture.get();
+                fail("A fatal resource-close failure must remain attached to the submitted Future");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                assertSame(expected.getCause(), listener.fatalFailure,
+                    "The original fatal cleanup failure must be propagated unchanged");
+            }
+
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED,
+                "A post-execution cleanup failure must not rewrite the business outcome");
+            assertEquals(listener.resource.getCloseFailure(), listener.fatalFailure);
+        } catch (java.util.concurrent.ExecutionException impossible) {
+            throw new AssertionError("Unexpected checked execution failure", impossible);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testSessionResourcesAreClosedAfterObservedWorkerExit() throws InterruptedException {
         EventBus eventBus = new EventBus();
         SessionResourceRegistrationListener listener = new SessionResourceRegistrationListener();
@@ -583,6 +619,32 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 }
             }
             lease.close();
+        }
+    }
+
+    private static class FatalCloseResourceListener {
+        private final AssertionError fatalFailure =
+            new AssertionError("fatal resource close failure");
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/fatal-close-resource", null, () -> {
+                    throw fatalFailure;
+                });
+        }
+    }
+
+    private static class CapturingInlineExecutorService extends InlineExecutorService {
+        private volatile java.util.concurrent.Future<?> submittedFuture;
+
+        @Override
+        public void execute(Runnable command) {
+            if (command instanceof java.util.concurrent.Future<?>) {
+                submittedFuture = (java.util.concurrent.Future<?>) command;
+            }
+            super.execute(command);
         }
     }
 
