@@ -391,7 +391,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
-    public void testCreatedEventCancellationCancelsFutureBeforeWorkerEntry() throws InterruptedException {
+    public void testCreatedEventCancellationFinishesBeforeExecutorDispatch() throws InterruptedException {
         EventBus eventBus = new EventBus();
         eventBus.register(new CancelOnCreatedListener());
         ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
