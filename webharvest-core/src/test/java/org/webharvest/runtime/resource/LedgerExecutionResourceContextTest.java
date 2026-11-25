@@ -151,6 +151,47 @@ public class LedgerExecutionResourceContextTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void fatalCloseFailurePreservesInterruptionAndContinuesDraining() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        ExecutionResourceAccess.ResourceHandle blocked =
+            context.registerSessionResource("blocked-first", null, null);
+        ExecutionResourceAccess.Lease lease = blocked.acquire();
+        AssertionError fatal = new AssertionError("close failed after interruption");
+        context.registerSessionResource("fatal-second", null, () -> {
+            throw fatal;
+        });
+        AtomicInteger laterCloses = new AtomicInteger();
+        ExecutionResourceAccess.ResourceHandle later = context.registerSessionResource(
+            "ready-third", null, laterCloses::incrementAndGet);
+
+        Thread.currentThread().interrupt();
+        try {
+            context.markOwnerQuiescentAndDrain(Duration.ofSeconds(5));
+            fail("Expected the fatal close failure to be rethrown");
+        } catch (AssertionError actual) {
+            assertSame(actual, fatal);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertTrue(actual.getSuppressed()[0] instanceof InterruptedException,
+                "The earlier interruption must remain attached to the fatal cleanup failure");
+            assertTrue(Thread.currentThread().isInterrupted(),
+                "A fatal cleanup failure must not consume the caller's interrupt signal");
+            assertEquals(blocked.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(later.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
+                "A later resource must still be drained after the fatal failure");
+            assertEquals(laterCloses.get(), 1);
+        } finally {
+            Thread.interrupted();
+            lease.close();
+        }
+
+        assertEquals(blocked.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        assertEquals(ledger.size(), 1,
+            "The failed registration remains retained for diagnostics");
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void requestTerminationIsIdempotent() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
