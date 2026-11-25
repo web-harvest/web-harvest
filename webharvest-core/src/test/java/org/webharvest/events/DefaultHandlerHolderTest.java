@@ -107,6 +107,24 @@ public class DefaultHandlerHolderTest {
     }
 
     @Test
+    public void teardownDuringRegistryBindPreventsRouteActivation() {
+        Harvester harvester = mock(Harvester.class);
+        when(registry.lookup(harvester)).thenReturn(eventBus);
+        doAnswer(invocation -> {
+            holder.onAfterScraping(harvester);
+            return null;
+        }).when(registry).bind(harvester, eventBus);
+
+        try {
+            holder.onBeforeScraping(harvester);
+            fail("A route closed during registry binding must not activate");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("closed while it was being bound"));
+        }
+        verify(registry).unbind(harvester);
+    }
+
+    @Test
     public void beforeScrapingWrapsDuplicateHarvesterBinding() throws AlreadyBoundException {
         Harvester harvester = mock(Harvester.class);
         doThrow(new AlreadyBoundException("duplicate")).when(registry).bind(harvester, eventBus);
