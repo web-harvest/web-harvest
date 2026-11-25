@@ -746,4 +746,29 @@ public class ResourceLedgerTest {
         assertEquals(ledger.size(), 1);
         assertEquals(replacement.getState(), ResourceLedger.State.OPEN);
     }
+
+    @Test(groups = {"unit", "runtime"})
+    public void testLeaseAndGenerationPinCloseAreIdempotent() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-idempotent", 1);
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "generation-idempotent");
+        ResourceLedger.Registration resource = ledger.registerGeneration(
+            "provider-loader", generation, null, null);
+        ResourceLedger.GenerationPin pin = ledger.pinGeneration(owner, generation);
+        ResourceLedger.Lease lease = resource.acquire(owner, generation);
+
+        lease.close();
+        lease.close();
+        assertEquals(resource.getActiveLeaseCount(), 0,
+            "Closing the same lease token twice must release exactly one lease");
+
+        pin.close();
+        pin.close();
+        assertEquals(ledger.getActiveGenerationPinCount(generation), 0,
+            "Closing the same generation pin twice must release exactly one pin");
+
+        assertTrue(resource.drainAndClose(Duration.ofSeconds(1)).isClosed());
+        resource.close();
+        assertEquals(ledger.size(), 0);
+    }
 }
