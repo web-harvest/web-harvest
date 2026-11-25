@@ -160,6 +160,8 @@ public class LedgerExecutionResourceContextTest {
 
         assertFalse(terminator.isAlive(), "Termination should finish after the blocked callback is released");
         assertNull(terminationFailure.get(), "Termination should not fail");
+
+        context.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
         assertEquals(second.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
         assertEquals(ledger.size(), 0);
     }
