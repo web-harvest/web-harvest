@@ -339,3 +339,19 @@ These are recommended decisions for review in [Issue #383](https://github.com/we
 ### 12.5 Initial Core SPI implementation branch
 
 The first contract-only implementation is tracked in [PR #384](https://github.com/web-harvest/web-harvest/pull/384), targeting the active `runtime/execution-resource-context` integration branch so it does not absorb or merge the JDBC lifecycle work in PR #381. It adds the public descriptor, policy, task, context, execution, outcome and streaming callback types, plus optional `DynamicScopeContext` capability binding. It intentionally contains no scheduler, executor, queue, child registry or parallel JDBC implementation. CI must pass on the corrected PR head before this API is treated as stable.
+
+### 12.6 Streaming/backpressure contract details
+
+The initial synchronous streaming design is retained, with the following implementation obligations:
+
+- The output serialization gate is scoped to one admitted `WorkExecution` and its handler. Independent plans must not share a runtime-global output lock.
+- `PartitionEmitter.emit(item)` returns only after the handler has processed that item. The runtime does not queue or buffer pending output items. A slow handler blocks its producer; this bounds runtime-owned pending output to the active producer calls rather than allowing backlog growth. Items retained by the handler are consumer-owned memory and outside this guarantee.
+- Per-partition emission order is preserved. Cross-partition order is unspecified. Serialization alone does not promise fairness or FIFO admission between producers; do not claim either without a separately specified and tested scheduler.
+- A handler exception fails the emitting partition with the original cause and is processed through the plan's declared `WorkFailurePolicy`. It must not be swallowed or treated as successful emission.
+- Cancellation while a worker is inside a handler does not establish worker exit. The worker and its resource leases remain live until the callback returns or the worker actually exits. Plan completion and session-owner quiescence must wait for that terminal event.
+- A handler must not synchronously wait for the same `WorkExecution.completion()`; this creates a dependency cycle. Recursive/reentrant emission on the same plan is unsupported unless explicitly designed and tested.
+- Handlers are adapter/consumer code and may block. This is intentional backpressure but consumes a partition worker and delays plan completion; the runtime must not conceal this by adding an unbounded helper queue.
+
+Required deterministic tests before executor implementation: serialization within one plan; no serialization coupling between independent plans; producer blocking until handler release; callback failure mapping under both failure policies; cancellation while callback is blocked with lease retention until actual worker exit; per-partition order; and no plan completion before callback/worker exit. Use latches/barriers rather than timing sleeps.
+
+The finite-plan size limit is enforced by the service-owned admission layer, not by the Core `WorkPlan` constructor: the complete partition count must be checked against the configured cap before any partition starts. Admission rejection must expose enough diagnostics to identify the configured limit. `WorkPlan` snapshots the descriptor list, but `WorkPartition` payloads remain caller-owned and are not deep-copied; callers must provide immutable payloads or guarantee no mutation for the plan lifetime.
