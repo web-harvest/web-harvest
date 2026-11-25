@@ -10,6 +10,12 @@ import org.webharvest.runtime.session.ExecutionOwner;
 /** Worker-scoped immutable execution metadata and cancellation/resource capabilities. */
 public interface PartitionContext {
 
+    /** Returns the stable plan identifier. */
+    String getPlanId();
+
+    /** Returns the stable partition identifier, distinct from the session owner. */
+    String getPartitionId();
+
     /** Returns the canonical session owner shared by all partitions of this plan. */
     ExecutionOwner getOwner();
 
