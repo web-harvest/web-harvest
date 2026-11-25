@@ -1044,6 +1044,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         private final CountDownLatch release = new CountDownLatch(1);
 
         @Subscribe
+        @com.google.common.eventbus.AllowConcurrentEvents
         public void onStarted(SessionStartedEvent event) {
             if (first.compareAndSet(true, false)) {
                 entered.countDown();
