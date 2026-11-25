@@ -359,10 +359,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             tasks = new ArrayList<>(executionTasks.values());
         }
 
-        // Cancellation callbacks and resource abort actions may be user code.
-        // Fan them out without holding admissionLock, before waiting for submitters.
+        // Request resource abort and worker interruption before publishing cancellation
+        // events. EventBus subscribers are synchronous; they must not prevent the
+        // executor's forced-shutdown signal from being issued.
         for (SessionTask task : tasks) {
-            task.session.cancel();
             task.requestKill();
         }
 
@@ -371,6 +371,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             for (SessionTask task : tasks) {
                 task.markRemovedBeforeStart(pending);
             }
+        }
+        for (SessionTask task : tasks) {
+            task.session.cancel();
         }
 
         if (hasCurrentTaskThread(tasks)) {
@@ -647,7 +650,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             boolean startedExecution;
             boolean finishBeforeStart = false;
             synchronized (this) {
-                if (exited) {
+                if (exited || cancellationRequested) {
                     return;
                 }
                 cancellationRequested = true;
@@ -724,6 +727,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 if (exited) {
                     return;
                 }
+                cancellationRequested = true;
                 session.markKillRequested();
                 if (!started && removeQueuedFutureLocked()) {
                     finishBeforeStart = claimBeforeStartExitLocked();
