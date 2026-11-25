@@ -318,12 +318,16 @@ The runtime implementation behind `ExecutionWorkAccess` must:
 
 The parent must not occupy a worker from the same bounded pool while synchronously waiting for its children. Child identity is for partition outcomes/metrics; it does not replace the session owner.
 
-### 12.4 Decisions still open before implementation
+### 12.4 Recommended decisions to close the first SPI
 
-- Confirm the optional context capability and exact compatibility behavior.
-- Confirm the finite-plan size bound and how admission/backpressure are surfaced to the submitter.
-- Choose the streaming sink's push/backpressure contract.
-- Specify immutable worker-input snapshots only if an actual first adapter requires parent-variable evaluation.
-- Decide whether the first implementation is contracts plus deterministic tests only, or also a sequential reference coordinator.
+The following choices are recommended as the smallest safe first version:
 
-This proposal is tracked for review in [Issue #383](https://github.com/web-harvest/web-harvest/issues/383). It is not authorization to implement concurrent workers or parallel JDBC. Add the public contracts only after the remaining API decisions are resolved.
+1. **Optional context capability:** add a default `getExecutionWorkAccess()` returning null to `DynamicScopeContext`, and a default setter that rejects non-null binding, mirroring the existing owner/resource-access compatibility pattern. The concrete service-managed context binds the capability once, before publication, and verifies the same `ExecutionOwner`.
+2. **Finite plan and bounded admission:** make `WorkPlan` an immutable finite descriptor list with an explicit maximum partition count. The runtime validates the complete plan and either admits it atomically or rejects it before any partition starts; no partially admitted plan is reported as accepted. Runtime-wide and per-session pending limits are hard bounds. Initial API uses non-blocking rejection (a typed admission exception/result), not a caller thread blocked waiting for queue capacity. A lazy/dynamic partition source is a later extension with its own pull-based bounded contract.
+3. **Streaming and backpressure:** keep streaming separate from aggregate `WorkResult`. Use an execution-scoped `WorkOutput<T>` with a finite buffer and explicit demand/backpressure; the first concrete adapter must choose and document whether emit blocks or returns an asynchronous admission stage. Do not publish an unbounded `List<T>` or hide a queue in `WorkResult`. The exact output delivery contract should be introduced with its first real consumer rather than guessed into the initial generic SPI.
+4. **Worker inputs:** do not snapshot or clone `DynamicScopeContext` in the first SPI. Carry only immutable metadata and adapter-owned immutable partition payloads. Add a separately reviewed immutable variable snapshot only when a real adapter requires it.
+5. **Initial implementation:** add public contracts and deterministic contract tests first. Do not add an executor implementation until runtime-wide admission, child tracking and parent quiescence can be proven against the actual session lifecycle. A sequential reference executor is optional and should be added only if it validates a real contract that cannot be tested directly.
+
+The atomic plan-admission rule deliberately avoids a half-started plan when the queue is saturated. It also means the initial finite-plan cap is a real API limit, not an implied promise to handle arbitrarily large partition counts. The cap must be configurable by the runtime and visible in admission diagnostics.
+
+These are recommended decisions for review in [Issue #383](https://github.com/web-harvest/web-harvest/issues/383), not authorization to implement concurrent workers or parallel JDBC.
