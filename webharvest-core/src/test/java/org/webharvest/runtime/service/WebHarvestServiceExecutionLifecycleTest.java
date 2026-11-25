@@ -706,7 +706,6 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 new CountDownLatch(1).await();
             } catch (InterruptedException expected) {
                 interrupted.countDown();
-                Thread.currentThread().interrupt();
             }
         }
     }
