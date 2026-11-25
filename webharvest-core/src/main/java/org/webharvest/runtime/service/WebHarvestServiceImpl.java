@@ -342,8 +342,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (!executorTerminated || !taskRunsCompleted) {
             markTasksUnresponsive(tasks, false, false);
             logIncompleteShutdown("worker exit or resource drain", tasks);
-            throw new IllegalStateException("WebHarvestService did not observe all accepted worker and "
-                + "resource-drain paths complete within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
+            throw new IllegalStateException("WebHarvestService did not terminate all accepted worker and "
+                + "resource-drain paths within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
         }
 
         finalizeTimeoutSchedulerIfQuiescent();
@@ -374,7 +374,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         if (hasCurrentTaskThread(tasks)) {
-            LOG.info("shutdownNow initiated from a session task; finalization is deferred until task cleanup completes");
+            LOG.info("shutdownNow initiated from a session task; finalization is deferred "
+                + "until task cleanup completes");
             return;
         }
 
