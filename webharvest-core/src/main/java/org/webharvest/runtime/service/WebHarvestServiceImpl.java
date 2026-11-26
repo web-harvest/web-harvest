@@ -596,6 +596,25 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
+    private static void awaitTerminationUninterruptibly(ExecutorService executor) {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    if (executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+                        return;
+                    }
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     /**
      * Completes runtime retirement when shutdown was initiated by one of its own
      * session workers. Such a worker cannot wait for its own executor to terminate;
@@ -616,22 +635,16 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         Thread finalizer = new Thread(() -> {
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT_SECONDS);
             try {
-                if (!executorService.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS)) {
-                    LOG.warn("Deferred runtime finalization could not confirm session executor termination");
-                    return;
-                }
-                if (!shutdownResourceAbortExecutor(deadline)) {
-                    LOG.warn("Deferred runtime finalization could not confirm resource abort callback termination");
-                    return;
-                }
+                // This background thread does not extend the caller's bounded shutdown wait.
+                // It must, however, keep waiting: a slow abort callback may outlive the
+                // public shutdown deadline, and registrations must remain until it exits.
+                awaitTerminationUninterruptibly(executorService);
+                resourceAbortExecutor.shutdown();
+                awaitTerminationUninterruptibly(resourceAbortExecutor);
+                registrationCoordinator.close();
                 finalizeTimeoutSchedulerIfQuiescent();
                 LOG.info("Deferred WebHarvestService runtime finalization completed after worker-initiated shutdown");
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-                LOG.warn("Deferred runtime finalization was interrupted; runtime registrations remain retained",
-                    interrupted);
             } catch (RuntimeException failure) {
                 LOG.error("Deferred runtime finalization failed; runtime registrations remain tracked", failure);
             }
