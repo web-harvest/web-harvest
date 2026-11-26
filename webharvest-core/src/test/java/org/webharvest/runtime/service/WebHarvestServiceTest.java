@@ -7,10 +7,13 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.client.ClientContext;
+import org.webharvest.runtime.session.ExecutionState;
+import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
+import org.webharvest.runtime.session.TerminationDisposition;
 import org.webharvest.runtime.session.events.*;
 
 import java.time.Duration;
@@ -18,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -160,6 +164,89 @@ public class WebHarvestServiceTest {
     }
     
     @Test(groups = {"unit", "service"})
+    public void testCancelBeforeStart_ExecutionQuiescenceObserved() throws InterruptedException {
+        service.shutdown();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        boolean[] serviceOwnsExecutor = {false};
+        executor.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS),
+                "The executor blocker should start before the session is submitted");
+            service = new WebHarvestServiceImpl(executor, new SessionRegistryImpl(), new EventBus());
+            serviceOwnsExecutor[0] = true;
+
+            ScraperSession session = service.executeAsync(mockConfig, null, null);
+            assertTrue(session.cancel(), "Queued session should accept cancellation");
+            assertTrue(session.awaitCompletion(1000), "Business cancellation should be observable");
+
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertFalse(tracked.awaitExecutionCompletion(50),
+                "A generic executor cannot prove that its queued task has been removed");
+            releaseBlocker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000),
+                "The queued cancellation gate must report exit after the task actually runs");
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+        } finally {
+            releaseBlocker.countDown();
+            if (!serviceOwnsExecutor[0]) {
+                executor.shutdownNow();
+            }
+        }
+
+        service.shutdown();
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testCancelDuringWorker_BusinessCompletionPrecedesQuiescence() throws InterruptedException {
+        service.shutdown();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        service = new WebHarvestServiceImpl(executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(mockConfig, null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS),
+                "Worker should reach the controlled blocking point");
+            assertTrue(session.cancel(), "Running session should accept cancellation");
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS),
+                "Cancellation should interrupt the active worker");
+            assertTrue(session.awaitCompletion(1000),
+                "Business cancellation should be observable independently");
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACE_IN_PROGRESS);
+            assertFalse(tracked.awaitExecutionCompletion(50),
+                "Worker quiescence must remain pending while the worker is still blocked");
+            assertEquals(tracked.getExecutionState(), ExecutionState.INTERRUPT_REQUESTED);
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000),
+                "Worker exit should be observed after the blocking operation is released");
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertEquals(tracked.getTerminationDisposition(), TerminationDisposition.GRACEFUL);
+        } finally {
+            listener.release.countDown();
+        }
+
+        service.shutdown();
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testCancelSession_NonExistent() {
         boolean cancelled = service.cancelSession("non-existent");
         
@@ -218,6 +305,27 @@ public class WebHarvestServiceTest {
         customService.shutdown();
     }
     
+    private static class BlockingStartedListener {
+        final CountDownLatch started = new CountDownLatch(1);
+        final CountDownLatch interrupted = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            started.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    release.await();
+                    waiting = false;
+                } catch (InterruptedException cancellation) {
+                    interrupted.countDown();
+                    // Deliberately remain active until the test releases this operation.
+                }
+            }
+        }
+    }
+
     /**
      * Event collector for testing.
      */

@@ -112,11 +112,12 @@ public interface SessionRegistry {
     /**
      * Registers a session in the registry.
      * 
-     * <p>If a session with the same ID already exists, it will be replaced.
-     * This method is typically called immediately after session creation.</p>
+     * <p>Session IDs are unique while registered. A duplicate ID is rejected;
+     * replacement must be an explicit operation outside this registration path.</p>
      * 
      * @param session the session to register
      * @throws IllegalArgumentException if session is null
+     * @throws IllegalStateException if the ID is already registered
      */
     void register(ScraperSession session);
     
@@ -172,6 +173,27 @@ public interface SessionRegistry {
      * @throws IllegalArgumentException if sessionId is null
      */
     boolean unregister(String sessionId);
+
+    /**
+     * Removes the exact session instance if it is still the registered owner
+     * of its ID. Implementations should make the comparison and removal atomic.
+     *
+     * <p>The default preserves compatibility for custom registries; built-in
+     * implementations override it with an atomic compare-and-remove.</p>
+     *
+     * @param session expected registered session instance
+     * @return true only if that exact instance was removed
+     * @throws IllegalArgumentException if session is null
+     */
+    default boolean unregisterIfOwner(ScraperSession session) {
+        if (session == null) {
+            throw new IllegalArgumentException("Session cannot be null");
+        }
+        Optional<ScraperSession> current = getSession(session.getSessionId());
+        // NOPMD - exact owner identity, not value equality, is required here.
+        return current.isPresent() && current.get() == session
+            && unregister(session.getSessionId());
+    }
     
     /**
      * Returns the current number of registered sessions.
