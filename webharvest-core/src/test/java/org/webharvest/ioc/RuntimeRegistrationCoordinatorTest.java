@@ -173,8 +173,13 @@ public class RuntimeRegistrationCoordinatorTest {
         coordinator.close();
         coordinator.close();
 
-        expectThrows(IllegalStateException.class,
-            () -> coordinator.registerSubscriber(new Subscriber()));
+        boolean rejected = false;
+        try {
+            coordinator.registerSubscriber(new Subscriber());
+        } catch (IllegalStateException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected, "Registration after close must be rejected");
         assertEquals(coordinator.getSubscriberRegistrationCount(), 0);
     }
 }
