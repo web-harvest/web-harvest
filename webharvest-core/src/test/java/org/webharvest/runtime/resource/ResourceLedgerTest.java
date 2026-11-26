@@ -1041,4 +1041,24 @@ public class ResourceLedgerTest {
         resource.close();
         assertEquals(ledger.size(), 0);
     }
+    @Test(groups = {"unit", "runtime"})
+    public void abortWithoutActionCompletesSuccessfullyAndRepeatedAbortIsIdempotent() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger closes = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "no-abort-action", null, closes::incrementAndGet);
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        registration.requestClose();
+        registration.abort();
+        registration.abort();
+
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ZERO).isClosed());
+        registration.close();
+        assertEquals(closes.get(), 1);
+        assertEquals(ledger.size(), 0);
+    }
+
 }
