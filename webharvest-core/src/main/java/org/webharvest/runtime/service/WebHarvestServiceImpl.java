@@ -50,6 +50,8 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
+import org.webharvest.ioc.RuntimeRegistrationCoordinator;
+import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -81,6 +83,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
+    private final RuntimeRegistrationCoordinator registrationCoordinator;
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
@@ -99,9 +102,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
      * @param eventBus shared runtime EventBus
      */
     @Inject
+    public WebHarvestServiceImpl(EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator) {
+        this(Executors.newCachedThreadPool(new SessionThreadFactory()),
+            new SessionRegistryImpl(), eventBus, registrationCoordinator);
+    }
+
+    /** Compatibility constructor for direct, non-Guice service composition. */
     public WebHarvestServiceImpl(EventBus eventBus) {
         this(Executors.newCachedThreadPool(new SessionThreadFactory()),
-            new SessionRegistryImpl(), eventBus);
+            new SessionRegistryImpl(), eventBus,
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
     }
 
     /** Creates a service using the default cached session executor. */
@@ -129,6 +140,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     public WebHarvestServiceImpl(ExecutorService executorService,
                                  SessionRegistry sessionRegistry,
                                  EventBus eventBus) {
+        this(executorService, sessionRegistry, eventBus,
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
+    }
+
+    /**
+     * Creates a service with explicit runtime-owned session and registration components.
+     */
+    public WebHarvestServiceImpl(ExecutorService executorService,
+                                 SessionRegistry sessionRegistry,
+                                 EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator) {
         if (executorService == null) {
             throw new IllegalArgumentException("ExecutorService cannot be null");
         }
@@ -138,10 +160,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (eventBus == null) {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
+        if (registrationCoordinator == null) {
+            throw new IllegalArgumentException("RuntimeRegistrationCoordinator cannot be null");
+        }
 
         this.executorService = executorService;
         this.sessionRegistry = sessionRegistry;
         this.eventBus = eventBus;
+        this.registrationCoordinator = registrationCoordinator;
         this.timeoutScheduler = createTimeoutScheduler();
     }
 
@@ -549,7 +575,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     private boolean shutdownResourceAbortExecutor(long deadline) throws InterruptedException {
         resourceAbortExecutor.shutdown();
-        return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        boolean terminated = resourceAbortExecutor.awaitTermination(
+            remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        if (terminated) {
+            // Runtime registrations are retired only after workers, resource drains,
+            // and asynchronous abort callbacks have all reached quiescence.
+            registrationCoordinator.close();
+        }
+        return terminated;
     }
 
     private void finalizeTimeoutSchedulerIfQuiescent() {
