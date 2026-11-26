@@ -33,10 +33,7 @@
 
 package org.webharvest.plugin.services;
 
-import java.time.Duration;
 import java.util.Map;
-
-import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
 /**
  * Service interface for HTTP operations.
@@ -84,34 +81,7 @@ public interface HttpService {
      */
     HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException;
 
-    /**
-     * Executes one request with a response-inactivity and connection-pool acquisition timeouts and
-     * optional execution-owned cancellation.
-     *
-     * <p>The default preserves source and binary compatibility for existing
-     * providers in standalone contexts. A provider used by a service-managed
-     * execution must override this method; silently dropping the owner-bound
-     * resource capability would make cancellation guarantees misleading.</p>
-     *
-     * @param method HTTP method
-     * @param url request URL
-     * @param body optional request body
-     * @param headers optional request headers
-     * @param timeout response inactivity and connection-pool acquisition timeout
-     * @param resourceAccess execution-owned resource access, or {@code null}
-     * @return the HTTP response
-     * @throws HttpServiceException if the request fails
-     */
-    default HttpResponse request(String method, String url, String body,
-                                 Map<String, String> headers, Duration timeout,
-                                 ExecutionResourceAccess resourceAccess)
-            throws HttpServiceException {
-        if (resourceAccess != null) {
-            throw new HttpServiceException(
-                "HTTP provider does not support execution-owned request cancellation");
-        }
-        return request(method, url, body, headers);
-    }
+
 }
 
 
