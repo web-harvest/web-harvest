@@ -63,6 +63,7 @@ import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.ScrapingHarvester;
 import org.webharvest.runtime.StatusHolder;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
 import org.webharvest.runtime.WebScraper;
 import org.webharvest.runtime.service.WebHarvestService;
 import org.webharvest.runtime.service.WebHarvestServiceImpl;
@@ -155,6 +156,7 @@ public final class ScraperModule extends AbstractModule {
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
         bind(RuntimeRegistrationCoordinator.class).in(Singleton.class);
+        bind(RuntimeResourceManager.class).in(Singleton.class);
         bindListener(Matchers.any(), new PostConstructListener());
         bind(ElementsRegistry.class).to(ElementsRegistryImpl.class);
         
