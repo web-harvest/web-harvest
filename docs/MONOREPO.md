@@ -9,13 +9,15 @@
 
 The current Maven reactor uses a shared project version and shared CI. The plugin modules and clients still depend on Core APIs that are evolving. Premature extraction would turn internal boundaries into public compatibility promises before they are ready.
 
+WebHarvest's product category is an **Adaptive Data Acquisition & Integration Platform**. Repository and module boundaries must support source-neutral acquisition, semantic processing and integration through specialized plugins. They must not make one workflow notation, web scraping capability, client UI, IoC container or transport the platform's defining boundary.
+
 The intended future may include a separate company-maintained Extensions repository and Maven release train, but only after the objective gates in section 6 pass. This is not a current repository-splitting task. User-facing official extensions should ultimately be curated into compatible Packs/Kits while retaining extension-level artifact identities.
 
 ## 2. Current Maven modules
 
 | Module | Current responsibility | Boundary |
 |---|---|---|
-| `webharvest-core` | Workflow runtime, configuration model, plugin contracts/registry, XML execution and Stage 1 semantic inspection | Must not depend on IDE or optional integrations |
+| `webharvest-core` | Existing Java execution runtime, configuration model, plugin contracts/registry, XML execution and Stage 1 semantic inspection | Current implementation still has historical XML and Guice coupling; target is format- and IoC-neutral semantic/runtime contracts. Must not depend on IDE or optional integrations |
 | `webharvest-cli` | Headless execution and automation client of Core; Data Plane surface | No semantic authority of its own; separate product distribution |
 | `webharvest-ide` | Human-facing editor/control client of Core; intended Control Plane | No canonical workflow semantics or plugin identity source; separate product distribution |
 | `webharvest-database` | Database extensions | Depends on Core; candidate for future company extensions |
@@ -36,11 +38,31 @@ optional plugin modules ──────▶ webharvest-core
 webharvest-core ──────────────X optional modules / IDE
 ```
 
-Core owns the stable execution and plugin contracts. Clients and extensions consume those contracts. There must be no reverse dependency from Core to an optional integration.
+Core owns the stable semantic and capability contracts. Clients and extensions consume those contracts. There must be no reverse dependency from Core to an optional integration, client UI, source vendor or destination technology. **Current-state caveat:** `webharvest-core` still declares a Guice dependency and contains historical XML-shaped runtime paths. Container neutrality and the final format-independent semantic model are targets; do not describe them as achieved until dependency and call-site evidence proves it.
+
+## 3.1 Product capability boundary
+
+The platform capability model should be organized around the data lifecycle rather than the current Maven module list:
+
+| Capability family | Examples | Boundary rule |
+|---|---|---|
+| Acquisition | Web, API, database, file/document, stream and enterprise/local-system connectors | Source adapters are optional capabilities; Core must not hard-code vendor/source assumptions |
+| Understanding | Parsing, decoding, classification, extraction and entity resolution | Typed inputs/outputs and explicit semantic contracts; do not assume every source is HTML/XML |
+| Processing | Validation, normalization, transformation, enrichment, correlation and deduplication | Reusable operations with explicit configuration, deterministic behavior where possible and testable semantics |
+| Integration | Destination connectors, publication, synchronization and hand-off | Separate data-operation completion from durable destination commit; represent ambiguous outcomes honestly |
+| Observation | Provenance, lineage, quality, diagnostics and audit evidence | Cross-cutting contracts; no unsupported exactly-once or universal lineage claims |
+
+These are target capability families. Existing modules are not yet a complete implementation of this model. A plugin's presence in the monorepo does not by itself establish its public SPI stability, trust status or compatibility range.
+
+### Runtime and host independence
+
+The Core contract must be usable through explicit/manual Java composition, an embedding host, or an optional IoC adapter. Guice is a current implementation dependency, not an architectural requirement. Keep framework/runtime lifecycle, execution lifecycle and composition/bootstrap adapters separate. An IoC container shutdown must not be treated as proof that active executions, workers or resources have quiesced.
+
+Java API composition, XML compatibility, future DSL authoring, CLI, IDE, deterministic planners, agent integrations and optional MCP adapters must converge on the same Core semantic and capability contracts. None is the owner of the platform's semantic truth.
 
 ## 4. Plugin classification policy
 
-Every shipped plugin implementation must be inventoried and assigned one of these roles:
+Every shipped plugin implementation must be inventoried and assigned one of these roles. In addition, record its data-lifecycle capability family (acquisition, understanding, processing, integration or observation):
 
 1. **Core execution primitive** — essential workflow execution operations.
 2. **Core control flow** — branching, iteration and composition semantics.
