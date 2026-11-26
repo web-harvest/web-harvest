@@ -1061,4 +1061,21 @@ public class ResourceLedgerTest {
         assertEquals(ledger.size(), 0);
     }
 
+    @Test(groups = {"unit", "runtime"})
+    public void abortAfterSuccessfulCloseIsIgnored() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "abort-after-close", null, null);
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ZERO).isClosed());
+
+        registration.abort();
+
+        assertEquals(registration.getState(), ResourceLedger.State.CLOSED);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.NOT_REQUESTED);
+        registration.close();
+        assertEquals(ledger.size(), 0);
+    }
+
 }
