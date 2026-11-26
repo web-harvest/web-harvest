@@ -34,6 +34,7 @@
 package org.webharvest.ioc;
 
 import org.webharvest.ScrapingAware;
+import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
