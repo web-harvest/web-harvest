@@ -38,7 +38,6 @@ import java.lang.reflect.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
@@ -65,11 +64,12 @@ public final class EventBusTypeListener implements TypeListener {
             return;
         }
 
-        final Provider<EventBus> eventBusProvider = typeEncounter.getProvider(EventBus.class);
+        final Provider<RuntimeRegistrationCoordinator> coordinatorProvider =
+            typeEncounter.getProvider(RuntimeRegistrationCoordinator.class);
         typeEncounter.register(new InjectionListener<I>() {
             @Override
             public void afterInjection(final I instance) {
-                eventBusProvider.get().register(instance);
+                coordinatorProvider.get().registerSubscriber(instance);
                 LOG.info("Subscribed to events {}", instance);
             }
         });
