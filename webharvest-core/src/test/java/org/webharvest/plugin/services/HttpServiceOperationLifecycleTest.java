@@ -60,8 +60,8 @@ public class HttpServiceOperationLifecycleTest {
             }
         });
         server.createContext("/blocked", exchange -> {
-            blockedRequestStarted.countDown();
             exchange.sendResponseHeaders(200, 0);
+            blockedRequestStarted.countDown();
             try (OutputStream output = exchange.getResponseBody()) {
                 releaseBlockedRequest.await(5, TimeUnit.SECONDS);
                 output.write("released".getBytes(StandardCharsets.UTF_8));
