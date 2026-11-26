@@ -40,54 +40,55 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.spi.InjectionListener;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
 
 /**
- * Guice {@link TypeListener} implementation that is responsible for
- * registration of objects managed by Guice in singleton {@link EventBus}.
- * Each newly created object is treated as potential event subscriber.
+ * Guice TypeListener that registers injected subscriber instances with the
+ * EventBus belonging to the injector that encountered the instance.
  *
- * @author Robert Bala
- * @since 2.1.0-SNAPSHOT
- * @version %I%, %G%
- * @see TypeListener
- * @see EventBus
+ * <p>The provider is captured from the TypeEncounter. No process-wide static
+ * Injector lookup is used, so independent injectors cannot cross-register
+ * subscribers with each other's buses.</p>
  */
 public final class EventBusTypeListener implements TypeListener {
 
-    private static final Logger LOG = LoggerFactory.
-        getLogger(EventBusTypeListener.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EventBusTypeListener.class);
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public <I> void hear(final TypeLiteral<I> typeLiteral,
-             final TypeEncounter<I> typeEncounter) {
-        // TODO rbala Refactor as soon as possible. Ugly code (the whole method)
-        boolean qualifies = false;
-        for (final Method method : typeLiteral.getRawType().
-                getDeclaredMethods()) {
-            // If one of the class's methods is annotated to receive events then
-            // register it to event bus
-            qualifies = method.isAnnotationPresent(Subscribe.class);
-            if (qualifies) {
-                break;
+                        final TypeEncounter<I> typeEncounter) {
+        if (!hasSubscriberMethod(typeLiteral.getRawType())) {
+            return;
+        }
+
+        final Provider<EventBus> eventBusProvider = typeEncounter.getProvider(EventBus.class);
+        typeEncounter.register(new InjectionListener<I>() {
+            @Override
+            public void afterInjection(final I instance) {
+                eventBusProvider.get().register(instance);
+                LOG.info("Subscribed to events {}", instance);
             }
+        });
+    }
 
+    private static boolean hasSubscriberMethod(Class<?> type) {
+        if (type == null) {
+            return false;
         }
-        if (qualifies) {
-            typeEncounter.register(new InjectionListener<I>() {
-                public void afterInjection(final I i) {
-                    InjectorHelper.getInjector().
-                        getInstance(EventBus.class).register(i);
-                    LOG.info("Subscribed to events {}", i);
-                }
-            });
+        for (Method method : type.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Subscribe.class)) {
+                return true;
+            }
         }
-     }
-
+        for (Class<?> interfaceType : type.getInterfaces()) {
+            if (hasSubscriberMethod(interfaceType)) {
+                return true;
+            }
+        }
+        return hasSubscriberMethod(type.getSuperclass());
+    }
 }
