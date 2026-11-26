@@ -90,6 +90,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ThreadPoolExecutor resourceAbortExecutor = createResourceAbortExecutor();
     private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId, resourceAbortExecutor);
     private final AtomicLong executionGeneration = new AtomicLong();
+    private final AtomicBoolean deferredFinalizationStarted = new AtomicBoolean();
     private final Object admissionLock = new Object();
     private int pendingSubmissions;
     private boolean executorShutdownInitiated;
@@ -595,6 +596,50 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
+    /**
+     * Completes runtime retirement when shutdown was initiated by one of its own
+     * session workers. Such a worker cannot wait for its own executor to terminate;
+     * the finalizer therefore runs on a separate daemon thread after the last task
+     * has completed its cleanup and submission admission has settled.
+     */
+    private void scheduleDeferredRuntimeFinalizationIfQuiescent() {
+        boolean startFinalizer = false;
+        synchronized (admissionLock) {
+            if (shutdown && pendingSubmissions == 0 && executionTasks.isEmpty()
+                && executorShutdownCompleted.getCount() == 0
+                && deferredFinalizationStarted.compareAndSet(false, true)) {
+                startFinalizer = true;
+            }
+        }
+        if (!startFinalizer) {
+            return;
+        }
+
+        Thread finalizer = new Thread(() -> {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(SHUTDOWN_TIMEOUT_SECONDS);
+            try {
+                if (!executorService.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS)) {
+                    LOG.warn("Deferred runtime finalization could not confirm session executor termination");
+                    return;
+                }
+                if (!shutdownResourceAbortExecutor(deadline)) {
+                    LOG.warn("Deferred runtime finalization could not confirm resource abort callback termination");
+                    return;
+                }
+                finalizeTimeoutSchedulerIfQuiescent();
+                LOG.info("Deferred WebHarvestService runtime finalization completed after worker-initiated shutdown");
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                LOG.warn("Deferred runtime finalization was interrupted; runtime registrations remain retained",
+                    interrupted);
+            } catch (RuntimeException failure) {
+                LOG.error("Deferred runtime finalization failed; runtime registrations remain tracked", failure);
+            }
+        }, "webharvest-runtime-finalizer-" + runtimeId);
+        finalizer.setDaemon(true);
+        finalizer.start();
+    }
+
     @Override
     public boolean isShutdown() {
         return shutdown;
@@ -721,6 +766,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 }
                 shutdownExecutorWhenReady();
                 finalizeTimeoutSchedulerIfQuiescent();
+                scheduleDeferredRuntimeFinalizationIfQuiescent();
             }
         }
 
@@ -758,6 +804,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             taskCompletion.countDown();
             executionTasks.remove(session.getSessionId(), this);
             finalizeTimeoutSchedulerIfQuiescent();
+            scheduleDeferredRuntimeFinalizationIfQuiescent();
         }
 
         private void requestCancellation() {
