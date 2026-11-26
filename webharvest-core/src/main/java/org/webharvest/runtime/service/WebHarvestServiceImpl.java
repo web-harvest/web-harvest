@@ -75,6 +75,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
     private static final long CANCELLATION_GRACE_SECONDS = 5;
     private static final Duration RESOURCE_DRAIN_BUDGET = Duration.ofSeconds(5);
+    private static final int RESOURCE_ABORT_WORKERS = 2;
+    private static final int RESOURCE_ABORT_QUEUE_CAPACITY = 128;
 
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
