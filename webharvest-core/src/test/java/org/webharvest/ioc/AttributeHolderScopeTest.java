@@ -106,4 +106,17 @@ public class AttributeHolderScopeTest {
                 mockHolder, scope.get());
         scope.exit();
     }
+
+    @Test
+    public void removesThreadLocalStackAfterOuterScopeExits() throws Exception {
+        scope.enter(mockHolder);
+        scope.exit();
+
+        java.lang.reflect.Field holderField =
+                AttributeHolderScope.class.getDeclaredField("holder");
+        holderField.setAccessible(true);
+        ThreadLocal<?> threadLocal = (ThreadLocal<?>) holderField.get(scope);
+        assertSame("Empty scope stack must be removed from the current thread",
+                null, threadLocal.get());
+    }
 }
