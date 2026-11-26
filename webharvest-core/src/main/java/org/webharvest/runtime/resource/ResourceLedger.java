@@ -592,6 +592,16 @@ public final class ResourceLedger {
                     }
                 }
                 throw dispatchFailure;
+            } catch (Error dispatchFailure) {
+                synchronized (entry) {
+                    if (entry.abortState == AbortState.QUEUED) {
+                        entry.abortState = AbortState.REJECTED;
+                        entry.abortFailure = dispatchFailure;
+                        entry.abortInProgress = false;
+                        entry.notifyAll();
+                    }
+                }
+                throw dispatchFailure;
             }
         }
 
