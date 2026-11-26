@@ -49,6 +49,7 @@ import org.webharvest.runtime.session.events.SessionCreatedEvent;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.ioc.RuntimeRegistrationCoordinator;
 import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
@@ -213,9 +214,12 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(session.cancel());
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
                 "Cancellation must quarantine resources until the owner exits");
-            assertEquals(listener.abortCount.get(), 1,
-                "Resource abort must be requested before the worker is interrupted");
+            assertTrue(listener.resource.getAbortState() != ResourceLedger.AbortState.NOT_REQUESTED,
+                "Cancellation must dispatch resource abort before interrupting the worker");
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+            assertTrue(listener.abortStarted.await(5, TimeUnit.SECONDS),
+                "The asynchronous abort callback must start while the worker is still active");
+            assertEquals(listener.abortCount.get(), 1);
             assertFalse(tracked.awaitExecutionCompletion(0),
                 "The non-cooperative callback must remain active after interruption");
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
@@ -1402,6 +1406,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
     private static class BlockingResourceListener {
         private final CountDownLatch started = new CountDownLatch(1);
         private final CountDownLatch interrupted = new CountDownLatch(1);
+        private final CountDownLatch abortStarted = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
         private final CountDownLatch closed = new CountDownLatch(1);
         private final java.util.concurrent.atomic.AtomicInteger abortCount =
@@ -1414,7 +1419,10 @@ public class WebHarvestServiceExecutionLifecycleTest {
         @Subscribe
         public void onSessionStarted(SessionStartedEvent event) {
             resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
-                "test/cancellable-session-resource", abortCount::incrementAndGet, () -> {
+                "test/cancellable-session-resource", () -> {
+                    abortCount.incrementAndGet();
+                    abortStarted.countDown();
+                }, () -> {
                     closeCount.incrementAndGet();
                     closed.countDown();
                 });
