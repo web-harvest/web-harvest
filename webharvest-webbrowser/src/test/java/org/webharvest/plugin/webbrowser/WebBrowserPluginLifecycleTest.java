@@ -21,12 +21,18 @@ import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.variables.Variable;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 import static org.testng.Assert.*;
@@ -47,13 +53,30 @@ public class WebBrowserPluginLifecycleTest {
     private static HttpServer server;
     private static String baseUrl;
 
+    private final CountDownLatch blockedBrowserRequestStarted = new CountDownLatch(1);
+    private final CountDownLatch releaseBlockedBrowserRequest = new CountDownLatch(1);
+    private ExecutorService serverExecutor;
     private DynamicScopeContext context;
 
     @BeforeClass
     public void startServer() throws IOException {
         CorePluginsRegistrar.registerCorePlugins();
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        serverExecutor = Executors.newCachedThreadPool();
+        server.setExecutor(serverExecutor);
         server.createContext("/page", exchange -> respond(exchange, 200, PAGE));
+        server.createContext("/blocked", exchange -> {
+            blockedBrowserRequestStarted.countDown();
+            try {
+                releaseBlockedBrowserRequest.await(5, TimeUnit.SECONDS);
+                respond(exchange, 200, PAGE);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                exchange.close();
+            } catch (IOException ignored) {
+                exchange.close();
+            }
+        });
         server.createContext("/redirect", exchange -> {
             exchange.getResponseHeaders().add("Location", "/page");
             exchange.sendResponseHeaders(302, -1);
@@ -71,8 +94,12 @@ public class WebBrowserPluginLifecycleTest {
     @AfterClass(alwaysRun = true)
     public void stopServer() {
         WebBrowserPlugin.closeAllPages();
+        releaseBlockedBrowserRequest.countDown();
         if (server != null) {
             server.stop(0);
+        }
+        if (serverExecutor != null) {
+            serverExecutor.shutdownNow();
         }
     }
 
@@ -263,6 +290,56 @@ public class WebBrowserPluginLifecycleTest {
         } finally {
             if (!session.getStatus().isTerminal()) {
                 session.markFailed(new RuntimeException("Managed browser test cleanup"));
+            }
+            WebBrowserPlugin.closeAllPages();
+        }
+    }
+
+    @Test
+    public void ownerTerminationClosesClientDuringBlockedNavigation() throws Exception {
+        String runtimeId = "webbrowser-blocked-runtime";
+        String sessionId = "webbrowser-blocked-session";
+        ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, 1);
+        EventBus eventBus = new EventBus();
+        ScraperSessionImpl session = new ScraperSessionImpl(
+            sessionId, null, mock(Config.class), eventBus, owner);
+        LedgerExecutionResourceCoordinator resources = new LedgerExecutionResourceCoordinator(
+            new ResourceLedger(runtimeId), owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setEventBus(eventBus);
+        managedContext.setSession(session);
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(resources.getAccess());
+        session.markRunning(managedContext);
+
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<Variable> load = worker.submit(
+                () -> execute(managedContext, "load", "blocked", baseUrl + "/blocked", false, 0, null));
+            assertTrue(blockedBrowserRequestStarted.await(3, TimeUnit.SECONDS),
+                "Browser navigation must reach the blocked loopback endpoint");
+
+            resources.requestTermination();
+            releaseBlockedBrowserRequest.countDown();
+
+            try {
+                load.get(3, TimeUnit.SECONDS);
+                fail("A browser operation must not succeed after its owner is terminated");
+            } catch (ExecutionException expected) {
+                assertTrue(expected.getCause() instanceof RuntimeException,
+                    "Owner termination must surface as a failed browser operation");
+            }
+
+            java.util.List<LedgerExecutionResourceContext.DrainReport> reports =
+                resources.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
+            assertEquals(reports.size(), 1);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        } finally {
+            releaseBlockedBrowserRequest.countDown();
+            worker.shutdownNow();
+            worker.awaitTermination(3, TimeUnit.SECONDS);
+            if (!session.getStatus().isTerminal()) {
+                session.markFailed(new RuntimeException("Blocked browser test cleanup"));
             }
             WebBrowserPlugin.closeAllPages();
         }
