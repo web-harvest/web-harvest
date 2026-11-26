@@ -121,7 +121,7 @@ public final class RuntimeRegistrationCoordinator implements AutoCloseable {
             try {
                 eventBus.unregister(subscriber);
                 subscribers.remove(subscriber);
-            } catch (Throwable failure) {
+            } catch (RuntimeException failure) {
                 firstFailure = appendFailure(firstFailure, failure);
             }
         }
