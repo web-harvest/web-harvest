@@ -55,9 +55,11 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.Timeout;
+import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
 
 /**
  * Default implementation of {@link HttpService} using Apache HttpClient 5.x
@@ -90,6 +92,19 @@ public class HttpServiceImpl implements ExecutionAwareHttpService, AutoCloseable
     private final CloseableHttpClient httpClient;
     private final boolean followRedirects;
     private final boolean configurePerRequestTimeouts;
+
+    /**
+     * Creates the default Guice-managed HTTP service and registers its shared
+     * client for runtime retirement.
+     *
+     * @param runtimeResources runtime-owned resource manager
+     */
+    @Inject
+    public HttpServiceImpl(RuntimeResourceManager runtimeResources) {
+        this();
+        Objects.requireNonNull(runtimeResources, "Runtime resource manager cannot be null")
+            .register("http-client", this);
+    }
 
     /**
      * Creates a new HttpServiceImpl with a default HttpClient.
