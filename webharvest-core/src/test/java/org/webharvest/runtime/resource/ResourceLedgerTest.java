@@ -917,6 +917,23 @@ public class ResourceLedgerTest {
         assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
     }
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void fatalAbortDispatcherFailureIsRetainedAndDoesNotLeavePhantomInProgress() {
+        AssertionError dispatchFailure = new AssertionError("fatal dispatcher failure");
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            throw dispatchFailure;
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "fatal-dispatch-failure", () -> fail("Abort callback must not run"), null);
+        registration.requestClose();
+
+        expectThrows(AssertionError.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        assertSame(registration.getAbortFailure(), dispatchFailure);
+        assertFalse(registration.drainAndClose(Duration.ZERO).isAbortInProgress());
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void testStaleRegistrationTokenCannotRetireReplacement() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
