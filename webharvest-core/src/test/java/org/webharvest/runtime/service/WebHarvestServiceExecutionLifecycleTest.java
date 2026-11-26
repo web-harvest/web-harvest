@@ -113,9 +113,12 @@ public class WebHarvestServiceExecutionLifecycleTest {
         ScrapingAwareHelper helper = new ScrapingAwareHelper();
         RuntimeRegistrationCoordinator coordinator =
             new RuntimeRegistrationCoordinator(eventBus, helper);
+        RuntimeResourceManager runtimeResources = new RuntimeResourceManager();
+        AtomicBoolean runtimeResourceClosed = new AtomicBoolean();
+        runtimeResources.register("worker-owned-resource", () -> runtimeResourceClosed.set(true));
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             java.util.concurrent.Executors.newSingleThreadExecutor(),
-            new SessionRegistryImpl(), eventBus, coordinator);
+            new SessionRegistryImpl(), eventBus, coordinator, runtimeResources);
         WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, false);
         coordinator.registerSubscriber(listener);
 
@@ -135,6 +138,10 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Deferred finalization must close the runtime registration owner after worker exit");
             assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
                 "Deferred finalization must unregister the worker's subscriber");
+            assertTrue(runtimeResources.isClosed(),
+                "Deferred finalization must close runtime-owned resources after worker exit");
+            assertTrue(runtimeResourceClosed.get(),
+                "Runtime resource close action must run after worker exit");
         } finally {
             if (!coordinator.isCloseRequested()) {
                 service.shutdownNow();
@@ -148,9 +155,12 @@ public class WebHarvestServiceExecutionLifecycleTest {
         ScrapingAwareHelper helper = new ScrapingAwareHelper();
         RuntimeRegistrationCoordinator coordinator =
             new RuntimeRegistrationCoordinator(eventBus, helper);
+        RuntimeResourceManager runtimeResources = new RuntimeResourceManager();
+        AtomicBoolean runtimeResourceClosed = new AtomicBoolean();
+        runtimeResources.register("worker-owned-resource", () -> runtimeResourceClosed.set(true));
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             java.util.concurrent.Executors.newSingleThreadExecutor(),
-            new SessionRegistryImpl(), eventBus, coordinator);
+            new SessionRegistryImpl(), eventBus, coordinator, runtimeResources);
         WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, true);
         coordinator.registerSubscriber(listener);
 
@@ -176,6 +186,10 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Resource close must complete before runtime registration retirement");
             assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
                 "Deferred finalization must unregister the worker's subscriber after shutdownNow");
+            assertTrue(runtimeResources.isClosed(),
+                "Deferred shutdownNow finalization must close runtime-owned resources");
+            assertTrue(runtimeResourceClosed.get(),
+                "Runtime resource close action must run after abort quiescence");
         } finally {
             listener.releaseAbort.countDown();
             if (!coordinator.isCloseRequested()) {
