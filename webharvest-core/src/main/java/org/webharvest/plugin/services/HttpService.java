@@ -33,7 +33,10 @@
 
 package org.webharvest.plugin.services;
 
+import java.time.Duration;
 import java.util.Map;
+
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
 /**
  * Service interface for HTTP operations.
@@ -80,6 +83,30 @@ public interface HttpService {
      * @throws HttpServiceException if the request fails
      */
     HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException;
+
+    /**
+     * Executes one request with a bounded response/pool-acquisition timeout and
+     * optional execution-owned cancellation.
+     *
+     * <p>The default preserves source and binary compatibility for existing
+     * providers. Such providers retain their legacy timeout/cancellation
+     * behavior until they override this method.</p>
+     *
+     * @param method HTTP method
+     * @param url request URL
+     * @param body optional request body
+     * @param headers optional request headers
+     * @param timeout maximum response and connection-pool acquisition wait
+     * @param resourceAccess execution-owned resource access, or {@code null}
+     * @return the HTTP response
+     * @throws HttpServiceException if the request fails
+     */
+    default HttpResponse request(String method, String url, String body,
+                                 Map<String, String> headers, Duration timeout,
+                                 ExecutionResourceAccess resourceAccess)
+            throws HttpServiceException {
+        return request(method, url, body, headers);
+    }
 }
 
 
