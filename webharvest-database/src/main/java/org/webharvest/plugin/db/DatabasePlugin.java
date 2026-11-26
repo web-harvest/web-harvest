@@ -521,8 +521,8 @@ public class DatabasePlugin extends AbstractPlugin {
             if (resultSet != null) {
                 try {
                     resultSet.close();
-                } catch (SQLException failure) {
-                    cleanupFailure = failure;
+                } catch (SQLException | RuntimeException | Error failure) {
+                    cleanupFailure = combineFailures(cleanupFailure, failure);
                 }
             }
 
@@ -550,7 +550,7 @@ public class DatabasePlugin extends AbstractPlugin {
             } else if (statement != null) {
                 try {
                     statement.close();
-                } catch (SQLException failure) {
+                } catch (SQLException | RuntimeException | Error failure) {
                     cleanupFailure = combineFailures(cleanupFailure, failure);
                 }
             }
