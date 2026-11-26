@@ -84,7 +84,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpServiceImpl.class);
     
-    private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(30);
     private static final Timeout DEFAULT_CONNECT_TIMEOUT = Timeout.ofSeconds(30);
 
     private final CloseableHttpClient httpClient;
