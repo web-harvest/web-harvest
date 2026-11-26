@@ -754,6 +754,11 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
             listener.releaseAbort.countDown();
             assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
+            long closedDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closedDeadline) {
+                Thread.yield();
+            }
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
             assertEquals(listener.closeCount.get(), 1);
         } finally {
